@@ -5,6 +5,7 @@ import { canAdminister } from '@nibleaf/shared/rbac';
 import type { CreateMcpOAuthGrantBody } from '@nibleaf/validators';
 import { env } from '@/env';
 import { AppError, forbidden, notFound } from '@/errors';
+import { accessibleProjectIds, resolveSiteAccess } from '@/lib/access';
 import { assertProjectAccess, assertProjectInOrg } from './projects';
 
 type Actor = { id: string; role: string };
@@ -29,7 +30,7 @@ const readAuthorizationRequest = async (oauthQuery: string) => {
 };
 
 /** Where the client sends the person back to: its host, or the app scheme for
- *  a native redirect (`cursor://…`). Shown on consent so a look-alike name
+ *  a native redirect (`cursor://â€¦`). Shown on consent so a look-alike name
  *  cannot hide the real destination. */
 const redirectTarget = (redirectUri: string | null) => {
   if (!redirectUri) return null;
@@ -64,23 +65,17 @@ const presetsForRole = (role: string) => MCP_KEY_PRESETS.filter((preset) => mcpP
 /** What the project and consent pages show for one authorization request. */
 export const getMcpOAuthAuthorization = async (user: { id: string }, session: SessionRef, oauthQuery: string) => {
   const { request, client } = await readAuthorizationRequest(oauthQuery);
-  const memberships = await prisma.member.findMany({
-    where: { userId: user.id },
+  const ids = await accessibleProjectIds(user.id);
+  const accessible = await prisma.project.findMany({
+    where: { id: { in: ids } },
     orderBy: { createdAt: 'asc' },
-    select: {
-      role: true,
-      organization: { select: { name: true, projects: { select: { id: true, name: true, slug: true }, orderBy: { createdAt: 'asc' } } } },
-    },
+    select: { id: true, name: true, slug: true, organization: { select: { id: true, name: true } } },
   });
-  const projects = memberships.flatMap(({ role, organization }) =>
-    organization.projects.map((project) => ({
-      id: project.id,
-      name: project.name,
-      slug: project.slug,
-      workspace: organization.name,
-      role,
-      presets: presetsForRole(role),
-    })),
+  const projects = await Promise.all(
+    accessible.map(async (project) => {
+      const { role } = await resolveSiteAccess(user.id, project.id);
+      return { ...project, workspace: project.organization.name, role, presets: presetsForRole(role) };
+    }),
   );
   const pending = await prisma.mcpOAuthGrant.findFirst({
     where: {
@@ -98,7 +93,10 @@ export const getMcpOAuthAuthorization = async (user: { id: string }, session: Se
     client: clientDto(client, request.redirectUri),
     requestedScopes: request.scopes,
     projects: projects.filter((project) => project.presets.length > 0),
-    selection: pending ? { id: pending.id, preset: pending.preset as McpKeyPreset, scopes: pending.scopes, project: pending.project } : null,
+    selection:
+      pending && projects.some((project) => project.id === pending.project.id && project.presets.includes(pending.preset as McpKeyPreset))
+        ? { id: pending.id, preset: pending.preset as McpKeyPreset, scopes: pending.scopes, project: pending.project }
+        : null,
   };
 };
 

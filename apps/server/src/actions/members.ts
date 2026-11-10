@@ -3,7 +3,7 @@ import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
 import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
 import { MemberRole } from '@nibleaf/shared/constants';
-import { canAdminister, canAssignRole, canManageMember, planOwnershipTransfer } from '@nibleaf/shared/rbac';
+import { canAdminister, canAssignRole, canManageMember, effectiveSiteRole, planOwnershipTransfer } from '@nibleaf/shared/rbac';
 import type { UpdateMemberRoleBody } from '@nibleaf/validators';
 import { env } from '@/env';
 import { conflict, forbidden, notFound } from '@/errors';
@@ -11,11 +11,35 @@ import { notificationEnabled } from './notifications';
 
 const INVITE_TTL_DAYS = 7;
 
+// TODO(organizations-admission): replace these 1:1 compatibility actions.
+const singleProject = async (db: typeof prisma | import('@nibleaf/database').Prisma.TransactionClient, organizationId: string, mutating = false) => {
+  if (mutating) {
+    const organization = await db.organization.findUniqueOrThrow({
+      where: { id: organizationId },
+      select: { needsRepair: true, deletionStartedAt: true },
+    });
+    if (organization.needsRepair || organization.deletionStartedAt) throw conflict('This organization cannot be changed right now.');
+  }
+  const projects = await db.project.findMany({ where: { organizationId }, select: { id: true }, take: 2 });
+  if (projects.length !== 1 || !projects[0]) throw conflict('Use organization membership actions for this organization.');
+  return projects[0].id;
+};
+
+const siteMember = async (
+  tx: import('@nibleaf/database').Prisma.TransactionClient,
+  organizationId: string,
+  projectId: string,
+  where: { userId: string } | { id: string },
+) => {
+  const member = await tx.member.findFirst({ where: { organizationId, ...where }, include: { projectGrants: { where: { projectId } } } });
+  return member ? { ...member, role: effectiveSiteRole(member.orgRole, member.projectGrants[0]?.role ?? null) ?? '' } : null;
+};
+
 /** Public-safe metadata for an invitation, used by the accept page and sign-up prefill. */
 export const getInvitationInfo = async (invitationId: string) => {
   const invitation = await prisma.invitation.findUnique({
     where: { id: invitationId },
-    select: { id: true, email: true, role: true, status: true, expiresAt: true, organizationId: true },
+    select: { id: true, email: true, kind: true, grants: { select: { role: true } }, status: true, expiresAt: true, organizationId: true },
   });
   if (!invitation) {
     throw notFound('invitation', { id: invitationId });
@@ -24,7 +48,7 @@ export const getInvitationInfo = async (invitationId: string) => {
   return {
     id: invitation.id,
     email: invitation.email,
-    role: invitation.role,
+    role: invitation.kind === 'bootstrap_owner' ? 'owner' : (invitation.grants[0]?.role ?? 'viewer'),
     status: invitation.status,
     organizationName: org?.name ?? null,
     expired: invitation.expiresAt ? new Date(invitation.expiresAt).getTime() < Date.now() : false,
@@ -32,15 +56,29 @@ export const getInvitationInfo = async (invitationId: string) => {
 };
 
 export const listMembers = async (organizationId: string) => {
+  const projectId = await singleProject(prisma, organizationId);
   const [members, invitations] = await Promise.all([
     prisma.member.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'asc' },
-      include: { user: { select: { id: true, name: true, email: true, image: true } } },
+      include: { user: { select: { id: true, name: true, email: true, image: true } }, projectGrants: { where: { projectId } } },
     }),
-    prisma.invitation.findMany({ where: { organizationId, status: 'pending' }, orderBy: { id: 'desc' } }),
+    prisma.invitation.findMany({
+      where: { organizationId, status: 'pending' },
+      include: { grants: { where: { projectId } } },
+      orderBy: { id: 'desc' },
+    }),
   ]);
-  return { members, invitations };
+  return {
+    members: members.flatMap(({ projectGrants, ...member }) => {
+      const role = effectiveSiteRole(member.orgRole, projectGrants[0]?.role ?? null);
+      return role ? [{ ...member, role }] : [];
+    }),
+    invitations: invitations.map(({ grants, ...invitation }) => ({
+      ...invitation,
+      role: invitation.kind === 'bootstrap_owner' ? 'owner' : (grants[0]?.role ?? 'viewer'),
+    })),
+  };
 };
 
 export const inviteMember = async (
@@ -61,7 +99,7 @@ export const inviteMember = async (
     if (!options.bootstrapOwner) {
       throw forbidden('The owner role cannot be granted by invitation. Transfer ownership instead.', { role: body.role });
     }
-    const owners = await prisma.member.count({ where: { organizationId, role: MemberRole.OWNER } });
+    const owners = await prisma.member.count({ where: { organizationId, orgRole: MemberRole.OWNER } });
     if (owners > 0) {
       throw conflict('This workspace already has an owner.');
     }
@@ -81,8 +119,19 @@ export const inviteMember = async (
     throw conflict('That person is already a member of this workspace.', { email });
   }
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000);
+  const projectId = await singleProject(prisma, organizationId, true);
   const invitation = await prisma.invitation.create({
-    data: { organizationId, email, role: body.role, status: 'pending', expiresAt, inviterId },
+    data: {
+      organizationId,
+      email,
+      role: 'viewer',
+      kind: options.bootstrapOwner ? 'bootstrap_owner' : 'member',
+      orgRole: options.bootstrapOwner ? 'owner' : 'member',
+      status: 'pending',
+      expiresAt,
+      inviterId,
+      ...(options.bootstrapOwner ? {} : { grants: { create: { organizationId, projectId, role: body.role } } }),
+    },
   });
 
   // Send a descriptive email naming the site, inviter and role. Delivery is
@@ -96,7 +145,7 @@ export const inviteMember = async (
   // invitation is still created (the copy-able accept link is returned), we just
   // don't send the email.
   if (options.sendEmail === false || !notificationEnabled(org?.metadata, 'member_invited')) {
-    return invitation;
+    return { ...invitation, role: body.role };
   }
   const acceptUrl = `${env.APP_URL}/accept-invite/${invitation.id}`;
   const siteName = org?.name ?? 'a Nibleaf workspace';
@@ -113,16 +162,17 @@ export const inviteMember = async (
     name: 'send-email',
     data: { to: email, ...message },
   }).catch(() => undefined);
-  return invitation;
+  return { ...invitation, role: body.role };
 };
 
 export const updateMemberRole = async (organizationId: string, memberId: string, actorUserId: string, body: UpdateMemberRoleBody) => {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
-    const actor = await tx.member.findFirst({ where: { organizationId, userId: actorUserId } });
+    const projectId = await singleProject(tx, organizationId, true);
+    const actor = await siteMember(tx, organizationId, projectId, { userId: actorUserId });
     if (!actor) throw forbidden('You are not a member of this workspace.');
     if (!canAdminister(actor.role)) throw forbidden('You do not have permission to manage workspace members.');
-    const member = await tx.member.findFirst({ where: { id: memberId, organizationId } });
+    const member = await siteMember(tx, organizationId, projectId, { id: memberId });
     if (!member) {
       throw notFound('member', { id: memberId });
     }
@@ -140,12 +190,19 @@ export const updateMemberRole = async (organizationId: string, memberId: string,
     // single-owner invariant is always; transfer-ownership is the only way the
     // owner role moves. The count keeps legacy multi-owner data demotable.
     if (member.role === MemberRole.OWNER) {
-      const owners = await tx.member.count({ where: { organizationId, role: MemberRole.OWNER } });
+      const owners = await tx.member.count({ where: { organizationId, orgRole: MemberRole.OWNER } });
       if (owners <= 1) {
         throw conflict('You cannot demote the last owner of the workspace. Transfer ownership instead.');
       }
     }
-    const updated = await tx.member.update({ where: { id: memberId }, data: { role: body.role } });
+    if (member.orgRole !== 'member') throw conflict('Change this role through organization membership actions.');
+    await tx.member.update({ where: { id: memberId }, data: { role: 'viewer' } });
+    await tx.projectMember.upsert({
+      where: { projectId_userId: { projectId, userId: member.userId } },
+      create: { projectId, organizationId, userId: member.userId, role: body.role },
+      update: { role: body.role },
+    });
+    const updated = { ...member, role: body.role };
     // Links they created that the new role can't grant stop working, in the same transaction.
     await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, body.role);
     return updated;
@@ -167,7 +224,9 @@ export const updateMemberRole = async (organizationId: string, memberId: string,
 export const transferOwnership = async (organizationId: string, actorUserId: string, targetMemberId: string) =>
   prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
-    const members = await tx.member.findMany({ where: { organizationId }, select: { id: true, userId: true, role: true } });
+    const projectId = await singleProject(tx, organizationId, true);
+    const rows = await tx.member.findMany({ where: { organizationId }, include: { projectGrants: { where: { projectId } } } });
+    const members = rows.map((member) => ({ ...member, role: effectiveSiteRole(member.orgRole, member.projectGrants[0]?.role ?? null) ?? '' }));
     const actor = members.find((member) => member.userId === actorUserId);
     const plan = planOwnershipTransfer(members, actor?.id ?? '', targetMemberId);
     if (!plan.ok) {
@@ -189,14 +248,14 @@ export const transferOwnership = async (organizationId: string, actorUserId: str
       }
     }
 
-    await tx.member.updateMany({ where: { organizationId, role: MemberRole.OWNER }, data: { role: MemberRole.ADMIN } });
+    await tx.member.updateMany({ where: { organizationId, orgRole: MemberRole.OWNER }, data: { role: MemberRole.ADMIN, orgRole: MemberRole.ADMIN } });
     // Former owners are Admins now; no link can carry owner, but keep the rule in one place.
     for (const previous of members.filter((member) => member.role === MemberRole.OWNER)) {
       await revokeJoinLinksBeyondRole(tx, organizationId, previous.userId, MemberRole.ADMIN);
     }
     return tx.member.update({
       where: { id: plan.promote },
-      data: { role: MemberRole.OWNER },
+      data: { role: MemberRole.OWNER, orgRole: MemberRole.OWNER },
       include: { user: { select: { id: true, name: true, email: true, image: true } } },
     });
   });
@@ -204,10 +263,11 @@ export const transferOwnership = async (organizationId: string, actorUserId: str
 export const removeMember = async (organizationId: string, memberId: string, actorUserId: string) =>
   prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
-    const actor = await tx.member.findFirst({ where: { organizationId, userId: actorUserId } });
+    const projectId = await singleProject(tx, organizationId, true);
+    const actor = await siteMember(tx, organizationId, projectId, { userId: actorUserId });
     if (!actor) throw forbidden('You are not a member of this workspace.');
     if (!canAdminister(actor.role)) throw forbidden('You do not have permission to manage workspace members.');
-    const member = await tx.member.findFirst({ where: { id: memberId, organizationId }, select: { id: true, role: true, userId: true } });
+    const member = await siteMember(tx, organizationId, projectId, { id: memberId });
     if (!member) {
       throw notFound('member', { id: memberId });
     }
@@ -215,7 +275,7 @@ export const removeMember = async (organizationId: string, memberId: string, act
       throw forbidden('You cannot remove a member with a higher role than your own.');
     }
     if (member.role === MemberRole.OWNER) {
-      const owners = await tx.member.count({ where: { organizationId, role: MemberRole.OWNER } });
+      const owners = await tx.member.count({ where: { organizationId, orgRole: MemberRole.OWNER } });
       if (owners <= 1) {
         throw conflict('You cannot remove the last owner of the workspace.');
       }
@@ -227,6 +287,7 @@ export const removeMember = async (organizationId: string, memberId: string, act
   });
 
 export const cancelInvitation = async (organizationId: string, invitationId: string) => {
+  await singleProject(prisma, organizationId, true);
   const invitation = await prisma.invitation.findFirst({ where: { id: invitationId, organizationId }, select: { id: true } });
   if (!invitation) {
     throw notFound('invitation', { id: invitationId });

@@ -51,8 +51,8 @@ const safeEmailError = (error: unknown) => ({
 });
 
 /** Queue a transactional email; delivery is best-effort (logged without a sender). */
-const sendMail = (to: string, email: RenderedEmail) =>
-  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email } }).catch((error) => {
+const sendMail = (to: string, email: RenderedEmail, teamAccess?: SendEmailJobData['teamAccess']) =>
+  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email, ...(teamAccess ? { teamAccess } : {}) } }).catch((error) => {
     log.warn({ error: safeEmailError(error) }, 'transactional email enqueue failed');
   });
 
@@ -626,9 +626,11 @@ type JoinedOrganization = { id: string; name: string; metadata?: string | null }
  */
 export async function notifyMemberJoined({
   organization: org,
+  projectId,
   userId,
   user,
 }: {
+  projectId: string;
   organization: JoinedOrganization;
   userId: string;
   user: { name?: string | null; email?: string | null };
@@ -638,16 +640,22 @@ export async function notifyMemberJoined({
       return;
     }
     const who = user.name || user.email || 'A new member';
-    const project = await prisma.project.findFirst({
-      where: { organizationId: org.id },
+    const project = await prisma.project.findUnique({
+      where: { id: projectId, organizationId: org.id },
       select: { id: true, languages: { where: { isDefault: true }, select: { code: true }, take: 1 } },
     });
-    const language = resolveEmailLanguage(project?.languages[0]?.code);
+    if (!project) return;
+    const language = resolveEmailLanguage(project.languages[0]?.code);
     // In-app bell: every existing member sees the join (the email below stays
     // admin-only). Each site owns its org 1:1, so the org's project is the link target.
     try {
       const others = await prisma.member.findMany({
-        where: { organizationId: org.id, userId: { not: userId } },
+        where: {
+          organizationId: org.id,
+          userId: { not: userId },
+          user: { banned: false, suspendedAt: null },
+          OR: [{ orgRole: { in: ['owner', 'admin'] } }, { orgRole: 'member', projectGrants: { some: { projectId } } }],
+        },
         select: { userId: true },
       });
       const notificationT = createEmailTranslator(language);
@@ -667,15 +675,26 @@ export async function notifyMemberJoined({
       // in-app inbox is best-effort; fall through to the email
     }
     const admins = await prisma.member.findMany({
-      where: { organizationId: org.id, role: { in: ['owner', 'admin'] }, userId: { not: userId } },
-      select: { user: { select: { email: true } } },
+      where: {
+        organizationId: org.id,
+        userId: { not: userId },
+        user: { banned: false, suspendedAt: null },
+        OR: [{ orgRole: { in: ['owner', 'admin'] } }, { orgRole: 'member', projectGrants: { some: { projectId, role: 'admin' } } }],
+      },
+      select: { userId: true, user: { select: { email: true } } },
     });
     const email = await renderMemberJoinedEmail({
       memberName: who,
       organizationName: org.name,
       language,
     });
-    await Promise.all(admins.map((admin) => (admin.user.email ? sendMail(admin.user.email, email) : undefined)));
+    await Promise.all(
+      admins.map((admin) =>
+        admin.user.email
+          ? sendMail(admin.user.email, email, { userId: admin.userId, projectId, minimumRole: 'admin', notificationId: 'member_joined' })
+          : undefined,
+      ),
+    );
   } catch {
     // never block the join
   }
@@ -712,10 +731,11 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
           slug: `${slugify(user.email.split('@')[0] ?? 'workspace')}-${Date.now().toString(36)}`,
         },
       });
+      await tx.organizationHandle.create({ data: { slug: organization.slug, organizationId: organization.id, current: true } });
       await assignDefaultUsagePlan(tx, organization.id);
       return organization;
     });
-    await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
+    await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner', orgRole: 'owner' } });
     await logPlatformEvent('signup_completed', { userId: user.id });
     const project = await createStarterProject(org.id, user.id);
     if (project) {
@@ -840,6 +860,8 @@ const authInstance = betterAuth({
           }
         },
         afterCreateOrganization: async ({ organization: org, member }) => {
+          await prisma.member.update({ where: { id: member.id }, data: { orgRole: 'owner', role: 'owner' } });
+          await prisma.organizationHandle.create({ data: { slug: org.slug, organizationId: org.id, current: true } });
           const project = await createStarterProject(org.id, member.userId).catch(() => null);
           if (project) {
             await publishStarterSite(project.id, member.userId);
@@ -856,8 +878,33 @@ const authInstance = betterAuth({
         afterUpdateMemberRole: async ({ member, organization: org }) => {
           await revokeJoinLinksBeyondRole(prisma, org.id, member.userId, member.role).catch(() => undefined);
         },
+        // TODO(organizations-admission): replace these compatibility hooks with
+        // the locked admission operation before enabling multi-site organizations.
+        afterAcceptInvitation: async ({ invitation, member, user, organization: org }) => {
+          const stored = await prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id }, include: { grants: true } });
+          await prisma.$transaction(async (tx) => {
+            const orgRole = stored.kind === 'bootstrap_owner' ? 'owner' : stored.orgRole;
+            await tx.member.update({ where: { id: member.id }, data: { orgRole, role: orgRole === 'member' ? 'viewer' : orgRole } });
+            for (const grant of stored.grants) {
+              await tx.projectMember.upsert({
+                where: { projectId_userId: { projectId: grant.projectId, userId: member.userId } },
+                create: { organizationId: org.id, projectId: grant.projectId, userId: member.userId, role: grant.role },
+                update: {},
+              });
+            }
+          });
+          for (const grant of stored.grants)
+            await notifyMemberJoined({ projectId: grant.projectId, organization: org as JoinedOrganization, userId: member.userId, user });
+        },
         afterAddMember: async ({ member, user, organization: org }) => {
-          await notifyMemberJoined({ organization: org as JoinedOrganization, userId: member.userId, user });
+          const sites = await prisma.project.findMany({ where: { organizationId: org.id }, select: { id: true }, take: 2 });
+          const [site] = sites;
+          if (sites.length !== 1 || !site) return;
+          const projectId = site.id;
+          await prisma.member.update({ where: { id: member.id }, data: { orgRole: 'member', role: 'viewer' } });
+          if (['admin', 'member', 'viewer'].includes(member.role))
+            await prisma.projectMember.create({ data: { organizationId: org.id, projectId, userId: member.userId, role: member.role } });
+          await notifyMemberJoined({ projectId, organization: org as JoinedOrganization, userId: member.userId, user });
         },
       },
     }),

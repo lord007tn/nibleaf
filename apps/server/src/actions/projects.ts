@@ -6,6 +6,7 @@ import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import { slugify } from '@nibleaf/shared/utils';
 import type { CreateProjectBody, ProjectConfigUpdate, UpdateProjectBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
+import { accessibleProjectIds } from '@/lib/access';
 import { mutateProjectConfig } from './project-config';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;
@@ -32,26 +33,8 @@ export const assertProjectInOrg = async (organizationId: string, projectId: stri
   return project;
 };
 
-/**
- * Resolve a project's own organization and the user's role in it. Because each
- * site owns its org (1:1), this IS the per-site access check: membership in the
- * project's org = access to the site. Throws notFound (not forbidden) for
- * non-members so we never leak that a site exists.
- */
-export const assertProjectAccess = async (userId: string, projectId: string) => {
-  const project = await prisma.project.findUnique({ where: { id: projectId } });
-  if (!project) {
-    throw notFound('project', { id: projectId });
-  }
-  const member = await prisma.member.findUnique({
-    where: { organizationId_userId: { organizationId: project.organizationId, userId } },
-    select: { role: true },
-  });
-  if (!member) {
-    throw notFound('project', { id: projectId });
-  }
-  return { project, organizationId: project.organizationId, role: member.role as MemberRole };
-};
+/** Compatibility export for action callers; all team access uses the resolver. */
+export { resolveSiteAccess as assertProjectAccess } from '@/lib/access';
 
 const candidateSlug = (base: string, index: number) => {
   if (index === 0) {
@@ -92,12 +75,11 @@ const nonStarterPublishWhere: Prisma.DeploymentWhereInput = {
  *  `live`/`lastPublishedAt` describe what readers can open now (starter included),
  *  for the site status shown on the overview and the sites list. */
 export const listProjects = async (userId: string) => {
-  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
-  const organizationIds = memberships.map((m) => m.organizationId);
+  const accessibleIds = await accessibleProjectIds(userId);
   const projects = await prisma.project.findMany({
-    where: { organizationId: { in: organizationIds } },
+    where: { id: { in: accessibleIds } },
     orderBy: { updatedAt: 'desc' },
-    include: { _count: { select: { pages: { where: contentPagesWhere }, deployments: true } } },
+    include: { organization: { select: { id: true, name: true } }, _count: { select: { pages: { where: contentPagesWhere }, deployments: true } } },
   });
   const projectIds = projects.map((project) => project.id);
   const [activity, newestLive] =
@@ -144,12 +126,12 @@ export const listProjects = async (userId: string) => {
 export const createProject = async (userId: string, body: CreateProjectBody) => {
   const slug = await uniqueProjectSlug(body.name);
   return prisma.$transaction(async (tx) => {
-    // Each site is its own workspace: mint a dedicated organization and make the
-    // creator its owner. That org is the site's member boundary (per-site
-    // members/roles). Slug is left null to avoid the global org-slug unique.
-    const org = await tx.organization.create({ data: { name: body.name } });
+    // PR 1 retains the new-site/new-organization flow until the org UI ships.
+    const org = await tx.organization.create({
+      data: { name: body.name, slug: `org-${slug}`, handles: { create: { slug: `org-${slug}`, current: true } } },
+    });
     await assignDefaultUsagePlan(tx, org.id);
-    await tx.member.create({ data: { organizationId: org.id, userId, role: MemberRole.OWNER } });
+    await tx.member.create({ data: { organizationId: org.id, userId, role: MemberRole.OWNER, orgRole: MemberRole.OWNER } });
     const project = await tx.project.create({
       data: {
         organizationId: org.id,

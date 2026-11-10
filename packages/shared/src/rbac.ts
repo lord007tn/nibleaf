@@ -1,5 +1,18 @@
 import { MemberRole } from './constants';
 
+export const ORG_ROLES = ['owner', 'admin', 'member'] as const;
+export type OrgRole = (typeof ORG_ROLES)[number];
+export const ASSIGNABLE_ORG_ROLES = ['admin', 'member'] as const;
+export const ASSIGNABLE_SITE_ROLES = ['admin', 'member', 'viewer'] as const;
+
+/** Organization membership alone gives ordinary members no website access. */
+export const effectiveSiteRole = (orgRole: string, grantRole: string | null): MemberRole | null => {
+  if (orgRole === 'owner') return MemberRole.OWNER;
+  if (orgRole === 'admin') return MemberRole.ADMIN;
+  if (orgRole !== 'member' || !ASSIGNABLE_SITE_ROLES.some((role) => role === grantRole)) return null;
+  return grantRole as MemberRole;
+};
+
 /** Higher rank = more privilege. Unknown roles rank lowest. */
 const ROLE_RANK: Record<string, number> = {
   [MemberRole.VIEWER]: 1,

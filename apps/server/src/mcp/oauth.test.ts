@@ -25,6 +25,12 @@ const mocks = vi.hoisted(() => ({
   reservationsDown: false,
 }));
 
+vi.mock('@/lib/access', () => ({
+  optionalSiteAccess: async () => {
+    const member = await mocks.memberFindUnique();
+    return member && !member.user.suspendedAt && !member.user.banned ? { role: member.role } : null;
+  },
+}));
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     mcpOAuthGrant: { findUnique: mocks.grantFindUnique, update: mocks.grantUpdate },
@@ -179,9 +185,7 @@ describe('MCP OAuth access tokens', () => {
     expect(principal.project).toEqual({ id: 'project-1', name: 'Docs', organizationId: 'org-1' });
     expect(principal.actor).toEqual({ userId: 'user-1', role: 'member' });
     expect(mocks.grantFindUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'grant-1' } }));
-    expect(mocks.memberFindUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { organizationId_userId: { organizationId: 'org-1', userId: 'user-1' } } }),
-    );
+    expect(mocks.memberFindUnique).toHaveBeenCalledOnce();
     expect(contexts[0]?.get('apiKey')).toEqual({ id: 'grant-1', kind: 'oauth', projectId: 'project-1', scopes: expect.arrayContaining(writer) });
     expect(mocks.grantUpdate).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'grant-1' }, data: { lastUsedAt: expect.any(Date) } }));
   });

@@ -17,6 +17,7 @@ import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { env } from '@/env';
 import { badRequest, conflict, notFound } from '@/errors';
+import { optionalSiteAccess } from '@/lib/access';
 import type { HonoEnv } from '@/lib/hono/context';
 import { assertPublicJwksUrl, claimAt, claimStrings, isJwtVerificationError, jwtReplayHash, verifyReaderJwt } from '@/lib/reader-jwt';
 
@@ -120,11 +121,7 @@ const siteMemberViewer = async (projectId: string, tokenHash: string): Promise<V
   });
   // A suspended account loses site access with its existing sessions too.
   if (!session || session.user.banned || session.user.suspendedAt) return null;
-  const member = await prisma.member.findUnique({
-    where: { organizationId_userId: { organizationId: session.project.organizationId, userId: session.userId } },
-    select: { id: true },
-  });
-  if (!member) return null;
+  if (!(await optionalSiteAccess(session.userId, projectId))) return null;
   if (Date.now() - session.lastUsedAt.getTime() > SESSION_TOUCH_MS) {
     void prisma.siteMemberSession.update({ where: { id: session.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
   }
@@ -135,14 +132,7 @@ const siteMemberViewer = async (projectId: string, tokenHash: string): Promise<V
 export const isSiteMemberRequest = async (projectId: string, headers: Headers): Promise<boolean> => {
   const result = await auth.api.getSession({ headers }).catch(() => null);
   if (!result?.user?.id) return false;
-  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } });
-  if (!project) return false;
-  return Boolean(
-    await prisma.member.findUnique({
-      where: { organizationId_userId: { organizationId: project.organizationId, userId: result.user.id } },
-      select: { id: true },
-    }),
-  );
+  return Boolean(await optionalSiteAccess(result.user.id, projectId));
 };
 
 /** Central authorization boundary shared by pages, search, machine-readable

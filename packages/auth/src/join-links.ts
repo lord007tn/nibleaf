@@ -1,7 +1,7 @@
 import { type Prisma, prisma } from '@nibleaf/database';
 import { hashJoinLinkToken } from '@nibleaf/shared/crypto';
 import { emailInDomain, isJoinLinkToken, JOIN_LINK_COOKIE, joinLinkStatus } from '@nibleaf/shared/join-links';
-import { canAssignRole } from '@nibleaf/shared/rbac';
+import { canAssignRole, effectiveSiteRole } from '@nibleaf/shared/rbac';
 
 type Db = typeof prisma | Prisma.TransactionClient;
 
@@ -15,14 +15,25 @@ type Db = typeof prisma | Prisma.TransactionClient;
  */
 export async function joinLinkCreatorAuthorizes(
   db: Db,
-  link: { organizationId: string; createdById: string | null; role: string },
+  link: { id: string; organizationId: string; createdById: string | null; role: string },
 ): Promise<boolean> {
   if (!link.createdById) return false;
   const creator = await db.member.findUnique({
     where: { organizationId_userId: { organizationId: link.organizationId, userId: link.createdById } },
-    select: { role: true, user: { select: { suspendedAt: true } } },
+    select: { orgRole: true, projectGrants: { select: { projectId: true, role: true } }, user: { select: { banned: true, suspendedAt: true } } },
   });
-  return Boolean(creator && !creator.user.suspendedAt && canAssignRole(creator.role, link.role));
+  if (!creator || creator.user.banned || creator.user.suspendedAt) return false;
+  const grants = await db.joinLinkGrant.findMany({
+    where: { joinLinkId: link.id, organizationId: link.organizationId },
+    select: { projectId: true, role: true },
+  });
+  return (
+    grants.length > 0 &&
+    grants.every((grant) => {
+      const role = effectiveSiteRole(creator.orgRole, creator.projectGrants.find((g) => g.projectId === grant.projectId)?.role ?? null);
+      return role !== null && canAssignRole(role, grant.role);
+    })
+  );
 }
 
 /**
@@ -34,9 +45,11 @@ export async function joinLinkCreatorAuthorizes(
 export async function revokeJoinLinksBeyondRole(db: Db, organizationId: string | null, userId: string, role: string | null): Promise<number> {
   const links = await db.joinLink.findMany({
     where: { createdById: userId, revokedAt: null, ...(organizationId ? { organizationId } : {}) },
-    select: { id: true, role: true },
+    select: { id: true, grants: { select: { role: true } } },
   });
-  const ids = links.filter((link) => role === null || !canAssignRole(role, link.role)).map((link) => link.id);
+  const ids = links
+    .filter((link) => role === null || link.grants.length === 0 || link.grants.some((grant) => !canAssignRole(role, grant.role)))
+    .map((link) => link.id);
   if (ids.length === 0) return 0;
   const { count } = await db.joinLink.updateMany({ where: { id: { in: ids }, revokedAt: null }, data: { revokedAt: new Date() } });
   return count;
@@ -74,6 +87,7 @@ export async function arrivingThroughJoinLink(email: string, headers: Headers | 
     const link = await prisma.joinLink.findUnique({
       where: { tokenHash: hashJoinLinkToken(token) },
       select: {
+        id: true,
         organizationId: true,
         createdById: true,
         role: true,

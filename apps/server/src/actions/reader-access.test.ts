@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   memberSessionUpdate: vi.fn(),
 }));
 
+vi.mock('@/lib/access', () => ({ optionalSiteAccess: async () => mocks.memberFind() }));
 vi.mock('@nibleaf/auth/server', () => ({ auth: { api: { getSession: mocks.getSession } } }));
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), QueueNames: { EMAIL: 'email' } }));
 vi.mock('@nibleaf/database', () => ({
@@ -57,9 +58,7 @@ describe('resolveViewerAccess', () => {
         siteSession: true,
       });
     }
-    expect(mocks.memberFind).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { organizationId_userId: { organizationId: 'org', userId: 'user' } } }),
-    );
+    expect(mocks.memberFind).toHaveBeenCalled();
     mocks.memberFind.mockResolvedValue(null);
     await expect(resolveViewerAccess('project', 'WORKSPACE', headers('nibleaf_reader_project=opaque'))).resolves.toBeNull();
     // A suspended account's existing site sessions stop working.

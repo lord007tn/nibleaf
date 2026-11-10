@@ -24,7 +24,7 @@ const app = new Hono<HonoEnv>()
   .get('/suggestions', ...projectMembersRoutes.suggestions, validator('query', z.object({ q: z.string().max(100).default('') })), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
     const user = getContextUserOrThrow();
-    return ctx.json({ data: await suggestPeopleToInvite(user.id, organizationId, ctx.req.valid('query').q) }, 200);
+    return ctx.json({ data: await suggestPeopleToInvite(user.id, organizationId, ctx.req.valid('query').q, ctx.req.param('projectId')) }, 200);
   })
   .post('/invite', ...projectMembersRoutes.invite, validator('json', inviteMemberBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

@@ -14,6 +14,7 @@ import { addonConfigSchemas, type ListProjectAddonAuditQuery, type MutateProject
 import type { Context } from 'hono';
 import { z } from 'zod';
 import { AppError, notFound } from '@/errors';
+import { resolveSiteAccess } from '@/lib/access';
 import type { HonoEnv } from '@/lib/hono/context';
 import { mutateProjectConfig } from './project-config';
 import { invalidatePublishedSiteConfig } from './sites';
@@ -55,21 +56,7 @@ const authorizeProjectAddons = async (ctx: Context<HonoEnv>, projectId: string, 
 
   const user = ctx.get('user');
   if (!user) throw new AppError({ code: 'auth:no_user', message: 'Authentication required.' });
-  const project = await prisma.project.findFirst({
-    where: {
-      id: projectId,
-      organization: { members: { some: { userId: user.id, user: { suspendedAt: null } } } },
-    },
-    select: {
-      id: true,
-      organizationId: true,
-      organization: {
-        select: { members: { where: { userId: user.id }, take: 1, select: { role: true } } },
-      },
-    },
-  });
-  if (!project) throw notFound('project', { id: projectId });
-  const role = project.organization.members[0]?.role ?? '';
+  const { project, role } = await resolveSiteAccess(user.id, projectId);
   if (intent === 'write' && !roleAtLeast(role, MemberRole.ADMIN)) {
     throw new AppError({ code: 'auth:insufficient_role', message: 'Project administrator access is required.' });
   }

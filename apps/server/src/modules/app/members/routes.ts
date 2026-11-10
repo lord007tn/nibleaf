@@ -1,16 +1,16 @@
 import { MemberRole } from '@nibleaf/shared/constants';
 import { errorResponses } from '@/errors/utils';
 import { createRouteConfig } from '@/lib/hono/route-config';
-import { isAuthenticated, requireRole } from '@/middlewares/guard';
+import { isAuthenticated, requireLegacyProjectRole } from '@/middlewares/guard';
 
 const ok = { 200: { description: 'ok' }, ...errorResponses };
-const admin = [isAuthenticated, requireRole(MemberRole.ADMIN)] as const;
+const admin = [isAuthenticated, requireLegacyProjectRole(MemberRole.ADMIN)] as const;
 
 const membersRoutes = {
   // Membership is re-read for the active workspace: the session's active
   // organization alone doesn't prove the caller still belongs to it.
   list: createRouteConfig({
-    guard: [isAuthenticated, requireRole(MemberRole.MEMBER)],
+    guard: [isAuthenticated, requireLegacyProjectRole(MemberRole.MEMBER)],
     tags: ['members'],
     description: 'List members and pending invitations.',
     responses: ok,

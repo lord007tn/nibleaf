@@ -39,7 +39,9 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
   const ownerEmail = input.ownerEmail.trim().toLowerCase();
   const slug = await uniqueAdminProjectSlug(input.siteSlug || input.siteName);
   const created = await prisma.$transaction(async (tx) => {
-    const organization = await tx.organization.create({ data: { name: input.organizationName.trim() } });
+    const organization = await tx.organization.create({
+      data: { name: input.organizationName.trim(), slug: `org-${slug}`, handles: { create: { slug: `org-${slug}`, current: true } } },
+    });
     await assignDefaultUsagePlan(tx, organization.id);
     const project = await tx.project.create({
       data: {
