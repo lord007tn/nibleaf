@@ -5,27 +5,32 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
 import {
+  ArrowLeftRight,
   BarChart3,
   BookOpen,
   BookText,
+  Building2,
   FileText,
   Globe2,
-  Home,
   Languages,
   type LucideIcon,
   Moon,
   PenLine,
   Plus,
+  ReceiptText,
   Settings,
   SlidersHorizontal,
   Sun,
   UserPlus,
+  UserRound,
   Users,
 } from 'lucide-react';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
-import { usePages, useProjects } from '@/hooks/api';
+import { useOrganizationSwitcherProjects, usePages, useSwitcher } from '@/hooks/api';
+import { OrgAvatar } from './org-switcher/org-avatar';
+import { useSwitcherControls } from './org-switcher/switcher-context';
 
 /** Site-settings destinations people look for most, with English aliases so
  *  "domain", "team" or "language" find them whatever the label says. */
@@ -85,8 +90,15 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const navigate = useNavigate();
   // Mounted above the site routes, so read the site from the deepest match.
   const projectId = useRouterState({ select: (state) => (state.matches.at(-1)?.params as { projectId?: string } | undefined)?.projectId });
-  const projectsQuery = useProjects();
-  const { data: projects, isPending: projectsPending } = projectsQuery;
+  // Scoped to the organization in view (§5.4.5): its websites and pages; other orgs through "Switch organization".
+  const controls = useSwitcherControls();
+  const switcher = useSwitcher();
+  const organizations = switcher.data?.organizations ?? [];
+  const organization = organizations.find((org) => org.id === controls?.current.organizationId);
+  const projectsQuery = useOrganizationSwitcherProjects(open ? organization?.id : undefined);
+  const projects = projectsQuery.data;
+  const projectsPending = Boolean(open && organization) && projectsQuery.isPending;
+  const orgAdmin = organization ? organization.orgRole !== 'member' : false;
   // Only fetch the current site's pages once the palette is actually open.
   const pagesQuery = usePages(open ? projectId : undefined);
   const { data: pages, isPending: pagesQueryPending } = pagesQuery;
@@ -116,7 +128,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     if (searching) return list;
     return [...list].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, RECENT_PAGE_LIMIT);
   }, [pages, searching]);
-  // Inside a site, its settings; elsewhere, every site's settings once the user searches.
+  // Inside a site, its settings; elsewhere, this organization's websites' settings once the user searches.
   const settingsSites = projectId ? (currentSite ? [currentSite] : []) : searching ? (projects ?? []) : [];
 
   const changeOpen = (next: boolean) => {
@@ -173,7 +185,8 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             {(projects ?? []).map((project) => (
               <CommandItem
                 key={project.id}
-                value={`project ${project.name}`}
+                keywords={[project.name, project.domain ?? '']}
+                value={`project ${project.id}`}
                 onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
               >
                 <BookText className="size-4" />
@@ -228,11 +241,33 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               </>
             ) : null}
             <CommandItem
-              keywords={[t('dashboard.newProject')]}
-              onSelect={() => go('/app/sites', undefined, { newSite: true })}
-              value="new site create"
+              keywords={[t('command.switchOrganizationOrWebsite')]}
+              onSelect={() => {
+                changeOpen(false);
+                controls?.openSwitcher('organization');
+              }}
+              value="switch organization website"
             >
-              <Plus className="size-4" /> {t('dashboard.newProject')}
+              <ArrowLeftRight className="size-4" /> {t('command.switchOrganizationOrWebsite')}
+            </CommandItem>
+            {organization?.canCreateWebsite ? (
+              <CommandItem
+                keywords={[t('dashboard.newProject')]}
+                onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: organization.slug }, { newSite: true })}
+                value="new site website create"
+              >
+                <Plus className="size-4" /> {t('dashboard.newProject')}
+              </CommandItem>
+            ) : null}
+            <CommandItem
+              keywords={[t('command.createOrganization')]}
+              onSelect={() => {
+                changeOpen(false);
+                controls?.openCreateOrganization();
+              }}
+              value="create new organization"
+            >
+              <Building2 className="size-4" /> {t('command.createOrganization')}
             </CommandItem>
             <CommandItem
               keywords={[t('account.language')]}
@@ -259,22 +294,70 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           <CommandGroup heading={t('command.group.goTo')}>
             {/* cmdk matches the query against `value`/`keywords`, never the rendered
                 label, so the localized label must be a keyword to be searchable. */}
-            <CommandItem value="projects" keywords={[t('command.allProjects')]} onSelect={() => go('/app')}>
-              <Home className="size-4" /> {t('command.allProjects')}
-            </CommandItem>
-            <CommandItem value="sites" keywords={[t('nav.sites')]} onSelect={() => go('/app/sites')}>
-              <BookOpen className="size-4" /> {t('nav.sites')}
-            </CommandItem>
-            <CommandItem value="people" keywords={[t('nav.people'), 'members team invite roles']} onSelect={() => go('/app/people')}>
-              <Users className="size-4" /> {t('nav.people')}
-            </CommandItem>
-            <CommandItem value="analytics" keywords={[t('command.analytics')]} onSelect={() => go('/app/analytics')}>
-              <BarChart3 className="size-4" /> {t('command.analytics')}
-            </CommandItem>
-            <CommandItem value="settings" keywords={[t('command.accountSettings')]} onSelect={() => go('/app/settings')}>
-              <Settings className="size-4" /> {t('command.accountSettings')}
+            {organization ? (
+              <>
+                <CommandItem
+                  keywords={[t('nav.websites')]}
+                  onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: organization.slug })}
+                  value="websites sites"
+                >
+                  <BookOpen className="size-4" /> {t('nav.websites')}
+                </CommandItem>
+                <CommandItem
+                  keywords={[t('command.analytics')]}
+                  onSelect={() => go('/app/o/$orgSlug/analytics', { orgSlug: organization.slug })}
+                  value="analytics"
+                >
+                  <BarChart3 className="size-4" /> {t('command.analytics')}
+                </CommandItem>
+                {orgAdmin ? (
+                  <>
+                    <CommandItem
+                      keywords={[t('nav.members'), 'people team invite roles']}
+                      onSelect={() => go('/app/o/$orgSlug/members', { orgSlug: organization.slug })}
+                      value="members people"
+                    >
+                      <Users className="size-4" /> {t('nav.members')}
+                    </CommandItem>
+                    <CommandItem
+                      keywords={[t('nav.billing'), 'plan usage seats']}
+                      onSelect={() => go('/app/o/$orgSlug/billing', { orgSlug: organization.slug })}
+                      value="billing usage plan"
+                    >
+                      <ReceiptText className="size-4" /> {t('nav.billing')}
+                    </CommandItem>
+                  </>
+                ) : null}
+                <CommandItem
+                  keywords={[t('command.organizationSettings')]}
+                  onSelect={() => go('/app/o/$orgSlug/settings', { orgSlug: organization.slug })}
+                  value="organization settings"
+                >
+                  <Settings className="size-4" /> {t('command.organizationSettings')}
+                </CommandItem>
+              </>
+            ) : null}
+            <CommandItem keywords={[t('command.accountSettings')]} onSelect={() => go('/app/settings')} value="account settings profile">
+              <UserRound className="size-4" /> {t('command.accountSettings')}
             </CommandItem>
           </CommandGroup>
+          {organizations.length > 1 ? (
+            <CommandGroup heading={t('command.group.switchOrganization')}>
+              {organizations.map((org) => (
+                <CommandItem
+                  key={org.id}
+                  keywords={[org.name, t('command.group.switchOrganization')]}
+                  onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: org.slug })}
+                  value={`organization ${org.id}`}
+                >
+                  <OrgAvatar className="size-4 text-[8px]" logo={org.logo} name={org.name} />
+                  <span className="flex-1 truncate">
+                    <bdi>{org.name}</bdi>
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
         </CommandList>
       </CommandDialog>
       <InterfaceLanguageDialog onOpenChange={setLanguageOpen} open={languageOpen} />

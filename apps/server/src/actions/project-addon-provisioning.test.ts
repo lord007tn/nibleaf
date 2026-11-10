@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => {
   const tx = {
     organization: { create: vi.fn() },
-    member: { create: vi.fn() },
+    member: { create: vi.fn(), findUnique: vi.fn(async () => ({ orgRole: 'owner' })) },
     project: { create: vi.fn() },
     projectAddon: { createMany: vi.fn() },
     projectAddonAuditEvent: { createMany: vi.fn() },
@@ -23,7 +23,15 @@ const mocks = vi.hoisted(() => {
   };
 });
 
+vi.mock('@/lib/access', () => ({
+  accessibleProjectIds: vi.fn(),
+  accessibleProjectRoles: vi.fn(),
+  assertUsableAccount: vi.fn(),
+  resolveOrgAccess: vi.fn(async (_userId: string, organizationId: string) => ({ organizationId, orgRole: 'owner' })),
+}));
+vi.mock('./admissions', () => ({ lockOrganization: vi.fn(async (_tx: unknown, id: string) => ({ id })) }));
 vi.mock('@nibleaf/auth/tenant-erasure', () => ({
+  eraseProject: vi.fn(),
   eraseProjectOrganization: vi.fn(),
   TenantErasureProjectNotFoundError: class extends Error {},
   TenantUsageDeletionPendingError: class extends Error {},
@@ -72,10 +80,12 @@ describe('project add-on provisioning audit', () => {
     mocks.inviteMember.mockResolvedValue({ id: 'invitation-a' });
   });
 
-  it('creates creator-attributed configured events without losing default plan assignment', async () => {
-    await createProject('creator-user', { name: 'Docs' });
+  it('creates creator-attributed configured events in the existing organization, which keeps its plan', async () => {
+    await createProject('creator-user', { name: 'Docs', organizationId: 'org-existing' });
 
-    expect(mocks.assignDefaultUsagePlan).toHaveBeenCalledWith(mocks.tx, 'org-a');
+    expect(mocks.tx.organization.create).not.toHaveBeenCalled();
+    expect(mocks.assignDefaultUsagePlan).not.toHaveBeenCalled();
+    expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ organizationId: 'org-existing' }) });
     expectDefaultAddonAuditParity('creator-user');
   });
 
