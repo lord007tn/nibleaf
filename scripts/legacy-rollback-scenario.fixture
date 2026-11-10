@@ -1,0 +1,55 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { prisma } from '@nibleaf/database';
+import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
+import { afterAll, expect, it, vi } from 'vitest';
+
+// Rollback phase 2: runs INSIDE the previous release (8a3ce217) against a
+// database the new release just changed (legacy-rollback-setup.postgres.test.ts).
+vi.hoisted(() => {
+  Object.assign(process.env, { BETTER_AUTH_SECRET: 'legacy-schema-compat-fictional-secret', BETTER_AUTH_URL: 'https://app.nibleaf.test' });
+});
+vi.mock('@nibleaf/bullmq', async (original) => ({
+  ...await original<typeof import('@nibleaf/bullmq')>(),
+  createJob: vi.fn(async () => undefined),
+  getJob: vi.fn(async () => undefined),
+  removeJob: vi.fn(async () => undefined),
+  sendRequiredEmail: vi.fn(async () => undefined),
+}));
+afterAll(async()=>{await prisma.$disconnect();});
+const ids = JSON.parse(readFileSync(`${process.env.LEGACY_COMPAT_RESULT}.rollback.json`,'utf8')) as Record<string,string>;
+const projects = await import('../actions/projects');
+const results: Record<string, unknown> = {};
+
+it('demote, then roll back: the previous release sees only the new, lower role', async()=>{
+  const access = await projects.assertProjectAccess(ids.demotedId!, ids.siteId!);
+  expect(access.role).toBe('viewer');
+  expect(canAdminister(access.role)).toBe(false);
+  expect(canEdit(access.role)).toBe(false);
+  results.demotedRole = access.role;
+});
+it('remove from the website, then roll back: no membership, no listed site, no access', async()=>{
+  await expect(projects.assertProjectAccess(ids.removedId!, ids.siteId!)).rejects.toMatchObject({ status: 404 });
+  expect((await projects.listProjects(ids.removedId!)).map((p:{id:string})=>p.id)).not.toContain(ids.siteId);
+  expect(await prisma.member.count({ where: { userId: ids.removedId } })).toBe(0);
+  results.removedHasAccess = false;
+});
+it('create a website, then roll back: the previous release reads it by its org partition', async()=>{
+  const access = await projects.assertProjectAccess(ids.creatorId!, ids.createdSiteId!);
+  expect(access.role).toBe('owner');
+  expect(access.organizationId).toBe(ids.createdOrganizationId);
+  const [row] = await prisma.$queryRaw<Array<{ tenant: string }>>`SELECT "dataTenantId" AS tenant FROM project WHERE id = ${ids.createdSiteId}`;
+  expect(row?.tenant).toBe(ids.createdOrganizationId);
+  // The previous release's one-website lookup by organization finds it.
+  expect((await prisma.project.findUnique({ where: { organizationId: ids.createdOrganizationId } }))?.id).toBe(ids.createdSiteId);
+  results.createdPartitionMatches = true;
+});
+it('delete a website, then roll back: the previous release erases site and org together', async()=>{
+  await expect(projects.deleteProject(ids.deletedOrganizationId!, ids.deletedSiteId!)).resolves.toEqual({ id: ids.deletedSiteId });
+  const [left] = await prisma.$queryRaw<Array<{ projects: bigint; orgs: bigint }>>`
+    SELECT (SELECT count(*) FROM project WHERE id = ${ids.deletedSiteId}) AS projects,
+           (SELECT count(*) FROM organization WHERE id = ${ids.deletedOrganizationId}) AS orgs`;
+  expect(Number(left?.projects)).toBe(0);
+  expect(Number(left?.orgs)).toBe(0);
+  results.deletedCompletely = true;
+  writeFileSync(`${process.env.LEGACY_COMPAT_RESULT}.rollback-old.json`, JSON.stringify(results));
+});

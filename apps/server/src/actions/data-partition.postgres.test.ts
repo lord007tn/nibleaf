@@ -23,7 +23,7 @@ vi.mock('@nibleaf/clickhouse', async (original) => ({
 describe.skipIf(process.env.DATA_PARTITION_INTEGRATION !== '1')('website data partitions on PostgreSQL', () => {
   let db: typeof import('@nibleaf/database');
   let erasure: typeof import('@nibleaf/auth/tenant-erasure');
-  let account: typeof import('../../../../packages/auth/src/account-deletion');
+  let account: typeof import('@nibleaf/auth/account-deletion');
   let git: typeof import('./git-webhook-secret');
   let signatures: typeof import('./git-webhook');
   const orgIds: string[] = [];
@@ -32,7 +32,7 @@ describe.skipIf(process.env.DATA_PARTITION_INTEGRATION !== '1')('website data pa
   beforeAll(async () => {
     db = await import('@nibleaf/database');
     erasure = await import('@nibleaf/auth/tenant-erasure');
-    account = await import('../../../../packages/auth/src/account-deletion');
+    account = await import('@nibleaf/auth/account-deletion');
     git = await import('./git-webhook-secret');
     signatures = await import('./git-webhook');
   }, 120_000);
@@ -193,6 +193,7 @@ describe.skipIf(process.env.DATA_PARTITION_INTEGRATION !== '1')('website data pa
     const secret = await git.getGitWebhookSecret(a.id);
     await workspace.updateWorkspaceSettings(
       organization.id,
+      'website-settings-only-actor',
       { git: { provider: 'github', repo: 'synthetic/updated' }, integrations: { website: a.id } },
       a.id,
     );

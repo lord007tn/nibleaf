@@ -133,6 +133,9 @@ const VIEWER_DENIED_READS = [
   'GET /projects/:projectId/branches/:id/merge-preview',
 ];
 
+/** Routes a site-only Admin grant reaches but may not use (403). */
+const orgOnly = (method: string, path: string) => path.endsWith('/transfer-ownership') || ORG_ADMIN_ONLY_SITE_ROUTES.has(`${method} ${path}`);
+
 // A concrete URL for a route. `/projects/:id/…` routes take the site id in
 // `:id`; under `/projects/:projectId/…` a nested `:id` is a child resource,
 // which the guard never reads.
@@ -146,11 +149,11 @@ const siteUrlFor = (path: string) =>
     .replace(/:providerId/g, INTEGRATION_PROVIDER_IDS[0])
     .replace(/:[A-Za-z]+/g, 'x');
 
-const call = async (method: string, path: string, projectId = 'project-1') => {
+const call = async (method: string, path: string, projectId = 'project-1', payload = '{}') => {
   const response = await harness.request(`${siteUrlFor(path).replace('project-1', projectId)}?projectId=${projectId}`, {
     method,
     headers: { 'content-type': 'application/json' },
-    ...(WRITE_METHODS.has(method) ? { body: '{}' } : {}),
+    ...(WRITE_METHODS.has(method) ? { body: payload } : {}),
   });
   const body = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
   return { status: response.status, code: body.code, message: body.message };
@@ -280,10 +283,39 @@ describe('dashboard API permission matrix', () => {
       state.role = grant;
       const result = await call(method, path);
       if (result.status === 404) expect(result.code).toBe('addon:not_found');
+      if (grant === 'admin' && !orgOnly(method, path)) expect(result.code).not.toBe('auth:insufficient_role');
       if (ORG_ADMIN_ONLY_SITE_ROUTES.has(`${method} ${path}`)) expect(result).toMatchObject({ status: 403, code: 'auth:insufficient_role' });
-      else if (grant === 'admin' && !path.endsWith('/transfer-ownership')) expect(result.code).not.toBe('auth:insufficient_role');
     });
   }
+  it('lists only real routes as organization-only', () => {
+    const keys = new Set(routes.map(({ method, path }) => `${method} ${path}`));
+    for (const key of ORG_ADMIN_ONLY_SITE_ROUTES) expect(keys, key).toContain(key);
+  });
+  for (const orgRole of ['owner', 'admin'])
+    it(`org ${orgRole} passes the organization-only website guards`, async () => {
+      state.orgRole = orgRole;
+      state.organizationId = 'org-1';
+      state.role = null;
+      for (const key of ORG_ADMIN_ONLY_SITE_ROUTES) {
+        const [method = '', path = ''] = key.split(' ');
+        expect((await call(method, path)).code, key).not.toBe('auth:insufficient_role');
+      }
+    });
+  const SETTINGS_WRITES = [
+    ['PATCH', '/projects/:projectId/settings'],
+    ['PATCH', '/workspace'],
+  ] as const;
+  for (const [method, path] of SETTINGS_WRITES)
+    for (const body of [{ plan: 'pro' }, { notifications: { member_invited: false } }])
+      it(`a site-only Admin cannot change organization field ${Object.keys(body)[0]} at ${method} ${path}`, async () => {
+        state.orgRole = 'member';
+        state.organizationId = 'org-1';
+        state.role = 'admin';
+        expect(await call(method, path, 'project-1', JSON.stringify(body))).toMatchObject({ status: 403 });
+        state.orgRole = 'admin';
+        state.role = null;
+        expect((await call(method, path, 'project-1', JSON.stringify(body))).status).not.toBe(403);
+      });
   const orgRoutes = routes.filter(({ path }) => path.startsWith('/organizations/:organizationId'));
   for (const orgRole of ['owner', 'admin', 'member', 'non-member', 'other-org']) {
     it.each(orgRoutes)(`${orgRole} organization guard at $method $path`, async ({ method, path }) => {

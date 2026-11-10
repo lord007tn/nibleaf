@@ -6,6 +6,7 @@ import { canAdminister, canAssignRole, effectiveSiteRole } from '@nibleaf/shared
 import { conflict, forbidden, notFound } from '@/errors';
 import { assertUsableAccount } from '@/lib/access';
 import { lockOrganization } from './admissions';
+import { syncLegacyMembership } from './legacy-membership';
 import { inviteOrganizationMembers, sendOrganizationInvitations, transferOrganizationOwnership, withOrganization } from './organizations';
 
 const singleProject = async (organizationId: string, projectId?: string) => {
@@ -141,6 +142,7 @@ export const updateMemberRole = async (organizationId: string, id: string, actor
       if (!grant) throw notFound('member');
       await tx.projectMember.update({ where: { id: grant.id }, data: { role: body.role } });
       await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, body.role);
+      await syncLegacyMembership(tx, organizationId, member.userId);
       return { id, role: body.role };
     },
     false,
@@ -159,6 +161,8 @@ export const removeMember = async (organizationId: string, id: string, actorId: 
       const removed = await tx.projectMember.deleteMany({ where: { organizationId, projectId, userId: member.userId } });
       if (!removed.count) throw notFound('member');
       await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, null);
+      // Zero grants left: the legacy row goes too, so a rollback cannot restore access.
+      await syncLegacyMembership(tx, organizationId, member.userId);
       return { id };
     },
     false,

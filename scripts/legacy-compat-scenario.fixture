@@ -1,0 +1,46 @@
+import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import { prisma } from '@nibleaf/database';
+import { afterAll, expect, it, vi } from 'vitest';
+
+const { codes } = vi.hoisted(() => {
+  Object.assign(process.env, { BETTER_AUTH_SECRET: 'legacy-schema-compat-fictional-secret', BETTER_AUTH_URL: 'https://app.nibleaf.test' });
+  return { codes: new Map<string,string>() };
+});
+vi.mock('@nibleaf/bullmq', async (original) => ({
+  ...await original<typeof import('@nibleaf/bullmq')>(),
+  createJob: vi.fn(async (_queue, job) => { if (job.data?.auth && job.data?.to) codes.set(job.data.to, job.data.text); }),
+  sendRequiredEmail: vi.fn(async (data) => { if (data.auth && data.to) codes.set(data.to, data.text); }),
+}));
+vi.mock('@nibleaf/email', async (original) => ({
+  ...await original<typeof import('@nibleaf/email')>(),
+  renderVerificationCodeEmail: async ({code}) => ({html:code,text:code,subject:'Synthetic'}),
+}));
+afterAll(async()=>{await prisma.$disconnect();});
+it('runs old createProject, invitation accept, link redeem, role update and removal', async()=>{
+  const run=`legacy-${randomUUID().slice(0,8)}`;
+  const person=async(label:string)=>prisma.user.create({data:{name:label,email:`${run}-${label}@nibleaf.test`,emailVerified:true}});
+  const owner=await person('owner'), invitee=await person('invitee'), joiner=await person('joiner');
+  const projects=await import('../actions/projects');
+  const members=await import('../actions/members');
+  const links=await import('../actions/join-links');
+  const site=await projects.createProject(owner.id,{name:run});
+  const unrelated=await projects.createProject(owner.id,{name:`${run}-unrelated`});
+  const invitation=await members.inviteMember(site.organizationId,owner.id,'owner',{email:invitee.email,role:'viewer'},{sendEmail:false});
+  const {auth}=await import('@nibleaf/auth/server');
+  const send=async(path:string,body:unknown,cookie?:string)=>auth.handler(new Request(`https://app.nibleaf.test/api/auth${path}`,{
+    method:'POST',headers:{'content-type':'application/json',...(cookie?{cookie}:{})},body:JSON.stringify(body)}));
+  expect((await send('/email-otp/send-verification-otp',{email:invitee.email,type:'sign-in'})).status).toBe(200);
+  const signedIn=await send('/sign-in/email-otp',{email:invitee.email,otp:codes.get(invitee.email)});
+  expect(signedIn.status).toBe(200);
+  const cookie=signedIn.headers.getSetCookie().map((value)=>value.split(';')[0]).join('; ');
+  expect((await send('/organization/accept-invitation',{invitationId:invitation.id},cookie)).status).toBe(200);
+  const link=await links.createJoinLink(site.organizationId,{id:owner.id,role:'owner'},{role:'member'});
+  expect((await links.joinWithLink(link.token,joiner.id)).role).toBe('member');
+  const member=await prisma.member.findUniqueOrThrow({where:{organizationId_userId:{organizationId:site.organizationId,userId:invitee.id}}});
+  await members.updateMemberRole(site.organizationId,member.id,owner.id,{role:'admin'});
+  const removed=await prisma.member.findUniqueOrThrow({where:{organizationId_userId:{organizationId:site.organizationId,userId:joiner.id}}});
+  await members.removeMember(site.organizationId,removed.id,owner.id);
+  writeFileSync(process.env.LEGACY_COMPAT_RESULT!,JSON.stringify({siteId:site.id,unrelatedId:unrelated.id,organizationId:site.organizationId,
+    ownerId:owner.id,inviteeId:invitee.id,joinerId:joiner.id,invitationId:invitation.id,joinLinkId:link.link.id}));
+},120_000);

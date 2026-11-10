@@ -105,3 +105,18 @@ export const requireProjectRole =
     }
     await next();
   };
+
+/** Website actions that §4.2 reserves for the organization (deleting a
+ *  website): the caller must reach the website (else 404) and hold the org
+ *  Owner/Admin role — a site-only Admin grant is not enough (403). */
+export const requireProjectOrgRole =
+  (required: MemberRole, paramKey = 'projectId'): MiddlewareHandler<HonoEnv> =>
+  async (ctx, next) => {
+    await resolveProjectOrg(ctx, paramKey);
+    const user = ctx.get('user');
+    const organizationId = ctx.get('organizationId');
+    if (!(user && organizationId)) throw new AppError({ code: 'auth:no_user' });
+    const { orgRole } = await resolveOrgAccess(user.id, organizationId);
+    if (!roleAtLeast(orgRole as MemberRole, required)) throw new AppError({ code: 'auth:insufficient_role' });
+    await next();
+  };

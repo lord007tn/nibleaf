@@ -81,7 +81,7 @@ export const matchMarketingRoute = (pathname: string): { route: MarketingRouteEn
   return null;
 };
 
-export type MarketingHead = { meta?: AnyRouteMatch['meta']; links?: AnyRouteMatch['links']; scripts?: AnyRouteMatch['headScripts'] };
+type MarketingHead = { meta?: AnyRouteMatch['meta']; links?: AnyRouteMatch['links']; scripts?: AnyRouteMatch['headScripts'] };
 
 export type MarketingPageData = Record<string, unknown> & {
   head?: MarketingHead;

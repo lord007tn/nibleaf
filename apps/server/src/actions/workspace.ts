@@ -3,7 +3,8 @@ import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
 import type { UpdateWorkspaceSettingsBody } from '@nibleaf/validators';
 import { z } from 'zod';
-import { notFound } from '@/errors';
+import { forbidden, notFound } from '@/errors';
+import { resolveOrgAccess } from '@/lib/access';
 import { getGitWebhookSecret } from './git-webhook-secret';
 import { readProjectGitSettings, writeProjectSettings } from './project-settings-storage';
 
@@ -101,7 +102,17 @@ export const getScopedWorkspaceSettings = async (organizationId: string, role: s
  *  not a metadata field (see ./git-webhook-secret). */
 const SERVER_MANAGED_GIT_FIELDS = ['lastImportedAt', 'lastSyncAt', 'lastSyncStatus', 'lastSyncError'] as const;
 
-export const updateWorkspaceSettings = async (organizationId: string, patch: UpdateWorkspaceSettingsBody, projectId?: string) => {
+/** Settings that belong to the organization, not the website (§3, §4.1). */
+const ORGANIZATION_FIELDS = ['plan', 'notifications'] as const;
+
+export const updateWorkspaceSettings = async (organizationId: string, actorId: string, patch: UpdateWorkspaceSettingsBody, projectId?: string) => {
+  // The routes are guarded by the website Admin role; org fields need the org
+  // Owner/Admin role. Checked before any write so a refused patch changes nothing.
+  if (ORGANIZATION_FIELDS.some((field) => patch[field] !== undefined)) {
+    const { orgRole } = await resolveOrgAccess(actorId, organizationId);
+    if (!roleAtLeast(orgRole, MemberRole.ADMIN))
+      throw forbidden('Organization administrator access required to change the plan or notification defaults.');
+  }
   const id = await settingsProject(organizationId, projectId);
   await writeProjectSettings(id, ({ git, legacy }) => {
     const nextGit: Record<string, unknown> = patch.git ? { ...patch.git } : { ...git };

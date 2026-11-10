@@ -457,7 +457,7 @@ async function createStarterProject(organizationId: string, actorUserId: string)
       const slug = attempt < 4 ? await uniqueStarterSlug() : `docs-${Date.now().toString(36)}`;
       try {
         return await prisma.$transaction(async (tx) => {
-          // Project.dataTenantId gets an independent cuid from the Prisma default.
+          // Project.dataTenantId gets an independent cuid from the Prisma default (§3).
           const project = await tx.project.create({
             data: {
               organizationId,

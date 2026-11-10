@@ -112,7 +112,8 @@ describe.skipIf(process.env.ORG_ACCESS_INTEGRATION !== '1')('organization grants
     ).rejects.toThrow();
     await expect(db.prisma.invitation.update({ where: { id: invitation.id }, data: { orgRole: 'owner' } })).rejects.toThrow();
     await expect(db.prisma.joinLink.update({ where: { id: link.id }, data: { orgRole: 'admin' } })).rejects.toThrow();
-    await db.prisma.organizationHandle.create({ data: { slug: `${run}-handle`, organizationId: orgIds[0], current: true } });
+    // Every organization gets its current handle on insert (legacy writers included).
+    expect(await db.prisma.organizationHandle.count({ where: { organizationId: orgIds[0], current: true } })).toBe(1);
     await expect(
       db.prisma.organizationHandle.create({ data: { slug: `${run}-second-handle`, organizationId: orgIds[0], current: true } }),
     ).rejects.toThrow();

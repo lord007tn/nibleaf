@@ -43,7 +43,7 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
       data: { name: input.organizationName.trim(), slug: `org-${slug}`, handles: { create: { slug: `org-${slug}`, current: true } } },
     });
     await assignDefaultUsagePlan(tx, organization.id);
-    // Project.dataTenantId gets an independent cuid from the Prisma default.
+    // Project.dataTenantId gets an independent cuid from the Prisma default (§3).
     const project = await tx.project.create({
       data: {
         organizationId: organization.id,

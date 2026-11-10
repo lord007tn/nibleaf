@@ -60,6 +60,7 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
         inviterId: issuerId,
         email: user.email,
         orgRole,
+        kind: 'member',
         role: 'viewer',
         expiresAt: new Date(Date.now() + 86_400_000),
         grants: { create: grants },
@@ -85,6 +86,7 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
             email: user.email,
             role: 'viewer',
             orgRole: 'member',
+            kind: 'member',
             expiresAt: new Date(Date.now() + 86_400_000),
           },
         });
@@ -147,7 +149,8 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
     else
       await organizations.updateOrganizationMember(f.org.id, f.owner.id, issuerMember.id, {
         orgRole: 'member',
-        grants: state === 'one-grant-lost' ? [{ projectId: f.projectId, role: 'admin' }] : [],
+        // PR 1 never leaves an org member with zero websites (§10.1): "demoted" keeps one Viewer grant.
+        grants: state === 'one-grant-lost' ? [{ projectId: f.projectId, role: 'admin' }] : [{ projectId: f.projectId, role: 'viewer' }],
       });
     await expect(admissions.admit(user.id, { invitationId: invitation.id })).rejects.toMatchObject({ status: 404 });
     expect(await grantRoles(f.org.id, user.id)).toEqual([]);
@@ -251,7 +254,9 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
       grants: [{ projectId: f.projectId, role: 'admin' }],
     });
     await admissions.admit(user.id, { token });
-    await organizations.replaceOrganizationMemberAccess(f.org.id, f.owner.id, m.id, []);
+    // Revoking all access is removal in PR 1 (§10.1): the membership row goes too.
+    await members.removeMember(f.org.id, m.id, f.owner.id, f.projectId);
+    expect(await db.prisma.member.count({ where: { organizationId: f.org.id, userId: user.id } })).toBe(0);
     await admissions.admit(user.id, { token });
     expect((await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).useCount).toBe(2);
     expect((await db.prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } })).status).toBe('pending');
@@ -325,8 +330,12 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
     });
     expect(result.invitations).toEqual([]);
     expect(result.existingMembers).toEqual([{ userId: user.id, email: user.email, changed: true }]);
-    await organizations.updateOrganizationMember(f.org.id, f.owner.id, m.id, { orgRole: 'member', grants: [] });
-    expect(await grantRoles(f.org.id, user.id)).toEqual([]);
+    await expect(organizations.updateOrganizationMember(f.org.id, f.owner.id, m.id, { orgRole: 'member', grants: [] })).rejects.toMatchObject({
+      status: 409,
+    });
+    const kept = f.projects[1]?.id ?? '';
+    await organizations.updateOrganizationMember(f.org.id, f.owner.id, m.id, { orgRole: 'member', grants: [{ projectId: kept, role: 'viewer' }] });
+    expect(await grantRoles(f.org.id, user.id)).toEqual([[kept, 'viewer']]);
   });
   it.each(['needsRepair', 'deletionStartedAt'])('fences %s mutations and admissions', async (field) => {
     const f = await fixture();

@@ -7,7 +7,7 @@ import {
   deleteProjectAnalytics,
   deleteProjectUsage,
 } from '@nibleaf/clickhouse';
-import { beginUsageDeletion, Prisma, prisma } from '@nibleaf/database';
+import { beginUsageDeletion, prisma } from '@nibleaf/database';
 
 /** BullMQ ignores a new job whose id it still retains, so a retried deletion must
  * clear an exhausted failed job to queue erasure again. A waiting, delayed, or
