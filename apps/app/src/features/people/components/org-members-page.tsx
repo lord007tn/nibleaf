@@ -169,14 +169,14 @@ export function OrgMembersPage({ organization }: { organization: OrganizationDet
               />
             </DataListEmpty>
           ) : (
-            <Table aria-labelledby="org-members-heading">
+            <Table aria-labelledby="org-members-heading" className="table-fixed">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="ps-4 sm:ps-5">{t('organization.members.col.person')}</TableHead>
-                  <TableHead>{t('people.members.col.role')}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t('people.members.col.websites')}</TableHead>
-                  <TableHead className="hidden lg:table-cell">{t('people.members.col.lastActive')}</TableHead>
-                  <TableHead className="w-12 pe-4">
+                  <TableHead className="w-28">{t('people.members.col.role')}</TableHead>
+                  <TableHead className="hidden w-56 md:table-cell">{t('people.members.col.websites')}</TableHead>
+                  <TableHead className="hidden w-28 lg:table-cell">{t('people.members.col.lastActive')}</TableHead>
+                  <TableHead className="w-14 pe-4">
                     <span className="sr-only">{t('people.members.col.actions')}</span>
                   </TableHead>
                 </TableRow>
@@ -188,7 +188,7 @@ export function OrgMembersPage({ organization }: { organization: OrganizationDet
                   const transferDecision = canOnOrgMember(viewer, 'transferOwnership', row.member);
                   return (
                     <TableRow data-member={row.member.id} key={row.member.id}>
-                      <TableCell className="max-w-0 ps-4 whitespace-normal sm:ps-5">
+                      <TableCell className="ps-4 whitespace-normal sm:ps-5">
                         <PersonCell
                           extra={
                             <div className="mt-1 md:hidden">
@@ -218,7 +218,7 @@ export function OrgMembersPage({ organization }: { organization: OrganizationDet
                           {t(orgRoleLabel(row.member.orgRole))}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden max-w-56 whitespace-normal md:table-cell">
+                      <TableCell className="hidden whitespace-normal md:table-cell">
                         <WebsiteAccessSummary access={row.access} />
                       </TableCell>
                       <TableCell className="hidden text-muted-foreground text-sm lg:table-cell">
