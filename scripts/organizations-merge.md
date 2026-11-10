@@ -163,3 +163,11 @@ The compatibility rerun caught and fixed rejection of unrepresentable legacy
 JSON text. Exact-restore testing caught and fixed JSONB key-order changes, and
 zero-website testing covers the non-deferrable unique slug mirror. No provider,
 Redis, ClickHouse or production acceptance is inferred from these local checks.
+
+Integration handoff: the base `ORG_ACCESS_INTEGRATION=1` suite runs 7/8 green.
+Its `apps/server/src/lib/access.postgres.test.ts:115` fixture creates a second
+current handle after the compatibility trigger has already registered one.
+The test-owning agent must reuse/assert the existing current handle there, then
+retain the second-current rejection assertion. That file is intentionally outside
+this implementation branch's ownership. This fixture update is required before
+PR CI can be green; the new script tests already assert automatic registration.
