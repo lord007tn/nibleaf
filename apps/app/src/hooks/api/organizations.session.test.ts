@@ -28,8 +28,19 @@ const deferred = () => {
   return { promise, resolve };
 };
 const failure = () => new Response(JSON.stringify({ error: { code: 'http:internal', message: 'boom' } }), { status: 500 });
-const alicePreferences: PersonalPreferences = { notifications: { member_invited: true } } as PersonalPreferences;
-const bobPreferences: PersonalPreferences = { notifications: { member_invited: false } } as PersonalPreferences;
+const preferences = (memberJoined: boolean): PersonalPreferences => ({
+  notifications: {
+    member_joined: memberJoined,
+    project_deploy: true,
+    project_deploy_failed: true,
+    project_new: true,
+    security_login: true,
+    workspace_plan: true,
+    workspace_weekly: true,
+  },
+});
+const alicePreferences = preferences(true);
+const bobPreferences = preferences(false);
 
 /** Merge council on #418: a late result from account A must never write into account B's cache. */
 describe('organization mutations across an account switch', () => {
@@ -67,7 +78,7 @@ describe('organization mutations across an account switch', () => {
     const update = await mount(() => useUpdatePreferences());
     let settled: Promise<unknown> = Promise.resolve();
     await act(async () => {
-      settled = update.current?.mutateAsync({ member_invited: false }).catch((error: unknown) => error) ?? settled;
+      settled = update.current?.mutateAsync({ member_joined: false }).catch((error: unknown) => error) ?? settled;
     });
     syncDashboardSession(queryClient, 'bob');
     queryClient.setQueryData(organizationKeys.me.preferences(), bobPreferences);
