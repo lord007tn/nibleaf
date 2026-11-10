@@ -4085,5 +4085,50 @@
   "settings_appearance_theme_system": "Wie mein Gerät",
   "settings_members_viaorganization": "über die Organisation",
   "settings_members_nowebsiteaccess": "Sie haben noch keinen Zugriff auf Websites in {org}. Bitte wenden Sie sich an einen Organisationsadministrator.",
-  "roles_organizationmember": "Mitglied"
+  "roles_organizationmember": "Mitglied",
+  "publish_checks_title": "Prüfungen",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Fehler",
+        "form=*": "{count} Fehler"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Warnung",
+        "form=*": "{count} Warnungen"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "Veröffentlichen ist weiterhin möglich",
+  "publish_checks_mustfix": "Fehler beheben, um zu veröffentlichen",
+  "publish_checks_allclear": "Alle Prüfungen bestanden",
+  "publish_checks_allclearhint": "Keine defekten Links, Bilder ohne Alternativtext, Seiten ohne Titel oder übrig gebliebenen Zeichen.",
+  "publish_checks_fix": "Beheben",
+  "publish_checks_fixlabel": "{title} im Editor beheben",
+  "publish_checks_blockedreason": "Beheben Sie die Fehler unter „Prüfungen“, bevor Sie veröffentlichen.",
+  "publish_checks_error": "Fehler",
+  "publish_checks_warning": "Warnung",
+  "publish_checks_duplicateof": "Gleicher Titel wie {path}",
+  "publish_checks_brokenlink": "Defekte Links",
+  "publish_checks_brokenlinkhint": "Diese Links führen zu einer Seite, die es auf der veröffentlichten Website nicht geben wird.",
+  "publish_checks_missingalt": "Bilder ohne Alternativtext",
+  "publish_checks_missingalthint": "Screenreader können diese Bilder nicht beschreiben. Fügen Sie jedem Bild einen Alternativtext hinzu.",
+  "publish_checks_untitledpage": "Seiten ohne Titel",
+  "publish_checks_untitledpagehint": "Geben Sie diesen Seiten einen echten Titel, damit Leser sie finden.",
+  "publish_checks_straycharacters": "Übrig gebliebene Zeichen",
+  "publish_checks_straycharactershint": "Ein einzelnes / oder ein wörtliches --- erscheint als Text auf der Seite.",
+  "publish_checks_unreadableslug": "Schwer lesbare Webadressen",
+  "publish_checks_unreadableslughint": "Verwenden Sie eine kurze Adresse aus Wörtern, damit sich der Link leicht lesen und teilen lässt.",
+  "publish_checks_emptypage": "Leere Seiten",
+  "publish_checks_emptypagehint": "Diese Seiten haben noch keinen Inhalt, Leser sähen also eine leere Seite.",
+  "publish_checks_duplicatetitle": "Doppelte Titel",
+  "publish_checks_duplicatetitlehint": "Seiten im selben Bereich haben denselben Titel, sodass Leser sie nicht unterscheiden können."
 }

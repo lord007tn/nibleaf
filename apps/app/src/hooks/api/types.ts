@@ -245,6 +245,19 @@ export interface PendingChange {
   truncated: boolean;
 }
 
+/** A pre-publish quality check on the draft being previewed. Warnings leave
+ *  publishing allowed; an `error` blocks it (the publish would fail). */
+export interface PublishCheck {
+  code: 'broken-internal-link' | 'missing-alt' | 'untitled-page' | 'stray-characters' | 'unreadable-slug' | 'empty-page' | 'duplicate-title';
+  severity: 'error' | 'warning';
+  pageId: string;
+  languageCode: string;
+  title: string;
+  path: string;
+  /** The link, image source, stray text, slug or other page's path. */
+  detail: string;
+}
+
 interface DeploymentDiffLine {
   type: 'added' | 'removed' | 'unchanged';
   text: string;

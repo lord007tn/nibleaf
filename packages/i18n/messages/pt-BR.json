@@ -4086,5 +4086,50 @@
   "settings_appearance_theme_system": "Igual ao meu dispositivo",
   "settings_members_viaorganization": "pela organização",
   "settings_members_nowebsiteaccess": "Você ainda não tem acesso a nenhum site em {org}. Fale com um administrador da organização.",
-  "roles_organizationmember": "Membro"
+  "roles_organizationmember": "Membro",
+  "publish_checks_title": "Verificações",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} erro",
+        "form=*": "{count} erros"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} aviso",
+        "form=*": "{count} avisos"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "ainda é possível publicar",
+  "publish_checks_mustfix": "corrija os erros para publicar",
+  "publish_checks_allclear": "Todas as verificações passaram",
+  "publish_checks_allclearhint": "Nenhum link quebrado, imagem sem texto alternativo, página sem título ou caractere solto.",
+  "publish_checks_fix": "Corrigir",
+  "publish_checks_fixlabel": "Corrigir {title} no editor",
+  "publish_checks_blockedreason": "Corrija os erros em Verificações antes de publicar.",
+  "publish_checks_error": "Erro",
+  "publish_checks_warning": "Aviso",
+  "publish_checks_duplicateof": "Mesmo título de {path}",
+  "publish_checks_brokenlink": "Links quebrados",
+  "publish_checks_brokenlinkhint": "Estes links levam a uma página que não existirá no site publicado.",
+  "publish_checks_missingalt": "Imagens sem texto alternativo",
+  "publish_checks_missingalthint": "Leitores de tela não conseguem descrever estas imagens. Adicione um texto alternativo a cada uma.",
+  "publish_checks_untitledpage": "Páginas sem título",
+  "publish_checks_untitledpagehint": "Dê a estas páginas um título de verdade para que os leitores as encontrem.",
+  "publish_checks_straycharacters": "Caracteres soltos",
+  "publish_checks_straycharactershint": "Uma / sozinha ou um --- literal aparece na página como texto.",
+  "publish_checks_unreadableslug": "Endereços web difíceis de ler",
+  "publish_checks_unreadableslughint": "Use um endereço curto feito de palavras para que o link seja fácil de ler e compartilhar.",
+  "publish_checks_emptypage": "Páginas vazias",
+  "publish_checks_emptypagehint": "Estas páginas ainda não têm conteúdo, então os leitores veriam uma página em branco.",
+  "publish_checks_duplicatetitle": "Títulos duplicados",
+  "publish_checks_duplicatetitlehint": "Páginas da mesma seção têm o mesmo título, então os leitores não conseguem diferenciá-las."
 }
