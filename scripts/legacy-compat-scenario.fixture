@@ -34,9 +34,14 @@ it('runs old createProject, invitation accept, link redeem, role update and remo
   const signedIn=await send('/sign-in/email-otp',{email:invitee.email,otp:codes.get(invitee.email)});
   expect(signedIn.status).toBe(200);
   const cookie=signedIn.headers.getSetCookie().map((value)=>value.split(';')[0]).join('; ');
-  expect((await send('/organization/accept-invitation',{invitationId:invitation.id},cookie)).status).toBe(200);
+  if (process.env.LEGACY_ROLLBACK_FLOOR === '1') {
+    const {admit}=await import('../actions/admissions');
+    expect((await admit(invitee.id,{invitationId:invitation.id})).landing).toEqual({projectId:site.id});
+  } else expect((await send('/organization/accept-invitation',{invitationId:invitation.id},cookie)).status).toBe(200);
   const link=await links.createJoinLink(site.organizationId,{id:owner.id,role:'owner'},{role:'member'});
-  expect((await links.joinWithLink(link.token,joiner.id)).role).toBe('member');
+  const joined=await links.joinWithLink(link.token,joiner.id);
+  if (process.env.LEGACY_ROLLBACK_FLOOR === '1') expect(joined.landing).toEqual({projectId:site.id});
+  else expect(joined.role).toBe('member');
   const member=await prisma.member.findUniqueOrThrow({where:{organizationId_userId:{organizationId:site.organizationId,userId:invitee.id}}});
   await members.updateMemberRole(site.organizationId,member.id,owner.id,{role:'admin'});
   const removed=await prisma.member.findUniqueOrThrow({where:{organizationId_userId:{organizationId:site.organizationId,userId:joiner.id}}});

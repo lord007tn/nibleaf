@@ -1,4 +1,5 @@
 import { type Prisma, prisma } from '@nibleaf/database';
+import { oversizedPageContent } from '@nibleaf/shared/page-limits';
 import {
   normalizeRedirectPath,
   type RedirectPair,
@@ -332,6 +333,13 @@ export const preservePageAddresses = async (
     const result = rewriteAddressDocument(page, changes, context, document.links);
     counts.documentsSkipped += result.documentsSkipped;
     if (!result.linksUpdated) continue;
+    // Rewritten links must not grow a page past the size cap (the shared rule,
+    // against the body read under the page locks). That page keeps its links
+    // and is reported as skipped; the address change itself goes ahead.
+    if (oversizedPageContent(result.content, page.content) !== null) {
+      counts.documentsSkipped++;
+      continue;
+    }
     patches.push({ id: page.id, content: result.content, updatedAt: new Date(Math.max(Date.now(), page.updatedAt.getTime() + 1)).toISOString() });
     counts.linksUpdated += result.linksUpdated;
   }

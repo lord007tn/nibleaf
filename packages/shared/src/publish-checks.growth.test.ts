@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findInboundPageLinks } from './publish-checks';
+import { findBrokenInternalLinks, findInboundPageLinks } from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 import { growthTestsEnabled } from './testing/growth';
 
@@ -46,7 +46,7 @@ describe.runIf(growthTestsEnabled)('inbound draft page links: repeat-open cost',
   const target = () => page({ id: 'target', path: 'guide', kind: 'GROUP' });
   const child = () => page({ id: 'child', parentId: 'target', path: 'guide/setup', content: '[self](/guide/setup)' });
 
-  it('answers a repeat open from the content cache: warm costs at most half the cold scan', () => {
+  it('answers a repeat open from the content cache: warm costs at most a quarter of the cold scan', () => {
     const snapshot = site([
       ...Array.from({ length: 298 }, (_, i) =>
         page({
@@ -68,7 +68,33 @@ describe.runIf(growthTestsEnabled)('inbound draft page links: repeat-open cost',
       warmMs = Math.min(warmMs, performance.now() - start);
     }
     // Like for like on the same runner: re-parsing every body on a repeat open
-    // would cost about what the cold scan did.
-    expect(warmMs).toBeLessThanOrEqual(coldMs / 2 + 20);
+    // would cost about what the cold scan did. Measured warm at about 1/100 of
+    // cold with the page index (1/45 without it).
+    expect(warmMs).toBeLessThanOrEqual(coldMs / 4 + 20);
+  }, 60_000);
+});
+
+describe.runIf(growthTestsEnabled)('publish checks on a site larger than the shared facts cache', () => {
+  it('answers a repeat scan of 2,500 pages from the snapshot: warm costs at most a quarter of the cold scan', () => {
+    // Unique per run, so the cold scan parses every page; no internal links, so
+    // the scan's cost is parsing alone.
+    const run = Math.random().toString(36).slice(2);
+    const snapshot = site(
+      Array.from({ length: 2500 }, (_, i) =>
+        page({ path: `large-${i}`, content: `# Topic ${i} ${run}\n\n![](/img-${i}.png)\n\n${'Useful documentation. '.repeat(30)}` }),
+      ),
+    );
+    const coldStart = performance.now();
+    expect(findBrokenInternalLinks(snapshot)).toEqual([]);
+    const coldMs = performance.now() - coldStart;
+    let warmMs = Number.POSITIVE_INFINITY;
+    for (let round = 0; round < 3; round++) {
+      const start = performance.now();
+      expect(findBrokenInternalLinks(snapshot)).toEqual([]);
+      warmMs = Math.min(warmMs, performance.now() - start);
+    }
+    // Like for like on the same runner: a scan that evicts the shared cache in
+    // order re-parses every page on the next one, costing what the cold scan did.
+    expect(warmMs).toBeLessThanOrEqual(coldMs / 4 + 20);
   }, 60_000);
 });

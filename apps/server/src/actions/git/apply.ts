@@ -1,4 +1,5 @@
 import { Prisma } from '@nibleaf/database';
+import { MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
 import { themeContentLocation } from '@nibleaf/shared/theme-repository';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import { deriveTitle, humanize, parseFrontmatter } from '../importers/content';
@@ -59,6 +60,18 @@ export class GitApplyConflictError extends Error {
   constructor(readonly paths: string[]) {
     super(`These pages changed while Git sync was running: ${paths.join(', ')}. Nothing was applied.`);
     this.name = 'GitApplyConflictError';
+  }
+}
+
+/** Raised when a repository file would write a page body over
+ * MAX_PAGE_CONTENT_BYTES (measured after decoding and frontmatter removal),
+ * creating it or growing the stored body. Nothing was written. */
+export class GitContentTooLargeError extends Error {
+  constructor(readonly paths: string[]) {
+    super(
+      `These files are larger than the ${MAX_PAGE_CONTENT_BYTES / (1024 * 1024)} MiB page limit: ${paths.join(', ')}. Split them into smaller pages. Nothing was applied.`,
+    );
+    this.name = 'GitContentTooLargeError';
   }
 }
 
@@ -270,6 +283,7 @@ export const applyGitContentChanges = async (
   const creator = new PageCreator(tx, context, tree);
   const treeById = new Map(tree.map((row) => [row.id, row]));
   const conflicts: string[] = [];
+  const tooLarge: string[] = [];
   /** A descendant that must outlive the deletion of `id`'s page. */
   const mustStay = (id: string) => {
     const now = current.get(id);
@@ -324,6 +338,15 @@ export const applyGitContentChanges = async (
       continue;
     }
     const seen = change.pageId ? observed.get(change.pageId) : undefined;
+    // The decoded page body is held to the shared page rule: a blob within the
+    // source-size limit can still decode larger (invalid UTF-8 becomes U+FFFD).
+    // Updates compare with the stored body read under the page lock.
+    const body = parseFrontmatter(change.content).body;
+    const stored = change.pageId && seen ? current.get(change.pageId) : undefined;
+    if (oversizedPageContent(body, stored?.content) !== null) {
+      tooLarge.push(change.path);
+      continue;
+    }
     if (change.pageId && seen) {
       const updated = await tx.page.updateMany({ where: { id: change.pageId, projectId, ...revisionWhere(seen) }, data: pageData(change.content) });
       // A miss means the page was saved or deleted after the merge read it.
@@ -344,5 +367,6 @@ export const applyGitContentChanges = async (
     pageIds.set(change.path, await creator.create(change.path, change.content));
   }
   if (conflicts.length > 0) throw new GitApplyConflictError(conflicts);
+  if (tooLarge.length > 0) throw new GitContentTooLargeError(tooLarge);
   return pageIds;
 };
