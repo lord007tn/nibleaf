@@ -28,6 +28,7 @@
     "./domains": "./src/domains.ts",
     "./email-providers": "./src/email-providers.ts",
     "./site": "./src/site.ts",
+    "./site-route": "./src/site-route.ts",
     "./documentation-component-contract": "./src/documentation-component-contract.ts",
     "./documentation-components": "./src/documentation-components.ts",
     "./themes": "./src/themes.ts",

@@ -23,9 +23,17 @@ import {
   type SnapshotLanguageConfig,
   type SnapshotPage,
   type SnapshotProject,
-  type SnapshotVersion,
   withOpenApiNav,
 } from '@nibleaf/shared/site';
+import {
+  activeLanguageCode,
+  activeVersion,
+  flattenNav,
+  pageBelongsToVersion,
+  pagesForVersion,
+  resolveSitePage,
+  sitePathWithinVersion,
+} from '@nibleaf/shared/site-route';
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
@@ -475,47 +483,6 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
  *  snapshot AND is enabled, otherwise the project's default language. A request
  *  for a disabled language therefore falls back to the default instead of
  *  serving hidden content. */
-const activeLanguageCode = (snapshot: SiteSnapshot, lang?: string): string => {
-  if (lang && publicLanguages(snapshot.project.languages).some((l) => l.code === lang)) {
-    return lang;
-  }
-  return defaultLanguage(snapshot.project).code;
-};
-
-/** Only the pages belonging to a given language. */
-const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => p.languageCode === lang);
-
-const defaultVersion = (snapshot: SiteSnapshot): SnapshotVersion => {
-  const defaults = snapshot.project.versions.filter((version) => version.isDefault);
-  if (defaults.length !== 1 || !defaults[0]) {
-    throw new Error(`Snapshot project ${snapshot.project.id} must have exactly one default version.`);
-  }
-  return defaults[0];
-};
-
-const activeVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVersion => {
-  const requested = version?.trim();
-  if (requested) {
-    const match = snapshot.project.versions.find((candidate) => candidate.slug === requested);
-    if (match) {
-      return match;
-    }
-  }
-  return defaultVersion(snapshot);
-};
-
-const matchingVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVersion | undefined => {
-  const requested = version?.trim();
-  if (!requested) {
-    return undefined;
-  }
-  return snapshot.project.versions.find((candidate) => candidate.slug === requested);
-};
-
-const pageBelongsToVersion = (page: SnapshotPage, version: SnapshotVersion): boolean => page.versionId === version.id;
-
-const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): SnapshotPage[] =>
-  snapshot.pages.filter((page) => pageBelongsToVersion(page, version));
 
 /** The published site shell: project branding + navigation tree (per language). */
 export const getSite = async (identifier: string, lang?: string, version?: string) => {
@@ -588,42 +555,17 @@ export const getSiteOpenApi = async (identifier: string) => {
   };
 };
 
-/** Depth-first order of renderable pages — for prev/next links. */
-const flattenNav = (nav: NavNode[]): NavNode[] =>
-  nav.flatMap((node) => (node.kind === 'PAGE' ? [node, ...flattenNav(node.children)] : flattenNav(node.children)));
-
 /** A single published page with TOC, breadcrumbs, and prev/next neighbours.
  *  Scoped to the active language, falling back to the default language. */
 export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) => {
   const { snapshot } = await getPublished(identifier);
-  const explicitVersion = matchingVersion(snapshot, version);
-  let normalized = path.replace(/^\/+|\/+$/g, '');
-  if (explicitVersion && (normalized === explicitVersion.slug || normalized.startsWith(`${explicitVersion.slug}/`))) {
-    normalized = normalized.slice(explicitVersion.slug.length).replace(/^\/+/, '');
-  }
-  const activeLanguage = activeLanguageCode(snapshot, lang);
-  const docsVersion = explicitVersion ?? activeVersion(snapshot, version);
-  const versionPages = pagesForVersion(snapshot, docsVersion);
-
-  const findIn = (langCode: string) => {
-    const langPages = pagesForLanguage(versionPages, langCode);
-    const found =
-      langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
-      (normalized === '' ? firstPage(langPages, langCode) : undefined) ??
-      // A group/section prefix (e.g. a navbar tab pointing at `/guides`)
-      // resolves to its first page in nav order, Mintlify-style. Paths with no
-      // pages beneath them still 404.
-      firstPageUnder(langPages, langCode, normalized);
-    return found ? { page: found, pages: langPages } : undefined;
-  };
-
-  // Try the active language; fall back to the default language's pages before 404.
-  const defaultCode = defaultLanguage(snapshot.project).code;
-  const match = findIn(activeLanguage) ?? (activeLanguage === defaultCode ? undefined : findIn(defaultCode));
+  // The page lookup is shared with the pre-publish link checks (`resolveSitePage`).
+  const match = resolveSitePage(snapshot, path, lang, version);
   if (!match) {
-    throw notFound('page', { path: normalized });
+    throw notFound('page', { path: sitePathWithinVersion(snapshot, path, version) });
   }
-  const { page, pages } = match;
+  const { page, pages, docsVersion } = match;
+  const versionPages = pagesForVersion(snapshot, docsVersion);
   const navLanguage = page.languageCode;
 
   const order = flattenNav(buildNavTree(pages, navLanguage));
@@ -721,20 +663,6 @@ export const getSitePageMarkdown = async (identifier: string, path: string, lang
     throw notFound('page', { path, reason: 'not_public_markdown' });
   }
   return { body: buildPublishedPageMarkdown(data), isPrivate: false };
-};
-
-const firstPage = (pages: SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
-  const first = flattenNav(buildNavTree(pages, languageCode))[0];
-  return first ? pages.find((p) => p.path === first.path) : undefined;
-};
-
-/** First renderable page whose path sits under `prefix/` — resolves group URLs. */
-const firstPageUnder = (pages: SnapshotPage[], languageCode: string | undefined, prefix: string): SnapshotPage | undefined => {
-  if (!prefix) {
-    return undefined;
-  }
-  const first = flattenNav(buildNavTree(pages, languageCode)).find((node) => node.path.startsWith(`${prefix}/`));
-  return first ? pages.find((p) => p.path === first.path) : undefined;
 };
 
 const neighbour = (node?: NavNode) => (node ? { title: node.title, path: node.path } : null);
