@@ -10,6 +10,7 @@ import {
   interpolateVariablesWithin,
   isPageTranslation,
   languageEndonym,
+  languageNameIn,
   mergeLanguageChrome,
   projectSlugFromSubdomainHost,
   publicLanguages,
@@ -457,6 +458,12 @@ describe('publicLanguages', () => {
   });
   it('keeps the stored label for a code the platform cannot name', () => {
     expect(languageEndonym('x-klingon')).toBeNull();
+    // `la` is a valid tag the platform has no locale data for: DisplayNames would
+    // quietly answer in en-US ("Latin"), so the stored label is kept.
+    expect(languageEndonym('la')).toBeNull();
+    expect(languageNameIn('la', 'en')).toBeNull();
+    expect(languageNameIn('ar', 'en')).toBe('الإنجليزية');
+    expect(publicLanguages([lang({ code: 'la', isDefault: true, label: 'Latina' })])[0]?.label).toBe('Latina');
     expect(publicLanguages([lang({ code: 'x-klingon', isDefault: true, label: 'Klingon' })])[0]?.label).toBe('Klingon');
   });
 });

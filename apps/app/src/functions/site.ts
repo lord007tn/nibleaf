@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { getData } from '@/hooks/api/client-helpers';
 import type { ChangelogEntry, SitePage, SiteShell } from '@/hooks/api/types';
+import { readerTextFor } from '@/lib/reader-text';
 import { api } from '@/services/api';
 
 const siteInput = z.object({
@@ -26,8 +27,8 @@ export const getSiteFn = createServerFn({ method: 'GET' })
 
 export const getSitePageFn = createServerFn({ method: 'GET' })
   .validator(sitePageInput)
-  .handler(async ({ data }) =>
-    getData<SitePage>(
+  .handler(async ({ data }): Promise<SitePage> => {
+    const page = await getData<SitePage>(
       await api.public.sites[':id'].page.$get({
         param: { id: data.projectId },
         query: {
@@ -37,8 +38,19 @@ export const getSitePageFn = createServerFn({ method: 'GET' })
         },
       }),
       'page',
-    ),
-  );
+    );
+    // Formatted here, on the server, for the reader's language (the requested
+    // one, else the site's default), so hydration renders the same strings.
+    const reader = data.language ?? page.languages.find((language) => language.isDefault)?.code ?? page.activeLanguage;
+    return {
+      ...page,
+      readerText: readerTextFor(
+        reader,
+        page.page.updatedAt,
+        page.languages.map((language) => language.code),
+      ),
+    };
+  });
 
 export const listSiteChangelogFn = createServerFn({ method: 'GET' })
   .validator(siteInput.pick({ projectId: true }))

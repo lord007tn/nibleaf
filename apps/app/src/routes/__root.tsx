@@ -1,9 +1,9 @@
 import { ThemeProvider } from '@nibleaf/design-system/theme';
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter, useRouterState } from '@tanstack/react-router';
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { RootMarketingAnalytics } from '@/components/root-marketing-analytics';
-import type { SiteShell } from '@/hooks/api/types';
+import { useRootDocument } from '@/lib/root-document';
 import { siteThemeNoFlashScript } from '@/lib/site-theme';
 import appCss from '@/styles.css?url';
 
@@ -49,34 +49,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: ReactNode }) {
   const nonce = useRouter().options.ssr?.nonce;
-  // Reflect a published site's active language on <html lang/dir> during SSR (so
-  // crawlers + the first paint see e.g. lang="ar" dir="rtl"), updating reactively
-  // on ?lang switches. Non-site routes keep the en/ltr default — the dashboard's
-  // own DirectionProvider governs its direction.
-  const { lang, dir, pathname, siteProjectId, siteThemeDefault } = useRouterState({
-    select: (state) => {
-      const match = state.matches.find((m) => m.routeId === '/sites/$projectId');
-      const site = (match?.loaderData as { site?: SiteShell } | undefined)?.site;
-      if (!site) {
-        const articleMatch = state.matches.find((m) => m.routeId === '/blog/$slug');
-        const language = (articleMatch?.loaderData as { language?: 'ar' | 'en' } | undefined)?.language ?? 'en';
-        const arabicMarketingRoute = state.location.pathname === '/ar' || state.location.pathname.startsWith('/ar/');
-        if (language === 'ar' || arabicMarketingRoute) {
-          return { lang: 'ar', dir: 'rtl' as const, pathname: state.location.pathname, siteProjectId: undefined, siteThemeDefault: undefined };
-        }
-        return { lang: 'en', dir: 'ltr' as const, pathname: state.location.pathname, siteProjectId: undefined, siteThemeDefault: undefined };
-      }
-      const code = (state.location.search as { lang?: string }).lang ?? site.activeLanguage;
-      const active = site.languages.find((l) => l.code === code) ?? site.languages.find((l) => l.isDefault) ?? site.languages[0];
-      return {
-        lang: active?.code ?? 'en',
-        dir: active?.direction === 'RTL' ? ('rtl' as const) : ('ltr' as const),
-        pathname: state.location.pathname,
-        siteProjectId: (match?.params as { projectId?: string } | undefined)?.projectId,
-        siteThemeDefault: site.project.config?.styling?.theme ?? 'light',
-      };
-    },
-  });
+  const { lang, dir, pathname, siteProjectId, siteThemeDefault } = useRootDocument();
   const siteThemeBootstrap = siteProjectId ? siteThemeNoFlashScript(siteProjectId, siteThemeDefault ?? 'light') : null;
   return (
     <html lang={lang} dir={dir} suppressHydrationWarning>
