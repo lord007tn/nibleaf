@@ -207,18 +207,28 @@ describe('article meta line on a fallback page', () => {
 // injected locale data, so the test never depends on the runtime's own ICU.
 const fakeIntl = (tag: string, { supports = true } = {}) => {
   const fake = Object.create(Intl) as typeof Intl;
+  // Every entry point the reader text uses, on both sides: constructors,
+  // supportedLocalesOf and resolvedOptions.
+  const supportedLocalesOf = (locales: string | string[]) => (supports ? [locales].flat() : []);
   Object.assign(fake, {
     DisplayNames: class {
-      static supportedLocalesOf(locales: string[]) {
-        return supports ? locales : [];
-      }
+      static supportedLocalesOf = supportedLocalesOf;
+      constructor(private readonly locales: string | string[]) {}
       of(code: string) {
         return `${tag} NAME ${code}`;
       }
+      resolvedOptions() {
+        return { locale: [this.locales].flat()[0] ?? 'en', type: 'language', style: 'long', fallback: 'none' };
+      }
     },
     DateTimeFormat: class {
+      static supportedLocalesOf = supportedLocalesOf;
+      constructor(private readonly locales?: string | string[]) {}
       format() {
         return `${tag} DATE`;
+      }
+      resolvedOptions() {
+        return { locale: [this.locales ?? 'en'].flat()[0], timeZone: 'UTC', calendar: 'gregory', numberingSystem: 'latn' };
       }
     },
   });
@@ -239,9 +249,15 @@ describe('reader text formatted on the server', () => {
         <SitePageView projectId="docs" lang="ar" data={data} />
       </SiteReaderContext.Provider>
     );
+    // As the route loader does before rendering: the article renderer is loaded,
+    // so the server HTML has the article body (in a jsdom "server" render the
+    // article island doesn't wait for it, and how fast the import lands would
+    // otherwise decide whether the body is in the snapshot).
+    await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(data.page.content);
     const container = await serverRender(element);
     document.body.append(container);
     const serverText = container.textContent ?? '';
+    expect(serverText).toContain('Open the front desk calendar.');
     expect(serverText).toContain('SERVER DATE');
     expect(container.querySelector('[role="note"]')?.textContent).toContain(serverSupports ? 'SERVER NAME en' : 'English');
 
@@ -254,7 +270,9 @@ describe('reader text formatted on the server', () => {
         root = hydrateRoot(container, element, { onRecoverableError: (error) => errors.push(error) });
       });
       expect(errors).toEqual([]);
-      expect(container.textContent).toBe(serverText);
+      const hydratedText = container.textContent ?? '';
+      // Both full strings on a mismatch, so a CI failure says exactly what differs.
+      expect(hydratedText, `server:   ${JSON.stringify(serverText)}\nhydrated: ${JSON.stringify(hydratedText)}`).toBe(serverText);
       expect(container.textContent).not.toMatch(/BROWSER/);
     } finally {
       await act(async () => root?.unmount());
