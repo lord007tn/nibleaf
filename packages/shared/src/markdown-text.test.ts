@@ -46,8 +46,9 @@ describe('markdownToPlainText on adversarial input (ReDoS, CodeQL js/polynomial-
   // Author content reaches this on every render and on the public OG route, so
   // each case must stay linear: timed at n and 4n repetitions against itself
   // (testing/growth). The largest input is the size these cases always used.
-  // A unique suffix bypasses the per-content cache, so each run measures extraction.
-  const extract = (input: string) => markdownToPlainText(`${input}${Math.random()}`);
+  // Extraction caches by content, so every call gets a fresh, equivalent input:
+  // a unique number after the text (testing/growth `vary`).
+  const fresh = { vary: (input: string, rep: number) => `${input} ${rep}` };
   const cases: Array<[string, (n: number) => string, number]> = [
     ['unclosed comments', (n) => '<!--'.repeat(n), 25_000],
     ['unclosed script elements', (n) => '<script'.repeat(n), 25_000],
@@ -65,7 +66,7 @@ describe('markdownToPlainText on adversarial input (ReDoS, CodeQL js/polynomial-
 
   // Every dense case above takes the linear strip.
   it.each(cases)('stays linear on %s', (_, build, n) => {
-    const [small, large] = growthMs(extract, build(n), build(4 * n));
+    const [small, large] = growthMs(markdownToPlainText, build(n), build(4 * n), fresh);
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
@@ -77,7 +78,7 @@ describe('markdownToPlainText on adversarial input (ReDoS, CodeQL js/polynomial-
     ['tags just under the marker guard', (n: number) => `<b>${'a'.repeat(13)}`.repeat(n), 24],
   ] as const)('stays bounded on %s', (_, build, n) => {
     expect(markdownToPlainText(build(4 * n))).toContain('a');
-    const [small, large] = growthMs(extract, build(n), build(4 * n));
+    const [small, large] = growthMs(markdownToPlainText, build(n), build(4 * n), fresh);
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 

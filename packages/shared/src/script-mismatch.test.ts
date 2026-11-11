@@ -154,8 +154,9 @@ describe('detectScriptMismatch', () => {
   // past the 16 KB sample costs nothing more, so growth is measured inside it:
   // 4,000 characters against 16,000.
   describe('cost bounds', () => {
-    /** A unique suffix each run: no cache can help. */
-    const detect = (input: string) => detectScriptMismatch(`${input}${Math.random()}`, 'en');
+    const detect = (input: string) => detectScriptMismatch(input, 'en');
+    /** A fresh, equivalent input every call (testing/growth `vary`): nothing can be served from a cache. */
+    const fresh = { vary: (input: string, rep: number) => `${input} ${rep}` };
     /** Ordinary prose in one script, cut to a given length. */
     const prose = (sentence: string, length: number): string => sentence.repeat(Math.ceil(length / sentence.length)).slice(0, length);
     const CHINESE_SENTENCE = '要添加新的预订，请打开前台日历，选择房间和日期，然后确认客人的详细信息。';
@@ -178,7 +179,7 @@ describe('detectScriptMismatch', () => {
       ['Han emphasis markers', (n: number) => '*字'.repeat(n / 2)],
       ['Han brackets', (n: number) => '[字]('.repeat(n / 4)],
     ] as const)('stays linear on %s', (_, build) => {
-      const [small, large] = growthMs(detect, build(SMALL), build(4 * SMALL));
+      const [small, large] = growthMs(detect, build(SMALL), build(4 * SMALL), fresh);
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
     });
 
@@ -191,7 +192,7 @@ describe('detectScriptMismatch', () => {
       ['a long token alternating Latin and Han', (n: number) => 'a字'.repeat(n / 2)],
       ['a long token of long hashes glued to Han', (n: number) => `${'f'.repeat(70)}字`.repeat(Math.ceil(n / 71))],
     ] as const)('stays bounded on %s', (_, build) => {
-      const [small, large] = growthMs(detect, build(SMALL), build(4 * SMALL));
+      const [small, large] = growthMs(detect, build(SMALL), build(4 * SMALL), fresh);
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
     });
 
@@ -202,7 +203,7 @@ describe('detectScriptMismatch', () => {
     ])('samples %s prose before any per-character work', (_, sentence) => {
       const long = prose(sentence, 65_536);
       expect(sampleForScript(long).length).toBeLessThanOrEqual(16_384 + 4);
-      const [small, large] = growthMs(detect, prose(sentence, 16_384), long, { minMs: 12 });
+      const [small, large] = growthMs(detect, prose(sentence, 16_384), long, { ...fresh, minMs: 12 });
       expect(large).toBeLessThanOrEqual(constantGrowthLimit(small));
     });
   });
@@ -218,7 +219,9 @@ describe('detectScriptMismatch', () => {
         (_, index) => `## Step ${index}\n\nOpen **Settings** and choose [Users](/users) to add a guest. Run \`npm install\` first.\n`,
       ).join('\n');
     expect(detectScriptMismatch(page(400), 'en').mismatch).toBe(false);
-    const [small, large] = growthMs((input: string) => detectScriptMismatch(`${input}${Math.random()}`, 'en'), page(12), page(48));
+    const [small, large] = growthMs((input: string) => detectScriptMismatch(input, 'en'), page(12), page(48), {
+      vary: (input, rep) => `${input} ${rep}`,
+    });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
