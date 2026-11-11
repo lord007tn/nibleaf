@@ -142,9 +142,11 @@ describe('launcher on phones', () => {
     ) {
       FakeIntersectionObserver.live.add(this);
     }
+    /** Real observers report a frame after `observe`; tests can hold that back. */
+    static deferred = false;
     observe(target: Element) {
       this.targets.set(target, undefined);
-      this.check();
+      if (!FakeIntersectionObserver.deferred) this.check();
     }
     unobserve(target: Element) {
       this.targets.delete(target);
@@ -212,6 +214,7 @@ describe('launcher on phones', () => {
     vi.unstubAllGlobals();
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     FakeIntersectionObserver.live.clear();
+    FakeIntersectionObserver.deferred = false;
   });
   const control = (name: string) => [...page.querySelectorAll('a, button')].find((element) => element.textContent === name) as HTMLElement;
   const away = () => launcher()?.hasAttribute('data-away');
@@ -248,6 +251,22 @@ describe('launcher on phones', () => {
     place(control('Next'), { left: 300, top: 600, width: 80, height: 44 });
     await scrollControls();
     expect(away()).toBe(false);
+  });
+
+  it('stays away, without a flicker, while it re-measures after a resize', async () => {
+    place(control('Zoom'), { left: 330, top: 784, width: 40, height: 40 });
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    expect(away()).toBe(true);
+    // A resize rebuilds the observer; its first report comes a frame later.
+    FakeIntersectionObserver.deferred = true;
+    await act(async () => {
+      window.dispatchEvent(new Event('resize'));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(FakeIntersectionObserver.live.size).toBe(1);
+    expect(away()).toBe(true);
+    await scrollControls();
+    expect(away()).toBe(true);
   });
 
   it('counts a control just next to it, which is as hard to tap', async () => {

@@ -114,12 +114,24 @@ function useCoversControls(box: RefObject<HTMLElement | null>, shown: boolean) {
       frame = 0;
       observer?.disconnect();
       under.clear();
-      // The new observer reports what is under the launcher now.
-      setCovers(false);
       const rect = anchor.getBoundingClientRect();
-      if (!phone.matches || !rect.width || !rect.height) return;
+      if (!phone.matches || !rect.width || !rect.height) {
+        setCovers(false);
+        return;
+      }
       // A little slack around the button: a control right at its edge is as hard to tap.
       const slack = 8;
+      // What is under it right now, measured here: a new observer reports a frame
+      // later, and resetting to "clear" until then would slide the launcher back
+      // over a control for that frame.
+      const zone = { left: rect.left - slack, top: rect.top - slack, right: rect.right + slack, bottom: rect.bottom + slack };
+      const controls = readerControls();
+      for (const control of controls) {
+        const box = control.getBoundingClientRect();
+        if (box.width && box.height && box.left < zone.right && box.right > zone.left && box.top < zone.bottom && box.bottom > zone.top)
+          under.add(control);
+      }
+      setCovers(under.size > 0);
       const inset = [rect.top, window.innerWidth - rect.right, window.innerHeight - rect.bottom, rect.left];
       const rootMargin = inset.map((side) => `${-Math.max(0, Math.round(side - slack))}px`).join(' ');
       observer = new IntersectionObserver(
@@ -132,7 +144,7 @@ function useCoversControls(box: RefObject<HTMLElement | null>, shown: boolean) {
         },
         { rootMargin },
       );
-      for (const control of readerControls()) observer.observe(control);
+      for (const control of controls) observer.observe(control);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(build);
