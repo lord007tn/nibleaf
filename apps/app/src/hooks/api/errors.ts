@@ -14,6 +14,7 @@ const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
   ['page:revision_conflict', 'editor.conflict.body'],
   ['address_raced', 'editor.pageSettings.addressRaced'],
   ['slug_taken', 'editor.reorderSlugTaken'],
+  ['structure_changed', 'editor.tree.structureChanged'],
   ['branch:main_changed', 'error.branchMainChanged'],
   ['branch:baseline_missing', 'error.branchBaselineMissing'],
   ['promote_raced', 'error.promoteRaced'],
