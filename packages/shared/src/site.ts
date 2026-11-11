@@ -132,18 +132,31 @@ export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
 };
 
 /**
- * A language's own name in its own script ("العربية", "Français", "Deutsch"),
- * capitalized as a menu label. Null when the platform can't name the code (a
- * private-use tag such as `x-klingon`), so the caller keeps the stored label.
+ * `code`'s name in `locale`, or null when the platform has no data for that
+ * locale. `new Intl.DisplayNames([locale])` never fails for a valid but
+ * unsupported locale: it silently falls back to the default (`la` resolves to
+ * en-US and names itself "Latin"), so support is checked first.
  */
-export const languageEndonym = (code: string): string | null => {
+export const languageNameIn = (locale: string, code: string): string | null => {
   try {
-    const name = new Intl.DisplayNames([code], { type: 'language', fallback: 'none' }).of(code);
-    if (!name) return null;
-    return name.charAt(0).toLocaleUpperCase(code) + name.slice(1);
+    if (Intl.DisplayNames.supportedLocalesOf([locale]).length === 0) return null;
+    const name = new Intl.DisplayNames([locale], { type: 'language', fallback: 'none' }).of(code);
+    return name && name !== code ? name : null;
   } catch {
+    // An invalid tag (`x-klingon`).
     return null;
   }
+};
+
+/**
+ * A language's own name in its own script ("العربية", "Français", "Deutsch"),
+ * capitalized as a menu label. Null when the platform can't name it in its own
+ * locale (a private-use tag, or a locale without data such as `la`), so the
+ * caller keeps the stored label ("Latina").
+ */
+export const languageEndonym = (code: string): string | null => {
+  const name = languageNameIn(code, code);
+  return name ? name.charAt(0).toLocaleUpperCase(code) + name.slice(1) : null;
 };
 
 /** The languages a published site serves: enabled ones. The default language
@@ -499,8 +512,26 @@ export const interpolateVariables = (text: string, variables: Record<string, str
   return text.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, key: string) => (Object.hasOwn(variables, key) ? (variables[key] ?? whole) : whole));
 };
 
+/** `interpolateVariables` for a preview that only needs the start of the text:
+ *  substitution stops once the output reaches `maxLength`, so a body full of
+ *  `{{ key }}` tokens with long values can't expand without bound. The result
+ *  is at most `maxLength` characters. */
+export const interpolateVariablesWithin = (text: string, variables: Record<string, string>, maxLength: number): string => {
+  const limit = Math.max(0, Math.floor(maxLength));
+  const pattern = /\{\{\s*([\w.-]+)\s*\}\}/g;
+  let output = '';
+  let cursor = 0;
+  for (let match = pattern.exec(text); match && output.length < limit; match = pattern.exec(text)) {
+    const [whole, key = ''] = match;
+    output += text.slice(cursor, match.index) + (Object.hasOwn(variables, key) ? (variables[key] ?? whole) : whole);
+    cursor = match.index + whole.length;
+  }
+  if (output.length < limit) output += text.slice(cursor, cursor + limit - output.length);
+  return output.slice(0, limit);
+};
+
 /** Extract a `{ key: value }` map from a project config's `variables` array. */
-const variablesFromConfig = (config: unknown): Record<string, string> => {
+export const variablesFromConfig = (config: unknown): Record<string, string> => {
   const list = (config as { variables?: Array<{ key?: unknown; value?: unknown }> } | null)?.variables;
   const map: Record<string, string> = {};
   if (Array.isArray(list)) {
