@@ -1,4 +1,3 @@
-import { growthMs, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
 import { validateCitedAnswer } from './answer-validation';
 import type { SearchChunk } from './hybrid';
@@ -31,11 +30,8 @@ describe('chat heading detection', () => {
       (n: number) => `I could${`n't v${' '.repeat(1000)}`.repeat(n)}erify this. [S1]`,
       'answered',
     ],
-  ] as const)('handles %s in linear time', (_name, build, status) => {
+  ] as const)('handles %s (its cost: answer-validation.growth.test.ts)', (_name, build, status) => {
     expect(validateCitedAnswer(build(100), [chunk], '', 'chat').status).toBe(status);
-    // 4x the whitespace costs about 4x (testing/growth).
-    const [small, large] = growthMs((answer: string) => validateCitedAnswer(answer, [chunk], '', 'chat'), build(25), build(100));
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
   it.each([
     [
@@ -62,8 +58,6 @@ describe('chat heading detection', () => {
     const answer = (n: number) => `Use s3 [S1]\n\n#${' '.repeat(n)}x\n\nMore s3 [S1]`;
     const validate = (text: string) => validateCitedAnswer(text, [chunk], 'storage', 'chat');
     expect(validate(answer(50_000))).toMatchObject({ status: 'answered' });
-    const [small, large] = growthMs(validate, answer(12_500), answer(50_000));
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
   it('treats bold section labels like headings (live model output)', () => {

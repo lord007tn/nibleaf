@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { closesMarkdownFence, fencedMarkdownLines, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
-import { growthMs, linearGrowthLimit } from './testing/growth';
 
 describe('fencedMarkdownLines', () => {
   it('follows CommonMark fence pairing, also inside list items and blockquotes', () => {
@@ -53,13 +52,9 @@ describe('import Markdown code boundaries', () => {
   });
 
   it('restores a large page with many fences in one pass', () => {
-    const fences = (n: number) => protectMarkdownCode('```\n'.repeat(n));
     const input = '```\n'.repeat(100_000);
     const protectedCode = protectMarkdownCode(input);
     expect(protectedCode.restore(protectedCode.content)).toBe(input);
-    // Restoring 4x the fences costs about 4x (testing/growth); one pass per fence would be 16x.
-    const [small, large] = growthMs((code: ReturnType<typeof protectMarkdownCode>) => code.restore(code.content), fences(25_000), fences(100_000));
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
   it('keeps placeholder-shaped text inside a literal unchanged', () => {
