@@ -11,6 +11,7 @@
 // trigger, then lets it through and checks the control opened.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
+import { chromiumExecutable } from '../lib/capture-env.mjs';
 
 const APP = process.env.APP_URL ?? 'http://localhost:4310';
 const SITE = process.env.SITE_ID ?? 'preview-harbor';
@@ -19,7 +20,7 @@ const MENUS = /\/assets\/header-menus-[^/]+\.js(\?.*)?$/;
 const DRAWER = /\/assets\/mobile-nav-drawer-[^/]+\.js(\?.*)?$/;
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH ?? `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1248/chrome-win64/chrome.exe`,
+  executablePath: chromiumExecutable(),
 });
 const failures = [];
 

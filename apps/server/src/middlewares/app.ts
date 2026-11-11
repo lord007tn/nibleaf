@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { env } from '@/env';
 import type { HonoEnv } from '@/lib/hono/context';
 import { sessionMiddleware } from './auth';
+import { requestBodyLimit } from './body-limit';
 import { localeMiddleware } from './locale';
 import { securityHeaders } from './security-headers';
 
@@ -20,6 +21,8 @@ app.use(
   }),
 );
 
+// Before anything reads a request body.
+app.use('*', requestBodyLimit());
 app.use('*', localeMiddleware());
 app.use('*', sessionMiddleware());
 

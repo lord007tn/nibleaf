@@ -18,6 +18,7 @@
 //    and the page opens again with the saved value and no guard.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
+import { chromiumExecutable } from '../lib/capture-env.mjs';
 
 const APP = process.env.APP_URL ?? 'http://localhost:4310';
 const { STATE, PROJECT_ID } = process.env;
@@ -25,7 +26,7 @@ if (!STATE || !PROJECT_ID) throw new Error('Set STATE (Playwright storage state)
 const videoDir = process.argv[2];
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH ?? `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1248/chrome-win64/chrome.exe`,
+  executablePath: chromiumExecutable(),
 });
 const context = await browser.newContext({
   storageState: STATE,

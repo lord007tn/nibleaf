@@ -16,6 +16,7 @@
     "migrate": "tsx ./scripts/migrate.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache",
+    "test:growth": "vitest run --mode growth --no-file-parallelism --maxWorkers=1 growth",
     "seed:demo": "tsx ./scripts/seed-demo.ts"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@nibleaf/shared": "workspace:*",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^26.6.6",
     "tsx": "4.23.15",

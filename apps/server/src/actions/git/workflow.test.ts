@@ -945,4 +945,38 @@ describe('Git apply safety', () => {
     expect(mocks.createJob).not.toHaveBeenCalled();
     expect(statuses()).toContain('FAILED');
   });
+
+  // 800 KiB of invalid UTF-8 is within the 2,000,000-byte blob limit, but decodes
+  // (as the GitHub provider decodes blobs) to 800 Ki U+FFFD characters: 2.4 MiB.
+  const invalidUtf8 = () => Buffer.alloc(800 * 1024, 0xff).toString('utf8');
+
+  it('refuses a file whose decoded body would grow a page past the size cap, and changes nothing', async () => {
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'Original' });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', serializeGitPage(about))]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([
+      remote('about.mdx', `---\ntitle: "About"\n---\n\n${invalidUtf8()}`),
+      remote('new.mdx', `---\ntitle: "New"\n---\n\n${invalidUtf8()}`),
+    ]);
+
+    await expect(processGitOperation('operation-1')).rejects.toThrow(
+      /nothing was changed in Nibleaf\. These files are larger than the 2 MiB page limit: about\.mdx, new\.mdx/,
+    );
+    expect(pageStore.rows.find((page) => page.id === about.id)?.content).toBe('Original');
+    expect(pageStore.rows.some((page) => page.title === 'New')).toBe(false);
+    expect(statuses()).toContain('FAILED');
+  });
+
+  it('applies a file that shrinks a page already over the size cap', async () => {
+    // Stored at 3 MiB (saved before the cap); the file brings it to 2.4 MiB.
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'x'.repeat(3 * 1024 * 1024) });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', serializeGitPage(about))]);
+    const shrunk = invalidUtf8();
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('about.mdx', `---\ntitle: "About"\n---\n\n${shrunk}`)]);
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+    expect(pageStore.rows.find((page) => page.id === about.id)?.content.trim()).toBe(shrunk);
+    expect(statuses()).toContain('SUCCEEDED');
+  });
 });

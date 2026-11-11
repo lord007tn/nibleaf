@@ -56,7 +56,7 @@ export const activeLanguageCode = (snapshot: SiteSnapshot, lang?: string): strin
   return defaultLanguage(snapshot.project).code;
 };
 
-export const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => p.languageCode === lang);
+export const pagesForLanguage = (pages: readonly SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => p.languageCode === lang);
 
 export const defaultVersion = (snapshot: SiteSnapshot): SnapshotVersion => {
   const defaults = snapshot.project.versions.filter((version) => version.isDefault);
@@ -90,12 +90,12 @@ export const pageBelongsToVersion = (page: SnapshotPage, version: SnapshotVersio
 export const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): SnapshotPage[] =>
   snapshot.pages.filter((page) => pageBelongsToVersion(page, version));
 
-export const firstPage = (pages: SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
+export const firstPage = (pages: readonly SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
   const first = flattenNav(buildNavTree(pages, languageCode))[0];
   return first ? pages.find((p) => p.path === first.path) : undefined;
 };
 
-export const firstPageUnder = (pages: SnapshotPage[], languageCode: string | undefined, prefix: string): SnapshotPage | undefined => {
+export const firstPageUnder = (pages: readonly SnapshotPage[], languageCode: string | undefined, prefix: string): SnapshotPage | undefined => {
   if (!prefix) {
     return undefined;
   }
@@ -105,8 +105,9 @@ export const firstPageUnder = (pages: SnapshotPage[], languageCode: string | und
 
 export interface ResolvedSitePage {
   page: SnapshotPage;
-  /** The resolved language's pages in the resolved docs version. */
-  pages: SnapshotPage[];
+  /** The resolved language's pages in the resolved docs version. Shared with the
+   *  page index (cached per snapshot), so it is read-only. */
+  pages: readonly SnapshotPage[];
   docsVersion: SnapshotVersion;
   /** The requested path with the version prefix removed. */
   normalized: string;
@@ -129,24 +130,88 @@ export const sitePathWithinVersion = (snapshot: SiteSnapshot, path: string, vers
   return normalized;
 };
 
+/** One version and language's pages, with the lookups `resolveSitePage` makes,
+ *  built once: each is what the matching linear scan over `pages` returns. */
+interface LanguagePageIndex {
+  pages: readonly SnapshotPage[];
+  /** The first visible PAGE at each path, in snapshot order. */
+  servedByPath: Map<string, SnapshotPage>;
+  /** The first page of any kind at each path, in snapshot order. */
+  anyByPath: Map<string, SnapshotPage>;
+  /** The first page in nav order (`firstPage`), once computed. */
+  first?: SnapshotPage | null;
+  /** For every proper path prefix, the path of the first page beneath it in nav order (`firstPageUnder`), once computed. */
+  firstUnder?: Map<string, string>;
+}
+
+/** Page lookups per snapshot. A link check resolves every link on every page, so
+ *  scanning the pages per lookup made a site's checks cost pages × links. Keyed by
+ *  the snapshot's pages array (snapshots are immutable once built), and rebuilt
+ *  if that array's length changes. */
+const pageIndexes = new WeakMap<SnapshotPage[], { length: number; byScope: Map<string, LanguagePageIndex> }>();
+
+const languagePageIndex = (snapshot: SiteSnapshot, version: SnapshotVersion, languageCode: string): LanguagePageIndex => {
+  let entry = pageIndexes.get(snapshot.pages);
+  if (!entry || entry.length !== snapshot.pages.length) {
+    entry = { length: snapshot.pages.length, byScope: new Map() };
+    pageIndexes.set(snapshot.pages, entry);
+  }
+  const key = `${version.id}\u0000${languageCode}`;
+  const known = entry.byScope.get(key);
+  if (known) return known;
+  const pages = pagesForLanguage(pagesForVersion(snapshot, version), languageCode);
+  const servedByPath = new Map<string, SnapshotPage>();
+  const anyByPath = new Map<string, SnapshotPage>();
+  for (const page of pages) {
+    if (!anyByPath.has(page.path)) anyByPath.set(page.path, page);
+    if (page.kind === 'PAGE' && !page.hidden && !servedByPath.has(page.path)) servedByPath.set(page.path, page);
+  }
+  const index: LanguagePageIndex = { pages, servedByPath, anyByPath };
+  entry.byScope.set(key, index);
+  return index;
+};
+
+/** `firstPage(pages, languageCode)`, computed once per index. */
+const indexedFirstPage = (index: LanguagePageIndex, languageCode: string): SnapshotPage | undefined => {
+  if (index.first === undefined) index.first = firstPage(index.pages, languageCode) ?? null;
+  return index.first ?? undefined;
+};
+
+/** `firstPageUnder(pages, languageCode, prefix)`, answered from one pass over the nav. */
+const indexedFirstPageUnder = (index: LanguagePageIndex, languageCode: string, prefix: string): SnapshotPage | undefined => {
+  if (!prefix) return undefined;
+  if (!index.firstUnder) {
+    const firstUnder = new Map<string, string>();
+    for (const node of flattenNav(buildNavTree(index.pages, languageCode))) {
+      // Every proper prefix `p` with node.path.startsWith(`${p}/`): the path up to each slash.
+      for (let slash = node.path.indexOf('/'); slash >= 0; slash = node.path.indexOf('/', slash + 1)) {
+        const ancestor = node.path.slice(0, slash);
+        if (!firstUnder.has(ancestor)) firstUnder.set(ancestor, node.path);
+      }
+    }
+    index.firstUnder = firstUnder;
+  }
+  const path = index.firstUnder.get(prefix);
+  return path === undefined ? undefined : index.anyByPath.get(path);
+};
+
 export const resolveSitePage = (snapshot: SiteSnapshot, path: string, lang?: string, version?: string): ResolvedSitePage | null => {
   if (sitePathTooLong(path)) return null;
   const explicitVersion = matchingVersion(snapshot, version);
   const normalized = sitePathWithinVersion(snapshot, path, version);
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const docsVersion = explicitVersion ?? activeVersion(snapshot, version);
-  const versionPages = pagesForVersion(snapshot, docsVersion);
 
   const findIn = (langCode: string) => {
-    const langPages = pagesForLanguage(versionPages, langCode);
+    const index = languagePageIndex(snapshot, docsVersion, langCode);
     const found =
-      langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
-      (normalized === '' ? firstPage(langPages, langCode) : undefined) ??
+      index.servedByPath.get(normalized) ??
+      (normalized === '' ? indexedFirstPage(index, langCode) : undefined) ??
       // A group/section prefix (e.g. a navbar tab pointing at `/guides`)
       // resolves to its first page in nav order, Mintlify-style. Paths with no
       // pages beneath them still 404.
-      firstPageUnder(langPages, langCode, normalized);
-    return found ? { page: found, pages: langPages } : undefined;
+      indexedFirstPageUnder(index, langCode, normalized);
+    return found ? { page: found, pages: index.pages } : undefined;
   };
 
   // Try the active language; fall back to the default language's pages before 404.

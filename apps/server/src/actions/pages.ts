@@ -2,8 +2,10 @@ import { createHash } from 'node:crypto';
 import { Prisma, prisma } from '@nibleaf/database';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
+import { editor_pagetoolarge } from '@nibleaf/i18n/messages/editor_pagetoolarge';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { pageDescriptionText } from '@nibleaf/shared/markdown-text';
+import { MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
 import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
 import { interpolateVariablesWithin, variablesFromConfig } from '@nibleaf/shared/site';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
@@ -217,10 +219,29 @@ export const recomputeProjectPaths = async (projectId: string, tx: Prisma.Transa
   return updates;
 };
 
+/**
+ * Refuse page content over MAX_PAGE_CONTENT_BYTES (413 `page:too_large`). An
+ * update passes the stored body: content already over the cap may be saved
+ * again as long as it does not grow, so a page stored before the cap existed
+ * can always be shrunk. Editor, API and MCP writes all reach it through
+ * createPage and updatePage.
+ */
+export const assertPageContentFits = (content: string | undefined, stored?: string) => {
+  if (content === undefined) return;
+  const bytes = oversizedPageContent(content, stored);
+  if (bytes === null) return;
+  throw new AppError({
+    code: 'page:too_large',
+    message: editor_pagetoolarge(undefined, { locale: 'en' }),
+    details: { bytes, limit: MAX_PAGE_CONTENT_BYTES },
+  });
+};
+
 /** A move or slug change rewrites the paths of the page and its subtree. */
 export const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
 
 export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
+  assertPageContentFits(body.content);
   const page = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
@@ -338,6 +359,10 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
           throw pageRevisionConflict(id);
         }
+        // After the revision check, so a stale draft gets the conflict review
+        // first. Measured against the locked row, so a concurrent save cannot
+        // move the baseline.
+        assertPageContentFits(body.content, page.content);
         // The slug/URL is decoupled from the title (Mintlify-style): it only changes
         // when the slug is set explicitly or the page is re-parented (which needs a
         // uniqueness re-check among the new siblings). A title-only edit â€” e.g. every

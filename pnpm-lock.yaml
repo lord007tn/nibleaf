@@ -336,6 +336,9 @@ importers:
       lucide-react:
         specifier: ^1.70.0
         version: 1.70.0(@types/react@19.3.0)(react@19.3.1)
+      mdast-util-from-markdown:
+        specifier: ^2.0.3
+        version: 2.0.3
       mermaid:
         specifier: ^12.3.0
         version: 12.3.0
@@ -599,12 +602,12 @@ importers:
       ioredis:
         specifier: ^6.0.0
         version: 6.0.0
-      mdast-util-from-markdown:
-        specifier: 2.0.3
-        version: 2.0.3
       jose:
         specifier: ^6.2.14
         version: 6.2.15
+      mdast-util-from-markdown:
+        specifier: 2.0.3
+        version: 2.0.3
       mdast-util-mdx:
         specifier: 3.0.0
         version: 3.0.0
@@ -880,6 +883,9 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
+      '@nibleaf/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

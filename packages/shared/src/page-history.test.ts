@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { diffPageLines, exceedsUtf8Bytes, PAGE_DIFF_MAX_BYTES, PAGE_DIFF_MAX_LINES } from './page-history';
+import { diffPageLines, PAGE_DIFF_MAX_BYTES, PAGE_DIFF_MAX_LINES } from './page-history';
 
 describe('bounded page line diff', () => {
   it('preserves both documents including blank lines and an unchanged suffix', () => {
@@ -24,8 +24,6 @@ describe('bounded page line diff', () => {
   it('rejects giant lines and multi-byte adversarial input at the byte cap', () => {
     expect(diffPageLines('x'.repeat(PAGE_DIFF_MAX_BYTES + 1), '')).toEqual({ status: 'too-large', limit: 'bytes' });
     expect(diffPageLines('', '😀'.repeat(PAGE_DIFF_MAX_BYTES / 4 + 1))).toEqual({ status: 'too-large', limit: 'bytes' });
-    expect(exceedsUtf8Bytes('\ud800', 2)).toBe(true);
-    expect(exceedsUtf8Bytes('ع', 2)).toBe(false);
   });
 
   it('rejects excessive repeated lines before building diff output', () => {

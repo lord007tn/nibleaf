@@ -28,8 +28,11 @@ function main() {
   const artifactDir = resolve(process.argv[3] ?? '.cache/legacy-schema-compat');
   if (!existsSync(resolve(oldTree, '.git'))) throw new Error('Pass the detached origin/main worktree');
   if (/["&|<>^%]/.test(oldTree)) throw new Error('Unsupported worktree path');
+  const rollbackFloor = process.argv.includes('--rollback-floor');
+  const expectedRevision = rollbackFloor ? '0a18349c' : '8a3ce217';
   const revision = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: oldTree, encoding: 'utf8' });
-  if (revision.status !== 0 || !revision.stdout.trim().startsWith('8a3ce217')) throw new Error('Expected previous release 8a3ce217');
+  if (revision.status !== 0 || !revision.stdout.trim().startsWith(expectedRevision))
+    throw new Error(`Expected rollback revision ${expectedRevision}`);
   mkdirSync(artifactDir, { recursive: true });
   const root = fileURLToPath(new URL('../', import.meta.url));
   const scenario = resolve(oldTree, 'apps/server/src/scripts/legacy-compat-scenario.test.ts');
@@ -37,7 +40,7 @@ function main() {
   if (existsSync(scenario) || existsSync(rollbackScenario)) throw new Error('Refusing to overwrite an existing scenario');
   copyFileSync(resolve(root, 'scripts/legacy-compat-scenario.fixture'), scenario);
   copyFileSync(resolve(root, 'scripts/legacy-rollback-scenario.fixture'), rollbackScenario);
-  const env = { ...process.env, LEGACY_COMPAT_RESULT: resolve(artifactDir, 'scenario.json') };
+  const env = { ...process.env, LEGACY_ROLLBACK_FLOOR: rollbackFloor ? '1' : '0', LEGACY_COMPAT_RESULT: resolve(artifactDir, 'scenario.json') };
   const cleanupAdapter = process.argv.includes('--cleanup-adapter');
   const config = resolve(oldTree, 'apps/server/.legacy-compat.vitest.config.ts');
   const setup = resolve(oldTree, 'apps/server/.legacy-compat.setup.ts');
@@ -74,7 +77,7 @@ prisma.organization.deleteMany = async (args) => {
     return result.status === 0;
   };
   try {
-    for (const [pkg, suite, gate] of legacySuites)
+    for (const [pkg, suite, gate] of rollbackFloor ? [] : legacySuites)
       run(
         oldTree,
         [
@@ -95,10 +98,9 @@ prisma.organization.deleteMany = async (args) => {
       LEGACY_ROLLBACK_SETUP: '1',
     });
     run(oldTree, ['--filter', '@nibleaf/server', 'exec', 'vitest', 'run', 'src/scripts/legacy-rollback-scenario.test.ts', '--maxWorkers=1']);
-    if (existsSync(env.LEGACY_COMPAT_RESULT))
-      run(root, ['--filter', '@nibleaf/server', 'exec', 'vitest', 'run', 'src/scripts/legacy-schema-compat.postgres.test.ts', '--maxWorkers=1'], {
-        LEGACY_SCHEMA_COMPAT: '1',
-      });
+    run(root, ['--filter', '@nibleaf/server', 'exec', 'vitest', 'run', 'src/scripts/legacy-schema-compat.postgres.test.ts', '--maxWorkers=1'], {
+      LEGACY_SCHEMA_COMPAT: '1',
+    });
   } finally {
     rmSync(scenario);
     rmSync(rollbackScenario);
@@ -108,7 +110,7 @@ prisma.organization.deleteMany = async (args) => {
     }
     writeFileSync(
       resolve(artifactDir, 'results.json'),
-      `${JSON.stringify({ revision: revision.stdout.trim(), cleanupAdapter, results }, null, 2)}\n`,
+      `${JSON.stringify({ revision: revision.stdout.trim(), rollbackFloor, cleanupAdapter, results }, null, 2)}\n`,
     );
   }
   if (results.some((result) => result.exitCode !== 0) || !existsSync(env.LEGACY_COMPAT_RESULT)) process.exitCode = 1;

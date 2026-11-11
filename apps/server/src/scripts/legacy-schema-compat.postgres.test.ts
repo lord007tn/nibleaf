@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { prisma } from '@nibleaf/database';
 import { afterAll, describe, expect, it } from 'vitest';
+import { resolveSiteAccess as rollbackSiteAccess } from '../actions/rollback-pr1-access.fixture';
 import { resolveOrgAccess, resolveSiteAccess } from '../lib/access';
 
 describe.skipIf(process.env.LEGACY_SCHEMA_COMPAT !== '1')('new resolver reads previous-release writes', () => {
@@ -15,11 +16,13 @@ describe.skipIf(process.env.LEGACY_SCHEMA_COMPAT !== '1')('new resolver reads pr
       if (sites.length !== 1) continue;
       const site = sites[0];
       if (!site) continue;
-      const expected = member.role === 'owner' && member.orgRole !== 'owner' ? 'admin' : member.role;
-      if (['owner', 'admin', 'member', 'viewer'].includes(expected)) {
-        expect((await resolveSiteAccess(member.userId, site.id)).role).toBe(expected);
-        compared++;
-      }
+      const previous = await rollbackSiteAccess(member.userId, site.id).catch((error: unknown) => {
+        if ((error as { status?: number }).status === 404) return null;
+        throw error;
+      });
+      if (previous) expect((await resolveSiteAccess(member.userId, site.id)).role).toBe(previous.role);
+      else await expect(resolveSiteAccess(member.userId, site.id)).rejects.toMatchObject({ status: 404 });
+      compared++;
     }
     writeFileSync(`${process.env.LEGACY_COMPAT_RESULT}.access.json`, JSON.stringify({ compared, mismatches: 0 }));
     expect(compared).toBeGreaterThan(0);
@@ -47,7 +50,7 @@ describe.skipIf(process.env.LEGACY_SCHEMA_COMPAT !== '1')('new resolver reads pr
     expect(await prisma.member.findFirst({ where: { userId: ids.demotedId } })).toMatchObject({ role: 'viewer', orgRole: 'member' });
     // Remove from the website, then roll back.
     await expect(resolveSiteAccess(ids.removedId!, ids.siteId!)).rejects.toMatchObject({ status: 404 });
-    expect(await prisma.member.count({ where: { userId: ids.removedId } })).toBe(0);
+    expect(await prisma.projectMember.count({ where: { projectId: ids.siteId, userId: ids.removedId } })).toBe(0);
     // Create a website, then roll back.
     expect((await resolveSiteAccess(ids.creatorId!, ids.createdSiteId!)).role).toBe('owner');
     // Delete a website, then roll back: nothing of it is left half-erased.
