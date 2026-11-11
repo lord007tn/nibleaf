@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import { AlignLeft } from 'lucide-react';
 import { type CSSProperties, useEffect, useState } from 'react';
 
@@ -107,7 +108,8 @@ export function TableOfContents({ headings, label, mobile = false }: { headings:
                   if (details) details.open = false;
                 }}
               >
-                {heading.text}
+                {/* Isolated in its own direction; the outline keeps the page's alignment. */}
+                <span dir={blockDirection(heading.text)}>{heading.text}</span>
               </a>
             </li>
           );

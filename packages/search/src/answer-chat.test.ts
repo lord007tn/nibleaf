@@ -14,6 +14,7 @@ import {
   chatCallInputBounds,
   chatCallInputTokens,
   chatSourcesTokens,
+  chatSystemPrompt,
   chatTurnReservation,
   chatUserPrompt,
   condenseFollowUp,
@@ -61,6 +62,30 @@ const collect = async (deltas: AsyncIterable<string>) => {
 };
 
 describe('chat citation policy', () => {
+  it('keeps a supported alternative after acknowledging an undocumented feature', () => {
+    expect(validate('The docs do not describe automatic invites, but you can add a user from Users. [S1]')).toMatchObject({ status: 'answered' });
+  });
+  it.each([
+    ["I couldn't verify this from the docs. [S1]", 'en', 'I couldn’t find a clear answer'],
+    ['The supplied documentation does not state how to add a user. [S1]', 'en', 'I couldn’t find a clear answer'],
+    ['لم أجد إجابة في الدليل. [S1]', 'ar', 'لم أجد إجابة واضحة'],
+    [NO_ANSWER_SENTINEL, 'ar', 'لم أجد إجابة واضحة'],
+  ])('declines without citations even when the model cites a refusal: %s', async (text, language, expected) => {
+    const adapter = fakeText();
+    adapter.setResponses([{ text }]);
+    const generation = streamGroundedChat({
+      adapter,
+      model: 'fake',
+      question: language === 'ar' ? 'كيف أضيف مستخدم؟' : 'How do I add a user?',
+      history: [],
+      chunks,
+      language: 'en',
+    });
+    await collect(generation.deltas);
+    const result = await generation.result;
+    expect(result).toMatchObject({ status: 'no_answer', citations: [] });
+    expect(result.answer).toContain(expected);
+  });
   it.each(['a', 'ع'])('cuts off a provider ignoring output caps, including %s text without usage', async (letter) => {
     const generation = run(`${letter.repeat(1500)} [S1]`);
     const output = (await collect(generation.deltas)).join('');
@@ -441,15 +466,16 @@ describe('a bounded context and strict reservations', () => {
 describe('reply language', () => {
   it.each([
     ['How do I export my notes?', 'en', /^English/],
-    ['How do I export my notes?', 'ar', /Latin script, most likely English/],
+    ['How do I export my notes?', 'ar', /^English/],
     ['كيف أصدّر ملاحظاتي؟', 'en', /^Arabic$/],
     ['كيف أعمل export للـ notebook بصيغة Markdown؟', 'ar', /^Arabic \(keep the English names/],
     ['میں نوٹس کیسے برآمد کروں؟', 'ur', /^Urdu$/],
     ['Comment exporter mes notes ?', 'fr', /^French/],
-    ['?', 'en', /language of the question/],
+    ['?', 'en', /^English/],
   ])('decides %s on a %s site', (question, site, expected) => expect(replyLanguage(question, site)).toMatch(expected));
-  it('states it after the sources, where it cannot be missed', () => {
-    expect(chatUserPrompt('How?', [chunk], undefined, 'ar')).toMatch(/Reply in: the language of the question \(it is written in Latin script/);
+  it('puts the language instruction in the system prompt and leaves user/source text untrusted', () => {
+    expect(chatSystemPrompt('ar', 'كيف أضيف مستخدم جديد؟')).toContain('Reply language (trusted server setting): Arabic');
+    expect(chatUserPrompt('How?', [chunk])).not.toContain('Reply in:');
   });
 });
 

@@ -391,3 +391,5 @@ export function rehypeMermaid() {
     visit(tree);
   };
 }
+
+export { rehypeBlockDirection } from './block-direction';

@@ -1,3 +1,4 @@
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import type { ReactNode } from 'react';
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
@@ -14,7 +15,11 @@ export function Steps({ children }: { children?: ReactNode }) {
 export function Step({ title, children }: { title?: string; children?: ReactNode }) {
   return (
     <li className="relative [&>:first-child]:mt-0 [&>:last-child]:mb-0">
-      {title ? <div className="mb-1 font-semibold">{title}</div> : null}
+      {title ? (
+        <div className="mb-1 font-semibold" dir={blockDirection(title)}>
+          {title}
+        </div>
+      ) : null}
       {children}
     </li>
   );
