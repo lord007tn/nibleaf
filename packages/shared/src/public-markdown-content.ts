@@ -4,16 +4,17 @@ import { buildMdxTree, type MdxNode, tokenizeMdx } from './mdx-tokens';
  *  decimal or hexadecimal. */
 const CHARACTER_REFERENCE = /^&(?:[a-z][a-z\d]{1,31}|#\d{1,7}|#x[\da-f]{1,6});/i;
 
-/** Escape HTML, leaving character references already written (`&amp;`,
- *  `&#65;`) as they are: they decode to text, never to markup, and escaping
- *  them again would show their source (`&amp;amp;`). */
+/** Make prose inert as HTML: `&`, `<` and `>` become references, leaving
+ *  character references already written (`&amp;`, `&#65;`) as they are, since
+ *  they decode to text and escaping them again would show their source
+ *  (`&amp;amp;`). Quotes stay as written ("you're", not `you&#39;re`): prose
+ *  never sits inside an attribute here, and without `<` no tag can open, so a
+ *  quote can't change what the text means to an HTML or Markdown reader. */
 const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, (ampersand, offset: number) => (CHARACTER_REFERENCE.test(value.slice(offset, offset + 40)) ? ampersand : '&amp;'))
     .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
+    .replaceAll('>', '&gt;');
 
 const mdxAttribute = (source: string, name: string): string | undefined => {
   const match = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(source);
