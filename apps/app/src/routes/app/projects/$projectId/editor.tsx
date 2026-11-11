@@ -69,7 +69,7 @@ import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
 import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
-import { NeverPublishedBanner, PagePublishStateBar, SaveStatus } from '@/components/editor/save-status';
+import { NeverPublishedBanner, PagePublishStateBar, type SaveState, SaveStatus } from '@/components/editor/save-status';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
@@ -355,7 +355,7 @@ function EditorPage() {
   const unsupportedTags = useMemo(() => detectUnsupportedMdxTags(content), [content]);
   // Markdown source is an editing workspace; Viewers read the visual page.
   const effectiveMode = viewOnly && editorMode === 'markdown' ? visualMode : editorMode;
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [status, setStatus] = useState<SaveState>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
   // page, so opening a page's settings from the tree does NOT switch what you're
@@ -511,6 +511,13 @@ function EditorPage() {
     updatePageRef.current = updatePage;
     addressFollowsTitleRef.current = (pageId: string) => addressFollowsTitle(queryClient, projectId, pageId);
   }, [synced, title, content, page, updatePage, queryClient, projectId]);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const saveQueue = useMemo(
     () =>
       createEditorSaveQueue(
@@ -531,15 +538,15 @@ function EditorPage() {
               body: { expectedUpdatedAt: draft.expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
             });
             lastSavedRef.current = saved;
-            setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
+            if (mounted.current) setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
             const latest = draftRef.current;
-            if (latest.synced?.id === draft.id) {
+            if (mounted.current && latest.synced?.id === draft.id) {
               setStatus(latest.draft.title === draft.title && latest.draft.content === draft.content ? 'saved' : 'saving');
             }
             return saved;
           } catch (error) {
-            if (draftRef.current.synced?.id === draft.id) {
-              setStatus('error');
+            if (mounted.current && draftRef.current.synced?.id === draft.id) {
+              setStatus(navigator.onLine === false ? 'offline' : 'error');
               if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
             }
             throw error;
@@ -551,11 +558,8 @@ function EditorPage() {
   );
   const saveDraft = useDebouncer(
     (draft: PageDraft) => {
-      void saveQueue.save(draft).catch((error: unknown) => {
-        if (draftRef.current.synced?.id !== draft.id) return;
-        setStatus('error');
-        if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
-      });
+      // The queue settles status for every write, including flushes on unmount.
+      void saveQueue.save(draft).catch(() => undefined);
     },
     { wait: 700, onUnmount: (debouncer) => debouncer.flush() },
   );
@@ -565,11 +569,12 @@ function EditorPage() {
     if (!page || !canEditContent || !shouldAutosave({ synced, draft: { title, content }, conflicted: conflictedPageId === page.id }, page)) {
       // Undoing back to the server copy must cancel an older queued draft.
       saveDraft.cancel();
+      if (!saveQueue.hasPending()) setStatus((current) => (current === 'saving' ? 'saved' : current));
       return;
     }
     setStatus('saving');
     saveDraft.maybeExecute({ id: page.id, title, content, expectedUpdatedAt: synced?.updatedAt });
-  }, [title, content, page, synced, saveDraft, canEditContent, conflictedPageId]);
+  }, [title, content, page, synced, saveDraft, canEditContent, conflictedPageId, saveQueue.hasPending]);
 
   const flushCurrentDraft = async () => {
     saveDraft.cancel();
@@ -581,7 +586,7 @@ function EditorPage() {
     // The author can undo to the original value while an older save is still
     // in flight. Persist that final value after the request, even though it
     // currently compares clean with the old hydration snapshot.
-    if (!shouldFlushDraft(current, current.page, saveQueue.hasPending(), status === 'error')) {
+    if (!shouldFlushDraft(current, current.page, saveQueue.hasPending(), status === 'error' || status === 'offline')) {
       await saveQueue.settled();
       return;
     }
@@ -695,8 +700,25 @@ function EditorPage() {
   };
   // True while a new page (not a group) is being created and its title will take focus.
   const bufferTitleKeys = useRef(false);
+  const creationFocus = useRef<{ element: HTMLElement; label: string | null; text: string | null } | null>(null);
+  const restoreCreationFocus = useRef(false);
+  useLayoutEffect(() => {
+    if (pendingSwitch || !restoreCreationFocus.current) return;
+    restoreCreationFocus.current = false;
+    const previous = creationFocus.current;
+    const target = previous?.element.isConnected
+      ? previous.element
+      : [...document.querySelectorAll<HTMLElement>('[aria-label]')].find((element) =>
+          previous?.label ? element.getAttribute('aria-label') === previous.label : false,
+        );
+    const replacement = target ?? [...document.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === previous?.text);
+    (replacement ?? document.getElementById('main-content'))?.focus();
+  }, [pendingSwitch]);
   const createAndOpen = (body: Parameters<typeof createPage.mutate>[0], options?: { focusTitle?: boolean }) => {
     if (creationInFlight.current || transitionInFlight.current) return;
+    const focused = document.activeElement;
+    creationFocus.current =
+      focused instanceof HTMLElement ? { element: focused, label: focused.getAttribute('aria-label'), text: focused.textContent } : null;
     bufferTitleKeys.current = options?.focusTitle === true;
     beginSwitch({ kind: 'create' }, () => {
       creationInFlight.current = true;
@@ -706,9 +728,10 @@ function EditorPage() {
           setSelectedId(created.id);
           if (options?.focusTitle) setFocusTitleFor(created.id);
         },
-        onError: (error) => {
+        onError: () => {
           setPendingSwitch(null);
-          toast.error(friendlyErrorMessage(t, error, 'editor.createFailed'));
+          bufferTitleKeys.current = false;
+          restoreCreationFocus.current = true;
         },
         onSettled: () => {
           creationInFlight.current = false;
@@ -1430,13 +1453,15 @@ function EditorPage() {
           ) : activeId && page ? (
             /* Main area: page editor */
             <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-              {status === 'error' ? (
+              {status === 'error' || status === 'offline' ? (
                 <div
                   role="alert"
                   className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
                 >
                   <TriangleAlert className="size-4 shrink-0" />
-                  <span className="min-w-0 flex-1">{t(conflictedPageId === page.id ? 'editor.conflict.body' : 'editor.saveError')}</span>
+                  <span className="min-w-0 flex-1">
+                    {t(conflictedPageId === page.id ? 'editor.conflict.body' : status === 'offline' ? 'site.aiOffline' : 'editor.saveError')}
+                  </span>
                   <Button
                     size="sm"
                     variant="outline"
