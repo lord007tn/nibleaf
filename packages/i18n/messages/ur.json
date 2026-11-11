@@ -502,6 +502,16 @@
   "editor_deletegroup": "گروپ حذف کریں",
   "editor_deletegroupconfirm": "گروپ “{title}” کو ردی میں منتقل کریں؟ یہ وہاں 30 دن تک رہے گا، اس لیے آپ اسے بحال کر سکتے ہیں۔",
   "editor_deletegroupwithchildrenconfirm": "گروپ “{title}” اور اس کے اندر کے صفحات ({count}) ردی میں منتقل کریں؟ ان صفحات کو درخت میں رکھنے کے لیے پہلے انہیں گروپ سے باہر گھسیٹیں۔ سب کچھ 30 دن تک ردی میں رہے گا۔",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ یہاں لنک کرتا ہے",
+        "form=*": "{count} صفحات یہاں لنک کرتے ہیں"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ردی میں منتقل ہو گیا",
   "editor_deletefailed": "صفحہ حذف نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
   "editor_trash_button": "ردی ({count})",
