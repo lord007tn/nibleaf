@@ -133,4 +133,4 @@ The release gate in `.github/custom-domain-edge-release.md` already refuses any 
 - **Entitlement expiry** with no mutation still changes the delivery revision.
 - **HEAD-first then GET**, encodings, and headers on hit, stale and miss.
 
-Tracking issue: see the GitHub issue linked from this file's PR.
+Tracking issue: https://github.com/lord007tn/nibleaf/issues/438
