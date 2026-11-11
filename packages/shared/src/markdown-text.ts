@@ -235,10 +235,24 @@ const hasUnclosedRawHtml = (prefix: string): boolean => {
   return false;
 };
 
-const extractPrefix = (prefix: string): string => {
-  if (markerCount(prefix) > MAX_MARKERS || hasUnclosedRawHtml(prefix)) return linearStrip(prefix);
+/** Block types whose paragraphs read as the page's prose: the document itself,
+ *  blockquotes and callout or wrapper components. Headings, lists, tables, code,
+ *  raw HTML and the like are left out of a prose-only summary. */
+const PROSE_CONTAINERS = new Set(['root', 'blockquote', 'mdxJsxFlowElement', 'containerDirective']);
+
+/** Only the paragraphs of the document, in order. */
+const proseParagraphs = (node: Nodes): Nodes[] => {
+  if (node.type === 'paragraph') return [node];
+  if (!PROSE_CONTAINERS.has(node.type) || !('children' in node)) return [];
+  return (node.children as Nodes[]).flatMap(proseParagraphs);
+};
+
+const extractPrefix = (prefix: string, proseOnly = false): string => {
+  if (markerCount(prefix) > MAX_MARKERS || hasUnclosedRawHtml(prefix)) return proseOnly ? '' : linearStrip(prefix);
   const walk: Walk = { parts: [], rawText: null };
-  collect(parse(prefix), walk);
+  const tree = parse(prefix);
+  if (proseOnly) for (const paragraph of proseParagraphs(tree)) collect(paragraph, walk);
+  else collect(tree, walk);
   return walk.parts
     .join('')
     .split('\n')
@@ -247,31 +261,48 @@ const extractPrefix = (prefix: string): string => {
     .join(' ');
 };
 
-const extract = (source: string): string => {
+const extract = (source: string, proseOnly = false): string => {
   const body = stripFrontmatter(source);
   let text = '';
   for (const size of PREFIXES) {
-    text = extractPrefix(body.slice(0, size));
+    // A larger prefix the guards turn away ('' on the prose path) keeps the prose already found.
+    text = extractPrefix(body.slice(0, size), proseOnly) || text;
     if (text.length >= ENOUGH_TEXT || body.length <= size) break;
   }
   return text;
 };
 
-/** Visible prose of a Markdown/MDX document as one line of plain text. */
-export const markdownToPlainText = (source: string): string => {
+const cached = (source: string, mode: 'all' | 'prose', compute: () => string): string => {
   if (!source) return '';
-  const key = createHash('sha1').update(source).digest('base64');
+  const key = `${mode}:${createHash('sha1').update(source).digest('base64')}`;
   const hit = cache.get(key);
   if (hit !== undefined) {
     cache.delete(key);
     cache.set(key, hit);
     return hit;
   }
-  const text = extract(source);
+  const text = compute();
   cache.set(key, text);
   if (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value as string);
   return text;
 };
+
+/** Visible prose of a Markdown/MDX document as one line of plain text. */
+export const markdownToPlainText = (source: string): string => cached(source, 'all', () => extract(source));
+
+/**
+ * The page's paragraphs only, for descriptions (AUTH-19): headings, lists,
+ * tables and code are left out. A page with no paragraphs falls back to all of
+ * its visible text, so it never ends up with an empty description.
+ */
+const markdownToProse = (source: string): string => cached(source, 'prose', () => extract(source, true)) || markdownToPlainText(source);
+
+/** No space before punctuation that ends a phrase ("sign in ." becomes "sign in."),
+ *  Latin and Arabic. A mark followed by more text is left alone (".env", "...js"). */
+const tidyPunctuation = (text: string): string => text.replace(/ +([.,;:!?،؛؟])(?=\s|$)/gu, '$1');
+
+/** Search engines show about 155 characters of a meta description. */
+const DESCRIPTION_LENGTH = 155;
 
 /** Word-boundary summary of Markdown, counting graphemes. */
 export const excerpt = (source: string, max = 160): string => truncateText(markdownToPlainText(source), max);
@@ -280,6 +311,16 @@ export const excerpt = (source: string, max = 160): string => truncateText(markd
  *  llms.txt, exports), never shown as a visible lede. */
 export const pageExcerpt = (page: Pick<SnapshotPage, 'content'>, max = 160): string => excerpt(page.content, max);
 
-/** One-line description: the author's SEO override, then their summary, then the body. */
-export const pageDescription = (page: Pick<SnapshotPage, 'description' | 'content'> & { config?: SnapshotPageConfig | null }): string =>
-  excerpt(page.config?.seo?.metaDescription?.trim() || explicitPageDescription(page) || page.content);
+type DescribedPage = Pick<SnapshotPage, 'description' | 'content'> & { config?: SnapshotPageConfig | null };
+
+/** The page's description in full, before it is cut to search length: the author's
+ *  SEO override, then their summary, then the body's paragraphs (not its headings,
+ *  lists, tables or code). For the editor, which shows the cut itself and lets the
+ *  author start from the whole text. */
+export const pageDescriptionText = (page: DescribedPage): string => {
+  const authored = page.config?.seo?.metaDescription?.trim() || explicitPageDescription(page);
+  return tidyPunctuation(authored ? markdownToPlainText(authored) : markdownToProse(page.content));
+};
+
+/** One-line description, cut where search results cut it (see pageDescriptionText). */
+export const pageDescription = (page: DescribedPage): string => truncateText(pageDescriptionText(page), DESCRIPTION_LENGTH);
