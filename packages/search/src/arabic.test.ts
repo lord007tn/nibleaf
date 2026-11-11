@@ -1,4 +1,3 @@
-import { growthMs, growthMsAsync, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
 import { createDocIndex, lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText, type SearchDoc, searchDocs } from './index';
 
@@ -182,22 +181,17 @@ describe('Arabic morphological search corpus', () => {
   });
 });
 
-describe('Arabic morphology performance guards', () => {
-  // Each bound times the same work at 4x the size (testing/growth): linear work
-  // grows about 4x, quadratic 16x, whatever the runner's speed.
+// Their cost is bounded in arabic.growth.test.ts (pnpm test:growth).
+describe('Arabic morphology at size', () => {
   it('analyzes a large documentation sample in linear time', () => {
     const sample = (n: number) => 'والمستخدمين إعداداتهم API-v2 `المكتبات` واجهات المطورين. '.repeat(n);
     const analyzed = normalizeArabicMorphologyText(sample(4000));
     expect(analyzed.length).toBeLessThanOrEqual(sample(4000).length);
-    const [small, large] = growthMs(normalizeArabicMorphologyText, sample(1000), sample(4000));
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
   it('handles many malformed unmatched code delimiters in linear time', () => {
     const sample = (n: number) => Array.from({ length: n }, () => '` مستخدم دون اغلاق').join('\n');
     expect(normalizeArabicMorphologyText(sample(4000))).toContain('مستخدم');
-    const [small, large] = growthMs(normalizeArabicMorphologyText, sample(1000), sample(4000));
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
   it('indexes and answers repeated morphology queries in linear time', async () => {
@@ -211,7 +205,5 @@ describe('Arabic morphology performance guards', () => {
       return index;
     };
     expect(await searchDocs(await indexAndSearch(docs(300)), 'مستخدم', { tolerance: 1 })).not.toHaveLength(0);
-    const [small, large] = await growthMsAsync(indexAndSearch, docs(75), docs(300));
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 });

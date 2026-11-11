@@ -1,5 +1,4 @@
-﻿import { growthMs, growthMsAsync, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
-import { fakeText } from '@tanstack/ai/testing';
+﻿import { fakeText } from '@tanstack/ai/testing';
 import { Tiktoken } from 'js-tiktoken/lite';
 import cl100k_base from 'js-tiktoken/ranks/cl100k_base';
 import o200k_base from 'js-tiktoken/ranks/o200k_base';
@@ -425,9 +424,6 @@ describe('a bounded context and strict reservations', () => {
     // A prompt keeps 6,000 characters of each source, so a few of them fit.
     expect(sourcesTokens(context)).toBeLessThanOrEqual(24_000);
     expect(fitted).toHaveLength(1);
-    // 4x the input costs about 4x (testing/growth); a quadratic regression would show as 16x.
-    const [small, large] = growthMs(sizeAndFit, mixedOf(37_500), mixed);
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
   it('reads fewer sources when a budget has less room, never more than it reserved', () => {
@@ -518,9 +514,6 @@ describe('follow-up suggestions', () => {
       return suggestFollowUps({ adapter, question: `${'?'.repeat(n)}x`, chunks, language: 'en', asked: [`${'. '.repeat(n / 2)}x`] });
     };
     expect((await suggest(50_000)).questions).toEqual(['Can I export?']);
-    // 4x the question and history costs about 4x (testing/growth).
-    const [small, large] = await growthMsAsync(suggest, 12_500, 50_000);
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
   it.each([
     [{ error: 'boom' }, true],
@@ -555,20 +548,9 @@ describe('follow-up suggestions', () => {
     const cut = fakeText();
     cut.setResponses([{ text: `["${'\\"'.repeat(200)}` }]);
     expect((await suggestFollowUps({ adapter: cut, question: 'How?', chunks, language: 'en' })).failed).toBe(true);
-    // Reading a long, hostile cut-off output is one pass: 4x the output costs about 4x (testing/growth).
-    const escapes = (n: number) => `["${'\\"'.repeat(n)}`;
-    const repeats = (n: number) => `[${'"Can I? ", '.repeat(n)}`;
-    expect(parseFollowUpQuestions(escapes(500_000), 'How?')).toEqual({ questions: [], unreadable: true });
-    expect(parseFollowUpQuestions(repeats(100_000), 'How?').questions).toEqual(['Can I?']);
-    const parse = (output: string) => parseFollowUpQuestions(output, 'How?');
-    const pairs: Array<[string, string]> = [
-      [escapes(125_000), escapes(500_000)],
-      [repeats(25_000), repeats(100_000)],
-    ];
-    for (const [smallInput, largeInput] of pairs) {
-      const [small, large] = growthMs(parse, smallInput, largeInput);
-      expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
-    }
+    // A long, hostile cut-off output (its cost is bounded in answer-chat.growth.test.ts).
+    expect(parseFollowUpQuestions(`["${'\\"'.repeat(500_000)}`, 'How?')).toEqual({ questions: [], unreadable: true });
+    expect(parseFollowUpQuestions(`[${'"Can I? ", '.repeat(100_000)}`, 'How?').questions).toEqual(['Can I?']);
   });
   it('finds the list past a bracket in prose before it', async () => {
     expect(parseFollowUpQuestions('Here are [two] ideas: ["Can I export?", "Is it free?"]', 'How?')).toEqual({

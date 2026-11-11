@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SiteSnapshot, SnapshotPage } from './site';
 import { MAX_SITE_PATH_LENGTH, resolveSitePage, resolveSiteRoute, sitePathWithinVersion, trimSlashes } from './site-route';
-import { constantGrowthLimit, growthMs } from './testing/growth';
 
 const page = (path: string): SnapshotPage => ({
   id: `page-${path}`,
@@ -48,28 +47,19 @@ describe('trimSlashes', () => {
 });
 
 describe('site routes on adversarial paths', () => {
-  // Paths longer than the reader serves are rejected before any work, so a
-  // 100k-slash path costs what a 25k one does, not a multiple of a scan
-  // (testing/growth, constant bound).
+  // Paths longer than the reader serves are rejected before any work (their cost
+  // is bounded in site-route.growth.test.ts, pnpm test:growth).
   const shapes = [
     (runs: string) => `${runs}guide${runs}`,
     (runs: string) => `${runs}x${runs}y`,
     (runs: string) => runs,
     (runs: string) => `latest${runs}guide`,
   ];
-  const resolveAll = (input: string) => {
-    resolveSiteRoute(site, input);
-    resolveSitePage(site, input, undefined, 'latest');
-    sitePathWithinVersion(site, input, 'latest');
-  };
-
   it.each(shapes.map((shape, index) => [index, shape] as const))('rejects over-long path %i immediately', (_index, shape) => {
     const input = shape('/'.repeat(100_000));
     expect(resolveSiteRoute(site, input)).toEqual({ kind: 'not-found', reason: 'path-too-long' });
     expect(resolveSitePage(site, input, undefined, 'latest')).toBeNull();
     expect(sitePathWithinVersion(site, input, 'latest').length).toBeLessThanOrEqual(MAX_SITE_PATH_LENGTH);
-    const [small, large] = growthMs(resolveAll, shape('/'.repeat(25_000)), input, { minMs: 12 });
-    expect(large).toBeLessThanOrEqual(constantGrowthLimit(small));
   });
 
   it('still resolves a legitimate 2,000-character path', () => {

@@ -12,9 +12,11 @@
  * with the 20 ms of slack below, quadratic growth only shows once the small
  * median exceeds 2.5 ms (16t > 8t + 20), and linear growth against the constant
  * bound once it exceeds 10 ms (4t > 2t + 20). When the samples come in under
- * `minMs` (the work got faster once warm), the repeats double and the samples are
- * taken again, up to six times; after that the measurement throws rather than
- * return a pair that can't tell growth apart.
+ * `minMs` (the work got faster once warm), the repeats grow, sized from the
+ * shortfall, and the samples are taken again, until the median reaches `minMs`
+ * or `budgetMs` of measuring has passed; then the measurement throws rather than
+ * return a pair that can't tell growth apart. Near-free work (a length check) may
+ * need a million calls per sample; the budget, not a repeat ceiling, is the limit.
  *
  * `vary(input, rep)` gives each call a fresh but equivalent input (append a
  * trailing comment, say), for work behind a cache or memo; `rep` is unique
@@ -22,14 +24,32 @@
  */
 export interface GrowthOptions<T> {
   minMs?: number;
+  /** Wall time the whole measurement may take before it gives up (default 2 s). */
+  budgetMs?: number;
   vary?: (input: T, rep: number) => T;
 }
 
-const UNREACHABLE = Symbol('unreachable');
-const MAX_ATTEMPTS = 6;
-const MAX_REPEAT = 1 << 24;
+/**
+ * Growth tests compare timings, so they run on their own, one file at a time
+ * (`pnpm test:growth`, vitest `--mode growth`): on a shared CI runner, other test
+ * files in parallel workers slow one side of a measurement and not the other.
+ * Wrap a growth file's tests in `describe.runIf(growthTestsEnabled)`.
+ */
+export const growthTestsEnabled = (import.meta as { env?: { MODE?: string } }).env?.MODE === 'growth';
 
-export const growthMs = <T>(run: (input: T) => unknown, small: T, large: T, { minMs = 4, vary }: GrowthOptions<T> = {}): [number, number] => {
+const UNREACHABLE = Symbol('unreachable');
+const MAX_REPEAT = 1 << 28;
+/** The next repeat count when the small median came in at `smallMs`: enough to clear `minMs` with room. */
+const nextRepeat = (repeat: number, smallMs: number, minMs: number): number =>
+  Math.min(MAX_REPEAT, Math.max(repeat * 2, Math.ceil((repeat * minMs * 1.5) / Math.max(smallMs, minMs / 1024))));
+
+export const growthMs = <T>(
+  run: (input: T) => unknown,
+  small: T,
+  large: T,
+  { minMs = 4, budgetMs = 2000, vary }: GrowthOptions<T> = {},
+): [number, number] => {
+  const deadline = performance.now() + budgetMs;
   let repeat = 1;
   let rep = 0;
   // Every result is kept and read below, so the engine can never drop a timed call as unused.
@@ -46,8 +66,10 @@ export const growthMs = <T>(run: (input: T) => unknown, small: T, large: T, { mi
   // Warm both inputs first, so the repeat count is sized on warm (JIT-compiled) runs.
   time(small);
   time(large);
-  while (time(small) < minMs && repeat < MAX_REPEAT) repeat *= 2;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+  for (let first = time(small); first < minMs && repeat < MAX_REPEAT && performance.now() < deadline; first = time(small)) {
+    repeat = nextRepeat(repeat, first, minMs);
+  }
+  for (;;) {
     time(large);
     const times: [number[], number[]] = [[], []];
     for (let round = 0; round < 3; round += 1) {
@@ -62,9 +84,13 @@ export const growthMs = <T>(run: (input: T) => unknown, small: T, large: T, { mi
     if (sink === UNREACHABLE) throw new Error('unreachable');
     const result: [number, number] = [median(times[0]), median(times[1])];
     if (result[0] >= minMs) return result;
-    repeat = Math.min(repeat * 2, MAX_REPEAT);
+    if (performance.now() >= deadline || repeat >= MAX_REPEAT) {
+      throw new Error(
+        `growthMs calibration failed: the small input stayed under ${minMs} ms (${result[0].toFixed(2)} ms at ${repeat} repeats) within ${budgetMs} ms`,
+      );
+    }
+    repeat = nextRepeat(repeat, result[0], minMs);
   }
-  throw new Error(`growthMs calibration failed: the small input stayed under ${minMs} ms after ${MAX_ATTEMPTS} attempts at up to ${repeat} repeats`);
 };
 
 /** `growthMs` for async work (index building, a model call through a fake adapter):
@@ -73,8 +99,9 @@ export const growthMsAsync = async <T>(
   run: (input: T) => Promise<unknown>,
   small: T,
   large: T,
-  { minMs = 4, vary }: GrowthOptions<T> = {},
+  { minMs = 4, budgetMs = 2000, vary }: GrowthOptions<T> = {},
 ): Promise<[number, number]> => {
+  const deadline = performance.now() + budgetMs;
   let repeat = 1;
   let rep = 0;
   let sink: unknown;
@@ -89,8 +116,10 @@ export const growthMsAsync = async <T>(
   const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
   await time(small);
   await time(large);
-  while ((await time(small)) < minMs && repeat < MAX_REPEAT) repeat *= 2;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+  for (let first = await time(small); first < minMs && repeat < MAX_REPEAT && performance.now() < deadline; first = await time(small)) {
+    repeat = nextRepeat(repeat, first, minMs);
+  }
+  for (;;) {
     await time(large);
     const times: [number[], number[]] = [[], []];
     for (let round = 0; round < 3; round += 1) {
@@ -105,11 +134,13 @@ export const growthMsAsync = async <T>(
     if (sink === UNREACHABLE) throw new Error('unreachable');
     const result: [number, number] = [median(times[0]), median(times[1])];
     if (result[0] >= minMs) return result;
-    repeat = Math.min(repeat * 2, MAX_REPEAT);
+    if (performance.now() >= deadline || repeat >= MAX_REPEAT) {
+      throw new Error(
+        `growthMsAsync calibration failed: the small input stayed under ${minMs} ms (${result[0].toFixed(2)} ms at ${repeat} repeats) within ${budgetMs} ms`,
+      );
+    }
+    repeat = nextRepeat(repeat, result[0], minMs);
   }
-  throw new Error(
-    `growthMsAsync calibration failed: the small input stayed under ${minMs} ms after ${MAX_ATTEMPTS} attempts at up to ${repeat} repeats`,
-  );
 };
 
 /** The most a 4x larger input may cost when the work is linear: 8x, plus 20 ms
