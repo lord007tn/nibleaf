@@ -20,3 +20,17 @@ heading ids. Same method as `operations/ux/reader-ask-ai.md` §1.
   left-to-right layout.
 - `en-copied.txt`, `ar-copied.txt`: what **Copy answer** put on the clipboard as plain text, read back from the
   browser's clipboard.
+
+## Copy feedback (council fixes)
+
+The published reader mounts no toast region, so copy feedback is now shown in the panel. The button turns into a
+check, and a polite live region beside the rating buttons says **Answer copied** («نُسخت الإجابة»), or that copying
+failed.
+
+- Shots: `en-1440-light-04-copied`, `en-1440-dark-03-copied`, `en-390-light-03-copied`, `ar-1440-light-04-copied`,
+  `ar-390-light-03-copied`.
+- `en-1440-light-05-copied-without-clipboard-api`: `navigator.clipboard` was removed before the page loaded, as on
+  a site served over plain http. The copy went through the copy-command fallback in real Chromium.
+  - The `.txt` file is what a second page then read from the clipboard.
+  - To rule out a leftover clipboard, the same check was also run right after an Arabic copy, and the English text
+    replaced it.
