@@ -1,0 +1,31 @@
+{
+  "label": "before",
+  "samples": [
+    {
+      "collapse": 138,
+      "expand": 310
+    },
+    {
+      "collapse": 224,
+      "expand": 292
+    },
+    {
+      "collapse": 138,
+      "expand": 290
+    },
+    {
+      "collapse": 122,
+      "expand": 292
+    },
+    {
+      "collapse": 116,
+      "expand": 290
+    },
+    {
+      "collapse": 124,
+      "expand": 261
+    }
+  ],
+  "medianExpandMs": 290,
+  "tabStopsInTree": 941
+}

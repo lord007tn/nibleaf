@@ -208,6 +208,12 @@ jobs:
           DATA_PARTITION_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-partition.postgres.test.ts
 
+      - name: Verify site slug races and starter rollback
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          CREATE_SITE_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/projects.postgres.test.ts --maxWorkers=1
+
       - name: Verify transactional organization admissions
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
@@ -260,6 +266,12 @@ jobs:
           pnpm --filter @nibleaf/server exec vitest run src/actions/reader-access.postgres.test.ts
           pnpm --filter @nibleaf/server exec vitest run src/actions/site-sign-in.postgres.test.ts
           pnpm --filter @nibleaf/server exec vitest run src/actions/reader-access-requests.postgres.test.ts
+
+      - name: Verify concurrent page move integrity on PostgreSQL
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          DATA_INTEGRITY_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-integrity.postgres.test.ts --maxWorkers=1
 
       - name: Exercise ClickHouse analytics migrations
         env:

@@ -1188,8 +1188,10 @@ function EditorPage() {
                     languages={treeLanguages}
                     dir={uiDir}
                     readOnly={!canEditContent}
-                    onMove={(items) =>
-                      reorderPages.mutate({ items }, { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.reorderFailed')) })
+                    moving={reorderPages.isPending}
+                    onExpandLanguage={expandLang}
+                    onMove={(move) =>
+                      reorderPages.mutateAsync(move, { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.reorderFailed')) })
                     }
                   >
                     {orderedLanguages.map((lang) => {
@@ -1284,7 +1286,7 @@ function EditorPage() {
 
                           {/* This language's page tree — Notion-style drag-and-drop. Its rows follow
                               the dashboard's direction; only each title follows its own script. */}
-                          {langCollapsed || langPages.length === 0 ? null : (
+                          {langPages.length === 0 ? null : (
                             <SortablePageTree
                               languageId={lang.id}
                               activeId={activeTreeId}

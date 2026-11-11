@@ -2,6 +2,7 @@ import { resolveLocale } from './locales';
 import type { MessageFn, MessageVariables } from './message-types';
 import { site_closesearch } from './paraglide/messages/site_closesearch.js';
 import { site_results } from './paraglide/messages/site_results.js';
+import { site_searchalllanguages } from './paraglide/messages/site_searchalllanguages.js';
 import { site_searchaskaiabout } from './paraglide/messages/site_searchaskaiabout.js';
 import { site_searchaskaihint } from './paraglide/messages/site_searchaskaihint.js';
 import { site_searchclearrecent } from './paraglide/messages/site_searchclearrecent.js';
@@ -39,6 +40,7 @@ const searchVariableMessages = {
 const searchMessages = {
   closeSearch: site_closesearch,
   results: site_results,
+  searchAllLanguages: site_searchalllanguages,
   searchAskAiHint: site_searchaskaihint,
   searchClearRecent: site_searchclearrecent,
   searchDescription: site_searchdescription,
