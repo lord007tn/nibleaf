@@ -4463,6 +4463,7 @@
   "people_reason_viaorganization": "يفتح كل المواقع عبر المؤسسة. غيّر ذلك من صفحة أعضاء المؤسسة.",
   "people_reason_removeselfsite": "لا يمكنك إزالة نفسك. اطلب ذلك من مشرف آخر.",
   "people_reason_moreaccess": "لديه صلاحيات أكثر منك.",
+  "people_reason_roleaboveyours": "يمكنك منح الأدوار حتى مستوى دورك فقط.",
   "people_invite_open": "دعوة أشخاص",
   "people_invite_title": "دعوة أشخاص إلى {org}",
   "people_invite_description": "يصلهم بريد إلكتروني برابط صالح لمدة 7 أيام.",

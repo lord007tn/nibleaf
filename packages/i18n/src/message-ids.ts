@@ -4347,6 +4347,7 @@ export const MESSAGE_IDS = {
   'people.reason.viaOrganization': 'people_reason_viaorganization',
   'people.reason.removeSelfSite': 'people_reason_removeselfsite',
   'people.reason.moreAccess': 'people_reason_moreaccess',
+  'people.reason.roleAboveYours': 'people_reason_roleaboveyours',
   'people.invite.open': 'people_invite_open',
   'people.invite.title': 'people_invite_title',
   'people.invite.description': 'people_invite_description',

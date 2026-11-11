@@ -4442,6 +4442,7 @@
   "people_reason_viaorganization": "They open every website through the organization. Change it on the organization’s Members page.",
   "people_reason_removeselfsite": "You can’t remove yourself. Ask another Admin.",
   "people_reason_moreaccess": "They have more access than you.",
+  "people_reason_roleaboveyours": "You can give roles up to your own.",
   "people_invite_open": "Invite people",
   "people_invite_title": "Invite people to {org}",
   "people_invite_description": "They get an email with a link that works for 7 days.",
