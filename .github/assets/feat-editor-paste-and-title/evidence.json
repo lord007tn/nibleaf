@@ -8,8 +8,9 @@
       "locale": "en",
       "width": 1440,
       "geometry": {
-        "height": 73,
-        "lineHeight": 36,
+        "height": 82,
+        "lineHeight": 40.32,
+        "fontSize": 33.6,
         "width": 912,
         "scrollWidth": 912,
         "border": "0px",
@@ -27,6 +28,7 @@
       "geometry": {
         "height": 145,
         "lineHeight": 36,
+        "fontSize": 30,
         "width": 350,
         "scrollWidth": 350,
         "border": "0px",
@@ -42,8 +44,9 @@
       "locale": "ar",
       "width": 1440,
       "geometry": {
-        "height": 49,
-        "lineHeight": 36,
+        "height": 95,
+        "lineHeight": 40.32,
+        "fontSize": 33.6,
         "width": 912,
         "scrollWidth": 912,
         "border": "0px",
@@ -61,6 +64,7 @@
       "geometry": {
         "height": 121,
         "lineHeight": 36,
+        "fontSize": 30,
         "width": 350,
         "scrollWidth": 350,
         "border": "0px",
@@ -78,6 +82,7 @@
       "geometry": {
         "height": 77,
         "lineHeight": 38.4,
+        "fontSize": 32,
         "width": 912,
         "scrollWidth": 912,
         "border": "0px",
@@ -95,6 +100,7 @@
       "geometry": {
         "height": 154,
         "lineHeight": 38.4,
+        "fontSize": 32,
         "width": 350,
         "scrollWidth": 350,
         "border": "0px",
@@ -112,6 +118,7 @@
       "geometry": {
         "height": 53,
         "lineHeight": 38.4,
+        "fontSize": 32,
         "width": 912,
         "scrollWidth": 912,
         "border": "0px",
@@ -129,6 +136,7 @@
       "geometry": {
         "height": 130,
         "lineHeight": 38.4,
+        "fontSize": 32,
         "width": 350,
         "scrollWidth": 350,
         "border": "0px",

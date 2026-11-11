@@ -28,9 +28,15 @@ try {
     '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Writer paste journey</title></head><body><div id="root"></div><script type="module" src="./main.tsx"></script></body></html>',
   );
   await writeFile(resolve(harness, 'main.tsx'), "import './styles.css';\nimport '../scripts/editor-paste-and-title.fixture.tsx';\n");
+  // Tailwind must see utilities removed from the current source as well as the
+  // current component. Vite's virtual baseline load alone is not a scan source.
+  await writeFile(
+    resolve(harness, 'baseline-title.tsx'),
+    execFileSync('git', ['show', `${baseline}:apps/app/src/components/editor/page-title-field.tsx`], { cwd: root, encoding: 'utf8' }),
+  );
   await writeFile(
     resolve(harness, 'styles.css'),
-    '@import "@nibleaf/design-system/globals.css";\n@import "../src/content-blocks.css";\n@source "../src";\n@source "../scripts/editor-paste-and-title.fixture.tsx";\n',
+    '@import "@nibleaf/design-system/globals.css";\n@import "../src/content-blocks.css";\n@source "../src";\n@source "./baseline-title.tsx";\n@source "../scripts/editor-paste-and-title.fixture.tsx";\n',
   );
   const { build } = await fromApp('vite');
   const beforeFiles = ['extensions/clean-paste.ts', 'page-title-field.tsx', 'tiptap.css'];
@@ -112,6 +118,7 @@ try {
           return {
             height: element.clientHeight,
             lineHeight: Number.parseFloat(style.lineHeight),
+            fontSize: Number.parseFloat(style.fontSize),
             width: element.clientWidth,
             scrollWidth: element.scrollWidth,
             border: style.borderWidth,
@@ -121,6 +128,8 @@ try {
           };
         });
         assert.ok(geometry.scrollWidth <= geometry.width + 1, `${name}: title has no horizontal overflow`);
+        if (phase === 'before' && width === 1440)
+          assert.ok(Math.abs(geometry.fontSize - 33.6) < 0.1, `${name}: baseline responsive title utility is present`);
         if (width === 390) assert.ok(geometry.height > geometry.lineHeight * 1.8, `${name}: title wraps`);
         if (phase === 'after') {
           assert.equal(geometry.border, '0px');

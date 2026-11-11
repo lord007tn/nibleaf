@@ -7,6 +7,8 @@ variants, closes its browser and releases the lock. It starts no server or
 container. Pillow converts screenshot frames into GIFs (all below 5 MB).
 
 Before is main at `47ddeff639238867c5ecd8fb520dba46a1072edc`; after is this PR.
+Tailwind scans both baseline and current title source so removed utilities remain
+available in the before capture; the baseline desktop size is asserted explicitly.
 Each GIF shows the empty title, entering a wrapping title, Enter to the body,
 and a synthetic ClipboardEvent carrying the Google Docs regression HTML.
 The PNG shows the resulting title and pasted document. Arabic uses translated
