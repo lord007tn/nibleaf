@@ -13,7 +13,10 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 const serverRoots = ['apps/server/src', 'apps/worker/src'];
 const sourceExtensions = new Set(['.js', '.mjs', '.ts', '.tsx']);
 const ignoredDirectories = new Set(['.output', '.turbo', 'build', 'dist', 'node_modules']);
-const indexImport = /\bfrom\s*['"]@nibleaf\/i18n\/messages['"]|\bimport\s*\(\s*['"]@nibleaf\/i18n\/messages['"]\s*\)/u;
+// `from '…'` (import or re-export), a bare side-effect `import '…'`, a dynamic
+// `import('…')` and `require('…')` of the index all load the whole catalog.
+const indexImport =
+  /\bfrom\s*['"]@nibleaf\/i18n\/messages['"]|\bimport\s*['"]@nibleaf\/i18n\/messages['"]|\bimport\s*\(\s*['"]@nibleaf\/i18n\/messages['"]\s*\)|\brequire\s*\(\s*['"]@nibleaf\/i18n\/messages['"]\s*\)/u;
 
 async function collectSourceFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -40,5 +43,30 @@ test('server and worker code import single messages, never the whole message cat
     violations,
     [],
     `Import messages one by one, e.g. import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled', instead of the '@nibleaf/i18n/messages' index in:\n${violations.join('\n')}`,
+  );
+});
+
+test('the guard catches every form of importing the message index, and allows single messages', () => {
+  const caught = [
+    "import { editor_untitled } from '@nibleaf/i18n/messages';",
+    'import * as m from "@nibleaf/i18n/messages";',
+    "import '@nibleaf/i18n/messages';",
+    "export { editor_untitled } from '@nibleaf/i18n/messages';",
+    "const m = await import('@nibleaf/i18n/messages');",
+    "const m = require('@nibleaf/i18n/messages');",
+  ];
+  const allowed = [
+    "import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';",
+    "import '@nibleaf/i18n/messages/editor_untitled';",
+    "const m = await import('@nibleaf/i18n/messages/editor_untitled');",
+    "import { resolveLocale } from '@nibleaf/i18n/locales';",
+  ];
+  assert.deepEqual(
+    caught.filter((source) => !indexImport.test(source)),
+    [],
+  );
+  assert.deepEqual(
+    allowed.filter((source) => indexImport.test(source)),
+    [],
   );
 });
