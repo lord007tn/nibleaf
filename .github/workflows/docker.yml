@@ -194,6 +194,10 @@ jobs:
           tags: |
             type=raw,value=${{ inputs.image_tag }}
             type=raw,value=${{ steps.source.outputs.image_tag }}
+          # A run dispatched for an older commit would otherwise label the image
+          # with the run's github.sha (main HEAD) instead of the commit it built.
+          labels: |
+            org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
 
       - name: Install OCI archive publisher
         if: inputs.publish
