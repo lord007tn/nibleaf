@@ -4,19 +4,38 @@ import { LruCache } from './lru';
 
 interface Entry {
   key: string;
-  index: DocIndex;
+  index: Promise<DocIndex>;
+  /** Estimated heap bytes, fixed when the build starts. */
+  bytes: number;
 }
 
-/** Bound on live Orama indexes: they hold full page content, so an instance
- *  serving many sites/languages must evict cold ones instead of growing forever. */
-const MAX_CACHED_INDEXES = 50;
+/**
+ * Live Orama indexes hold every indexed page's text plus its token trees, so the
+ * cache is bounded by estimated memory, not by entry count. Measured with the
+ * package's own index (500 pages, 30k-word vocabulary): about 8 bytes of heap per
+ * indexed character for English and 5 for Arabic. The estimate uses 10 plus a
+ * fixed 64 KB per index, so the budget is not exceeded by a cache full of small
+ * sites either.
+ *
+ * 256 MB is a few percent of a 7.7 GB host. It holds about fifty typical sites
+ * (100 pages of 5 KB, about 5 MB each) or a handful of very large ones; cold
+ * entries are evicted first. An index estimated above the whole budget is built
+ * and served but not cached.
+ */
+const CACHE_BUDGET_BYTES = 256 * 1024 * 1024;
+const INDEX_OVERHEAD_BYTES = 64 * 1024;
+const BYTES_PER_CHARACTER = 10;
+
+export const estimateIndexBytes = (docs: readonly SearchDoc[]): number =>
+  INDEX_OVERHEAD_BYTES +
+  BYTES_PER_CHARACTER * docs.reduce((total, doc) => total + doc.title.length + doc.description.length + doc.headings.length + doc.content.length, 0);
 
 // One in-memory Orama index per (project, language, docs-version, authorization
 // scope), keyed by the published deployment id so it rebuilds automatically
 // when a new version is published. The authorization scope is mandatory: a
 // workspace member may index every page while a dedicated reader may see only a
 // grant subset, and those indexes must never share one cache slot.
-const cache = new LruCache<string, Entry>(MAX_CACHED_INDEXES);
+const cache = new LruCache<string, Entry>(CACHE_BUDGET_BYTES, (entry) => entry.bytes);
 
 const authorizationScopeKey = (allowedPageIds: ReadonlySet<string> | null): string => {
   if (allowedPageIds === null) return 'full';
@@ -65,8 +84,16 @@ export const getCachedIndex = async (
   if (existing && existing.key === key) {
     return existing.index;
   }
-  const scoped = pages.filter((page) => page.languageCode === lang);
-  const index = await createDocIndex(docsFromPages(scoped), oramaLanguageForCode(lang));
-  cache.set(mapKey, { key, index });
-  return index;
+  // Enforce grants here too: callers must not be able to warm a scoped cache
+  // with a full-access page list. Concurrent cold queries share one build.
+  const scoped = pages.filter((page) => page.languageCode === lang && (allowedPageIds === null || allowedPageIds.has(page.id)));
+  const docs = docsFromPages(scoped);
+  const index = createDocIndex(docs, oramaLanguageForCode(lang));
+  cache.set(mapKey, { key, index, bytes: estimateIndexBytes(docs) });
+  try {
+    return await index;
+  } catch (error) {
+    if (cache.get(mapKey)?.index === index) cache.delete(mapKey);
+    throw error;
+  }
 };

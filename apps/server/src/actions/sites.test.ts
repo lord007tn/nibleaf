@@ -32,6 +32,7 @@ vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
 vi.mock('@/lib/ai-search/runtime', () => ({
   answerPublishedSearch: vi.fn(),
   answerSearchAvailable: vi.fn(),
+  publishedSearchAnswerHint: vi.fn(() => false),
   runPublishedSearch: mocks.runPublishedSearch,
 }));
 vi.mock('@/lib/search-cache', () => ({ getCachedIndex: mocks.getCachedIndex }));
@@ -40,6 +41,7 @@ vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() })
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
 import og from '@/modules/public/sites/og';
+import { trackProjectEvents } from './analytics';
 import { resolveViewerAccess } from './reader-access';
 import { getSiteOgData, getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
 
@@ -375,6 +377,41 @@ describe('searchSite multilingual scope', () => {
       expect.objectContaining({ id: 'page-en', language: 'en' }),
       expect.objectContaining({ id: 'page-ar', language: 'ar' }),
     ]);
+  });
+
+  it('refuses anonymous search on a private site before consulting any index', async () => {
+    invalidatePublishedSiteConfig('project-1');
+    const original = mocks.projectFindUnique.getMockImplementation();
+    mocks.projectFindUnique.mockImplementation(async (args) => {
+      const value = await original?.(args);
+      return value && 'name' in value ? { ...value, accessMode: 'READERS' } : value;
+    });
+    vi.mocked(resolveViewerAccess).mockResolvedValueOnce(null);
+    await expect(searchSite('project-1', 'invoice')).rejects.toMatchObject({ status: 404 });
+    expect(resolveViewerAccess).toHaveBeenCalledWith('project-1', 'READERS', expect.any(Headers));
+    expect(mocks.runPublishedSearch).not.toHaveBeenCalled();
+    expect(mocks.getCachedIndex).not.toHaveBeenCalled();
+    invalidatePublishedSiteConfig('project-1');
+  });
+
+  it('records analytics without waiting for the write to finish', async () => {
+    let finish!: () => void;
+    vi.mocked(trackProjectEvents).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const result = await searchSite('project-1', 'invoice');
+    expect(result.hits.length).toBeGreaterThan(0);
+    expect(trackProjectEvents).toHaveBeenCalledWith(
+      'project-1',
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'search_query_submitted', query: 'invoice' }),
+        expect.objectContaining({ name: 'search_results_returned' }),
+      ]),
+      expect.any(Object),
+    );
+    finish();
   });
 
   it('reports the runtime of the language that actually returned hits', async () => {
