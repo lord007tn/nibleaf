@@ -3503,6 +3503,7 @@
   "site_searchkeysopen": "খুলতে",
   "site_searchkeysclose": "বন্ধ করতে",
   "site_searchversionlabel": "সংস্করণ",
+  "site_searchalllanguages": "সব ভাষা",
   "settings_permissions_title": "প্রশাসকের অনুমতি প্রয়োজন",
   "settings_permissions_body": "এই সেটিংস আপডেট করতে সাইটের মালিক বা প্রশাসককে বলুন। আপনি নথি সম্পাদনা এবং আপনার ভূমিকার জন্য উপলব্ধ বিভাগগুলি ব্যবহার করতে পারবেন।",
   "settings_members_removeconfirm": "এই সাইট থেকে {name}-কে সরাবেন? তিনি নথি ও সেটিংসে প্রবেশাধিকার হারাবেন।",
@@ -4553,5 +4554,17 @@
   "shortcuts_switchOrganization": "Switch organization",
   "shortcuts_switchWebsite": "Switch website",
   "shortcuts_close": "Close a menu or dialog",
-  "shortcuts_then": "then"
+  "shortcuts_then": "then",
+  "editor_tree_search": "শিরোনাম বা ঠিকানা দিয়ে পৃষ্ঠা খুঁজুন",
+  "editor_tree_noresults": "কোনো মিল পাওয়া যায়নি",
+  "editor_tree_filterreason": "পৃষ্ঠা সরাতে ফিল্টার মুছুন।",
+  "editor_tree_instructions": "নেভিগেট করতে তীরচিহ্ন, খুলতে Enter, নাম বদলাতে F2, কাজের মেনুর জন্য Shift+F10 এবং ড্র্যাগ হ্যান্ডেলের জন্য Alt+Shift+D চাপুন। হ্যান্ডেলে সরানো শুরু করতে স্পেস, গন্তব্য বাছতে তীরচিহ্ন, রাখতে স্পেস বা বাতিল করতে Escape চাপুন।",
+  "editor_tree_movedinside": "{title} পৃষ্ঠাটি {parent}-এর ভিতরে সরানো হয়েছে, অবস্থান {position}, মোট {total}।",
+  "editor_tree_movedroot": "{title} পৃষ্ঠাটি {language}-এ সরানো হয়েছে, অবস্থান {position}, মোট {total}।",
+  "editor_tree_previewinside": "{title} পৃষ্ঠাটি {parent}-এর ভিতরে সরানো হবে, অবস্থান {position}, মোট {total}।",
+  "editor_tree_previewroot": "{title} পৃষ্ঠাটি {language}-এ সরানো হবে, অবস্থান {position}, মোট {total}।",
+  "editor_tree_moving": "{title} সরানো হচ্ছে…",
+  "editor_tree_movefailed": "{title} সরানো যায়নি। আগের অবস্থানে ফিরিয়ে দেওয়া হয়েছে।",
+  "editor_tree_movebusy": "অন্য পৃষ্ঠা সরানোর আগে বর্তমান স্থানান্তর শেষ হওয়া পর্যন্ত অপেক্ষা করুন।",
+  "editor_tree_structurechanged": "অন্য কোথাও পৃষ্ঠার বিন্যাস বদলেছে। পৃষ্ঠার তালিকা হালনাগাদ করা হয়েছে। আবার সরানোর চেষ্টা করুন।"
 }

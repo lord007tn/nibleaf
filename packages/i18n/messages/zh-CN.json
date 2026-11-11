@@ -3503,6 +3503,7 @@
   "site_searchkeysopen": "打开",
   "site_searchkeysclose": "关闭",
   "site_searchversionlabel": "版本",
+  "site_searchalllanguages": "所有语言",
   "settings_permissions_title": "需要管理员权限",
   "settings_permissions_body": "请联系站点所有者或管理员更新这些设置。您仍可编辑文档并使用当前角色可访问的功能。",
   "settings_members_removeconfirm": "要从此站点移除 {name} 吗？该成员将无法访问站点文档和设置。",
@@ -4553,5 +4554,17 @@
   "shortcuts_switchOrganization": "Switch organization",
   "shortcuts_switchWebsite": "Switch website",
   "shortcuts_close": "Close a menu or dialog",
-  "shortcuts_then": "then"
+  "shortcuts_then": "then",
+  "editor_tree_search": "按标题或地址筛选页面",
+  "editor_tree_noresults": "没有匹配的页面",
+  "editor_tree_filterreason": "清除筛选条件以移动页面。",
+  "editor_tree_instructions": "使用方向键导航，Enter 打开，F2 重命名，Shift+F10 打开操作菜单，Alt+Shift+D 聚焦拖动手柄。在手柄上按空格键开始移动，使用方向键选择目标，再按空格键放下，或按 Escape 取消。",
+  "editor_tree_movedinside": "已将 {title} 移入 {parent}，位置为 {position}，共 {total} 项。",
+  "editor_tree_movedroot": "已将 {title} 移至 {language}，位置为 {position}，共 {total} 项。",
+  "editor_tree_previewinside": "将把 {title} 移入 {parent}，位置为 {position}，共 {total} 项。",
+  "editor_tree_previewroot": "将把 {title} 移至 {language}，位置为 {position}，共 {total} 项。",
+  "editor_tree_moving": "正在移动 {title}…",
+  "editor_tree_movefailed": "无法移动 {title}，已恢复原位。",
+  "editor_tree_movebusy": "请等待当前移动完成后再移动其他页面。",
+  "editor_tree_structurechanged": "页面结构已在其他位置更改，列表已刷新。请重试移动操作。"
 }

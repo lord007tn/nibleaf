@@ -3503,6 +3503,7 @@
   "site_searchkeysopen": "untuk membuka",
   "site_searchkeysclose": "untuk menutup",
   "site_searchversionlabel": "Versi",
+  "site_searchalllanguages": "Semua bahasa",
   "settings_permissions_title": "Akses administrator diperlukan",
   "settings_permissions_body": "Minta pemilik situs atau administrator memperbarui pengaturan ini. Anda tetap dapat mengedit dokumentasi dan menggunakan bagian yang tersedia untuk peran Anda.",
   "settings_members_removeconfirm": "Hapus {name} dari situs ini? Akses ke dokumentasi dan pengaturan akan hilang.",
@@ -4553,5 +4554,17 @@
   "shortcuts_switchOrganization": "Switch organization",
   "shortcuts_switchWebsite": "Switch website",
   "shortcuts_close": "Close a menu or dialog",
-  "shortcuts_then": "then"
+  "shortcuts_then": "then",
+  "editor_tree_search": "Filter halaman berdasarkan judul atau alamat",
+  "editor_tree_noresults": "Tidak ada halaman yang cocok",
+  "editor_tree_filterreason": "Hapus filter untuk memindahkan halaman.",
+  "editor_tree_instructions": "Gunakan tombol panah untuk menavigasi, Enter untuk membuka, F2 untuk mengganti nama, Shift+F10 untuk tindakan, dan Alt+Shift+D untuk gagang seret. Pada gagang, tekan Spasi untuk memindahkan, panah untuk memilih tujuan, Spasi untuk meletakkan, atau Escape untuk membatalkan.",
+  "editor_tree_movedinside": "{title} dipindahkan ke dalam {parent}, posisi {position} dari {total}.",
+  "editor_tree_movedroot": "{title} dipindahkan ke {language}, posisi {position} dari {total}.",
+  "editor_tree_previewinside": "{title} akan dipindahkan ke dalam {parent}, posisi {position} dari {total}.",
+  "editor_tree_previewroot": "{title} akan dipindahkan ke {language}, posisi {position} dari {total}.",
+  "editor_tree_moving": "Memindahkan {title}…",
+  "editor_tree_movefailed": "Tidak dapat memindahkan {title}. Posisinya telah dipulihkan.",
+  "editor_tree_movebusy": "Tunggu hingga pemindahan saat ini selesai sebelum memindahkan halaman lain.",
+  "editor_tree_structurechanged": "Struktur halaman berubah di tempat lain dan telah diperbarui. Coba pindahkan lagi."
 }

@@ -3559,6 +3559,7 @@
   "site_searchkeysopen": "کھولنے کے لیے",
   "site_searchkeysclose": "بند کرنے کے لیے",
   "site_searchversionlabel": "ورژن",
+  "site_searchalllanguages": "تمام زبانیں",
   "settings_permissions_title": "منتظم کی رسائی درکار ہے",
   "settings_permissions_body": "ان ترتیبات کو اپ ڈیٹ کرنے کے لیے سائٹ کے مالک یا منتظم سے کہیں۔ آپ دستاویزات میں ترمیم اور اپنے کردار کے لیے دستیاب حصے استعمال کر سکتے ہیں۔",
   "settings_members_removeconfirm": "{name} کو اس سائٹ سے ہٹائیں؟ دستاویزات اور ترتیبات تک ان کی رسائی ختم ہو جائے گی۔",
@@ -4609,5 +4610,17 @@
   "shortcuts_switchOrganization": "Switch organization",
   "shortcuts_switchWebsite": "Switch website",
   "shortcuts_close": "Close a menu or dialog",
-  "shortcuts_then": "then"
+  "shortcuts_then": "then",
+  "editor_tree_search": "عنوان یا پتے سے صفحات چھانٹیں",
+  "editor_tree_noresults": "کوئی مماثل صفحہ نہیں",
+  "editor_tree_filterreason": "صفحات منتقل کرنے کے لیے فلٹر صاف کریں۔",
+  "editor_tree_instructions": "حرکت کے لیے تیر، کھولنے کے لیے Enter، نام بدلنے کے لیے F2، کارروائیوں کے لیے Shift+F10 اور ڈریگ ہینڈل کے لیے Alt+Shift+D دبائیں۔ ہینڈل پر منتقلی شروع کرنے کے لیے اسپیس، منزل چننے کے لیے تیر، چھوڑنے کے لیے اسپیس یا منسوخ کرنے کے لیے Escape دبائیں۔",
+  "editor_tree_movedinside": "{title} کو {parent} کے اندر منتقل کیا گیا، مقام {position} از {total}۔",
+  "editor_tree_movedroot": "{title} کو {language} میں منتقل کیا گیا، مقام {position} از {total}۔",
+  "editor_tree_previewinside": "{title} کو {parent} کے اندر منتقل کیا جائے گا، مقام {position} از {total}۔",
+  "editor_tree_previewroot": "{title} کو {language} میں منتقل کیا جائے گا، مقام {position} از {total}۔",
+  "editor_tree_moving": "{title} منتقل کیا جا رہا ہے…",
+  "editor_tree_movefailed": "{title} کو منتقل نہیں کیا جا سکا۔ اسے اپنی جگہ واپس رکھ دیا گیا ہے۔",
+  "editor_tree_movebusy": "دوسرا صفحہ منتقل کرنے سے پہلے موجودہ منتقلی مکمل ہونے کا انتظار کریں۔",
+  "editor_tree_structurechanged": "صفحات کی ترتیب کہیں اور بدل گئی ہے۔ فہرست تازہ کر دی گئی ہے۔ دوبارہ منتقل کرنے کی کوشش کریں۔"
 }
