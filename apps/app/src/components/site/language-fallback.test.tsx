@@ -203,10 +203,36 @@ describe('article meta line on a fallback page', () => {
 });
 
 // Council (#474): a browser whose ICU words a date or a language name differently
-// from the server's must not change what hydration renders.
+// from the server's must not change what hydration renders. Both sides use
+// injected locale data, so the test never depends on the runtime's own ICU.
+const fakeIntl = (tag: string, { supports = true } = {}) => {
+  const fake = Object.create(Intl) as typeof Intl;
+  Object.assign(fake, {
+    DisplayNames: class {
+      static supportedLocalesOf(locales: string[]) {
+        return supports ? locales : [];
+      }
+      of(code: string) {
+        return `${tag} NAME ${code}`;
+      }
+    },
+    DateTimeFormat: class {
+      format() {
+        return `${tag} DATE`;
+      }
+    },
+  });
+  return fake;
+};
+
 describe('reader text formatted on the server', () => {
-  it('hydrates the notice and the date verbatim when the browser formats them differently', async () => {
+  it.each([
+    ['has locale data for the reader', true],
+    ['has no locale data for the reader (labels are used)', false],
+  ])('hydrates verbatim when the server %s and the browser formats differently', async (_, serverSupports) => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    // The server: its own locale data formats the reader text and renders the page.
+    vi.stubGlobal('Intl', fakeIntl('SERVER', { supports: serverSupports }));
     const data = page({ readerText: readerTextFor('ar', UPDATED_AT, ['en', 'ar']) });
     const element = (
       <SiteReaderContext.Provider value={shell('ar')}>
@@ -216,27 +242,11 @@ describe('reader text formatted on the server', () => {
     const container = await serverRender(element);
     document.body.append(container);
     const serverText = container.textContent ?? '';
-    expect(serverText).toContain(data.readerText?.updated ?? '');
-    expect(serverText).toContain('الإنجليزية');
+    expect(serverText).toContain('SERVER DATE');
+    expect(container.querySelector('[role="note"]')?.textContent).toContain(serverSupports ? 'SERVER NAME en' : 'English');
 
-    // The browser's locale data words everything differently.
-    const browserIntl = Object.create(Intl) as typeof Intl;
-    Object.assign(browserIntl, {
-      DisplayNames: class {
-        static supportedLocalesOf(locales: string[]) {
-          return locales;
-        }
-        of() {
-          return 'BROWSER NAME';
-        }
-      },
-      DateTimeFormat: class {
-        format() {
-          return 'BROWSER DATE';
-        }
-      },
-    });
-    vi.stubGlobal('Intl', browserIntl);
+    // The browser: different locale data entirely.
+    vi.stubGlobal('Intl', fakeIntl('BROWSER'));
     const errors: unknown[] = [];
     let root: Root | undefined;
     try {

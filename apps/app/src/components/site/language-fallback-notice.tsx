@@ -45,8 +45,11 @@ export function LanguageFallbackNotice({
   // Inside the reader's sentence, a language is named in the reader's language
   // ("الإنجليزية" for an Arabic reader); its own name (the endonym) follows on
   // the link, which is where a reader of that language looks for it.
-  const endonym = (code: string) => text?.endonyms[code] ?? languageEndonymOr(code, label(code));
-  const name = (code: string) => text?.names[code] ?? languageNameIn(requested, code) ?? endonym(code);
+  // With server text, nothing is formatted here: a name the server's locale data
+  // couldn't give falls back to the configured label, the same on both sides.
+  // Only page data that didn't come through the server function formats locally.
+  const endonym = (code: string) => (text ? (text.endonyms[code] ?? label(code) ?? code) : languageEndonymOr(code, label(code)));
+  const name = (code: string) => (text ? (text.names[code] ?? endonym(code)) : (languageNameIn(requested, code) ?? endonym(code)));
   const shownName = name(shown);
   const shownEndonym = endonym(shown);
   return (
