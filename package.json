@@ -101,6 +101,7 @@
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "knip": "6.44.1",
+    "libpg-query": "17.7.4",
     "playwright-core": "^1.65.0",
     "react-doctor": "0.9.22",
     "turbo": "^2.11.10",
