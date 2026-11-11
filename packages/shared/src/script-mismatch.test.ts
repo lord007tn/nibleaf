@@ -73,6 +73,21 @@ describe('detectScriptMismatch', () => {
       const hash = 'a1b2c3d4'.repeat(10);
       expect(sampleForScript(`See ${hash} now`)).toBe('See   now');
     });
+
+    // A hash or URL glued to unspaced prose, with no space between them: the ASCII
+    // part drops and the Han part stays, so zh is not flagged by the Latin letters.
+    it('drops a long hash glued to Chinese prose and keeps the prose', () => {
+      const hash = 'a1b2c3d4e5f6'.repeat(8);
+      const glued = `${CHINESE}${hash}${CHINESE}`;
+      expect(glued.split(/\s/u)).toHaveLength(1);
+      expect(sampleForScript(glued)).toBe(`${CHINESE} ${CHINESE}`);
+      expect(detectScriptMismatch(glued, 'zh').mismatch).toBe(false);
+      expect(detectScriptMismatch(glued, 'en')).toMatchObject({ mismatch: true, dominantScript: 'han' });
+      // A URL glued on one side, and short Latin words inside the prose, behave the same.
+      const url = `https://example.com/${'path/'.repeat(20)}`;
+      expect(sampleForScript(`${CHINESE}${url}`)).toBe(`${CHINESE} `);
+      expect(sampleForScript(`${CHINESE}API${CHINESE}`)).toBe(`${CHINESE}API${CHINESE}`);
+    });
   });
 
   describe('ignores code', () => {
@@ -189,6 +204,9 @@ describe('detectScriptMismatch', () => {
     it.each([
       ['one 80k-character Han run', '字'.repeat(80_000), CHINESE_SENTENCE],
       ['one 80k-character Thai run', 'กข'.repeat(40_000), THAI_SENTENCE],
+      // Alternating scripts in one token: every run is short, so the split keeps them all.
+      ['an 80k token alternating Latin and Han', 'a字'.repeat(40_000), CHINESE_SENTENCE],
+      ['an 80k token of long hashes glued to Han', `${'f'.repeat(70)}字`.repeat(1100), CHINESE_SENTENCE],
     ])('stays bounded on %s', (_, input, sentence) => {
       expect(detectionMs(input)).toBeLessThanOrEqual(5 * detectionMs(prose(sentence, input.length)) + 20);
     });

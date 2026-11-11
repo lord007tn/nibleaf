@@ -182,12 +182,6 @@ const SAMPLE_WINDOWS = [8192, 4096, 4096] as const;
  *  never a prose word. Non-ASCII runs are kept: CJK and Thai prose has no spaces. */
 const MAX_TOKEN = 64;
 
-const isAscii = (value: string): boolean => {
-  for (let index = 0; index < value.length; index += 1) {
-    if (value.charCodeAt(index) > 0x7f) return false;
-  }
-  return true;
-};
 /** Above this many Markdown markers in the sample, micromark can go superlinear
  *  (as #453 found), so prose is extracted with a linear scan instead. */
 const MAX_MARKERS = 400;
@@ -202,7 +196,26 @@ const lineCut = (value: string, start: number, size: number): string => {
   return value.slice(begin, end === value.length || lastBreak <= begin ? end : lastBreak);
 };
 
-/** Replaces whitespace-free runs longer than MAX_TOKEN with a space, in one pass. */
+/**
+ * Splits a long whitespace-free token where it switches between ASCII and
+ * non-ASCII, and drops only the ASCII runs longer than MAX_TOKEN. Unspaced
+ * scripts let a URL or hash sit right against the prose ("请访问https://…"), and
+ * its Latin letters must not tip a Chinese page into a false mismatch. One pass.
+ */
+const dropLongAsciiRuns = (token: string): string => {
+  let output = '';
+  let runStart = 0;
+  for (let index = 1; index <= token.length; index += 1) {
+    const boundary = index === token.length || token.charCodeAt(index) > 0x7f !== token.charCodeAt(runStart) > 0x7f;
+    if (!boundary) continue;
+    const run = token.slice(runStart, index);
+    output += run.length > MAX_TOKEN && token.charCodeAt(runStart) <= 0x7f ? ' ' : run;
+    runStart = index;
+  }
+  return output;
+};
+
+/** Replaces whitespace-free ASCII runs longer than MAX_TOKEN with a space, in one pass. */
 const dropLongTokens = (value: string): string => {
   let output = '';
   let tokenStart = 0;
@@ -214,7 +227,7 @@ const dropLongTokens = (value: string): string => {
       // Japanese and Thai write whole sentences without spaces, so a long
       // non-ASCII run is prose and must be kept. The sample is already capped at
       // 16 KB, so keeping it stays cheap.
-      output += token.length > MAX_TOKEN && isAscii(token) ? ' ' : token;
+      output += token.length > MAX_TOKEN ? dropLongAsciiRuns(token) : token;
       if (char !== undefined) output += char;
       tokenStart = index + 1;
     }
