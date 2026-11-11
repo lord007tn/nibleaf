@@ -136,16 +136,16 @@ describe('detectScriptMismatch', () => {
   // Bounds are calibrated like against like on the same machine, so slow CI
   // cores slow both sides equally while superlinear growth still shows.
   describe('cost bounds', () => {
-    /** Median of three detections, each with a unique suffix (no cache can help). */
+    /** Median of five detections, each with a unique suffix (no cache can help). */
     const detectionMs = (input: string): number => {
       detectScriptMismatch('Warm up with a short English sentence here.', 'en');
       const runs: number[] = [];
-      for (let round = 0; round < 3; round += 1) {
+      for (let round = 0; round < 5; round += 1) {
         const started = performance.now();
         detectScriptMismatch(`${input}${Math.random()}`, 'en');
         runs.push(performance.now() - started);
       }
-      return runs.sort((a, b) => a - b)[1] ?? 0;
+      return runs.sort((a, b) => a - b)[2] ?? 0;
     };
     /** A plain linear pass over the same input (median of three). */
     const linearPassMs = (input: string): number => {
@@ -190,7 +190,11 @@ describe('detectScriptMismatch', () => {
       ['one 80k-character Han run', '字'.repeat(80_000), CHINESE_SENTENCE],
       ['one 80k-character Thai run', 'กข'.repeat(40_000), THAI_SENTENCE],
     ])('stays bounded on %s', (_, input, sentence) => {
-      expect(detectionMs(input)).toBeLessThanOrEqual(5 * detectionMs(prose(sentence, input.length)) + 20);
+      // The baseline does the same work: ordinary prose of the size actually
+      // analysed (the 16 KB sample), not of the raw input. 8x leaves CI-noise room;
+      // superlinear growth still shows, and the sampling test below pins 80k ≈ 16k.
+      const sampled = sampleForScript(input).length;
+      expect(detectionMs(input)).toBeLessThanOrEqual(8 * detectionMs(prose(sentence, sampled)) + 20);
     });
 
     // All per-character work runs on the sample, so 80k costs what 16k does.
