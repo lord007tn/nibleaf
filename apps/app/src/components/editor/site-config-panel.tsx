@@ -62,12 +62,23 @@ export type ConfigSectionId =
   | 'redirects';
 
 /** The config section list rendered inside the editor's left rail. */
-export function ConfigSectionList({ active, onSelect }: { active: ConfigSectionId; onSelect: (id: ConfigSectionId) => void }) {
+export function ConfigSectionList({
+  active,
+  onSelect,
+  only,
+}: {
+  active: ConfigSectionId;
+  onSelect: (id: ConfigSectionId) => void;
+  /** Limits the list to these sections, as site settings does (Appearance's own; the rest are pages there). */
+  only?: readonly ConfigSectionId[];
+}) {
   const t = useT();
+  const sections = only ? EDITOR_CONFIG_SECTIONS.filter(({ id }) => only.includes(id)) : EDITOR_CONFIG_SECTIONS;
   return (
     <div className="space-y-0.5">
-      <p className="px-2.5 pb-3 text-muted-foreground text-xs">{t('settings.appearance.location')}</p>
-      {EDITOR_CONFIG_SECTIONS.map(({ id, labelKey, icon: Icon }) => (
+      {/* "Also available in…" belongs in the editor only, never on the settings page itself (§5.7). */}
+      {only ? null : <p className="px-2.5 pb-3 text-muted-foreground text-xs">{t('settings.appearance.location')}</p>}
+      {sections.map(({ id, labelKey, icon: Icon }) => (
         <Button
           aria-current={active === id ? 'page' : undefined}
           className={cn(
