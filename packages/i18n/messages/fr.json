@@ -3568,6 +3568,7 @@
   "site_searchkeysopen": "pour ouvrir",
   "site_searchkeysclose": "pour fermer",
   "site_searchversionlabel": "Version",
+  "site_searchalllanguages": "Toutes les langues",
   "settings_permissions_title": "Accès administrateur requis",
   "settings_permissions_body": "Demandez au propriétaire du site ou à un administrateur de modifier ces paramètres. Vous pouvez toujours modifier la documentation et utiliser les sections accessibles à votre rôle.",
   "settings_members_removeconfirm": "Retirer {name} de ce site ? Cette personne perdra l’accès à sa documentation et à ses paramètres.",

@@ -404,6 +404,7 @@ export const MESSAGE_IDS = {
   'site.searchKeysOpen': 'site_searchkeysopen',
   'site.searchKeysClose': 'site_searchkeysclose',
   'site.searchVersionLabel': 'site_searchversionlabel',
+  'site.searchAllLanguages': 'site_searchalllanguages',
   'brand.oss': 'brand_oss',
   'common.cancel': 'common_cancel',
   'common.save': 'common_save',

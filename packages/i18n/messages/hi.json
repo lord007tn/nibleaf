@@ -3503,6 +3503,7 @@
   "site_searchkeysopen": "खोलने के लिए",
   "site_searchkeysclose": "बंद करने के लिए",
   "site_searchversionlabel": "संस्करण",
+  "site_searchalllanguages": "सभी भाषाएँ",
   "settings_permissions_title": "व्यवस्थापक पहुँच आवश्यक है",
   "settings_permissions_body": "इन सेटिंग को बदलने के लिए साइट के मालिक या व्यवस्थापक से कहें। आप दस्तावेज़ संपादित कर सकते हैं और अपनी भूमिका के लिए उपलब्ध अनुभागों का उपयोग कर सकते हैं।",
   "settings_members_removeconfirm": "{name} को इस साइट से हटाएँ? दस्तावेज़ और सेटिंग तक उनकी पहुँच समाप्त हो जाएगी।",

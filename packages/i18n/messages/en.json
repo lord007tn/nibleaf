@@ -3568,6 +3568,7 @@
   "site_searchkeysopen": "to open",
   "site_searchkeysclose": "to close",
   "site_searchversionlabel": "Version",
+  "site_searchalllanguages": "All languages",
   "settings_permissions_title": "Administrator access required",
   "settings_permissions_body": "Ask a site owner or Admin to update these settings. You can still edit documentation and use the sections available to your role.",
   "settings_members_removeconfirm": "Remove {name} from this site? They will lose access to its documentation and settings.",
