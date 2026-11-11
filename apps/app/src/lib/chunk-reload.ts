@@ -12,11 +12,7 @@
  * skipped.
  */
 
-const RELOAD_KEY = 'nibleaf.chunk-reload';
-/** Automatic reloads allowed in one tab session, whatever fails. */
-const MAX_RELOADS_PER_SESSION = 2;
-/** Documents that already started a reload: further failures before it happens don't use another slot. */
-const reloadingDocuments = new WeakSet<object>();
+import { claimDocumentRecovery, onlySpeculativeLoads } from '@/lib/document-recovery';
 
 /** The chunk or stylesheet that failed, from the preload error's message, or the page as a fallback. */
 function failedAsset(event: Event): string {
@@ -26,21 +22,19 @@ function failedAsset(event: Event): string {
 }
 
 function reloadOnChunkLoadFailure(event: Event): void {
-  if (reloadingDocuments.has(window)) return;
-  const asset = failedAsset(event);
-  try {
-    const raw = window.sessionStorage.getItem(RELOAD_KEY);
-    const stored = raw ? (JSON.parse(raw) as { assets?: unknown } | null) : null;
-    const reloadedFor = Array.isArray(stored?.assets) ? stored.assets.filter((value): value is string => typeof value === 'string') : [];
-    // The same asset failing again means the reload didn't help, however long it took to fail;
-    // and a session never reloads more than a couple of times, so nothing can loop.
-    if (reloadedFor.includes(asset) || reloadedFor.length >= MAX_RELOADS_PER_SESSION) return;
-    window.sessionStorage.setItem(RELOAD_KEY, JSON.stringify({ assets: [...reloadedFor, asset], at: Date.now() }));
-  } catch {
-    // Without storage there's no loop guard, so don't reload automatically.
+  // A prefetch (a page the reader hasn't asked for) failed to load a chunk:
+  // nothing on screen depends on it, so the page being read is never reloaded.
+  // Cancelling keeps Vite from rethrowing into a prefetch nobody awaits; the
+  // chunk is requested again if the reader opens that page.
+  if (onlySpeculativeLoads()) {
+    event.preventDefault();
     return;
   }
-  reloadingDocuments.add(window);
+  // One budget with the reader's navigation fallback (lib/document-recovery.ts):
+  // the same chunk failing again after a reload never reloads twice, a session
+  // never reloads more than a couple of times, and one failure never triggers
+  // two recoveries.
+  if (!claimDocumentRecovery(`chunk:${failedAsset(event)}`)) return;
   window.location.reload();
 }
 
