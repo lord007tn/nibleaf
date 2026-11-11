@@ -134,6 +134,26 @@ describe('reader chat messages', () => {
     await unmount();
   });
 
+  it('lays out each answer by its own script, since it follows the question language', async () => {
+    const { container, render, unmount } = mount();
+    await render(
+      <ChatMessage
+        text="draft"
+        final={{ ...final, status: 'no_answer', answer: 'لم أجد إجابة في الوثائق.', citations: [], suggestions: [] }}
+        options={options}
+        busy={false}
+        consent="unknown"
+        close={vi.fn()}
+      />,
+    );
+    expect(container.querySelector('p')?.getAttribute('dir')).toBe('auto');
+    await render(<ChatMessage text="draft" final={final} options={options} busy={false} consent="unknown" close={vi.fn()} />);
+    const paragraphs = [...container.querySelectorAll('p')];
+    expect(paragraphs.length).toBeGreaterThan(0);
+    for (const paragraph of paragraphs.filter((p) => p.closest('[dir="auto"]'))) expect(paragraph.closest('[dir]')?.getAttribute('dir')).toBe('auto');
+    unmount();
+  });
+
   it('shows the localized refusal and support link without unrelated source cards', async () => {
     const { container, render, unmount } = mount();
     await render(

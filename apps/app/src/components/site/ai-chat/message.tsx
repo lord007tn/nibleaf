@@ -93,15 +93,17 @@ export function ChatMessage({
   return (
     <div aria-busy={busy} className="space-y-3 rounded-xl border p-4">
       {final?.status === 'no_answer' ? (
-        <p>{final.answer}</p>
+        // Answers come in the QUESTION's language, which can differ from the site's
+        // (an Arabic question on an English site), so each lays itself out by its content.
+        <p dir="auto">{final.answer}</p>
       ) : (
-        <div className="min-w-0 break-words text-sm leading-7 [&_li]:ms-5 [&_ul]:list-disc [&_ol]:list-decimal">
+        <div dir="auto" className="min-w-0 break-words text-sm leading-7 [&_li]:ms-5 [&_ul]:list-disc [&_ol]:list-decimal">
           <ReactMarkdown
             allowedElements={['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
             skipHtml
             unwrapDisallowed
             components={{
-              p: ({ children }) => <p>{cite(children)}</p>,
+              p: ({ children }) => <p dir="auto">{cite(children)}</p>,
               // Answer headings stay compact labels inside the chat bubble.
               ...Object.fromEntries(
                 (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag) => [
