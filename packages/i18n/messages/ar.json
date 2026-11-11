@@ -4701,5 +4701,59 @@
   "newsite_starter_faq_title": "الأسئلة الشائعة",
   "newsite_starter_faq_content": "## أسئلة متكررة\n\nأجب عن سؤال حقيقي في بضع جمل.\n\n- اشرح أين توجد إعدادات الحساب.\n- أخبر القراء بكيفية التواصل مع فريقك.\n",
   "newsite_addresslatinhint": "تستخدم عناوين المواقع الحروف اللاتينية. اختر عنواناً واضحاً وسهل القراءة، مثل help-center.",
-  "newsite_addressunavailable": "هذا العنوان محجوز أو غير متاح. اختر عنواناً آخر."
+  "newsite_addressunavailable": "هذا العنوان محجوز أو غير متاح. اختر عنواناً آخر.",
+  "publish_checks_title": "الفحوصات",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا أخطاء",
+        "form=one": "خطأ واحد",
+        "form=two": "خطآن",
+        "form=few": "{count} أخطاء",
+        "form=many": "{count} خطأً",
+        "form=*": "{count} خطأ"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا تحذيرات",
+        "form=one": "تحذير واحد",
+        "form=two": "تحذيران",
+        "form=few": "{count} تحذيرات",
+        "form=many": "{count} تحذيرًا",
+        "form=*": "{count} تحذير"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "ما زال النشر متاحًا",
+  "publish_checks_mustfix": "أصلح الأخطاء لتتمكن من النشر",
+  "publish_checks_allclear": "نجحت كل الفحوصات",
+  "publish_checks_allclearhint": "لا توجد روابط معطلة أو صور بلا نص بديل أو صفحات بلا عنوان أو رموز زائدة.",
+  "publish_checks_fix": "إصلاح",
+  "publish_checks_fixlabel": "إصلاح {title} في المحرر",
+  "publish_checks_blockedreason": "أصلح الأخطاء الظاهرة في الفحوصات قبل النشر.",
+  "publish_checks_error": "خطأ",
+  "publish_checks_warning": "تحذير",
+  "publish_checks_duplicateof": "العنوان نفسه مستخدم في {path}",
+  "publish_checks_pathtoolong": "عنوان الرابط طويل جدًا (أكثر من 2048 حرفًا)",
+  "publish_checks_brokenlink": "روابط معطلة",
+  "publish_checks_brokenlinkhint": "تؤدي هذه الروابط إلى صفحة لن تكون موجودة في الموقع المنشور.",
+  "publish_checks_missingalt": "صور بلا نص بديل",
+  "publish_checks_missingalthint": "لا تستطيع قارئات الشاشة وصف هذه الصور. أضف نصًا بديلًا لكل صورة.",
+  "publish_checks_untitledpage": "صفحات بلا عنوان",
+  "publish_checks_untitledpagehint": "اختر لهذه الصفحات عناوين حقيقية ليتمكن القرّاء من العثور عليها.",
+  "publish_checks_straycharacters": "رموز زائدة",
+  "publish_checks_straycharactershint": "تظهر الشرطة المائلة / وحدها أو --- الحرفية كنص في الصفحة.",
+  "publish_checks_unreadableslug": "عناوين ويب يصعب قراءتها",
+  "publish_checks_unreadableslughint": "استخدم عنوان ويب قصيرًا مكوّنًا من كلمات ليسهل قراءة الرابط ومشاركته.",
+  "publish_checks_emptypage": "صفحات فارغة",
+  "publish_checks_emptypagehint": "لا تحتوي هذه الصفحات على أي محتوى بعد، لذا سيرى القرّاء صفحة فارغة.",
+  "publish_checks_duplicatetitle": "عناوين مكررة",
+  "publish_checks_duplicatetitlehint": "تحمل صفحات في القسم نفسه العنوان نفسه، فلا يستطيع القرّاء التمييز بينها."
 }

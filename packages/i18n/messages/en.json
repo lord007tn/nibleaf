@@ -4662,5 +4662,51 @@
   "newsite_starter_faq_title": "Frequently asked questions",
   "newsite_starter_faq_content": "## Common questions\n\nAnswer a real question in a few sentences.\n\n- Explain where to find account settings.\n- Tell readers how to contact your team.\n",
   "newsite_addresslatinhint": "Site addresses use Latin letters. Choose one that reads well, e.g. help-center.",
-  "newsite_addressunavailable": "This address is reserved or unavailable. Choose another address."
+  "newsite_addressunavailable": "This address is reserved or unavailable. Choose another address.",
+  "publish_checks_title": "Checks",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} error",
+        "form=*": "{count} errors"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} warning",
+        "form=*": "{count} warnings"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "publishing is still allowed",
+  "publish_checks_mustfix": "fix the errors to publish",
+  "publish_checks_allclear": "All checks passed",
+  "publish_checks_allclearhint": "No broken links, images without alt text, untitled pages or leftover characters.",
+  "publish_checks_fix": "Fix",
+  "publish_checks_fixlabel": "Fix {title} in the editor",
+  "publish_checks_blockedreason": "Fix the errors under Checks before publishing.",
+  "publish_checks_error": "Error",
+  "publish_checks_warning": "Warning",
+  "publish_checks_duplicateof": "Same title as {path}",
+  "publish_checks_pathtoolong": "Link address too long (over 2,048 characters)",
+  "publish_checks_brokenlink": "Broken links",
+  "publish_checks_brokenlinkhint": "These links lead to a page that won't exist on the live site.",
+  "publish_checks_missingalt": "Images without alt text",
+  "publish_checks_missingalthint": "Screen readers can't describe these images. Add alt text to each one.",
+  "publish_checks_untitledpage": "Untitled pages",
+  "publish_checks_untitledpagehint": "Give these pages a real title so readers can find them.",
+  "publish_checks_straycharacters": "Stray characters",
+  "publish_checks_straycharactershint": "A lone / or a literal --- shows on the page as text.",
+  "publish_checks_unreadableslug": "Hard-to-read web addresses",
+  "publish_checks_unreadableslughint": "Use a short address made of words, so the link is easy to read and share.",
+  "publish_checks_emptypage": "Empty pages",
+  "publish_checks_emptypagehint": "These pages have no content yet, so readers would see a blank page.",
+  "publish_checks_duplicatetitle": "Duplicate titles",
+  "publish_checks_duplicatetitlehint": "Pages in the same section share a title, so readers can't tell them apart."
 }

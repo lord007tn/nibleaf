@@ -4683,5 +4683,55 @@
   "newsite_starter_faq_title": "Частые вопросы",
   "newsite_starter_faq_content": "## Распространённые вопросы\n\nОтветьте на реальный вопрос в нескольких предложениях.\n\n- Объясните, где найти настройки аккаунта.\n- Расскажите, как связаться с вашей командой.\n",
   "newsite_addresslatinhint": "В адресах сайтов используются латинские буквы. Выберите удобный для чтения адрес, например help-center.",
-  "newsite_addressunavailable": "Этот адрес зарезервирован или недоступен. Выберите другой адрес."
+  "newsite_addressunavailable": "Этот адрес зарезервирован или недоступен. Выберите другой адрес.",
+  "publish_checks_title": "Проверки",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} ошибка",
+        "form=few": "{count} ошибки",
+        "form=many": "{count} ошибок",
+        "form=*": "{count} ошибки"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} предупреждение",
+        "form=few": "{count} предупреждения",
+        "form=many": "{count} предупреждений",
+        "form=*": "{count} предупреждения"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "публикация по-прежнему доступна",
+  "publish_checks_mustfix": "исправьте ошибки, чтобы опубликовать",
+  "publish_checks_allclear": "Все проверки пройдены",
+  "publish_checks_allclearhint": "Нет битых ссылок, изображений без альтернативного текста, страниц без названия и лишних символов.",
+  "publish_checks_fix": "Исправить",
+  "publish_checks_fixlabel": "Исправить «{title}» в редакторе",
+  "publish_checks_blockedreason": "Перед публикацией исправьте ошибки из раздела «Проверки».",
+  "publish_checks_error": "Ошибка",
+  "publish_checks_warning": "Предупреждение",
+  "publish_checks_duplicateof": "То же название, что у {path}",
+  "publish_checks_pathtoolong": "Слишком длинный адрес ссылки (более 2048 символов)",
+  "publish_checks_brokenlink": "Битые ссылки",
+  "publish_checks_brokenlinkhint": "Эти ссылки ведут на страницу, которой не будет на опубликованном сайте.",
+  "publish_checks_missingalt": "Изображения без альтернативного текста",
+  "publish_checks_missingalthint": "Программы чтения с экрана не смогут описать эти изображения. Добавьте альтернативный текст к каждому.",
+  "publish_checks_untitledpage": "Страницы без названия",
+  "publish_checks_untitledpagehint": "Дайте этим страницам настоящие названия, чтобы читатели могли их найти.",
+  "publish_checks_straycharacters": "Лишние символы",
+  "publish_checks_straycharactershint": "Одиночный / или буквальный --- отображается на странице как текст.",
+  "publish_checks_unreadableslug": "Неудобочитаемые веб-адреса",
+  "publish_checks_unreadableslughint": "Используйте короткий адрес из слов, чтобы ссылку было легко прочитать и отправить.",
+  "publish_checks_emptypage": "Пустые страницы",
+  "publish_checks_emptypagehint": "На этих страницах ещё нет содержимого, поэтому читатели увидят пустую страницу.",
+  "publish_checks_duplicatetitle": "Повторяющиеся названия",
+  "publish_checks_duplicatetitlehint": "У страниц в одном разделе одинаковое название, и читатели не могут их различить."
 }

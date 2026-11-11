@@ -4597,5 +4597,49 @@
   "newsite_starter_faq_title": "常见问题",
   "newsite_starter_faq_content": "## 常见疑问\n\n用几句话回答一个真实的问题。\n\n- 说明在哪里找到账户设置。\n- 告诉读者如何联系您的团队。\n",
   "newsite_addresslatinhint": "网站地址使用拉丁字母。请选择易于阅读的地址，例如 help-center。",
-  "newsite_addressunavailable": "此地址已保留或不可用。请选择其他地址。"
+  "newsite_addressunavailable": "此地址已保留或不可用。请选择其他地址。",
+  "publish_checks_title": "检查",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 个错误"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 个警告"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "仍可发布",
+  "publish_checks_mustfix": "请先修复错误再发布",
+  "publish_checks_allclear": "所有检查均已通过",
+  "publish_checks_allclearhint": "没有损坏的链接、缺少替代文本的图片、无标题页面或残留字符。",
+  "publish_checks_fix": "修复",
+  "publish_checks_fixlabel": "在编辑器中修复“{title}”",
+  "publish_checks_blockedreason": "发布前请先修复“检查”中列出的错误。",
+  "publish_checks_error": "错误",
+  "publish_checks_warning": "警告",
+  "publish_checks_duplicateof": "与 {path} 标题相同",
+  "publish_checks_pathtoolong": "链接地址过长（超过 2048 个字符）",
+  "publish_checks_brokenlink": "损坏的链接",
+  "publish_checks_brokenlinkhint": "这些链接指向的页面在已发布的网站上将不存在。",
+  "publish_checks_missingalt": "缺少替代文本的图片",
+  "publish_checks_missingalthint": "屏幕阅读器无法描述这些图片。请为每张图片添加替代文本。",
+  "publish_checks_untitledpage": "无标题页面",
+  "publish_checks_untitledpagehint": "请为这些页面设置真正的标题，方便读者找到它们。",
+  "publish_checks_straycharacters": "残留字符",
+  "publish_checks_straycharactershint": "单独的 / 或字面上的 --- 会以文本形式显示在页面上。",
+  "publish_checks_unreadableslug": "难以阅读的网址",
+  "publish_checks_unreadableslughint": "请使用由单词组成的简短网址，让链接易于阅读和分享。",
+  "publish_checks_emptypage": "空白页面",
+  "publish_checks_emptypagehint": "这些页面还没有内容，读者会看到空白页面。",
+  "publish_checks_duplicatetitle": "重复的标题",
+  "publish_checks_duplicatetitlehint": "同一部分中的多个页面标题相同，读者无法区分它们。"
 }

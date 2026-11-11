@@ -4662,5 +4662,51 @@
   "newsite_starter_faq_title": "Foire aux questions",
   "newsite_starter_faq_content": "## Questions courantes\n\nRépondez à une vraie question en quelques phrases.\n\n- Expliquez où trouver les paramètres du compte.\n- Indiquez comment contacter votre équipe.\n",
   "newsite_addresslatinhint": "Les adresses des sites utilisent des lettres latines. Choisissez une adresse facile à lire, par exemple help-center.",
-  "newsite_addressunavailable": "Cette adresse est réservée ou indisponible. Choisissez une autre adresse."
+  "newsite_addressunavailable": "Cette adresse est réservée ou indisponible. Choisissez une autre adresse.",
+  "publish_checks_title": "Vérifications",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} erreur",
+        "form=*": "{count} erreurs"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} avertissement",
+        "form=*": "{count} avertissements"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "la publication reste possible",
+  "publish_checks_mustfix": "corrigez les erreurs pour publier",
+  "publish_checks_allclear": "Toutes les vérifications sont réussies",
+  "publish_checks_allclearhint": "Aucun lien cassé, aucune image sans texte alternatif, aucune page sans titre ni caractère résiduel.",
+  "publish_checks_fix": "Corriger",
+  "publish_checks_fixlabel": "Corriger {title} dans l’éditeur",
+  "publish_checks_blockedreason": "Corrigez les erreurs listées dans Vérifications avant de publier.",
+  "publish_checks_error": "Erreur",
+  "publish_checks_warning": "Avertissement",
+  "publish_checks_duplicateof": "Même titre que {path}",
+  "publish_checks_pathtoolong": "Adresse du lien trop longue (plus de 2 048 caractères)",
+  "publish_checks_brokenlink": "Liens cassés",
+  "publish_checks_brokenlinkhint": "Ces liens mènent à une page qui n’existera pas sur le site publié.",
+  "publish_checks_missingalt": "Images sans texte alternatif",
+  "publish_checks_missingalthint": "Les lecteurs d’écran ne peuvent pas décrire ces images. Ajoutez un texte alternatif à chacune.",
+  "publish_checks_untitledpage": "Pages sans titre",
+  "publish_checks_untitledpagehint": "Donnez un vrai titre à ces pages pour que les lecteurs les trouvent.",
+  "publish_checks_straycharacters": "Caractères résiduels",
+  "publish_checks_straycharactershint": "Un / isolé ou un --- littéral s’affiche comme du texte sur la page.",
+  "publish_checks_unreadableslug": "Adresses web peu lisibles",
+  "publish_checks_unreadableslughint": "Utilisez une adresse courte faite de mots pour que le lien soit facile à lire et à partager.",
+  "publish_checks_emptypage": "Pages vides",
+  "publish_checks_emptypagehint": "Ces pages n’ont pas encore de contenu : les lecteurs verraient une page blanche.",
+  "publish_checks_duplicatetitle": "Titres en double",
+  "publish_checks_duplicatetitlehint": "Des pages de la même section ont le même titre, les lecteurs ne peuvent donc pas les distinguer."
 }
