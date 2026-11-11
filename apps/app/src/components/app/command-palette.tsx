@@ -37,17 +37,25 @@ import { createContext, Fragment, type ReactNode, useContext, useEffect, useMemo
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useOrganizationSwitcherProjects, usePages, useSwitcher } from '@/hooks/api';
+import { resolveProjectSettingsAccess } from '@/lib/project-settings-access';
 import { OrgAvatar } from './org-switcher/org-avatar';
 import { useSwitcherControls } from './org-switcher/switcher-context';
 
 /** Site-settings destinations people look for most, with English aliases so
  *  "domain", "team" or "language" find them whatever the label says. */
+// `adminOnly`: offered only where the shared site-access policy lets the
+// person manage the website's settings (resolveProjectSettingsAccess). The Team
+// page has a read-only view, so every member may open it.
 const SETTINGS_DESTINATIONS = [
-  { section: 'general', labelKey: 'settings.general', icon: SlidersHorizontal, aliases: 'general name logo seo' },
-  { section: 'domain', labelKey: 'settings.domain', icon: Globe2, aliases: 'domain address url web dns' },
-  { section: 'languages', labelKey: 'settings.languages', icon: Languages, aliases: 'languages translation arabic rtl' },
-  { section: 'members', labelKey: 'settings.members', icon: Users, aliases: 'members team people invite roles' },
-] as const satisfies ReadonlyArray<{ section: string; labelKey: MessageKey; icon: LucideIcon; aliases: string }>;
+  { section: 'general', labelKey: 'settings.general', icon: SlidersHorizontal, aliases: 'general name logo seo', adminOnly: true },
+  { section: 'domain', labelKey: 'settings.domain', icon: Globe2, aliases: 'domain address url web dns', adminOnly: true },
+  { section: 'languages', labelKey: 'settings.languages', icon: Languages, aliases: 'languages translation arabic rtl', adminOnly: true },
+  { section: 'members', labelKey: 'settings.members', icon: Users, aliases: 'members team people invite roles', adminOnly: false },
+] as const satisfies ReadonlyArray<{ section: string; labelKey: MessageKey; icon: LucideIcon; aliases: string; adminOnly: boolean }>;
+
+/** The settings shortcuts this person may open on a website, by their effective role there. */
+const settingsDestinationsFor = (role: string | undefined) =>
+  SETTINGS_DESTINATIONS.filter((destination) => !destination.adminOnly || resolveProjectSettingsAccess(role, false) === 'admin');
 
 /** Pages listed before the user types (most recently edited first). */
 const RECENT_PAGE_LIMIT = 6;
@@ -200,7 +208,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     settingsSites.length > 0 ? (
       <CommandGroup heading={t('command.group.settings')} value="settings">
         {settingsSites.flatMap((site) =>
-          SETTINGS_DESTINATIONS.map((destination) => {
+          settingsDestinationsFor(site.role).map((destination) => {
             const label = t(destination.labelKey);
             return (
               <CommandItem
@@ -244,7 +252,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       node: settingsGroup,
       score: bestMatch(
         settingsSites.flatMap((site) =>
-          SETTINGS_DESTINATIONS.map(
+          settingsDestinationsFor(site.role).map(
             (destination) =>
               [`settings ${site.id} ${destination.aliases}`, [t(destination.labelKey), site.name, t('command.group.settings')]] as const,
           ),
@@ -260,16 +268,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       <CommandDialog
         description={t('command.dialog.description')}
         filter={contiguousFirstFilter}
+        label={t('command.searchPlaceholder')}
         onOpenChange={changeOpen}
         open={open}
         title={t('command.dialog.title')}
       >
-        <CommandInput
-          aria-label={t('command.searchPlaceholder')}
-          onValueChange={setQuery}
-          placeholder={t('command.searchPlaceholder')}
-          value={query}
-        />
+        <CommandInput onValueChange={setQuery} placeholder={t('command.searchPlaceholder')} value={query} />
         {projectsQuery.isError ? (
           <div className="p-2">
             <QueryErrorState title={t('nav.sitesLoadError')} onRetry={() => void projectsQuery.refetch()} retrying={projectsQuery.isFetching} />

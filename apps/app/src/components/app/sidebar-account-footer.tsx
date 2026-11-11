@@ -26,18 +26,28 @@ import { authClient } from '@/services/auth-client';
 import { signOutDashboard } from '@/services/dashboard-session';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 
-/** Two letters for the avatar: from the name, else the email's local part. */
+const graphemes = (value: string): string[] => {
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value)].map((part) => part.segment);
+  }
+  return Array.from(value); // Code points: never splits a surrogate pair.
+};
+
+/** Two characters for the avatar, from the name (first grapheme of the first
+ *  two words) or else the email's local part. Graphemes, not UTF-16 units, so
+ *  an emoji, a supplementary-plane letter or a combined Arabic letter is never
+ *  cut in half. */
 export const accountInitials = (user: { name?: string | null; email?: string | null } | null | undefined) => {
   const name = user?.name?.trim();
   if (name)
     return name
       .split(/\s+/)
-      .map((part) => part[0])
+      .map((part) => graphemes(part)[0] ?? '')
       .slice(0, 2)
       .join('')
       .toUpperCase();
   const local = user?.email?.split('@')[0]?.replace(/[^\p{L}\p{N}]/gu, '') ?? '';
-  return local.slice(0, 2).toUpperCase();
+  return graphemes(local).slice(0, 2).join('').toUpperCase();
 };
 
 const helpUrl = (locale: string) => `https://docs.nibleaf.com/${locale === 'ar' ? 'ar/' : ''}`;

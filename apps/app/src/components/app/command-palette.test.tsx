@@ -71,8 +71,8 @@ beforeEach(() => {
   }));
   mocks.useProjects.mockReturnValue({
     data: [
-      { id: 'project-1', name: 'Nibleaf Docs' },
-      { id: 'project-2', name: 'دليل المنتج' },
+      { id: 'project-1', name: 'Nibleaf Docs', role: 'owner' },
+      { id: 'project-2', name: 'دليل المنتج', role: 'owner' },
     ],
   });
 });
@@ -106,6 +106,26 @@ const typeInto = (input: HTMLInputElement, value: string) =>
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
+
+const input = () => document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement;
+const visibleGroups = () =>
+  [...document.querySelectorAll<HTMLElement>('[cmdk-group]')].filter((node) => !node.hidden).map((node) => node.getAttribute('data-value') ?? '');
+const press = (key: string) =>
+  act(async () => {
+    input().dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  });
+/** The accessible name per accname: aria-labelledby (text of each referenced
+ *  element) wins over aria-label, which wins over nothing. */
+const accessibleName = (element: Element) => {
+  const labelledBy = element.getAttribute('aria-labelledby');
+  if (labelledBy)
+    return labelledBy
+      .split(/\s+/)
+      .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+      .join(' ')
+      .trim();
+  return element.getAttribute('aria-label')?.trim() ?? '';
+};
 
 const itemLabels = () => [...document.querySelectorAll('[data-slot="command-item"]')].map((node) => node.textContent?.trim());
 
@@ -256,9 +276,9 @@ describe('CommandPalette', () => {
   });
 
   describe('production audit WORKSPACE-16', () => {
-    it('labels the search input for assistive technology', async () => {
+    it('gives the search input a computed accessible name (cmdk names it with aria-labelledby)', async () => {
       await render(true);
-      expect(document.querySelector('[data-slot="command-input"]')?.getAttribute('aria-label')).toBe('command.searchPlaceholder');
+      expect(accessibleName(input())).toBe('command.searchPlaceholder');
     });
 
     it('lists each settings page once outside a website, not once per website', async () => {
@@ -279,16 +299,54 @@ describe('CommandPalette', () => {
       expect(setting).toBeGreaterThan(site);
     });
 
-    it('moves the group with the best match to the top, even when its heading has spaces', async () => {
-      mocks.t.mockImplementation((key: string) => (key === 'command.group.settings' ? 'Site settings' : key));
+    it('puts Site settings above a website whose name only scatters the letters, with both groups shown', async () => {
+      mocks.useProjects.mockReturnValue({ data: [{ id: 'project-3', name: 'JoodBooking Documentation', role: 'owner' }] });
       await render(true);
-      await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'domain');
-      const visibleGroups = () =>
-        [...document.querySelectorAll<HTMLElement>('[cmdk-group]')].filter((node) => !node.hidden).map((node) => node.getAttribute('data-value'));
-      expect(visibleGroups()[0]).toBe('settings');
+      await typeInto(input(), 'domain');
+      const groups = visibleGroups();
+      // Both match: the site fuzzily ("Do…cu…m…ent…a…t…i…o…n"), Custom domain as a whole word.
+      expect(groups).toContain('projects');
+      expect(groups).toContain('settings');
+      expect(groups.indexOf('settings')).toBeLessThan(groups.indexOf('projects'));
       // A site-name search still leads with the site.
-      await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'Nibleaf');
+      await typeInto(input(), 'JoodBooking');
       expect(visibleGroups()[0]).toBe('projects');
+    });
+
+    it('selects the best match and moves the selection with Arrow, Home and End, tracked by aria-activedescendant', async () => {
+      mocks.useProjects.mockReturnValue({ data: [{ id: 'project-3', name: 'JoodBooking Documentation', role: 'owner' }] });
+      await render(true);
+      await typeInto(input(), 'domain');
+      const items = () => [...document.querySelectorAll<HTMLElement>('[cmdk-item]')].filter((node) => !node.hidden && node.offsetParent !== undefined);
+      const selected = () => document.querySelector<HTMLElement>('[cmdk-item][aria-selected="true"]');
+      // DEBUG
+      console.log('SEL', [...document.querySelectorAll('[cmdk-item][aria-selected="true"]')].map((n) => `${n.id}:${n.textContent}`), 'AD', input().getAttribute('aria-activedescendant'), 'ITEMS', [...document.querySelectorAll('[cmdk-item]')].filter((n) => !(n as HTMLElement).hidden).map((n) => `${n.id}:${n.textContent}`));
+      expect(selected()?.textContent).toContain('settings.domain');
+      expect(input().getAttribute('aria-activedescendant')).toBe(selected()?.id);
+      await press('ArrowDown');
+      expect(selected()?.textContent).not.toContain('settings.domain');
+      expect(input().getAttribute('aria-activedescendant')).toBe(selected()?.id);
+      await press('End');
+      expect(selected()).toBe(items().at(-1));
+      await press('Home');
+      expect(selected()?.textContent).toContain('settings.domain');
+      await press('Enter');
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: '/app/projects/$projectId/settings',
+        params: { projectId: 'project-3' },
+        search: { section: 'domain' },
+      });
+    });
+
+    it.each(['viewer', 'member'] as const)('offers a %s only the settings they may open (Team, never General or Custom domain)', async (role) => {
+      mocks.useProjects.mockReturnValue({ data: [{ id: 'project-1', name: 'Nibleaf Docs', role }] });
+      await render(true);
+      await typeInto(input(), 'domain');
+      expect(itemLabels().some((label) => label?.includes('settings.domain'))).toBe(false);
+      await typeInto(input(), 'general');
+      expect(itemLabels().some((label) => label?.includes('settings.general'))).toBe(false);
+      await typeInto(input(), 'team');
+      expect(itemLabels().some((label) => label?.includes('settings.members'))).toBe(true);
     });
 
     it('finds Invite outside a website and opens the organization members', async () => {

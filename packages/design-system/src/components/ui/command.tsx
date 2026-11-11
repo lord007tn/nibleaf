@@ -40,12 +40,17 @@ function CommandDialog({
   className,
   showCloseButton = false,
   filter,
+  label,
   ...props
 }: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
   title?: string
   description?: string
   className?: string
   showCloseButton?: boolean
+  /** The search input's accessible name. cmdk names its input with
+   *  `aria-labelledby` pointing at its own label, which overrides `aria-label`
+   *  on the input, so the name must be given here. */
+  label?: string
   /** cmdk's ranking; see `contiguousFirstFilter`. */
   filter?: React.ComponentProps<typeof CommandPrimitive>["filter"]
   children: React.ReactNode
@@ -65,7 +70,7 @@ function CommandDialog({
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
         {/* cmdk root: CommandInput/CommandList read their store from this context. */}
-        <Command filter={filter}>{children}</Command>
+        <Command filter={filter} label={label}>{children}</Command>
       </DialogContent>
     </Dialog>
   )
