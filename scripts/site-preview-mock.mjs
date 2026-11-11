@@ -69,6 +69,8 @@ const GROUPS = [
   { slug: 'reference', icon: 'braces', title: { en: 'Reference', ar: 'المرجع' } },
 ];
 
+const FENCE = '```';
+
 const CURL_SHIPMENT = `\`\`\`bash
 curl https://api.tidewater.dev/v1/shipments \\
   -H "Authorization: Bearer tw_live_9f3c…" \\
@@ -377,6 +379,55 @@ ${CURL_SHIPMENT}
 </Tip>
 
 > تُمسح بيانات البيئة التجريبية كل يوم أحد في الساعة 02:00 بالتوقيت العالمي. أي شيء تحتاج إلى الاحتفاظ به ينبغي أن يعيد إعداد الاختبار إنشاءه.`,
+    },
+  },
+  {
+    // The blocks the editor and the reader share one stylesheet for (AUTH-26):
+    // a table, a code block, and a task list.
+    group: 'getting-started',
+    slug: 'checklist',
+    icon: 'check',
+    en: {
+      title: 'Launch checklist',
+      description: 'Everything to confirm before you switch from sandbox to live keys.',
+      content: `Run through this list before your first live shipment.
+
+| Step | Environment | Owner |
+| --- | --- | --- |
+| Create a live key | live | Admin |
+| Register webhooks | sandbox | Developer |
+| Verify signatures | live | Developer |
+
+${FENCE}bash
+export TIDEWATER_KEY=tw_live_9f3c
+npx tidewater verify --env live
+${FENCE}
+
+- [x] Sandbox shipment booked
+- [x] Webhook endpoint registered
+- [ ] Live key rotated into the vault
+- [ ] On-call rota updated`,
+    },
+    ar: {
+      title: 'قائمة الإطلاق',
+      description: 'كل ما يجب التأكد منه قبل الانتقال من المفاتيح التجريبية إلى مفاتيح الإنتاج.',
+      content: `راجع هذه القائمة قبل أول شحنة حقيقية.
+
+| الخطوة | البيئة | المسؤول |
+| --- | --- | --- |
+| إنشاء مفتاح إنتاج | live | المسؤول |
+| تسجيل إشعارات الويب | sandbox | المطوّر |
+| التحقق من التواقيع | live | المطوّر |
+
+${FENCE}bash
+export TIDEWATER_KEY=tw_live_9f3c
+npx tidewater verify --env live
+${FENCE}
+
+- [x] حُجزت شحنة تجريبية
+- [x] سُجّلت نقطة نهاية إشعارات الويب
+- [ ] نُقل مفتاح الإنتاج إلى الخزنة
+- [ ] حُدّث جدول المناوبة`,
     },
   },
   {
