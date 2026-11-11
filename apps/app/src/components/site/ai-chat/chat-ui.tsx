@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { useRouter } from '@tanstack/react-router';
@@ -72,8 +73,30 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
   );
 }
 
+/** True while the reader scrolls down the page, past its top and short of its
+ * end; false again as soon as they scroll up. Small jitters don't count. */
+function useScrollingDown() {
+  const [down, setDown] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    const update = () => {
+      const y = window.scrollY;
+      if (Math.abs(y - last) < 8) return;
+      const atEnd = window.innerHeight + y >= document.documentElement.scrollHeight - 8;
+      setDown(y > last && y > 64 && !atEnd);
+      last = y;
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
+  return down;
+}
+
 /** The floating "Ask AI" button. It steps aside while the analytics consent
- * banner holds the same corner. */
+ * banner holds the same corner. On phones it is a round icon button (its name
+ * stays for screen readers) that slides away while the reader scrolls down, so
+ * it never sits on screenshots or their zoom buttons; the page keeps room for
+ * it at the end (see SiteChatProvider). */
 function Launcher({
   lang,
   consentBanner,
@@ -97,11 +120,24 @@ function Launcher({
     update();
     return () => observer.disconnect();
   }, [consentBanner, bannerTitle]);
+  const away = useScrollingDown();
   if (consentBanner && bannerVisible) return null;
   return (
-    <Button ref={ref} className="fixed end-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 rounded-full shadow-lg" onClick={onOpen}>
-      <Sparkles aria-hidden className="size-4" />
-      {t('aiTitle')}
+    <Button
+      ref={ref}
+      data-away={away ? '' : undefined}
+      className={cn(
+        'fixed end-4 z-40 size-12 rounded-full p-0 shadow-lg transition-[translate,opacity] duration-200 motion-reduce:transition-none md:size-auto md:h-12 md:px-5',
+        // Above the consent "Manage" button when the site asks for consent. The
+        // page keeps room for offset + 3rem (launcherSpace in provider.tsx).
+        consentBanner ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(1rem+env(safe-area-inset-bottom))]',
+        // Phones only; keyboard focus brings it back.
+        'max-md:data-away:not-focus-visible:pointer-events-none max-md:data-away:not-focus-visible:translate-y-[calc(100%+5rem)] max-md:data-away:not-focus-visible:opacity-0',
+      )}
+      onClick={onOpen}
+    >
+      <Sparkles aria-hidden className="size-5 md:size-4" />
+      <span className="max-md:sr-only">{t('aiTitle')}</span>
     </Button>
   );
 }

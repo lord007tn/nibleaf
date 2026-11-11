@@ -27,7 +27,6 @@ import { site_ai_outdated } from './paraglide/messages/site_ai_outdated.js';
 import { site_ai_page } from './paraglide/messages/site_ai_page.js';
 import { site_ai_page_body } from './paraglide/messages/site_ai_page_body.js';
 import { site_ai_page_title } from './paraglide/messages/site_ai_page_title.js';
-import { site_ai_privacy } from './paraglide/messages/site_ai_privacy.js';
 import { site_ai_question } from './paraglide/messages/site_ai_question.js';
 import { site_ai_quota } from './paraglide/messages/site_ai_quota.js';
 import { site_ai_rate } from './paraglide/messages/site_ai_rate.js';
@@ -35,6 +34,7 @@ import { site_ai_ready } from './paraglide/messages/site_ai_ready.js';
 import { site_ai_remove } from './paraglide/messages/site_ai_remove.js';
 import { site_ai_rephrase } from './paraglide/messages/site_ai_rephrase.js';
 import { site_ai_retry } from './paraglide/messages/site_ai_retry.js';
+import { site_ai_saved } from './paraglide/messages/site_ai_saved.js';
 import { site_ai_saving_rating } from './paraglide/messages/site_ai_saving_rating.js';
 import { site_ai_searching } from './paraglide/messages/site_ai_searching.js';
 import { site_ai_send } from './paraglide/messages/site_ai_send.js';
@@ -89,7 +89,6 @@ const chatMessages = {
   aiStopped: site_ai_stopped,
   aiSuggestionsAdded: site_ai_suggestions_added,
   aiCaution: site_ai_caution,
-  aiPrivacy: site_ai_privacy,
   aiSearching: site_ai_searching,
   aiWriting: site_ai_writing,
   aiChecking: site_ai_checking,
@@ -122,18 +121,34 @@ const chatMessages = {
   aiOther: site_ai_other,
 } satisfies Record<string, MessageFn>;
 
+/** Counted chat messages, with each locale's CLDR plural forms (see siteT). */
+const chatPluralMessages = {
+  /** Shown only when the server stores question text; `count` is its retention in days. */
+  aiSaved: site_ai_saved,
+};
+
 export type SiteChatMessageKey = keyof typeof chatMessages;
+export type SiteChatPluralKey = keyof typeof chatPluralMessages;
 
 /** Translates the chat panel's own keys and, through `siteT`, every other reader key. */
-export type SiteChatTranslator = ((key: SiteChatMessageKey) => string) & SiteTranslator;
+export type SiteChatTranslator = ((key: SiteChatMessageKey) => string) &
+  ((key: SiteChatPluralKey, variables: { count: number }) => string) &
+  SiteTranslator;
 
 const isChatKey = (key: string): key is SiteChatMessageKey => key in chatMessages;
+const isChatPluralKey = (key: string): key is SiteChatPluralKey => key in chatPluralMessages;
 
 export function siteChatT(language?: string): SiteChatTranslator {
   const locale = resolveLocale(language) ?? 'en';
   const site = siteT(language) as (key: string, variables?: MessageVariables) => string;
   // The overloads check keys at each call site; this only dispatches.
-  const translate = (key: string, variables?: MessageVariables): string =>
-    isChatKey(key) ? chatMessages[key](undefined, { locale }) : site(key, variables);
+  const translate = (key: string, variables?: MessageVariables): string => {
+    if (isChatPluralKey(key)) {
+      const count = Number(variables?.count ?? 0);
+      const form = new Intl.PluralRules(locale).select(count);
+      return (chatPluralMessages[key] as unknown as MessageFn)({ count, form }, { locale });
+    }
+    return isChatKey(key) ? chatMessages[key](undefined, { locale }) : site(key, variables);
+  };
   return translate as SiteChatTranslator;
 }

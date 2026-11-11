@@ -77,6 +77,13 @@ export const aiConversationCaptureReady = (): boolean => {
     return false;
   }
 };
+/** What the reader's chat may say about storing questions. Question text is kept
+ * only when the site's capture setting is on and this instance can encrypt and
+ * write it; each reader's consent then applies on top (see below). */
+export const readerQuestionStorage = (captureSetting: boolean) => {
+  const storesQuestions = captureSetting && aiConversationCaptureReady();
+  return { storesQuestions, questionRetentionDays: storesQuestions ? env.AI_CONVERSATION_RETENTION_DAYS : null };
+};
 export const aiConversationContentAllowed = (policy: CapturePolicy): boolean =>
   policy.captureSetting && aiConversationCaptureReady() && (policy.consentRequired ? policy.consent === 'granted' : policy.consent !== 'denied');
 const hash = (value: string) => {

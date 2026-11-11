@@ -19,6 +19,7 @@ import {
   buildAiFeedbackRow,
   buildAiTurnRow,
   type ChatTurnCapture,
+  readerQuestionStorage,
   recordAiChatTurn,
 } from './conversation-archive';
 
@@ -60,6 +61,15 @@ describe('capture policy', () => {
     mocks.mode = 'clickhouse';
     mocks.env.AI_CONVERSATION_ENCRYPTION_KEY = '';
     expect(aiConversationCaptureReady()).toBe(false);
+  });
+  it('tells readers questions are stored only when the setting, the key and analytics writes all allow it', () => {
+    expect(readerQuestionStorage(true)).toEqual({ storesQuestions: true, questionRetentionDays: 90 });
+    expect(readerQuestionStorage(false)).toEqual({ storesQuestions: false, questionRetentionDays: null });
+    mocks.env.AI_CONVERSATION_ENCRYPTION_KEY = '';
+    expect(readerQuestionStorage(true)).toEqual({ storesQuestions: false, questionRetentionDays: null });
+    mocks.env.AI_CONVERSATION_ENCRYPTION_KEY = Buffer.alloc(32, 5).toString('base64');
+    mocks.mode = 'disabled';
+    expect(readerQuestionStorage(true)).toEqual({ storesQuestions: false, questionRetentionDays: null });
   });
   it('redacts row text and keeps unknown cost explicit', () => {
     const row = buildAiTurnRow(capture);

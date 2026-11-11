@@ -337,7 +337,7 @@ export const MESSAGE_IDS = {
   'site.aiStop': 'site_ai_stop',
   'site.aiStopped': 'site_ai_stopped',
   'site.aiCaution': 'site_ai_caution',
-  'site.aiPrivacy': 'site_ai_privacy',
+  'site.aiSaved': 'site_ai_saved',
   'site.aiSearching': 'site_ai_searching',
   'site.aiWriting': 'site_ai_writing',
   'site.aiChecking': 'site_ai_checking',

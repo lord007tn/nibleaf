@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { ChatRoot } from './chat-ui';
-import type { ChatRequest } from './provider';
+import { type ChatRequest, SiteChatProvider } from './provider';
 
 const mocks = vi.hoisted(() => ({ replace: vi.fn(), panel: vi.fn() }));
 vi.mock('@tanstack/react-router', () => ({ useRouter: () => ({ history: { replace: mocks.replace } }) }));
@@ -18,7 +18,7 @@ vi.mock('./panel', () => ({
 }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
-const options = { projectId: 'docs', lang: 'en', direction: 'ltr' as const, config: null };
+const options = { projectId: 'docs', lang: 'en', direction: 'ltr' as const, config: null, questionRetentionDays: null };
 const roots: Array<() => Promise<void>> = [];
 afterEach(async () => {
   for (const unmount of roots.splice(0)) await unmount();
@@ -112,5 +112,65 @@ describe('ChatRoot', () => {
     expect(launcher()).toBeDefined();
     await view.render(<ChatRoot {...options} config={config} openChat={vi.fn()} request={request(1)} />);
     expect(mocks.panel.mock.lastCall?.[0].requiresConsent).toBe(true);
+  });
+});
+
+describe('launcher on phones', () => {
+  const scrollTo = (y: number) =>
+    act(async () => {
+      Object.defineProperty(window, 'scrollY', { configurable: true, value: y });
+      window.dispatchEvent(new Event('scroll'));
+    });
+  afterEach(() => Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 }));
+
+  it('is a round icon button below md, its name kept for screen readers', async () => {
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    const button = launcher();
+    expect(button?.className).toContain('size-12');
+    expect(button?.className).toContain('md:size-auto');
+    const name = button?.querySelector('span');
+    expect(name?.textContent).toBe('Ask AI');
+    expect(name?.className).toBe('max-md:sr-only');
+    // Without a consent banner it sits 1rem up; with one, above its Manage button.
+    expect(button?.className).toContain('bottom-[calc(1rem+env(safe-area-inset-bottom))]');
+  });
+
+  it('slides away while the reader scrolls down and comes back on scroll up', async () => {
+    Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 5000 });
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    expect(launcher()?.hasAttribute('data-away')).toBe(false);
+    await scrollTo(400);
+    expect(launcher()?.hasAttribute('data-away')).toBe(true);
+    expect(launcher()?.className).toContain('max-md:data-away:not-focus-visible:opacity-0');
+    await scrollTo(395);
+    // A jitter of a few pixels changes nothing.
+    expect(launcher()?.hasAttribute('data-away')).toBe(true);
+    await scrollTo(300);
+    expect(launcher()?.hasAttribute('data-away')).toBe(false);
+  });
+
+  it('reserves room at the end of the page for the launcher and the safe area', async () => {
+    const view = await mount(
+      <SiteChatProvider {...options} available>
+        <p>Docs</p>
+      </SiteChatProvider>,
+    );
+    const space = view.container.querySelector('[data-chat-launcher-space]');
+    expect(space?.previousElementSibling?.textContent).toBe('Docs');
+    // Its 1rem offset plus its 3rem height, plus the safe-area inset.
+    expect(space?.className).toContain('h-[calc(4rem+env(safe-area-inset-bottom))]');
+    const consent = { analytics: { cookieConsent: true } } as ProjectConfig;
+    await view.render(
+      <SiteChatProvider {...options} config={consent} available>
+        <p>Docs</p>
+      </SiteChatProvider>,
+    );
+    expect(view.container.querySelector('[data-chat-launcher-space]')?.className).toContain('h-[calc(7.5rem+env(safe-area-inset-bottom))]');
+    await view.render(
+      <SiteChatProvider {...options} available={false}>
+        <p>Docs</p>
+      </SiteChatProvider>,
+    );
+    expect(view.container.querySelector('[data-chat-launcher-space]')).toBeNull();
   });
 });

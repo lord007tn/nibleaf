@@ -51,6 +51,8 @@ const roots: Array<() => Promise<void>> = [];
 let siteVersion: string | undefined;
 let requiresConsent = false;
 let projectId = 'docs';
+// Days the server keeps question text for the site; null when it keeps none.
+let questionRetentionDays: number | null = null;
 afterEach(async () => {
   for (const unmount of roots.splice(0)) await unmount();
   document.body.replaceChildren();
@@ -58,6 +60,7 @@ afterEach(async () => {
   siteVersion = undefined;
   requiresConsent = false;
   projectId = 'docs';
+  questionRetentionDays = null;
   window.localStorage.clear();
   window.sessionStorage.clear();
   vi.clearAllMocks();
@@ -79,6 +82,7 @@ const mount = async (request?: { id: number; question?: string; source: 'deep_li
             version={siteVersion}
             direction="ltr"
             config={null}
+            questionRetentionDays={questionRetentionDays}
             open={open}
             onOpenChange={vi.fn()}
             requiresConsent={requiresConsent}
@@ -375,4 +379,42 @@ it('flushes capture-time consent through the authenticated keepalive endpoint on
     { param: { id: 'docs' }, json: expect.objectContaining({ consent: 'unknown', events: [expect.objectContaining({ name: 'chat_opened' })] }) },
     { init: { keepalive: true } },
   );
+});
+
+describe('what the panel says about saving questions', () => {
+  const saved = () => [...document.querySelectorAll('footer p')].find((line) => line.textContent?.startsWith('Questions are'));
+  it('says nothing about saving when the server keeps no question text', async () => {
+    mocks.chat.messages = [];
+    await mount();
+    expect(document.querySelector('footer')?.textContent).toContain('AI can make mistakes');
+    expect(saved()).toBeUndefined();
+    expect(document.body.textContent).not.toMatch(/saved|kept for/i);
+  });
+
+  it('gives the real retention period when the server keeps questions', async () => {
+    mocks.chat.messages = [];
+    questionRetentionDays = 30;
+    await mount();
+    expect(saved()?.textContent).toBe("Questions are kept for 30 days to help improve these docs. Please don't include personal details.");
+  });
+
+  it('follows the reader consent the server applies before it keeps anything', async () => {
+    mocks.chat.messages = [];
+    questionRetentionDays = 90;
+    requiresConsent = true;
+    const render = await mount();
+    expect(saved()).toBeUndefined();
+    window.localStorage.setItem('nibleaf.analytics.consent.docs', 'declined');
+    await render();
+    expect(saved()).toBeUndefined();
+    window.localStorage.setItem('nibleaf.analytics.consent.docs', 'accepted');
+    await render();
+    expect(saved()?.textContent).toContain('kept for 90 days');
+  });
+
+  it('describes the panel plainly in its header', async () => {
+    mocks.chat.messages = [];
+    await mount();
+    expect(document.querySelector('header')?.textContent).toContain('Answers use these docs and link to their sources.');
+  });
 });

@@ -20,7 +20,7 @@ import { readSiteConsent } from '@/lib/site-consent';
 import { api } from '@/services/api';
 import { Composer } from './composer';
 import { createChatEventQueue } from './events';
-import { buildHistory, deriveConsent, errorKey } from './helpers';
+import { buildHistory, deriveConsent, errorKey, questionRetention } from './helpers';
 import { ChatMessage, type TurnScope } from './message';
 import type { ChatOpenRequest, ChatOptions, PageContext } from './provider';
 import { readerSession } from './session';
@@ -266,6 +266,7 @@ export default function Panel(
       .join('');
   const last = chat.messages.at(-1);
   const streaming = Boolean(last && last.role !== 'user' && textOf(last));
+  const retainedDays = questionRetention(options.questionRetentionDays ?? null, consent());
   const latestAnswer = [...chat.messages].reverse().find((message) => message.role !== 'user' && finals[message.id]?.status === 'answered');
   return (
     <Sheet open={options.open} onOpenChange={options.onOpenChange}>
@@ -419,7 +420,8 @@ export default function Panel(
         <footer className="shrink-0 space-y-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <Composer lang={options.lang} busy={answering} value={typed} setValue={setTyped} field={field} send={send} stop={stop} />
           <p className="text-muted-foreground text-xs">{t('aiCaution')}</p>
-          {options.config?.search?.aiConversationCapture !== false && <p className="text-muted-foreground text-xs">{t('aiPrivacy')}</p>}
+          {/* Said only when the server keeps question text and this reader's consent lets it. */}
+          {retainedDays !== null && <p className="text-muted-foreground text-xs">{t('aiSaved', { count: retainedDays })}</p>}
         </footer>
       </SheetContent>
     </Sheet>

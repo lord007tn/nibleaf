@@ -491,6 +491,7 @@ function SiteChrome() {
             chat={{
               projectId,
               available: site?.capabilities?.answer === true,
+              questionRetentionDays: site?.capabilities?.storesQuestions === true ? (site.capabilities.questionRetentionDays ?? null) : null,
               lang: activeLanguage?.code,
               defaultLanguage,
               direction: isRtl ? 'rtl' : 'ltr',
