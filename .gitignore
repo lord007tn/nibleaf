@@ -61,3 +61,6 @@ seo-audit/
 .temp/
 tmp/
 temp/
+
+# Paraglide's compile cache (content hashes per message file), regenerated on build.
+packages/i18n/project.inlang/cache/
