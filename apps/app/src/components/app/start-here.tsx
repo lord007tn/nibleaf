@@ -43,7 +43,18 @@ export function useStartHereActivity(deploymentSiteIds: string[], pageSiteIds: s
 }
 
 /** First-run path: three plain steps with real progress, each opening the right screen. */
-export function StartHere({ progress, onCreateSite, onDismiss }: { progress: StartHereProgress; onCreateSite: () => void; onDismiss: () => void }) {
+export function StartHere({
+  progress,
+  orgSlug,
+  onCreateSite,
+  onDismiss,
+}: {
+  progress: StartHereProgress;
+  /** Inviting is an organization step (WORKSPACE-13): it opens the org's Members page. */
+  orgSlug: string;
+  onCreateSite: () => void;
+  onDismiss: () => void;
+}) {
   const t = useT();
   const projectId = progress.focus?.id;
   const steps: Array<{ key: string; done: boolean; title: string; desc: string; link: (className: string, label: string) => ReactNode }> = [
@@ -74,16 +85,7 @@ export function StartHere({ progress, onCreateSite, onDismiss }: { progress: Sta
       done: progress.invited,
       title: t('dashboard.start.step3'),
       desc: t('dashboard.start.step3Desc'),
-      link: (className, label) =>
-        projectId ? (
-          <Link
-            aria-label={label}
-            className={className}
-            params={{ projectId }}
-            search={{ section: 'members' }}
-            to="/app/projects/$projectId/settings"
-          />
-        ) : null,
+      link: (className, label) => <Link aria-label={label} className={className} params={{ orgSlug }} to="/app/o/$orgSlug/members" />,
     },
   ];
 

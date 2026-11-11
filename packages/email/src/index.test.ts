@@ -67,6 +67,29 @@ describe('localized transactional email rendering', () => {
     expect(email.text).toContain(phrase);
     expect(email.text).not.toMatch(/\b(viewer|member)\b/);
   });
+  it('tells an invited Admin they get every website, and a Member with no website that access comes later', async () => {
+    const admin = await renderMemberInvitationEmail({
+      acceptUrl: 'https://app.example.com/accept-invite/abc',
+      days: 7,
+      inviterName: 'Ada',
+      organizationName: 'Synthetic Org',
+      role: 'admin',
+      organizationRole: true,
+    });
+    expect(admin.subject).toBe('Ada invited you to join Synthetic Org on Nibleaf');
+    expect(admin.text).toContain('every website');
+    const none = await renderMemberInvitationEmail({
+      acceptUrl: 'https://app.example.com/accept-invite/abc',
+      days: 7,
+      inviterName: 'Ada',
+      organizationName: 'Synthetic Org',
+      role: 'member',
+      organizationRole: true,
+      grants: [],
+      language: 'ar',
+    });
+    expect(none.text).toContain('سيمنحك مشرف الوصول إلى المواقع');
+  });
   it('describes organization membership and all website grants in both email forms', async () => {
     const email = await renderMemberInvitationEmail({
       acceptUrl: 'https://app.example.com/accept-invite/abc',

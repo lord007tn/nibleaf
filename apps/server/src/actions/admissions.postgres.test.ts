@@ -149,7 +149,7 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
     else
       await organizations.updateOrganizationMember(f.org.id, f.owner.id, issuerMember.id, {
         orgRole: 'member',
-        // PR 1 never leaves an org member with zero websites (§10.1): "demoted" keeps one Viewer grant.
+        // "demoted" keeps one Viewer grant, so the issuer still opens the website but can no longer grant Editor.
         grants: state === 'one-grant-lost' ? [{ projectId: f.projectId, role: 'admin' }] : [{ projectId: f.projectId, role: 'viewer' }],
       });
     await expect(admissions.admit(user.id, { invitationId: invitation.id })).rejects.toMatchObject({ status: 404 });
@@ -254,9 +254,10 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
       grants: [{ projectId: f.projectId, role: 'admin' }],
     });
     await admissions.admit(user.id, { token });
-    // Revoking all access is removal in PR 1 (§10.1): the membership row goes too.
+    // Removing the last website keeps the person in the org with no website (PR 3, design §6.7).
     await members.removeMember(f.org.id, m.id, f.owner.id, f.projectId);
-    expect(await db.prisma.member.count({ where: { organizationId: f.org.id, userId: user.id } })).toBe(0);
+    expect(await grantRoles(f.org.id, user.id)).toEqual([]);
+    expect(await db.prisma.member.count({ where: { organizationId: f.org.id, userId: user.id } })).toBe(1);
     await admissions.admit(user.id, { token });
     expect((await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).useCount).toBe(2);
     expect((await db.prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } })).status).toBe('pending');
@@ -330,9 +331,10 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
     });
     expect(result.invitations).toEqual([]);
     expect(result.existingMembers).toEqual([{ userId: user.id, email: user.email, changed: true }]);
-    await expect(organizations.updateOrganizationMember(f.org.id, f.owner.id, m.id, { orgRole: 'member', grants: [] })).rejects.toMatchObject({
-      status: 409,
-    });
+    // "None" is a valid answer to "Which websites can they still open?" (design §6.6).
+    await organizations.updateOrganizationMember(f.org.id, f.owner.id, m.id, { orgRole: 'member', grants: [] });
+    expect(await grantRoles(f.org.id, user.id)).toEqual([]);
+    await organizations.updateOrganizationMember(f.org.id, f.owner.id, m.id, { orgRole: 'admin' });
     const kept = f.projects[1]?.id ?? '';
     await organizations.updateOrganizationMember(f.org.id, f.owner.id, m.id, { orgRole: 'member', grants: [{ projectId: kept, role: 'viewer' }] });
     expect(await grantRoles(f.org.id, user.id)).toEqual([[kept, 'viewer']]);
@@ -377,8 +379,22 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
     const invitation = await invite(f, user);
     await db.prisma.organization.update({ where: { id: f.org.id }, data: { metadata: JSON.stringify({ secret: 'server-only-sentinel' }) } });
     const info = await members.getInvitationInfo(invitation.id);
-    expect(Object.keys(info).sort()).toEqual(['id', 'email', 'orgRole', 'role', 'organizationName', 'grants', 'status', 'expired'].sort());
-    expect(info.grants).toEqual([{ name: 'Website 0', role: 'member' }]);
+    expect(Object.keys(info).sort()).toEqual(
+      [
+        'id',
+        'email',
+        'orgRole',
+        'role',
+        'organizationId',
+        'organizationName',
+        'organizationLogo',
+        'inviterName',
+        'grants',
+        'status',
+        'expired',
+      ].sort(),
+    );
+    expect(info.grants).toEqual([{ projectId: f.projectId, name: 'Website 0', role: 'member' }]);
     expect(JSON.stringify(info)).not.toContain('server-only-sentinel');
   });
   it('revokes only outstanding invitations beyond a demoted site issuers current grants', async () => {
