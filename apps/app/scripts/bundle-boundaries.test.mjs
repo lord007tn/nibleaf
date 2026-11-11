@@ -24,6 +24,9 @@ const leakedModules = [
   app('lib/comparison-page.ts'),
   app('lib/blog-seo.ts'),
   app('functions/marketing.ts'),
+  // Feature modules are dashboard code (operations/ui-overhaul.md §7.2).
+  app('features/people/api/query-options.ts'),
+  app('features/people/model/permissions.ts'),
 ];
 
 describe('public docs module boundary', () => {
