@@ -10,6 +10,7 @@ import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { BulkReorderPagesBody, CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
 import { assertAddressLinkRevisions, type PagePathChange, prepareAddressLinks, preservePageAddresses } from '@/lib/page-address-changes';
+import { snapshotPage } from '@/lib/page-history';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { logFirstContentEdit } from './platform-events';
@@ -286,6 +287,7 @@ const isRecordNotFound = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2025';
 
 interface UpdatePageOptions {
+  beforeRestore?: boolean;
   /** Optimistic-concurrency precondition: apply the update only while the page's
    *  `updatedAt` still equals this value. The final write is conditional on it,
    *  so an edit that lands between the read and the write is never overwritten. */
@@ -352,6 +354,13 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
           ? await uniqueSiblingSlug(tx, projectId, page.languageId, page.branchId, nextParentId, route.desiredSlug, id)
           : page.slug;
         const nextConfig = mergePageConfig(page.config, body.config);
+        const historySnapshot = await snapshotPage(
+          tx,
+          page,
+          { title: body.title ?? page.title, content: body.content ?? page.content },
+          userId,
+          options?.beforeRestore ?? false,
+        );
         const updated = await tx.page
           .update({
             // With a precondition the write matches only the revision that was read;
@@ -381,7 +390,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         const saved = structural ? await tx.page.findFirstOrThrow({ where: { id, projectId } }) : updated;
         return {
           page,
-          updated: { ...saved, ...addressChanges, addressChanged: saved.path !== page.path },
+          updated: { ...saved, ...addressChanges, historySnapshot, addressChanged: saved.path !== page.path },
         };
       },
       { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },

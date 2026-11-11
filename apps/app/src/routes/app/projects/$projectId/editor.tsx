@@ -25,6 +25,7 @@ import {
   Code2,
   Eye,
   FolderPlus,
+  History,
   Languages,
   Layers,
   MessageSquare,
@@ -39,7 +40,7 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
-import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { ActiveBranchContext } from '@/components/editor/active-branch-context';
@@ -108,6 +109,8 @@ import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { resolveProjectEditAccess } from '@/lib/project-settings-access';
 import { typographyVars } from '@/lib/typography';
 import { useSession } from '@/services/auth-client';
+
+const PageHistoryPanel = lazy(() => import('@/components/editor/page-history-panel').then((module) => ({ default: module.PageHistoryPanel })));
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
@@ -197,6 +200,7 @@ function EditorPage() {
   const { data: allPages, isPending } = usePages(projectId, undefined, activeBranchId ?? undefined);
   const createPage = useCreatePage(projectId);
   const updatePage = useUpdatePage(projectId);
+  const [historyForId, setHistoryForId] = useState<string | null>(null);
   const uploadAsset = useUploadAsset(projectId);
   const deleteAsset = useDeleteAsset(projectId);
   const reorderPages = useReorderPages(projectId);
@@ -1321,6 +1325,28 @@ function EditorPage() {
               )}
             </div>
           </ScrollArea>
+          {historyForId && page?.id === historyForId ? (
+            <Suspense fallback={null}>
+              <PageHistoryPanel
+                key={historyForId}
+                projectId={projectId}
+                page={page}
+                canRestore={canEditContent}
+                onClose={() => setHistoryForId(null)}
+                onRestored={(saved) => {
+                  saveDraft.cancel();
+                  saveQueue.resolveConflict(saved.id, saved.updatedAt);
+                  lastSavedRef.current = saved;
+                  setTitle(saved.title);
+                  setContent(saved.content);
+                  setSynced({ id: saved.id, title: saved.title, content: saved.content, updatedAt: saved.updatedAt });
+                  setConflictedPageId(null);
+                  setStatus('saved');
+                  setHistoryForId(null);
+                }}
+              />
+            </Suspense>
+          ) : null}
           <AddLanguageDialog projectId={projectId} open={addLangOpen} onOpenChange={setAddLangOpen} onCreated={() => setAddLangOpen(false)} />
           {langSettings ? (
             <LanguageSettingsDialog
@@ -1540,6 +1566,9 @@ function EditorPage() {
                     <MoreHorizontal className="size-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setHistoryForId(page.id) })}>
+                      <History /> {t('editor.history.title')}
+                    </DropdownMenuItem>
                     <DropdownMenuCheckboxItem
                       checked={effectiveMode === 'wysiwyg'}
                       disabled={effectiveMode === 'markdown'}

@@ -46,7 +46,8 @@
     "./utils": "./src/utils.ts",
     "./organization-handles": "./src/organization-handles.ts",
     "./markdown-text": "./src/markdown-text.ts",
-    "./markdown-code-usage": "./src/markdown-code-usage.ts"
+    "./markdown-code-usage": "./src/markdown-code-usage.ts",
+    "./page-history": "./src/page-history.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",

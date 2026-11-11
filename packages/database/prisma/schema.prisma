@@ -785,6 +785,8 @@ model Project {
   languages       Language[]
   translations    ProjectTranslation[]
   branches        Branch[]
+  pageRevisions   PageRevision[]
+  pageRevisionStates PageRevisionState[]
   pages           Page[]
   deployments     Deployment[]
   domains         Domain[]
@@ -1334,6 +1336,8 @@ model Page {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  revisions      PageRevision[]
+  revisionStates PageRevisionState[]
   comments       Comment[]
   audienceGrants AudienceGrant[]
   gitImportSource PageGitImportSource?
@@ -2102,4 +2106,41 @@ model OrgMergeJournal {
 
   @@index([runId, groupKey])
   @@map("org_merge_journal")
+}
+
+/// Private draft history. A missing author resolves to the localized fallback.
+model PageRevision {
+  id String @id @default(cuid())
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pageId String
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId String?
+  createdAt DateTime @default(now())
+  title String
+  content String
+  /// UTF-8 bytes of title + content, used for the hard storage budget.
+  contentBytes Int
+  reason String
+
+  @@index([projectId, pageId, createdAt(sort: Desc), id])
+  @@index([userId])
+  @@map("page_revision")
+}
+
+/// Persistent per-author throttle: shared by tabs/processes, independent of
+/// retention. Serialized by the page row lock in the normal save transaction.
+model PageRevisionState {
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pageId String
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId String
+  lastSavedAt DateTime
+  lastSnapshotAt DateTime?
+
+  @@id([pageId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("page_revision_state")
 }
