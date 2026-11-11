@@ -99,6 +99,7 @@ export const aiChatSourceSchema = z
     path: z.string(),
     heading: z.string().optional(),
     snippet: z.string(),
+    language: z.string().optional(),
     /** DOM id of the cited section on the published page (github-slugger, as the TOC). */
     anchor: z.string().min(1).max(200).optional(),
     direction: z.enum(['ltr', 'rtl']),

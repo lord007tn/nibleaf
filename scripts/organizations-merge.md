@@ -93,7 +93,17 @@ site-admin grant. Usage partition defaults remain in the previous expand
 migration. Old settings/webhook-secret edits copy into the single site's storage;
 unsupported legacy JSON text remains intact and is not copied into JSONB.
 
-## Reproduce the old-release check (Windows)
+## Rollback floor (release rule)
+
+**PR 1 (`0a18349c`) is the minimum supported rollback image.** The
+pre-organizations release (`8a3ce217`) is not a rollback target once PR 2 has
+been deployed. From PR 2 on, a rollback redeploys PR 1 (never anything older);
+below that, roll forward. PR 2 and PR 3 only add expand-only migrations that
+PR 1 ignores, and `rollback-safety.postgres.test.ts` runs PR 1's pinned resolver
+(`apps/server/src/actions/rollback-pr1-access.fixture.ts`) against PR 3's writes.
+The old-release check below applies to the **PR 1 deploy only**.
+
+## Reproduce the old-release check (Windows, PR 1 deploy only)
 
 Use a clean detached worktree at `8a3ce21713890bfe99d6e1ed3d4101ba82a71d46`, under
 `C:/Users/raedb/AppData/Local/OpenAI/Codex/worktrees`, and an owned disposable

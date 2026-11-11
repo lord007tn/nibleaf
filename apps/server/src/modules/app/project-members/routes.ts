@@ -30,6 +30,12 @@ const projectMembersRoutes = {
   updateRole: createRouteConfig({ guard: [...admin], tags: ['members'], description: "Change a site member's role.", responses: ok }),
   remove: createRouteConfig({ guard: [...admin], tags: ['members'], description: 'Remove a member from the site.', responses: ok }),
   cancelInvite: createRouteConfig({ guard: [...admin], tags: ['members'], description: 'Cancel a pending site invitation.', responses: ok }),
+  resendInvite: createRouteConfig({
+    guard: [...admin],
+    tags: ['members'],
+    description: 'Send a pending invitation again with a fresh expiry.',
+    responses: ok,
+  }),
 };
 
 export default projectMembersRoutes;

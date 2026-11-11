@@ -1,6 +1,7 @@
 import type { MemberRole } from '@nibleaf/shared/constants';
 import { MCP_KEY_PRESETS, MCP_PRESET_MIN_ROLE, MCP_SCOPES, mcpScopesForRole } from '@nibleaf/shared/mcp';
-import { roleAtLeast } from '@nibleaf/shared/rbac';
+import { canAdminister, canAssignRole, effectiveSiteRole, type OrgRole, roleAtLeast } from '@nibleaf/shared/rbac';
+import { createApiKeyBody } from '@nibleaf/validators';
 import { describe, expect, it, vi } from 'vitest';
 import { decide, type SiteAccess, type SiteAction, siteAccessFromMembers } from './access';
 
@@ -37,6 +38,19 @@ const cases: { name: string; action: SiteAction; expected: readonly string[] }[]
   {
     name: 'remove org admin',
     action: { type: 'site.member.remove', member: { role: 'admin', orgRole: 'admin', viaOrganization: false } },
+    expected: nobody,
+  },
+  // changeRole follows exactly the same rules as remove (actions/members.ts updateMemberRole).
+  ...roles.flatMap((role) =>
+    [false, true].map((viaOrganization) => ({
+      name: `changeRole ${role} viaOrganization=${viaOrganization}`,
+      action: { type: 'site.member.changeRole', member: { role, orgRole: 'member', viaOrganization } } satisfies SiteAction,
+      expected: viaOrganization || role === 'owner' ? nobody : adminOnly,
+    })),
+  ),
+  {
+    name: 'changeRole org admin',
+    action: { type: 'site.member.changeRole', member: { role: 'admin', orgRole: 'admin', viaOrganization: false } },
     expected: nobody,
   },
   ...(['owner', 'admin', 'member', null] as const).map((orgRole) => ({
@@ -122,6 +136,162 @@ describe('site access decisions', () => {
       kind: 'denied',
       reason: 'access.reason.keyOwner',
     });
+  });
+});
+
+/**
+ * Parity with the server for the cases where the site role and the
+ * organization role differ. `ready()` above derives one from the other; these
+ * build the member row the server sends (role = effectiveSiteRole(orgRole,
+ * grant), apps/server/src/actions/members.ts `siteActor`) and go through
+ * `siteAccessFromMembers`, as the app does.
+ */
+describe('site access from the organization and the site grant', () => {
+  const me = 'me';
+  /** What the members list says about the signed-in person, or nothing when the server leaves them out. */
+  const accessFor = (orgRole: OrgRole, grant: 'admin' | 'member' | 'viewer' | null) => {
+    const role = effectiveSiteRole(orgRole, grant);
+    return siteAccessFromMembers({
+      members: role ? [{ user: { id: me }, role, orgRole }] : [],
+      sessionUserId: me,
+      pending: false,
+      failed: false,
+      cachedData: true,
+      retry,
+    });
+  };
+  // The server's own rules, restated from apps/server: website settings and
+  // members need the effective site Admin role; deleting the website and
+  // transferring ownership go by the organization role.
+  const server = (orgRole: OrgRole, grant: 'admin' | 'member' | 'viewer' | null) => {
+    const role = effectiveSiteRole(orgRole, grant);
+    return {
+      settings: Boolean(role) && canAdminister(role ?? ''),
+      delete: canAdminister(orgRole),
+      transfer: orgRole === 'owner',
+    };
+  };
+  const scenarios = [
+    { name: 'inherited Owner, no grant', orgRole: 'owner', grant: null },
+    { name: 'inherited Admin, no grant', orgRole: 'admin', grant: null },
+    { name: 'site-only Admin', orgRole: 'member', grant: 'admin' },
+    { name: 'site Member', orgRole: 'member', grant: 'member' },
+    { name: 'site Viewer', orgRole: 'member', grant: 'viewer' },
+    { name: 'organization Member with no grant', orgRole: 'member', grant: null },
+  ] as const;
+
+  it.each(scenarios)('$name: settings, delete and transfer match the server', ({ orgRole, grant }) => {
+    const access = accessFor(orgRole, grant);
+    const expected = server(orgRole, grant);
+    expect(decide(access, { type: 'site.settings.manage' }).kind === 'allowed').toBe(expected.settings);
+    expect(decide(access, { type: 'site.members.manage' }).kind === 'allowed').toBe(expected.settings);
+    expect(decide(access, { type: 'site.delete' }).kind === 'allowed').toBe(expected.delete);
+    expect(decide(access, { type: 'site.ownership.transfer', target: target('admin'), sessionUserId: me }).kind === 'allowed').toBe(
+      expected.transfer,
+    );
+  });
+
+  it('treats an organization Member with no grant as not on the site, with that reason', () => {
+    const access = accessFor('member', null);
+    expect(access).toEqual({ status: 'notMember' });
+    expect(decide(access, { type: 'site.content.edit' })).toEqual({ kind: 'denied', reason: 'access.reason.notMember' });
+  });
+
+  it('keeps the organization role for an inherited Admin even though no grant exists', () => {
+    expect(accessFor('admin', null)).toEqual({ status: 'ready', role: 'admin', orgRole: 'admin', stale: false, retry });
+  });
+
+  // Server: removeMember lets a site Admin remove a site-only member, themselves
+  // included, and refuses anyone with access via the organization.
+  it('lets a site-only Admin remove themselves, and refuses it for an inherited Admin', () => {
+    const selfRow = (orgRole: OrgRole, grant: 'admin' | null) => ({
+      role: effectiveSiteRole(orgRole, grant) ?? 'viewer',
+      orgRole,
+      viaOrganization: orgRole !== 'member',
+    });
+    expect(decide(accessFor('member', 'admin'), { type: 'site.member.remove', member: selfRow('member', 'admin') }).kind).toBe('allowed');
+    expect(decide(accessFor('admin', null), { type: 'site.member.remove', member: selfRow('admin', null) })).toEqual({
+      kind: 'denied',
+      reason: 'access.reason.organizationMember',
+    });
+  });
+
+  // Server: updateMemberRole lets a site Admin assign any role up to their own
+  // (canAssignRole), themselves included. `site.member.changeRole` without the
+  // identity params mirrors that; the Team page's stricter self rule is opt-in.
+  it('lets a site-only Admin demote themselves, as the server does', () => {
+    const selfRow = { role: 'admin' as const, orgRole: 'member' as const, viaOrganization: false };
+    expect(decide(accessFor('member', 'admin'), { type: 'site.member.changeRole', member: selfRow }).kind).toBe('allowed');
+    expect(
+      decide(accessFor('admin', null), { type: 'site.member.changeRole', member: { ...selfRow, orgRole: 'admin', viaOrganization: true } }),
+    ).toEqual({
+      kind: 'denied',
+      reason: 'access.reason.organizationMember',
+    });
+    expect(canAssignRole('admin', 'member')).toBe(true);
+    expect(canAssignRole('admin', 'owner')).toBe(false);
+  });
+});
+
+describe('website Team page: changing roles and removing (ported from the people model)', () => {
+  const member = (
+    overrides: Partial<{
+      role: 'owner' | 'admin' | 'member' | 'viewer';
+      orgRole: 'owner' | 'admin' | 'member' | null;
+      viaOrganization: boolean;
+      userId: string;
+    }> = {},
+  ) => ({
+    role: 'member' as const,
+    orgRole: 'member' as const,
+    viaOrganization: false,
+    userId: 'x',
+    ...overrides,
+  });
+  const outcome = (decision: ReturnType<typeof decide>) => (decision.kind === 'denied' ? decision.reason : decision.kind);
+  it.each(['site.member.changeRole', 'site.member.remove'] as const)('%s: a site Admin may act on another, lower member', (type) => {
+    expect(outcome(decide(ready('admin'), { type, member: member(), sessionUserId: 'me' }))).toBe('allowed');
+  });
+  it.each(['site.member.changeRole', 'site.member.remove'] as const)('%s: never on an organization-managed row', (type) => {
+    expect(
+      outcome(decide(ready('admin'), { type, member: member({ role: 'owner', orgRole: 'owner', viaOrganization: true }), sessionUserId: 'me' })),
+    ).toBe('access.reason.organizationMember');
+  });
+  it('never on yourself when the caller says who you are', () => {
+    const self = member({ role: 'admin', userId: 'me' });
+    expect(outcome(decide(ready('admin'), { type: 'site.member.remove', member: self, sessionUserId: 'me' }))).toBe('people.reason.removeSelfSite');
+    expect(outcome(decide(ready('admin'), { type: 'site.member.changeRole', member: self, sessionUserId: 'me' }))).toBe('people.reason.ownRole');
+  });
+  it.each(['site.member.changeRole', 'site.member.remove'] as const)('%s: a site Admin may act on another Admin of the same rank', (type) => {
+    expect(outcome(decide(ready('admin'), { type, member: member({ role: 'admin' }), sessionUserId: 'me' }))).toBe('allowed');
+  });
+  it.each(['site.member.changeRole', 'site.member.remove'] as const)('%s: without identity params there is no self rule (server parity)', (type) => {
+    const self = member({ role: 'admin', userId: 'me' });
+    expect(outcome(decide(ready('admin'), { type, member: self }))).toBe('allowed');
+    expect(outcome(decide(ready('admin'), { type, member: { ...self, userId: undefined }, sessionUserId: 'me' }))).toBe('allowed');
+    expect(outcome(decide(ready('admin'), { type, member: self, sessionUserId: '' }))).toBe('allowed');
+  });
+  it('explains to an Editor why they cannot change anyone', () => {
+    expect(outcome(decide(ready('member'), { type: 'site.member.changeRole', member: member({ role: 'viewer' }), sessionUserId: 'me' }))).toBe(
+      'settings.permissions.title',
+    );
+  });
+  it('is locked while access is loading', () => {
+    expect(decide({ status: 'loading' }, { type: 'site.member.changeRole', member: member() }).kind).toBe('locked');
+  });
+});
+
+describe('custom API key scopes', () => {
+  const body = (scopes: string[]) => createApiKeyBody.safeParse({ name: 'Agent', scopes });
+
+  it('decides eligibility only: a scope without mcp:connect is eligible but refused by the request schema', () => {
+    expect(decide(ready('member'), { type: 'site.apiKeys.create', scope: ['pages:read'] }).kind).toBe('allowed');
+    expect(body(['pages:read']).success).toBe(false);
+  });
+
+  it('accepts a complete selection in both', () => {
+    expect(decide(ready('member'), { type: 'site.apiKeys.create', scope: ['mcp:connect', 'pages:read'] }).kind).toBe('allowed');
+    expect(body(['mcp:connect', 'pages:read']).success).toBe(true);
   });
 });
 

@@ -20,7 +20,7 @@ import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } from '@/components/site/site-nav';
 import type { PrivateSiteGate } from '@/components/site/site-private-gate';
 import { SiteReaderContext, type SiteReaderContextValue } from '@/components/site/site-reader-context';
-import { preloadSiteSearch, SiteSearch } from '@/components/site/site-search';
+import { openSiteSearch, preloadSiteSearch, SiteSearch } from '@/components/site/site-search';
 import { SiteSignOut } from '@/components/site/site-sign-out';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
@@ -31,7 +31,7 @@ import { publishedSiteLogo } from '@/lib/site-branding';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
-import { readerFallbackHead, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
+import { readerFallbackHead, siteEmoji, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
@@ -292,8 +292,9 @@ function SiteChrome() {
   // React Compiler memoizes this value; a manual useMemo here blocks compilation.
   const readerContext: SiteReaderContextValue = {
     lang: readerLanguage,
+    languages,
     homeHref: readerHomeHref,
-    openSearch: showSearch ? () => setSearchOpen(true) : undefined,
+    openSearch: showSearch ? () => openSiteSearch(() => setSearchOpen(true), t('searchDocumentation')) : undefined,
   };
 
   if (!site) {
@@ -364,7 +365,7 @@ function SiteChrome() {
       ) : (
         <>
           <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
-            {(siteName || t('documentation'))[0]}
+            {siteEmoji(site.project.icon) || (siteName || t('documentation'))[0]}
           </span>
           <span className="truncate">{siteName ?? t('documentation')}</span>
         </>
@@ -551,9 +552,10 @@ function SiteChrome() {
                     {showSearch ? (
                       <button
                         className="hidden h-9 w-full max-w-md cursor-pointer items-center gap-2.5 rounded-full border border-border/80 bg-muted/50 px-4 text-muted-foreground text-sm transition-colors hover:border-foreground/25 hover:bg-muted pointer-coarse:h-11 sm:flex"
-                        onClick={() => setSearchOpen(true)}
+                        onClick={() => openSiteSearch(() => setSearchOpen(true), t('searchDocumentation'))}
                         onFocus={preloadSiteSearch}
                         onPointerEnter={preloadSiteSearch}
+                        onPointerDown={preloadSiteSearch}
                         onTouchStart={preloadSiteSearch}
                         aria-keyshortcuts={searchHotkey === 'slash' ? '/' : 'Control+K Meta+K'}
                         data-theme-region="search-trigger"
@@ -576,9 +578,10 @@ function SiteChrome() {
                   {showSearch ? (
                     <button
                       className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
-                      onClick={() => setSearchOpen(true)}
+                      onClick={() => openSiteSearch(() => setSearchOpen(true), t('searchDocumentation'))}
                       onFocus={preloadSiteSearch}
                       onPointerEnter={preloadSiteSearch}
+                      onPointerDown={preloadSiteSearch}
                       onTouchStart={preloadSiteSearch}
                       type="button"
                       aria-label={t('searchDocumentation')}
@@ -783,6 +786,8 @@ function SiteChrome() {
                         maxResults={config?.search?.maxResults}
                         versions={versions}
                         versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
+                        languages={languages}
+                        filtersEnabled={config?.search?.filtersEnabled !== false}
                         suggestions={searchSuggestions}
                       />
                     )}

@@ -90,7 +90,7 @@ const navLink = z.object({ label: z.string().max(80), href: url, external: z.boo
 const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
 
 const redirectsSchema = z
-  .array(z.object({ from: z.string().max(300), to: z.string().max(300) }).strict())
+  .array(z.object({ from: z.string().max(300), to: z.string().max(300), generated: z.boolean().optional() }).strict())
   .max(MAX_REDIRECT_RULES)
   .superRefine((redirects, ctx) => {
     for (const graphIssue of validateRedirectGraph(redirects).issues) {
@@ -684,6 +684,7 @@ export const mergeBranchBody = z.object({
 export type MergeBranchBody = z.infer<typeof mergeBranchBody>;
 
 export const updatePageBody = z.object({
+  expectedUpdatedAt: z.iso.datetime({ offset: true }).optional(),
   parentId: z.string().nullable().optional(),
   title: z.string().min(1).max(200).optional(),
   slug: z.string().max(200).optional(),
@@ -699,9 +700,28 @@ export type UpdatePageBody = z.infer<typeof updatePageBody>;
 /** Reorder / re-parent pages. An item's `languageId` moves that page, with its
  *  whole subtree, into another language of the same site; omitted, the page
  *  keeps its language. */
-export const reorderPagesBody = z.object({
+export const bulkReorderPagesBody = z.object({
   items: z.array(z.object({ id: z.string(), parentId: z.string().nullable(), position: z.number().int(), languageId: z.string().min(1).optional() })),
+  expectedStructureRevision: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
 });
+export type BulkReorderPagesBody = z.infer<typeof bulkReorderPagesBody>;
+export const movePageBody = z.object({
+  pageId: z.string().min(1),
+  parentId: z.string().min(1).nullable(),
+  position: z.union([z.object({ before: z.string().min(1) }), z.object({ after: z.string().min(1) }), z.object({ at: z.enum(['start', 'end']) })]),
+  languageId: z.string().min(1).optional(),
+  expectedStructureRevision: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+});
+export type MovePageBody = z.infer<typeof movePageBody>;
+// Prefer the narrow intent when a caller also supplies legacy snapshot fields.
+// Existing bulk callers (MCP, imports, page settings) retain their contract.
+export const reorderPagesBody = z.union([movePageBody, bulkReorderPagesBody]);
 export type ReorderPagesBody = z.infer<typeof reorderPagesBody>;
 
 // ─── Deployment (publish) ────────────────────────────────────────────────────

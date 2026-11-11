@@ -55,6 +55,7 @@
   "scripts": {
     "test:upload:integration": "node --env-file=tests/integration/maxio-upload/fixture.env --import tsx tests/integration/maxio-upload/integration.ts",
     "test:upload:browser": "node tests/integration/maxio-upload/browser.mjs",
+    "test:reader-search:browser": "node tests/integration/reader-search-keystrokes/browser.mjs",
     "test:settings:browser": "node tests/integration/settings-leave-guard/browser.mjs",
     "build": "turbo run build",
     "build:server": "turbo run build -F @nibleaf/server...",
@@ -101,6 +102,7 @@
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "knip": "6.44.1",
+    "libpg-query": "17.7.4",
     "playwright-core": "^1.65.0",
     "react-doctor": "0.9.22",
     "turbo": "^2.11.10",

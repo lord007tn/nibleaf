@@ -154,6 +154,45 @@ jobs:
             fi
           fi
 
+      # Expand-only gate over every migration this release adds since the
+      # deployed revision (operations/runbook-rolling-deploys.md §4). The
+      # previous release keeps running, and stays the rollback target, against
+      # the new schema. The checker parses SQL with the PostgreSQL parser, so it
+      # needs the workspace dependencies.
+      - name: Install pnpm for the migration gate
+        if: inputs.deploy
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node for the migration gate
+        if: inputs.deploy
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+
+      - name: Refuse migrations that are not expand-only
+        if: inputs.deploy
+        env:
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          ROLLBACK_IMAGE_TAG: ${{ inputs.rollback_image_tag }}
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          rollback_sha="${ROLLBACK_IMAGE_TAG#sha-}"
+          if ! git cat-file -e "${rollback_sha}^{commit}" 2>/dev/null; then
+            echo "::error::Rollback revision $rollback_sha is not in this repository's history"
+            exit 1
+          fi
+          if ! safety=$(node scripts/migration-safety.mjs --base "$rollback_sha" 2>&1); then
+            echo "$safety"
+            echo "::error::This release contains a migration that is not provably expand-only and has no reasoned contract opt-out"
+            exit 1
+          fi
+          echo "$safety"
+          if grep -q '^CONTRACT ' <<<"$safety" && [[ "$MIGRATION_MODE" != "expand-contract" ]]; then
+            echo "::error::This release contracts the schema; dispatch with migration_mode=expand-contract after confirming the rollback target no longer uses the removed shape"
+            exit 1
+          fi
+
       - name: Require successful source CI for publication or deployment
         if: inputs.publish || inputs.deploy
         env:
@@ -194,6 +233,10 @@ jobs:
           tags: |
             type=raw,value=${{ inputs.image_tag }}
             type=raw,value=${{ steps.source.outputs.image_tag }}
+          # A run dispatched for an older commit would otherwise label the image
+          # with the run's github.sha (main HEAD) instead of the commit it built.
+          labels: |
+            org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
 
       - name: Install OCI archive publisher
         if: inputs.publish

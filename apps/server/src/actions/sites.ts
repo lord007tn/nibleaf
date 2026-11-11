@@ -1,10 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { AnalyticsPayload, ConsentState, PublicAnalyticsEvent } from '@nibleaf/clickhouse';
-import { prisma } from '@nibleaf/database';
+import { deliveryPlanSelect, loadDefaultDeliveryPlan, prisma } from '@nibleaf/database';
+import { logger } from '@nibleaf/logger';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
-import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import {
+  type AddonDeliveryPlan,
+  type AddonDeliveryPlanAssignment,
+  projectAddonRowsForDelivery,
+  projectConfigWithAddons,
+} from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
+import { pageDescription, pageExcerpt } from '@nibleaf/shared/markdown-text';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -14,7 +21,6 @@ import {
   isPageTranslation,
   mergeLanguageChrome,
   type NavNode,
-  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
@@ -96,6 +102,8 @@ interface LiveChromeRow {
   }[];
   addons: { key: string; enabled: boolean; config: unknown }[];
   organization: { usagePlan: AddonDeliveryPlanAssignment | null };
+  /** The canonical default plan, for an org without an active assignment. */
+  defaultPlan: AddonDeliveryPlan | null;
 }
 
 /** A snapshot project enriched with the fields the published-site edge needs
@@ -145,6 +153,22 @@ export const invalidatePublishedSiteConfig = (projectId: string): void => {
   deploymentMissCache.delete(projectId);
 };
 
+/** A plan assignment or entitlement applies to every website of the organization.
+ *  After writing one, drop each website's cached live config, so the next reader
+ *  request re-resolves add-ons and consent through the shared resolver (#447). */
+export const invalidateOrganizationPublishedConfig = async (organizationId: string): Promise<number> => {
+  // Cache invalidation must never fail the write that triggered it: on error,
+  // log it and let the 15 s live-chrome TTL bound the staleness.
+  try {
+    const projects = await prisma.project.findMany({ where: { organizationId }, select: { id: true } });
+    for (const { id } of projects) invalidatePublishedSiteConfig(id);
+    return projects.length;
+  } catch (error) {
+    logger.warn({ err: error, organizationId }, 'Could not invalidate published site config for the organization; live chrome expires within 15 s');
+    return 0;
+  }
+};
+
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
   const cached = liveChromeCache.get(projectId);
   if (cached !== undefined) {
@@ -168,13 +192,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
               status: true,
               effectiveAt: true,
               expiresAt: true,
-              plan: {
-                select: {
-                  key: true,
-                  active: true,
-                  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
-                },
-              },
+              plan: { select: deliveryPlanSelect },
             },
           },
         },
@@ -200,7 +218,9 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       },
     },
   });
-  const stamped = live ? { ...live, stamp: await assetReferences.stamp(projectId, live) } : null;
+  // The canonical default plan rides with the cached row; the plan itself is
+  // evaluated per request (expiry is time-based), see overlayLiveChrome.
+  const stamped = live ? { ...live, defaultPlan: await loadDefaultDeliveryPlan(), stamp: await assetReferences.stamp(projectId, live) } : null;
   if (!stamped || stamped.stamp !== null) liveChromeCache.set(projectId, stamped);
   return stamped;
 };
@@ -222,7 +242,7 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
   // so they never appear publicly until the next publish, and the frozen
   // label/direction/isDefault keep the exactly-one-default invariant intact.
   const liveByCode = new Map(live.languages.map((language) => [language.code, language]));
-  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan));
+  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan, live.defaultPlan));
   return {
     ...project,
     name: live.name,
@@ -594,8 +614,34 @@ const flattenNav = (nav: NavNode[]): NavNode[] =>
 
 /** A single published page with TOC, breadcrumbs, and prev/next neighbours.
  *  Scoped to the active language, falling back to the default language. */
-export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) => {
-  const { snapshot } = await getPublished(identifier);
+export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) =>
+  publishedPage(await getPublished(identifier), path, lang, version);
+
+/** Public cards use the same viewer gate and frozen page resolution as HTML,
+ * but never accept an authenticated view of WORKSPACE/READERS content. */
+export const getSiteOgData = async (identifier: string, path: string, lang?: string, version?: string) => {
+  const published = await getPublished(identifier);
+  if ((published.snapshot.project as PublicSnapshotProject).accessMode !== 'PUBLIC' || published.viewer.kind !== 'public') {
+    throw notFound('site');
+  }
+  const data = publishedPage(published, path, lang, version);
+  const config = data.project.config as {
+    seo?: { metaTitle?: string };
+    styling?: { primaryColor?: string };
+    branding?: { logoLight?: string };
+  } | null;
+  return {
+    projectId: data.project.id,
+    deploymentId: published.deploymentId,
+    title: data.page.config?.seo?.metaTitle?.trim() || data.page.title,
+    siteName: data.languageConfig?.seo?.metaTitle || config?.seo?.metaTitle || data.languageConfig?.name || data.project.name,
+    brandColor: config?.styling?.primaryColor || '#2563eb',
+    logo: config?.branding?.logoLight || null,
+    rtl: data.project.languages.find((language) => language.code === data.activeLanguage)?.direction === 'RTL',
+  };
+};
+
+const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string, version?: string) => {
   const explicitVersion = matchingVersion(snapshot, version);
   let normalized = path.replace(/^\/+|\/+$/g, '');
   if (explicitVersion && (normalized === explicitVersion.slug || normalized.startsWith(`${explicitVersion.slug}/`))) {
@@ -681,6 +727,8 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
       // the page's own first paragraph twice.
       description: explicitPageDescription(page),
       excerpt: pageExcerpt(page),
+      // Cleaned once here; the reader only truncates (never re-parses) it.
+      seoDescription: pageDescription(page),
       icon: page.icon,
       path: page.path,
       content: page.content,
@@ -879,7 +927,7 @@ export const resolvePublishedAnswerContext = async (identifier: string, lang?: s
 /** Grounded answer mode uses the exact same server-derived publication and
  * reader scope as results mode. The client cannot submit any tenant/page filter. */
 export const answerSite = async (identifier: string, query: string, lang?: string, version?: string) => {
-  const { snapshot, scope, available } = await resolvePublishedAnswerContext(identifier, lang, version);
+  const { snapshot, scope, available, versionPages } = await resolvePublishedAnswerContext(identifier, lang, version);
   if (!available) {
     throw new AppError({ code: 'search:unavailable', message: 'AI answers are not ready for this workspace.' });
   }
@@ -889,7 +937,11 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
   if (!quota.allowed) {
     throw new AppError({ code: 'http:rate_limited', message: 'This site has reached its daily AI answer quota.' });
   }
-  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal).catch((cause) => {
+  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal, {
+    languages: resolvePublishedSearchLanguages(snapshot),
+    defaultLanguage: defaultLanguage(snapshot.project).code,
+    pages: versionPages,
+  }).catch((cause) => {
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
   });

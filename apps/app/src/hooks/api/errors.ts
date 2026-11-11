@@ -11,7 +11,10 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 // clash); a reason entry wins over its code.
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
   ['mcp:preview_stale', 'publish.reviewChanged'],
+  ['page:revision_conflict', 'editor.conflict.body'],
+  ['address_raced', 'editor.pageSettings.addressRaced'],
   ['slug_taken', 'editor.reorderSlugTaken'],
+  ['structure_changed', 'editor.tree.structureChanged'],
   ['branch:main_changed', 'error.branchMainChanged'],
   ['branch:baseline_missing', 'error.branchBaselineMissing'],
   ['promote_raced', 'error.promoteRaced'],
@@ -37,6 +40,18 @@ export function friendlyErrorMessage(
 ): string {
   console.error(error);
   if (error instanceof ApiResponseError) {
+    if (error.code === 'page:address_conflict' && error.reason === 'locale_redirect_conflict')
+      return t('editor.pageSettings.addressLocaleConflict', { path: String(error.details?.from ?? '') });
+    if (error.code === 'page:address_conflict' && error.reason === 'user_redirect_conflict')
+      return t('editor.pageSettings.addressUserRuleConflict', {
+        path: String(error.details?.from ?? ''),
+        destination: String(error.details?.to ?? ''),
+      });
+    if (error.code === 'page:redirect_invalid') {
+      const issues = error.details?.issues;
+      const limit = Array.isArray(issues) && issues.some((issue) => issue?.code === 'too-many-rules');
+      return t(limit ? 'editor.pageSettings.addressRedirectLimit' : 'editor.pageSettings.addressRedirectInvalid');
+    }
     // Shared code/reason messages take precedence over the caller's statusKeys.
     const messageKey = (error.reason ? API_ERROR_MESSAGE_KEYS.get(error.reason) : undefined) ?? API_ERROR_MESSAGE_KEYS.get(error.code ?? '');
     if (messageKey) return t(messageKey);

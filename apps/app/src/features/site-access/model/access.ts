@@ -21,7 +21,8 @@ export type SiteAccess =
 
 export type Decision = { kind: 'allowed' } | { kind: 'locked' } | { kind: 'denied'; reason: MessageKey };
 
-type SiteMember = { role: SiteRole; orgRole: OrgRole | null; viaOrganization: boolean };
+/** `userId` lets a caller that knows the signed-in person forbid acting on yourself. */
+type SiteMember = { role: SiteRole; orgRole: OrgRole | null; viaOrganization: boolean; userId?: string };
 
 export type SiteAction =
   | {
@@ -34,7 +35,8 @@ export type SiteAction =
         | 'site.exports.create'
         | 'site.exports.schedule';
     }
-  | { type: 'site.member.remove'; member: SiteMember }
+  | { type: 'site.member.remove'; member: SiteMember; sessionUserId?: string }
+  | { type: 'site.member.changeRole'; member: SiteMember; sessionUserId?: string }
   | { type: 'site.ownership.transfer'; target: { user: { id: string }; orgRole: OrgRole | null }; sessionUserId: string }
   | { type: 'site.apiKeys.create'; scope: McpKeyPreset | readonly McpScope[] }
   | { type: 'site.apiKeys.revoke'; key: { createdBy: { id: string } | null }; sessionUserId: string };
@@ -48,6 +50,11 @@ export function decide(access: SiteAccess, action: SiteAction): Decision {
 
   switch (action.type) {
     // Existing settings route, members-section and domain settings use canAdminister.
+    // `site.settings.manage` covers the website's own settings only. It does NOT
+    // authorize the plan or notification defaults: those belong to the
+    // organization and need its Owner or Admin role (apps/server/src/actions/
+    // workspace.ts ORGANIZATION_FIELDS). Give them their own decision when those
+    // controls adopt this model, rather than widening this one.
     case 'site.settings.manage':
     case 'site.members.manage':
     case 'site.domain.manage':
@@ -55,13 +62,23 @@ export function decide(access: SiteAccess, action: SiteAction): Decision {
     case 'site.content.edit':
       return permission(canEdit(access.role), 'access.viewOnly.action');
     case 'site.member.remove':
-      // members-section.tsx hides organization-managed rows; actions/members.ts
-      // removeMember refuses them, including the owner. Never offer rank escalation.
+    case 'site.member.changeRole': {
+      // The website Team page offers both; actions/members.ts removeMember and
+      // updateMemberRole refuse organization-managed rows, including the owner.
+      // Never offer rank escalation, and never act on yourself (ask another Admin).
+      // The self rule is UI POLICY ONLY: the server PERMITS self-removal and
+      // self-demotion (actions/members.ts removeMember / updateMemberRole), so
+      // a parity pass must not read this stricter check as drift. It applies
+      // only when the caller passes `sessionUserId` and the member's `userId`.
       if (!canAdminister(access.role)) return permission(false, 'settings.permissions.title');
       if (action.member.viaOrganization || canAdminister(action.member.orgRole ?? '') || roleAtLeast(action.member.role, 'owner')) {
         return permission(false, 'access.reason.organizationMember');
       }
+      if (action.sessionUserId && action.member.userId === action.sessionUserId) {
+        return permission(false, action.type === 'site.member.remove' ? 'people.reason.removeSelfSite' : 'people.reason.ownRole');
+      }
       return permission(canManageMember(access.role, action.member.role), 'settings.permissions.title');
+    }
     case 'site.delete':
       // modules/app/projects/routes.ts remove uses requireProjectOrgRole(ADMIN).
       return permission(canAdminister(access.orgRole ?? ''), 'access.reason.organizationAdmin');
@@ -81,6 +98,12 @@ export function decide(access: SiteAccess, action: SiteAction): Decision {
       // actions/api-keys.ts issueScopes + settings/api-keys-tab.tsx selectionPermitted.
       // Every current McpScope requires MEMBER (shared/mcp.ts MCP_SCOPE_MIN_ROLE);
       // only the full_admin preset additionally requires ADMIN. Parity is tested.
+      //
+      // Eligibility only: whether this role may hold these scopes. It does not
+      // say a custom selection is complete. The request schema (validators
+      // createApiKeyBody) also requires `mcp:connect`, so ['pages:read'] is
+      // eligible here and still refused there; the API-keys form always keeps
+      // `mcp:connect` selected. Both halves are tested.
       return permission(
         Array.isArray(action.scope)
           ? action.scope.length > 0 && canEdit(access.role)

@@ -15,9 +15,11 @@
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
+    "./page-moves": "./src/page-moves.ts",
     "./integrations": "./src/integrations.ts",
     "./join-links": "./src/join-links.ts",
     "./mcp": "./src/mcp.ts",
+    "./plan-policy": "./src/plan-policy.ts",
     "./markdown-discovery": "./src/markdown-discovery.ts",
     "./markdown-code": "./src/markdown-code.ts",
     "./public-markdown": "./src/public-markdown.ts",
@@ -33,8 +35,11 @@
     "./theme-repository": "./src/theme-repository.ts",
     "./theme-repository-templates": "./src/theme-repository-templates/index.ts",
     "./export-schedule": "./src/export-schedule.ts",
+    "./script-direction": "./src/script-direction.ts",
+    "./script-mismatch": "./src/script-mismatch.ts",
     "./utils": "./src/utils.ts",
-    "./organization-handles": "./src/organization-handles.ts"
+    "./organization-handles": "./src/organization-handles.ts",
+    "./markdown-text": "./src/markdown-text.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
@@ -43,11 +48,20 @@
   },
   "dependencies": {
     "github-slugger": "^2.0.0",
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-gfm": "^3.1.0",
+    "micromark-extension-gfm": "^3.0.0",
     "nanoid": "^6.0.2",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "remark-frontmatter": "5.0.0",
+    "remark-gfm": "4.0.1",
+    "remark-mdx": "3.1.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
+    "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
     "typescript": "^7.0.2"
   }
