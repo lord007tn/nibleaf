@@ -75,20 +75,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  source:
+    name: Pin the requested source revision
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - id: revision
+        run: |
+          sha=$(git rev-parse HEAD)
+          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Checkout did not resolve to a full Git revision"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
   rollback-floor:
+    needs: source
     uses: ./.github/workflows/rollback-floor.yml
     with:
-      ref: ${{ inputs.ref }}
+      ref: ${{ needs.source.outputs.sha }}
 
   image:
-    needs: rollback-floor
+    needs: [source, rollback-floor]
     name: Build self-host image
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.source.outputs.sha }}
           fetch-depth: 0
 
       - name: Resolve immutable source revision
