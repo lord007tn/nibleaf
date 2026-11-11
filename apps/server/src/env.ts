@@ -30,6 +30,10 @@ export const env = createEnv({
     APP_NAME: z.string().default('Nibleaf'),
     API_PORT: z.coerce.number().default(4311),
     SERVER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).default(25_000),
+    /** On SIGTERM, keep serving (with /health already 503) for this long before
+     *  closing the listener, so a health-aware proxy stops routing here first.
+     *  0 keeps the historical close-immediately behaviour. */
+    API_DRAIN_DELAY_MS: z.coerce.number().int().min(0).max(60_000).default(0),
     API_URL: z.url().default('http://localhost:4311'),
     APP_URL: z.url().default('http://localhost:4310'),
     ADMIN_URL: z.url().default('http://localhost:4315'),
