@@ -1,6 +1,7 @@
 import { createPageBody, listPagesQuery, reorderPagesBody, updatePageBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { createPage, deletePage, getPage, listPages, pageStructureRevision, reorderPages, updatePage } from '@/actions/pages';
+import { deletePage } from '@/actions/page-trash';
+import { createPage, getPage, listPages, pageStructureRevision, reorderPages, updatePage } from '@/actions/pages';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -41,7 +42,7 @@ const app = new Hono<HonoEnv>()
   })
   .delete('/:id', ...pagesRoutes.remove, async (ctx) => {
     const projectId = await projectScope(ctx);
-    return ctx.json({ data: await deletePage(projectId, ctx.req.param('id')) }, 200);
+    return ctx.json({ data: await deletePage(projectId, ctx.req.param('id'), getContextUserOrThrow().id) }, 200);
   });
 
 export default app;

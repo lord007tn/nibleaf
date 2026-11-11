@@ -737,6 +737,20 @@ export type MovePageBody = z.infer<typeof movePageBody>;
 export const reorderPagesBody = z.union([movePageBody, bulkReorderPagesBody]);
 export type ReorderPagesBody = z.infer<typeof reorderPagesBody>;
 
+/** Trash (AUTH-12): the branch whose trashed pages to list (the default branch
+ *  when omitted). */
+export const listPageTrashQuery = z.object({ branchId: z.string().min(1).optional() });
+export type ListPageTrashQuery = z.infer<typeof listPageTrashQuery>;
+/** Restore a trashed subtree. With `expectedStructureRevision` (the page tree's
+ *  `x-page-structure-revision`) the restore refuses if the tree changed since. */
+export const restorePageTrashBody = z.object({
+  expectedStructureRevision: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+});
+export type RestorePageTrashBody = z.infer<typeof restorePageTrashBody>;
+
 // ─── Deployment (publish) ────────────────────────────────────────────────────
 
 export const createDeploymentBody = z.object({

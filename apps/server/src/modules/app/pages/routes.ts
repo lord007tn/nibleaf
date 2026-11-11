@@ -17,7 +17,12 @@ const pagesRoutes = {
   }),
   get: createRouteConfig({ guard: [...member], tags: ['pages'], description: 'Retrieve a page (with content).', responses: ok }),
   update: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Update a page.', responses: ok }),
-  remove: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Delete a page (and its children).', responses: ok }),
+  remove: createRouteConfig({
+    guard: [...editor],
+    tags: ['pages'],
+    description: 'Move a page (and its children) to Trash for 30 days.',
+    responses: ok,
+  }),
   reorder: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Reorder / re-parent pages.', responses: ok }),
 };
 

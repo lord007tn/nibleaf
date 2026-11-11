@@ -54,6 +54,9 @@ export const eraseProject = async (projectId: string) => {
     where: { organizationId: partitionId, OR: [{ projectId: project.id }, { projectId: null }] },
     data: { status: 'deletion_pending', hasError: false },
   });
+  // Trash holds deleted page content and comment bodies: purge it explicitly,
+  // not only through the project cascade.
+  await prisma.pageTrash.deleteMany({ where: { projectId: project.id } });
   await prisma.project.delete({ where: { id: project.id } });
   return { organizationId: project.organizationId, projectId: project.id };
 };

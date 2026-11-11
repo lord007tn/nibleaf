@@ -33,6 +33,7 @@ export type ErrorCode =
   | 'page:revision_conflict'
   | 'page:address_conflict'
   | 'page:redirect_invalid'
+  | 'page:trash_unrestorable'
   | 'database:not_found'
   | 'database:conflict'
   | 'join:invalid'
@@ -124,6 +125,7 @@ const ERROR_STATUS = {
   'page:revision_conflict': 409,
   'page:address_conflict': 409,
   'page:redirect_invalid': 422,
+  'page:trash_unrestorable': 422,
   'database:not_found': 404,
   'database:conflict': 409,
   // One answer for a bad, revoked, expired or used-up join link: no enumeration.
