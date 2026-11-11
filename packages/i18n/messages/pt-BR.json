@@ -3569,6 +3569,7 @@
   "site_searchkeysopen": "para abrir",
   "site_searchkeysclose": "para fechar",
   "site_searchversionlabel": "Versão",
+  "site_searchalllanguages": "Todos os idiomas",
   "settings_permissions_title": "Acesso de administrador necessário",
   "settings_permissions_body": "Peça ao proprietário do site ou a um administrador para atualizar estas configurações. Você ainda pode editar a documentação e usar as seções disponíveis para sua função.",
   "settings_members_removeconfirm": "Remover {name} deste site? Essa pessoa perderá o acesso à documentação e às configurações.",

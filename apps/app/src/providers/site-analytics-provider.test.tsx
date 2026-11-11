@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import type { ProjectConfig } from '@nibleaf/validators';
+import { projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { type ProjectConfig, projectConfigSchema } from '@nibleaf/validators';
 import { act, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -50,6 +51,28 @@ async function render(config?: ProjectConfig) {
   );
   return container;
 }
+
+it.each([
+  ['pending', 'unknown'],
+  ['accepted', 'granted'],
+  ['declined', 'denied'],
+] as const)('uses %s consent for default-on published add-ons (no ProjectAddon rows, canonical free plan)', async (choice, consentState) => {
+  // The seeded free plan has no entitlement rows; #447's resolver decides by eligibility.
+  const freePlan = { key: 'free', active: true, entitlements: [] };
+  if (choice !== 'pending') window.localStorage.setItem('nibleaf.analytics.consent.docs', choice);
+  const config = projectConfigSchema.parse(
+    projectConfigWithAddons({ addons: { feedback: false }, analytics: { cookieConsent: false } }, projectAddonRowsForDelivery([], null, freePlan)),
+  );
+  await render(config);
+  expect(mocks.createEvent).toHaveBeenCalledWith(
+    expect.objectContaining({
+      consentState,
+      sessionId: consentState === 'granted' ? expect.any(String) : undefined,
+      payload: expect.objectContaining({ name: 'page_view' }),
+    }),
+  );
+  expect(mocks.createEvent.mock.calls.some(([event]) => event.consentState === 'not_required')).toBe(false);
+});
 
 it('renders documentation and handles reader actions when all browser storage is denied', async () => {
   for (const storage of ['localStorage', 'sessionStorage'] as const) {

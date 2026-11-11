@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => {
     assignDefaultUsagePlan: vi.fn(),
     inviteMember: vi.fn(),
     prisma: {
-      project: { findFirst: vi.fn(), findUnique: vi.fn() },
+      project: { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(async () => []) },
       organization: { delete: vi.fn() },
       $transaction: vi.fn((callback: (client: typeof tx) => unknown) => callback(tx)),
     },
