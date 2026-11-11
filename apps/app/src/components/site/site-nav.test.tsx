@@ -206,3 +206,35 @@ describe('revealCurrentNavLink', () => {
     expect(viewport.scrollTop).toBe(40);
   });
 });
+
+// PUBLIC-22: long titles such as "Markdown and MDX components reference" wrap onto a
+// second line instead of losing their end to an ellipsis, in every row kind.
+describe('SiteNav long titles', () => {
+  const long = 'Answer reader questions with AI search and chat';
+  const tree: NavNode[] = [
+    {
+      id: 'section',
+      kind: 'GROUP',
+      title: `Section: ${long}`,
+      path: 'section',
+      icon: null,
+      tag: null,
+      children: [
+        { id: 'sub', kind: 'GROUP', title: `Group: ${long}`, path: 'sub', icon: null, tag: null, children: [page('leaf')] },
+        { ...page('ai'), title: `Page: ${long}`, tag: 'New' },
+      ],
+    },
+  ];
+
+  it('keeps the whole title and lets it wrap to two lines in sections, groups and pages', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />);
+    for (const prefix of ['Section', 'Group', 'Page']) {
+      const label = [...container.querySelectorAll('span')].find((span) => span.textContent === `${prefix}: ${long}`);
+      expect(label, prefix).toBeDefined();
+      expect(label?.className).toContain('line-clamp-2');
+      expect(label?.className).not.toContain('truncate');
+    }
+    expect(container.querySelector('.truncate')).toBeNull();
+  });
+});

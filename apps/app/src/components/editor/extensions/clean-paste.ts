@@ -1,3 +1,4 @@
+import { randomUUID } from '@nibleaf/shared/uuid';
 import { Extension } from '@tiptap/core';
 import { DOMParser, DOMSerializer, Fragment, type Node as PMNode, type ResolvedPos, Slice } from '@tiptap/pm/model';
 import { Plugin, TextSelection, type Transaction } from '@tiptap/pm/state';
@@ -290,7 +291,7 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
           image.replaceWith(root.ownerDocument.createTextNode(image.getAttribute('alt') ?? ''));
           continue;
         }
-        const marker = `${IMAGE_UPLOAD_PLACEHOLDER_PREFIX}${crypto.randomUUID()}`;
+        const marker = `${IMAGE_UPLOAD_PLACEHOLDER_PREFIX}${randomUUID()}`;
         uploads.set(marker, {
           file,
           attributes: {
@@ -386,7 +387,7 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
       new Plugin({
         props: {
           transformCopied: (slice) => {
-            lastCopy = { nonce: crypto.randomUUID(), slice, text: '' };
+            lastCopy = { nonce: randomUUID(), slice, text: '' };
             return slice;
           },
           clipboardSerializer: serializer,

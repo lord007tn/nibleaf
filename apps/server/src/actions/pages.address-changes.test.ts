@@ -349,14 +349,19 @@ describe('page address preservation through page actions', () => {
     ]);
   });
 
-  it('preserves addresses for a subtree reparented by reorder', async () => {
+  it.each(['bulk', 'anchored'] as const)('preserves addresses for a subtree reparented by %s reorder', async (mode) => {
     const state = seed([
       pageFixture('parent'),
       pageFixture('target'),
       { ...pageFixture('child', 'target/child'), parentId: 'target' },
       { ...pageFixture('source'), content: '[child](/target/child#help)' },
     ]);
-    await reorderPages('project', { items: [{ id: 'target', parentId: 'parent', position: 0 }] });
+    await reorderPages(
+      'project',
+      mode === 'bulk'
+        ? { items: [{ id: 'target', parentId: 'parent', position: 0 }] }
+        : { pageId: 'target', parentId: 'parent', position: { at: 'end' } },
+    );
     expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([
       { from: '/target', to: '/parent/target' },
       { from: '/target/child', to: '/parent/target/child' },

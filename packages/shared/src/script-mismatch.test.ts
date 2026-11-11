@@ -73,6 +73,21 @@ describe('detectScriptMismatch', () => {
       const hash = 'a1b2c3d4'.repeat(10);
       expect(sampleForScript(`See ${hash} now`)).toBe('See   now');
     });
+
+    // A hash or URL glued to unspaced prose, with no space between them: the ASCII
+    // part drops and the Han part stays, so zh is not flagged by the Latin letters.
+    it('drops a long hash glued to Chinese prose and keeps the prose', () => {
+      const hash = 'a1b2c3d4e5f6'.repeat(8);
+      const glued = `${CHINESE}${hash}${CHINESE}`;
+      expect(glued.split(/\s/u)).toHaveLength(1);
+      expect(sampleForScript(glued)).toBe(`${CHINESE} ${CHINESE}`);
+      expect(detectScriptMismatch(glued, 'zh').mismatch).toBe(false);
+      expect(detectScriptMismatch(glued, 'en')).toMatchObject({ mismatch: true, dominantScript: 'han' });
+      // A URL glued on one side, and short Latin words inside the prose, behave the same.
+      const url = `https://example.com/${'path/'.repeat(20)}`;
+      expect(sampleForScript(`${CHINESE}${url}`)).toBe(`${CHINESE} `);
+      expect(sampleForScript(`${CHINESE}API${CHINESE}`)).toBe(`${CHINESE}API${CHINESE}`);
+    });
   });
 
   describe('ignores code', () => {
@@ -136,16 +151,16 @@ describe('detectScriptMismatch', () => {
   // Bounds are calibrated like against like on the same machine, so slow CI
   // cores slow both sides equally while superlinear growth still shows.
   describe('cost bounds', () => {
-    /** Median of three detections, each with a unique suffix (no cache can help). */
+    /** Median of five detections, each with a unique suffix (no cache can help). */
     const detectionMs = (input: string): number => {
       detectScriptMismatch('Warm up with a short English sentence here.', 'en');
       const runs: number[] = [];
-      for (let round = 0; round < 3; round += 1) {
+      for (let round = 0; round < 5; round += 1) {
         const started = performance.now();
         detectScriptMismatch(`${input}${Math.random()}`, 'en');
         runs.push(performance.now() - started);
       }
-      return runs.sort((a, b) => a - b)[1] ?? 0;
+      return runs.sort((a, b) => a - b)[2] ?? 0;
     };
     /** A plain linear pass over the same input (median of three). */
     const linearPassMs = (input: string): number => {
@@ -189,8 +204,15 @@ describe('detectScriptMismatch', () => {
     it.each([
       ['one 80k-character Han run', '字'.repeat(80_000), CHINESE_SENTENCE],
       ['one 80k-character Thai run', 'กข'.repeat(40_000), THAI_SENTENCE],
+      // Alternating scripts in one token: every run is short, so the split keeps them all.
+      ['an 80k token alternating Latin and Han', 'a字'.repeat(40_000), CHINESE_SENTENCE],
+      ['an 80k token of long hashes glued to Han', `${'f'.repeat(70)}字`.repeat(1100), CHINESE_SENTENCE],
     ])('stays bounded on %s', (_, input, sentence) => {
-      expect(detectionMs(input)).toBeLessThanOrEqual(5 * detectionMs(prose(sentence, input.length)) + 20);
+      // The baseline does the same work: ordinary prose of the size actually
+      // analysed (the 16 KB sample), not of the raw input. 8x leaves CI-noise room;
+      // superlinear growth still shows, and the sampling test below pins 80k ≈ 16k.
+      const sampled = sampleForScript(input).length;
+      expect(detectionMs(input)).toBeLessThanOrEqual(8 * detectionMs(prose(sentence, sampled)) + 20);
     });
 
     // All per-character work runs on the sample, so 80k costs what 16k does.

@@ -9,7 +9,7 @@ import { AdminRequired } from '@/components/organization/admin-required';
 import { isOrgAdmin, useCurrentOrganization } from '@/components/organization/organization-context';
 import { isAccessLoss } from '@/components/organization/use-access-loss';
 import { QueryErrorState } from '@/components/query-error-state';
-import { UsageOverview, unavailableExplanationKey } from '@/components/settings/usage-tab';
+import { sharedMissingReason, UsageOverview, unavailableExplanationKey } from '@/components/settings/usage-tab';
 import { useOrganizationUsage } from '@/hooks/api';
 import { organizationKeys } from '@/hooks/api/organization-keys';
 import { organizationUsageQueryOptions } from '@/hooks/api/organization-query-options';
@@ -65,23 +65,50 @@ function BillingPage() {
         <>
           <UsageOverview
             description={t('organization.billing.totals')}
+            // This page has its own h1 ("Usage & billing"); the overview is a section of it.
+            headingLevel={2}
             isPending={usage.isPending}
             planKey={data?.plan?.key ?? null}
             title={t('organization.billing.usageTitle')}
             usage={data}
           />
-          <WebsiteBreakdown pending={usage.isPending} websites={data?.websites ?? []} />
+          <WebsiteBreakdown
+            pending={usage.isPending}
+            // The overview says a shared reason once at the top; the table doesn't repeat it in every cell.
+            saidOnce={sharedMissingReason(data?.meters ?? [])}
+            websites={data?.websites ?? []}
+          />
         </>
       )}
     </div>
   );
 }
 
-/** A missing number says why (hover, and for screen readers) instead of a bare dash. */
-function MissingAware({ reading, text }: { reading: Reading | undefined; text: (reading: Reading | undefined) => string }) {
+/**
+ * A missing number says why (hover, and for screen readers) instead of a bare
+ * dash, unless the page already said that reason once at the top.
+ */
+function MissingAware({
+  reading,
+  text,
+  saidOnce,
+}: {
+  reading: Reading | undefined;
+  text: (reading: Reading | undefined) => string;
+  saidOnce: MessageKey | null;
+}) {
   const t = useT();
   if (reading && reading.quantity !== null) return <>{text(reading)}</>;
-  const why = t(unavailableExplanationKey(reading?.unavailableReason));
+  const reason = unavailableExplanationKey(reading?.unavailableReason);
+  if (reason === saidOnce) {
+    return (
+      <span>
+        <span aria-hidden>—</span>
+        <span className="sr-only">{t('settings.usage.state.unknown')}</span>
+      </span>
+    );
+  }
+  const why = t(reason);
   return (
     <span title={why}>
       <span aria-hidden>—</span>
@@ -90,7 +117,7 @@ function MissingAware({ reading, text }: { reading: Reading | undefined; text: (
   );
 }
 
-function WebsiteBreakdown({ websites, pending }: { websites: WebsiteUsage[]; pending: boolean }) {
+function WebsiteBreakdown({ websites, pending, saidOnce }: { websites: WebsiteUsage[]; pending: boolean; saidOnce: MessageKey | null }) {
   const t = useT();
   const { number } = useFormatters();
   const format = (reading: Reading | undefined) => {
@@ -149,7 +176,7 @@ function WebsiteBreakdown({ websites, pending }: { websites: WebsiteUsage[]; pen
                     </TableCell>
                     {BREAKDOWN.map((column) => (
                       <TableCell className="text-end tabular-nums" key={column.key}>
-                        <MissingAware reading={website.meters.find((meter) => meter.key === column.key)} text={format} />
+                        <MissingAware reading={website.meters.find((meter) => meter.key === column.key)} saidOnce={saidOnce} text={format} />
                       </TableCell>
                     ))}
                   </TableRow>

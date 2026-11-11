@@ -5,7 +5,12 @@ interface AuthErrorLike {
 }
 
 /** The interface copy `friendlyAuthError` can choose instead of the caller's fallback. */
-type AuthErrorKey = 'auth.otp.tooManyAttempts' | 'auth.error.suspended' | 'auth.error.serverError';
+type AuthErrorKey =
+  | 'auth.otp.tooManyAttempts'
+  | 'auth.error.suspended'
+  | 'auth.error.serverError'
+  | 'auth.legal.termsRequired'
+  | 'auth.legal.signupClosed';
 
 /** The interface copy `friendlyEmailChangeError` can choose on top of {@link AuthErrorKey}. */
 type EmailChangeErrorKey = AuthErrorKey | 'validation.emailInvalid' | 'settings.account.email.sameAsCurrent' | 'settings.account.email.inUse';
@@ -34,6 +39,8 @@ export function isAccountSuspendedError(error: AuthErrorLike | null | undefined)
  */
 export function friendlyAuthError(error: AuthErrorLike | null | undefined, t: (key: AuthErrorKey) => string, fallback: string): string {
   const code = errorCode(error);
+  if (code === 'TERMS_REQUIRED') return t('auth.legal.termsRequired');
+  if (code === 'SIGNUP_CLOSED') return t('auth.legal.signupClosed');
   if (isAccountSuspendedError(error)) return t('auth.error.suspended');
   if (error?.status === 429 || code.includes('TOO_MANY')) return t('auth.otp.tooManyAttempts');
   // The email queue's stable code already has an operation-specific fallback ("Could not send a code").
