@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI and integrations: low-fi mockups</title>
+<!--
+  Low-fidelity wireframes for operations/ux/ai-and-integrations.md.
+  Grey boxes on purpose: they show structure, order, states and copy, not visual design.
+  Each .frame is rendered to its own PNG by render-mockups.mjs (frame id = file name).
+  Primitive names in [brackets] map to @nibleaf/design-system components.
+-->
+<style>
+  :root { --ink:#1d1d1f; --muted:#6b6b70; --line:#d4d4d8; --soft:#f4f4f5; --ok:#1f7a4d; --warn:#9a6700; --bad:#b42318; --accent:#2f5bd3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, "Segoe UI", "Noto Sans Arabic", sans-serif; color: var(--ink); background: #e9e9ec; }
+  .frame { background: #fff; margin: 24px; border: 1px solid var(--line); overflow: hidden; }
+  .frame.w1440 { width: 1200px; }
+  .frame.w390 { width: 390px; }
+  .chrome { display: flex; min-height: 100%; }
+  .nav { width: 220px; border-inline-end: 1px solid var(--line); padding: 16px 12px; background: var(--soft); flex-shrink: 0; }
+  .nav h6 { margin: 14px 8px 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .nav a { display: block; padding: 5px 8px; border-radius: 6px; color: var(--ink); text-decoration: none; font-size: 13px; }
+  .nav a.on { background: #fff; border: 1px solid var(--line); font-weight: 600; }
+  .main { flex: 1; padding: 28px 40px 40px; max-width: 820px; }
+  .main.wide { max-width: 980px; }
+  .mobile .main { padding: 16px; }
+  .back { font-size: 13px; color: var(--accent); margin-bottom: 10px; display: inline-block; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .desc { color: var(--muted); margin: 0 0 20px; }
+  .tag { position: absolute; top: 0; inset-inline-start: 0; background: #111; color: #fff; font: 600 11px/1 system-ui; padding: 6px 8px; }
+  .framewrap { position: relative; }
+  section.s { border-top: 1px solid var(--line); padding: 18px 0; }
+  section.s > h2 { font-size: 15px; margin: 0 0 2px; }
+  section.s > p.sd { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
+  .row { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding: 12px 0; }
+  .row + .row { border-top: 1px dashed var(--line); }
+  .row .l { flex: 1; min-width: 0; }
+  .row .l b { display: block; font-weight: 600; }
+  .row .l span { color: var(--muted); font-size: 13px; }
+  .switch { width: 40px; height: 22px; border-radius: 11px; background: var(--line); position: relative; flex-shrink: 0; }
+  .switch::after { content: ""; position: absolute; top: 3px; inset-inline-start: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+  .switch.on { background: var(--ok); }
+  .switch.on::after { inset-inline-start: 21px; }
+  .switch.dis { opacity: .45; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 12px; font-size: 13px; background: #fff; white-space: nowrap; }
+  .btn.p { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn.dis { opacity: .45; }
+  .btn.link { border: 0; padding: 0; color: var(--accent); background: none; }
+  .reason { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: 12px; white-space: nowrap; }
+  .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .badge.ok { color: var(--ok); border-color: #a9d8bf; } .badge.ok::before { background: var(--ok); }
+  .badge.warn { color: var(--warn); border-color: #e9d18f; } .badge.warn::before { background: var(--warn); }
+  .badge.bad { color: var(--bad); border-color: #f0b4ae; } .badge.bad::before { background: var(--bad); }
+  .badge.plain::before { display: none; }
+  .radio { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; gap: 12px; margin-bottom: 8px; }
+  .radio.sel { border: 2px solid var(--ink); padding: 11px 13px; }
+  .radio .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--muted); flex-shrink: 0; margin-top: 2px; }
+  .radio.sel .dot { border: 5px solid var(--ink); }
+  .radio .l { flex: 1; }
+  .radio .l b { display: block; }
+  .radio .l span { color: var(--muted); font-size: 13px; }
+  .radio .meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+  .check { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; padding: 10px 0; align-items: start; }
+  .check + .check { border-top: 1px dashed var(--line); }
+  .ic { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; color: #fff; background: var(--ok); }
+  .ic.bad { background: var(--bad); } .ic.wait { background: var(--warn); } .ic.off { background: var(--line); color: var(--muted); }
+  .check b { display: block; font-weight: 600; }
+  .check span { color: var(--muted); font-size: 13px; }
+  .callout { border: 1px solid var(--line); border-inline-start: 4px solid var(--accent); border-radius: 8px; padding: 10px 12px; background: var(--soft); font-size: 13px; margin: 8px 0; }
+  .callout.bad { border-inline-start-color: var(--bad); background: #fff6f5; }
+  .callout b { display: block; }
+  .field { margin: 10px 0; }
+  .field label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .input { border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; color: var(--muted); font-size: 13px; background: #fff; }
+  .input.area { height: 64px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; }
+  .logo { width: 32px; height: 32px; border-radius: 8px; background: var(--soft); border: 1px solid var(--line); display: grid; place-items: center; font-weight: 700; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .card .l { flex: 1; min-width: 0; } .card .l b { display: block; } .card .l span { color: var(--muted); font-size: 13px; }
+  h3.g { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 8px; }
+  .pointer { border: 1px dashed var(--line); border-radius: 10px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: 13px; margin-top: 18px; }
+  .dialog-backdrop { background: rgba(20,20,25,.35); padding: 60px 0; display: grid; place-items: center; }
+  .dialog { background: #fff; border-radius: 12px; width: 520px; padding: 20px 22px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+  .dialog h2 { margin: 0 0 4px; font-size: 17px; }
+  .dialog .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .steps { margin: 0; padding-inline-start: 18px; font-size: 13px; color: var(--muted); }
+  .sk { background: #ececee; border-radius: 6px; }
+  .note { font: 12px/1.4 ui-monospace, monospace; color: #6b21a8; background: #faf5ff; border: 1px dashed #d8b4fe; padding: 4px 8px; border-radius: 6px; margin: 6px 0; display: inline-block; }
+  .meter { height: 6px; border-radius: 3px; background: var(--soft); border: 1px solid var(--line); width: 160px; overflow: hidden; display: inline-block; vertical-align: middle; }
+  .meter i { display: block; height: 100%; background: var(--ink); }
+  table.t { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.t td, table.t th { text-align: start; border-bottom: 1px solid var(--line); padding: 8px 6px; vertical-align: top; }
+  table.t th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  [dir=rtl] .ltr { direction: ltr; unicode-bidi: isolate; }
+</style>
+</head>
+<body>
+
+<!-- ───────────────────────────── A. AI answers: on, Nibleaf AI (managed) ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="a-ai-on-managed">
+  <div class="tag">A · AI answers · on · Nibleaf AI · en 1440</div>
+  <div class="chrome">
+    <nav class="nav">
+      <h6>Website</h6><a>General</a><a>Appearance</a><a>Languages</a><a>Custom domain</a><a>Visibility &amp; access</a><a>Add-ons</a><a>Integrations</a>
+      <h6>Content</h6><a>SEO</a><a>Redirects</a><a>Variables</a><a>Search</a>
+      <h6>Publishing</h6><a>Git</a><a>API reference</a><a>Import</a><a>Exports</a>
+      <h6>AI</h6><a class="on">AI answers</a><a>AI assistants (MCP)</a>
+      <h6>Team &amp; access</h6><a>Members</a>
+    </nav>
+    <div class="main">
+      <h1>AI answers</h1>
+      <p class="desc">Let readers ask questions about your published docs and get answers with links to the pages they came from.</p>
+      <span class="note">[PageHeader] · status comes from one model: aiState(capabilities, site)</span>
+
+      <section class="s">
+        <div class="row">
+          <div class="l"><b>Let readers ask AI <span class="badge ok">On</span></b><span>Readers see “Ask AI” next to search on your published site.</span></div>
+          <div class="switch on"></div>
+        </div>
+        <span class="note">[SettingsRow + Switch] the only switch for AI answers in the whole app</span>
+      </section>
+
+      <section class="s">
+        <h2>What powers AI answers</h2>
+        <p class="sd">Pick who runs the AI model. You can switch at any time; readers won’t notice.</p>
+        <div class="radio sel"><div class="dot"></div><div class="l"><b>Nibleaf AI</b><span>Ready to use. Nibleaf runs the model for you.</span>
+          <div class="meta"><span class="badge plain">Model: GPT-6 Luna</span><span class="badge plain">Up to 200 answers a day</span></div></div></div>
+        <div class="radio"><div class="dot"></div><div class="l"><b>Your OpenAI key</b><span>Use your own OpenAI account. OpenAI bills you for what readers use.</span>
+          <div class="meta"><span class="btn">Add key</span></div></div></div>
+        <div class="radio"><div class="dot"></div><div class="l"><b>Your OpenRouter key</b><span>Use your own OpenRouter account to choose from many AI models. OpenRouter bills you.</span>
+          <div class="meta"><span class="btn">Add key</span></div></div></div>
+        <span class="note">[RadioGroup] options come from capabilities.ai.*; an option the server can’t offer is not drawn</span>
+      </section>
+
+      <section class="s">
+        <h2>Is it working?</h2>
+        <p class="sd">Everything AI answers need, checked for you.</p>
+        <div class="check"><div class="ic">✓</div><div><b>Docs published</b><span>Version 12, published 2 hours ago</span></div><span></span></div>
+        <div class="check"><div class="ic">✓</div><div><b>Docs ready for AI</b><span>128 pages prepared · updated 2 hours ago</span></div><span class="btn">Update now</span></div>
+        <div class="check"><div class="ic">✓</div><div><b>Nibleaf AI is answering</b><span>Last answer 4 minutes ago</span></div><span></span></div>
+        <div class="check"><div class="ic">✓</div><div><b>Today’s answers</b><span><i class="meter"><i style="width:18%"></i></i> &nbsp;37 of 200 used · resets at midnight UTC</span></div><span class="btn link">See usage</span></div>
+        <div style="margin-top:10px"><span class="btn">Try it on your site ↗</span></div>
+        <span class="note">[DataList] rows with StatusBadge; each failing row carries its own fix button</span>
+      </section>
+
+      <section class="s">
+        <h2>What readers see</h2>
+        <p class="sd">Moved here from Search, so everything about AI answers is in one place.</p>
+        <div class="field"><label>Suggested questions</label><div class="input area">How do I publish my first page?<br>How do I add a custom domain?</div><div class="hint">One per line. Shown when a reader opens “Ask AI”.</div></div>
+        <div class="field"><label>“Still need help?” link</label><div class="input">https://example.com/support</div></div>
+        <div class="row"><div class="l"><b>Keep conversations for review</b><span>See what readers ask so you can improve your docs. Kept 90 days.</span></div><div class="switch on"></div></div>
+      </section>
+    </div>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── B. Own key connected ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="b-ai-own-key">
+  <div class="tag">B · AI answers · own OpenAI key · en 1440 (powers section only)</div>
+  <div class="main" style="max-width:none;padding:28px 40px">
+    <section class="s" style="border-top:0">
+      <h2>What powers AI answers</h2>
+      <p class="sd">Pick who runs the AI model. You can switch at any time; readers won’t notice.</p>
+      <div class="radio"><div class="dot"></div><div class="l"><b>Nibleaf AI</b><span>Ready to use. Nibleaf runs the model for you.</span></div></div>
+      <div class="radio sel"><div class="dot"></div><div class="l"><b>Your OpenAI key</b><span>Use your own OpenAI account. OpenAI bills you for what readers use.</span>
+        <div class="meta"><span class="badge ok">Key works</span><span class="badge plain">Key ending in 4f2a · added 11 Nov</span><span class="badge plain">Model: GPT-6 Luna</span></div>
+        <div class="meta"><span class="btn">Change model</span><span class="btn">Replace key</span><span class="btn">Remove key</span></div>
+        <div class="callout"><b>Who pays</b>OpenAI bills your account for each answer. Nibleaf still stops at 200 answers a day so a busy day can’t surprise you.</div>
+      </div></div>
+      <div class="radio"><div class="dot"></div><div class="l"><b>Your OpenRouter key</b><span>Use your own OpenRouter account to choose from many AI models. OpenRouter bills you.</span><div class="meta"><span class="btn">Add key</span></div></div></div>
+      <span class="note">self-host without an operator key: the “Nibleaf AI” option is simply absent (capabilities.ai.managed.available = false)</span>
+    </section>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── C. Error with fix ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="c-ai-error-fix">
+  <div class="tag">C · AI answers · needs attention · en 1440 (top + checklist)</div>
+  <div class="main" style="max-width:none;padding:28px 40px">
+    <h1>AI answers</h1>
+    <p class="desc">Let readers ask questions about your published docs and get answers with links to the pages they came from.</p>
+    <div class="callout bad"><b>Readers can’t get AI answers right now</b>OpenAI didn’t accept your key. It may have been deleted or run out of credit. Search still works. <span class="btn" style="margin-inline-start:8px">Replace key</span></div>
+    <span class="note">[Callout tone=danger] one per page, names the single most important fix</span>
+    <section class="s">
+      <div class="row"><div class="l"><b>Let readers ask AI <span class="badge bad">Not working</span></b><span>On, but not answering. Fix the problem above and it starts again by itself.</span></div><div class="switch on"></div></div>
+    </section>
+    <section class="s">
+      <h2>Is it working?</h2>
+      <div class="check"><div class="ic">✓</div><div><b>Docs published</b><span>Version 12, published 2 hours ago</span></div><span></span></div>
+      <div class="check"><div class="ic wait">…</div><div><b>Docs ready for AI</b><span>Preparing 128 pages · about a minute left</span></div><span class="btn dis">Update now</span></div>
+      <div class="check"><div class="ic bad">!</div><div><b>OpenAI key</b><span>OpenAI refused the key at 10:42. Check that it still exists in your OpenAI account.</span></div><span class="btn p">Replace key</span></div>
+      <div class="check"><div class="ic">✓</div><div><b>Today’s answers</b><span>12 of 200 used</span></div><span></span></div>
+    </section>
+    <h3 class="g">Other errors, same pattern</h3>
+    <table class="t">
+      <tr><th>Problem</th><th>What we say</th><th>Fix button</th></tr>
+      <tr><td>Not published</td><td>Publish your docs first. AI answers only use published pages.</td><td>Publish</td></tr>
+      <tr><td>Preparing failed</td><td>We couldn’t prepare 3 pages for AI. The rest still work.</td><td>Try again</td></tr>
+      <tr><td>Model withdrawn</td><td>GPT-5.2 isn’t offered by your key any more. Pick another model.</td><td>Change model</td></tr>
+      <tr><td>Daily limit reached</td><td>Readers used all 200 answers today. AI answers come back at midnight UTC; search still works.</td><td>See usage</td></tr>
+      <tr><td>Provider down</td><td>We couldn’t reach OpenAI just now. We’ll keep trying; nothing to change on your side.</td><td>Check again</td></tr>
+      <tr><td>Server changed how docs are prepared</td><td>Your key needs a quick re-check after a server update.</td><td>Check key</td></tr>
+    </table>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── D. Empty / first time ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="d-ai-off-first-time">
+  <div class="tag">D · AI answers · off, first visit · en 1440</div>
+  <div class="main" style="max-width:none;padding:28px 40px">
+    <h1>AI answers</h1>
+    <p class="desc">Let readers ask questions about your published docs and get answers with links to the pages they came from.</p>
+    <section class="s">
+      <div class="row"><div class="l"><b>Let readers ask AI <span class="badge">Off</span></b><span>Readers only see regular search results.</span></div><div class="switch"></div></div>
+      <span class="note">Cloud-like (Nibleaf AI available): the switch works right away and selects Nibleaf AI by default</span>
+    </section>
+    <section class="s">
+      <div class="row"><div class="l"><b>Let readers ask AI <span class="badge">Off</span></b><span>Readers only see regular search results.</span><div class="reason">Add your OpenAI or OpenRouter key below first.</div></div><div class="switch dis"></div></div>
+      <span class="note">self-host-like (own keys only): switch disabled with a visible reason (disabledReason), never a silent grey</span>
+    </section>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── E. Add key dialog ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="e-add-key-dialog">
+  <div class="tag">E · Add your OpenAI key [ActionDialog] · en 1440</div>
+  <div class="dialog-backdrop">
+    <div class="dialog">
+      <h2>Add your OpenAI key</h2>
+      <p class="desc" style="margin-bottom:8px">Readers’ questions will be answered with your OpenAI account. OpenAI bills you for usage.</p>
+      <ol class="steps"><li>In OpenAI, open <u>API keys</u> and create a key for Nibleaf.</li><li>Paste it here. We check it with OpenAI before saving.</li></ol>
+      <div class="field"><label>OpenAI API key</label><div class="input ltr">sk-••••••••••••••••••••</div><div class="hint">Stored encrypted. Nobody, including you, can read it back after saving.</div></div>
+      <div class="field"><label>Model</label><div class="input">GPT-6 Luna (recommended) ▾</div><div class="hint">Loaded from your key once it’s pasted. Faster models cost less per answer.</div></div>
+      <div class="foot"><span class="btn">Cancel</span><span class="btn p">Check and save</span></div>
+      <span class="note">one button: check key → load models → save → select this option. No “replace” checkbox: “Replace key” opens this dialog.</span>
+    </div>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── F. Integrations hub ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="f-integrations-hub">
+  <div class="tag">F · Integrations · only what you connect · en 1440</div>
+  <div class="main wide" style="max-width:none;padding:28px 40px">
+    <h1>Integrations</h1>
+    <p class="desc">Connect the tools your team already uses.</p>
+    <h3 class="g">Sync your docs</h3>
+    <div class="grid2">
+      <div class="card"><div class="logo">GH</div><div class="l"><b>GitHub</b><span>Syncing acme/docs · main · 5 min ago</span></div><span class="badge ok">Connected</span></div>
+      <div class="card"><div class="logo">GL</div><div class="l"><b>GitLab or any Git URL</b><span>Import from another Git host.</span></div><span class="btn">Set up</span></div>
+    </div>
+    <h3 class="g">Analytics</h3>
+    <div class="grid2">
+      <div class="card"><div class="logo">GA</div><div class="l"><b>Google Analytics</b><span>Tracking with G-4X…</span></div><span class="badge ok">Connected</span></div>
+      <div class="card"><div class="logo">P</div><div class="l"><b>Plausible</b><span>Privacy-friendly visitor stats.</span></div><span class="btn">Set up</span></div>
+    </div>
+    <h3 class="g">Notifications</h3>
+    <div class="grid2">
+      <div class="card"><div class="logo">S</div><div class="l"><b>Slack</b><span>Last message didn’t arrive: Slack says the link was removed.</span></div><span class="badge bad">Not working</span></div>
+      <div class="card"><div class="logo">D</div><div class="l"><b>Discord</b><span>Post to a channel when you publish.</span></div><span class="btn">Connect</span></div>
+    </div>
+    <h3 class="g">Automation</h3>
+    <div class="grid2"><div class="card"><div class="logo">Z</div><div class="l"><b>Zapier</b><span>Start a Zap when you publish.</span></div><span class="btn">Connect</span></div></div>
+    <div class="pointer"><div class="logo">AI</div><div style="flex:1">Looking for OpenAI or OpenRouter? AI keys live in <b>AI answers</b>.</div><span class="btn">Open AI answers</span></div>
+    <span class="note">no Qdrant, ClickHouse, Postmark, SMTP, Maxio, MinIO, S3, R2, B2, Cloudflare; no “Not configured / Unavailable” for things a site owner can’t act on</span>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── G. Slack detail ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="g-slack-connected">
+  <div class="tag">G · Integrations › Slack · connected · en 1440 (URL: ?section=integrations&amp;integration=slack)</div>
+  <div class="main" style="max-width:none;padding:28px 40px">
+    <span class="back">← Integrations</span>
+    <h1>Slack <span class="badge ok">Connected</span></h1>
+    <p class="desc">Posts to <b>Docs team</b> in Slack.</p>
+    <section class="s">
+      <h2>What to post</h2>
+      <div class="row"><div class="l"><b>A publish finished</b><span>“Docs v12 is live: 3 pages changed.”</span></div><div class="switch on"></div></div>
+      <div class="row"><div class="l"><b>A publish failed</b><span>With a link to what went wrong.</span></div><div class="switch on"></div></div>
+    </section>
+    <section class="s">
+      <h2>Recent messages</h2>
+      <div class="check"><div class="ic">✓</div><div><b>A publish finished</b><span>Delivered 2 minutes ago</span></div><span></span></div>
+      <div class="check"><div class="ic">✓</div><div><b>Test message</b><span>Delivered yesterday</span></div><span></span></div>
+    </section>
+    <section class="s">
+      <div class="row"><div class="l"><b>Send a test message</b><span>Posts “Nibleaf is connected” to the channel, so everyone there will see it.</span></div><span class="btn">Send test</span></div>
+      <div class="row"><div class="l"><b>Pause</b><span>Stop posting without forgetting the connection.</span></div><span class="btn">Pause</span></div>
+      <div class="row"><div class="l"><b>Change channel</b><span>Paste a new webhook URL from Slack.</span></div><span class="btn">Replace URL</span></div>
+      <div class="row"><div class="l"><b>Disconnect</b><span>Forget this Slack connection.</span></div><span class="btn" style="color:var(--bad)">Disconnect</span></div>
+    </section>
+    <span class="note">gone: Health / Credentials / Managed by tiles, “Activate/Deactivate”, “Verify”, raw “Label” field name</span>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── H. Mobile, Arabic ───────────────────────────── -->
+<div class="framewrap"><div class="frame w390 mobile" id="h-ai-ar-390" dir="rtl" lang="ar">
+  <div class="tag">H · ar 390 · RTL</div>
+  <div class="main" style="padding-top:36px">
+    <span class="back">→ كل الإعدادات</span>
+    <h1>إجابات الذكاء الاصطناعي</h1>
+    <p class="desc">دَع القرّاء يطرحون أسئلة عن توثيقك المنشور ويحصلون على إجابات مع روابط إلى الصفحات التي جاءت منها.</p>
+    <section class="s">
+      <div class="row"><div class="l"><b>السماح للقرّاء بسؤال الذكاء الاصطناعي <span class="badge ok">مفعّل</span></b><span>يرى القرّاء «اسأل الذكاء الاصطناعي» بجوار البحث في موقعك المنشور.</span></div><div class="switch on"></div></div>
+    </section>
+    <section class="s">
+      <h2>ما الذي يشغّل الإجابات</h2>
+      <div class="radio sel"><div class="dot"></div><div class="l"><b>ذكاء Nibleaf الاصطناعي</b><span>جاهز للاستخدام. تشغّل Nibleaf النموذج نيابةً عنك.</span><div class="meta"><span class="badge plain">النموذج: <bdi class="ltr">GPT-6 Luna</bdi></span></div></div></div>
+      <div class="radio"><div class="dot"></div><div class="l"><b>مفتاح OpenAI الخاص بك</b><span>تُحاسبك OpenAI على الاستخدام.</span><div class="meta"><span class="btn">إضافة مفتاح</span></div></div></div>
+    </section>
+    <section class="s">
+      <h2>هل يعمل؟</h2>
+      <div class="check"><div class="ic">✓</div><div><b>التوثيق منشور</b><span>الإصدار ١٢</span></div><span></span></div>
+      <div class="check"><div class="ic">✓</div><div><b>التوثيق جاهز للذكاء الاصطناعي</b><span>١٢٨ صفحة</span></div><span></span></div>
+      <div class="check"><div class="ic">✓</div><div><b>إجابات اليوم</b><span>٣٧ من ٢٠٠</span></div><span></span></div>
+    </section>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── I. Not available on this server ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="i-ai-unavailable">
+  <div class="tag">I · AI answers · not available on this server [FeatureUnavailable] · en 1440</div>
+  <div class="main" style="max-width:none;padding:28px 40px">
+    <h1>AI answers</h1>
+    <p class="desc">Let readers ask questions about your published docs and get answers with links to the pages they came from.</p>
+    <div style="border:1px dashed var(--line);border-radius:12px;padding:40px;text-align:center">
+      <div class="logo" style="margin:0 auto 10px">AI</div>
+      <b>AI answers aren’t available on this Nibleaf server yet</b>
+      <p class="desc" style="margin:6px 0 12px">Search on your site still works as usual.</p>
+      <span class="note">site owner: nothing else. No “operator”, “instance”, “encryption key”, no form that can’t save.</span><br>
+      <span class="note">platform admin only (capabilities.viewer.platformAdmin): “To turn them on, set up search and an AI provider.” + Self-hosting guide → AI</span>
+    </div>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── J. Server status (platform admins) ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="j-server-status">
+  <div class="tag">J · Server status · platform admins only · read-only · en 1440</div>
+  <div class="main wide" style="max-width:none;padding:28px 40px">
+    <h1>Server status</h1>
+    <p class="desc">The services this Nibleaf server runs on. Only server admins see this page. Change them in the server’s environment, then restart.</p>
+    <table class="t">
+      <tr><th>Service</th><th>Used for</th><th>Status</th><th></th></tr>
+      <tr><td><b>File storage</b><br><span class="hint">Maxio</span></td><td>Images and files in your docs</td><td><span class="badge ok">Working</span></td><td><span class="btn link">Guide</span></td></tr>
+      <tr><td><b>Search</b><br><span class="hint">Qdrant · hybrid</span></td><td>Search and AI answers</td><td><span class="badge ok">Working</span></td><td><span class="btn link">Guide</span></td></tr>
+      <tr><td><b>AI provider</b><br><span class="hint">OpenRouter · GPT-6 Luna</span></td><td>“Nibleaf AI” option for every site</td><td><span class="badge ok">Key set</span></td><td><span class="btn link">Guide</span></td></tr>
+      <tr><td><b>Saving site keys</b><br><span class="hint">INTEGRATION_CREDENTIAL_ENCRYPTION_KEY</span></td><td>Sites adding their own AI key, Slack, Discord</td><td><span class="badge warn">Not set up</span></td><td><span class="btn link">How to set it</span></td></tr>
+      <tr><td><b>Email</b><br><span class="hint">SMTP</span></td><td>Sign-in codes and invitations</td><td><span class="badge ok">Working</span></td><td><span class="btn link">Guide</span></td></tr>
+      <tr><td><b>Visitor analytics</b><br><span class="hint">ClickHouse</span></td><td>The Analytics page</td><td><span class="badge">Off</span></td><td><span class="btn link">Guide</span></td></tr>
+      <tr><td><b>Custom domains</b><br><span class="hint">Cloudflare for SaaS</span></td><td>Automatic HTTPS for custom domains</td><td><span class="badge">Off</span></td><td><span class="btn link">Guide</span></td></tr>
+    </table>
+    <span class="note">technical names are allowed here (the audience is the operator); never secrets, URLs with credentials or internal hosts</span>
+  </div>
+</div></div>
+
+<!-- ───────────────────────────── K. Loading ───────────────────────────── -->
+<div class="framewrap"><div class="frame w1440" id="k-ai-loading">
+  <div class="tag">K · AI answers · loading (skeleton shaped like the page) · en 1440</div>
+  <div class="main" style="max-width:none;padding:28px 40px">
+    <h1>AI answers</h1>
+    <p class="desc">Let readers ask questions about your published docs and get answers with links to the pages they came from.</p>
+    <section class="s"><div class="row"><div class="l"><div class="sk" style="height:16px;width:180px"></div><div class="sk" style="height:12px;width:340px;margin-top:8px"></div></div><div class="sk" style="width:40px;height:22px;border-radius:11px"></div></div></section>
+    <section class="s"><div class="sk" style="height:16px;width:200px;margin-bottom:12px"></div>
+      <div class="sk" style="height:62px;margin-bottom:8px"></div><div class="sk" style="height:62px;margin-bottom:8px"></div><div class="sk" style="height:62px"></div></section>
+    <section class="s"><div class="sk" style="height:16px;width:140px;margin-bottom:12px"></div>
+      <div class="sk" style="height:36px;margin-bottom:8px"></div><div class="sk" style="height:36px;margin-bottom:8px"></div><div class="sk" style="height:36px"></div></section>
+    <span class="note">header renders at once (static copy); body skeleton is shaped like the loaded page; data prefetched in the route loader</span>
+  </div>
+</div></div>
+
+</body>
+</html>

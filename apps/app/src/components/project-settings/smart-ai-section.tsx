@@ -4,6 +4,7 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton, SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
+import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
 import { useT } from '@nibleaf/i18n/react';
 import type { WorkspaceAiProvider } from '@nibleaf/validators';
 import { Link } from '@tanstack/react-router';
@@ -109,6 +110,9 @@ function SmartAiSettings({ data, project, refetch }: { data: WorkspaceAi; projec
   // Only report answers as enabled when the runtime can actually serve them.
   const answersUsable = data.selectedProvider === 'instance' ? data.instanceConfigured && data.instanceAnswersEnabled : providerConfigured;
   const enabled = data.selectedProvider !== 'disabled' && data.answersEnabled && answersUsable;
+  // Turning off changes the saved setting, so it is offered while that is on, even when answers
+  // can't be served yet, and explains itself once the setting is already off.
+  const alreadyOff = data.selectedProvider === 'disabled' || !data.answersEnabled;
   // A run whose enqueue failed stays PENDING; the server re-enqueues it on retry.
   const indexActive = data.index.status === 'RUNNING' || (data.index.status === 'PENDING' && data.index.errorCode !== 'queue_unavailable');
 
@@ -119,8 +123,9 @@ function SmartAiSettings({ data, project, refetch }: { data: WorkspaceAi; projec
           <Badge variant="outline">{t(enabled ? 'settings.smartAi.enabled' : 'settings.smartAi.disabled')}</Badge>
           <p className="mt-2 text-muted-foreground text-sm">{t('settings.smartAi.scope')}</p>
         </div>
-        <Button
-          disabled={select.isPending || data.selectedProvider === 'disabled'}
+        <TooltipButton
+          disabled={select.isPending}
+          disabledReason={alreadyOff ? t('settings.smartAi.alreadyOff') : undefined}
           loading={selecting === 'disabled'}
           onClick={async () => {
             const approved = await confirm({
@@ -136,7 +141,7 @@ function SmartAiSettings({ data, project, refetch }: { data: WorkspaceAi; projec
           variant="outline"
         >
           {t('settings.smartAi.disable')}
-        </Button>
+        </TooltipButton>
       </div>
       {!data.encryptionConfigured && (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm" role="status">
