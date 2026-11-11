@@ -3598,6 +3598,7 @@
   "admin_operations_gitkind_push": "Push",
   "editor_saveerror": "Änderungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut, bevor Sie die Seite verlassen.",
   "editor_retrysave": "Speichern erneut versuchen",
+  "editor_pagetoolarge": "Diese Seite ist zu groß (maximal 2 MB). Teilen Sie sie in kleinere Seiten auf.",
   "dashboard_search_noresults": "Keine Websites entsprechen Ihrer Suche.",
   "dashboard_search_clear": "Suche löschen",
   "auth_invite_switchaccount": "Mit dem eingeladenen Konto anmelden",
