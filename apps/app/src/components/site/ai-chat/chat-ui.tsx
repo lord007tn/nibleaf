@@ -47,6 +47,14 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
   }, [ask, openChat, router]);
   return (
     <>
+      {/* Room at the end of the page for the launcher: its offset, its 3rem and
+          the safe-area inset, so it never covers the pager or the last line.
+          Server-rendered with the launcher, so nothing shifts. */}
+      <div
+        aria-hidden
+        data-chat-launcher-space=""
+        className={requiresConsent ? 'h-[calc(7.5rem+env(safe-area-inset-bottom))]' : 'h-[calc(4rem+env(safe-area-inset-bottom))]'}
+      />
       <Launcher ref={launcher} lang={options.lang} consentBanner={requiresConsent} onOpen={() => openChat({ source: 'launcher' })} />
       {request && (
         <Suspense fallback={null}>
@@ -96,7 +104,7 @@ function useScrollingDown() {
  * banner holds the same corner. On phones it is a round icon button (its name
  * stays for screen readers) that slides away while the reader scrolls down, so
  * it never sits on screenshots or their zoom buttons; the page keeps room for
- * it at the end (see SiteChatProvider). */
+ * it at the end (see ChatRoot). */
 function Launcher({
   lang,
   consentBanner,
@@ -129,7 +137,7 @@ function Launcher({
       className={cn(
         'fixed end-4 z-40 size-12 rounded-full p-0 shadow-lg transition-[translate,opacity] duration-200 motion-reduce:transition-none md:size-auto md:h-12 md:px-5',
         // Above the consent "Manage" button when the site asks for consent. The
-        // page keeps room for offset + 3rem (launcherSpace in provider.tsx).
+        // page keeps room for offset + 3rem (see ChatRoot).
         consentBanner ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(1rem+env(safe-area-inset-bottom))]',
         // Phones only; keyboard focus brings it back.
         'max-md:data-away:not-focus-visible:pointer-events-none max-md:data-away:not-focus-visible:translate-y-[calc(100%+5rem)] max-md:data-away:not-focus-visible:opacity-0',

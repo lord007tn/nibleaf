@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { ChatRoot } from './chat-ui';
-import { type ChatRequest, SiteChatProvider } from './provider';
+import type { ChatRequest } from './provider';
 
 const mocks = vi.hoisted(() => ({ replace: vi.fn(), panel: vi.fn() }));
 vi.mock('@tanstack/react-router', () => ({ useRouter: () => ({ history: { replace: mocks.replace } }) }));
@@ -150,27 +150,13 @@ describe('launcher on phones', () => {
   });
 
   it('reserves room at the end of the page for the launcher and the safe area', async () => {
-    const view = await mount(
-      <SiteChatProvider {...options} available>
-        <p>Docs</p>
-      </SiteChatProvider>,
-    );
+    const view = await mount(<ChatRoot {...options} openChat={vi.fn()} />);
     const space = view.container.querySelector('[data-chat-launcher-space]');
-    expect(space?.previousElementSibling?.textContent).toBe('Docs');
     // Its 1rem offset plus its 3rem height, plus the safe-area inset.
-    expect(space?.className).toContain('h-[calc(4rem+env(safe-area-inset-bottom))]');
+    expect(space?.className).toBe('h-[calc(4rem+env(safe-area-inset-bottom))]');
+    // Above the consent "Manage" button: 4.5rem plus 3rem.
     const consent = { analytics: { cookieConsent: true } } as ProjectConfig;
-    await view.render(
-      <SiteChatProvider {...options} config={consent} available>
-        <p>Docs</p>
-      </SiteChatProvider>,
-    );
-    expect(view.container.querySelector('[data-chat-launcher-space]')?.className).toContain('h-[calc(7.5rem+env(safe-area-inset-bottom))]');
-    await view.render(
-      <SiteChatProvider {...options} available={false}>
-        <p>Docs</p>
-      </SiteChatProvider>,
-    );
-    expect(view.container.querySelector('[data-chat-launcher-space]')).toBeNull();
+    await view.render(<ChatRoot {...options} config={consent} openChat={vi.fn()} />);
+    expect(view.container.querySelector('[data-chat-launcher-space]')?.className).toBe('h-[calc(7.5rem+env(safe-area-inset-bottom))]');
   });
 });

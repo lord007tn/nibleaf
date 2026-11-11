@@ -1,4 +1,3 @@
-import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import type { AiChatOpenSource } from '@nibleaf/validators';
 import { type ComponentProps, createContext, type ReactNode, Suspense, useContext, useState } from 'react';
 import { DocumentationReaderLayout } from '@/components/site/documentation-theme-provider';
@@ -56,11 +55,6 @@ export type ChatOptions = {
    * encrypt it). From the site shell, so the chat never claims storage that isn't there. */
   questionRetentionDays?: number | null;
 };
-
-/** Room under the page for the launcher (its offset, its 3rem and the safe-area
- * inset; see Launcher in chat-ui.tsx), so at the end of the page it never covers
- * the pager or the last line. */
-const launcherSpace = (consent: boolean) => (consent ? 'h-[calc(7.5rem+env(safe-area-inset-bottom))]' : 'h-[calc(4rem+env(safe-area-inset-bottom))]');
 /** The reader layout's chat settings, plus its `?ask=` deep link. */
 export type ChatRootOptions = ChatOptions & { ask?: string };
 
@@ -72,14 +66,6 @@ export function SiteChatProvider({ children, available, ...chat }: ChatRootOptio
   return (
     <Context.Provider value={available ? openChat : null}>
       {children}
-      {/* Rendered with the page, before the launcher loads, so nothing shifts. */}
-      {available && (
-        <div
-          aria-hidden
-          data-chat-launcher-space=""
-          className={`shrink-0 ${launcherSpace(analyticsConsentPolicy(chat.config) !== 'not_required')}`}
-        />
-      )}
       {available && (
         <Suspense fallback={null}>
           <ChatRoot {...chat} request={request} openChat={openChat} />
