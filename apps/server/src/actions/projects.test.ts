@@ -441,39 +441,39 @@ describe('site creation language, starters and address availability', () => {
     await createProject('user-1', { name: 'وثائق جود 263', slug: '263' });
     expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ slug: '263' }) });
   });
-  it.each([
-    'www',
-    'admin',
-    'api',
-    'app',
-    'docs',
-    'storage',
-    'cname',
-    'status',
-    'mail',
-    'xn--nibleaf',
-    'dashboard',
-    'gateway',
-    'console',
-    'sites',
-    'ingress',
-    'uploads',
-    'assets',
-    'login',
-    'objects',
-  ])('rejects reserved hostname %s on availability, create and existing-site update', async (slug) => {
+  it.each(
+    [
+      'www',
+      'admin',
+      'api',
+      'app',
+      'docs',
+      'storage',
+      'cname',
+      'status',
+      'mail',
+      'xn--nibleaf',
+      'dashboard',
+      'gateway',
+      'console',
+      'sites',
+      'ingress',
+      'uploads',
+      'assets',
+      'login',
+      'objects',
+    ].flatMap((slug) => (['availability', 'create', 'update'] as const).map((path) => ({ slug, path }))),
+  )('rejects reserved hostname $slug on $path', async ({ slug, path }) => {
     mocks.projectFindFirst.mockImplementation(async ({ where }) =>
       where.id ? { id: 'project-new', organizationId: 'org-a', slug: 'ordinary' } : null,
     );
-    await expect(checkProjectAvailability('user-1', { organizationId: 'org-a', name: 'Site', slug })).rejects.toMatchObject({
-      status: 400,
-      details: { reason: 'slug_reserved' },
-    });
-    await expect(createProject('user-1', { organizationId: 'org-a', name: 'Site', slug })).rejects.toMatchObject({
-      status: 400,
-      details: { reason: 'slug_reserved' },
-    });
-    await expect(updateProject('org-a', 'project-new', { slug })).rejects.toMatchObject({ status: 400, details: { reason: 'slug_reserved' } });
+    const action =
+      path === 'availability'
+        ? checkProjectAvailability('user-1', { organizationId: 'org-a', name: 'Site', slug })
+        : path === 'create'
+          ? createProject('user-1', { organizationId: 'org-a', name: 'Site', slug })
+          : updateProject('org-a', 'project-new', { slug });
+    await expect(action).rejects.toMatchObject({ status: 400, details: { reason: 'slug_reserved' } });
     expect(mocks.tx.project.create).not.toHaveBeenCalled();
   });
 

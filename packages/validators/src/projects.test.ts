@@ -43,12 +43,12 @@ describe('site creation', () => {
   it('still permits a numeric address when the author explicitly chooses it', () => {
     expect(createProjectBody.parse({ name: 'وثائق جود 263', slug: '263' }).slug).toBe('263');
   });
-  it.each(['www', 'admin', 'api', 'app', 'docs', 'storage', 'cname', 'status', 'mail', 'xn--nibleaf', 'xn--80ak6aa92e'])(
-    'rejects reserved hostname %s in every slug schema',
-    (slug) => {
-      expect(createProjectBody.safeParse({ name: 'Site', slug }).success).toBe(false);
-      expect(updateProjectBody.safeParse({ slug }).success).toBe(false);
-      expect(projectAvailabilityQuery.safeParse({ name: 'Site', slug }).success).toBe(false);
-    },
-  );
+  it.each(
+    ['www', 'admin', 'api', 'app', 'docs', 'storage', 'cname', 'status', 'mail', 'xn--nibleaf', 'xn--80ak6aa92e'].flatMap((slug) =>
+      (['create', 'update', 'availability'] as const).map((path) => ({ slug, path })),
+    ),
+  )('rejects reserved hostname $slug on $path', ({ slug, path }) => {
+    const schema = path === 'create' ? createProjectBody : path === 'update' ? updateProjectBody : projectAvailabilityQuery;
+    expect(schema.safeParse({ name: 'Site', slug }).success).toBe(false);
+  });
 });
