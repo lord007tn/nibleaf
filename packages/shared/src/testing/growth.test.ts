@@ -33,3 +33,52 @@ describe('growth bounds', () => {
     expect(linearLarge).toBeGreaterThan(constantGrowthLimit(linearSmall));
   });
 });
+
+/** Busy work for about `ms` milliseconds. */
+const spin = (ms: number) => {
+  const until = performance.now() + ms;
+  let turns = 0;
+  while (performance.now() < until) turns += 1;
+  return turns;
+};
+
+describe('growth calibration', () => {
+  it('re-measures when the work speeds up after calibration, so the small median it returns is at least minMs', () => {
+    // Slow on its first calls (sizing the repeats on them), then 20x faster: the
+    // samples taken after calibration would come in well under minMs.
+    let calls = 0;
+    const speedsUp = (input: string) => {
+      calls += 1;
+      return spin(calls <= 6 ? 6 : 0.3) + input.length;
+    };
+    const [small, large] = growthMs(speedsUp, 'a', 'aaaa', { minMs: 4 });
+    expect(small).toBeGreaterThanOrEqual(4);
+    expect(large).toBeGreaterThan(0);
+  });
+
+  it('throws instead of returning a pair that cannot tell growth apart', () => {
+    // Slow while the repeats are sized, then effectively free: no repeat count can reach minMs.
+    let calls = 0;
+    const vanishes = (input: string) => {
+      calls += 1;
+      return calls <= 6 ? spin(6) : input.length;
+    };
+    expect(() => growthMs(vanishes, 'a', 'aaaa', { minMs: 4 })).toThrow(/calibration failed/);
+  });
+
+  it('gives every call a fresh input when asked, with a counter unique across the measurement', () => {
+    const seen = new Set<string>();
+    growthMs<string>(
+      (input) => {
+        seen.add(input);
+        return spin(0.05);
+      },
+      'small',
+      'large',
+      { minMs: 1, vary: (input, rep) => `${input} ${rep}` },
+    );
+    // Every call saw a different input: none was a repeat a cache could answer.
+    expect(seen.size).toBeGreaterThan(50);
+    expect([...seen].every((input) => /^(small|large) \d+$/.test(input))).toBe(true);
+  });
+});
