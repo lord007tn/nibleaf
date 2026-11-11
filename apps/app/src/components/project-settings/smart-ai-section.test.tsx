@@ -171,3 +171,42 @@ describe('Smart AI setup steps', () => {
     expect(document.body.textContent).not.toContain('settings.smartAi.oauthTitle');
   });
 });
+
+describe('Turning AI off', () => {
+  const turnOff = () => button('settings.smartAi.disable');
+  const reasonOf = (element: HTMLElement | undefined) =>
+    (element?.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => (id ? document.getElementById(id)?.textContent : ''))
+      .join(' ');
+
+  it.each([
+    { name: 'answers were never turned on', data: { selectedProvider: 'instance', answersEnabled: false } },
+    { name: 'AI was turned off', data: { selectedProvider: 'disabled', answersEnabled: false } },
+  ])('is disabled with a reason when $name', async ({ data }) => {
+    Object.assign(state.query, { isPending: false, isFetching: false, data: { ...loaded, ...data } });
+    await mount();
+
+    expect(turnOff()?.getAttribute('aria-disabled') === 'true' || turnOff()?.disabled).toBe(true);
+    expect(reasonOf(turnOff())).toContain('settings.smartAi.alreadyOff');
+    expect(document.body.textContent).toContain('settings.smartAi.disabled');
+  });
+
+  it('is available while answers are on', async () => {
+    Object.assign(state.query, { isPending: false, isFetching: false, data: loaded });
+    await mount();
+
+    expect(turnOff()?.disabled).toBe(false);
+    expect(turnOff()?.getAttribute('aria-disabled')).not.toBe('true');
+    expect(reasonOf(turnOff())).not.toContain('settings.smartAi.alreadyOff');
+  });
+
+  it('stays available while answers are saved on but cannot be served yet, so they can still be switched off', async () => {
+    const unverified = loaded.providers.map((provider) => ({ ...provider, verified: false }));
+    Object.assign(state.query, { isPending: false, isFetching: false, data: { ...loaded, providers: unverified } });
+    await mount();
+
+    expect(turnOff()?.disabled).toBe(false);
+    expect(reasonOf(turnOff())).not.toContain('settings.smartAi.alreadyOff');
+  });
+});
