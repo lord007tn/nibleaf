@@ -481,7 +481,7 @@ export const interpolateVariables = (text: string, variables: Record<string, str
 };
 
 /** Extract a `{ key: value }` map from a project config's `variables` array. */
-const variablesFromConfig = (config: unknown): Record<string, string> => {
+export const variablesFromConfig = (config: unknown): Record<string, string> => {
   const list = (config as { variables?: Array<{ key?: unknown; value?: unknown }> } | null)?.variables;
   const map: Record<string, string> = {};
   if (Array.isArray(list)) {

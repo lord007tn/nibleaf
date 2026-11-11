@@ -16,6 +16,12 @@ const pagesRoutes = {
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
   get: createRouteConfig({ guard: [...member], tags: ['pages'], description: 'Retrieve a page (with content).', responses: ok }),
+  searchDescription: createRouteConfig({
+    guard: [...member],
+    tags: ['pages'],
+    description: "The description generated from a page's saved content when it has none of its own.",
+    responses: ok,
+  }),
   update: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Update a page.', responses: ok }),
   remove: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Delete a page (and its children).', responses: ok }),
   reorder: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Reorder / re-parent pages.', responses: ok }),

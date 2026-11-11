@@ -1,4 +1,6 @@
 /** @vitest-environment jsdom */
+import { pageDescription } from '@nibleaf/shared/markdown-text';
+import { truncateText } from '@nibleaf/shared/utils';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,12 +8,20 @@ import type { PageNode } from '@/hooks/api/types';
 import { PageSettingsDialog } from './page-settings-dialog';
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.translate }));
-const mocks = vi.hoisted(() => ({ reorder: vi.fn(), confirm: vi.fn(), update: vi.fn(), success: vi.fn(), translate: vi.fn((key: string) => key) }));
+const mocks = vi.hoisted(() => ({
+  reorder: vi.fn(),
+  confirm: vi.fn(),
+  update: vi.fn(),
+  success: vi.fn(),
+  translate: vi.fn((key: string) => key),
+  searchDescription: vi.fn((): { data?: { description: string }; isPending: boolean; isError: boolean } => ({ isPending: false, isError: false })),
+}));
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: vi.fn() } }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: () => 'error',
   useUpdatePage: () => ({ isPending: false, mutate: mocks.update }),
   useReorderPages: () => ({ isPending: false, mutate: mocks.reorder }),
+  usePageSearchDescription: (...args: unknown[]) => mocks.searchDescription(...(args as [])),
 }));
 vi.mock('@nibleaf/design-system/components/ui/select', () => ({
   Select: ({ children, value, onValueChange }: { children: ReactNode; value: string; onValueChange: (value: string) => void }) => (
@@ -183,6 +193,75 @@ describe('page settings draft', () => {
       const general = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.general'));
       await act(async () => general?.click());
       expect(document.querySelector<HTMLInputElement>('#page-slug')?.value).toBe('my-address');
+    });
+  });
+
+  describe('the generated search description', () => {
+    /** What the server answers: the description generated from the saved content. */
+    const serve = (content: string) => {
+      const generated = pageDescription({ ...page, content });
+      mocks.searchDescription.mockReturnValue({ data: { description: generated }, isPending: false, isError: false });
+      return generated;
+    };
+    const openSeo = async (nextPage: PageNode = page) => {
+      await act(async () => root.render(<PageSettingsDialog onOpenChange={vi.fn()} open page={nextPage} projectId="project-a" />));
+      const tab = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.seo'));
+      await act(async () => tab?.click());
+    };
+    /** Short words, so the generated text ends past the 155 characters a search result shows. */
+    const LONG_CONTENT = `Nibleaf ${'docs go up in a day so you can '.repeat(8)}`;
+    const preview = () => document.querySelector('[data-testid="search-description-preview"]');
+    const previewText = () => document.querySelector('[data-slot="search-description"]');
+    const writeOwn = () =>
+      [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.searchPreview.writeOwn'));
+
+    afterEach(() => mocks.searchDescription.mockReset());
+
+    it('shows what search engines will see when the page has no description', async () => {
+      const generated = serve('# Install\n\nInstall the CLI and sign in to publish your first site.');
+      await openSeo();
+      expect(mocks.searchDescription).toHaveBeenLastCalledWith('project-a', 'page-a', { enabled: true });
+      expect(preview()?.textContent).toContain('editor.pageSettings.searchPreview.label');
+      expect(preview()?.textContent).toContain('editor.pageSettings.searchPreview.prompt');
+      expect(previewText()?.textContent).toBe(generated);
+    });
+
+    it('cuts a long description where search results cut it', async () => {
+      const generated = serve(LONG_CONTENT);
+      await openSeo();
+      expect(truncateText(generated, 155)).not.toBe(generated);
+      expect(previewText()?.textContent).toBe(truncateText(generated, 155));
+    });
+
+    it('"Write your own" fills the field with the generated text and focuses it', async () => {
+      const generated = serve(LONG_CONTENT);
+      await openSeo();
+      await act(async () => writeOwn()?.click());
+      const field = document.querySelector<HTMLTextAreaElement>('#page-meta-desc');
+      // The full generated text, not the shortened preview, so nothing is lost while editing.
+      expect(field?.value).toBe(generated);
+      expect(document.activeElement).toBe(field);
+      // The author's text is now the description: the prompt is gone.
+      expect(preview()).toBeNull();
+    });
+
+    it.each([
+      ['an SEO description', { ...page, config: { seo: { metaDescription: 'Install the CLI in a minute.' } } }],
+      ['a page summary', { ...page, description: 'Install the CLI in a minute.' }],
+    ] satisfies Array<[string, PageNode]>)('shows no prompt when the page has %s', async (_case, described) => {
+      serve('Install the CLI and sign in.');
+      await openSeo(described);
+      expect(preview()).toBeNull();
+      expect(writeOwn()).toBeUndefined();
+      expect(mocks.searchDescription).toHaveBeenLastCalledWith('project-a', 'page-a', { enabled: false });
+    });
+
+    it('lets Arabic text take its own direction', async () => {
+      const generated = serve('## البداية\n\nثبّت أداة سطر الأوامر وسجّل الدخول لنشر موقعك الأول.');
+      await openSeo();
+      expect(generated).toContain('ثبّت');
+      expect(previewText()?.textContent).toBe(generated);
+      expect(previewText()?.getAttribute('dir')).toBe('auto');
     });
   });
 });

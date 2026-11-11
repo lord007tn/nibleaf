@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import {
@@ -13,17 +14,18 @@ import {
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
+import { joinPath, slugifyUnicode, truncateText } from '@nibleaf/shared/utils';
 import { ChevronRight, CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck, TriangleAlert } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
-import { friendlyErrorMessage, useReorderPages, useUpdatePage } from '@/hooks/api';
+import { friendlyErrorMessage, usePageSearchDescription, useReorderPages, useUpdatePage } from '@/hooks/api';
 
 type PageMode = 'default' | 'wide' | 'center';
 type PageSettingsSection = 'general' | 'seo' | 'behaviour';
@@ -415,19 +417,16 @@ export function PageSettingsDialog({
                   <Field label={t('editor.pageSettings.metaTitle')} hint={t('editor.pageSettings.metaTitleHint')} htmlFor="page-meta-title">
                     <Input id="page-meta-title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={page.title} />
                   </Field>
-                  <Field
-                    label={t('editor.pageSettings.metaDescription')}
-                    hint={t('editor.pageSettings.metaDescriptionHint')}
-                    htmlFor="page-meta-desc"
-                  >
-                    <Textarea
-                      id="page-meta-desc"
-                      value={metaDescription}
-                      onChange={(e) => setMetaDescription(e.target.value)}
-                      rows={2}
-                      placeholder={page.description ?? undefined}
-                    />
-                  </Field>
+                  <MetaDescriptionField
+                    projectId={projectId}
+                    pageId={page.id}
+                    value={metaDescription}
+                    onChange={setMetaDescription}
+                    summary={description}
+                    // A group has no page of its own on the published site.
+                    generated={open && !isGroup}
+                    placeholder={page.description ?? undefined}
+                  />
                   <Field label={t('editor.pageSettings.ogImage')} hint={t('editor.pageSettings.ogImageHint')} htmlFor="page-og">
                     <Input id="page-og" value={ogImage} onChange={(e) => setOgImage(e.target.value)} placeholder="https://…/cover.png" />
                   </Field>
@@ -542,6 +541,76 @@ function Field({ label, hint, htmlFor, children }: { label: string; hint?: strin
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
       {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
+    </div>
+  );
+}
+
+/** Search engines show about this many characters of a description. */
+const SEARCH_SNIPPET_LENGTH = 155;
+
+/** The SEO description. With neither it nor the page summary written, the
+ *  published site generates one from the page's text: show that text and offer
+ *  to start from it. */
+function MetaDescriptionField({
+  projectId,
+  pageId,
+  value,
+  onChange,
+  summary,
+  generated,
+  placeholder,
+}: {
+  projectId: string;
+  pageId: string;
+  value: string;
+  onChange: (value: string) => void;
+  /** The page summary as currently typed; search engines use it when there is no SEO description. */
+  summary: string;
+  /** Whether the page gets a generated description at all. */
+  generated: boolean;
+  placeholder?: string;
+}) {
+  const t = useT();
+  const input = useRef<HTMLTextAreaElement>(null);
+  const automatic = generated && value.trim() === '' && summary.trim() === '';
+  const search = usePageSearchDescription(projectId, pageId, { enabled: automatic });
+  const text = search.data?.description ?? '';
+  const writeOwn = () => {
+    onChange(text);
+    input.current?.focus();
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      <Field label={t('editor.pageSettings.metaDescription')} hint={t('editor.pageSettings.metaDescriptionHint')} htmlFor="page-meta-desc">
+        <Textarea id="page-meta-desc" ref={input} value={value} onChange={(e) => onChange(e.target.value)} rows={2} placeholder={placeholder} />
+      </Field>
+      {automatic ? (
+        <Callout
+          data-testid="search-description-preview"
+          icon={<SearchCheck />}
+          // Without the generated text (it failed to load) only the prompt is left.
+          title={search.isError ? undefined : t('editor.pageSettings.searchPreview.label')}
+          action={
+            <Button type="button" size="sm" variant="outline" onClick={writeOwn} disabled={search.isPending}>
+              {t('editor.pageSettings.searchPreview.writeOwn')}
+            </Button>
+          }
+        >
+          {search.isPending ? (
+            <div className="mb-2 flex flex-col gap-1.5" aria-hidden>
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3.5 w-2/3" />
+            </div>
+          ) : search.isError ? null : text ? (
+            <p dir="auto" className="text-start text-muted-foreground" data-slot="search-description">
+              {truncateText(text, SEARCH_SNIPPET_LENGTH)}
+            </p>
+          ) : (
+            <p className="text-start">{t('editor.pageSettings.searchPreview.empty')}</p>
+          )}
+          <p className="text-start text-foreground">{t('editor.pageSettings.searchPreview.prompt')}</p>
+        </Callout>
+      ) : null}
     </div>
   );
 }

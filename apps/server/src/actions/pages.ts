@@ -1,6 +1,8 @@
 import { Prisma, prisma } from '@nibleaf/database';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
+import { pageDescription } from '@nibleaf/shared/markdown-text';
+import { interpolateVariables, variablesFromConfig } from '@nibleaf/shared/site';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
@@ -46,6 +48,21 @@ export const getPage = async (projectId: string, id: string) => {
     throw notFound('page', { id });
   }
   return page;
+};
+
+/** The description the published site generates from the page's saved content
+ *  when the author writes none (no SEO description, no summary), with the
+ *  project's `{{ variables }}` resolved as a publish resolves them. */
+export const getPageSearchDescription = async (projectId: string, id: string) => {
+  const [page, project] = await Promise.all([
+    prisma.page.findFirst({ where: { id, projectId }, select: { content: true } }),
+    prisma.project.findUnique({ where: { id: projectId }, select: { config: true } }),
+  ]);
+  if (!page) {
+    throw notFound('page', { id });
+  }
+  const content = interpolateVariables(page.content, variablesFromConfig(project?.config));
+  return { description: pageDescription({ content, description: null }) };
 };
 
 /** A unique slug among a parent's children within one language, deriving from the

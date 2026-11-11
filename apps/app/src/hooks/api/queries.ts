@@ -12,6 +12,7 @@ import {
   notificationsQueryOptions,
   openApiConfigurationQueryOptions,
   pageQueryOptions,
+  pageSearchDescriptionQueryOptions,
   pagesQueryOptions,
   pendingChangesQueryOptions,
   projectAddonsQueryOptions,
@@ -61,6 +62,9 @@ export const useLanguages = (projectId: string | undefined) => useQuery(language
 export const useBranches = (projectId: string | undefined) => useQuery(branchesQueryOptions(projectId));
 
 export const usePage = (projectId: string | undefined, pageId: string | undefined) => useQuery(pageQueryOptions(projectId, pageId));
+
+export const usePageSearchDescription = (projectId: string | undefined, pageId: string | undefined, { enabled = true } = {}) =>
+  useQuery({ ...pageSearchDescriptionQueryOptions(projectId, pageId), enabled });
 
 // Publishing is async (worker builds the snapshot). Poll while a deployment is
 // in flight so the dashboard transitions PENDING/BUILDING → READY/FAILED on its

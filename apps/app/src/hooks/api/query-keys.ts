@@ -18,6 +18,8 @@ export const queryKeys = {
     /** Broad prefix matching every language/branch scope — use for invalidation. */
     allForProject: (projectId: string) => ['pages', projectId] as const,
     detail: (projectId: string, pageId: string) => ['pages', projectId, pageId] as const,
+    /** Under `detail`, so invalidating a page also refreshes it. */
+    searchDescription: (projectId: string, pageId: string) => ['pages', projectId, pageId, 'search-description'] as const,
   },
   languages: {
     all: (projectId: string) => ['languages', projectId] as const,
