@@ -59,6 +59,8 @@ import { Route as AppProjectsProjectIdAnalyticsFeedbackRouteImport } from './rou
 import { Route as AppProjectsProjectIdAnalyticsPagesRouteImport } from './routes/app/projects/$projectId/analytics.pages'
 import { Route as AppProjectsProjectIdAnalyticsPerformanceRouteImport } from './routes/app/projects/$projectId/analytics.performance'
 import { Route as AppProjectsProjectIdAnalyticsSearchRouteImport } from './routes/app/projects/$projectId/analytics.search'
+import { Route as AppProjectsProjectIdPublishesIndexRouteImport } from './routes/app/projects/$projectId/publishes.index'
+import { Route as AppProjectsProjectIdPublishesDeploymentIdRouteImport } from './routes/app/projects/$projectId/publishes.$deploymentId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -321,6 +323,18 @@ const AppProjectsProjectIdAnalyticsSearchRoute =
     path: '/search',
     getParentRoute: () => AppProjectsProjectIdAnalyticsRoute,
   } as any)
+const AppProjectsProjectIdPublishesIndexRoute =
+  AppProjectsProjectIdPublishesIndexRouteImport.update({
+    id: '/publishes/',
+    path: '/publishes/',
+    getParentRoute: () => AppProjectsProjectIdRouteRoute,
+  } as any)
+const AppProjectsProjectIdPublishesDeploymentIdRoute =
+  AppProjectsProjectIdPublishesDeploymentIdRouteImport.update({
+    id: '/publishes/$deploymentId',
+    path: '/publishes/$deploymentId',
+    getParentRoute: () => AppProjectsProjectIdRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -370,7 +384,9 @@ export interface FileRoutesByFullPath {
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
   '/app/projects/$projectId/analytics/performance': typeof AppProjectsProjectIdAnalyticsPerformanceRoute
   '/app/projects/$projectId/analytics/search': typeof AppProjectsProjectIdAnalyticsSearchRoute
+  '/app/projects/$projectId/publishes/$deploymentId': typeof AppProjectsProjectIdPublishesDeploymentIdRoute
   '/app/projects/$projectId/analytics/': typeof AppProjectsProjectIdAnalyticsIndexRoute
+  '/app/projects/$projectId/publishes/': typeof AppProjectsProjectIdPublishesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -416,7 +432,9 @@ export interface FileRoutesByTo {
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
   '/app/projects/$projectId/analytics/performance': typeof AppProjectsProjectIdAnalyticsPerformanceRoute
   '/app/projects/$projectId/analytics/search': typeof AppProjectsProjectIdAnalyticsSearchRoute
+  '/app/projects/$projectId/publishes/$deploymentId': typeof AppProjectsProjectIdPublishesDeploymentIdRoute
   '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsIndexRoute
+  '/app/projects/$projectId/publishes': typeof AppProjectsProjectIdPublishesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -469,7 +487,9 @@ export interface FileRoutesById {
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
   '/app/projects/$projectId/analytics/performance': typeof AppProjectsProjectIdAnalyticsPerformanceRoute
   '/app/projects/$projectId/analytics/search': typeof AppProjectsProjectIdAnalyticsSearchRoute
+  '/app/projects/$projectId/publishes/$deploymentId': typeof AppProjectsProjectIdPublishesDeploymentIdRoute
   '/app/projects/$projectId/analytics/': typeof AppProjectsProjectIdAnalyticsIndexRoute
+  '/app/projects/$projectId/publishes/': typeof AppProjectsProjectIdPublishesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -521,7 +541,9 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/analytics/pages'
     | '/app/projects/$projectId/analytics/performance'
     | '/app/projects/$projectId/analytics/search'
+    | '/app/projects/$projectId/publishes/$deploymentId'
     | '/app/projects/$projectId/analytics/'
+    | '/app/projects/$projectId/publishes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -567,7 +589,9 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/analytics/pages'
     | '/app/projects/$projectId/analytics/performance'
     | '/app/projects/$projectId/analytics/search'
+    | '/app/projects/$projectId/publishes/$deploymentId'
     | '/app/projects/$projectId/analytics'
+    | '/app/projects/$projectId/publishes'
   id:
     | '__root__'
     | '/'
@@ -619,7 +643,9 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/analytics/pages'
     | '/app/projects/$projectId/analytics/performance'
     | '/app/projects/$projectId/analytics/search'
+    | '/app/projects/$projectId/publishes/$deploymentId'
     | '/app/projects/$projectId/analytics/'
+    | '/app/projects/$projectId/publishes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -995,6 +1021,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsProjectIdAnalyticsSearchRouteImport
       parentRoute: typeof AppProjectsProjectIdAnalyticsRoute
     }
+    '/app/projects/$projectId/publishes/': {
+      id: '/app/projects/$projectId/publishes/'
+      path: '/publishes'
+      fullPath: '/app/projects/$projectId/publishes/'
+      preLoaderRoute: typeof AppProjectsProjectIdPublishesIndexRouteImport
+      parentRoute: typeof AppProjectsProjectIdRouteRoute
+    }
+    '/app/projects/$projectId/publishes/$deploymentId': {
+      id: '/app/projects/$projectId/publishes/$deploymentId'
+      path: '/publishes/$deploymentId'
+      fullPath: '/app/projects/$projectId/publishes/$deploymentId'
+      preLoaderRoute: typeof AppProjectsProjectIdPublishesDeploymentIdRouteImport
+      parentRoute: typeof AppProjectsProjectIdRouteRoute
+    }
   }
 }
 
@@ -1084,6 +1124,8 @@ interface AppProjectsProjectIdRouteRouteChildren {
   AppProjectsProjectIdPreviewRoute: typeof AppProjectsProjectIdPreviewRoute
   AppProjectsProjectIdSettingsRoute: typeof AppProjectsProjectIdSettingsRoute
   AppProjectsProjectIdIndexRoute: typeof AppProjectsProjectIdIndexRoute
+  AppProjectsProjectIdPublishesDeploymentIdRoute: typeof AppProjectsProjectIdPublishesDeploymentIdRoute
+  AppProjectsProjectIdPublishesIndexRoute: typeof AppProjectsProjectIdPublishesIndexRoute
 }
 
 const AppProjectsProjectIdRouteRouteChildren: AppProjectsProjectIdRouteRouteChildren =
@@ -1095,6 +1137,10 @@ const AppProjectsProjectIdRouteRouteChildren: AppProjectsProjectIdRouteRouteChil
     AppProjectsProjectIdPreviewRoute: AppProjectsProjectIdPreviewRoute,
     AppProjectsProjectIdSettingsRoute: AppProjectsProjectIdSettingsRoute,
     AppProjectsProjectIdIndexRoute: AppProjectsProjectIdIndexRoute,
+    AppProjectsProjectIdPublishesDeploymentIdRoute:
+      AppProjectsProjectIdPublishesDeploymentIdRoute,
+    AppProjectsProjectIdPublishesIndexRoute:
+      AppProjectsProjectIdPublishesIndexRoute,
   }
 
 const AppProjectsProjectIdRouteRouteWithChildren =

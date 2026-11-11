@@ -4720,5 +4720,14 @@
   "editor_history_snapshottoolarge": "当前草稿或所选记录过大，无法安全恢复。",
   "editor_history_restored": "页面已恢复",
   "editor_history_added": "已添加",
-  "editor_history_removed": "已删除"
+  "editor_history_removed": "已删除",
+  "publishes_title": "发布记录",
+  "publishes_superseded": "已被替换",
+  "publishes_restore": "恢复此版本",
+  "publishes_changessince": "自版本 {version} 以来的更改",
+  "publishes_settingschanged": "此版本还更改了站点设置。",
+  "publishes_truncated": "正在显示 {total} 个已更改页面中的前 {shown} 个。",
+  "overview_activity_viewall": "查看全部",
+  "publishes_toolarge": "此版本过大，无法在此比较。",
+  "publishes_nosnapshot": "此版本的已发布副本已不再保存，因此无法比较或恢复。"
 }
