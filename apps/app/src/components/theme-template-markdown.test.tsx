@@ -46,7 +46,9 @@ beforeAll(async () => {
     Markdown: ComponentType<{ body: string }>;
     normalizeMarkdown: (source: string) => string;
   });
-});
+  // A cold transform of a whole generated reader pipeline: on a busy machine it
+  // can outlast the default 10 s hook budget without anything being wrong.
+}, 120_000);
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
