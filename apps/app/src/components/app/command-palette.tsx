@@ -1,4 +1,12 @@
-import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  contiguousFirstFilter,
+} from '@nibleaf/design-system/components/ui/command';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useTheme } from '@nibleaf/design-system/theme';
 import type { MessageKey } from '@nibleaf/i18n';
@@ -128,8 +136,14 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     if (searching) return list;
     return [...list].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, RECENT_PAGE_LIMIT);
   }, [pages, searching]);
-  // Inside a site, its settings; elsewhere, this organization's websites' settings once the user searches.
-  const settingsSites = projectId ? (currentSite ? [currentSite] : []) : searching ? (projects ?? []) : [];
+  // Inside a site, its settings. Elsewhere, once the user searches, each settings
+  // page appears ONCE, for the website opened most recently in this organization
+  // (or its first): one "Custom domain", not one per website (audit WORKSPACE-16).
+  const recentInOrg = switcher.data?.recent?.find(
+    (website) => website.organization.id === organization?.id && projects?.some((p) => p.id === website.id),
+  );
+  const settingsSite = projectId ? currentSite : searching ? (projects?.find((p) => p.id === recentInOrg?.id) ?? projects?.[0]) : undefined;
+  const settingsSites = settingsSite ? [settingsSite] : [];
 
   const changeOpen = (next: boolean) => {
     if (!next) setQuery('');
@@ -142,8 +156,19 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <>
-      <CommandDialog description={t('command.dialog.description')} onOpenChange={changeOpen} open={open} title={t('command.dialog.title')}>
-        <CommandInput onValueChange={setQuery} placeholder={t('command.searchPlaceholder')} value={query} />
+      <CommandDialog
+        description={t('command.dialog.description')}
+        filter={contiguousFirstFilter}
+        onOpenChange={changeOpen}
+        open={open}
+        title={t('command.dialog.title')}
+      >
+        <CommandInput
+          aria-label={t('command.searchPlaceholder')}
+          onValueChange={setQuery}
+          placeholder={t('command.searchPlaceholder')}
+          value={query}
+        />
         {projectsQuery.isError ? (
           <div className="p-2">
             <QueryErrorState title={t('nav.sitesLoadError')} onRetry={() => void projectsQuery.refetch()} retrying={projectsQuery.isFetching} />
@@ -239,6 +264,16 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                   <UserPlus className="size-4" /> {t('command.invite')}
                 </CommandItem>
               </>
+            ) : null}
+            {!projectId && organization && orgAdmin ? (
+              // Outside a website, inviting is an organization action (its Members page).
+              <CommandItem
+                keywords={[t('command.invite')]}
+                onSelect={() => go('/app/o/$orgSlug/members', { orgSlug: organization.slug })}
+                value="invite people teammate members"
+              >
+                <UserPlus className="size-4" /> {t('command.invite')}
+              </CommandItem>
             ) : null}
             <CommandItem
               keywords={[t('command.switchOrganizationOrWebsite')]}

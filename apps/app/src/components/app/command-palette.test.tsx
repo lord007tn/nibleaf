@@ -36,6 +36,7 @@ vi.mock('./org-switcher/switcher-context', () => ({
 }));
 vi.mock('@/components/interface-language-dialog', () => ({ InterfaceLanguageDialog: () => null }));
 
+import { contiguousFirstFilter } from '@nibleaf/design-system/components/ui/command';
 import { CommandPalette, CommandPaletteProvider } from './command-palette';
 import { ShellSearchButton } from './shell-search-button';
 
@@ -254,14 +255,50 @@ describe('CommandPalette', () => {
     });
   });
 
+  describe('production audit WORKSPACE-16', () => {
+    it('labels the search input for assistive technology', async () => {
+      await render(true);
+      expect(document.querySelector('[data-slot="command-input"]')?.getAttribute('aria-label')).toBe('command.searchPlaceholder');
+    });
+
+    it('lists each settings page once outside a website, not once per website', async () => {
+      await render(true);
+      await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'domain');
+      const domains = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].filter((node) =>
+        node.textContent?.includes('settings.domain'),
+      );
+      expect(domains).toHaveLength(1);
+      await act(async () => domains[0]?.click());
+      expect(mocks.navigate).toHaveBeenCalledWith(expect.objectContaining({ search: { section: 'domain' } }));
+    });
+
+    it('ranks a whole-word match above letters scattered across a website name', () => {
+      const setting = contiguousFirstFilter('settings project-1 domain address url web dns', 'domain', ['settings.domain', 'Nibleaf Docs']);
+      const site = contiguousFirstFilter('project project-9', 'domain', ['JoodBooking Documentation', '']);
+      expect(site).toBeGreaterThan(0);
+      expect(setting).toBeGreaterThan(site);
+    });
+
+    it('finds Invite outside a website and opens the organization members', async () => {
+      await render(true);
+      await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'invite');
+      const invite = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find(
+        (node) => node.textContent?.trim() === 'command.invite',
+      );
+      expect(invite).toBeDefined();
+      await act(async () => invite?.click());
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/o/$orgSlug/members', params: { orgSlug: 'acme' } });
+    });
+  });
+
   it('offers common actions everywhere', async () => {
     await render(true);
     for (const key of ['dashboard.newProject', 'account.language', 'account.darkMode']) {
       expect(itemLabels()).toContain(key);
     }
-    // Outside a site there is no page list and no per-site invite shortcut.
+    // Outside a site there is no page list; inviting is the organization's (audit WORKSPACE-16).
     expect(mocks.usePages).toHaveBeenCalledWith(undefined);
-    expect(itemLabels()).not.toContain('command.invite');
+    expect(itemLabels()).toContain('command.invite');
   });
 
   it('scopes go-to pages to the current organization and hides admin pages from Members', async () => {
@@ -272,6 +309,7 @@ describe('CommandPalette', () => {
     expect(itemLabels()).not.toContain('nav.billing');
     // A Member cannot create websites; one org needs no "Switch organization" list.
     expect(itemLabels()).not.toContain('dashboard.newProject');
+    expect(itemLabels()).not.toContain('command.invite');
     expect(document.body.textContent).not.toContain('command.group.switchOrganization');
     const websites = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find(
       (node) => node.textContent?.trim() === 'nav.websites',

@@ -31,7 +31,13 @@ export const Route = createFileRoute('/app')({
   },
   // Organizations feed every signed-in screen (switcher, palette, landing), so
   // start them with the session check instead of after the shell mounts.
-  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, switcherQueryOptions()),
+  // The bell's unread count too, so its badge is there on first paint (audit WORKSPACE-28).
+  // Lazily imported: this file is in the router's eager chunk, which docs pages load.
+  loader: async ({ context: { queryClient } }) => {
+    prefetchRouteData(queryClient, switcherQueryOptions());
+    const { unreadNotificationCountQueryOptions } = await import('@/hooks/api/query-options');
+    prefetchRouteData(queryClient, unreadNotificationCountQueryOptions());
+  },
   head: () => ({
     meta: [{ name: 'robots', content: 'noindex' }],
   }),
@@ -65,7 +71,7 @@ function AppGuard() {
   };
   const impersonatedBy = supportSession.session?.impersonatedBy;
   return (
-    <div className={impersonatedBy ? 'pb-14' : undefined}>
+    <div className={impersonatedBy ? 'pb-14' : undefined} data-dashboard-shell="">
       <SkipToContent />
       <ProjectProvider key={resolvedSession.user.id}>
         {/* One switcher and one palette for every signed-in screen (org pages, site pages, editor). */}

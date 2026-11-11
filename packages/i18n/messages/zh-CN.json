@@ -4199,5 +4199,16 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "account_menu_help": "Help and documentation",
+  "account_menu_whatsNew": "What's new",
+  "account_menu_shortcuts": "Keyboard shortcuts",
+  "account_menu_reportProblem": "Report a problem",
+  "shortcuts_title": "Keyboard shortcuts",
+  "shortcuts_description": "Work faster in the dashboard. Letter shortcuts work when you are not typing in a field.",
+  "shortcuts_commandPalette": "Search and run commands",
+  "shortcuts_switchOrganization": "Switch organization",
+  "shortcuts_switchWebsite": "Switch website",
+  "shortcuts_close": "Close a menu or dialog",
+  "shortcuts_then": "then"
 }

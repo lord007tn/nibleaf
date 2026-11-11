@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Command as CommandPrimitive } from "cmdk"
+import { Command as CommandPrimitive, defaultFilter } from "cmdk"
 
 import { cn } from '../../lib/utils'
 import {
@@ -39,12 +39,15 @@ function CommandDialog({
   children,
   className,
   showCloseButton = false,
+  filter,
   ...props
 }: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
   title?: string
   description?: string
   className?: string
   showCloseButton?: boolean
+  /** cmdk's ranking; see `contiguousFirstFilter`. */
+  filter?: React.ComponentProps<typeof CommandPrimitive>["filter"]
   children: React.ReactNode
 }) {
   return (
@@ -62,7 +65,7 @@ function CommandDialog({
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
         {/* cmdk root: CommandInput/CommandList read their store from this context. */}
-        <Command>{children}</Command>
+        <Command filter={filter}>{children}</Command>
       </DialogContent>
     </Dialog>
   )
@@ -185,7 +188,21 @@ function CommandShortcut({
   )
 }
 
+/**
+ * cmdk's fuzzy score, but any item whose value or keywords contain the query
+ * as one piece outranks one that only matches letters scattered across words
+ * ("domain" → "Custom domain" before "DOcuMentAtIoN").
+ */
+const contiguousFirstFilter: NonNullable<React.ComponentProps<typeof CommandPrimitive>["filter"]> = (value, search, keywords) => {
+  const fuzzy = defaultFilter(value, search, keywords)
+  if (!fuzzy) return 0
+  const query = search.trim().toLowerCase()
+  const haystack = [value, ...(keywords ?? [])].join(" ").toLowerCase()
+  return query && haystack.includes(query) ? 0.5 + fuzzy / 2 : fuzzy / 2
+}
+
 export {
+  contiguousFirstFilter,
   Command,
   CommandDialog,
   CommandInput,
