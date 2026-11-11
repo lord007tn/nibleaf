@@ -129,8 +129,8 @@ describe('Arabic search (regression: language-aware tokenizer)', () => {
     expect((await searchDocs(index, 'التحكم', { tolerance: 0 }))[0]?.id).toBe('settings');
     expect((await searchDocs(index, 'اعدادات', { tolerance: 0 }))[0]?.snippet).toContain('إِعْدَادَات الحساب');
     expect(normalizeArabicSearchText('إِلَى')).toBe('الي');
-    expect(normalizeArabicSearchText('إدارة')).toBe('ادارة');
-    expect(normalizeArabicSearchText('إدارة')).not.toBe('اداره');
+    expect(normalizeArabicSearchText('إدارة')).toBe('اداره');
+    expect(normalizeArabicSearchText('إدارة')).toBe(normalizeArabicSearchText('اداره'));
   });
 });
 

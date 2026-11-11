@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { stripMarkdownLinks } from '@nibleaf/shared/utils';
 import { lightStemArabicToken, normalizeArabicSearchText } from './arabic';
 import type { SearchHit } from './index';
 
@@ -7,27 +8,56 @@ const ARABIC = /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]/u;
 const CODE_TOKEN = /[_+.#@:/\\-]|\d/u;
 const VERSION_TOKEN = /^v?\d+(?:\.\d+){1,3}$/u;
 export type SearchTokenAdapter = (token: string) => string[];
+const HTML_ELEMENTS = new Set(
+  'a abbr address area article aside audio b base bdi bdo blockquote body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script search section select slot small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr'.split(
+    ' ',
+  ),
+);
 
-const plainText = (value: string): string =>
-  value
-    .replace(/^\s*(?:```|~~~)[^\n]*$/gm, ' ')
-    // MDX components (<Tabs>, <Card title="…">) are layout, not prose. Lowercase
-    // placeholders such as `--notebook <name>` stay readable.
-    // Attributes are bounded, so an unclosed tag can't make the scan quadratic.
-    .replace(/<\/?[A-Z][\w.]{0,64}(?:\s[^<>]{0,512})?\/?>/g, ' ')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/\[!\w+\]/g, ' ')
-    .replace(/^\s*(?:[-*_]\s*){3,}$/gm, ' ')
-    .replace(/^\s*\\[-*+]\s*(?:\d+[-.)]\s*)?/gm, '')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^(?:>\s*|[-*+]\s+)/gm, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$)/g, '$1$2')
-    .replace(/\s+/g, ' ')
-    .trim();
+/** Each comment range is consumed once, including an unclosed final comment. */
+const withoutComments = (value: string): string => {
+  const parts: string[] = [];
+  let cursor = 0;
+  while (cursor < value.length) {
+    const open = value.indexOf('<!--', cursor);
+    if (open < 0) break;
+    const close = value.indexOf('-->', open + 4);
+    parts.push(value.slice(cursor, open), ' ');
+    cursor = close < 0 ? value.length : close + 3;
+  }
+  parts.push(value.slice(cursor));
+  return parts.join('');
+};
+
+export const cleanSearchText = (value: string): string => {
+  const lines = withoutComments(value)
+    .split('\n')
+    .map((line) => {
+      const markers = line.trim().replace(/[ \t]/g, '');
+      return markers.length >= 3 && /^[-*_]+$/.test(markers) ? '' : line;
+    });
+  return (
+    stripMarkdownLinks(lines.join('\n'))
+      .replace(/^[ \t]*(?:```|~~~)[^\n]*$/gm, ' ')
+      // MDX and HTML are layout. CLI placeholders such as <name> stay readable.
+      // Attributes are bounded, so an unclosed tag can't make the scan quadratic.
+      .replace(/<\/?([A-Za-z][\w.:-]{0,64})(?:\s[^<>]{0,512})?\/?>/g, (tag: string, name: string) =>
+        /^[A-Z]/.test(name) || HTML_ELEMENTS.has(name) ? ' ' : tag,
+      )
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[!\w+\]/g, ' ')
+      .replace(/(^|\s)\\[-*+]\s*(?:\d+[-.)]\s*)?/gm, '$1')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/^(?:>\s*|[-*+]\s+)/gm, '')
+      .replace(/^[ \t]*\d+[.)][ \t]+/gm, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/~~([^~]+)~~/g, '$1')
+      .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$)/g, '$1$2')
+      .replace(/\s+/g, ' ')
+      .replace(/ ([.,;:!?،؛])/g, '$1')
+      .trim()
+  );
+};
 
 export interface SearchScope {
   projectId: string;
@@ -216,7 +246,7 @@ const markdownSections = (content: string): Section[] => {
     }
     flush();
     const level = match.level;
-    heading = plainText(match.text);
+    heading = cleanSearchText(match.text);
     headingPath.length = Math.max(0, level - 1);
     headingPath[level - 1] = heading;
   }
@@ -342,7 +372,7 @@ export const collapseChunkHits = (hits: HybridChunkHit[], limit: number, query =
 /** Keep the matching passage visible, including code identifiers and Arabic
  * morphology, instead of always showing a chunk's unrelated opening. */
 export const searchChunkSnippet = (chunk: SearchChunk, query = '', maxChars = 240): string => {
-  const text = plainText(chunk.content);
+  const text = cleanSearchText(chunk.content);
   if (text.length <= maxChars) return text;
   const terms = new Set(hybridTokens(query, chunk.language));
   const words = [...text.matchAll(TOKEN)];

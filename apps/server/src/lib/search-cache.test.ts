@@ -33,7 +33,20 @@ describe('authorization-scoped search indexes', () => {
     const fullIndex = await getCachedIndex('private-project', deploymentKey, 'en', [allowed, restricted], null);
     expect((await searchDocs(fullIndex, 'classified')).map((hit) => hit.id)).toContain('restricted');
 
-    const scopedIndex = await getCachedIndex('private-project', deploymentKey, 'en', [allowed], new Set(['allowed']));
+    const scopedIndex = await getCachedIndex('private-project', deploymentKey, 'en', [allowed, restricted], new Set(['allowed']));
     expect(await searchDocs(scopedIndex, 'classified')).toEqual([]);
+  });
+
+  it('shares concurrent cold builds and changes indexes on a new deployment', async () => {
+    const pages = [page('invoice', 'Download your invoice.')];
+    const [first, second] = await Promise.all([
+      getCachedIndex('single-flight', 'deploy-1:main', 'en', pages, null),
+      getCachedIndex('single-flight', 'deploy-1:main', 'en', pages, null),
+    ]);
+    expect(second).toBe(first);
+    const next = await getCachedIndex('single-flight', 'deploy-2:main', 'en', [page('commission', 'Agent commission.')], null);
+    expect(next).not.toBe(first);
+    expect(await searchDocs(next, 'invoice', { relevance: 'reader' })).toEqual([]);
+    expect((await searchDocs(next, 'commission', { relevance: 'reader' }))[0]?.id).toBe('commission');
   });
 });

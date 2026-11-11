@@ -6,6 +6,7 @@ const doubles = vi.hoisted(() => ({
   embed: vi.fn(),
   resolveWorkspaceAi: vi.fn(),
   servedCollection: vi.fn(),
+  runtime: 'hybrid' as 'hybrid' | 'shadow' | 'legacy',
   runs: [] as Array<Record<string, unknown> & { createdAt: Date }>,
 }));
 vi.mock('@nibleaf/qdrant', () => ({
@@ -30,7 +31,9 @@ vi.mock('@nibleaf/database', () => ({
 }));
 vi.mock('@/env', () => ({
   env: {
-    SEARCH_RUNTIME: 'hybrid',
+    get SEARCH_RUNTIME() {
+      return doubles.runtime;
+    },
     OPENROUTER_API_KEY: 'test-only',
     SEARCH_EMBEDDING_MODEL: 'test',
     SEARCH_EMBEDDING_DIMENSIONS: 2,
@@ -46,7 +49,7 @@ vi.mock('@nibleaf/search/workspace', () => ({
   workspaceAnswerProvider: () => ({ model: 'test', complete: vi.fn() }),
 }));
 
-import { answerPublishedSearch, answerSearchAvailable, runPublishedSearch } from './runtime';
+import { answerPublishedSearch, answerSearchAvailable, publishedSearchAnswerHint, runPublishedSearch } from './runtime';
 
 const scope: SearchScope = {
   projectId: 'project',
@@ -75,6 +78,7 @@ const readyRun = {
 describe('hybrid index recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    doubles.runtime = 'hybrid';
     vi.useFakeTimers({ toFake: ['Date'] });
     clock += 60_000;
     vi.setSystemTime(clock);
@@ -89,6 +93,65 @@ describe('hybrid index recovery', () => {
       revision: 'test',
       answersEnabled: true,
     });
+  });
+
+  it('returns shadow keyword results while alias readiness is still pending', async () => {
+    doubles.runtime = 'shadow';
+    let resolve!: (value: string | null) => void;
+    doubles.servedCollection.mockReturnValueOnce(
+      new Promise<string | null>((done) => {
+        resolve = done;
+      }),
+    );
+    const legacy = vi.fn().mockResolvedValue([result]);
+    await expect(runPublishedSearch(scope, 'حجز', 12, legacy)).resolves.toEqual({ hits: [result], runtime: 'shadow' });
+    expect(doubles.embed).not.toHaveBeenCalled();
+    resolve(null);
+  });
+
+  it('keeps cold AI capability hints off the response path and isolates deployments', async () => {
+    let resolve!: (value: string | null) => void;
+    doubles.servedCollection.mockReturnValueOnce(
+      new Promise<string | null>((done) => {
+        resolve = done;
+      }),
+    );
+    expect(publishedSearchAnswerHint('project', 'deployment-hint')).toBe(false);
+    expect(publishedSearchAnswerHint('project', 'deployment-hint')).toBe(false);
+    expect(doubles.servedCollection).toHaveBeenCalledOnce();
+    doubles.runs = [{ ...readyRun, deploymentId: 'deployment-hint' }];
+    resolve('search_active_v1_2');
+    await vi.waitFor(() => expect(publishedSearchAnswerHint('project', 'deployment-hint')).toBe(true));
+    expect(publishedSearchAnswerHint('project', 'another-deployment')).toBe(false);
+    clock += 6000;
+    vi.setSystemTime(clock);
+    expect(publishedSearchAnswerHint('project', 'deployment-hint')).toBe(false);
+  });
+
+  it('requires lexical evidence even when hybrid retrieval supplies dense near-matches', async () => {
+    doubles.queryHybrid.mockResolvedValue([
+      {
+        id: 'irrelevant',
+        score: 1,
+        payload: {
+          project_id: 'project',
+          deployment_id: 'deployment',
+          version_slug: 'main',
+          language: 'ar',
+          visibility: 'public',
+          visible: true,
+          page_id: 'invoice',
+          ordinal: 0,
+          title: 'الفاتورة',
+          path: 'invoice',
+          content: 'تحميل الفاتورة',
+          content_hash: 'hash',
+          direction: 'rtl',
+        },
+      },
+    ]);
+    await expect(runPublishedSearch(scope, 'xqzv nonsense', 12, async () => [])).resolves.toEqual({ hits: [], runtime: 'hybrid' });
+    expect((await runPublishedSearch(scope, 'الفاتورة', 12, async () => [])).hits[0]?.id).toBe('invoice');
   });
 
   it('reports AI answers unavailable instead of failing the site when readiness cannot be read', async () => {
@@ -107,6 +170,7 @@ describe('hybrid index recovery', () => {
 
   it('offers AI answers only from an index built with the current embedding settings', async () => {
     await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(true);
+    expect(publishedSearchAnswerHint('project', 'deployment')).toBe(true);
     doubles.runs = [{ ...readyRun, embeddingModel: 'earlier-model', vectorSize: 1 }];
     await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
   });

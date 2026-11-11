@@ -1,6 +1,8 @@
 import { create, insertMultiple, type Orama, search } from '@orama/orama';
 import { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
+import { cleanSearchText } from './hybrid';
 import { keys } from './keys';
+import { readerRelevanceFloor, readerRelevanceScore, readerSearchFields, readerSearchTerms } from './reader-relevance';
 
 export * from './analytics';
 export * from './answer';
@@ -10,6 +12,7 @@ export { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSea
 export * from './hybrid';
 export { questionLanguage } from './language';
 export * from './providers';
+export * from './reader-relevance';
 
 // Orama ships a built-in tokenizer (word splitter + optional stemmer) per
 // language. We map a project language CODE (BCP-47 primary subtag) to the Orama
@@ -98,6 +101,7 @@ export type DocIndex = Orama<typeof docSchema>;
 
 const indexLanguages = new WeakMap<object, OramaLanguage>();
 const indexDocuments = new WeakMap<object, Map<string, SearchDoc>>();
+const readerDocuments = new WeakMap<object, Map<string, { fields: ReturnType<typeof readerSearchFields>; text: string }>>();
 const RANK_TOKEN = /[\p{L}\p{M}\p{N}_+.#@:/\\-]+/gu;
 
 function containsExactTokenSequence(value: string, query: string): boolean {
@@ -130,6 +134,7 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
   });
   indexLanguages.set(db, language);
   indexDocuments.set(db, new Map(docs.map((doc) => [doc.id, doc])));
+  readerDocuments.set(db, new Map(docs.map((doc) => [doc.id, { fields: readerSearchFields(doc), text: cleanSearchText(doc.content) }])));
   const searchable = (value: string) => (language === 'arabic' ? normalizeArabicSearchText(value) : value);
   const morphological = (value: string) => (language === 'arabic' ? normalizeArabicMorphologyText(value) : '');
   if (docs.length > 0) {
@@ -153,6 +158,8 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
 
 export interface SearchOptions {
   limit?: number;
+  /** Published keyword search requires lexical evidence and never uses edit-distance padding. */
+  relevance?: 'reader';
   /** Maximum Levenshtein distance. The effective distance is reduced for short
    * tokens to avoid noisy matches such as API -> app. */
   tolerance?: number;
@@ -199,7 +206,7 @@ function sourceDoc(db: DocIndex, id: string): SearchDoc {
   return doc;
 }
 
-function toSearchHit(db: DocIndex, id: string, score: number, rawQuery: string, arabic: boolean): SearchHit {
+function toSearchHit(db: DocIndex, id: string, score: number, rawQuery: string, arabic: boolean, cleanContent?: string): SearchHit {
   const doc = sourceDoc(db, id);
   return {
     id: String(doc.id),
@@ -207,23 +214,36 @@ function toSearchHit(db: DocIndex, id: string, score: number, rawQuery: string, 
     path: doc.path,
     description: doc.description,
     icon: doc.icon || undefined,
-    snippet: makeSnippet(doc.content, rawQuery, arabic),
+    snippet: makeSnippet(cleanContent ?? doc.content, rawQuery, arabic, cleanContent !== undefined),
     score,
   };
 }
 
 /** Full-text + fuzzy search over a doc index, title/heading-boosted, with snippets. */
 export const searchDocs = async (db: DocIndex, term: string, options: SearchOptions = {}): Promise<SearchHit[]> => {
+  // Match the public route's q bound before touching the tokenizer. Internal
+  // callers cannot accidentally send an oversized reader query into Orama.
+  if (options.relevance === 'reader' && term.length > 200) return [];
   const rawQuery = term.trim();
   const arabic = indexLanguages.get(db) === 'arabic';
   const query = arabic ? normalizeArabicSearchText(rawQuery) : rawQuery;
   if (!query) {
     return [];
   }
-  const tolerance = fuzzyToleranceForQuery(query, options.tolerance ?? keys().SEARCH_FUZZY_TOLERANCE);
+  const tolerance = options.relevance === 'reader' ? 0 : fuzzyToleranceForQuery(query, options.tolerance ?? keys().SEARCH_FUZZY_TOLERANCE);
   const limit = options.limit ?? 12;
   const candidateLimit = Math.min(Math.max(limit * 2, 24), 64);
   const directLimit = Math.max(limit, candidateLimit);
+  const readerHits = (ids: string[]): SearchHit[] => {
+    const terms = readerSearchTerms(rawQuery);
+    const candidates = ids.map((id) => ({ id, score: readerRelevanceScore(terms, readerDocuments.get(db)?.get(id)?.fields ?? []) }));
+    const floor = readerRelevanceFloor(Math.max(0, ...candidates.map((hit) => hit.score)));
+    return candidates
+      .filter((hit) => hit.score >= floor)
+      .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
+      .slice(0, limit)
+      .map(({ id, score }) => toSearchHit(db, id, score, rawQuery, arabic, readerDocuments.get(db)?.get(id)?.text ?? ''));
+  };
 
   // Preserve the single-channel behavior and scores for every non-Arabic
   // project. The lane architecture below is deliberately Arabic-only.
@@ -235,6 +255,7 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
       boost: EXACT_BOOST,
       limit: directLimit,
     });
+    if (options.relevance === 'reader') return readerHits(results.hits.map((hit) => String(hit.document.id)));
     return results.hits.slice(0, limit).map((hit) => {
       const id = String(hit.document.id);
       return toSearchHit(db, id, hit.score, rawQuery, false);
@@ -290,7 +311,11 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
     const maximumScore = stableHits.reduce((maximum, hit) => Math.max(maximum, hit.score), 0) || 1;
     stableHits.forEach((hit, index) => {
       const id = String(hit.document.id);
-      const current = fused.get(id) ?? { id, fusion: 0, exactSignal: exactArabicSignal(sourceDoc(db, id), query) };
+      const current = fused.get(id) ?? {
+        id,
+        fusion: 0,
+        exactSignal: options.relevance === 'reader' ? 0 : exactArabicSignal(sourceDoc(db, id), query),
+      };
       const reciprocalRank = 1 / (RRF_K + index + 1);
       const normalizedScore = hit.score / maximumScore;
       current.fusion += lane.weight * (reciprocalRank * 0.8 + (normalizedScore / (RRF_K + 1)) * 0.2);
@@ -298,6 +323,7 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
     });
   }
 
+  if (options.relevance === 'reader') return readerHits([...fused.keys()]);
   return [...fused.values()]
     .sort((left, right) => right.exactSignal - left.exactSignal || right.fusion - left.fusion || left.id.localeCompare(right.id))
     .slice(0, limit)
@@ -346,14 +372,22 @@ function snippetWindow(haystack: string, start: number, end: number, anchor: num
 }
 
 /** Build a short snippet centered on the first occurrence of the query. */
-function makeSnippet(content: string, query: string, arabic = false): string {
-  const haystack = stripMarkdown(content);
-  const firstTerm = query.toLowerCase().split(' ')[0] ?? '';
+function makeSnippet(content: string, query: string, arabic = false, clean = false): string {
+  const haystack = clean ? content : stripMarkdown(content);
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const normalizedText = normalizeArabicSearchText(haystack.toLowerCase());
+  const firstTerm =
+    terms
+      .map((value) => ({ value, index: normalizedText.indexOf(normalizeArabicSearchText(value)) }))
+      .filter(({ index }) => index >= 0)
+      .sort((left, right) => left.index - right.index)[0]?.value ??
+    terms[0] ??
+    '';
   if (arabic) {
-    const normalized = normalizeArabicWithOffsets(haystack.toLowerCase());
     const normalizedTerm = normalizeArabicSearchText(firstTerm);
-    const normalizedIndex = normalized.value.indexOf(normalizedTerm);
+    const normalizedIndex = normalizedText.indexOf(normalizedTerm);
     if (normalizedIndex !== -1) {
+      const normalized = normalizeArabicWithOffsets(haystack.toLowerCase(), normalizedIndex + SNIPPET_RADIUS);
       const normalizedStart = Math.max(0, normalizedIndex - SNIPPET_RADIUS);
       const normalizedEnd = Math.min(normalized.value.length, normalizedIndex + SNIPPET_RADIUS);
       const start = normalized.offsets[normalizedStart] ?? 0;
@@ -386,16 +420,18 @@ function makeSnippet(content: string, query: string, arabic = false): string {
 
 /** Normalize Arabic while retaining each normalized character's source offset,
  * so snippets can be centered without discarding the reader's original text. */
-function normalizeArabicWithOffsets(value: string): { value: string; offsets: number[] } {
+function normalizeArabicWithOffsets(value: string, maxLength: number): { value: string; offsets: number[] } {
   let normalized = '';
   const offsets: number[] = [];
-  for (let index = 0; index < value.length; index += 1) {
+  let index = 0;
+  for (; index < value.length; index += 1) {
+    if (normalized.length >= maxLength) break;
     const folded = normalizeArabicSearchText(value[index] ?? '');
     for (const char of folded) {
       normalized += char;
       offsets.push(index);
     }
   }
-  offsets.push(value.length);
+  offsets.push(index);
   return { value: normalized, offsets };
 }

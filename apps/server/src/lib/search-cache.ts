@@ -4,7 +4,7 @@ import { LruCache } from './lru';
 
 interface Entry {
   key: string;
-  index: DocIndex;
+  index: Promise<DocIndex>;
 }
 
 /** Bound on live Orama indexes: they hold full page content, so an instance
@@ -65,8 +65,15 @@ export const getCachedIndex = async (
   if (existing && existing.key === key) {
     return existing.index;
   }
-  const scoped = pages.filter((page) => page.languageCode === lang);
-  const index = await createDocIndex(docsFromPages(scoped), oramaLanguageForCode(lang));
+  // Enforce grants here too: callers must not be able to warm a scoped cache
+  // with a full-access page list. Concurrent cold queries share one build.
+  const scoped = pages.filter((page) => page.languageCode === lang && (allowedPageIds === null || allowedPageIds.has(page.id)));
+  const index = createDocIndex(docsFromPages(scoped), oramaLanguageForCode(lang));
   cache.set(mapKey, { key, index });
-  return index;
+  try {
+    return await index;
+  } catch (error) {
+    if (cache.get(mapKey)?.index === index) cache.delete(mapKey);
+    throw error;
+  }
 };

@@ -7,6 +7,10 @@ import {
   generateGroundedAnswer,
   type HybridChunkHit,
   questionLanguage,
+  readerRelevanceFloor,
+  readerRelevanceScore,
+  readerSearchFields,
+  readerSearchTerms,
   rerankHybridChunks,
   retrievalConfidence,
   type SearchChunk,
@@ -20,12 +24,30 @@ import { resolveWorkspaceAi, type WorkspaceAiRuntime, workspaceAnswerProvider, w
 import { isPageTranslation, type SnapshotPage } from '@nibleaf/shared/site';
 import { z } from 'zod';
 import { env } from '@/env';
-import { TtlCache } from '@/lib/lru';
+import { LruCache, TtlCache } from '@/lib/lru';
 
 const log = createLogger({ component: 'ai-search' });
 const retrievalCache = new TtlCache<string, HybridChunkHit[]>(500, env.SEARCH_CACHE_TTL_MS);
 const answerCache = new TtlCache<string, GroundedAnswer>(250, env.SEARCH_CACHE_TTL_MS);
 const qdrant = getQdrantClient();
+const keywordAnswerHints = new LruCache<string, { available: boolean; at: number; refreshing: boolean }>(500);
+
+/** A UI hint only. Cold/expired hints are false until a background readiness
+ * check completes; the answer/chat endpoints still check live state themselves. */
+export const publishedSearchAnswerHint = (projectId: string, deploymentId: string): boolean => {
+  const key = JSON.stringify([projectId, deploymentId]);
+  let hint = keywordAnswerHints.get(key);
+  if (!hint) {
+    hint = { available: false, at: 0, refreshing: false };
+    keywordAnswerHints.set(key, hint);
+  }
+  if (Date.now() - hint.at > 5000 && !hint.refreshing) {
+    hint.available = false;
+    hint.refreshing = true;
+    void answerSearchAvailable(projectId, deploymentId);
+  }
+  return hint.available;
+};
 
 /** How long one reading of the alias's target is trusted. */
 const INDEX_CHECK_MS = 30_000;
@@ -97,14 +119,18 @@ const indexedChunkPayloadSchema = z.object({
 });
 
 export const answerSearchAvailable = async (projectId?: string, deploymentId?: string): Promise<boolean> => {
+  let available = false;
   try {
-    return await readAnswerAvailability(projectId, deploymentId);
+    available = await readAnswerAvailability(projectId, deploymentId);
   } catch (error) {
     // The site shell and keyword search must keep working; only the AI
     // capability is reported unavailable.
     log.warn({ projectId, errorName: error instanceof Error ? error.name : 'UnknownError' }, 'AI answer readiness check failed');
-    return false;
   }
+  // Shell/answer readiness checks also warm the keyword response's hint.
+  // Actual answer requests always read live state; only the UI hint is cached.
+  if (projectId && deploymentId) keywordAnswerHints.set(JSON.stringify([projectId, deploymentId]), { available, at: Date.now(), refreshing: false });
+  return available;
 };
 
 const readAnswerAvailability = async (projectId?: string, deploymentId?: string) => {
@@ -256,37 +282,54 @@ export const runPublishedSearch = async (
   signal?: AbortSignal,
 ): Promise<SearchRuntimeResult> => {
   if (env.SEARCH_RUNTIME === 'legacy') return { hits: await legacy(), runtime: 'legacy' };
+  if (env.SEARCH_RUNTIME === 'shadow') {
+    const legacyHits = await legacy();
+    // Even alias/provider readiness belongs to the comparison, not to the
+    // reader's keyword response. A slow Qdrant cannot hold shadow search open.
+    void (async () => {
+      if (!qdrant || !(await configuredIndexServing())) return;
+      const provider = await resolveWorkspaceAi(scope.projectId);
+      if (!provider) return;
+      const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider);
+      const hybridIds = new Set(collapseChunkHits(result.chunks, limit, query).map((hit) => hit.id));
+      const overlap = legacyHits.filter((hit) => hybridIds.has(hit.id)).length;
+      log.info(
+        {
+          projectId: scope.projectId,
+          deploymentId: scope.deploymentId,
+          language: scope.language,
+          legacyCount: legacyHits.length,
+          hybridCount: hybridIds.size,
+          overlap,
+        },
+        'hybrid search shadow comparison',
+      );
+    })().catch(() => log.warn({ projectId: scope.projectId }, 'hybrid search shadow request failed'));
+    return { hits: legacyHits, runtime: 'shadow' };
+  }
   // Keyword results, without paying to embed a query the serving index cannot answer.
   if (!qdrant || !(await configuredIndexServing())) return { hits: await legacy(), runtime: 'legacy-fallback' };
   const provider = await resolveWorkspaceAi(scope.projectId).catch(() => null);
   if (!provider) return { hits: await legacy(), runtime: 'legacy-fallback' };
-  if (env.SEARCH_RUNTIME === 'shadow') {
-    const legacyHits = await legacy();
-    void retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider)
-      .then((result) => {
-        const hybridIds = new Set(collapseChunkHits(result.chunks, limit, query).map((hit) => hit.id));
-        const overlap = legacyHits.filter((hit) => hybridIds.has(hit.id)).length;
-        log.info(
-          {
-            projectId: scope.projectId,
-            deploymentId: scope.deploymentId,
-            language: scope.language,
-            legacyCount: legacyHits.length,
-            hybridCount: hybridIds.size,
-            overlap,
-          },
-          'hybrid search shadow comparison',
-        );
-      })
-      .catch(() => log.warn({ projectId: scope.projectId }, 'hybrid search shadow request failed'));
-    return { hits: legacyHits, runtime: 'shadow' };
-  }
   try {
     const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider);
     // A newly published deployment can be served before its async index job
     // finishes. Keep ordinary search working during that window and recovery.
     if (result.chunks.length === 0) return { hits: await legacy(), runtime: 'legacy-fallback' };
-    return { hits: collapseChunkHits(result.chunks, limit, query), runtime: 'hybrid' };
+    const terms = readerSearchTerms(query);
+    const scored = result.chunks.map((hit) => ({
+      ...hit,
+      score: readerRelevanceScore(terms, readerSearchFields({ ...hit.chunk, headings: [...hit.chunk.headingPath, hit.chunk.heading].join(' ') })),
+    }));
+    const floor = readerRelevanceFloor(Math.max(0, ...scored.map((hit) => hit.score)));
+    return {
+      hits: collapseChunkHits(
+        scored.filter((hit) => hit.score >= floor),
+        limit,
+        query,
+      ),
+      runtime: 'hybrid',
+    };
   } catch {
     log.error({ projectId: scope.projectId }, 'hybrid search failed; using rollback runtime');
     return { hits: await legacy(), runtime: 'legacy-fallback' };
