@@ -63,13 +63,8 @@
   "dashboard_empty_body": "Создайте сайт, напишите первую статью и опубликуйте её — это займёт около пяти минут.",
   "dashboard_pages": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} страница",
         "form=few": "{count} страницы",
@@ -759,13 +754,8 @@
   "settings_languages_direction_rtl": "RTL",
   "settings_languages_coverage_sourcepages": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} исходная страница",
         "form=few": "{count} исходные страницы",
@@ -779,13 +769,8 @@
   "settings_languages_coverage_percent": "Покрытие {percent}%",
   "settings_languages_coverage_missing": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} страница отсутствует",
         "form=few": "{count} страницы отсутствуют",
@@ -796,13 +781,8 @@
   ],
   "settings_languages_coverage_extra": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} страница только на этом языке",
         "form=few": "{count} страницы только на этом языке",
@@ -1072,13 +1052,8 @@
   "settings_authentication_reader_entiresite": "Весь сайт",
   "settings_authentication_reader_pagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} страница",
         "form=few": "{count} страницы",
@@ -1344,13 +1319,8 @@
   "settings_apikeys_expiry": "Срок действия",
   "settings_apikeys_expirydays": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} день",
         "form=few": "{count} дня",
@@ -1894,13 +1864,8 @@
   "settings_exports_workflow_publishedversion": "Опубликовано v{version}",
   "settings_exports_workflow_pagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} страница",
         "form=few": "{count} страницы",
@@ -2234,13 +2199,8 @@
   "site_onthispage": "На этой странице",
   "site_minreadcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} минута чтения",
         "form=few": "{count} минуты чтения",
@@ -2251,13 +2211,8 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} скриншот",
         "form=few": "{count} скриншота",
@@ -2303,13 +2258,8 @@
   "site_changelogrelease": "Релиз",
   "site_changelogpagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} страница",
         "form=few": "{count} страницы",
@@ -4291,13 +4241,8 @@
   "organization_members_nowebsites": "No websites",
   "organization_members_websites": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} website",
         "form=*": "{count} websites"

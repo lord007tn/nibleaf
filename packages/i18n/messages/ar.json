@@ -97,13 +97,8 @@
   "dashboard_empty_body": "أنشئ موقعًا، واكتب مقالتك الأولى، ثم انشرها — يستغرق ذلك نحو خمس دقائق.",
   "dashboard_pages": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=zero": "لا توجد صفحات",
         "form=one": "صفحة واحدة",
@@ -812,13 +807,8 @@
   "settings_languages_direction_rtl": "RTL",
   "settings_languages_coverage_sourcepages": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=zero": "لا توجد صفحات مصدر",
         "form=one": "صفحة مصدر واحدة",
@@ -834,13 +824,8 @@
   "settings_languages_coverage_percent": "اكتمال بنسبة {percent}٪",
   "settings_languages_coverage_missing": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=zero": "{count} صفحة مفقودة",
         "form=one": "صفحة واحدة مفقودة",
@@ -853,13 +838,8 @@
   ],
   "settings_languages_coverage_extra": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=zero": "{count} صفحة خاصة بهذه اللغة",
         "form=one": "صفحة واحدة خاصة بهذه اللغة",
@@ -1131,13 +1111,8 @@
   "settings_authentication_reader_entiresite": "الموقع كاملًا",
   "settings_authentication_reader_pagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=zero": "لا توجد صفحات",
         "form=one": "صفحة واحدة",
@@ -1375,13 +1350,8 @@
   "settings_apikeys_expiry": "انتهاء الصلاحية",
   "settings_apikeys_expirydays": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=zero": "{count} يوم",
         "form=one": "يوم واحد",
@@ -1967,13 +1937,8 @@
   "settings_exports_workflow_publishedversion": "الإصدار المنشور v{version}",
   "settings_exports_workflow_pagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=zero": "لا توجد صفحات",
         "form=one": "صفحة واحدة",
@@ -2288,13 +2253,8 @@
   "site_onthispage": "في هذه الصفحة",
   "site_minreadcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "دقيقة واحدة للقراءة",
         "form=two": "دقيقتان للقراءة",
@@ -2305,13 +2265,8 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "لقطة شاشة واحدة",
         "form=two": "لقطتا شاشة",
@@ -2357,13 +2312,8 @@
   "site_changelogrelease": "إصدار",
   "site_changelogpagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "صفحة واحدة",
         "form=two": "صفحتان",
@@ -4305,13 +4255,8 @@
   "organization_members_nowebsites": "لا مواقع",
   "organization_members_websites": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=zero": "لا مواقع",
         "form=one": "موقع واحد",

@@ -2122,13 +2122,8 @@
   "site_onthispage": "Di halaman ini",
   "site_minreadcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=*": "{count} menit baca"
       }
@@ -2136,13 +2131,8 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=*": "{count} tangkapan layar"
       }
@@ -2185,13 +2175,8 @@
   "site_changelogrelease": "Rilis",
   "site_changelogpagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=*": "{count} halaman"
       }
@@ -4170,13 +4155,8 @@
   "organization_members_nowebsites": "No websites",
   "organization_members_websites": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} website",
         "form=*": "{count} websites"

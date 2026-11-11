@@ -2122,13 +2122,8 @@
   "site_onthispage": "在此页面上",
   "site_minreadcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=*": "{count} 分钟阅读"
       }
@@ -2136,13 +2131,8 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=*": "{count} 张截图"
       }
@@ -2185,13 +2175,8 @@
   "site_changelogrelease": "发布",
   "site_changelogpagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=*": "{count} 个页面"
       }
@@ -4170,13 +4155,8 @@
   "organization_members_nowebsites": "No websites",
   "organization_members_websites": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} website",
         "form=*": "{count} websites"

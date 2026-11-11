@@ -97,13 +97,8 @@
   "dashboard_empty_body": "Create a site, write your first article, and publish it — it takes about five minutes.",
   "dashboard_pages": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} page",
         "form=*": "{count} pages"
@@ -808,13 +803,8 @@
   "settings_languages_direction_rtl": "RTL",
   "settings_languages_coverage_sourcepages": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} source page",
         "form=*": "{count} source pages"
@@ -826,13 +816,8 @@
   "settings_languages_coverage_percent": "{percent}% coverage",
   "settings_languages_coverage_missing": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} missing",
         "form=*": "{count} missing"
@@ -841,13 +826,8 @@
   ],
   "settings_languages_coverage_extra": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} only in this language",
         "form=*": "{count} only in this language"
@@ -1115,13 +1095,8 @@
   "settings_authentication_reader_entiresite": "Entire site",
   "settings_authentication_reader_pagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} page",
         "form=*": "{count} pages"
@@ -1355,13 +1330,8 @@
   "settings_apikeys_expiry": "Expiration",
   "settings_apikeys_expirydays": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} day",
         "form=*": "{count} days"
@@ -1943,13 +1913,8 @@
   "settings_exports_workflow_publishedversion": "Published v{version}",
   "settings_exports_workflow_pagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} page",
         "form=*": "{count} pages"
@@ -2260,13 +2225,8 @@
   "site_onthispage": "On this page",
   "site_minreadcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=*": "{count} min read"
       }
@@ -2274,13 +2234,8 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} screenshot",
         "form=*": "{count} screenshots"
@@ -2324,13 +2279,8 @@
   "site_changelogrelease": "Release",
   "site_changelogpagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} page",
         "form=*": "{count} pages"
@@ -4270,13 +4220,8 @@
   "organization_members_nowebsites": "No websites",
   "organization_members_websites": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} website",
         "form=*": "{count} websites"

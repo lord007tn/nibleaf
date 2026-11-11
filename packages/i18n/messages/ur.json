@@ -63,13 +63,8 @@
   "dashboard_empty_body": "ایک سائٹ بنائیں، اپنا پہلا مضمون لکھیں اور اسے شائع کریں — اس میں تقریباً پانچ منٹ لگتے ہیں۔",
   "dashboard_pages": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} صفحہ",
         "form=*": "{count} صفحات"
@@ -757,13 +752,8 @@
   "settings_languages_direction_rtl": "RTL",
   "settings_languages_coverage_sourcepages": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} ماخذ صفحہ",
         "form=*": "{count} ماخذ صفحات"
@@ -775,13 +765,8 @@
   "settings_languages_coverage_percent": "{percent}% کوریج",
   "settings_languages_coverage_missing": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} صفحہ موجود نہیں",
         "form=*": "{count} صفحات موجود نہیں"
@@ -790,13 +775,8 @@
   ],
   "settings_languages_coverage_extra": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} صفحہ صرف اس زبان میں",
         "form=*": "{count} صفحات صرف اس زبان میں"
@@ -1064,13 +1044,8 @@
   "settings_authentication_reader_entiresite": "پوری سائٹ",
   "settings_authentication_reader_pagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} صفحہ",
         "form=*": "{count} صفحات"
@@ -1868,13 +1843,8 @@
   "settings_exports_workflow_publishedversion": "شائع شدہ v{version}",
   "settings_exports_workflow_pagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} صفحہ",
         "form=*": "{count} صفحات"
@@ -2206,13 +2176,8 @@
   "site_onthispage": "اس صفحہ پر",
   "site_minreadcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=*": "{count} منٹ کا مطالعہ"
       }
@@ -2220,13 +2185,8 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} اسکرین شاٹ",
         "form=*": "{count} اسکرین شاٹس"
@@ -2270,13 +2230,8 @@
   "site_changelogrelease": "ریلیز",
   "site_changelogpagecount": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} صفحہ",
         "form=*": "{count} صفحات"
@@ -4256,13 +4211,8 @@
   "organization_members_nowebsites": "No websites",
   "organization_members_websites": [
     {
-      "declarations": [
-        "input count",
-        "input form"
-      ],
-      "selectors": [
-        "form"
-      ],
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
       "match": {
         "form=one": "{count} website",
         "form=*": "{count} websites"
