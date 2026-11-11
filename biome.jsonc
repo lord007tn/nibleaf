@@ -26,12 +26,16 @@
   "overrides": [
     {
       // Clipboard regression inputs deliberately contain empty bookmark anchors
-      // and source whitespace. They are parser data, not rendered application UI.
+      // and source aria-level/whitespace. They are parser data, not application UI.
       "includes": ["apps/app/src/components/editor/__fixtures__/*.html"],
       "formatter": { "enabled": false },
       "linter": {
         "rules": {
-          "a11y": { "useAnchorContent": "off", "useValidAnchor": "off" }
+          "a11y": {
+            "useAnchorContent": "off",
+            "useValidAnchor": "off",
+            "useAriaPropsSupportedByRole": "off"
+          }
         }
       }
     },
