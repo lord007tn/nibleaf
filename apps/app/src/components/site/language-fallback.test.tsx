@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { PassThrough } from 'node:stream';
-import type { ReactNode } from 'react';
+import { act, type ReactNode } from 'react';
+import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToPipeableStream } from 'react-dom/server';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SitePage } from '@/hooks/api/types';
-import { chromeLanguageAttributes, languageEndonym } from './content-language';
+import { readerTextFor } from '@/lib/reader-text';
+import { chromeLanguageAttributes, languageEndonymOr } from './content-language';
 import { SitePageView } from './site-page-view';
 import { SiteReaderContext, type SiteReaderContextValue } from './site-reader-context';
 
@@ -160,9 +162,11 @@ describe('language fallback notice', () => {
   });
 
   it('names languages by their own names, falling back to the site label', () => {
-    expect(languageEndonym('ar')).toBe('العربية');
-    expect(languageEndonym('en')).toBe('English');
-    expect(languageEndonym('not a tag', 'Klingon')).toBe('Klingon');
+    expect(languageEndonymOr('ar')).toBe('العربية');
+    expect(languageEndonymOr('en')).toBe('English');
+    expect(languageEndonymOr('not a tag', 'Klingon')).toBe('Klingon');
+    // Valid but without locale data: Intl would silently answer in en-US ("Latin").
+    expect(languageEndonymOr('la', 'Latina')).toBe('Latina');
   });
 });
 
@@ -195,5 +199,57 @@ describe('article meta line on a fallback page', () => {
     expect(chromeLanguageAttributes('en', { lang: 'he' })).toEqual({ lang: 'he', dir: 'rtl' });
     expect(chromeLanguageAttributes('ar', shell('ar'))).toEqual({});
     expect(chromeLanguageAttributes('en', null)).toEqual({});
+  });
+});
+
+// Council (#474): a browser whose ICU words a date or a language name differently
+// from the server's must not change what hydration renders.
+describe('reader text formatted on the server', () => {
+  it('hydrates the notice and the date verbatim when the browser formats them differently', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const data = page({ readerText: readerTextFor('ar', UPDATED_AT, ['en', 'ar']) });
+    const element = (
+      <SiteReaderContext.Provider value={shell('ar')}>
+        <SitePageView projectId="docs" lang="ar" data={data} />
+      </SiteReaderContext.Provider>
+    );
+    const container = await serverRender(element);
+    document.body.append(container);
+    const serverText = container.textContent ?? '';
+    expect(serverText).toContain(data.readerText?.updated ?? '');
+    expect(serverText).toContain('الإنجليزية');
+
+    // The browser's locale data words everything differently.
+    const browserIntl = Object.create(Intl) as typeof Intl;
+    Object.assign(browserIntl, {
+      DisplayNames: class {
+        static supportedLocalesOf(locales: string[]) {
+          return locales;
+        }
+        of() {
+          return 'BROWSER NAME';
+        }
+      },
+      DateTimeFormat: class {
+        format() {
+          return 'BROWSER DATE';
+        }
+      },
+    });
+    vi.stubGlobal('Intl', browserIntl);
+    const errors: unknown[] = [];
+    let root: Root | undefined;
+    try {
+      await act(async () => {
+        root = hydrateRoot(container, element, { onRecoverableError: (error) => errors.push(error) });
+      });
+      expect(errors).toEqual([]);
+      expect(container.textContent).toBe(serverText);
+      expect(container.textContent).not.toMatch(/BROWSER/);
+    } finally {
+      await act(async () => root?.unmount());
+      vi.unstubAllGlobals();
+      container.remove();
+    }
   });
 });

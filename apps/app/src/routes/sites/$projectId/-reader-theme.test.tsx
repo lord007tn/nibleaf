@@ -34,8 +34,11 @@ const PATH = 'blog/add-new-reservation-2';
 
 // The audited site: light by configuration (no `styling.theme`), English by
 // default, and this post has no Arabic translation.
+/** The site's configured theme (`styling.theme`); null is the audited light default. */
+let siteConfig: SiteShell['project']['config'] = null;
+
 const shell = (activeLanguage: string): SiteShell => ({
-  project: { id: 'docs', name: 'Jood Booking', slug: 'docs', description: null, config: null, primaryDomain: null },
+  project: { id: 'docs', name: 'Jood Booking', slug: 'docs', description: null, config: siteConfig, primaryDomain: null },
   nav: [{ id: 'p', kind: 'PAGE', title: 'Add a new reservation', path: PATH, icon: null, tag: null, children: [] }],
   languages: [
     { code: 'en', label: 'English', direction: 'LTR', isDefault: true },
@@ -116,6 +119,7 @@ beforeEach(() => {
     vi.fn((query: string) => ({ matches: query.includes('dark'), addEventListener: vi.fn(), removeEventListener: vi.fn() })),
   );
   localStorage.clear();
+  siteConfig = null;
   document.documentElement.className = '';
   mocks.getSite.mockImplementation(async ({ data }: { data: { language?: string } }) => shell(data.language ?? 'en'));
   mocks.getSitePage.mockResolvedValue(englishPage);
@@ -188,5 +192,91 @@ describe('reader theme across languages', () => {
     expect(rootDocument?.getAttribute('data-lang')).toBe('ar');
     expect(rootDocument?.getAttribute('data-dir')).toBe('rtl');
     expect(documentTheme()).toBe('light');
+  }, 30_000);
+});
+
+/** The OS colour preference, changeable while a test runs. */
+function stubOsTheme(initial: 'light' | 'dark') {
+  let dark = initial === 'dark';
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn((query: string) => ({
+      get matches() {
+        return query.includes('dark') ? dark : !dark;
+      },
+      addEventListener: (_: string, listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+      removeEventListener: (_: string, listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+    })),
+  );
+  return (next: 'light' | 'dark') =>
+    act(async () => {
+      dark = next === 'dark';
+      for (const listener of listeners) listener({ matches: dark } as MediaQueryListEvent);
+    });
+}
+
+/** Switches to Arabic with the Arabic shell held back; returns its release. */
+async function switchToArabicHeld(container: HTMLElement) {
+  let releaseShell: () => void = () => undefined;
+  mocks.getSite.mockImplementation(
+    ({ data }: { data: { language?: string } }) =>
+      new Promise<SiteShell>((resolve) => {
+        releaseShell = () => resolve(shell(data.language ?? 'en'));
+      }),
+  );
+  await act(async () => container.querySelector<HTMLButtonElement>('[data-switch-language="ar"]')?.click());
+  await vi.waitFor(() => expect(container.querySelector('[data-pending]')).not.toBeNull());
+  return async () => {
+    await act(async () => releaseShell());
+    await vi.waitFor(() => expect(container.querySelector('[role="note"]')).not.toBeNull(), { timeout: 15_000 });
+  };
+}
+
+const themeToggle = (container: HTMLElement) => container.querySelector<HTMLButtonElement>('button[aria-pressed]');
+
+describe('reader theme sources across a language switch', () => {
+  it.each(['light', 'dark'] as const)(
+    'keeps a stored %s choice over the configured theme and the OS',
+    async (stored) => {
+      stubOsTheme(stored === 'dark' ? 'light' : 'dark');
+      localStorage.setItem('nibleaf.site.theme.docs', stored);
+      const container = await renderReader(`/sites/docs/${PATH}`);
+      expect(documentTheme()).toBe(stored);
+      const release = await switchToArabicHeld(container);
+      expect(documentTheme()).toBe(stored);
+      await release();
+      expect(documentTheme()).toBe(stored);
+    },
+    30_000,
+  );
+
+  it('follows the OS in configured system mode, including a change while the next language loads', async () => {
+    siteConfig = { styling: { theme: 'system' } } as SiteShell['project']['config'];
+    const setOs = stubOsTheme('dark');
+    const container = await renderReader(`/sites/docs/${PATH}`);
+    expect(documentTheme()).toBe('dark');
+    const release = await switchToArabicHeld(container);
+    expect(documentTheme()).toBe('dark');
+    // The OS turns light during the pending navigation.
+    await setOs('light');
+    await release();
+    expect(documentTheme()).toBe('light');
+  }, 30_000);
+
+  it('keeps an explicit toggle across the switch, even when the OS then changes', async () => {
+    siteConfig = { styling: { theme: 'system' } } as SiteShell['project']['config'];
+    const setOs = stubOsTheme('light');
+    const container = await renderReader(`/sites/docs/${PATH}`);
+    expect(documentTheme()).toBe('light');
+    await act(async () => themeToggle(container)?.click());
+    expect(documentTheme()).toBe('dark');
+    expect(localStorage.getItem('nibleaf.site.theme.docs')).toBe('dark');
+    const release = await switchToArabicHeld(container);
+    await setOs('light');
+    expect(documentTheme()).toBe('dark');
+    await release();
+    expect(documentTheme()).toBe('dark');
+    expect(themeToggle(container)?.getAttribute('aria-pressed')).toBe('true');
   }, 30_000);
 });

@@ -1,5 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
-import { type ContentLanguageAttributes, languageEndonym } from '@/components/site/content-language';
+import { languageNameIn } from '@nibleaf/shared/site';
+import { type ContentLanguageAttributes, languageEndonymOr } from '@/components/site/content-language';
+import type { ReaderText } from '@/lib/reader-text';
 
 // Marks where a language name goes in the translated sentence, so each name
 // can be isolated in a <bdi>: "English" inside an Arabic sentence keeps its own
@@ -9,17 +11,6 @@ const SLOT = '\u0000';
 /** Splits a message formatted with slot markers back into text and <bdi> names. */
 const withIsolatedNames = (message: string, names: string[]) =>
   message.split(SLOT).map((part, index) => (index % 2 === 1 ? <bdi key={`name-${part}`}>{names[Number(part)]}</bdi> : part));
-
-/** A language's name in `locale` ("الإنجليزية" for `en` in Arabic), or null
- *  when the runtime can't name it there. */
-const languageNameIn = (locale: string, code: string): string | null => {
-  try {
-    const name = new Intl.DisplayNames([locale], { type: 'language', fallback: 'none' }).of(code);
-    return name && name !== code ? name : null;
-  } catch {
-    return null;
-  }
-};
 
 /**
  * Tells a reader that the page they asked for in their language isn't
@@ -34,6 +25,7 @@ export function LanguageFallbackNotice({
   href,
   attributes,
   languages,
+  text,
 }: {
   /** The reader's (shell) language. */
   requested: string;
@@ -44,15 +36,19 @@ export function LanguageFallbackNotice({
   /** The reader chrome's lang/dir. */
   attributes: ContentLanguageAttributes;
   languages?: ReadonlyArray<{ code: string; label?: string }>;
+  /** Names formatted on the server for this reader (rendered verbatim, so
+   *  hydration can't disagree); computed here when absent. */
+  text?: ReaderText;
 }) {
   const t = siteT(requested);
   const label = (code: string) => languages?.find((language) => language.code === code)?.label;
   // Inside the reader's sentence, a language is named in the reader's language
   // ("الإنجليزية" for an Arabic reader); its own name (the endonym) follows on
   // the link, which is where a reader of that language looks for it.
-  const name = (code: string) => languageNameIn(requested, code) ?? languageEndonym(code, label(code));
+  const endonym = (code: string) => text?.endonyms[code] ?? languageEndonymOr(code, label(code));
+  const name = (code: string) => text?.names[code] ?? languageNameIn(requested, code) ?? endonym(code);
   const shownName = name(shown);
-  const shownEndonym = languageEndonym(shown, label(shown));
+  const shownEndonym = endonym(shown);
   return (
     <div
       role="note"

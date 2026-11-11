@@ -1,4 +1,5 @@
 import { isRtlLanguage, type TextDirection } from '@nibleaf/shared/script-direction';
+import { languageEndonym } from '@nibleaf/shared/site';
 import type { SiteReaderContextValue } from '@/components/site/site-reader-context';
 
 export interface ContentLanguageAttributes {
@@ -42,13 +43,8 @@ export function chromeLanguageAttributes(contentLanguage: string | undefined, sh
 
 /** A language's name in that language ("العربية", "English"), as a reader
  *  looking for their own language recognizes it; the site's label, then the
- *  code, where the runtime has no name for it. */
-export function languageEndonym(code: string, label?: string): string {
-  try {
-    const name = new Intl.DisplayNames([code], { type: 'language' }).of(code);
-    if (name && name !== code) return name;
-  } catch {
-    // An invalid or unknown tag: fall through to the configured label.
-  }
-  return label || code;
+ *  code, where the runtime has no data for it. One implementation with the
+ *  published labels: `languageEndonym` in @nibleaf/shared/site. */
+export function languageEndonymOr(code: string, label?: string): string {
+  return languageEndonym(code) ?? (label || code);
 }

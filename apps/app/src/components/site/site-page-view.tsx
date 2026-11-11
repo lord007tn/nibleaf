@@ -13,9 +13,9 @@ import { ArticleBodySkeleton } from '@/components/site/site-article-skeleton';
 import { useSiteReader } from '@/components/site/site-reader-context';
 import { MobileTableOfContents, TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
-import { localeTag } from '@/lib/format';
 import { HydrationIsland } from '@/lib/hydration-modules';
 import { articleMarkdownModule } from '@/lib/reader-hydration-modules';
+import { formatUpdated } from '@/lib/reader-text';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
@@ -236,11 +236,11 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b[^>]*>/gi) ?? []).filter(
     (image) => !isDarkModeTwin(image),
   ).length;
-  // A UTC calendar day, so the server render and a reader in any timezone show
-  // the same date and hydration matches.
-  const updatedLabel = new Intl.DateTimeFormat(localeTag(readerLanguage || 'en'), { dateStyle: 'medium', timeZone: 'UTC' }).format(
-    new Date(page.updatedAt),
-  );
+  // Formatted on the server (getSitePageFn) and rendered verbatim, so a browser
+  // whose ICU words the date differently can't cause a hydration mismatch. Pages
+  // that didn't come through that function format it here.
+  const readerText = data.readerText?.language === readerLanguage ? data.readerText : undefined;
+  const updatedLabel = readerText?.updated ?? formatUpdated(readerLanguage, page.updatedAt);
   const article = (
     <article
       className={cn('w-full min-w-0', mode === 'wide' ? '' : mode === 'center' ? 'mx-auto max-w-[42rem]' : 'mx-auto max-w-[46rem]')}
@@ -254,6 +254,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           href={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix })}
           attributes={chromeLanguage}
           languages={reader?.languages}
+          text={readerText}
         />
       ) : null}
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
