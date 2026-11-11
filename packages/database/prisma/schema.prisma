@@ -1146,6 +1146,8 @@ model ProjectIntegration {
   status                 String    @default("ACTIVE")
   config                 Json?
   credentialEncrypted    String
+  /// Last four characters of a site's own AI key (D7), never the key itself.
+  credentialHint         String?
   revision               Int       @default(1)
   lastVerificationStatus String    @default("UNVERIFIED")
   lastVerificationCode   String?

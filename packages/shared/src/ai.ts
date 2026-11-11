@@ -12,3 +12,26 @@ export const aiConnectionConfigSchema = z
 export const aiCredentialSchema = z
   .object({ kind: z.literal('workspace-ai'), projectId: z.string(), providerId: aiProviderIdSchema, apiKey: z.string().min(1) })
   .strict();
+
+/**
+ * Names people read for the models Nibleaf commonly runs. Site owners see a
+ * model by name ("GPT-6 Luna"); the provider id stays available for details.
+ * Keys are bare ids: a provider prefix ("openai/") is ignored when looking up.
+ */
+const AI_MODEL_LABELS: Readonly<Record<string, string>> = {
+  'gpt-6-luna': 'GPT-6 Luna',
+  'gpt-6-terra': 'GPT-6 Terra',
+  'gpt-6-sol': 'GPT-6 Sol',
+  'gpt-6': 'GPT-6',
+  'text-embedding-3-large': 'OpenAI text embeddings (large)',
+  'text-embedding-3-small': 'OpenAI text embeddings (small)',
+};
+
+/**
+ * A model's readable name: a known label, else the id without its provider
+ * prefix (which is still more readable than "provider/model"). Never empty.
+ */
+export const aiModelLabel = (id: string): string => {
+  const bare = id.includes('/') ? id.slice(id.lastIndexOf('/') + 1) : id;
+  return AI_MODEL_LABELS[bare] ?? (bare || id);
+};

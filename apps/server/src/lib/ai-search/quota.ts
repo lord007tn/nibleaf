@@ -49,3 +49,26 @@ export const consumeAnswerQuota = async (projectId: string, now = new Date()): P
   );
   return { allowed: current <= limit, remaining: Math.max(0, limit - current) };
 };
+
+/**
+ * Today's answers for a project, read without spending one, for the AI
+ * answers page. `answersToday` counts served answers only (requests over the
+ * limit still bump the counter but were refused), and is null when the
+ * counter can't be read; it never fails the page. The day is UTC, matching
+ * `consumeAnswerQuota`.
+ */
+export const readAnswerQuota = async (
+  projectId: string,
+  now = new Date(),
+): Promise<{ answersToday: number | null; limit: number; resetsAt: string }> => {
+  const limit = env.SEARCH_ANSWER_DAILY_PER_PROJECT;
+  const resetsAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString();
+  try {
+    const client = await aiSpendRedis();
+    const raw = await client.get(`{search-answer-quota}:${projectId}:${day(now)}`);
+    const counted = raw === null ? 0 : Number(raw);
+    return { answersToday: Number.isFinite(counted) && counted >= 0 ? Math.min(counted, limit) : null, limit, resetsAt };
+  } catch {
+    return { answersToday: null, limit, resetsAt };
+  }
+};

@@ -42,8 +42,86 @@ export const workspaceAiProviderSchema = z
     answerModel: z.string().nullable(),
   })
   .strict();
+const aiModelRefSchema = z.object({ id: z.string(), label: z.string() }).strict();
+
+/**
+ * What this server can offer a site for AI answers, from runtime configuration
+ * only (operations/ux/ai-and-integrations.md §4.6). There is no Cloud or
+ * self-hosted branch: an option exists exactly when the server can serve it.
+ */
+export const siteAiCapabilitiesSchema = z
+  .object({
+    /** "Nibleaf AI": the server's own provider. */
+    managed: z
+      .object({
+        available: z.boolean(),
+        reason: z.enum(['noServerKey', 'answersDisabledOnServer']).nullable(),
+        model: aiModelRefSchema.nullable(),
+        dailyAnswerLimit: z.number().int().nonnegative(),
+      })
+      .strict(),
+    /** A site's own key can be stored at all. */
+    ownKey: z.object({ available: z.boolean(), reason: z.enum(['credentialStorageMissing']).nullable() }).strict(),
+    providers: z.array(
+      z
+        .object({
+          id: aiProviderIdSchema,
+          available: z.boolean(),
+          reason: z.enum(['credentialStorageMissing', 'embeddingModelRequiresOpenRouter']).nullable(),
+        })
+        .strict(),
+    ),
+    /** Answers need the search index on this server. */
+    answers: z.object({ available: z.boolean(), reason: z.enum(['searchNotConfigured']).nullable() }).strict(),
+  })
+  .strict();
+
+/** Where a site's AI answers stand right now. Never carries a key. */
+export const siteAiStatusSchema = z
+  .object({
+    /** The site's saved switch. */
+    answersOn: z.boolean(),
+    /** The selected source; null once AI is turned off for the site. */
+    source: z.enum(['managed', 'openai', 'openrouter']).nullable(),
+    /** The selected source can answer readers (key present, accepted, usable). */
+    sourceReady: z.boolean(),
+    connections: z.array(
+      z
+        .object({
+          id: aiProviderIdSchema,
+          state: z.enum(['ok', 'rejected', 'needsRecheck', 'unreadable']),
+          keyHint: z.string().max(4).nullable(),
+          addedAt: z.iso.datetime(),
+          model: aiModelRefSchema.nullable(),
+        })
+        .strict(),
+    ),
+    published: z.object({ version: z.number().int(), at: z.iso.datetime().nullable() }).strict().nullable(),
+    preparation: z
+      .object({
+        state: z.enum(['none', 'running', 'ready', 'failed']),
+        pages: z.number().int().nonnegative(),
+        at: z.iso.datetime().nullable(),
+      })
+      .strict(),
+    usage: z
+      .object({
+        /** Null when the counter can't be read right now. */
+        answersToday: z.number().int().nonnegative().nullable(),
+        limit: z.number().int().nonnegative(),
+        resetsAt: z.iso.datetime(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export type SiteAiCapabilities = z.infer<typeof siteAiCapabilitiesSchema>;
+export type SiteAiStatus = z.infer<typeof siteAiStatusSchema>;
+
 export const workspaceAiOverviewSchema = z
   .object({
+    capabilities: siteAiCapabilitiesSchema,
+    status: siteAiStatusSchema,
     selectedProvider: aiSelectionSchema,
     answersEnabled: z.boolean(),
     encryptionConfigured: z.boolean(),

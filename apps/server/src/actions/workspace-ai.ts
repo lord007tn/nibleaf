@@ -1,10 +1,12 @@
-import { Prisma, prisma } from '@nibleaf/database';
+import { Prisma, type ProjectIntegration, prisma } from '@nibleaf/database';
 import { getQdrantClient } from '@nibleaf/qdrant';
-import { aiConnectionConfigSchema, aiCredentialSchema, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
+import { aiConnectionConfigSchema, aiCredentialSchema, aiModelLabel, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
 import {
   type SaveWorkspaceAiConnectionBody,
+  type SiteAiCapabilities,
+  type SiteAiStatus,
   saveWorkspaceAiConnectionBody,
   type WorkspaceAiModelsBody,
   type WorkspaceAiSelectionBody,
@@ -16,7 +18,9 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 import { env } from '@/env';
 import { AppError, conflict, forbidden } from '@/errors';
+import { readAnswerQuota } from '@/lib/ai-search/quota';
 import type { HonoEnv } from '@/lib/hono/context';
+import { managedAiServes, siteAiSelection, storedAiKeyState } from './ai-source';
 import { decryptIntegrationSecret, encryptIntegrationSecret } from './integrations/crypto';
 import { updateProjectConfigSection } from './project-config';
 import { assertProjectAccess } from './projects';
@@ -121,21 +125,94 @@ const savedAnswerModel = (config: unknown) => {
   return parsed.success ? parsed.data.answerModel : undefined;
 };
 
+/** What this server can offer a site, from runtime configuration only (no Cloud or self-hosted branch). */
+const siteAiCapabilities = (): SiteAiCapabilities => {
+  const credentialStorage = Boolean(env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY);
+  const openAiEmbeddings = env.SEARCH_EMBEDDING_MODEL.startsWith('openai/');
+  return {
+    managed: {
+      available: managedAiServes(),
+      reason: !env.OPENROUTER_API_KEY ? 'noServerKey' : env.SEARCH_ANSWER_ENABLED ? null : 'answersDisabledOnServer',
+      model: env.OPENROUTER_API_KEY ? { id: env.SEARCH_ANSWER_MODEL, label: aiModelLabel(env.SEARCH_ANSWER_MODEL) } : null,
+      dailyAnswerLimit: env.SEARCH_ANSWER_DAILY_PER_PROJECT,
+    },
+    ownKey: { available: credentialStorage, reason: credentialStorage ? null : 'credentialStorageMissing' },
+    providers: [
+      {
+        id: 'openai',
+        available: credentialStorage && openAiEmbeddings,
+        reason: !credentialStorage ? 'credentialStorageMissing' : openAiEmbeddings ? null : 'embeddingModelRequiresOpenRouter',
+      },
+      { id: 'openrouter', available: credentialStorage, reason: credentialStorage ? null : 'credentialStorageMissing' },
+    ],
+    answers: { available: Boolean(getQdrantClient()), reason: getQdrantClient() ? null : 'searchNotConfigured' },
+  };
+};
+
+const PREPARATION_STATE = { PENDING: 'running', RUNNING: 'running', FAILED: 'failed', DISABLED: 'none' } as const;
+
+/** Where the site's AI answers stand. Never carries a key: only its last four characters, stored at save time. */
+const siteAiStatus = (
+  projectConfig: unknown,
+  projectId: string,
+  connections: ProjectIntegration[],
+  deployment: { version: number; completedAt: Date | null } | null,
+  run: { status: keyof typeof PREPARATION_STATE | 'READY'; indexedPages: number; indexedChunks: number; completedAt: Date | null } | null,
+  usage: SiteAiStatus['usage'],
+): SiteAiStatus => {
+  const selection = siteAiSelection(projectConfig);
+  const keys = connections.flatMap((connection) => {
+    const id = aiProviderIdSchema.safeParse(connection.providerId);
+    return id.success && connection.projectId === projectId ? [{ id: id.data, connection }] : [];
+  });
+  const stored = keys.map(({ id, connection }) => {
+    const answerModel = aiConnectionConfigSchema.safeParse(connection.config).data?.answerModel;
+    return {
+      id,
+      state: storedAiKeyState(connection, id),
+      keyHint: connection.credentialHint ?? null,
+      addedAt: connection.createdAt.toISOString(),
+      model: answerModel ? { id: answerModel, label: aiModelLabel(answerModel) } : null,
+    };
+  });
+  const source = selection.source === 'disabled' ? null : selection.source === 'instance' ? 'managed' : selection.source;
+  return {
+    answersOn: selection.answersOn && source !== null,
+    source,
+    sourceReady: source === 'managed' ? managedAiServes() : source ? stored.some((key) => key.id === source && key.state === 'ok') : false,
+    connections: stored,
+    published: deployment ? { version: deployment.version, at: deployment.completedAt?.toISOString() ?? null } : null,
+    preparation: {
+      state: !run ? 'none' : run.status === 'READY' ? (run.indexedChunks > 0 ? 'ready' : 'none') : PREPARATION_STATE[run.status],
+      pages: run?.indexedPages ?? 0,
+      at: run?.completedAt?.toISOString() ?? null,
+    },
+    usage,
+  };
+};
+
 export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) => {
   const { project } = await authorize(ctx, projectId);
   const [connections, deployment] = await Promise.all([
     prisma.projectIntegration.findMany({ where: { projectId, providerId: { in: ['openai', 'openrouter'] } } }),
-    prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' }, select: { id: true } }),
+    prisma.deployment.findFirst({
+      where: { projectId, status: 'READY' },
+      orderBy: { version: 'desc' },
+      select: { id: true, version: true, completedAt: true },
+    }),
   ]);
   const run = deployment
     ? await prisma.searchIndexRun.findFirst({
         where: { projectId, deploymentId: deployment.id },
         orderBy: { createdAt: 'desc' },
-        select: { status: true, errorCode: true, indexedPages: true, indexedChunks: true },
+        select: { status: true, errorCode: true, indexedPages: true, indexedChunks: true, completedAt: true },
       })
     : null;
   const selection = selectionSchema.safeParse(project.config);
+  const usage = await readAnswerQuota(projectId);
   return workspaceAiOverviewSchema.parse({
+    capabilities: siteAiCapabilities(),
+    status: siteAiStatus(project.config, projectId, connections, deployment, run, usage),
     selectedProvider: selection.success ? (selection.data.search?.aiProvider ?? 'instance') : 'instance',
     answersEnabled: selection.success && selection.data.search?.aiAnswers === true,
     encryptionConfigured: Boolean(env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY),
@@ -178,6 +255,9 @@ export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) =
   });
 };
 
+/** The last four characters of a key, so its owner can tell keys apart (D7). Short keys get no hint. */
+const keyHint = (apiKey: string) => (apiKey.length >= 16 ? apiKey.slice(-4) : null);
+
 export const getWorkspaceAiModels = async (ctx: Context<HonoEnv>, projectId: string, input: WorkspaceAiModelsBody) => {
   await authorize(ctx, projectId);
   const body = workspaceAiModelsBody.parse(input);
@@ -207,6 +287,7 @@ export const saveWorkspaceAiConnection = async (ctx: Context<HonoEnv>, projectId
     await prisma.$transaction(async (tx) => {
       const data = {
         credentialEncrypted: ciphertext,
+        ...(body.apiKey ? { credentialHint: keyHint(body.apiKey) } : {}),
         config: { answerModel: body.answerModel, embeddingModel: env.SEARCH_EMBEDDING_MODEL },
         status: 'ACTIVE',
         lastVerificationStatus: 'HEALTHY',
