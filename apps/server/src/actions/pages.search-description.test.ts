@@ -1,3 +1,4 @@
+import { growthMsAsync, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => ({ pageFindFirst: vi.fn(), projectFindUnique: vi.fn() }));
@@ -53,17 +54,20 @@ describe('getPageSearchDescription', () => {
   });
 
   it('expands variables only within a bounded window: a 1 MB body of long variables stays fast and small', async () => {
-    const { id } = stored('{{x}}'.repeat(200_000), { variables: [{ key: 'x', value: 'word '.repeat(100) }] });
-    const started = performance.now();
+    const variables = [{ key: 'x', value: 'word '.repeat(100) }];
+    const { id } = stored('{{x}}'.repeat(200_000), { variables });
     const result = await getPageSearchDescription('project-1', id);
-    const elapsed = performance.now() - started;
     const parsed = vi.mocked(pageDescriptionText).mock.calls[0]?.[0].content ?? '';
     expect(parsed.length).toBeLessThanOrEqual(SEARCH_DESCRIPTION_SOURCE_LIMIT);
     // The full generated text (the editor cuts the preview), bounded by the 4 KB the description is read from.
     expect(result.description.length).toBeLessThanOrEqual(4096);
     expect(result.description.startsWith('word word')).toBe(true);
-    // Unbounded, this expanded to 100 MB and took 140–176 ms; bounded it is a few ms.
-    expect(elapsed).toBeLessThan(100);
+    // Unbounded, this expanded to 100 MB; the bounds above pin the output. 4x the
+    // body costs at most about 4x (testing/growth). Each run stores a new page, so
+    // the description cache never answers for it.
+    const generate = (content: string) => getPageSearchDescription('project-1', stored(content, { variables }).id);
+    const [small, large] = await growthMsAsync(generate, '{{x}}'.repeat(50_000), '{{x}}'.repeat(200_000));
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
   it('starts the window after a long frontmatter block, so the prose is still found', async () => {

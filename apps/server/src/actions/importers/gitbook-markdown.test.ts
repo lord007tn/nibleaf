@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import { performance } from 'node:perf_hooks';
+import { growthMs, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
 import {
   convertGitBookMarkdown,
@@ -300,15 +300,15 @@ describe('expandGitBookIncludes', () => {
 });
 
 it.each(['details', 'figure', 'picture', 'table data-view="cards"', 'div', 'a class="button"'])(
-  'converts a MiB of unclosed %s openings promptly',
+  'converts a MiB of unclosed %s openings in linear time',
   (tag) => {
     const unit = `<${tag}>`;
-    const input = unit.repeat(Math.ceil((1024 * 1024) / unit.length));
-    const started = performance.now();
-    convertGitBookMarkdown(input, { resolveFile: () => undefined });
-    const elapsed = performance.now() - started;
-    console.info(`HTML conversion ${tag}: ${Math.round(elapsed)} ms`);
-    expect(elapsed).toBeLessThan(900);
+    const input = (bytes: number) => unit.repeat(Math.ceil(bytes / unit.length));
+    const convert = (markdown: string) => convertGitBookMarkdown(markdown, { resolveFile: () => undefined });
+    convert(input(1024 * 1024));
+    // 4x the input costs about 4x (testing/growth); quadratic work would be 16x.
+    const [small, large] = growthMs(convert, input(256 * 1024), input(1024 * 1024));
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   },
 );
 it.each(['a < b and c', 'x <= y', 'List<T> API'])('preserves literal title text %s', (label) => {
