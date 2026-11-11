@@ -97,6 +97,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Rolling deploys run the previous release against the new schema, so new
+      # migrations must be expand-only (operations/runbook-rolling-deploys.md §4).
+      - name: Check migrations are expand-only and the image role selector
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          node --test scripts/migration-safety.test.mjs scripts/entrypoint-command.test.mjs
+          if [ -n "${BASE_SHA}" ] && [ "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+            node scripts/migration-safety.mjs --base "${BASE_SHA}"
+          fi
+
       - name: Generate Prisma client
         run: pnpm db:generate
 
