@@ -4622,5 +4622,6 @@
   "newsite_starter_firstguide_content": "## Accomplir une tâche\n\nRemplacez cet exemple par une tâche courante de vos clients.\n\n- Décrivez la première action.\n- Montrez comment vérifier qu’elle a réussi.\n",
   "newsite_starter_faq_title": "Foire aux questions",
   "newsite_starter_faq_content": "## Questions courantes\n\nRépondez à une vraie question en quelques phrases.\n\n- Expliquez où trouver les paramètres du compte.\n- Indiquez comment contacter votre équipe.\n",
-  "newsite_addresslatinhint": "Les adresses des sites utilisent des lettres latines. Choisissez une adresse facile à lire, par exemple help-center."
+  "newsite_addresslatinhint": "Les adresses des sites utilisent des lettres latines. Choisissez une adresse facile à lire, par exemple help-center.",
+  "newsite_addressunavailable": "Cette adresse est réservée ou indisponible. Choisissez une autre adresse."
 }

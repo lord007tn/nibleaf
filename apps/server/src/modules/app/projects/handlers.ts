@@ -19,6 +19,7 @@ const app = new Hono<HonoEnv>()
     return ctx.json({ data: await createProject(user.id, ctx.req.valid('json')) }, 201);
   })
   .get('/availability', ...projectsRoutes.availability, validator('query', projectAvailabilityQuery), async (ctx) => {
+    ctx.header('Cache-Control', 'private, no-store');
     const user = getContextUserOrThrow();
     return ctx.json({ data: await checkProjectAvailability(user.id, ctx.req.valid('query')) }, 200);
   })

@@ -4,6 +4,7 @@ import { isPublicEmailProvider } from '@nibleaf/shared/email-providers';
 import { normalizeEmailDomain } from '@nibleaf/shared/join-links';
 import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
 import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
+import { isProjectHostnameAllowed } from '@nibleaf/shared/project-hostname';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
 import { supportActionUrlSchema, webActionUrlSchema } from './action-urls';
@@ -525,7 +526,10 @@ export const projectSlug = z
   .string()
   .min(1)
   .max(63)
-  .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.');
+  .refine(
+    (slug) => isProjectHostnameAllowed(slug),
+    'Use an available address with lowercase letters, numbers, and hyphens. System hostnames and xn-- labels are reserved.',
+  );
 
 export const projectAvailabilityQuery = z
   .object({ organizationId: z.string().min(1).optional(), name: z.string().trim().min(1).max(120), slug: projectSlug.optional() })

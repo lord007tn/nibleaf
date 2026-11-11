@@ -1,3 +1,6 @@
+vi.mock('@/lib/env-extras', () => ({ envExtras: { TRUSTED_PROXY_HOPS: 1 } }));
+vi.mock('@/lib/env-extras', () => ({ envExtras: { TRUSTED_PROXY_HOPS: 1 } }));
+
 import { Hono } from 'hono';
 import { contextStorage } from 'hono/context-storage';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -31,7 +34,7 @@ vi.mock('@/actions/projects', () => ({
     }
     return { project: { id: 'project', organizationId: 'org' }, organizationId: 'org', role: mocks.member.role };
   }),
-  checkProjectAvailability: vi.fn(async () => ({ slug: 'docs', available: true, suggestedSlug: 'docs', nameTaken: false })),
+  checkProjectAvailability: vi.fn(async () => ({ available: true })),
   createProject: vi.fn(),
   deleteProject: vi.fn(),
   getProject: vi.fn(),
@@ -112,7 +115,7 @@ describe('project availability endpoint', () => {
   it('checks availability before the dynamic project-id route', async () => {
     const response = await appFor(true).request('/projects/availability?name=Docs');
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ data: { slug: 'docs', available: true, suggestedSlug: 'docs', nameTaken: false } });
+    expect(await response.json()).toEqual({ data: { available: true } });
   });
   it('rejects invalid typed slugs and missing names', async () => {
     expect((await appFor(true).request('/projects/availability?name=Docs&slug=Bad')).status).toBe(422);
@@ -120,20 +123,23 @@ describe('project availability endpoint', () => {
   });
 });
 
-
 describe('availability rate limits', () => {
   it('limits one authenticated user across distinct client IPs', async () => {
     const app = appFor(true, 'rate-user');
-    const responses = [];
-    for (let i = 0; i < 21; i++) responses.push(await app.request('/projects/availability?name=Site', { headers: { 'x-forwarded-for': `8.8.4.${i + 1}` } }));
+    const responses: Response[] = [];
+    for (let i = 0; i < 21; i++)
+      responses.push(await app.request('/projects/availability?name=Site', { headers: { 'x-forwarded-for': `8.8.4.${i + 1}` } }));
     expect(responses.slice(0, 20).every((response) => response.status === 200)).toBe(true);
     expect(responses[20]?.status).toBe(429);
     expect(responses[20]?.headers.get('retry-after')).toBeTruthy();
   });
   it('limits one IP even when the authenticated user changes', async () => {
     const app = appFor(true);
-    const responses = [];
-    for (let i = 0; i < 31; i++) responses.push(await app.request('/projects/availability?name=Site', { headers: { 'x-forwarded-for': '1.1.1.1', 'x-test-user': `ip-user-${i}` } }));
+    const responses: Response[] = [];
+    for (let i = 0; i < 31; i++)
+      responses.push(
+        await app.request('/projects/availability?name=Site', { headers: { 'x-forwarded-for': '1.1.1.1', 'x-test-user': `ip-user-${i}` } }),
+      );
     expect(responses.slice(0, 30).every((response) => response.status === 200)).toBe(true);
     expect(responses[30]?.status).toBe(429);
   });

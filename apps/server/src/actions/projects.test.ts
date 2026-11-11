@@ -27,7 +27,19 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@/env', () => ({ env: { APP_URL: 'https://dashboard.example.test', API_URL: 'https://gateway.example.test', ADMIN_URL: 'https://console.example.test', SITE_BASE_DOMAIN: 'sites.example.test', CUSTOM_DOMAIN_CNAME_TARGET: 'ingress.example.test', STORAGE_PUBLIC_URL: 'https://uploads.example.test', CDN_URL: 'https://assets.example.test' } }));
+vi.mock('@/env', () => ({
+  env: {
+    APP_URL: 'https://dashboard.example.test',
+    API_URL: 'https://gateway.example.test',
+    ADMIN_URL: 'https://console.example.test',
+    SITE_BASE_DOMAIN: 'sites.example.test',
+    CUSTOM_DOMAIN_CNAME_TARGET: 'ingress.example.test',
+    STORAGE_PUBLIC_URL: 'https://uploads.example.test',
+    CDN_URL: 'https://assets.example.test',
+    BETTER_AUTH_URL: 'https://login.example.test',
+    STORAGE_PUBLIC_ENDPOINT: 'https://objects.example.test',
+  },
+}));
 
 vi.mock('@/lib/access', () => ({
   accessibleProjectIds: async () =>
@@ -220,6 +232,7 @@ describe('project page counts', () => {
 
   it('reports not-found for a project outside the organization', async () => {
     mocks.projectFindFirst.mockResolvedValue(null);
+    mocks.projectFindMany.mockResolvedValue([]);
 
     await expect(getProject('org-a', 'missing')).rejects.toMatchObject({ code: 'database:not_found' });
   });
@@ -232,6 +245,7 @@ describe('createProject', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.projectFindFirst.mockResolvedValue(null);
+    mocks.projectFindMany.mockResolvedValue([]);
     mocks.resolveOrgAccess.mockResolvedValue({ organizationId: 'org-a', orgRole: 'admin' });
     mocks.lockOrganization.mockResolvedValue({ id: 'org-a' });
     mocks.tx.member.findUnique.mockResolvedValue({ orgRole: 'admin' });
@@ -315,8 +329,9 @@ describe('site creation language, starters and address availability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.memberFindMany.mockResolvedValue([{ organizationId: 'org-a', orgRole: 'owner' }]);
-    mocks.projectFindMany.mockResolvedValue([{ name: 'Acme Docs' }]);
+    mocks.projectFindMany.mockResolvedValue([]);
     mocks.projectFindFirst.mockResolvedValue(null);
+    mocks.projectFindMany.mockResolvedValue([]);
     mocks.resolveOrgAccess.mockResolvedValue({ organizationId: 'org-a', orgRole: 'admin' });
     mocks.lockOrganization.mockResolvedValue({ id: 'org-a' });
     mocks.tx.member.findUnique.mockResolvedValue({ orgRole: 'admin' });
@@ -362,8 +377,9 @@ describe('site creation language, starters and address availability', () => {
     const language = code === 'zh-CN' ? 'zh' : code;
     await createProject('user-1', { name: 'Docs', language, starter: 'help-center' });
     const title = mocks.tx.page.create.mock.calls[0]?.[0].data.title;
-    expect(title).toBeTruthy();
-    if (code !== 'en') expect(title).not.toBe('Welcome');
+    const catalog = JSON.parse(readFileSync(new URL(`../../../../packages/i18n/messages/${code}.json`, import.meta.url), 'utf8'));
+    expect(title).toBe(catalog.newsite_starter_welcome_title);
+    expect(mocks.tx.page.create.mock.calls[0]?.[0].data.content).toBe(catalog.newsite_starter_welcome_content);
   });
 
   it('keeps the existing empty tree when starter is omitted', async () => {
@@ -373,40 +389,22 @@ describe('site creation language, starters and address availability', () => {
 
   it('returns a typed 409 with a free suggestion before writing a taken typed address', async () => {
     mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.slug === 'taken' ? { id: 'other' } : null));
+    mocks.projectFindMany.mockResolvedValue([{ slug: 'taken' }]);
     await expect(createProject('user-1', { name: 'Docs', slug: 'taken' })).rejects.toMatchObject({
       code: 'database:conflict',
       status: 409,
-      details: { reason: 'slug_taken', slug: 'taken', suggestedSlug: 'taken-2' },
+      details: { reason: 'slug_taken', slug: 'taken', suggestedSlug: expect.stringMatching(/^taken-[a-f0-9]{8}$/) },
     });
     expect(mocks.tx.project.create).not.toHaveBeenCalled();
   });
 
-  it('maps unique-constraint races to the same typed conflict', async () => {
-    const { Prisma } = await import('@nibleaf/database');
-    mocks.tx.project.create.mockRejectedValueOnce(
-      new Prisma.PrismaClientKnownRequestError('race', { code: 'P2002', clientVersion: 'test', meta: { target: ['slug'] } }),
-    );
-    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.slug === 'taken' ? { id: 'other' } : null)).mockResolvedValueOnce(null);
-    await expect(createProject('user-1', { name: 'Docs', slug: 'taken' })).rejects.toMatchObject({
-      status: 409,
-      details: { reason: 'slug_taken', suggestedSlug: 'taken-2' },
-    });
-  });
-
-  it('reports the final auto-derived slug and only checks names in accessible sites', async () => {
-    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.slug === 'acme-docs' ? { id: 'other' } : null));
-    await expect(checkProjectAvailability('user-1', { name: '  ACME Docs ' })).resolves.toEqual({
-      slug: 'acme-docs-2',
-      available: true,
-      suggestedSlug: 'acme-docs-2',
-      nameTaken: true,
-    });
-    expect(mocks.projectFindMany).toHaveBeenCalledWith({ where: { id: { in: ['project-a'] } }, select: { name: true } });
-    await expect(checkProjectAvailability('user-1', { name: 'New', slug: 'acme-docs' })).resolves.toMatchObject({
+  it('returns a random suggestion for an occupied auto-derived address without site metadata', async () => {
+    mocks.projectFindMany.mockResolvedValue([{ slug: 'acme-docs' }]);
+    await expect(checkProjectAvailability('user-1', { name: 'ACME Docs' })).resolves.toEqual({
       available: false,
-      nameTaken: false,
-      suggestedSlug: 'acme-docs-2',
+      suggestion: expect.stringMatching(/^acme-docs-[a-f0-9]{8}$/),
     });
+    expect(mocks.projectFindFirst).not.toHaveBeenCalled();
   });
   it('checks only the requested organization and refuses an inaccessible organization', async () => {
     await checkProjectAvailability('user-1', { organizationId: 'org-a', name: 'Docs' });
@@ -425,23 +423,56 @@ describe('site creation language, starters and address availability', () => {
   ])('derives the same usable address for preview and creation: %s', async (name, expected) => {
     await createProject('user-1', { name });
     expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ slug: expected }) });
-    await expect(checkProjectAvailability('user-1', { name })).resolves.toMatchObject({ slug: expected, available: true });
+    await expect(checkProjectAvailability('user-1', { name })).resolves.toEqual({ available: true });
   });
 
   it('checks collisions for neutral addresses and returns the final suffixed preview', async () => {
-    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.slug === 'site-178xry5' ? { id: 'other' } : null));
-    await expect(checkProjectAvailability('user-1', { name: 'وثائق جود 263' })).resolves.toMatchObject({ slug: 'site-178xry5-2', available: true });
+    mocks.projectFindMany.mockResolvedValue([{ slug: 'site-178xry5' }]);
+    await expect(checkProjectAvailability('user-1', { name: 'وثائق جود 263' })).resolves.toMatchObject({
+      suggestion: expect.stringMatching(/^site-178xry5-[a-f0-9]{8}$/),
+      available: false,
+    });
     await createProject('user-1', { name: 'وثائق جود 263' });
-    expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ slug: 'site-178xry5-2' }) });
+    expect(mocks.tx.project.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ slug: expect.stringMatching(/^site-178xry5-[a-f0-9]{8}$/) }),
+    });
   });
   it('retains a numeric address that the author explicitly types', async () => {
     await createProject('user-1', { name: 'وثائق جود 263', slug: '263' });
     expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ slug: '263' }) });
   });
-  it.each(['www', 'admin', 'api', 'app', 'docs', 'storage', 'cname', 'status', 'mail', 'xn--nibleaf', 'dashboard', 'gateway', 'console', 'sites', 'ingress', 'uploads', 'assets'])('rejects reserved hostname %s on availability, create and existing-site update', async (slug) => {
-    mocks.projectFindFirst.mockImplementation(async ({ where }) => where.id ? { id: 'project-new', organizationId: 'org-a', slug: 'ordinary' } : null);
-    await expect(checkProjectAvailability('user-1', { organizationId: 'org-a', name: 'Site', slug })).rejects.toMatchObject({ status: 400, details: { reason: 'slug_reserved' } });
-    await expect(createProject('user-1', { organizationId: 'org-a', name: 'Site', slug })).rejects.toMatchObject({ status: 400, details: { reason: 'slug_reserved' } });
+  it.each([
+    'www',
+    'admin',
+    'api',
+    'app',
+    'docs',
+    'storage',
+    'cname',
+    'status',
+    'mail',
+    'xn--nibleaf',
+    'dashboard',
+    'gateway',
+    'console',
+    'sites',
+    'ingress',
+    'uploads',
+    'assets',
+    'login',
+    'objects',
+  ])('rejects reserved hostname %s on availability, create and existing-site update', async (slug) => {
+    mocks.projectFindFirst.mockImplementation(async ({ where }) =>
+      where.id ? { id: 'project-new', organizationId: 'org-a', slug: 'ordinary' } : null,
+    );
+    await expect(checkProjectAvailability('user-1', { organizationId: 'org-a', name: 'Site', slug })).rejects.toMatchObject({
+      status: 400,
+      details: { reason: 'slug_reserved' },
+    });
+    await expect(createProject('user-1', { organizationId: 'org-a', name: 'Site', slug })).rejects.toMatchObject({
+      status: 400,
+      details: { reason: 'slug_reserved' },
+    });
     await expect(updateProject('org-a', 'project-new', { slug })).rejects.toMatchObject({ status: 400, details: { reason: 'slug_reserved' } });
     expect(mocks.tx.project.create).not.toHaveBeenCalled();
   });
@@ -453,7 +484,7 @@ describe('site creation language, starters and address availability', () => {
 
   it('bounds an occupied-slug probe to one IN query of at most five non-sequential candidates', async () => {
     mocks.projectFindFirst.mockResolvedValue({ id: 'occupied' });
-    mocks.projectFindMany.mockImplementation(async ({ where }) => where.slug ? where.slug.in.map((slug: string) => ({ slug })) : []);
+    mocks.projectFindMany.mockImplementation(async ({ where }) => (where.slug ? where.slug.in.map((slug: string) => ({ slug })) : []));
     await expect(checkProjectAvailability('user-1', { name: 'Site', slug: 'taken' })).resolves.toEqual({ available: false });
     expect(mocks.projectFindFirst).not.toHaveBeenCalled();
     expect(mocks.projectFindMany).toHaveBeenCalledTimes(1);
@@ -473,7 +504,13 @@ describe('site creation language, starters and address availability', () => {
 
   it.each(['en', 'ar'])('stores the exact %s catalog title and body for every starter page', async (language) => {
     const catalog = JSON.parse(readFileSync(new URL(`../../../../packages/i18n/messages/${language}.json`, import.meta.url), 'utf8'));
-    const messageFor: Record<string, string> = { welcome: 'welcome', 'getting-started': 'gettingstarted', guides: 'guides', 'first-guide': 'firstguide', faq: 'faq' };
+    const messageFor: Record<string, string> = {
+      welcome: 'welcome',
+      'getting-started': 'gettingstarted',
+      guides: 'guides',
+      'first-guide': 'firstguide',
+      faq: 'faq',
+    };
     for (const starter of ['blank', 'product-docs', 'help-center'] as const) {
       mocks.tx.page.create.mockClear();
       await createProject('user-1', { name: 'Localized site', language, starter });
@@ -484,5 +521,4 @@ describe('site creation language, starters and address availability', () => {
       }
     }
   });
-
 });

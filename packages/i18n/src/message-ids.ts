@@ -4503,6 +4503,7 @@ export const MESSAGE_IDS = {
   'people.invite.recipients': 'people_invite_recipients',
   'people.invitations.resendNotQueued': 'people_invitations_resendnotqueued',
   'people.site.invitedFailed': 'people_site_invitedfailed',
+  'newSite.addressUnavailable': 'newsite_addressunavailable',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

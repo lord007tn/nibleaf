@@ -4623,5 +4623,6 @@
   "newsite_starter_firstguide_content": "## Conclua uma tarefa\n\nSubstitua este exemplo por uma tarefa comum dos clientes.\n\n- Descreva a primeira ação.\n- Mostre como verificar se funcionou.\n",
   "newsite_starter_faq_title": "Perguntas frequentes",
   "newsite_starter_faq_content": "## Dúvidas comuns\n\nResponda a uma pergunta real em poucas frases.\n\n- Explique onde encontrar as configurações da conta.\n- Diga como entrar em contato com sua equipe.\n",
-  "newsite_addresslatinhint": "Os endereços dos sites usam letras latinas. Escolha um endereço fácil de ler, por exemplo, help-center."
+  "newsite_addresslatinhint": "Os endereços dos sites usam letras latinas. Escolha um endereço fácil de ler, por exemplo, help-center.",
+  "newsite_addressunavailable": "Este endereço está reservado ou indisponível. Escolha outro endereço."
 }

@@ -1,3 +1,4 @@
+import { isProjectHostnameAllowed } from './project-hostname';
 import { slugify } from './utils';
 
 /** Keep a usable Latin brand ("Jood وثائق" → "jood"). If more than two thirds of the letters
@@ -10,7 +11,7 @@ export function deriveSiteSlug(name: string) {
   const latinLetters = name.match(/[a-z]/gi)?.length ?? 0;
   const otherLetters = [...normalized].filter((letter) => /\p{L}/u.test(letter) && !/\p{Script=Latin}/u.test(letter)).length;
   const needsCustomAddress = !/[a-z]/.test(slug) || otherLetters > 2 * latinLetters;
-  if (!needsCustomAddress) return { slug, needsCustomAddress };
+  if (!needsCustomAddress && isProjectHostnameAllowed(slug)) return { slug, needsCustomAddress };
 
   // FNV-1a is a stable name fingerprint, not an identifier or a security token.
   let hash = 2_166_136_261;

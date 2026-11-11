@@ -1,11 +1,14 @@
+import { randomBytes } from 'node:crypto';
 import { eraseProject, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
 import { Prisma, prisma } from '@nibleaf/database';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
+import { isProjectHostnameAllowed } from '@nibleaf/shared/project-hostname';
 import { deriveSiteSlug } from '@nibleaf/shared/site-slug';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import type { CreateProjectBody, ProjectConfigUpdate, projectAvailabilityQuery, UpdateProjectBody } from '@nibleaf/validators';
 import type { z } from 'zod';
+import { env } from '@/env';
 import { badRequest, conflict, forbidden, notFound } from '@/errors';
 import { accessibleProjectIds, accessibleProjectRoles, resolveOrgAccess } from '@/lib/access';
 import { siteHosts } from '@/lib/site-host';
@@ -40,24 +43,32 @@ export const assertProjectInOrg = async (organizationId: string, projectId: stri
 /** Compatibility export for action callers; all team access uses the resolver. */
 export { resolveSiteAccess as assertProjectAccess } from '@/lib/access';
 
-const candidateSlug = (base: string, index: number) => {
-  if (index === 0) {
-    return base.slice(0, MAX_PROJECT_SLUG_LENGTH).replace(/-+$/g, '') || 'docs';
-  }
-  const suffix = `-${index + 1}`;
-  return `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '') || 'docs'}${suffix}`;
+// Reserve configured endpoints even when their labels differ from Cloud defaults.
+const systemHosts = [
+  env.APP_URL,
+  env.API_URL,
+  env.ADMIN_URL,
+  env.SITE_BASE_DOMAIN,
+  env.CUSTOM_DOMAIN_CNAME_TARGET,
+  env.STORAGE_PUBLIC_URL,
+  env.CDN_URL,
+  env.BETTER_AUTH_URL,
+  env.STORAGE_PUBLIC_ENDPOINT,
+];
+const assertProjectSlug = (slug: string) => {
+  if (!isProjectHostnameAllowed(slug, systemHosts)) throw badRequest('That site address is reserved or invalid.', { reason: 'slug_reserved' });
 };
 
-const uniqueProjectSlug = async (base: string) => {
-  for (let i = 0; i < 100; i++) {
-    const candidate = candidateSlug(base, i);
-    const existing = await prisma.project.findFirst({ where: { slug: candidate }, select: { id: true } });
-    if (!existing) {
-      return candidate;
-    }
-  }
-  const suffix = `-${Date.now().toString(36)}`;
-  return `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '') || 'docs'}${suffix}`;
+/** One bounded global query; random candidates cannot reveal occupied suffix runs. */
+const uniqueProjectSlug = async (input: string) => {
+  const base = isProjectHostnameAllowed(input, systemHosts) ? input : deriveSiteSlug(`Site ${input}`).slug;
+  const candidates = [
+    base,
+    ...Array.from({ length: 4 }, () => `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - 9).replace(/-+$/g, '')}-${randomBytes(4).toString('hex')}`),
+  ].filter((slug) => isProjectHostnameAllowed(slug, systemHosts));
+  const occupied = await prisma.project.findMany({ where: { slug: { in: candidates } }, select: { slug: true } });
+  const taken = new Set(occupied.map((row) => row.slug));
+  return candidates.find((slug) => !taken.has(slug));
 };
 
 /** The commit message `publishStarterSite` (@nibleaf/auth) gives the sign-up
@@ -196,26 +207,21 @@ export const resolveWebsiteOrganization = async (userId: string, organizationId?
   return chosen.organizationId;
 };
 
-/** Name checks only inspect sites this user can access; global address checks reveal no site data. */
+/** A deliberately minimal, rate-limited global address check; no site metadata. */
 export const checkProjectAvailability = async (userId: string, query: z.infer<typeof projectAvailabilityQuery>) => {
-  const organizationId = await resolveWebsiteOrganization(userId, query.organizationId);
-  const ids = await accessibleProjectIds(userId, organizationId);
-  const [names, suggestedSlug] = await Promise.all([
-    prisma.project.findMany({ where: { id: { in: ids } }, select: { name: true } }),
-    uniqueProjectSlug(query.slug ?? deriveSiteSlug(query.name).slug),
-  ]);
-  return {
-    slug: query.slug ?? suggestedSlug,
-    available: !query.slug || suggestedSlug === query.slug,
-    suggestedSlug,
-    nameTaken: names.some((site) => site.name.trim().normalize('NFC').toLocaleLowerCase() === query.name.trim().normalize('NFC').toLocaleLowerCase()),
-  };
+  await resolveWebsiteOrganization(userId, query.organizationId);
+  if (query.slug !== undefined) assertProjectSlug(query.slug);
+  const base = query.slug ?? deriveSiteSlug(query.name).slug;
+  const suggestion = await uniqueProjectSlug(base);
+  return suggestion === base ? { available: true } : { available: false, ...(suggestion ? { suggestion } : {}) };
 };
 
 /** Create a website inside an existing organization (design §6.10). */
 export const createProject = async (userId: string, body: CreateProjectBody) => {
   const organizationId = await resolveWebsiteOrganization(userId, body.organizationId);
+  if (body.slug !== undefined) assertProjectSlug(body.slug);
   const slug = body.slug ?? (await uniqueProjectSlug(deriveSiteSlug(body.name).slug));
+  if (!slug) throw conflict('No site address is available. Choose another address.', { reason: 'slug_taken' });
   const slugConflict = async () =>
     conflict('That site address is already in use.', { reason: 'slug_taken', slug, suggestedSlug: await uniqueProjectSlug(slug) });
   if (body.slug && (await prisma.project.findFirst({ where: { slug }, select: { id: true } }))) throw await slugConflict();
@@ -331,6 +337,7 @@ const mergeConfig = (existing: Record<string, unknown>, incoming: ProjectConfigU
 
 export const updateProject = async (organizationId: string, id: string, body: UpdateProjectBody) => {
   const project = await assertProjectInOrg(organizationId, id);
+  if (body.slug !== undefined) assertProjectSlug(body.slug);
   if (body.slug !== undefined && body.slug !== project.slug) {
     const existing = await prisma.project.findFirst({ where: { slug: body.slug, id: { not: id } }, select: { id: true } });
     if (existing) {
