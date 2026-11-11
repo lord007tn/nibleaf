@@ -2179,6 +2179,7 @@
   "site_searchprompt": "Digite para pesquisar…",
   "site_results": "Resultados",
   "site_loading": "Carregando…",
+  "site_articleloadfailed": "Não foi possível carregar esta página. Tentar novamente",
   "site_previous": "Anterior",
   "site_next": "Próximo",
   "site_onthispage": "Nesta página",

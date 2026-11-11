@@ -103,6 +103,9 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       const href = isCustomDomainSite(params.projectId) ? `/${target}${query}` : `/sites/${params.projectId}/${target}${query}`;
       throw redirect({ href, statusCode: 302 });
     }
+    // The article renders in one pass, never a fallback first. Imported here,
+    // not at the top: this loader is in every route's first load.
+    await import('@/lib/reader-hydration-modules').then((module) => module.loadArticleRenderer(page.page.content));
     return { kind: 'page' as const, page, lang: deps.lang, version, siteOrigin: customDomainOrigin() };
   },
   // Lets the server entry add the Markdown `Link` header from this already

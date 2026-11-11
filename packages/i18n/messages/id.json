@@ -2116,6 +2116,7 @@
   "site_searchprompt": "Ketik untuk mencari…",
   "site_results": "Hasil",
   "site_loading": "Memuat…",
+  "site_articleloadfailed": "Halaman ini tidak dapat dimuat. Coba lagi",
   "site_previous": "Sebelumnya",
   "site_next": "Selanjutnya",
   "site_onthispage": "Di halaman ini",

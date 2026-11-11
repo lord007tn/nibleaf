@@ -20,6 +20,9 @@ export const Route = createFileRoute('/sites/$projectId/')({
   loader: async ({ params, deps, context: { queryClient } }) => {
     try {
       const page = await queryClient.query(sitePageQueryOptions(params.projectId, '', deps.lang));
+      // The article renders in one pass, never a fallback first. Imported here,
+      // not at the top: this loader is in every route's first load.
+      await import('@/lib/reader-hydration-modules').then((module) => module.loadArticleRenderer(page.page.content));
       return { page, lang: deps.lang, siteOrigin: customDomainOrigin() };
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
