@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type EffectivePlan, evaluateCapability, type PlanAssignmentState, type PlanPolicy, resolveEffectivePlan } from './plan-policy';
 
 export const ADDON_GROUPS = ['engagement', 'privacy', 'publishing'] as const;
 export type AddonGroup = 'engagement' | 'privacy' | 'publishing';
@@ -224,74 +225,37 @@ export interface ProjectAddonProjectionRow {
   config: unknown;
 }
 
-export interface AddonDeliveryPlanAssignment {
-  status: string;
-  effectiveAt: Date | string;
-  expiresAt: Date | string | null;
-  plan: {
-    key: string;
-    active: boolean;
-    entitlements: readonly {
-      capabilityKey: string;
-      enabled: boolean;
-      meter: { active: boolean } | null;
-    }[];
-  };
-}
+export type AddonDeliveryPlan = PlanPolicy;
+export type AddonDeliveryPlanAssignment = PlanAssignmentState<AddonDeliveryPlan>;
 
-const validInstant = (value: Date | string): number | null => {
-  const timestamp = new Date(value).getTime();
-  return Number.isFinite(timestamp) ? timestamp : null;
-};
-
-/** The plan every organization is on without an active assignment (usage
- *  provisioning's default). It carries no entitlement rows: eligibility alone
- *  decides, so it can never unlock an add-on that is not offered on `free`. */
-export const DEFAULT_ADDON_PLAN: AddonDeliveryPlanAssignment['plan'] = { key: 'free', active: true, entitlements: [] };
-
-/**
- * Whether a plan makes an add-on available. Same rule as the server's
- * capability resolver (`resolveProjectCapability`), so settings and delivery
- * never disagree: an explicit entitlement row decides (enabled, and its meter
- * active); without one, the plan must be among the add-on's eligible plans.
- * `coming_soon` add-ons are never available.
- */
-export const addonAvailableForPlan = (availability: AddonDefinition['availability'], plan: AddonDeliveryPlanAssignment['plan']): boolean => {
-  if (availability.state === 'coming_soon') return false;
-  const entitlement = plan.entitlements.find((item) => item.capabilityKey === availability.entitlement);
-  if (entitlement) return entitlement.enabled && (entitlement.meter?.active ?? true);
-  return availability.plans.some((planKey) => planKey === plan.key);
-};
+/** Whether the effective plan grants an add-on (the shared capability rule). */
+export const addonGrantedBy = (effective: EffectivePlan, availability: AddonDefinition['availability']): boolean =>
+  evaluateCapability(effective, {
+    capabilityKey: availability.entitlement,
+    eligiblePlanKeys: availability.plans,
+    comingSoon: availability.state === 'coming_soon',
+  }).decision === 'enabled';
 
 /** Resolve the add-ons that may reach public delivery or publish execution.
- * Durable enabled state remains the user's preference; the plan is a separate
- * gate. An organization without an ACTIVE assignment (missing, inactive,
- * expired or not yet effective) is gated by the default free plan, never by a
- * paid one, so add-ons offered on every plan (CI checks, broken links) are
- * never dropped and paid-only add-ons stay off. Meter quantities and limits are
- * intentionally absent: usage enforcement is advisory. */
+ * Durable enabled state (a ProjectAddon row, else the add-on's default) is the
+ * user's preference; the effective plan (`resolveEffectivePlan`: the org's
+ * active assignment, else the canonical free plan as configured, else
+ * nothing) is a separate gate, evaluated with the same rule as settings and
+ * MCP (`evaluateCapability`). Meter quantities and limits are intentionally
+ * absent: usage enforcement is advisory. */
 export const projectAddonRowsForDelivery = (
   rows: readonly { key: string; enabled: boolean; config: unknown }[],
   assignment: AddonDeliveryPlanAssignment | null | undefined,
+  defaultPlan: AddonDeliveryPlan | null | undefined,
   now = new Date(),
 ): ProjectAddonProjectionRow[] => {
   const byId = new Map(rows.flatMap((row) => (isAddonId(row.key) ? [[row.key, row] as const] : [])));
-  const nowAt = now.getTime();
-  const effectiveAt = assignment ? validInstant(assignment.effectiveAt) : null;
-  const expiresAt = assignment?.expiresAt ? validInstant(assignment.expiresAt) : null;
-  const activePlan =
-    assignment?.status === 'active' &&
-    assignment.plan.active &&
-    effectiveAt !== null &&
-    effectiveAt <= nowAt &&
-    (assignment.expiresAt === null || (expiresAt !== null && expiresAt > nowAt));
-  const plan = activePlan ? assignment.plan : DEFAULT_ADDON_PLAN;
-
+  const effective = resolveEffectivePlan(assignment, defaultPlan, now);
   return addonDefinitions.map((definition) => {
     const row = byId.get(definition.id);
     return {
       key: definition.id,
-      enabled: (row?.enabled ?? definition.defaultEnabled) && addonAvailableForPlan(definition.availability, plan),
+      enabled: (row?.enabled ?? definition.defaultEnabled) && addonGrantedBy(effective, definition.availability),
       config: row?.config ?? definition.defaultConfig,
     };
   });
