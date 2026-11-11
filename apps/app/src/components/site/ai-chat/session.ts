@@ -1,3 +1,4 @@
+import { randomUUID } from '@nibleaf/shared/uuid';
 import type { SiteChatEventsBody } from '@nibleaf/validators';
 
 /** Analytics identity is created only after consent allows it, separately per site. */
@@ -5,7 +6,7 @@ export const readerSession = (projectId: string, consent: SiteChatEventsBody['co
   if (consent !== 'granted' && consent !== 'not_required') return undefined;
   try {
     const key = `nibleaf.chat.session.${projectId}`;
-    const id = sessionStorage.getItem(key) ?? crypto.randomUUID();
+    const id = sessionStorage.getItem(key) ?? randomUUID();
     sessionStorage.setItem(key, id);
     return id;
   } catch {

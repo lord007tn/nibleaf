@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
+import { randomUUID } from '@nibleaf/shared/uuid';
 import {
   AI_CHAT_EVENT,
   type AiChatClientEvent,
@@ -53,7 +54,7 @@ export default function Panel(
 ) {
   const t = siteChatT(options.lang);
   const viewport = useChatViewport(options.open);
-  const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
+  const [conversationId, setConversationId] = useState(() => randomUUID());
   const [finals, setFinals] = useState<Record<string, AiChatFinalEvent>>({});
   const [followUps, setFollowUps] = useState<Record<string, string[]>>({});
   const [phase, setPhase] = useState<'searching' | 'writing' | 'checking'>('searching');
@@ -232,7 +233,7 @@ export default function Panel(
     turnScopes.current = {};
     setCode(undefined);
     setAnnouncement('');
-    setConversationId(crypto.randomUUID());
+    setConversationId(randomUUID());
   };
   // What the reader is typing: kept here, so closing the panel does not lose it.
   const [typed, setTyped] = useState('');
