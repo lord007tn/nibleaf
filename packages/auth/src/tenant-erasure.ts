@@ -60,6 +60,8 @@ export const eraseProject = async (projectId: string) => {
     // deletion manifest. Keep this list independent of cascading foreign keys.
     await tx.pageRevision.deleteMany({ where: { projectId: project.id } });
     await tx.pageRevisionState.deleteMany({ where: { projectId: project.id } });
+    // Trash holds deleted page content and comment bodies.
+    await tx.pageTrash.deleteMany({ where: { projectId: project.id } });
     await tx.project.delete({ where: { id: project.id } });
   });
   return { organizationId: project.organizationId, projectId: project.id };
