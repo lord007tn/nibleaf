@@ -3637,6 +3637,7 @@
   "admin_operations_gitkind_push": "دفع",
   "editor_saveerror": "تعذّر حفظ التغييرات. يرجى المحاولة مجددًا قبل المغادرة.",
   "editor_retrysave": "إعادة محاولة الحفظ",
+  "editor_pagetoolarge": "هذه الصفحة كبيرة جدًا (الحد الأقصى 2 ميغابايت). قسّمها إلى صفحات أصغر.",
   "dashboard_search_noresults": "لا توجد مواقع تطابق بحثك.",
   "dashboard_search_clear": "مسح البحث",
   "auth_invite_switchaccount": "تسجيل الدخول بالحساب المدعو",

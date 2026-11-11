@@ -3589,6 +3589,7 @@
   "admin_operations_gitkind_push": "پش",
   "editor_saveerror": "تبدیلیاں محفوظ نہیں ہو سکیں۔ جانے سے پہلے دوبارہ کوشش کریں۔",
   "editor_retrysave": "محفوظ کرنے کی دوبارہ کوشش کریں",
+  "editor_pagetoolarge": "یہ صفحہ بہت بڑا ہے (زیادہ سے زیادہ 2 MB)۔ اسے چھوٹے صفحات میں تقسیم کریں۔",
   "dashboard_search_noresults": "آپ کی تلاش سے کوئی سائٹ مطابقت نہیں رکھتی۔",
   "dashboard_search_clear": "تلاش صاف کریں",
   "auth_invite_switchaccount": "مدعو کردہ اکاؤنٹ سے لاگ ان کریں",

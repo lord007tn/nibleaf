@@ -329,36 +329,21 @@ describe('collectPublishChecks', () => {
     expect(collectPublishChecks(disabled)).toEqual([]);
   });
 
-  it('lists errors first and stays linear on a large site', () => {
-    const site = (count: number): SiteSnapshot =>
+  // Its cost as the site grows is bounded in publish-checks.growth.test.ts.
+  it('lists errors first on a large site', () => {
+    const checks = collectPublishChecks(
       snapshot(
-        Array.from({ length: count }, (_, index) =>
+        Array.from({ length: 400 }, (_, index) =>
           page({
             path: `section-${index % 20}/page-${index}`,
             title: `Topic ${index}`,
             content: `[next](/section-${(index + 1) % 20}/page-${index + 1})\n\n![](/img-${index}.png)`,
           }),
         ),
-      );
-    /** Fastest of a few runs, so one slow tick on a shared CI core can't decide the result. */
-    const fastestMs = (input: SiteSnapshot, rounds: number): number => {
-      let fastest = Number.POSITIVE_INFINITY;
-      for (let round = 0; round < rounds; round += 1) {
-        const started = performance.now();
-        collectPublishChecks(input);
-        fastest = Math.min(fastest, performance.now() - started);
-      }
-      return fastest;
-    };
-    const small = site(100);
-    const large = site(400);
-    collectPublishChecks(small); // warm up the Markdown pipeline
-    const checks = collectPublishChecks(large);
+      ),
+    );
     expect(checks[0]).toEqual(expect.objectContaining({ code: 'broken-internal-link', severity: 'error' }));
     expect(checks.filter((check) => check.code === 'missing-alt')).toHaveLength(400);
-    // Like against like on the same machine: 4x the pages stays near 4x the
-    // time (quadratic work would be 16x), however slow the CI core is.
-    expect(fastestMs(large, 2)).toBeLessThanOrEqual(6 * fastestMs(small, 3) + 50);
   });
 });
 

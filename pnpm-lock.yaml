@@ -883,6 +883,9 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
+      '@nibleaf/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig

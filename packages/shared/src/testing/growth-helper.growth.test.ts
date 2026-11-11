@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { constantGrowthLimit, growthMs, growthTestsEnabled, linearGrowthLimit } from './growth';
+import { constantGrowthLimit, growthMs, growthMsAsync, growthTestsEnabled, linearGrowthLimit } from './growth';
 
 /** Work proportional to the input's length. */
 const linear = (input: string) => {
@@ -58,6 +58,22 @@ describe.runIf(growthTestsEnabled)('growth calibration', () => {
     expect(large).toBeGreaterThan(0);
   });
 
+  it('holds the same guarantee for async work', async () => {
+    let calls = 0;
+    const speedsUp = async (input: string) => {
+      calls += 1;
+      return spin(calls <= 6 ? 6 : 0.3) + input.length;
+    };
+    const [small] = await growthMsAsync(speedsUp, 'a', 'aaaa', { minMs: 4 });
+    expect(small).toBeGreaterThanOrEqual(4);
+    let vanishingCalls = 0;
+    const vanishes = async (input: string) => {
+      vanishingCalls += 1;
+      return vanishingCalls <= 6 ? spin(6) : input.length;
+    };
+    await expect(growthMsAsync(vanishes, 'a', 'aaaa', { minMs: 4, budgetMs: 30 })).rejects.toThrow(/calibration failed/);
+  });
+
   it('throws instead of returning a pair that cannot tell growth apart', () => {
     // Slow while the repeats are sized, then almost free, with too little time to
     // fill minMs again: it gives up within its budget rather than return.
@@ -69,20 +85,22 @@ describe.runIf(growthTestsEnabled)('growth calibration', () => {
     expect(() => growthMs(vanishes, 'a', 'aaaa', { minMs: 4, budgetMs: 30 })).toThrow(/calibration failed/);
   });
 
-  it('runs the large input a quarter as often and scales its time back up, so both samples last about as long', () => {
+  it('runs the large input a quarter as often and scales its time back up, so both samples last about as long', async () => {
     const calls = { small: 0, large: 0 };
-    const [small, large] = growthMs(
-      (input: string) => {
-        calls[input.length === 1 ? 'small' : 'large'] += 1;
-        return spin(0.05 * input.length);
-      },
-      'a',
-      'aaaa',
-    );
-    expect(calls.large).toBeLessThan(calls.small / 2);
-    // Four times the work per call still reads as about four times the time.
-    expect(large / small).toBeGreaterThan(3);
-    expect(large / small).toBeLessThan(5.5);
+    const work = (input: string) => {
+      calls[input.length === 1 ? 'small' : 'large'] += 1;
+      return spin(0.05 * input.length);
+    };
+    const check = ([small, large]: [number, number]) => {
+      expect(calls.large).toBeLessThan(calls.small / 2);
+      // Four times the work per call still reads as about four times the time.
+      expect(large / small).toBeGreaterThan(3);
+      expect(large / small).toBeLessThan(5.5);
+    };
+    check(growthMs(work, 'a', 'aaaa'));
+    calls.small = 0;
+    calls.large = 0;
+    check(await growthMsAsync(async (input: string) => work(input), 'a', 'aaaa'));
   });
 
   it('gives every call a fresh input when asked, with a counter unique across the measurement', () => {

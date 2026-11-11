@@ -3532,6 +3532,7 @@
   "admin_operations_gitkind_push": "পুশ",
   "editor_saveerror": "পরিবর্তন সংরক্ষণ করা যায়নি। চলে যাওয়ার আগে আবার চেষ্টা করুন।",
   "editor_retrysave": "আবার সংরক্ষণ করুন",
+  "editor_pagetoolarge": "এই পাতাটি খুব বড় (সর্বোচ্চ 2 MB)। এটিকে ছোট ছোট পাতায় ভাগ করুন।",
   "dashboard_search_noresults": "আপনার অনুসন্ধানের সাথে কোনো সাইট মেলেনি।",
   "dashboard_search_clear": "অনুসন্ধান মুছুন",
   "auth_invite_switchaccount": "আমন্ত্রিত অ্যাকাউন্ট দিয়ে লগ ইন করুন",
