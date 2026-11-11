@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { Check, CircleDot, Info, Loader2, TriangleAlert } from 'lucide-react';
 
-export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+export type SaveState = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
 
 type PublishState = 'unpublished' | 'published';
 
@@ -38,10 +38,10 @@ export function SaveStatus({
             <Check aria-hidden className="size-3.5 text-primary" />
             <span className="max-sm:sr-only">{t('editor.savedShort')}</span>
           </>
-        ) : state === 'error' ? (
+        ) : state === 'error' || state === 'offline' ? (
           <>
             <TriangleAlert aria-hidden className="size-3.5 text-destructive" />
-            <span className="max-sm:sr-only">{t('editor.saveFailedShort')}</span>
+            <span className="max-sm:sr-only">{t(state === 'offline' ? 'site.aiOffline' : 'editor.saveFailedShort')}</span>
           </>
         ) : null}
       </span>

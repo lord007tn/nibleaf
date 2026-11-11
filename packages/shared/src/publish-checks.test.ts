@@ -209,8 +209,9 @@ describe('code boundaries come from the parsed tree', () => {
     expect(broken('<Card title="[Next](/in-attribute)" />')).toEqual([]);
   });
 
-  it('checks a link in an MDX comment, which the reader renders as text with a live link', () => {
-    expect(broken('{/* [a](/in-expression) */}')).toEqual(['/in-expression']);
+  it('skips a link in an MDX comment, which the reader drops', () => {
+    expect(broken('{/* [a](/in-expression) */}')).toEqual([]);
+    expect(broken('Text {/* see [a](/inline-comment) */} and [b](/missing).')).toEqual(['/missing']);
   });
 
   it('reports a link inside an MDX component body', () => {

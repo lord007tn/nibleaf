@@ -122,7 +122,11 @@ function SiteChrome() {
   const privateGate = 'gate' in loaderData ? loaderData.gate : undefined;
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
-  const announcement = useSiteLinkNavigation(projectId);
+  // Only a public site with no reader session may be prefetched and cached
+  // between navigations (lib/reader-site-access.ts); anything else, or no shell, fails closed.
+  const announcement = useSiteLinkNavigation(projectId, {
+    publicSite: site?.project.config?.visibility === 'public' && !site?.signedIn,
+  });
   const [searchOpen, setSearchOpen] = useState(false);
   const [pageAlternates, setPageAlternates] = useState<SiteLanguageAlternate[]>([]);
   const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState<number>();

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { reloadOnceOnChunkLoadFailure } from './chunk-reload';
+import { runSpeculative, setNavigationPending } from './document-recovery';
 
 const chunkError = (file = 'editor-OLD.js') => new TypeError(`Failed to fetch dynamically imported module: https://app.nibleaf.test/assets/${file}`);
 
@@ -108,6 +109,29 @@ describe('reload once after a chunk fails to load', () => {
     const second = openDocument(storage);
     expect(() => failChunkLoad(chunkError('settings-OLD.js'))).toThrow();
     expect(second.reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('never reloads the page being read when only a prefetch failed to load a chunk', async () => {
+    const storage = memoryStorage();
+    const page = openDocument(storage);
+    let finish: () => void = () => undefined;
+    const prefetch = runSpeculative(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    // Cancelled, so Vite doesn't rethrow into a prefetch nobody awaits.
+    expect(() => failChunkLoad(chunkError('next-page-OLD.js'))).not.toThrow();
+    expect(page.reload).not.toHaveBeenCalled();
+
+    // Once the reader opens a page, a chunk failure is theirs and reloads.
+    setNavigationPending(true);
+    expect(() => failChunkLoad(chunkError('next-page-OLD.js'))).toThrow();
+    expect(page.reload).toHaveBeenCalledTimes(1);
+    setNavigationPending(false);
+    finish();
+    await prefetch;
   });
 
   it('never reloads when session storage is blocked, so there can be no loop', () => {
