@@ -263,3 +263,33 @@ describe('pending changes after a language move', () => {
     expect(moved.reviewedStateHash).not.toBe(unchanged.reviewedStateHash);
   });
 });
+
+describe('pending changes: up to date', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.pageFindMany.mockResolvedValue([page]);
+  });
+
+  it('is never up to date before the first publish, even with no pages', async () => {
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    mocks.deploymentFindFirst.mockResolvedValue(null);
+    mocks.pageFindMany.mockResolvedValue([]);
+    const pending = await getPendingChanges('project-1');
+    expect(pending).toMatchObject({ hasBaseline: false, upToDate: false, changes: [] });
+  });
+
+  it('is up to date only when the draft would publish exactly what is live', async () => {
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    const published = await getCurrentSnapshot('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-1', version: 1, status: 'READY', snapshot: published, completedAt: new Date() });
+    expect(await getPendingChanges('project-1')).toMatchObject({ hasBaseline: true, upToDate: true, changes: [] });
+
+    // A redirect is not a page change, but it still ships with a publish.
+    mocks.projectFindUnique.mockResolvedValue(project([{ from: '/old', to: '/current' }]));
+    expect(await getPendingChanges('project-1')).toMatchObject({ hasBaseline: true, upToDate: false, changes: [] });
+
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Edited' }]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ upToDate: false, changes: [expect.objectContaining({ status: 'modified' })] });
+  });
+});

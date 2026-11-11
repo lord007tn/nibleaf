@@ -12,6 +12,7 @@ import {
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
+import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
@@ -165,6 +166,9 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const publishInFlight = useRef(false);
+  // The dialog opens on its primary action, not on the optional note.
+  const primaryAction = useRef<HTMLButtonElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
   const attemptToken = useRef(0);
   const mounted = useRef(true);
   const currentlyOpen = useRef(open);
@@ -204,15 +208,53 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
     return { sorted: ordered, multiLang: langs.size > 1 };
   }, [pending]);
 
+  const count = sorted.length;
+  const redirectIssues = pending?.redirectIssues ?? [];
+  const checks = pending?.checks ?? [];
+  const checkingChanges = loadingChanges || refreshingChanges;
+  // A check error is something the publish would fail on; warnings never block.
+  const checksBlock = !checkingChanges && hasCheckErrors(checks);
+  const hasBaseline = pending?.hasBaseline ?? true;
+  const neverPublished = pending?.hasBaseline === false;
+  // An empty page list is not always "nothing to publish": the list only compares
+  // pages, while settings, redirects and languages also ship with a publish. The
+  // server says when nothing at all would change (upToDate). A first publish
+  // needs at least one page to put online.
+  const hasPages = sorted.some((change) => change.kind === 'PAGE');
+  const nothingToPublish = !checkingChanges && !preflightFailed && (neverPublished ? !hasPages : pending?.upToDate === true);
+  // Every settled blocked state says why, which also keeps the action focusable.
+  // A check in progress is brief and announced on its own; giving it a reason
+  // would re-create the button (and drop focus) when the check ends.
+  const publishBlockedReason = checkingChanges
+    ? undefined
+    : preflightFailed
+      ? t('publish.preflightFailed')
+      : redirectIssues.length > 0
+        ? t('publish.redirectsBlocked')
+        : checksBlock
+          ? t('publish.checks.blockedReason')
+          : nothingToPublish
+            ? t(neverPublished ? 'publish.addPageFirst' : 'publish.upToDate')
+            : undefined;
+  const publishBlocked = checkingChanges || publishBlockedReason !== undefined;
+
+  // Focus opens on the primary action. While the first check runs it can't take
+  // focus, so the dialog itself holds it (never the optional note) and hands it to
+  // the action once the check settles, unless the person has moved on already.
+  const handedFocus = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      handedFocus.current = false;
+      return;
+    }
+    if (checkingChanges || handedFocus.current) return;
+    handedFocus.current = true;
+    const active = document.activeElement;
+    if (!active || active === document.body || active === popup.current) primaryAction.current?.focus();
+  }, [open, checkingChanges]);
+
   const doPublish = async () => {
-    if (
-      publishInFlight.current ||
-      loadingChanges ||
-      refreshingChanges ||
-      preflightFailed ||
-      (pending?.redirectIssues?.length ?? 0) > 0 ||
-      hasCheckErrors(pending?.checks)
-    ) {
+    if (publishInFlight.current || publishBlocked) {
       return;
     }
     const token = ++attemptToken.current;
@@ -280,19 +322,8 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
     );
   };
 
-  const count = sorted.length;
-  const redirectIssues = pending?.redirectIssues ?? [];
-  const checks = pending?.checks ?? [];
-  const checkingChanges = loadingChanges || refreshingChanges;
-  // A check error is something the publish would fail on; warnings never block.
-  const checksBlock = !checkingChanges && hasCheckErrors(checks);
-  // An empty article diff is not "nothing to publish": the preflight only compares
-  // pages, while redirects and language settings also ship with a publish.
-  const publishBlocked = checkingChanges || preflightFailed || redirectIssues.length > 0 || checksBlock;
-  const publishBlockedReason = checksBlock && redirectIssues.length === 0 && !preflightFailed ? t('publish.checks.blockedReason') : undefined;
   // Saving the draft, re-checking and sending the publish read as one action.
   const publishing = preparing || publish.isPending;
-  const hasBaseline = pending?.hasBaseline ?? true;
   const changeKey = useCallback((change: PendingChange) => `${change.id}:${change.status}`, []);
   const selectedChange = sorted.find((change) => changeKey(change) === selectedKey) ?? sorted[0] ?? null;
 
@@ -312,6 +343,11 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn('max-h-[90dvh] gap-0 overflow-y-auto p-0', reviewing ? 'sm:max-w-[940px]' : 'sm:max-w-[480px]')}
+        initialFocus={() => {
+          const action = primaryAction.current;
+          return action && !action.disabled ? action : popup.current;
+        }}
+        ref={popup}
         showCloseButton={false}
       >
         <DialogHeader className="gap-1 border-border border-b px-6 pt-5 pb-4">
@@ -322,7 +358,14 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
               <Button variant="ghost" size="sm" className="-ms-2 h-8" onClick={() => setReviewing(false)}>
                 <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('publish.backToSummary')}
               </Button>
-              <TooltipButton size="sm" disabled={publishBlocked} disabledReason={publishBlockedReason} loading={publishing} onClick={doPublish}>
+              <TooltipButton
+                disabled={publishBlocked}
+                disabledReason={publishBlockedReason}
+                loading={publishing}
+                onClick={doPublish}
+                ref={primaryAction}
+                size="sm"
+              >
                 <Rocket className="size-4" />
                 {t('publish.now')}
               </TooltipButton>
@@ -330,7 +373,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
           ) : (
             <>
               <DialogTitle className="font-semibold text-[17px] tracking-tight">{t('publish.title')}</DialogTitle>
-              <DialogDescription className="text-[13.5px]">{t('publish.subtitle')}</DialogDescription>
+              <DialogDescription className="text-[13.5px]">{t(neverPublished ? 'publish.firstPublishHint' : 'publish.subtitle')}</DialogDescription>
             </>
           )}
         </DialogHeader>
@@ -417,6 +460,11 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                   })}
                 </div>
               </div>
+              {neverPublished ? (
+                <StatusBadge className="ms-auto shrink-0" size="sm">
+                  {t('overview.live.unavailable')}
+                </StatusBadge>
+              ) : null}
             </div>
 
             {redirectIssues.length > 0 ? (
@@ -476,13 +524,13 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
             {/* Changes diff — what this publish will push live. */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{t('publish.changes')}</span>
+                <span className="font-medium text-sm">{t('publish.changes')}</span>
                 {refreshingChanges && !loadingChanges ? (
                   // Re-checking a diff that is already on screen: a quiet note, not a skeleton.
                   <span className="text-muted-foreground text-xs" role="status">
                     {t('publish.checking')}
                   </span>
-                ) : !checkingChanges && count > 0 ? (
+                ) : !checkingChanges && !nothingToPublish && count > 0 ? (
                   <span className="text-muted-foreground text-xs">
                     {hasBaseline
                       ? pending?.lastVersion != null
@@ -502,10 +550,20 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                     <SkeletonListRow className="min-h-11" key={row} />
                   ))}
                 </div>
-              ) : count === 0 ? (
-                <div className="rounded-xl border border-border border-dashed px-4 py-5 text-center">
-                  <p className="font-medium text-sm">{t('publish.none')}</p>
-                  <p className="mt-0.5 text-muted-foreground text-xs">{t('publish.noneHint')}</p>
+              ) : count === 0 || (neverPublished && !hasPages) ? (
+                <div className="rounded-xl border border-border border-dashed px-4 py-5 text-center" data-testid="publish-empty">
+                  {neverPublished ? (
+                    // Never published, and no page to put online yet.
+                    <p className="font-medium text-sm">{t('publish.addPageFirst')}</p>
+                  ) : pending?.upToDate ? (
+                    <>
+                      <p className="font-medium text-sm">{t('publish.none')}</p>
+                      <p className="mt-0.5 text-muted-foreground text-xs">{t('publish.upToDate')}</p>
+                    </>
+                  ) : (
+                    // No page changed, but something that ships with a publish did (redirects, settings).
+                    <p className="text-muted-foreground text-xs">{t('publish.noneHint')}</p>
+                  )}
                 </div>
               ) : (
                 <ScrollArea
@@ -546,7 +604,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                   </ul>
                 </ScrollArea>
               )}
-              {!checkingChanges && count > 0 ? (
+              {!checkingChanges && !nothingToPublish && count > 0 ? (
                 <Button type="button" variant="outline" className="h-9 justify-center" onClick={() => setReviewing(true)}>
                   <FileText className="size-4" /> {t('publish.reviewDiff')}
                 </Button>
@@ -558,7 +616,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
             )}
 
             <div className="flex flex-col gap-2">
-              <label className="font-medium text-muted-foreground text-xs uppercase tracking-wide" htmlFor="publish-message">
+              <label className="font-medium text-sm" htmlFor="publish-message">
                 {t('publish.whatChanged')}
               </label>
               <Input
@@ -583,6 +641,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
               disabledReason={publishBlockedReason}
               loading={publishing}
               onClick={doPublish}
+              ref={primaryAction}
             >
               <Rocket className="size-4" />
               {t('publish.now')}
