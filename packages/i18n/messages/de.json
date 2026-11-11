@@ -4618,6 +4618,6 @@
   "editor_tree_previewroot": "{title} wird nach {language} verschoben, Position {position} von {total}.",
   "editor_tree_moving": "{title} wird verschoben…",
   "editor_tree_movefailed": "{title} konnte nicht verschoben werden. Die ursprüngliche Position wurde wiederhergestellt.",
-  "editor_tree_movebusy": "Warte, bis der aktuelle Vorgang abgeschlossen ist, bevor du eine weitere Seite verschiebst.",
-  "editor_tree_structurechanged": "Die Seitenstruktur wurde an anderer Stelle geändert und aktualisiert. Versuche erneut, die Seite zu verschieben."
+  "editor_tree_movebusy": "Bitte warten Sie, bis die aktuelle Verschiebung abgeschlossen ist, bevor Sie eine weitere Seite verschieben.",
+  "editor_tree_structurechanged": "Die Seitenstruktur wurde an anderer Stelle geändert und neu geladen. Bitte verschieben Sie die Seite erneut."
 }
