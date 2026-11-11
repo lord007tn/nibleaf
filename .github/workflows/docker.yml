@@ -62,11 +62,7 @@ on:
         type: string
 
 permissions:
-  actions: read
-  attestations: write
   contents: read
-  id-token: write
-  packages: write
 
 concurrency:
   # Every production dispatch shares one lock even when refs differ. A second
@@ -75,14 +71,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  source:
+    name: Pin the requested source revision
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref }}
+      - id: revision
+        run: |
+          sha=$(git rev-parse HEAD)
+          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Checkout did not resolve to a full Git revision"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+  rollback-floor:
+    needs: source
+    uses: ./.github/workflows/rollback-floor.yml
+    with:
+      ref: ${{ needs.source.outputs.sha }}
+
   image:
+    needs: [source, rollback-floor]
+    permissions:
+      actions: read
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
     name: Build self-host image
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ needs.source.outputs.sha }}
           fetch-depth: 0
 
       - name: Resolve immutable source revision
