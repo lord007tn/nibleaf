@@ -2121,6 +2121,7 @@
   "site_results": "परिणाम",
   "site_loading": "लोड हो रहा है...",
   "site_articleloadfailed": "यह पेज लोड नहीं हो सका। फिर से कोशिश करें",
+  "site_controlloadfailed": "खुल नहीं सका। फिर से कोशिश करने के लिए इसे दोबारा चुनें।",
   "site_previous": "पिछला",
   "site_next": "अगला",
   "site_onthispage": "इस पेज पर",

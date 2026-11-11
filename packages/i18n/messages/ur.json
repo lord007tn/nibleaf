@@ -2175,6 +2175,7 @@
   "site_results": "نتائج",
   "site_loading": "لوڈ ہو رہا ہے…",
   "site_articleloadfailed": "یہ صفحہ لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں",
+  "site_controlloadfailed": "کھل نہیں سکا۔ دوبارہ کوشش کرنے کے لیے اسے پھر سے منتخب کریں۔",
   "site_previous": "پچھلا",
   "site_next": "اگلا",
   "site_onthispage": "اس صفحہ پر",

@@ -2184,6 +2184,7 @@
   "site_results": "Resultados",
   "site_loading": "Cargando…",
   "site_articleloadfailed": "No se pudo cargar esta página. Reintentar",
+  "site_controlloadfailed": "No se pudo abrir. Selecciónalo de nuevo para reintentar.",
   "site_previous": "Anterior",
   "site_next": "Siguiente",
   "site_onthispage": "En esta página",

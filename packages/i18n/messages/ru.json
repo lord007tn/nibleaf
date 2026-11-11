@@ -2198,6 +2198,7 @@
   "site_results": "Результаты",
   "site_loading": "Загрузка…",
   "site_articleloadfailed": "Не удалось загрузить страницу. Повторить",
+  "site_controlloadfailed": "Не удалось открыть. Выберите ещё раз, чтобы повторить.",
   "site_previous": "Предыдущий",
   "site_next": "Далее",
   "site_onthispage": "На этой странице",

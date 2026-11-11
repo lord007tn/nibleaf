@@ -2623,6 +2623,7 @@ export const MESSAGE_IDS = {
   'site.results': 'site_results',
   'site.loading': 'site_loading',
   'site.articleLoadFailed': 'site_articleloadfailed',
+  'site.controlLoadFailed': 'site_controlloadfailed',
   'site.previous': 'site_previous',
   'site.next': 'site_next',
   'site.onThisPage': 'site_onthispage',
