@@ -1,4 +1,5 @@
-import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
+import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
+import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@nibleaf/clickhouse', () => ({
@@ -73,6 +74,61 @@ const brokenLinks = (site: SiteSnapshot): string[] =>
 
 const linking = (content: string, overrides: Partial<SnapshotPage> = {}) =>
   page({ path: 'guides/intro', title: 'Introduction', content, ...overrides });
+
+/** Stored add-on rows with CI checks and broken links on, as a new site has. */
+const STORED_ADDONS = [
+  { key: 'ci-checks', enabled: true, config: {} },
+  { key: 'broken-links', enabled: true, config: {} },
+];
+const deliveringPlan: AddonDeliveryPlanAssignment = {
+  status: 'active',
+  effectiveAt: '2026-01-01T00:00:00.000Z',
+  expiresAt: null,
+  plan: {
+    key: 'free',
+    active: true,
+    entitlements: ['addons.ci-checks', 'addons.broken-links'].map((capabilityKey) => ({ capabilityKey, enabled: true, meter: null })),
+  },
+};
+
+/** A draft snapshot built exactly as the worker and `getCurrentSnapshot` build
+ *  it: stored add-ons on, then projected through the site's plan assignment. */
+function deliveredSnapshot(assignment: AddonDeliveryPlanAssignment | null): SiteSnapshot {
+  return buildSnapshot(
+    {
+      id: 'project-1',
+      name: 'Docs',
+      slug: 'docs',
+      description: null,
+      icon: null,
+      config: { addons: { ciChecks: true, brokenLinks: true } },
+      languages: [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, enabled: true, config: null }],
+      branches: [{ id: 'b', name: 'main', isDefault: true }],
+      addons: projectAddonRowsForDelivery(STORED_ADDONS, assignment),
+    },
+    [
+      {
+        id: 'intro',
+        parentId: null,
+        branchId: 'b',
+        languageCode: 'en',
+        kind: 'PAGE',
+        title: 'Intro',
+        slug: 'intro',
+        path: 'intro',
+        icon: null,
+        description: null,
+        content: 'See [configuration](/configuration).',
+        config: null,
+        translationKey: null,
+        position: 0,
+        hidden: false,
+        updatedAt: '2026-11-01T00:00:00.000Z',
+      },
+    ],
+    '2026-11-01T00:00:00.000Z',
+  );
+}
 
 describe('worker broken-link gate: cases the old gate wrongly rejected', () => {
   const settings = page({ path: 'settings' });
@@ -222,5 +278,30 @@ describe('publish dialog and worker parity', () => {
         .filter((check) => check.code === 'broken-internal-link')
         .every((check) => check.severity === 'error'),
     ).toBe(true);
+  });
+
+  it.each<[string, AddonDeliveryPlanAssignment | null]>([
+    ['no plan (add-ons stored on, not delivered)', null],
+    ['a plan that delivers the add-ons', deliveringPlan],
+  ])('makes the same blocking decision with %s', (_case, assignment) => {
+    const site = deliveredSnapshot(assignment);
+    const dialogBlocks = collectPublishChecks(site).some((check) => check.severity === 'error');
+    const workerBlocks = collectPublishIssues(site).some((issue) => issue.type === 'broken-link');
+    expect(dialogBlocks).toBe(workerBlocks);
+    expect(workerBlocks).toBe(assignment !== null);
+  });
+});
+
+describe('worker broken-link gate: enforcement follows the delivered add-on state (as on main)', () => {
+  it('does not block when the plan does not deliver the add-ons, even though they are stored on', () => {
+    const site = deliveredSnapshot(null);
+    expect((site.project.config as { addons: Record<string, unknown> }).addons).toMatchObject({ ciChecks: false, brokenLinks: false });
+    expect(collectPublishIssues(site)).toEqual([]);
+  });
+
+  it('blocks when a plan delivers the add-ons', () => {
+    expect(collectPublishIssues(deliveredSnapshot(deliveringPlan))).toEqual([
+      { type: 'broken-link', pageTitle: 'Intro', pagePath: 'intro', detail: 'Link to "/configuration" does not match any page.' },
+    ]);
   });
 });

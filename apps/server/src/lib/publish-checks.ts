@@ -1,6 +1,6 @@
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
-import { brokenLinkCheckEnabled, findBrokenInternalLinks, markdownProseLines } from '@nibleaf/shared/publish-checks';
+import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, markdownProseLines } from '@nibleaf/shared/publish-checks';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
 /**
@@ -145,7 +145,7 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
   const served = new Set(publicLanguages(snapshot.project.languages).map((language) => language.code));
   // Hidden pages and disabled languages are not published, so nothing on them can mislead a reader.
   const published = snapshot.pages.filter((page) => !page.hidden && served.has(page.languageCode));
-  const linkSeverity = brokenLinkCheckEnabled(snapshot.project.config) ? 'error' : 'warning';
+  const linkSeverity = brokenLinkCheckEnabledForSnapshot(snapshot) ? 'error' : 'warning';
   const brokenLinks = new Map<string, string[]>();
   for (const { page, href } of findBrokenInternalLinks(snapshot)) {
     const hrefs = brokenLinks.get(page.id) ?? [];

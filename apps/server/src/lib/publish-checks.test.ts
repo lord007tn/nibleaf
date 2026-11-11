@@ -1,4 +1,5 @@
-import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
+import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
+import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import { describe, expect, it } from 'vitest';
 import { collectPublishChecks } from './publish-checks';
 
@@ -303,5 +304,74 @@ describe('collectPublishChecks', () => {
     expect(performance.now() - started).toBeLessThan(1000);
     expect(checks[0]).toEqual(expect.objectContaining({ code: 'broken-internal-link', severity: 'error' }));
     expect(checks.filter((check) => check.code === 'missing-alt')).toHaveLength(400);
+  });
+});
+
+/** Stored add-on rows with CI checks and broken links on, as a new site has. */
+const STORED_ADDONS = [
+  { key: 'ci-checks', enabled: true, config: {} },
+  { key: 'broken-links', enabled: true, config: {} },
+];
+const deliveringPlan: AddonDeliveryPlanAssignment = {
+  status: 'active',
+  effectiveAt: '2026-01-01T00:00:00.000Z',
+  expiresAt: null,
+  plan: {
+    key: 'free',
+    active: true,
+    entitlements: ['addons.ci-checks', 'addons.broken-links'].map((capabilityKey) => ({ capabilityKey, enabled: true, meter: null })),
+  },
+};
+
+/** A draft snapshot built exactly as the worker and `getCurrentSnapshot` build
+ *  it: stored add-ons on, then projected through the site's plan assignment. */
+function deliveredSnapshot(assignment: AddonDeliveryPlanAssignment | null): SiteSnapshot {
+  return buildSnapshot(
+    {
+      id: 'project-1',
+      name: 'Docs',
+      slug: 'docs',
+      description: null,
+      icon: null,
+      config: { addons: { ciChecks: true, brokenLinks: true } },
+      languages: [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, enabled: true, config: null }],
+      branches: [{ id: 'b', name: 'main', isDefault: true }],
+      addons: projectAddonRowsForDelivery(STORED_ADDONS, assignment),
+    },
+    [
+      {
+        id: 'intro',
+        parentId: null,
+        branchId: 'b',
+        languageCode: 'en',
+        kind: 'PAGE',
+        title: 'Intro',
+        slug: 'intro',
+        path: 'intro',
+        icon: null,
+        description: null,
+        content: 'See [configuration](/configuration).',
+        config: null,
+        translationKey: null,
+        position: 0,
+        hidden: false,
+        updatedAt: '2026-11-01T00:00:00.000Z',
+      },
+    ],
+    '2026-11-01T00:00:00.000Z',
+  );
+}
+
+describe('broken-link severity follows the delivered add-on state (as the worker)', () => {
+  it('is a warning when the plan does not deliver the add-ons, even though they are stored on', () => {
+    expect(codes(deliveredSnapshot(null), 'broken-internal-link')).toEqual([
+      expect.objectContaining({ severity: 'warning', detail: '/configuration' }),
+    ]);
+  });
+
+  it('is an error when a plan delivers the add-ons', () => {
+    expect(codes(deliveredSnapshot(deliveringPlan), 'broken-internal-link')).toEqual([
+      expect.objectContaining({ severity: 'error', detail: '/configuration' }),
+    ]);
   });
 });

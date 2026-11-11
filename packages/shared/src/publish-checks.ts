@@ -30,10 +30,19 @@ const safeDecode = (value: string): string => {
 const objectValue = (value: unknown): Record<string, unknown> =>
   Object.prototype.toString.call(value) === '[object Object]' ? (value as Record<string, unknown>) : {};
 
-/** Whether publishing enforces the broken-link check: the CI-checks umbrella
- *  and the broken-links add-on are both on (each defaults to on). */
-export const brokenLinkCheckEnabled = (projectConfig: unknown): boolean => {
-  const addons = objectValue(objectValue(projectConfig).addons);
+/**
+ * Whether publishing enforces the broken-link check for this snapshot: the
+ * CI-checks umbrella and the broken-links add-on are both on (each defaults to
+ * on) in the snapshot's DELIVERED add-on state.
+ *
+ * The snapshot's `project.config.addons` is the plan projection built by
+ * `buildSnapshot` + `projectAddonRowsForDelivery`: an add-on the site's plan
+ * doesn't deliver reads as off even when its stored row is on. That is the
+ * state the publish worker has always gated on, and the dialog must match it,
+ * so this takes the snapshot rather than a raw stored `project.config`.
+ */
+export const brokenLinkCheckEnabledForSnapshot = (snapshot: SiteSnapshot): boolean => {
+  const addons = objectValue(objectValue(snapshot.project.config).addons);
   return addons.ciChecks !== false && addons.brokenLinks !== false;
 };
 

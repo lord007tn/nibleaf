@@ -10,7 +10,7 @@ import {
 import { type Deployment, Prisma, type Project, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
-import { brokenLinkCheckEnabled, findBrokenInternalLinks } from '@nibleaf/shared/publish-checks';
+import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks } from '@nibleaf/shared/publish-checks';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
@@ -140,6 +140,10 @@ const grammarIssues = (content: string): string[] => {
  * redirects, `?lang=` and `/ar/…` language prefixes, group paths, reserved
  * routes and the API reference resolve as the reader serves them, and links
  * inside code are ignored.
+ *
+ * Gating reads the snapshot's DELIVERED add-on state (the plan projection
+ * `buildSnapshot` bakes into `project.config.addons`), as it always has: an
+ * add-on the site's plan does not deliver is off here even if stored on.
  */
 export function collectPublishIssues(snapshot: SiteSnapshot, options: { skipGrammarChecks?: boolean } = {}): PublishIssue[] {
   const addons = objectValue(objectValue(snapshot.project.config).addons);
@@ -148,7 +152,7 @@ export function collectPublishIssues(snapshot: SiteSnapshot, options: { skipGram
   }
   const issues: PublishIssue[] = [];
 
-  if (brokenLinkCheckEnabled(snapshot.project.config)) {
+  if (brokenLinkCheckEnabledForSnapshot(snapshot)) {
     for (const { page, href } of findBrokenInternalLinks(snapshot)) {
       issues.push({
         type: 'broken-link',
