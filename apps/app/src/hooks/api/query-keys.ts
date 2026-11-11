@@ -88,7 +88,7 @@ export const queryKeys = {
     detail: (projectId: string) => ['reader-access', projectId] as const,
   },
   notifications: {
-    list: () => ['notifications'] as const,
+    list: (organizationId?: string) => (organizationId ? (['notifications', 'organization', organizationId] as const) : (['notifications'] as const)),
     unreadCount: () => ['notifications', 'unread-count'] as const,
   },
   exports: {

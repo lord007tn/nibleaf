@@ -95,10 +95,10 @@ const getRelationalAnalyticsOverview = async (organizationId: string, projectId:
  *  the organizations they belong to. Each site owns its own org (1:1), so this
  *  is the correct scope for the multi-site "Your sites" overview; scoping to a
  *  single active org would show zeros for anyone with more than one site. */
-const getRelationalWorkspaceAnalytics = async (userId: string, range: AnalyticsRange, timezone: string) => {
+const getRelationalWorkspaceAnalytics = async (userId: string, range: AnalyticsRange, timezone: string, organizationId?: string) => {
   const interval = relationalInterval(range, timezone);
   const { since, until } = interval;
-  const accessibleIds = await accessibleProjectIds(userId);
+  const accessibleIds = await accessibleProjectIds(userId, organizationId);
   const projects = await prisma.project.findMany({
     where: { id: { in: accessibleIds } },
     select: { id: true, name: true, config: true },
@@ -222,10 +222,10 @@ export const getAnalyticsOverview = async (organizationId: string, projectId: st
   return relational;
 };
 
-export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRange, timezone = 'UTC') => {
+export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRange, timezone = 'UTC', organizationId?: string) => {
   const config = clickHouseKeys();
-  if (!clickHouseReadsEnabled(config.ANALYTICS_MODE)) return getRelationalWorkspaceAnalytics(userId, range, timezone);
-  const accessibleIds = await accessibleProjectIds(userId);
+  if (!clickHouseReadsEnabled(config.ANALYTICS_MODE)) return getRelationalWorkspaceAnalytics(userId, range, timezone, organizationId);
+  const accessibleIds = await accessibleProjectIds(userId, organizationId);
   const projects = await prisma.project.findMany({
     where: { id: { in: accessibleIds } },
     select: { id: true, name: true, dataTenantId: true, config: true },
@@ -249,7 +249,7 @@ export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRang
     searches: { ...clickhouse.searches, topTerms: [] as Array<{ query: string; count: number }> },
   };
   if (config.ANALYTICS_MODE === 'clickhouse') return response;
-  const relational = await getRelationalWorkspaceAnalytics(userId, range, timezone);
+  const relational = await getRelationalWorkspaceAnalytics(userId, range, timezone, organizationId);
   log.info(
     {
       mode: 'shadow_read',

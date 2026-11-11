@@ -44,6 +44,15 @@ export const optionalSiteAccess = async (userId: string, projectId: string) => {
   }
 };
 
+/** Same visibility as `accessibleProjectIds`, with the effective site role. */
+export const accessibleProjectRoles = async (userId: string, organizationId?: string) =>
+  prisma.$queryRaw<Array<{ id: string; role: MemberRole }>>(Prisma.sql`
+    SELECT p.id, ${siteRole()} AS role FROM project p ${siteJoins()}
+    WHERE m."userId" = ${userId} AND ${siteRole()} IN ('owner', 'admin', 'member', 'viewer')
+    ${organizationId ? Prisma.sql`AND p."organizationId" = ${organizationId}` : Prisma.empty}
+    ORDER BY p."createdAt", p.id
+  `);
+
 export const accessibleProjectIds = async (userId: string, organizationId?: string): Promise<string[]> => {
   const rows = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT p.id FROM project p ${siteJoins()}

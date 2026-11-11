@@ -1,10 +1,14 @@
 import { MemberRole } from '@nibleaf/shared/constants';
+import { analyticsQuery } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { getWorkspaceAnalytics } from '@/actions/analytics';
 import {
   cancelOrganizationInvitation,
   changeOrganizationJoinLink,
+  createOrganization,
   createOrganizationJoinLink,
+  deleteOrganization,
   getOrganization,
   inviteOrganizationMembers,
   listOrganizationJoinLinks,
@@ -17,6 +21,8 @@ import {
   updateOrganization,
   updateOrganizationMember,
 } from '@/actions/organizations';
+import { listOrganizationProjects, listOrganizationSwitcherProjects } from '@/actions/projects';
+import { getOrganizationUsageSummary } from '@/actions/usage';
 import { getContextLocale, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import { isAuthenticated, requireOrgRole } from '@/middlewares/guard';
@@ -41,10 +47,16 @@ const link = z.object({
 const member = [isAuthenticated, requireOrgRole(MemberRole.MEMBER)] as const;
 const admin = [isAuthenticated, requireOrgRole(MemberRole.ADMIN)] as const;
 const owner = [isAuthenticated, requireOrgRole(MemberRole.OWNER)] as const;
+/** Deleting passes a fenced org so the Owner can resume an interrupted deletion. */
+const ownerDeleting = [isAuthenticated, requireOrgRole(MemberRole.OWNER, 'organizationId', { resumeDeletion: true })] as const;
 const userId = () => getContextUserOrThrow().id;
 
 const app = new Hono<HonoEnv>()
   .get('/', isAuthenticated, async (ctx) => ctx.json({ data: await listOrganizations(userId()) }))
+  // Any signed-in person may start an organization; they become its Owner.
+  .post('/', isAuthenticated, validator('json', z.object({ name: z.string().trim().min(1).max(100) }).strict()), async (ctx) =>
+    ctx.json({ data: await createOrganization(userId(), ctx.req.valid('json').name) }, 201),
+  )
   .get('/by-slug/:slug', isAuthenticated, async (ctx) => ctx.json({ data: await organizationBySlug(userId(), ctx.req.param('slug')) }))
   .get('/:organizationId', ...member, async (ctx) => ctx.json({ data: await getOrganization(userId(), ctx.req.param('organizationId')) }))
   .patch(
@@ -62,10 +74,27 @@ const app = new Hono<HonoEnv>()
             .max(80)
             .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
             .optional(),
+          sendInvitationEmails: z.boolean().optional(),
         })
         .strict(),
     ),
     async (ctx) => ctx.json({ data: await updateOrganization(ctx.req.param('organizationId'), userId(), ctx.req.valid('json')) }),
+  )
+  .delete('/:organizationId', ...ownerDeleting, validator('json', z.object({ confirmName: z.string().max(200) }).strict()), async (ctx) =>
+    ctx.json({ data: await deleteOrganization(ctx.req.param('organizationId'), userId(), ctx.req.valid('json').confirmName) }),
+  )
+  // Every member lists the websites they can open; `view=switcher` is the compact switcher row.
+  .get('/:organizationId/projects', ...member, validator('query', z.object({ view: z.literal('switcher').optional() })), async (ctx) =>
+    ctx.req.valid('query').view === 'switcher'
+      ? ctx.json({ data: await listOrganizationSwitcherProjects(userId(), ctx.req.param('organizationId')) })
+      : ctx.json({ data: await listOrganizationProjects(userId(), ctx.req.param('organizationId')) }),
+  )
+  .get('/:organizationId/analytics', ...member, validator('query', analyticsQuery), async (ctx) => {
+    const { range, timezone } = ctx.req.valid('query');
+    return ctx.json({ data: await getWorkspaceAnalytics(userId(), range, timezone, ctx.req.param('organizationId')) });
+  })
+  .get('/:organizationId/usage', ...admin, async (ctx) =>
+    ctx.json({ data: await getOrganizationUsageSummary(userId(), ctx.req.param('organizationId')) }),
   )
   .get('/:organizationId/members', ...admin, async (ctx) => ctx.json({ data: await listOrganizationMembers(ctx.req.param('organizationId')) }))
   .post('/:organizationId/invitations', ...admin, validator('json', invitation), async (ctx) =>
