@@ -94,6 +94,9 @@ jobs:
       - name: Test immutable image verification
         run: node --test scripts/verify-published-image.test.mjs scripts/reject-existing-immutable-tags.test.mjs
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       # Rolling deploys run the previous release against the new schema, so new
       # migrations must be expand-only (operations/runbook-rolling-deploys.md §4).
       - name: Check migrations are expand-only and the image role selector
@@ -104,9 +107,6 @@ jobs:
           if [ -n "${BASE_SHA}" ] && [ "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]; then
             node scripts/migration-safety.mjs --base "${BASE_SHA}"
           fi
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
         run: pnpm db:generate

@@ -1,198 +1,227 @@
 #!/usr/bin/env node
-// Expand-only gate for Prisma migrations.
+// Expand-only gate for Prisma migrations. It FAILS CLOSED.
 //
-// Rolling deploys run new and old app containers side by side against one
-// database, and a failed release rolls back to the previous image without
-// restoring the database. Every migration that ships through the automatic
-// path must therefore keep the PREVIOUS release working: add, never remove,
-// rename, retype or tighten. See operations/runbook-rolling-deploys.md §4.
+// Rolling deploys run the previous release against the new schema during the
+// overlap, and a failed release rolls back to the previous image without
+// restoring the database (operations/runbook-rolling-deploys.md §4). So a
+// migration passes on its own only if every statement is PROVABLY expand-only.
+//
+// Each file is parsed with the real PostgreSQL 17 parser (libpg-query), not
+// regular expressions, so comments, string literals, dollar quoting, quoted
+// identifiers, schemas and case are all handled exactly as Postgres handles
+// them. Statements are checked against an allowlist. Anything not on it,
+// including any executable body we cannot analyse (DO blocks, functions,
+// triggers), needs an explicit, reasoned opt-out line in the file:
+//   -- nibleaf-migration: contract <reason, at least 12 characters>
+// A file that does not parse fails even with the opt-out.
 //
 // Usage:
 //   node scripts/migration-safety.mjs [--base <git-ref>] [files…]
 // With no files, checks every migration.sql added or modified since <base>
-// (default origin/main). Exits 1 when a migration contains a contract
-// statement without an explicit, reasoned opt-out line:
-//   -- nibleaf-migration: contract <reason, at least 12 characters>
-// A contract migration then ships only as the runbook describes: never in the
-// same release as the code that stops using the old shape.
+// (default origin/main).
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { parse } from 'libpg-query';
 
 const MIGRATIONS_GLOB = 'packages/database/prisma/migrations/*/migration.sql';
-const CONTRACT_MARKER = /^--\s*nibleaf-migration:\s*contract\s+(.{12,})$/im;
+const CONTRACT_MARKER = /^--[ \t]*nibleaf-migration:[ \t]*contract[ \t]+(\S.{11,})$/m;
 
-const IDENT = String.raw`(?:"[^"]+"|[A-Za-z_][\w$]*)(?:\.(?:"[^"]+"|[A-Za-z_][\w$]*))?`;
-const ALTER_TABLE = new RegExp(`^ALTER TABLE (?:ONLY )?(?:IF EXISTS )?(${IDENT})`, 'i');
-const CREATE_TABLE = new RegExp(`^CREATE (?:UNLOGGED |TEMP(?:ORARY)? )?TABLE (?:IF NOT EXISTS )?(${IDENT})`, 'i');
-const DROP_TABLE = new RegExp(String.raw`^DROP TABLE (?:IF EXISTS )?(${IDENT}(?:\s*,\s*${IDENT})*)`, 'i');
-const UNIQUE_INDEX = new RegExp(`^CREATE UNIQUE INDEX (?:CONCURRENTLY )?(?:IF NOT EXISTS )?(?:${IDENT} )?ON (?:ONLY )?(${IDENT})`, 'i');
-const ADD_COLUMN = new RegExp(String.raw`\bADD (?:COLUMN )?(?:IF NOT EXISTS )?(${IDENT})`, 'gi');
+const WHY = {
+  drop: 'drops an object the previous release may still use',
+  rename: 'renames something the previous release references by name',
+  retype: 'changes a column type under the previous release',
+  'set-not-null': 'makes an existing column required while the previous release may still write NULL',
+  'drop-default': 'removes a default the previous release may rely on when it omits the column',
+  'add-required-column': 'adds a NOT NULL column without a default, which the previous release cannot insert',
+  'tighten-constraint':
+    'adds a constraint (unique, check, foreign key, exclusion) that existing data or the previous release may violate; NOT VALID still applies to new writes',
+  'validate-constraint': 'validates a constraint against existing rows',
+  'drop-constraint': 'drops a constraint or index (constraint drops are treated conservatively)',
+  'data-change': 'changes or deletes existing rows (UPDATE, DELETE, TRUNCATE, or INSERT into an existing table)',
+  unanalyzable: 'contains executable code (DO block, function, trigger, query) that cannot be checked statically',
+  unknown: 'is not on the expand-only allowlist',
+};
 
-const unquote = (name) => (name.split('.').pop() ?? '').trim().replace(/^"|"$/g, '').toLowerCase();
+const nodeType = (node) => Object.keys(node ?? {})[0];
+const qualified = (relation) => `${relation?.schemaname ?? 'public'}.${relation?.relname ?? ''}`;
+const stringOf = (node) => node?.String?.sval;
 
-/** Strip comments, dollar-quoted bodies (functions, DO blocks: runtime logic,
- *  not schema changes) and string literals, so keywords inside never match. */
-const normalise = (sql) =>
-  sql
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/--[^\n]*/g, ' ')
-    .replace(/\$([A-Za-z_]\w*)?\$[\s\S]*?\$\1\$/g, '$$$$')
-    .replace(/'(?:[^']|'')*'/g, "''");
+/** Constraint flags on a column definition. */
+const columnTraits = (columnDef) => {
+  const constraints = (columnDef?.constraints ?? []).map((entry) => entry.Constraint ?? {});
+  const types = new Set(constraints.map((constraint) => constraint.contype));
+  return {
+    notNull: types.has('CONSTR_NOTNULL') || types.has('CONSTR_PRIMARY'),
+    hasDefault: types.has('CONSTR_DEFAULT') || types.has('CONSTR_IDENTITY') || types.has('CONSTR_GENERATED'),
+    constraints,
+  };
+};
 
-const statements = (sql) =>
-  normalise(sql)
-    .split(';')
-    .map((statement) => statement.replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
+const indexKeyColumns = (indexParams) => (indexParams ?? []).map((param) => param.IndexElem?.name ?? null);
 
-/** Splits an ALTER TABLE body into its comma-separated actions, ignoring commas inside parentheses. */
-const alterActions = (statement) => {
-  const body = statement.replace(ALTER_TABLE, '');
-  const actions = [];
-  let depth = 0;
-  let current = '';
-  for (const char of body) {
-    if (char === '(') depth += 1;
-    if (char === ')') depth -= 1;
-    if (char === ',' && depth === 0) {
-      actions.push(current.trim());
-      current = '';
-    } else {
-      current += char;
+/** A unique key the previous release can never violate: at least one key column was
+ *  added by this migration as nullable with no default (its writes leave it NULL, and
+ *  NULLs never collide unless NULLS NOT DISTINCT), and every key is a plain column. */
+const safeUniqueKeys = (table, columns, nullsNotDistinct, state) =>
+  !nullsNotDistinct &&
+  columns.length > 0 &&
+  columns.every((column) => column !== null) &&
+  columns.some((column) => state.nullableNewColumns.has(`${table}.${column}`));
+
+const DATA_MODIFYING = new Set(['InsertStmt', 'UpdateStmt', 'DeleteStmt', 'MergeStmt']);
+const modifiesDataInCte = (node) =>
+  (node?.withClause?.WithClause ?? node?.withClause)?.ctes?.some((cte) => DATA_MODIFYING.has(nodeType(cte.CommonTableExpr?.ctequery)));
+
+/** @returns {string[]} finding ids for one parsed statement (empty when expand-only). */
+const classify = (stmt, state) => {
+  const type = nodeType(stmt);
+  const node = stmt[type] ?? {};
+  if (modifiesDataInCte(node)) return ['data-change'];
+  switch (type) {
+    case 'TransactionStmt':
+    case 'VariableSetStmt':
+    case 'CommentStmt':
+    case 'CreateEnumStmt':
+    case 'CreateSeqStmt':
+    case 'CreateSchemaStmt':
+      return [];
+    case 'CreateExtensionStmt':
+      return node.if_not_exists ? [] : ['unknown'];
+    case 'CreateStmt':
+      state.createdTables.add(qualified(node.relation));
+      return [];
+    case 'CreateTableAsStmt':
+      state.createdTables.add(qualified(node.into?.rel));
+      return [];
+    case 'AlterEnumStmt':
+      return node.oldVal ? ['rename'] : [];
+    case 'IndexStmt': {
+      if (!node.unique) return [];
+      const table = qualified(node.relation);
+      if (state.createdTables.has(table)) return [];
+      return safeUniqueKeys(table, indexKeyColumns(node.indexParams), node.nulls_not_distinct, state) ? [] : ['tighten-constraint'];
     }
-  }
-  if (current.trim()) actions.push(current.trim());
-  return actions;
-};
-
-/** What this migration itself creates: tables, and columns added to existing
- *  tables (`table.column`). The previous release never writes either, so
- *  constraining them cannot break it. */
-const createdInMigration = (parts) => {
-  const tables = new Set();
-  const columns = new Set();
-  for (const statement of parts) {
-    const created = CREATE_TABLE.exec(statement)?.[1];
-    if (created) tables.add(unquote(created));
-    const altered = ALTER_TABLE.exec(statement)?.[1];
-    if (!altered) continue;
-    for (const action of alterActions(statement)) {
-      if (/^ADD CONSTRAINT\b/i.test(action)) continue;
-      for (const match of action.matchAll(ADD_COLUMN)) {
-        if (match[1]) columns.add(`${unquote(altered)}.${unquote(match[1])}`);
+    case 'AlterTableStmt': {
+      if (node.objtype !== 'OBJECT_TABLE') return ['unknown'];
+      const table = qualified(node.relation);
+      const isNewTable = state.createdTables.has(table);
+      const findings = [];
+      for (const entry of node.cmds ?? []) {
+        const cmd = entry.AlterTableCmd ?? {};
+        switch (cmd.subtype) {
+          case 'AT_AddColumn': {
+            const def = cmd.def?.ColumnDef;
+            const traits = columnTraits(def);
+            const column = `${table}.${def?.colname}`;
+            if (!traits.notNull && !traits.hasDefault) state.nullableNewColumns.add(column);
+            if (isNewTable) break;
+            if (traits.notNull && !traits.hasDefault) findings.push('add-required-column');
+            for (const constraint of traits.constraints) {
+              if (constraint.contype === 'CONSTR_CHECK' || constraint.contype === 'CONSTR_EXCLUSION') findings.push('tighten-constraint');
+              if (
+                (constraint.contype === 'CONSTR_UNIQUE' || constraint.contype === 'CONSTR_PRIMARY') &&
+                !safeUniqueKeys(table, [def?.colname], constraint.nulls_not_distinct, state)
+              ) {
+                findings.push('tighten-constraint');
+              }
+              // An inline REFERENCES on a brand-new column only checks values the new code writes.
+            }
+            break;
+          }
+          case 'AT_DropNotNull':
+            break;
+          case 'AT_ColumnDefault':
+            if (!cmd.def && !isNewTable) findings.push('drop-default');
+            break;
+          case 'AT_AddConstraint': {
+            if (isNewTable) break;
+            const constraint = cmd.def?.Constraint ?? {};
+            if (constraint.contype === 'CONSTR_FOREIGN') {
+              const columns = (constraint.fk_attrs ?? []).map(stringOf);
+              const onNewColumns = columns.length > 0 && columns.every((column) => state.nullableNewColumns.has(`${table}.${column}`));
+              if (!onNewColumns) findings.push('tighten-constraint');
+            } else if (constraint.contype === 'CONSTR_UNIQUE' || constraint.contype === 'CONSTR_PRIMARY') {
+              const columns = (constraint.keys ?? []).map(stringOf).map((column) => column ?? null);
+              if (constraint.indexname || !safeUniqueKeys(table, columns, constraint.nulls_not_distinct, state)) findings.push('tighten-constraint');
+            } else {
+              findings.push('tighten-constraint');
+            }
+            break;
+          }
+          case 'AT_SetNotNull':
+            if (!isNewTable) findings.push('set-not-null');
+            break;
+          case 'AT_AlterColumnType':
+            findings.push('retype');
+            break;
+          case 'AT_DropColumn':
+            findings.push('drop');
+            break;
+          case 'AT_DropConstraint':
+            findings.push('drop-constraint');
+            break;
+          case 'AT_ValidateConstraint':
+            findings.push('validate-constraint');
+            break;
+          default:
+            findings.push('unknown');
+        }
       }
+      return findings;
     }
+    case 'InsertStmt':
+      return node.withClause || !state.createdTables.has(qualified(node.relation)) ? ['data-change'] : [];
+    case 'UpdateStmt':
+    case 'DeleteStmt':
+    case 'TruncateStmt':
+    case 'MergeStmt':
+      return ['data-change'];
+    case 'DropStmt':
+      return [node.removeType === 'OBJECT_INDEX' ? 'drop-constraint' : 'drop'];
+    case 'RenameStmt':
+      return ['rename'];
+    case 'DoStmt':
+    case 'CreateFunctionStmt':
+    case 'CreateTrigStmt':
+    case 'CallStmt':
+    case 'SelectStmt':
+    case 'RuleStmt':
+    case 'ViewStmt':
+      return ['unanalyzable'];
+    default:
+      return ['unknown'];
   }
-  return { tables, columns };
 };
 
-const indexColumns = (statement) => {
-  const afterOn = statement.replace(/^.*?\bON\b[^(]*/i, '');
-  return (/\(([^()]*)\)/.exec(afterOn)?.[1] ?? '')
-    .split(',')
-    .map((part) => unquote(part.trim().split(/\s+/)[0] ?? ''))
-    .filter(Boolean);
+const snippet = (sql, raw) => {
+  const start = raw.stmt_location ?? 0;
+  const text = raw.stmt_len ? sql.slice(start, start + raw.stmt_len) : sql.slice(start);
+  return text.replace(/\s+/g, ' ').trim().slice(0, 160);
 };
 
-const RULES = [
-  {
-    id: 'drop-table',
-    why: 'drops a table the previous release may still read or write',
-    test: (s, made) => {
-      const names = DROP_TABLE.exec(s)?.[1];
-      return Boolean(names) && names.split(',').some((name) => !made.tables.has(unquote(name)));
-    },
-  },
-  {
-    id: 'drop-column',
-    why: 'drops a column the previous release may still use',
-    // `DROP CONSTRAINT`, `ALTER COLUMN x DROP DEFAULT` and `DROP NOT NULL` relax, so they pass.
-    test: (s) => ALTER_TABLE.test(s) && alterActions(s).some((action) => /^DROP (?:COLUMN )?(?:IF EXISTS )?(?!CONSTRAINT\b)["\w]/i.test(action)),
-  },
-  {
-    id: 'rename',
-    why: 'renames a table, column or enum value the previous release references by name',
-    test: (s) => /^ALTER (?:TABLE|TYPE) .*\bRENAME\b/i.test(s),
-  },
-  {
-    id: 'retype',
-    why: 'changes a column type under the previous release',
-    test: (s) => ALTER_TABLE.test(s) && alterActions(s).some((action) => /^ALTER (?:COLUMN )?\S+ (?:SET DATA )?TYPE\b/i.test(action)),
-  },
-  {
-    id: 'drop-type',
-    why: 'drops an enum or type (Prisma recreates enums when values are removed)',
-    test: (s) => /^DROP TYPE\b/i.test(s),
-  },
-  {
-    id: 'set-not-null',
-    why: 'makes a column required while the previous release may still write NULL',
-    test: (s, made) => {
-      const table = ALTER_TABLE.exec(s)?.[1];
-      return Boolean(table) && !made.tables.has(unquote(table)) && alterActions(s).some((action) => /\bSET NOT NULL\b/i.test(action));
-    },
-  },
-  {
-    id: 'add-required-column',
-    why: 'adds a NOT NULL column without a default, which the previous release cannot insert',
-    test: (s, made) => {
-      const table = ALTER_TABLE.exec(s)?.[1];
-      if (!table || made.tables.has(unquote(table))) return false;
-      return alterActions(s).some(
-        (action) => /^ADD (?:COLUMN )?(?!CONSTRAINT\b)/i.test(action) && /\bNOT NULL\b/i.test(action) && !/\b(?:DEFAULT|GENERATED)\b/i.test(action),
-      );
-    },
-  },
-  {
-    id: 'tighten-unique-or-check',
-    why: 'adds a uniqueness or check constraint to existing data that the previous release may violate',
-    test: (s, made) => {
-      const indexed = UNIQUE_INDEX.exec(s)?.[1];
-      if (indexed) {
-        const table = unquote(indexed);
-        if (made.tables.has(table)) return false;
-        // Rows the previous release writes leave a column added here NULL, and
-        // NULLs never collide in a unique index unless NULLS NOT DISTINCT.
-        const columns = indexColumns(s);
-        const touchesNewColumn = columns.some((column) => made.columns.has(`${table}.${column}`));
-        return !(touchesNewColumn && !/\bNULLS NOT DISTINCT\b/i.test(s));
-      }
-      const table = ALTER_TABLE.exec(s)?.[1];
-      return (
-        Boolean(table) &&
-        !made.tables.has(unquote(table)) &&
-        alterActions(s).some((action) => /^ADD CONSTRAINT \S+ (?:UNIQUE|CHECK|EXCLUDE)\b/i.test(action) && !/\bNOT VALID\b/i.test(action))
-      );
-    },
-  },
-  {
-    id: 'delete-data',
-    why: 'deletes rows the previous release may depend on',
-    test: (s) => /^(?:TRUNCATE|DELETE FROM)\b/i.test(s),
-  },
-];
-
-/** @returns {{ id: string, why: string, statement: string }[]} */
-export const findContractStatements = (sql) => {
-  const parts = statements(sql);
-  const made = createdInMigration(parts);
+/** @returns {Promise<{ id: string, why: string, statement: string }[]>} Throws on unparseable SQL. */
+export const findContractStatements = async (sql) => {
+  const parsed = await parse(sql);
+  const state = { createdTables: new Set(), nullableNewColumns: new Set() };
   const findings = [];
-  for (const statement of parts) {
-    for (const rule of RULES) {
-      if (rule.test(statement, made)) findings.push({ id: rule.id, why: rule.why, statement: statement.slice(0, 160) });
-    }
+  for (const raw of parsed.stmts ?? []) {
+    for (const id of new Set(classify(raw.stmt, state))) findings.push({ id, why: WHY[id], statement: snippet(sql, raw) });
   }
   return findings;
 };
 
 export const contractOptOut = (sql) => CONTRACT_MARKER.exec(sql)?.[1]?.trim() ?? null;
 
-export const checkMigration = (file, sql) => {
-  const findings = findContractStatements(sql);
+export const checkMigration = async (file, sql) => {
   const reason = contractOptOut(sql);
-  return { file, findings, reason, ok: findings.length === 0 || reason !== null };
+  try {
+    const findings = await findContractStatements(sql);
+    return { file, findings, reason, parseError: null, ok: findings.length === 0 || reason !== null };
+  } catch (error) {
+    return { file, findings: [], reason, parseError: error instanceof Error ? error.message : String(error), ok: false };
+  }
 };
 
 const changedMigrations = (base) =>
@@ -201,7 +230,7 @@ const changedMigrations = (base) =>
     .map((line) => line.trim())
     .filter(Boolean);
 
-const main = () => {
+const main = async () => {
   const args = process.argv.slice(2);
   const baseIndex = args.indexOf('--base');
   const base = baseIndex >= 0 ? args.splice(baseIndex, 2)[1] : 'origin/main';
@@ -212,7 +241,12 @@ const main = () => {
   }
   let failed = false;
   for (const file of files) {
-    const result = checkMigration(file, readFileSync(file, 'utf8'));
+    const result = await checkMigration(file, readFileSync(file, 'utf8'));
+    if (result.parseError) {
+      failed = true;
+      console.error(`::error file=${file}::Migration could not be parsed as PostgreSQL: ${result.parseError}`);
+      continue;
+    }
     if (!result.findings.length) {
       console.log(`ok       ${file} (expand-only)`);
       continue;
@@ -220,20 +254,19 @@ const main = () => {
     if (result.ok) {
       console.log(`CONTRACT ${file}: opted out (${result.reason})`);
       for (const finding of result.findings) console.log(`         - ${finding.id}: ${finding.statement}`);
-      console.log('         Ships only per operations/runbook-rolling-deploys.md §4, never with the code that stops using the old shape.');
       continue;
     }
     failed = true;
-    console.error(`::error file=${file}::Migration is not expand-only.`);
+    console.error(`::error file=${file}::Migration is not provably expand-only.`);
     for (const finding of result.findings) console.error(`  - ${finding.id}: ${finding.why}\n      ${finding.statement}`);
   }
   if (failed) {
     console.error(
-      '\nRolling deploys run the previous release against the new schema. Split this into an expand migration now and a contract migration ' +
-        'in a later release, or add `-- nibleaf-migration: contract <reason>` and follow operations/runbook-rolling-deploys.md §4.',
+      '\nRolling deploys run the previous release against the new schema. Split this into an expand migration now and a contract ' +
+        'migration in a later release, or add `-- nibleaf-migration: contract <reason>` and follow operations/runbook-rolling-deploys.md §4.',
     );
     process.exit(1);
   }
 };
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();

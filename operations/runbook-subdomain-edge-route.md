@@ -59,19 +59,64 @@ curl -sS -H "Authorization: Bearer $CF_API_TOKEN" \
 - DNS-only records (proxied=false) never run Workers, but listing them does no harm.
 - **Question to settle before 2.3:** is `docs.nibleaf.com` a published Nibleaf site (keep it on the Worker) or something else (add an exception)?
 
-### 2.3 Add the exceptions first, then the wildcard
-Order matters: an exception has to exist before the wildcard can catch its host.
+### 2.3 Add the exceptions, read them back, and only then add the wildcard
+Run this as one script. It **fails closed**:
+- every API call must succeed, at the HTTP level and with `success: true`;
+- existing routes are reconciled, never duplicated;
+- every required exception is read back from Cloudflare before the wildcard is created;
+- any mismatch aborts before the wildcard exists.
+
 ```sh
-for host in www.nibleaf.com admin.nibleaf.com api.nibleaf.com storage.nibleaf.com cname.nibleaf.com; do   # plus any found in 2.2
-  curl -sS -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' \
-    "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
-    --data "{\"pattern\":\"${host}/*\"}" | jq '.success, .result.id'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${CF_API_TOKEN:?}" "${ZONE_ID:?}"
+WORKER=nibleaf-custom-domain-edge
+WILDCARD='*.nibleaf.com/*'
+# Every non-docs hostname from 2.2 must be listed here.
+EXCEPTIONS=(www.nibleaf.com admin.nibleaf.com api.nibleaf.com storage.nibleaf.com cname.nibleaf.com)
+API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes"
+
+cf() { # cf METHOD URL [JSON]: fails on HTTP errors and on success != true
+  local out
+  out=$(curl -fsS -X "$1" -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' "$2" ${3:+--data "$3"}) \
+    || { echo "ABORT: $1 $2 failed at the HTTP level" >&2; exit 1; }
+  jq -e '.success == true' >/dev/null <<<"$out" || { echo "ABORT: $1 $2 returned: $out" >&2; exit 1; }
+  printf '%s' "$out"
+}
+routes() { cf GET "$API" | jq -c '[.result[] | {id, pattern, script: (.script // null)}]'; }
+
+current=$(routes)
+for host in "${EXCEPTIONS[@]}"; do
+  pattern="$host/*"
+  existing=$(jq -c --arg p "$pattern" '[.[] | select(.pattern == $p)]' <<<"$current")
+  case "$(jq length <<<"$existing")" in
+    0) cf POST "$API" "{\"pattern\":\"$pattern\"}" >/dev/null; echo "created exception $pattern" ;;
+    1) script=$(jq -r '.[0].script' <<<"$existing")
+       [ "$script" = "null" ] || { echo "ABORT: $pattern already routes to Worker '$script'; reconcile by hand" >&2; exit 1; }
+       echo "exception $pattern already present" ;;
+    *) echo "ABORT: $pattern has duplicate routes; reconcile by hand" >&2; exit 1 ;;
+  esac
 done
-curl -sS -X POST -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' \
-  "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
-  --data '{"pattern":"*.nibleaf.com/*","script":"nibleaf-custom-domain-edge"}' | jq '.success, .result.id'
+
+# Read back: every exception must exist exactly once, with no Worker.
+current=$(routes)
+for host in "${EXCEPTIONS[@]}"; do
+  jq -e --arg p "$host/*" '[.[] | select(.pattern == $p and .script == null)] | length == 1' >/dev/null <<<"$current" \
+    || { echo "ABORT: exception $host/* is missing or wrong after creation; the wildcard was NOT added" >&2; exit 1; }
+done
+echo "all ${#EXCEPTIONS[@]} exceptions verified"
+
+existing=$(jq -c --arg p "$WILDCARD" '[.[] | select(.pattern == $p)]' <<<"$current")
+case "$(jq length <<<"$existing")" in
+  0) id=$(cf POST "$API" "{\"pattern\":\"$WILDCARD\",\"script\":\"$WORKER\"}" | jq -r '.result.id'); echo "created $WILDCARD -> $WORKER (id $id; keep it for rollback)" ;;
+  1) [ "$(jq -r '.[0].script' <<<"$existing")" = "$WORKER" ] || { echo "ABORT: $WILDCARD exists with another Worker; reconcile by hand" >&2; exit 1; }
+     echo "$WILDCARD already routes to $WORKER" ;;
+  *) echo "ABORT: duplicate $WILDCARD routes" >&2; exit 1 ;;
+esac
+routes | jq -r '.[] | "\(.pattern) \(.script // "NONE")"' | sort | tee routes-after.txt
 ```
-A route with no `script` means "no Worker". In the dashboard this is **Workers Routes → Add route → Worker: None**. Save the returned ids for rollback.
+
+A route with no `script` means "no Worker". The dashboard equivalent is **Workers Routes → Add route → Worker: None**, but use the script: it does the read-back that makes this safe.
 
 ## 3. Verification
 Run all of these immediately after 2.3. Any failure means **roll back** (§4).
