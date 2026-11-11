@@ -20,6 +20,8 @@ const codeForStatus = (status: number) => {
       return 'http:not_found' as const;
     case 409:
       return 'http:conflict' as const;
+    case 413:
+      return 'http:payload_too_large' as const;
     case 422:
       return 'http:unprocessable' as const;
     case 429:

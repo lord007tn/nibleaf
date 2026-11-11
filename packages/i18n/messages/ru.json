@@ -3621,6 +3621,7 @@
   "admin_operations_gitkind_push": "Push",
   "editor_saveerror": "Не удалось сохранить изменения. Повторите попытку перед выходом.",
   "editor_retrysave": "Повторить сохранение",
+  "editor_pagetoolarge": "Эта страница слишком большая (не более 2 МБ). Разделите её на страницы поменьше.",
   "dashboard_search_noresults": "Нет сайтов, соответствующих поиску.",
   "dashboard_search_clear": "Очистить поиск",
   "auth_invite_switchaccount": "Войти с приглашённой учётной записью",

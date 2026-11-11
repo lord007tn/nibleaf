@@ -46,7 +46,7 @@ describe.runIf(growthTestsEnabled)('inbound draft page links: repeat-open cost',
   const target = () => page({ id: 'target', path: 'guide', kind: 'GROUP' });
   const child = () => page({ id: 'child', parentId: 'target', path: 'guide/setup', content: '[self](/guide/setup)' });
 
-  it('answers a repeat open from the content cache: warm costs at most half the cold scan', () => {
+  it('answers a repeat open from the content cache: warm costs at most a quarter of the cold scan', () => {
     const snapshot = site([
       ...Array.from({ length: 298 }, (_, i) =>
         page({
@@ -68,8 +68,9 @@ describe.runIf(growthTestsEnabled)('inbound draft page links: repeat-open cost',
       warmMs = Math.min(warmMs, performance.now() - start);
     }
     // Like for like on the same runner: re-parsing every body on a repeat open
-    // would cost about what the cold scan did.
-    expect(warmMs).toBeLessThanOrEqual(coldMs / 2 + 20);
+    // would cost about what the cold scan did. Measured warm at about 1/100 of
+    // cold with the page index (1/45 without it).
+    expect(warmMs).toBeLessThanOrEqual(coldMs / 4 + 20);
   }, 60_000);
 });
 
