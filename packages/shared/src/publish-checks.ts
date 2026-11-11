@@ -10,7 +10,8 @@
  *
  * - Content is read from the parsed tree, not by scanning lines: a link counts
  *   only when it renders as one. Code (fenced, indented, inline), raw HTML
- *   (including comments), MDX expressions and JSX attributes render no link.
+ *   (including comments) and MDX expressions render no link. Only literal
+ *   hrefs on JSX elements the reader renders as links count as links.
  *   Reference links resolve through their definition (CommonMark: the first
  *   definition of a label wins); a definition nothing uses renders nothing.
  * - A link is rendered as the reader renders it (relative to the page URL, or
@@ -102,6 +103,10 @@ const isFootnoteLabel = (identifier: string | undefined): boolean => identifier?
 
 /** Never-rendering subtrees: code, raw HTML (comments included), MDX expressions and ESM. */
 const SILENT = new Set(['code', 'inlineCode', 'html', 'mdxFlowExpression', 'mdxTextExpression', 'mdxjsEsm', 'yaml', 'toml']);
+// `site/mdx/component-map.tsx` renders these components as anchors, alongside
+// the reader's plain <a>. HTML parsing makes tag/attribute names case-insensitive.
+// None of these renderers consumes `to`; container props are not destinations.
+const LINK_ELEMENTS = new Set(['a', 'card', 'button', 'relatedcard']);
 const STRAY = /^(?:\/|-{3,})$/;
 const HTML_IMAGE = /<img\b[^>]*>/gi;
 const HTML_STRAY_PARAGRAPH = /<p>\s*(\/|-{3,})\s*<\/p>/gi;
@@ -205,6 +210,10 @@ const collectFacts = (content: string): PageContentFacts => {
       }
       case 'mdxJsxFlowElement':
       case 'mdxJsxTextElement': {
+        if (LINK_ELEMENTS.has(node.name?.toLowerCase() ?? '')) {
+          const href = node.attributes?.find((attribute) => attribute.type === 'mdxJsxAttribute' && attribute.name?.toLowerCase() === 'href')?.value;
+          if (typeof href === 'string') facts.links.push(href);
+        }
         if (node.name === 'img') {
           const alt = jsxAttribute(node, 'alt');
           // `alt={expression}` is authored on purpose; only a missing or blank alt is flagged.

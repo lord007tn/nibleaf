@@ -244,6 +244,22 @@ describe('publish dialog and worker parity', () => {
           '```',
         ].join('\n'),
       }),
+      page({
+        path: 'components',
+        content: [
+          '<CardGroup><Card href="/start" /><Card href={"/expression-card"} /></CardGroup>',
+          '<RelatedCard href="/related-missing" />',
+          '<RelatedCard href="/old" />',
+          '<Button href="/button-missing">Next</Button>',
+          '<Button href="/start">Start</Button>',
+          '<a href="/anchor-missing">Next</a>',
+          '<a href="/start">Start</a>',
+          '<RelatedCard href={destination} />',
+          '<Button href={"/expression-button"}>Next</Button>',
+          '<a href={destination}>Next</a>',
+          '<Note href="/not-a-link" />',
+        ].join('\n\n'),
+      }),
       page({ path: 'مقدمة', languageCode: 'ar', content: '[ok](/start) [broken](/nowhere)' }),
       // A page whose only content is a commented-out link: an empty page, and no link renders.
       page({ path: 'commented', title: 'Commented', content: '<!-- [a](/commented-missing) -->' }),
@@ -268,6 +284,10 @@ describe('publish dialog and worker parity', () => {
       [
         'guides/intro /ar/missing',
         'guides/intro /configuration',
+        'guides/intro /card-attribute',
+        'components /related-missing',
+        'components /button-missing',
+        'components /anchor-missing',
         'guides/intro /v2/ar/only-in-v2',
         'guides/intro /reference-missing',
         'guides/intro /secret',

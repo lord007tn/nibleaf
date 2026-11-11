@@ -145,7 +145,7 @@ describe('broken-internal-link', () => {
     expect(linkChecks(content)).toEqual([]);
   });
 
-  it('checks links that render: inline, linked images and used references, not unused definitions or JSX attributes', () => {
+  it('checks links that render: inline, linked images, used references and component hrefs, not unused definitions', () => {
     const content = [
       'See [the guide][ref] and [![Logo](/logo.png)](/image-link-missing).',
       '',
@@ -156,7 +156,7 @@ describe('broken-internal-link', () => {
       '',
       '[^1]: A footnote, not a link.',
     ].join('\n');
-    expect(linkChecks(content)).toEqual(['/reference-missing', '/image-link-missing']);
+    expect(linkChecks(content)).toEqual(['/reference-missing', '/image-link-missing', '/card-attribute']);
   });
 
   it('keeps links inside their docs version', () => {
