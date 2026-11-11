@@ -9,6 +9,7 @@ import { basename, dirname, extname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 import { build } from 'vite';
+import { chromiumExecutable } from '../lib/capture-env.mjs';
 
 const root = resolve(import.meta.dirname, '../../..');
 const appRequire = createRequire(resolve(root, 'apps/app/package.json'));
@@ -74,7 +75,7 @@ try {
     build: { outDir: dist, emptyOutDir: true },
   });
   browser = await chromium.launch({
-    executablePath: `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1248/chrome-win64/chrome.exe`,
+    executablePath: chromiumExecutable(),
     headless: true,
   });
   for (const locale of ['en', 'ar']) {
