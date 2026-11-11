@@ -68,6 +68,26 @@ describe('normalizeMdxBlocks', () => {
     const siblings = '<Card title="A">a</Card><Card title="B">b</Card>';
     expect(normalizeMdxBlocks(siblings)).toBe(siblings);
   });
+  it('drops MDX comments, as MDX does, wherever they sit in prose', () => {
+    expect(normalizeMdxBlocks('Before.\n\n{/* TODO: [draft](/draft) */}\n\nAfter.')).toBe('Before.\n\n\n\nAfter.');
+    expect(normalizeMdxBlocks('Shipping {/* not yet */}is live.')).toBe('Shipping is live.');
+    expect(normalizeMdxBlocks('{ /* spaced */ }Text')).toBe('Text');
+    // Across lines, and with backticks or `*/`-free stars inside.
+    expect(normalizeMdxBlocks('A\n{/* one\n`two` * three\n*/}\nB')).toBe('A\n\nB');
+    // Inside a component body.
+    expect(normalizeMdxBlocks('<Note>\n{/* hidden */}\nShown.\n</Note>')).toBe('<Note>\n\nShown.\n\n</Note>');
+  });
+
+  it('keeps MDX comments shown as code, and leaves an unclosed one as text', () => {
+    expect(normalizeMdxBlocks('Write `{/* note */}` to leave a note.')).toBe('Write `{/* note */}` to leave a note.');
+    expect(normalizeMdxBlocks('```mdx\n{/* kept */}\n```')).toBe('```mdx\n{/* kept */}\n```');
+    expect(normalizeMdxBlocks('Open {/* never closed')).toBe('Open {/* never closed');
+  });
+
+  it('drops an indented MDX comment too: MDX has no indented code, so it is a comment (in a list item, say)', () => {
+    expect(normalizeMdxBlocks('- Item\n\n    {/* reviewer note */}\n\n    More.')).toBe('- Item\n\n    \n\n    More.');
+  });
+
   it('is idempotent', () => {
     const once = normalizeMdxBlocks('<Card title="x">\nbody\n</Card>');
     expect(normalizeMdxBlocks(once)).toBe(once);
