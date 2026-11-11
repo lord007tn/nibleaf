@@ -1,4 +1,4 @@
-import { type Prisma, prisma } from '@nibleaf/database';
+import { Prisma, prisma } from '@nibleaf/database';
 import { resolvePageMove } from '@nibleaf/shared/page-moves';
 import type { RestorePageTrashBody } from '@nibleaf/validators';
 import { z } from 'zod';
@@ -146,7 +146,8 @@ const lockProjectTree = async (tx: Tx, projectId: string) => {
   await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
 };
 
-/** Expired rows go whenever Trash is read or changed; no scheduled job. */
+/** Expired rows go whenever Trash is changed (delete, restore, delete forever),
+ *  all of which need edit rights; reads only filter them out. No scheduled job. */
 export const purgeExpiredPageTrash = (db: Tx | typeof prisma, projectId: string, now = new Date()) =>
   db.pageTrash.deleteMany({ where: { projectId, expiresAt: { lte: now } } });
 
@@ -177,7 +178,25 @@ const subtreeIds = (rows: ReadonlyArray<{ id: string; parentId: string | null }>
 interface DeletePageOptions {
   /** Overrides {@link PAGE_TRASH_MAX_PAYLOAD_BYTES} (tests). */
   maxPayloadBytes?: number;
+  /** Tests only: runs between reading comments and locking their authors. */
+  afterCommentsRead?: () => Promise<void>;
+  /** Tests only: runs once the comment authors are locked. */
+  afterAuthorsLocked?: () => Promise<void>;
 }
+
+/** The comment authors that still exist, locked FOR SHARE until the trash write
+ *  commits. A concurrent account deletion waits for that commit, and its
+ *  `page_trash_erase_user` trigger then removes the copies; an account deleted
+ *  before the lock is simply absent, so its comments are never copied. */
+const lockLiveAuthors = async (tx: Tx, userIds: string[]): Promise<Set<string>> => {
+  const live = new Set<string>();
+  // Sorted, so concurrent trash writes take the locks in one order.
+  for (const chunk of chunks([...userIds].sort())) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM "user" WHERE id IN (${Prisma.join(chunk)}) ORDER BY id FOR SHARE`;
+    for (const row of rows) live.add(row.id);
+  }
+  return live;
+};
 
 export const deletePage = async (projectId: string, id: string, deletedById?: string | null, options: DeletePageOptions = {}) =>
   prisma.$transaction(
@@ -200,6 +219,9 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
           rows.flat(),
         ),
       ]);
+      await options.afterCommentsRead?.();
+      const liveAuthors = await lockLiveAuthors(tx, [...new Set(comments.map((comment) => comment.userId))]);
+      await options.afterAuthorsLocked?.();
       const payload = {
         schemaVersion: PAGE_TRASH_SCHEMA_VERSION,
         pages: pages.map((page) => ({
@@ -220,7 +242,7 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
           updatedAt: iso(page.updatedAt),
         })),
         comments: comments.flatMap((comment) =>
-          comment.pageId
+          comment.pageId && liveAuthors.has(comment.userId)
             ? [
                 {
                   id: comment.id,
@@ -288,7 +310,7 @@ export const countPageTrash = async (projectId: string, branchId?: string) => {
 export const listPageTrash = async (projectId: string, branchId?: string) => {
   const branch = branchId ? await assertBranchInProject(projectId, branchId) : await getDefaultBranch(projectId);
   const now = new Date();
-  await purgeExpiredPageTrash(prisma, projectId, now);
+  // A plain read (viewers may list): expired rows are filtered, never deleted here.
   const rows = await prisma.pageTrash.findMany({
     where: { projectId, branchId: branch.id, expiresAt: { gt: now } },
     orderBy: [{ deletedAt: 'desc' }, { id: 'asc' }],

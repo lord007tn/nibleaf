@@ -32,7 +32,6 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
   let orgs: typeof import('./organizations');
   let projects: typeof import('./projects');
   let erasure: typeof import('@nibleaf/auth/tenant-erasure');
-  let accountDeletion: typeof import('@nibleaf/auth/account-deletion');
   const organizationIds: string[] = [];
   const userIds: string[] = [];
 
@@ -44,7 +43,6 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
     orgs = await import('./organizations');
     projects = await import('./projects');
     erasure = await import('@nibleaf/auth/tenant-erasure');
-    accountDeletion = await import('@nibleaf/auth/account-deletion');
   }, 120_000);
   afterAll(async () => {
     if (!db) return;
@@ -319,13 +317,17 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
     expect(await db.prisma.page.count({ where: { id: { in: [f.setup.id, f.deep.id] } } })).toBe(2);
   });
 
-  it('purges expired items whenever Trash is read, restored from or deleted from', async () => {
+  it('purges expired items only when Trash is written to: delete, restore, delete forever', async () => {
     const f = await fixture();
     const expire = (id: string) => db.prisma.pageTrash.update({ where: { id }, data: { expiresAt: new Date(Date.now() - 1000) } });
     const a = await trash.deletePage(f.project.id, f.intro.id, f.author.id);
     await expire(a.trashId);
+    // Listing hides it but leaves it in place.
     expect(await trash.listPageTrash(f.project.id)).toEqual([]);
+    expect(await db.prisma.pageTrash.count({ where: { id: a.trashId } })).toBe(1);
+    const z = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
     expect(await db.prisma.pageTrash.count({ where: { id: a.trashId } })).toBe(0);
+    await trash.restorePageTrashItem(f.project.id, z.trashId);
 
     const b = await trash.deletePage(f.project.id, f.last.id, f.author.id);
     await expire(b.trashId);
@@ -352,10 +354,23 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
     } finally {
       deleteMany.mockRestore();
     }
-    // The expired row survives the count; only the list (opened dialog) purges it.
     expect(await db.prisma.pageTrash.count({ where: { id: { in: [kept.trashId, expired.trashId] } } })).toBe(2);
-    expect((await trash.listPageTrash(f.project.id)).map((row) => row.id)).toEqual([kept.trashId]);
-    expect(await db.prisma.pageTrash.count({ where: { id: expired.trashId } })).toBe(0);
+  });
+
+  it('lists without writing: a viewer-reachable GET never deletes', async () => {
+    const f = await fixture();
+    const kept = await trash.deletePage(f.project.id, f.intro.id, f.author.id);
+    const expired = await trash.deletePage(f.project.id, f.last.id, f.author.id);
+    await db.prisma.pageTrash.update({ where: { id: expired.trashId }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    const deleteMany = vi.spyOn(db.prisma.pageTrash, 'deleteMany');
+    try {
+      expect((await trash.listPageTrash(f.project.id)).map((row) => row.id)).toEqual([kept.trashId]);
+      expect((await trash.listPageTrash(f.project.id, f.branch.id)).map((row) => row.id)).toEqual([kept.trashId]);
+      expect(deleteMany).not.toHaveBeenCalled();
+    } finally {
+      deleteMany.mockRestore();
+    }
+    expect(await db.prisma.pageTrash.count({ where: { id: { in: [kept.trashId, expired.trashId] } } })).toBe(2);
   });
 
   it('refuses a subtree whose payload is over the cap, deleting nothing', async () => {
@@ -383,19 +398,61 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
     expect(await trash.listPageTrash(f.project.id)).toEqual([]);
   });
 
-  it('drops a deleted account’s comments from Trash so a restore cannot bring them back', async () => {
-    const f = await fixture();
-    const leaving = await person();
-    await db.prisma.comment.create({ data: { projectId: f.project.id, pageId: f.setup.id, userId: leaving.id, body: 'Personal note' } });
-    const kept = await db.prisma.comment.create({ data: { projectId: f.project.id, pageId: f.setup.id, userId: f.author.id, body: 'Stays' } });
-    const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
-    await accountDeletion.eraseUserFromPageTrash(leaving.id);
-    const row = await db.prisma.pageTrash.findUniqueOrThrow({ where: { id: deleted.trashId } });
-    expect(JSON.stringify(row.payload)).not.toContain('Personal note');
-    expect(JSON.stringify(row.payload)).toContain('Stays');
-    await db.prisma.user.delete({ where: { id: leaving.id } });
-    await trash.restorePageTrashItem(f.project.id, deleted.trashId);
-    expect(await db.prisma.comment.findMany({ where: { pageId: f.setup.id }, select: { id: true } })).toEqual([{ id: kept.id }]);
+  describe('account erasure and trash writes stay consistent', () => {
+    /** A page with one comment by a member who will leave and one by the author. */
+    const commented = async () => {
+      const f = await fixture();
+      const leaving = await person();
+      await db.prisma.comment.create({ data: { projectId: f.project.id, pageId: f.setup.id, userId: leaving.id, body: 'Leaving note' } });
+      const kept = await db.prisma.comment.create({ data: { projectId: f.project.id, pageId: f.setup.id, userId: f.author.id, body: 'Stays' } });
+      return { f, leaving, kept };
+    };
+    const payloadOf = async (trashId: string) => JSON.stringify((await db.prisma.pageTrash.findUniqueOrThrow({ where: { id: trashId } })).payload);
+    const restoredComments = async (f: Awaited<ReturnType<typeof fixture>>, trashId: string) => {
+      await trash.restorePageTrashItem(f.project.id, trashId);
+      return db.prisma.comment.findMany({ where: { pageId: f.setup.id }, select: { id: true } });
+    };
+
+    it('removes an account’s comments from existing Trash in the account delete itself', async () => {
+      const { f, leaving, kept } = await commented();
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      expect(await payloadOf(deleted.trashId)).toContain('Leaving note');
+      await db.prisma.user.delete({ where: { id: leaving.id } });
+      expect(await payloadOf(deleted.trashId)).not.toContain('Leaving note');
+      expect(await payloadOf(deleted.trashId)).toContain('Stays');
+      expect(await restoredComments(f, deleted.trashId)).toEqual([{ id: kept.id }]);
+    });
+
+    it('does not copy comments of an account deleted while the page was being moved to Trash', async () => {
+      const { f, leaving, kept } = await commented();
+      // The account delete commits after the trash write read the comments.
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id, {
+        afterCommentsRead: async () => {
+          await db.prisma.user.delete({ where: { id: leaving.id } });
+        },
+      });
+      expect(await payloadOf(deleted.trashId)).not.toContain('Leaving note');
+      expect(await restoredComments(f, deleted.trashId)).toEqual([{ id: kept.id }]);
+    });
+
+    it('makes an account delete wait for a trash write that holds its comments, then removes them', async () => {
+      const { f, leaving, kept } = await commented();
+      let accountDelete: Promise<unknown> | undefined;
+      let waited = false;
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id, {
+        afterAuthorsLocked: async () => {
+          accountDelete = db.prisma.user.delete({ where: { id: leaving.id } });
+          const settled = await Promise.race([accountDelete.then(() => 'done'), new Promise((resolve) => setTimeout(() => resolve('waiting'), 500))]);
+          waited = settled === 'waiting';
+        },
+      });
+      expect(waited).toBe(true);
+      await accountDelete;
+      expect(await db.prisma.user.count({ where: { id: leaving.id } })).toBe(0);
+      expect(await payloadOf(deleted.trashId)).not.toContain('Leaving note');
+      expect(await payloadOf(deleted.trashId)).toContain('Stays');
+      expect(await restoredComments(f, deleted.trashId)).toEqual([{ id: kept.id }]);
+    });
   });
 
   describe('erasure leaves no Trash behind', () => {

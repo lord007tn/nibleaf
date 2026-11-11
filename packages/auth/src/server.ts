@@ -20,7 +20,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError, addOAuthServerContext, createAuthMiddleware, getOAuthState } from 'better-auth/api';
 import { admin, emailOTP, organization } from 'better-auth/plugins';
-import { eraseUserFromPageTrash, reassignOrDeleteOrgs } from './account-deletion';
+import { reassignOrDeleteOrgs } from './account-deletion';
 import { requireAuthEmailEnqueue, trackRequiredAuthEmail, withRequiredAuthEmailScope } from './auth-email-delivery';
 import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { arrivingThroughJoinLink, revokeJoinLinksBeyondRole } from './join-links';
@@ -819,7 +819,8 @@ const authInstance = betterAuth({
         // and authorizes nothing); disable them so admins see that too.
         await reassignOrDeleteOrgs(user.id);
         await revokeJoinLinksBeyondRole(prisma, null, user.id, null);
-        await eraseUserFromPageTrash(user.id);
+        // Copies of the account's comments in Trash are removed by the
+        // page_trash_erase_user trigger, in the user delete's own transaction.
       },
     },
   },
