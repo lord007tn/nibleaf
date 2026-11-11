@@ -5,7 +5,13 @@ import { beginSearchKeystrokes, cancelSearchKeystrokes, holdSearchKeystrokes } f
 import { isShortcutKey } from '@/lib/site-keyboard';
 import { resolveReaderDirection } from '@/lib/text-direction';
 
-const loadSiteSearchDialog = () => import('./site-search-dialog');
+// Whether the dialog's code is already here: then search opens without the shell.
+let dialogLoaded = false;
+const loadSiteSearchDialog = () =>
+  import('./site-search-dialog').then((module) => {
+    dialogLoaded = true;
+    return module;
+  });
 const SiteSearchDialog = lazy(loadSiteSearchDialog);
 
 /** Fetch the search dialog's code ahead of the first open (idle time, or when a
@@ -64,7 +70,9 @@ export function SearchShell({
   // Stable, so the field keeps holding the text across re-renders.
   const holdKeystrokes = useCallback((field: HTMLInputElement | null) => (field ? holdSearchKeystrokes(field, label) : undefined), [label]);
   return (
-    <div className="fixed inset-0 z-50" data-search-shell="">
+    // Above the dialog: while a composition finishes in this field, the dialog may
+    // already be mounted underneath, waiting for the text.
+    <div className="fixed inset-0 z-[60]" data-search-shell="">
       {/* Tap outside closes; Esc and Cancel close it from the keyboard. */}
       <div className="absolute inset-0 bg-black/10 supports-backdrop-filter:backdrop-blur-xs" aria-hidden onClick={onClose} />
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: a modal dialog handles Esc and keeps Tab inside itself. */}
@@ -82,8 +90,9 @@ export function SearchShell({
         <div className="flex h-14 items-center gap-1 border-border/70 border-b ps-4 pe-2 pt-[env(safe-area-inset-top)]">
           <Search aria-hidden className="size-5 shrink-0 text-muted-foreground" />
           <input
+            // Takes focus from the hidden field once no IME composition is open there
+            // (holdSearchKeystrokes), never mid-composition, so no autoFocus.
             ref={holdKeystrokes}
-            autoFocus
             aria-label={label}
             dir="auto"
             placeholder={placeholder}
@@ -106,9 +115,19 @@ export function SearchShell({
   );
 }
 
-export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 'returnFocus'>) {
+export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 'returnFocus' | 'onFieldReady'>) {
   const { open, onOpenChange, hotkey, lang, direction, placeholder } = props;
   const [activated, setActivated] = useState(open);
+  // The loading shell shows from the moment search opens until the dialog's
+  // field has taken the text and focus. It is a sibling of the dialog, not its
+  // Suspense fallback, so a composition in its field is never cut by the dialog
+  // arriving. A dialog whose code is already loaded opens without it.
+  const [shellWanted, setShellWanted] = useState(() => open && !dialogLoaded);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    setShellWanted(open && !dialogLoaded);
+  }
   // Where focus returns when search closes: the last element focused outside it.
   const returnFocus = useRef<HTMLElement | null>(null);
   // Preserve the dialog's selected mode and query after its first opening.
@@ -183,18 +202,26 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
   }, [open, onOpenChange, hotkey, lang]);
 
   const t = siteT(lang);
-  const shell = open ? (
-    <SearchShell
-      onClose={() => {
-        onOpenChange(false);
-        returnFocus.current?.focus();
-      }}
-      placeholder={placeholder?.trim() || t('searchPlaceholder')}
-      label={t('searchDocumentation')}
-      cancelLabel={t('searchCancel')}
-      rtl={resolveReaderDirection(direction, lang) === 'rtl'}
-    />
-  ) : null;
+  const shell =
+    open && shellWanted ? (
+      <SearchShell
+        onClose={() => {
+          onOpenChange(false);
+          returnFocus.current?.focus();
+        }}
+        placeholder={placeholder?.trim() || t('searchPlaceholder')}
+        label={t('searchDocumentation')}
+        cancelLabel={t('searchCancel')}
+        rtl={resolveReaderDirection(direction, lang) === 'rtl'}
+      />
+    ) : null;
 
-  return <Suspense fallback={shell}>{open || activated ? <SiteSearchDialog {...props} returnFocus={returnFocus} /> : null}</Suspense>;
+  return (
+    <>
+      {shell}
+      <Suspense fallback={null}>
+        {open || activated ? <SiteSearchDialog {...props} returnFocus={returnFocus} onFieldReady={() => setShellWanted(false)} /> : null}
+      </Suspense>
+    </>
+  );
 }

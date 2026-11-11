@@ -130,6 +130,7 @@ export default function SiteSearchDialog({
   onAskAi,
   suggestions = [],
   returnFocus,
+  onFieldReady,
 }: {
   projectId: string;
   open: boolean;
@@ -161,6 +162,8 @@ export default function SiteSearchDialog({
   suggestions?: SiteSearchSuggestion[];
   /** Where focus goes when search closes (the element focused before it opened). */
   returnFocus?: RefObject<HTMLElement | null>;
+  /** Called once the field has taken what the reader typed, and focus. */
+  onFieldReady?: () => void;
 }) {
   const { track } = useSiteAnalytics();
   const router = useRouter();
@@ -194,6 +197,11 @@ export default function SiteSearchDialog({
   // runs when the field attaches (React attaches refs before Base UI's focus
   // manager looks for focus), so no keystroke falls between two fields.
   const placedRef = useRef(false);
+  // Tells the parent the field has the text and focus, so the loading shell can go.
+  const onFieldReadyRef = useRef(onFieldReady);
+  useLayoutEffect(() => {
+    onFieldReadyRef.current = onFieldReady;
+  });
   const cancelPlacementRef = useRef<(() => void) | null>(null);
   const placeInput = useCallback((input: HTMLInputElement) => {
     if (placedRef.current) return;
@@ -204,17 +212,22 @@ export default function SiteSearchDialog({
       cancelPlacementRef.current = null;
       if (!input.isConnected) return;
       input.focus({ preventScroll: true });
-      if (typed) {
-        const seeded = typed.slice(0, 300);
+      if (typed?.edited) {
+        // What the reader typed replaces the old query, even when they deleted
+        // it all again: an edited, now empty buffer stays empty.
+        const seeded = typed.text.slice(0, 300);
         // Set the field now so the caret lands after the text; the controlled
         // value then renders the same string and leaves the caret in place.
         input.value = seeded;
         input.setSelectionRange(seeded.length, seeded.length);
         setQuery(seeded);
         setPendingEnter(false);
+        if (!seeded.trim()) setKeepPrevious(false);
       } else {
+        // Nothing typed: keep the old query, selected so typing replaces it.
         input.select();
       }
+      onFieldReadyRef.current?.();
     });
     // Still waiting for an IME composition to be committed in the held field.
     if (!settled) cancelPlacementRef.current = cancel;

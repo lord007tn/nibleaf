@@ -10,17 +10,36 @@
  * (including IME composition, Arabic and every other keyboard layout) goes
  * straight into a text field. The loading shell's field holds the text while it
  * is on screen, and the dialog takes the whole buffer when its field mounts.
+ *
+ * A field that is composing (an IME candidate window is open) is never left
+ * mid-composition: moving focus or removing the field would cut or drop the
+ * pre-edit text. Every hand-over waits until the composition has ended and its
+ * final `input` event has landed, then moves the committed text and focus.
  */
 
 type Capture = {
   /** Hidden field that receives keys while no visible field is on screen. */
   proxy: HTMLInputElement;
-  /** The field currently holding the text: the proxy, or the loading shell's field. */
+  /** The field currently holding the text: the proxy, the loading shell's field. */
   holder: HTMLInputElement;
+  /** The reader typed, deleted or pasted something (even if the text is empty now). */
+  edited: boolean;
+  /** An IME composition is open in the holder. */
   composing: boolean;
+  /** The composition ended; its final `input` event may still be on its way. */
+  settling: boolean;
+  /** Hand-overs waiting for the composition to settle, in request order. */
+  waiters: Array<() => void>;
   onCancel?: () => void;
   cleanup: () => void;
 };
+
+/** What the reader typed while search opened. */
+export interface SearchKeystrokes {
+  text: string;
+  /** False when the reader typed nothing at all (a reopened dialog keeps its query). */
+  edited: boolean;
+}
 
 let capture: Capture | null = null;
 
@@ -52,10 +71,11 @@ const createProxy = (label: string): HTMLInputElement => {
   proxy.setAttribute('aria-label', label);
   proxy.dataset.searchKeystrokes = '';
   // Invisible but focusable; 16px keeps iOS from zooming when it takes focus.
+  // It sits where the search field opens, so an IME candidate window appears there.
   Object.assign(proxy.style, {
     position: 'fixed',
-    top: '0',
-    left: '0',
+    top: '12vh',
+    left: '50%',
     width: '1px',
     height: '1px',
     padding: '0',
@@ -68,11 +88,43 @@ const createProxy = (label: string): HTMLInputElement => {
   return proxy;
 };
 
+const isSettled = (current: Capture) => !current.composing && !current.settling;
+
+function settle(current: Capture) {
+  if (!current.settling || current.composing) return;
+  current.settling = false;
+  const waiters = current.waiters.splice(0);
+  for (const waiter of waiters) waiter();
+}
+
+/** Runs `callback` now, or once the holder's composition has settled. */
+function whenSettled(current: Capture, callback: () => void): () => void {
+  if (isSettled(current)) {
+    callback();
+    return () => undefined;
+  }
+  current.waiters.push(callback);
+  return () => {
+    const index = current.waiters.indexOf(callback);
+    if (index !== -1) current.waiters.splice(index, 1);
+  };
+}
+
 function start(label: string, onCancel?: () => void): Capture {
   const proxy = createProxy(label);
+  const current: Capture = {
+    proxy,
+    holder: proxy,
+    edited: false,
+    composing: false,
+    settling: false,
+    waiters: [],
+    onCancel,
+    cleanup: () => undefined,
+  };
   const onKeyDown = (event: KeyboardEvent) => {
-    const current = capture;
-    if (!current) return;
+    if (capture !== current) return;
+    if (event.isComposing) return;
     if (event.key === 'Escape' && document.activeElement === current.proxy) {
       event.preventDefault();
       const cancel = current.onCancel;
@@ -84,32 +136,42 @@ function start(label: string, onCancel?: () => void): Capture {
     if (isEditable(document.activeElement)) return;
     // Shortcuts are not text. AltGr arrives as Ctrl+Alt on Windows: that is typing.
     if (event.metaKey || (event.ctrlKey && !event.altKey)) return;
-    if (event.key.length !== 1 && event.key !== 'Process' && event.key !== 'Unidentified') return;
+    if (event.key.length !== 1 && event.key !== 'Process' && event.key !== 'Unidentified' && event.key !== 'Backspace') return;
     // Focus moved to the page between two fields: put the holder back under the
     // key before its character is inserted.
     focusField(current.holder.isConnected ? current.holder : current.proxy);
   };
   const onCompositionStart = (event: Event) => {
-    if (capture && event.target === capture.holder) capture.composing = true;
+    if (event.target !== current.holder) return;
+    current.composing = true;
+    current.settling = false;
   };
   const onCompositionEnd = (event: Event) => {
-    if (capture && event.target === capture.holder) capture.composing = false;
+    if (event.target !== current.holder) return;
+    current.composing = false;
+    current.settling = true;
+    // Chrome sends the final `input` before `compositionend`, Firefox and Safari
+    // right after it in the same task: a macrotask later it has landed either way.
+    setTimeout(() => settle(current), 0);
+  };
+  const onInput = (event: Event) => {
+    if (event.target !== current.holder) return;
+    current.edited = true;
+    if (current.settling && !(event as InputEvent).isComposing) queueMicrotask(() => settle(current));
   };
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('compositionstart', onCompositionStart, true);
   document.addEventListener('compositionend', onCompositionEnd, true);
-  return {
-    proxy,
-    holder: proxy,
-    composing: false,
-    onCancel,
-    cleanup: () => {
-      document.removeEventListener('keydown', onKeyDown, true);
-      document.removeEventListener('compositionstart', onCompositionStart, true);
-      document.removeEventListener('compositionend', onCompositionEnd, true);
-      proxy.remove();
-    },
+  document.addEventListener('input', onInput, true);
+  current.cleanup = () => {
+    document.removeEventListener('keydown', onKeyDown, true);
+    document.removeEventListener('compositionstart', onCompositionStart, true);
+    document.removeEventListener('compositionend', onCompositionEnd, true);
+    document.removeEventListener('input', onInput, true);
+    current.waiters.length = 0;
+    proxy.remove();
   };
+  return current;
 }
 
 /**
@@ -128,58 +190,62 @@ export function beginSearchKeystrokes({ label = 'Search', onCancel }: { label?: 
 }
 
 /**
- * Lets a visible field (the loading shell's) hold the text: it receives what was
- * typed so far, with the caret at the end. Returns the cleanup that hands the
- * text, and focus, back to the hidden field when that field goes away.
+ * Lets a visible field (the loading shell's) hold the text: once the hidden
+ * field has no open composition, it receives what was typed so far, focus, and
+ * the caret at the end. Returns the cleanup for when that field goes away.
  */
 export function holdSearchKeystrokes(field: HTMLInputElement, label?: string): () => void {
   if (!capture) capture = start(label ?? field.getAttribute('aria-label') ?? 'Search');
   const current = capture;
-  const hadFocus = document.activeElement === current.holder || document.activeElement === field || !isEditable(document.activeElement);
-  if (current.holder !== field) field.value = current.holder.value;
-  current.holder = field;
-  if (hadFocus) focusField(field);
+  const adopt = () => {
+    if (capture !== current || !field.isConnected || current.holder === field) return;
+    const moveFocus = document.activeElement === current.holder || document.activeElement === field || !isEditable(document.activeElement);
+    field.value = current.holder.value;
+    current.holder = field;
+    if (moveFocus) focusField(field);
+  };
+  const cancelAdopt = whenSettled(current, adopt);
   return () => {
+    cancelAdopt();
     if (capture !== current || current.holder !== field) return;
+    // The field is leaving (search closed while it held the text). React detaches
+    // refs before it removes the node, so the hidden field takes over without a gap.
     const moveFocus = document.activeElement === field || !isEditable(document.activeElement);
     current.holder = current.proxy;
-    // Leaving the field commits any open composition into it, so its text is
-    // copied after focus moves.
     current.composing = false;
-    // React detaches refs before it removes the node, so this runs while the
-    // field still has focus: the hidden field takes over without a gap.
-    if (moveFocus) current.proxy.focus({ preventScroll: true });
+    current.settling = false;
     current.proxy.value = field.value;
     if (moveFocus) focusField(current.proxy);
+    // Its composition ended with it. A dialog closing in the same commit has
+    // cancelled its own wait by the time this runs.
+    queueMicrotask(() => {
+      if (capture !== current || !isSettled(current)) return;
+      const waiters = current.waiters.splice(0);
+      for (const waiter of waiters) waiter();
+    });
   };
 }
 
 /**
- * Ends the capture and returns everything typed, or `null` when nothing was
- * being kept. When the reader is mid-composition (an IME candidate is still
- * open), `onReady` runs once it is committed, so no half-composed text is cut.
+ * Ends the capture and hands over everything typed (`null` when nothing was
+ * being kept). While the holder is composing, `onReady` waits until that
+ * composition has ended and its final input landed, so no pre-edit text is cut.
+ * Returns a cancel for that wait.
  */
-export function takeSearchKeystrokes(onReady: (typed: string | null) => void): () => void {
+export function takeSearchKeystrokes(onReady: (typed: SearchKeystrokes | null) => void): () => void {
   const current = capture;
   if (!current) {
     onReady(null);
     return () => undefined;
   }
-  const finish = () => {
+  return whenSettled(current, () => {
     if (capture !== current) return;
-    const typed = current.holder.value;
+    const text = current.holder.value;
+    const edited = current.edited || text !== '';
     capture = null;
     current.cleanup();
-    onReady(typed);
-  };
-  if (!current.composing) {
-    finish();
-    return () => undefined;
-  }
-  // The composition's own input event lands right after compositionend.
-  const onEnd = () => setTimeout(finish, 0);
-  current.holder.addEventListener('compositionend', onEnd, { once: true });
-  return () => current.holder.removeEventListener('compositionend', onEnd);
+    onReady({ text, edited });
+  });
 }
 
 /** Drops the capture (search closed) without moving focus anywhere. */

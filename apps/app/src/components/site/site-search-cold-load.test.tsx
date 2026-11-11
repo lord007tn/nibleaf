@@ -68,7 +68,22 @@ it('closes the loading shell and returns focus to where the reader was', async (
   await act(async () => root.unmount());
 });
 
-it('hands every key typed after ⌘K, through the loading shell, to the dialog with the caret at the end', async () => {
+const compose = (field: HTMLInputElement, preedit: string) =>
+  act(async () => {
+    field.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, preedit);
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, inputType: 'insertCompositionText' }));
+  });
+/** Commits a composition the way Chrome does: the final input, then compositionend. */
+const commit = (field: HTMLInputElement, committed: string) =>
+  act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, committed);
+    field.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, inputType: 'insertCompositionText' }));
+    field.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  });
+
+it('hands every key and composition typed after ⌘K through the loading shell to the dialog', async () => {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
@@ -77,24 +92,41 @@ it('hands every key typed after ⌘K, through the loading shell, to the dialog w
   await act(async () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }));
   });
-  await act(async () => setValue(document.activeElement as HTMLInputElement, 'r'));
+  const hidden = document.activeElement as HTMLInputElement;
+  expect(hidden.hasAttribute('data-search-keystrokes')).toBe(true);
+  await act(async () => setValue(hidden, 'r'));
+  // Proxy → shell: an IME candidate window is open in the hidden field when the shell appears.
+  await compose(hidden, 'rか');
   await act(async () => root.render(<SiteSearch projectId="docs" open onOpenChange={vi.fn()} lang="en" />));
   const shellInput = document.querySelector<HTMLInputElement>('[data-search-shell] input');
+  // The shell waits: focus stays in the composing field, its pre-edit untouched.
+  expect(document.activeElement).toBe(hidden);
+  expect(hidden.value).toBe('rか');
+  await commit(hidden, 'r課');
   expect(document.activeElement).toBe(shellInput);
-  expect(shellInput?.value).toBe('r');
-  await act(async () => setValue(shellInput, 'ref'));
+  expect(shellInput?.value).toBe('r課');
+  await act(async () => setValue(shellInput, 'r課e'));
+  // Shell → dialog: the chunk arrives while a composition is open in the shell.
+  if (!shellInput) throw new Error('Missing shell field');
+  await compose(shellInput, 'r課eふ');
   gate.release();
   // The gated chunk resolves asynchronously (its module graph can take a few
-  // seconds to import on a busy machine); wait until the real dialog replaces the shell.
+  // seconds to import on a busy machine); wait until the real dialog mounts.
   for (let attempt = 0; attempt < 200 && !document.querySelector('[data-slot="command-input"]'); attempt += 1) {
     await act(async () => new Promise<void>((resolve) => setTimeout(resolve, 50)));
   }
   await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
   const input = document.querySelector<HTMLInputElement>('[data-slot="command-input"]');
+  expect(input).not.toBeNull();
+  // The dialog is ready but waits: the shell and its composing field stay, focused.
+  expect(document.querySelector('[data-search-shell]')).not.toBeNull();
+  expect(document.activeElement).toBe(shellInput);
+  expect(shellInput.value).toBe('r課eふ');
+  await commit(shellInput, 'r課e付');
   expect(document.querySelector('[data-search-shell]')).toBeNull();
-  expect(input?.value).toBe('ref');
+  expect(input?.value).toBe('r課e付');
   expect(document.activeElement).toBe(input);
-  expect(input?.selectionStart).toBe(3);
+  expect(input?.selectionStart).toBe(4);
   expect(document.querySelector('[data-search-keystrokes]')).toBeNull();
   await act(async () => root.unmount());
 }, 15_000);

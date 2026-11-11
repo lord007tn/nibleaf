@@ -678,6 +678,16 @@ const typeKeys = (text: string) =>
       field.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
+/** Backspace in whatever field has focus. */
+const backspace = () =>
+  act(async () => {
+    const field = document.activeElement;
+    const allowed = field?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    const target = document.activeElement;
+    if (!allowed || !(target instanceof HTMLInputElement)) return;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(target, target.value.slice(0, -1));
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 const pressShortcut = () =>
   act(async () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }));
@@ -723,6 +733,42 @@ describe('keystrokes typed while search opens', () => {
     await rerender({ open: true });
     expect(input()?.value).toBe('api');
     expect([input()?.selectionStart, input()?.selectionEnd]).toEqual([0, 3]);
+  });
+
+  it('keeps the field empty when the reader typed on reopen and deleted it all again', async () => {
+    const { rerender } = await render();
+    await typeQuery('setup');
+    await rerender({ open: false });
+    await pressShortcut();
+    await typeKeys('x');
+    await backspace();
+    await rerender({ open: true });
+    // Edited, now empty: the old query does not come back.
+    expect(input()?.value).toBe('');
+    expect(document.activeElement).toBe(input());
+    expect(document.body.textContent).not.toContain('Setup guide');
+    await typeKeys('api');
+    expect(input()?.value).toBe('api');
+  });
+
+  it('waits for the final input after compositionend (Firefox and Safari order)', async () => {
+    const { rerender } = await render({ open: false });
+    await pressShortcut();
+    const held = document.activeElement as HTMLInputElement;
+    await act(async () => {
+      held.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+      held.value = 'かな';
+    });
+    await rerender({ open: true });
+    await act(async () => {
+      held.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '仮名' }));
+      // The committed text arrives with the input event that follows.
+      held.value = '仮名';
+      held.dispatchEvent(new InputEvent('input', { bubbles: true, data: '仮名', inputType: 'insertFromComposition' }));
+    });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(input()?.value).toBe('仮名');
+    expect(document.activeElement).toBe(input());
   });
 
   it('waits for an open IME composition before taking the text', async () => {
