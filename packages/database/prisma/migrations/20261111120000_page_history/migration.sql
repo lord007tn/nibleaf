@@ -3,7 +3,7 @@ CREATE TABLE "page_revision" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "projectId" TEXT NOT NULL REFERENCES "project"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "pageId" TEXT NOT NULL REFERENCES "page"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  "userId" TEXT,
+  "userId" TEXT REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE CASCADE,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "title" TEXT NOT NULL,
   "content" TEXT NOT NULL,
@@ -15,7 +15,7 @@ CREATE INDEX "page_revision_userId_idx" ON "page_revision"("userId");
 CREATE TABLE "page_revision_state" (
   "projectId" TEXT NOT NULL REFERENCES "project"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "pageId" TEXT NOT NULL REFERENCES "page"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  "userId" TEXT NOT NULL,
+  "userId" TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   "lastSavedAt" TIMESTAMP(3) NOT NULL,
   "lastSnapshotAt" TIMESTAMP(3),
   PRIMARY KEY ("pageId", "userId")

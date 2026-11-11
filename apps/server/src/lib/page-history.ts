@@ -21,7 +21,8 @@ export async function snapshotPage(
   const changed = next.title !== page.title || next.content !== page.content;
   if (!changed) return 'unchanged';
   const now = new Date();
-  const snapshot = beforeRestore ? page : next;
+  // Preserve what the author is replacing, including their very first edit.
+  const snapshot = page;
   // A restore must remain undoable. Refuse it before any write when its safety
   // copy exceeds the cap; ordinary autosaves still succeed with an explicit note.
   const tooLarge =

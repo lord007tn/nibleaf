@@ -18,15 +18,26 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
   let history: typeof import('./page-history');
   let erasure: typeof import('@nibleaf/auth/tenant-erasure');
   const orgIds: string[] = [];
+  const userIds: string[] = [];
+  let author: string;
+  let otherAuthor: string;
+  const person = async () => {
+    const user = await db.prisma.user.create({ data: { name: 'Fictional history author', email: `history-${randomUUID()}@nibleaf.test` } });
+    userIds.push(user.id);
+    return user.id;
+  };
   beforeAll(async () => {
     db = await import('@nibleaf/database');
     pages = await import('./pages');
     history = await import('./page-history');
     erasure = await import('@nibleaf/auth/tenant-erasure');
+    author = await person();
+    otherAuthor = await person();
   }, 120_000);
   afterAll(async () => {
     await db?.prisma.project.deleteMany({ where: { organizationId: { in: orgIds } } });
     await db?.prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
+    await db?.prisma.user.deleteMany({ where: { id: { in: userIds } } });
     await db?.prisma.$disconnect();
   });
   const fixture = async (organizationId?: string) => {
@@ -56,25 +67,55 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
 
   it('shares author throttles across concurrent tabs, separates authors, honors idle and continuous windows, and skips unchanged content', async () => {
     const f = await fixture();
-    const save = (content: string, user = 'author-a') => pages.updatePage(f.project.id, f.page.id, { content }, user);
+    const save = (content: string, user = author) => pages.updatePage(f.project.id, f.page.id, { content }, user);
     const results = await Promise.all(Array.from({ length: 8 }, (_, i) => save(`Concurrent ${i}`)));
     expect(results.filter((r) => r.historySnapshot === 'stored')).toHaveLength(1);
     expect(await db.prisma.pageRevision.count({ where: { pageId: f.page.id } })).toBe(1);
-    expect((await save('Other author', 'author-b')).historySnapshot).toBe('stored');
+    expect((await save('Other author', otherAuthor)).historySnapshot).toBe('stored');
     expect((await save('Continuous typing')).historySnapshot).toBe('throttled');
-    await stateAt(f.page.id, 'author-a', 11, 11);
+    await stateAt(f.page.id, author, 11, 11);
     expect((await save('After idle')).historySnapshot).toBe('stored');
-    await stateAt(f.page.id, 'author-a', 1, 31);
+    await stateAt(f.page.id, author, 1, 31);
     expect((await save('After continuous interval')).historySnapshot).toBe('stored');
-    await stateAt(f.page.id, 'author-a', 11, 31);
+    expect(await db.prisma.pageRevision.findFirst({ where: { pageId: f.page.id, content: 'After idle' } })).toMatchObject({
+      reason: 'autosave',
+      title: 'Guide',
+    });
+    await stateAt(f.page.id, author, 11, 31);
     expect((await save('After continuous interval')).historySnapshot).toBe('unchanged');
+  });
+
+  it('preserves a never-revisioned page before its first edit and restores that original state', async () => {
+    const f = await fixture();
+    const saved = await pages.updatePage(f.project.id, f.page.id, { title: 'Edited title', content: 'First editing session' }, author);
+    const revision = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id } });
+    expect(revision).toMatchObject({ title: 'Guide', content: 'Original', reason: 'autosave' });
+    const restored = await history.restorePageHistory(
+      f.project.id,
+      f.page.id,
+      { source: 'revision', entryId: revision.id, expectedUpdatedAt: saved.updatedAt.toISOString() },
+      author,
+    );
+    expect(restored).toMatchObject({ title: 'Guide', content: 'Original' });
+  });
+
+  it('skips identical consecutive snapshots even when a later changed save is due', async () => {
+    const f = await fixture();
+    await pages.updatePage(f.project.id, f.page.id, { content: 'First edit' }, author);
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Original' }, author);
+    await stateAt(f.page.id, author, 11, 31);
+    const saved = await pages.updatePage(f.project.id, f.page.id, { content: 'Another edit' }, author);
+    expect(saved).toMatchObject({ content: 'Another edit', historySnapshot: 'unchanged' });
+    expect(await db.prisma.pageRevision.findMany({ where: { pageId: f.page.id } })).toEqual([expect.objectContaining({ content: 'Original' })]);
   });
 
   it('reports oversized snapshots without storing content and enforces the byte cap including Unicode and titles', async () => {
     const f = await fixture();
-    const result = await pages.updatePage(f.project.id, f.page.id, { content: '😀'.repeat(PAGE_REVISION_MAX_BYTES / 4) }, 'author');
+    const first = await pages.updatePage(f.project.id, f.page.id, { content: '😀'.repeat(PAGE_REVISION_MAX_BYTES / 4) }, author);
+    expect(first.historySnapshot).toBe('stored');
+    const result = await pages.updatePage(f.project.id, f.page.id, { content: 'Now smaller' }, author);
     expect(result.historySnapshot).toBe('too-large');
-    expect(await db.prisma.pageRevision.count({ where: { pageId: f.page.id } })).toBe(0);
+    expect(await db.prisma.pageRevision.findMany({ where: { pageId: f.page.id } })).toEqual([expect.objectContaining({ content: 'Original' })]);
     expect((await db.prisma.page.findUniqueOrThrow({ where: { id: f.page.id } })).content).toBe(result.content);
   });
 
@@ -88,7 +129,7 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
         createdAt: new Date(Date.now() - (60 - i) * 86_400_000),
       })),
     });
-    await pages.updatePage(f.project.id, f.page.id, { content: 'Trigger retention' }, 'author');
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Trigger retention' }, author);
     expect(await db.prisma.pageRevision.count({ where: { pageId: f.page.id } })).toBe(50);
     await db.prisma.pageRevision.deleteMany({ where: { pageId: f.page.id } });
     const large = 'x'.repeat(PAGE_REVISION_MAX_BYTES - Buffer.byteLength(base.title));
@@ -101,8 +142,8 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
         createdAt: new Date(Date.now() - (25 - i) * 1000),
       })),
     });
-    await stateAt(f.page.id, 'author', 11, 31);
-    await pages.updatePage(f.project.id, f.page.id, { content: 'Small newest' }, 'author');
+    await stateAt(f.page.id, author, 11, 31);
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Small newest' }, author);
     const retained = await db.prisma.pageRevision.findMany({
       where: { pageId: f.page.id },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -110,12 +151,12 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
     });
     expect(retained.reduce((sum, row) => sum + row.contentBytes, 0)).toBeLessThanOrEqual(PAGE_HISTORY_MAX_BYTES);
     expect(retained).toHaveLength(20);
-    expect(retained.at(-1)?.content).toBe('Small newest');
+    expect(retained.at(-1)?.content).toBe('Trigger retention');
     // Age alone never discards recent tiny rows, even above 50.
     await db.prisma.pageRevision.deleteMany({ where: { pageId: f.page.id } });
     await db.prisma.pageRevision.createMany({ data: Array.from({ length: 55 }, () => ({ ...base, createdAt: new Date() })) });
-    await stateAt(f.page.id, 'author', 11, 31);
-    await pages.updatePage(f.project.id, f.page.id, { content: 'Recent rows survive' }, 'author');
+    await stateAt(f.page.id, author, 11, 31);
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Recent rows survive' }, author);
     expect(await db.prisma.pageRevision.count({ where: { pageId: f.page.id } })).toBe(56);
   });
 
@@ -142,7 +183,7 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
     const compared = await history.comparePageHistory(f.project.id, f.page.id, selection);
     expect(compared).toMatchObject({ diff: { status: 'changed' }, title: { before: 'Published', after: 'Guide' } });
     await expect(history.comparePageHistory(sibling.project.id, sibling.page.id, selection)).rejects.toMatchObject({ status: 404 });
-    await pages.updatePage(f.project.id, f.page.id, { content: 'x'.repeat(200_000) }, 'author');
+    await pages.updatePage(f.project.id, f.page.id, { content: 'x'.repeat(200_000) }, author);
     expect((await history.comparePageHistory(f.project.id, f.page.id, selection)).diff).toEqual({ status: 'too-large', limit: 'bytes' });
     await db.prisma.pageRevision.createMany({
       data: Array.from({ length: 53 }, (_, i) => ({
@@ -162,56 +203,101 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
     expect(new Set([...first.entries, ...second.entries].map((entry) => entry.id)).size).toBe(54);
   });
 
+  it('paginates published history in batches of 20 with an exact date/id cursor', async () => {
+    const f = await fixture();
+    const createdAt = new Date('2026-11-11T09:00:00.000Z');
+    const deployments = Array.from({ length: 23 }, (_, i) => ({
+      id: `published-${String(i).padStart(2, '0')}-${randomUUID()}`,
+      projectId: f.project.id,
+      version: i + 1,
+      status: 'READY' as const,
+      createdAt,
+      snapshot: { pages: [{ id: f.page.id, title: `Published ${i}`, content: 'Published content' }] },
+    }));
+    await db.prisma.deployment.createMany({ data: deployments });
+    const expected = deployments
+      .map((deployment) => deployment.id)
+      .sort()
+      .reverse();
+    const first = await history.listPageHistory(f.project.id, f.page.id, { source: 'published' });
+    expect(first.entries.map((entry) => entry.id)).toEqual(expected.slice(0, 20));
+    expect(first.next).toEqual({ before: createdAt.toISOString(), beforeId: expected[19] });
+    const second = await history.listPageHistory(f.project.id, f.page.id, { source: 'published', ...first.next });
+    expect(second.entries.map((entry) => entry.id)).toEqual(expected.slice(20));
+    expect(second.next).toBeNull();
+  });
+
+  it('anonymizes retained revisions and cascades throttle state when an account is deleted', async () => {
+    const f = await fixture();
+    const removedAuthor = await person();
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Edited by deleted account' }, removedAuthor);
+    const revision = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id } });
+    expect(revision.userId).toBe(removedAuthor);
+    expect(await db.prisma.pageRevisionState.count({ where: { userId: removedAuthor } })).toBe(1);
+    expect((await history.listPageHistory(f.project.id, f.page.id, { source: 'revision' })).entries[0]?.author).toBe('Fictional history author');
+    // The account-deletion precondition allows this non-owner; the final user
+    // delete also covers callers that rely directly on database cascades.
+    const { reassignOrDeleteOrgs } = await import('@nibleaf/auth/account-deletion');
+    await reassignOrDeleteOrgs(removedAuthor);
+    await db.prisma.user.delete({ where: { id: removedAuthor } });
+    expect(await db.prisma.pageRevisionState.count({ where: { userId: removedAuthor } })).toBe(0);
+    expect(await db.prisma.pageRevision.findUniqueOrThrow({ where: { id: revision.id } })).toMatchObject({ userId: null, content: 'Original' });
+    // A null author is the list contract for the UI's localized unknown-author label.
+    expect((await history.listPageHistory(f.project.id, f.page.id, { source: 'revision' })).entries).toEqual([
+      expect.objectContaining({ id: revision.id, author: null }),
+    ]);
+  });
+
   it('restores through the normal conditional update, preserves an undo copy, and rolls back on a stale revision or write failure', async () => {
     const f = await fixture();
-    await pages.updatePage(f.project.id, f.page.id, { content: 'Saved revision' }, 'author');
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Saved revision' }, author);
     const revision = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id } });
     const selection = { source: 'revision' as const, entryId: revision.id };
-    const edited = await pages.updatePage(f.project.id, f.page.id, { content: 'Unsaved by history', title: 'Renamed' }, 'author');
+    const edited = await pages.updatePage(f.project.id, f.page.id, { content: 'Unsaved by history', title: 'Renamed' }, author);
     const count = await db.prisma.pageRevision.count({ where: { pageId: f.page.id } });
     await expect(
-      history.restorePageHistory(f.project.id, f.page.id, { ...selection, expectedUpdatedAt: f.page.updatedAt.toISOString() }, 'author'),
+      history.restorePageHistory(f.project.id, f.page.id, { ...selection, expectedUpdatedAt: f.page.updatedAt.toISOString() }, author),
     ).rejects.toMatchObject({ status: 409, code: 'page:revision_conflict' });
     expect(await db.prisma.pageRevision.count({ where: { pageId: f.page.id } })).toBe(count);
     const restored = await history.restorePageHistory(
       f.project.id,
       f.page.id,
       { ...selection, expectedUpdatedAt: edited.updatedAt.toISOString() },
-      'author',
+      author,
     );
-    expect(restored).toMatchObject({ content: 'Saved revision', title: 'Guide' });
+    expect(restored).toMatchObject({ content: 'Original', title: 'Guide' });
     const undo = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id, reason: 'before-restore' } });
     expect(undo).toMatchObject({ content: 'Unsaved by history', title: 'Renamed' });
     const undone = await history.restorePageHistory(
       f.project.id,
       f.page.id,
       { source: 'revision', entryId: undo.id, expectedUpdatedAt: restored.updatedAt.toISOString() },
-      'author',
+      author,
     );
     expect(undone).toMatchObject({ content: 'Unsaved by history', title: 'Renamed' });
     const before = await db.prisma.pageRevision.count({ where: { pageId: f.page.id } });
     const constraint = `history_${randomUUID().replaceAll('-', '')}`;
-    await db.prisma.$executeRawUnsafe(`ALTER TABLE page ADD CONSTRAINT ${constraint} CHECK (id <> '${f.page.id}' OR content <> 'Saved revision')`);
+    await db.prisma.$executeRawUnsafe(`ALTER TABLE page ADD CONSTRAINT ${constraint} CHECK (id <> '${f.page.id}' OR content <> 'Original')`);
     try {
       await expect(
-        history.restorePageHistory(f.project.id, f.page.id, { ...selection, expectedUpdatedAt: undone.updatedAt.toISOString() }, 'author'),
+        history.restorePageHistory(f.project.id, f.page.id, { ...selection, expectedUpdatedAt: undone.updatedAt.toISOString() }, author),
       ).rejects.toThrow();
       expect(await db.prisma.pageRevision.count({ where: { pageId: f.page.id } })).toBe(before);
       expect((await db.prisma.page.findUniqueOrThrow({ where: { id: f.page.id } })).content).toBe('Unsaved by history');
     } finally {
       await db.prisma.$executeRawUnsafe(`ALTER TABLE page DROP CONSTRAINT ${constraint}`);
     }
-    const huge = await pages.updatePage(f.project.id, f.page.id, { content: 'x'.repeat(PAGE_REVISION_MAX_BYTES + 1) }, 'author');
+    const huge = await pages.updatePage(f.project.id, f.page.id, { content: 'x'.repeat(PAGE_REVISION_MAX_BYTES + 1) }, author);
     await expect(
-      history.restorePageHistory(f.project.id, f.page.id, { ...selection, expectedUpdatedAt: huge.updatedAt.toISOString() }, 'author'),
+      history.restorePageHistory(f.project.id, f.page.id, { ...selection, expectedUpdatedAt: huge.updatedAt.toISOString() }, author),
     ).rejects.toMatchObject({ status: 400, details: { reason: 'history_snapshot_too_large' } });
   });
 
   it('explicitly erases revision and throttle rows for one website, preserving its sibling, then erases the fixed organization manifest', async () => {
     const first = await fixture();
     const sibling = await fixture(first.org.id);
-    await pages.updatePage(first.project.id, first.page.id, { content: 'Private first' }, 'author');
-    await pages.updatePage(sibling.project.id, sibling.page.id, { content: 'Private sibling' }, 'author');
+    await pages.updatePage(first.project.id, first.page.id, { content: 'Private first' }, author);
+    await pages.updatePage(sibling.project.id, sibling.page.id, { content: 'Private sibling' }, author);
     await erasure.eraseProject(first.project.id);
     expect(await db.prisma.pageRevision.count({ where: { projectId: first.project.id } })).toBe(0);
     expect(await db.prisma.pageRevisionState.count({ where: { projectId: first.project.id } })).toBe(0);

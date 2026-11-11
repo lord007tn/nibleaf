@@ -17,6 +17,9 @@ export async function listPageHistory(projectId: string, pageId: string, query: 
   if (!page) throw notFound('page', { id: pageId });
   const before = query.before ? new Date(query.before) : new Date('9999-01-01');
   const beforeId = query.beforeId ?? '\uffff';
+  // Extracting a page still detoasts each deployment's full snapshot inside
+  // PostgreSQL. Keep published batches smaller to limit that per-request cost.
+  const pageSize = query.source === 'published' ? 20 : 50;
   // jsonb_path_query_first extracts only the requested page. The list never
   // transfers page content (or any full deployment snapshot) to JavaScript.
   const rows =
@@ -30,7 +33,7 @@ export async function listPageHistory(projectId: string, pageId: string, query: 
       LEFT JOIN "user" u ON u.id = d."createdById"
       WHERE d."projectId" = ${projectId} AND d.status = 'READY' AND p.value IS NOT NULL
         AND (d."createdAt", d.id) < (${before}, ${beforeId})
-      ORDER BY d."createdAt" DESC, d.id DESC LIMIT 51
+      ORDER BY d."createdAt" DESC, d.id DESC LIMIT ${pageSize + 1}
     `
       : await prisma.$queryRaw<EntryRow[]>`
       SELECT r.id, 'revision'::text AS source, r.title, r."createdAt", r."contentBytes",
@@ -38,11 +41,11 @@ export async function listPageHistory(projectId: string, pageId: string, query: 
       FROM page_revision r LEFT JOIN "user" u ON u.id = r."userId"
       WHERE r."projectId" = ${projectId} AND r."pageId" = ${pageId}
         AND (r."createdAt", r.id) < (${before}, ${beforeId})
-      ORDER BY r."createdAt" DESC, r.id DESC LIMIT 51
+      ORDER BY r."createdAt" DESC, r.id DESC LIMIT ${pageSize + 1}
     `;
-  const entries: PageHistoryEntry[] = rows.slice(0, 50).map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }));
+  const entries: PageHistoryEntry[] = rows.slice(0, pageSize).map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }));
   const last = entries.at(-1);
-  return { entries, next: rows.length > 50 && last ? { before: last.createdAt, beforeId: last.id } : null };
+  return { entries, next: rows.length > pageSize && last ? { before: last.createdAt, beforeId: last.id } : null };
 }
 
 /** Bound content in SQL as well, before it crosses the DB/JS boundary. */

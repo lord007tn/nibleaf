@@ -56,6 +56,8 @@ model User {
   siteMemberSessions SiteMemberSession[]
   preference      UserPreference?
   joinLinkRedemptions JoinLinkRedemption[]
+  pageRevisions PageRevision[]
+  pageRevisionStates PageRevisionState[]
 
   @@map("user")
 }
@@ -2116,6 +2118,7 @@ model PageRevision {
   pageId String
   page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
   userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   title String
   content String
@@ -2136,6 +2139,7 @@ model PageRevisionState {
   pageId String
   page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
   userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   lastSavedAt DateTime
   lastSnapshotAt DateTime?
 
