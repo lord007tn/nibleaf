@@ -1,14 +1,40 @@
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import type { AiChatOpenSource } from '@nibleaf/validators';
-import { type ComponentProps, createContext, lazy, type ReactNode, Suspense, useContext, useState } from 'react';
+import { type ComponentProps, createContext, type ReactNode, Suspense, useContext, useState } from 'react';
 import { DocumentationReaderLayout } from '@/components/site/documentation-theme-provider';
 import type { ProjectConfig } from '@/hooks/api/types';
+import { HydrationIsland, hydrationModule } from '@/lib/hydration-modules';
 
 // The chat's launcher, panel, state and strings load on demand from one module,
 // so the public docs bundle carries only this context (see load-chat-ui.ts).
-const chatUi = () => import('./load-chat-ui').then((loader) => loader.loadChatUi());
-const ChatRoot = lazy(() => chatUi().then((ui) => ({ default: ui.ChatRoot })));
-const PageAction = lazy(() => chatUi().then((ui) => ({ default: ui.PageAction })));
+// Hydrating keeps their server markup until it loads, then swaps in the same
+// markup, live (see lib/hydration-modules.tsx). It isn't loaded before
+// hydrating, as the article is: nothing here is reading content, and the
+// router importing it would re-split the chunks the chat shares with the
+// reader. If it can't load, the markup goes after the retries: a launcher
+// without its code does nothing.
+const siteChatUiModule = hydrationModule('site-chat-ui', () => import('./load-chat-ui').then((loader) => loader.loadChatUi()));
+const CHAT_MODULES = [siteChatUiModule];
+function ChatRoot(props: ComponentProps<typeof import('./chat-ui').ChatRoot>) {
+  return (
+    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} modules={CHAT_MODULES}>
+      {() => {
+        const ui = siteChatUiModule.read();
+        return <ui.ChatRoot {...props} />;
+      }}
+    </HydrationIsland>
+  );
+}
+function PageAction(props: ComponentProps<typeof import('./chat-ui').PageAction>) {
+  return (
+    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} modules={CHAT_MODULES}>
+      {() => {
+        const ui = siteChatUiModule.read();
+        return <ui.PageAction {...props} />;
+      }}
+    </HydrationIsland>
+  );
+}
 
 export type PageContext = { title: string; path: string };
 /** Where the reader opened the chat from, for the `chat_opened` event. */
