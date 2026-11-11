@@ -891,6 +891,7 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
   }
   const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal, {
     languages: resolvePublishedSearchLanguages(snapshot),
+    defaultLanguage: defaultLanguage(snapshot.project).code,
     pages: versionPages,
   }).catch((cause) => {
     if (cause instanceof AppError) throw cause;

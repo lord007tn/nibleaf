@@ -14,6 +14,7 @@ import {
   chatCallInputBounds,
   chatCallInputTokens,
   chatSourcesTokens,
+  chatSystemPrompt,
   chatTurnReservation,
   chatUserPrompt,
   condenseFollowUp,
@@ -472,8 +473,9 @@ describe('reply language', () => {
     ['Comment exporter mes notes ?', 'fr', /^French/],
     ['?', 'en', /^English/],
   ])('decides %s on a %s site', (question, site, expected) => expect(replyLanguage(question, site)).toMatch(expected));
-  it('states it after the sources, where it cannot be missed', () => {
-    expect(chatUserPrompt('How?', [chunk], undefined, 'ar')).toMatch(/Reply in: English/);
+  it('puts the language instruction in the system prompt and leaves user/source text untrusted', () => {
+    expect(chatSystemPrompt('ar', 'كيف أضيف مستخدم جديد؟')).toContain('Reply language (trusted server setting): Arabic');
+    expect(chatUserPrompt('How?', [chunk])).not.toContain('Reply in:');
   });
 });
 

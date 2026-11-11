@@ -187,12 +187,18 @@ interface RetrievalResult {
   confidence: number;
 }
 
+interface QuestionEmbedding {
+  query: string;
+  vector: () => Promise<number[]>;
+}
+
 const retrieveHybrid = async (
   scope: SearchScope,
   query: string,
   limit: number,
   signal?: AbortSignal,
   runtime?: WorkspaceAiRuntime,
+  embedding?: QuestionEmbedding,
 ): Promise<RetrievalResult> => {
   const filter = filterForSearchScope(scope);
   if (!filter || !query.trim()) return { cacheHit: false, chunks: [], confidence: 0 };
@@ -204,14 +210,15 @@ const retrieveHybrid = async (
   const key = searchCacheKey(
     scope,
     query,
-    `chunks-v4-${resolved?.revision}-${env.QDRANT_COLLECTION_VERSION}-${provider.model}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}`,
+    `chunks-v5-${resolved?.revision}-${env.QDRANT_COLLECTION_VERSION}-${provider.model}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}-${embedding?.query ?? query}`,
   );
   const cached = retrievalCache.get(key);
   if (cached) return { cacheHit: true, chunks: cached, confidence: retrievalConfidence(cached) };
-  const embedded = await provider.embed([query], signal);
+  const dense = embedding ? await embedding.vector() : ((await provider.embed([query], signal)).vectors[0] ?? []);
+  signal?.throwIfAborted();
   const points = await client.queryHybrid(
     {
-      dense: embedded.vectors[0] ?? [],
+      dense,
       sparse: sparseVectorForQuery(query, scope.language),
       filter,
       // Security takes precedence over a broader statistical population: an
@@ -356,14 +363,29 @@ type HybridSearch = (
   limit: number,
   signal?: AbortSignal,
   runtime?: WorkspaceAiRuntime,
+  embedding?: QuestionEmbedding,
 ) => Promise<RetrievalResult>;
 
 export interface ChatLanguageContext {
   /** Enabled languages from the server-resolved publication, never the body. */
   languages: string[];
+  defaultLanguage?: string;
   /** Version pages already restricted to the reader's grants. */
   pages: Pick<SnapshotPage, 'id' | 'title' | 'path' | 'translationKey' | 'languageCode' | 'kind' | 'hidden'>[];
 }
+
+const CHAT_RETRIEVAL_LIMITS = { fallbackLanguages: 2, translations: 2, concurrency: 2, calls: 8, deadlineMs: 8000 };
+const emptyRetrieval = (): RetrievalResult => ({ chunks: [], confidence: 0, cacheHit: false });
+
+/** Bound even a provider that ignores cancellation; its pending promise still
+ * has rejection handlers, and cooperative providers receive the same signal. */
+const untilAborted = <T>(work: Promise<T>, signal: AbortSignal): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  });
 
 /** Search the question's language before trying other published languages.
  * Every lane retains the same tenant, deployment, version and page grants. */
@@ -375,52 +397,105 @@ export const retrieveChatLanguages = async (
   options: { language: string; page?: { id: string; title: string }; signal?: AbortSignal },
   search: HybridSearch = retrieveHybrid,
 ): Promise<ChatRetrieval> => {
-  const preferred =
-    context.languages.find((language) => language === options.language) ??
-    context.languages.find((language) => language.split('-')[0] === options.language.split('-')[0]);
-  const primaryLanguage = preferred ?? scope.language;
-  const primaryScope = { ...scope, language: primaryLanguage };
-  const readable = context.pages.filter(
-    (page) => page.kind === 'PAGE' && !page.hidden && (scope.allowedPageIds === null || scope.allowedPageIds.has(page.id)),
-  );
-  const currentPage = readable.find((page) => page.id === options.page?.id);
-  const translatedPage = currentPage && readable.find((page) => page.languageCode === primaryLanguage && isPageTranslation(currentPage, page));
-  const primary = await retrieveChatContext(
-    primaryScope,
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(new DOMException('Retrieval deadline exceeded', 'TimeoutError')), CHAT_RETRIEVAL_LIMITS.deadlineMs);
+  const signal = options.signal ? AbortSignal.any([options.signal, deadline.signal]) : deadline.signal;
+  let vector: Promise<number[]> | undefined;
+  const embedding: QuestionEmbedding = {
     query,
-    runtime,
-    {
-      signal: options.signal,
-      page: translatedPage ? { id: translatedPage.id, title: translatedPage.title } : undefined,
+    vector: () => {
+      vector ??= workspaceEmbeddingProvider(runtime)
+        .embed([query], signal)
+        .then((result) => result.vectors[0] ?? []);
+      return vector;
     },
-    search,
-  );
-  if (primary.chunks.length && (primary.searchConfidence ?? primary.confidence) >= env.SEARCH_ANSWER_MIN_CONFIDENCE) return primary;
+  };
+  let calls = 0;
+  const active = new Set<Promise<RetrievalResult>>();
+  const boundedSearch: HybridSearch = async (target, text, limit) => {
+    while (active.size >= CHAT_RETRIEVAL_LIMITS.concurrency) await Promise.race(active);
+    options.signal?.throwIfAborted();
+    if (signal.aborted || calls >= CHAT_RETRIEVAL_LIMITS.calls) return emptyRetrieval();
+    calls++;
+    const work = untilAborted(search(target, text, limit, signal, runtime, embedding), signal).catch((error: unknown) => {
+      options.signal?.throwIfAborted();
+      if (deadline.signal.aborted) return emptyRetrieval();
+      throw error;
+    });
+    active.add(work);
+    try {
+      return await work;
+    } finally {
+      active.delete(work);
+    }
+  };
+  try {
+    const preferred =
+      context.languages.find((language) => language === options.language) ??
+      context.languages.find((language) => language.split('-')[0] === options.language.split('-')[0]);
+    const primaryLanguage =
+      preferred ??
+      context.languages.find((language) => language === scope.language) ??
+      context.languages.find((language) => language === context.defaultLanguage) ??
+      context.languages[0];
+    if (!primaryLanguage) return { ...emptyRetrieval(), hits: [] };
+    const primaryScope = { ...scope, language: primaryLanguage };
+    const readable = context.pages.filter(
+      (page) => page.kind === 'PAGE' && !page.hidden && (scope.allowedPageIds === null || scope.allowedPageIds.has(page.id)),
+    );
+    const currentPage = readable.find((page) => page.id === options.page?.id);
+    const translatedPage = currentPage && readable.find((page) => page.languageCode === primaryLanguage && isPageTranslation(currentPage, page));
+    const primary = await retrieveChatContext(
+      primaryScope,
+      query,
+      runtime,
+      {
+        signal,
+        page: translatedPage ? { id: translatedPage.id, title: translatedPage.title } : undefined,
+      },
+      boundedSearch,
+    );
+    if (primary.chunks.length && (primary.searchConfidence ?? primary.confidence) >= env.SEARCH_ANSWER_MIN_CONFIDENCE) return primary;
 
-  const fallbackLanguages = [...new Set(context.languages)].filter((language) => language !== primaryLanguage);
-  const fallbacks = await Promise.all(
-    fallbackLanguages.map((language) => retrieveChatContext({ ...scope, language }, query, runtime, { signal: options.signal }, search)),
-  );
-  const best =
-    [primary, ...fallbacks].sort((left, right) => (right.searchConfidence ?? right.confidence) - (left.searchConfidence ?? left.confidence))[0] ??
-    primary;
-  if (best === primary || best.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE) return best;
+    const counts = new Map<string, number>();
+    for (const page of readable) counts.set(page.languageCode, (counts.get(page.languageCode) ?? 0) + 1);
+    const fallbackLanguages = [...new Set(context.languages)]
+      .filter((language) => language !== primaryLanguage)
+      .sort(
+        (left, right) =>
+          Number(right === context.defaultLanguage) - Number(left === context.defaultLanguage) ||
+          (counts.get(right) ?? 0) - (counts.get(left) ?? 0) ||
+          left.localeCompare(right),
+      )
+      .slice(0, CHAT_RETRIEVAL_LIMITS.fallbackLanguages);
+    const fallbacks = await Promise.all(
+      fallbackLanguages.map((language) => retrieveChatContext({ ...scope, language }, query, runtime, { signal, widen: false }, boundedSearch)),
+    );
+    const best =
+      [primary, ...fallbacks].sort((left, right) => (right.searchConfidence ?? right.confidence) - (left.searchConfidence ?? left.confidence))[0] ??
+      primary;
+    if (best === primary || best.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE) return best;
 
-  // A cross-language hit may identify a translated guide that the original
-  // wording missed. Read that actual translation, rather than relabeling a hit.
-  const translations = new Map<string, { id: string; title: string }>();
-  for (const { chunk } of best.hits.slice(0, WIDEN_FROM_TOP)) {
-    const source = readable.find((page) => page.id === chunk.pageId);
-    const translated = source && readable.find((page) => page.languageCode === preferred && isPageTranslation(source, page));
-    if (translated) translations.set(source.id, { id: translated.id, title: translated.title });
+    // A cross-language hit may identify a translated guide that the original
+    // wording missed. Read that actual translation, rather than relabeling a hit.
+    const translations = new Map<string, { id: string; title: string }>();
+    for (const { chunk } of best.hits.slice(0, WIDEN_FROM_TOP)) {
+      const source = readable.find((page) => page.id === chunk.pageId);
+      const translated = source && readable.find((page) => page.languageCode === preferred && isPageTranslation(source, page));
+      if (translated) translations.set(source.id, { id: translated.id, title: translated.title });
+      if (translations.size >= CHAT_RETRIEVAL_LIMITS.translations) break;
+    }
+    const translatedHits = new Map<string, HybridChunkHit[]>();
+    for (const [sourceId, page] of translations) {
+      const lane = await boundedSearch({ ...primaryScope, allowedPageIds: new Set([page.id]) }, `${page.title} ${query}`, 6);
+      if (lane.chunks.length) translatedHits.set(sourceId, lane.chunks);
+    }
+    const hits = best.hits.flatMap((hit) => translatedHits.get(hit.chunk.pageId) ?? [hit]);
+    return { ...best, hits, chunks: selectAnswerChunks(hits), cacheHit: false };
+  } finally {
+    clearTimeout(timer);
+    deadline.abort();
   }
-  const translatedHits = new Map<string, HybridChunkHit[]>();
-  for (const [sourceId, page] of translations) {
-    const lane = await search({ ...primaryScope, allowedPageIds: new Set([page.id]) }, `${page.title} ${query}`, 6, options.signal, runtime);
-    if (lane.chunks.length) translatedHits.set(sourceId, lane.chunks);
-  }
-  const hits = best.hits.flatMap((hit) => translatedHits.get(hit.chunk.pageId) ?? [hit]);
-  return { ...best, hits, chunks: selectAnswerChunks(hits), cacheHit: false };
 };
 
 /** Retrieval for one chat turn. The optional page lane narrows the same
@@ -432,7 +507,7 @@ export const retrieveChatContext = async (
   scope: SearchScope,
   query: string,
   runtime: WorkspaceAiRuntime,
-  options: { page?: { id: string; title: string }; signal?: AbortSignal } = {},
+  options: { page?: { id: string; title: string }; signal?: AbortSignal; widen?: boolean } = {},
   search: HybridSearch = retrieveHybrid,
 ): Promise<ChatRetrieval> => {
   const page = options.page && (scope.allowedPageIds === null || scope.allowedPageIds.has(options.page.id)) ? options.page : undefined;
@@ -440,7 +515,7 @@ export const retrieveChatContext = async (
     search({ ...scope, allowedPageIds: new Set([target.id]) }, `${target.title} ${query}`, 6, options.signal, runtime);
   const [main, asked] = await Promise.all([search(scope, query, 12, options.signal, runtime), page ? pageSearch(page) : Promise.resolve(null)]);
   // A turn the main search is not confident about is refused: it reads nothing more.
-  const widen = page || main.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE ? [] : pagesToWiden(main.chunks);
+  const widen = options.widen === false || page || main.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE ? [] : pagesToWiden(main.chunks);
   const widened = await Promise.all(widen.map(async (target) => ({ target, lane: await pageSearch(target) })));
   if (!asked?.chunks.length && !widened.some(({ lane }) => lane.chunks.length)) {
     return {
@@ -505,7 +580,7 @@ export const answerPublishedSearch = async (
   );
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
-  const language = questionLanguage(query, scope.language);
+  const language = questionLanguage(query, scope.language, context?.languages);
   const retrieval = context
     ? await retrieveChatLanguages(scope, query, runtime, context, { language, signal })
     : await retrieveChatContext(scope, query, runtime, { signal });

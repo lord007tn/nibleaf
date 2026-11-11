@@ -46,21 +46,37 @@ const markdownBlocks = (text: string): string[] => {
   return blocks.filter(Boolean);
 };
 
+/** Remove complete leading refusals and generic next-step offers, while
+ * retaining any supported remainder with its own citation markers. */
+const withoutRefusal = (text: string): string => {
+  let declined = false;
+  for (const match of text.matchAll(/[^.!?؟]+[.!?؟]*(?:\s*\[S\d+(?:\s*[,;،؛]\s*S\d+)*\])*/gu)) {
+    const sentence = match[0];
+    const prose = normalizeArabicSearchText(sentence.replace(/\[S\d+(?:\s*[,;،؛]\s*S\d+)*\]/g, ''))
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^(?:sorry|عذرا)[،,:\s]*/iu, '');
+    const refusal =
+      /^(?:I (?:couldn['’]t|could not|can['’]t|cannot) (?:verify|find|answer)\b|(?:The supplied documentation|The documentation|The docs) (?:does not|do not|doesn['’]t|don['’]t) (?:state|mention|cover|describe)\b|لم اجد (?:اجابه|اجابة|معلومات)|لا (?:اجد|يمكنني تاكيد))/iu.test(
+        prose,
+      );
+    if (refusal) {
+      const connector = sentence.match(/\b(?:but|however|instead)\b[,،]?\s*|لكن[,،]?\s*/iu);
+      if (connector?.index !== undefined) return text.slice((match.index ?? 0) + connector.index + connector[0].length).trim();
+      declined = true;
+      continue;
+    }
+    if (declined && /^(?:try (?:another|a different|searching|asking)|contact (?:our )?support|جرب |حاول |تواصل مع الدعم)/iu.test(prose)) continue;
+    return text.slice(match.index).trim();
+  }
+  return declined ? '' : text;
+};
+
 export const validateCitedAnswer = (answer: string, chunks: SearchChunk[], query: string, policy: CitationPolicy): CitedAnswerValidation => {
   let text = answer.trim();
   if (!text) return { status: 'no_answer', reason: 'empty' };
-  // Some providers ignore the decline sentinel and attach a source to a refusal.
-  // Only a standalone refusal is caught here; a supported partial answer stays.
-  const prose = normalizeArabicSearchText(text.replace(/\[S\d+\]/g, '')).trim();
-  if (
-    !prose.includes('\n') &&
-    prose.length < 350 &&
-    !/\b(?:but|however|instead)\b|لكن|يمكنك/iu.test(prose) &&
-    /^(?:I (?:couldn['’]t|could not|can['’]t|cannot) (?:verify|find|answer)|(?:The supplied documentation|The documentation|The docs) (?:does not|do not|doesn['’]t|don['’]t) (?:state|mention|cover|describe)|لم اجد (?:اجابه|اجابة|معلومات)|لا (?:اجد|يمكنني تاكيد))/iu.test(
-      prose,
-    )
-  )
-    return { status: 'no_answer', reason: 'uncited' };
+  text = withoutRefusal(text);
+  if (!text) return { status: 'no_answer', reason: 'uncited' };
   if (policy === 'chat')
     text = text.replace(/\[(S\d+(?:\s*[,;،؛]\s*S\d+)+)\]/g, (_, group: string) =>
       group

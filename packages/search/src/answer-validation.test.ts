@@ -19,6 +19,22 @@ const chunk: SearchChunk = {
 };
 
 describe('chat heading detection', () => {
+  it.each([
+    ["I couldn't find automatic invites. You can add a user from Users. [S1]", 'You can add a user from Users. [S1]'],
+    ["Sorry, I couldn't find automatic invites. You can add a user from Users. [S1]", 'You can add a user from Users. [S1]'],
+    ['لم أجد معلومات عن الدعوات التلقائية. يمكنك إضافة مستخدم من المستخدمين. [S1]', 'يمكنك إضافة مستخدم من المستخدمين. [S1]'],
+    ['عذرًا، لم أجد معلومات عن الدعوات التلقائية. يمكنك إضافة مستخدم من المستخدمين. [S1]', 'يمكنك إضافة مستخدم من المستخدمين. [S1]'],
+  ])('preserves supported remainder sentences: %s', (answer, expected) => {
+    expect(validateCitedAnswer(answer, [chunk], '', 'chat')).toMatchObject({ status: 'answered', answer: expected, citations: [{ id: 'S1' }] });
+  });
+  it.each([
+    "I couldn't verify this from the docs.\nTry another question. [S1]",
+    "Sorry, I couldn't verify this from the docs.\n\nTry another question. [S1]",
+    'لم أجد إجابة في الدليل.\nجرّب سؤالًا آخر. [S1]',
+    'عذرًا، لم أجد إجابة في الدليل.\nجرّب سؤالًا آخر. [S1]',
+  ])('rejects complete refusals across whitespace and apologies: %s', (answer) => {
+    expect(validateCitedAnswer(answer, [chunk], '', 'chat')).toMatchObject({ status: 'no_answer' });
+  });
   it('stays linear on a hash followed by a long run of spaces', () => {
     const started = performance.now();
     const result = validateCitedAnswer(`Use s3 [S1]\n\n#${' '.repeat(50_000)}x\n\nMore s3 [S1]`, [chunk], 'storage', 'chat');

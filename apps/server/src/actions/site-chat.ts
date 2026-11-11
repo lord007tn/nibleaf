@@ -315,7 +315,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const threadId = body.conversationId;
   const runId = randomUUID();
   const turnId = randomUUID();
-  const language = questionLanguage(body.question, context.scope.language);
+  const language = questionLanguage(body.question, context.scope.language, resolvePublishedSearchLanguages(context.snapshot));
   const fail = (code: AiChatErrorCode): StreamChunk[] => [
     custom(AI_CHAT_EVENT.error, { code }),
     { type: EventType.RUN_ERROR, message: ERROR_MESSAGES[code], code, threadId, runId, timestamp: Date.now() },
@@ -429,6 +429,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       runtime,
       {
         languages: resolvePublishedSearchLanguages(context.snapshot),
+        defaultLanguage: defaultLanguage(context.snapshot.project).code,
         pages: context.versionPages,
       },
       { language, page, signal },
