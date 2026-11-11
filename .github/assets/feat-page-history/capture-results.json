@@ -1,0 +1,33 @@
+{
+  "source": "real local editor and API; fictional fixtures",
+  "results": [
+    {
+      "locale": "en",
+      "width": 1440,
+      "restored": true,
+      "undoCopy": true,
+      "errors": []
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "restored": true,
+      "undoCopy": true,
+      "errors": []
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "restored": true,
+      "undoCopy": true,
+      "errors": []
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "restored": true,
+      "undoCopy": true,
+      "errors": []
+    }
+  ]
+}

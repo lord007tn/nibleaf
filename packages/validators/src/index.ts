@@ -1482,3 +1482,16 @@ export type GitConflictResolutionBody = z.infer<typeof gitConflictResolutionBody
 
 export * from './ai';
 export * from './ai-chat';
+
+export const pageHistorySelection = z.object({
+  source: z.enum(['revision', 'published']),
+  entryId: z.string().min(1).max(200),
+});
+export type PageHistorySelection = z.infer<typeof pageHistorySelection>;
+export const pageHistoryQuery = z.object({
+  source: z.enum(['revision', 'published']).default('revision'),
+  before: z.iso.datetime({ offset: true }).optional(),
+  beforeId: z.string().min(1).max(200).optional(),
+});
+export type PageHistoryQuery = z.infer<typeof pageHistoryQuery>;
+export const restorePageHistoryBody = pageHistorySelection.extend({ expectedUpdatedAt: z.iso.datetime({ offset: true }) });
