@@ -1,17 +1,17 @@
 import type { Prisma } from '@nibleaf/database';
 import { resolveLocale } from '@nibleaf/i18n/locales';
-import {
-  newsite_starter_faq_content,
-  newsite_starter_faq_title,
-  newsite_starter_firstguide_content,
-  newsite_starter_firstguide_title,
-  newsite_starter_gettingstarted_content,
-  newsite_starter_gettingstarted_title,
-  newsite_starter_guides_content,
-  newsite_starter_guides_title,
-  newsite_starter_welcome_content,
-  newsite_starter_welcome_title,
-} from '@nibleaf/i18n/messages';
+// One module per message: the full catalog index is thousands of modules,
+// too heavy for everything that imports site creation (route guards included).
+import { newsite_starter_faq_content } from '@nibleaf/i18n/messages/newsite_starter_faq_content';
+import { newsite_starter_faq_title } from '@nibleaf/i18n/messages/newsite_starter_faq_title';
+import { newsite_starter_firstguide_content } from '@nibleaf/i18n/messages/newsite_starter_firstguide_content';
+import { newsite_starter_firstguide_title } from '@nibleaf/i18n/messages/newsite_starter_firstguide_title';
+import { newsite_starter_gettingstarted_content } from '@nibleaf/i18n/messages/newsite_starter_gettingstarted_content';
+import { newsite_starter_gettingstarted_title } from '@nibleaf/i18n/messages/newsite_starter_gettingstarted_title';
+import { newsite_starter_guides_content } from '@nibleaf/i18n/messages/newsite_starter_guides_content';
+import { newsite_starter_guides_title } from '@nibleaf/i18n/messages/newsite_starter_guides_title';
+import { newsite_starter_welcome_content } from '@nibleaf/i18n/messages/newsite_starter_welcome_content';
+import { newsite_starter_welcome_title } from '@nibleaf/i18n/messages/newsite_starter_welcome_title';
 import type { CreateProjectBody } from '@nibleaf/validators';
 
 /** Draft pages share the new site's transaction, language and default branch. */
