@@ -433,9 +433,9 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(await prisma.user.count({ where: { email } })).toBe(1);
   });
 
-  it('allows an existing Google account to log in without the acceptance flag', async () => {
-    const existing = await createGoogleUser('google-returning-no-consent');
-    expectSignedInRedirect(await signInWithGoogle(existing.sub, existing.email, null));
+  it.each([null, false])('allows an existing Google account to log in without accepting again (%s)', async (acceptTerms) => {
+    const existing = await createGoogleUser(`google-returning-no-consent-${acceptTerms}`);
+    expectSignedInRedirect(await signInWithGoogle(existing.sub, existing.email, acceptTerms));
     expect(await prisma.user.findUniqueOrThrow({ where: { id: existing.userId } })).toMatchObject({ termsAcceptedAt: null, termsVersion: null });
   });
 

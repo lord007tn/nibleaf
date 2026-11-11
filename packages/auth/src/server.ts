@@ -44,7 +44,7 @@ const captureGoogleTerms = createAuthMiddleware(async (context) => {
   const accepted = context.body?.additionalData?.acceptTerms;
   // Without acknowledgement an existing account can still log in. Only the
   // verified identity at creation can distinguish a new account safely.
-  if (accepted === undefined) return;
+  if (accepted === undefined || accepted === false) return;
   if (accepted !== true) throw termsRequired();
   await addOAuthServerContext({ termsVersion: TERMS_VERSION });
 });
