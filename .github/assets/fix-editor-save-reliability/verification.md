@@ -53,7 +53,20 @@ Production builds with BUNDLE_ANALYZE=true and gzip level 9 reporting:
 
 | Profile | Main | Patched | Delta |
 | --- | --- | --- | --- |
-| public-docs | 270.96 KiB | 270.97 KiB | +0.01 KiB |
-| dashboard-home | 1281.65 KiB | 1282.01 KiB | +0.36 KiB |
+| public-docs | 270.96 KiB | 270.96 KiB | +0.00 KiB |
+| dashboard-home | 1281.65 KiB | 1282.63 KiB | +0.98 KiB |
 
-Rounded reporter values; public-docs remains under its 337.01 KiB budget. All UI copy reuses existing keys, including the offline message available in all catalogs; no new catalog entries or server i18n imports were added.
+Rounded reporter values; public-docs remains under its 337.01 KiB budget. All UI copy reuses existing keys. The offline key already existed in all catalogs; its ten English placeholders are now translated, including formal German. No new message IDs or server i18n imports were added.
+
+## Local validation
+
+- Full `pnpm exec turbo run typecheck`: 27 tasks passed.
+- Full app suite: 372 files passed, 4,522 tests passed, 14 skipped.
+- Full i18n suite: 4 files and 146 tests passed.
+- Root `node --test scripts/*.test.mjs`: 175 passed, 28 skipped, zero failures.
+- `pnpm knip`: passed, with three existing configuration hints.
+- `pnpm exec biome check .`: passed, with 50 existing warnings outside this change.
+- `BUNDLE_ANALYZE=true pnpm build:app` and app `bundle:check`: passed.
+- `git diff --check`: passed.
+
+Cleanup reviewed the owned diff and creation callers: duplicate save-error state handling was removed; shared error reporting preserves analytics' existing language-refresh retry and final toast. No additional abstractions or optimistic cache writes were introduced. Runtime media covers the real local app/API, not production deployment acceptance.
