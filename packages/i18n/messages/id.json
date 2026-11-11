@@ -2203,6 +2203,8 @@
   "site_breadcrumb": "Jejak navigasi",
   "site_togglesubpages": "Tampilkan atau sembunyikan subhalaman",
   "site_articledetails": "Detail artikel",
+  "site_languagefallbacknotice": "Halaman ini belum tersedia dalam {requested}. Anda sedang membaca versi {shown}.",
+  "site_languagefallbackview": "Lihat situs dalam {language}",
   "site_copycode": "Salin kode",
   "site_copied": "Disalin",
   "site_viewfullsizeof": "Lihat ukuran penuh: {alt}",

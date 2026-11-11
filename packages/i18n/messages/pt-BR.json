@@ -2269,6 +2269,8 @@
   "site_breadcrumb": "Trilha de navegação",
   "site_togglesubpages": "Mostrar ou ocultar subpáginas",
   "site_articledetails": "Detalhes do artigo",
+  "site_languagefallbacknotice": "Esta página ainda não está disponível em {requested}. Você está lendo a versão em {shown}.",
+  "site_languagefallbackview": "Ver o site em {language}",
   "site_copycode": "Copiar código",
   "site_copied": "Copiado",
   "site_viewfullsizeof": "Ver em tamanho real: {alt}",

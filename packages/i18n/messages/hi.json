@@ -2203,6 +2203,8 @@
   "site_breadcrumb": "ब्रेडक्रंब",
   "site_togglesubpages": "उपपृष्ठ टॉगल करें",
   "site_articledetails": "आलेख विवरण",
+  "site_languagefallbacknotice": "यह पेज अभी {requested} में उपलब्ध नहीं है। आप {shown} संस्करण पढ़ रहे हैं।",
+  "site_languagefallbackview": "साइट {language} में देखें",
   "site_copycode": "कोड कॉपी करें",
   "site_copied": "नकल की गई",
   "site_viewfullsizeof": "पूरे आकार में देखें: {alt}",
