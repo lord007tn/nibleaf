@@ -1,7 +1,7 @@
 import { inviteMemberBody, updateMemberRoleBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { cancelInvitation, inviteMember, listMembers, removeMember, updateMemberRole } from '@/actions/members';
+import { cancelInvitation, inviteMember, listMembers, removeMember, resendInvitation, updateMemberRole } from '@/actions/members';
 import { suggestPeopleToInvite } from '@/actions/people';
 import {
   getContextLocale,
@@ -51,6 +51,15 @@ const app = new Hono<HonoEnv>()
     const organizationId = getContextOrganizationIdOrThrow();
     const user = getContextUserOrThrow();
     return ctx.json({ data: await removeMember(organizationId, ctx.req.param('id'), user.id, ctx.req.param('projectId')) }, 200);
+  })
+  .post('/invitations/:id/resend', ...projectMembersRoutes.resendInvite, async (ctx) => {
+    const organizationId = getContextOrganizationIdOrThrow();
+    return ctx.json(
+      {
+        data: await resendInvitation(organizationId, ctx.req.param('id'), getContextUserOrThrow().id, ctx.req.param('projectId'), getContextLocale()),
+      },
+      200,
+    );
   })
   .delete('/invitations/:id', ...projectMembersRoutes.cancelInvite, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

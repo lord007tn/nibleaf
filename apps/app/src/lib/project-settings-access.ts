@@ -1,4 +1,16 @@
-import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
+import { decide, siteAccessFromMembers } from '@/features/site-access/model/access';
+
+const retry = () => undefined;
+
+const accessForRole = (role: string | undefined, pending: boolean, failed = false) =>
+  siteAccessFromMembers({
+    members: role === undefined ? [] : [{ user: { id: 'session' }, role }],
+    sessionUserId: 'session',
+    pending,
+    failed,
+    cachedData: !failed,
+    retry,
+  });
 
 /**
  * Whether the signed-in person may manage this site's admin-only settings
@@ -15,8 +27,8 @@ export type SiteAdminState = 'pending' | 'admin' | 'notAdmin';
 /** Decide {@link SiteAdminState} from the signed-in person's role on the site's
  *  team (`undefined` when they aren't on it) and whether that's still unknown. */
 export function resolveProjectSettingsAccess(role: string | undefined, pending: boolean): SiteAdminState {
-  if (pending) return 'pending';
-  return canAdminister(role ?? '') ? 'admin' : 'notAdmin';
+  const decision = decide(accessForRole(role, pending), { type: 'site.settings.manage' });
+  return decision.kind === 'locked' ? 'pending' : decision.kind === 'allowed' ? 'admin' : 'notAdmin';
 }
 
 /**
@@ -33,7 +45,8 @@ export function resolveProjectSettingsAccess(role: string | undefined, pending: 
 export type SiteEditState = 'pending' | 'edit' | 'viewOnly' | 'unknown';
 
 export function resolveProjectEditAccess(role: string | undefined, pending: boolean, failed = false): SiteEditState {
-  if (failed) return 'unknown';
-  if (pending) return 'pending';
-  return canEdit(role ?? '') ? 'edit' : 'viewOnly';
+  const access = accessForRole(role, pending, failed);
+  if (access.status === 'unavailable') return 'unknown';
+  const decision = decide(access, { type: 'site.content.edit' });
+  return decision.kind === 'locked' ? 'pending' : decision.kind === 'allowed' ? 'edit' : 'viewOnly';
 }

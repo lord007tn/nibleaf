@@ -16,6 +16,12 @@ const joinLinksRoutes = {
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
   revoke: createRouteConfig({ guard: [...admin], tags: ['join-links'], description: 'Disable a join link.', responses: ok }),
+  remove: createRouteConfig({
+    guard: [...admin],
+    tags: ['join-links'],
+    description: 'Delete a join link that no longer admits anyone (disable it first).',
+    responses: ok,
+  }),
   regenerate: createRouteConfig({
     guard: [...admin],
     tags: ['join-links'],
