@@ -483,6 +483,9 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 12
       redis:
         image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
+        env:
+          DFLY_cluster_mode: emulated
+          DFLY_lock_on_hashtags: "true"
         ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s
