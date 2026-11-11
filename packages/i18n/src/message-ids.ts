@@ -4431,6 +4431,15 @@ export const MESSAGE_IDS = {
   'people.site.promote': 'people_site_promote',
   'people.site.promoteTitle': 'people_site_promotetitle',
   'people.site.promoteConfirm': 'people_site_promoteconfirm',
+  'people.delivery.queued': 'people_delivery_queued',
+  'people.delivery.failed': 'people_delivery_failed',
+  'people.delivery.disabled': 'people_delivery_disabled',
+  'people.invite.someFailed': 'people_invite_somefailed',
+  'people.invite.retry': 'people_invite_retry',
+  'people.invite.retryFor': 'people_invite_retryfor',
+  'people.invite.recipients': 'people_invite_recipients',
+  'people.invitations.resendNotQueued': 'people_invitations_resendnotqueued',
+  'people.site.invitedFailed': 'people_site_invitedfailed',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

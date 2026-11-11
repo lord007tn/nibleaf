@@ -129,6 +129,25 @@ describe('website Team page', () => {
     expect(host.textContent).not.toContain('people.links.title');
   });
 
+  it('Add people says when the invitation email could not be queued, and offers retry and the link', async () => {
+    mocks.invite.mockResolvedValue({ id: 'i-9', email: 'new@example.test', role: 'member', status: 'pending', delivery: 'failed' });
+    await render();
+    const add = [...host.querySelectorAll('button')].find((button) => button.textContent?.includes('people.site.add'));
+    await act(async () => add?.click());
+    const input = document.querySelector<HTMLInputElement>('[role="dialog"] input[type="email"]');
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    await act(async () => {
+      setValue?.call(input, 'new@example.test');
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => document.querySelector<HTMLButtonElement>('[role="dialog"] button[type="submit"]')?.click());
+    const dialog = document.querySelector('[role="dialog"]')?.textContent ?? '';
+    expect(dialog).toContain('people.site.invitedFailed(new@example.test)');
+    expect(dialog).toContain('people.invite.retry');
+    expect(dialog).toContain('people.invitations.copyLink');
+    expect(dialog).not.toContain('people.site.invitedEmailed');
+  });
+
   it('Add people opens a dialog whose email error appears only after submit, never on an untouched form (defect 1)', async () => {
     await render();
     const add = [...host.querySelectorAll('button')].find((button) => button.textContent?.includes('people.site.add'));

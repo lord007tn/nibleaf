@@ -38,6 +38,7 @@ export const getJoinLinkPreview = async (token: string) => {
   });
   if (
     !link ||
+    link.deletedAt ||
     link.organization.needsRepair ||
     link.organization.deletionStartedAt ||
     joinLinkStatus(link) !== 'active' ||

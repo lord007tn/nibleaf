@@ -3,15 +3,18 @@ import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { CopyButton } from '@nibleaf/design-system/components/ui/copy-button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
 import { useT } from '@nibleaf/i18n/react';
-import { CheckCircle2, Mail } from 'lucide-react';
+import { CheckCircle2, Mail, RefreshCw } from 'lucide-react';
 import { useId, useState } from 'react';
+import { toast } from 'sonner';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { fieldErrorsVisible } from '@/lib/forms/field-errors';
 import { inviteAcceptUrl } from '@/lib/invitations';
-import { type InviteResult, useInviteToOrganization } from '../api/mutations';
-import { emailsError, parseEmails } from '../model/invitations';
+import { type InviteResult, useInviteToOrganization, useResendOrgInvitation } from '../api/mutations';
+import { DELIVERY_VIEW, deliverySummary, emailsError, type InvitationDelivery, parseEmails } from '../model/invitations';
 import { type GrantSelection, grantsFromSelection } from '../model/members';
 import { type AssignableOrgRole, DEFAULT_INVITE_SITE_ROLE, ORG_ROLE_OPTIONS } from '../model/roles';
 import { RoleOptionList } from './role-options';
@@ -90,7 +93,7 @@ export function InviteDialog({
     >
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         {result ? (
-          <InviteResultView onDone={() => onOpenChange(false)} onMore={reset} result={result} />
+          <InviteResultView onDone={() => onOpenChange(false)} onMore={reset} organizationId={organizationId} result={result} />
         ) : (
           <form
             className="grid min-w-0 gap-5"
@@ -163,8 +166,38 @@ export function InviteDialog({
   );
 }
 
-function InviteResultView({ result, onDone, onMore }: { result: InviteResult; onDone: () => void; onMore: () => void }) {
+function InviteResultView({
+  organizationId,
+  result,
+  onDone,
+  onMore,
+}: {
+  organizationId: string;
+  result: InviteResult;
+  onDone: () => void;
+  onMore: () => void;
+}) {
   const t = useT();
+  const resend = useResendOrgInvitation(organizationId);
+  const [deliveries, setDeliveries] = useState<Record<string, InvitationDelivery>>(() =>
+    Object.fromEntries(result.invitations.map((invitation) => [invitation.id, invitation.delivery])),
+  );
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const summary = deliverySummary(result.invitations.map((invitation) => deliveries[invitation.id] ?? invitation.delivery));
+  const retry = async (invitation: { id: string; email: string }) => {
+    setRetrying(invitation.id);
+    try {
+      const { delivery } = await resend.mutateAsync(invitation.id);
+      setDeliveries((current) => ({ ...current, [invitation.id]: delivery }));
+      if (delivery === 'failed') toast.error(t('people.invitations.resendNotQueued', { email: invitation.email }));
+    } catch (error) {
+      toast.error(t('people.invitations.resendFailed', { email: invitation.email }), {
+        description: friendlyErrorMessage(t, error, 'people.invitations.resendFailedDetail'),
+      });
+    } finally {
+      setRetrying(null);
+    }
+  };
   return (
     <div className="grid min-w-0 gap-4">
       <DialogHeader>
@@ -172,27 +205,48 @@ function InviteResultView({ result, onDone, onMore }: { result: InviteResult; on
           <CheckCircle2 aria-hidden className="size-5 text-success" />
           {result.invitations.length ? t('people.invite.doneTitle', { count: result.invitations.length }) : t('people.invite.doneExistingTitle')}
         </DialogTitle>
-        <DialogDescription>{result.emailed ? t('people.invite.emailed') : t('people.invite.notEmailed')}</DialogDescription>
+        {result.invitations.length ? (
+          <DialogDescription>{t(summary.key, summary.count === undefined ? undefined : { count: summary.count })}</DialogDescription>
+        ) : null}
       </DialogHeader>
       {result.invitations.length ? (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {result.invitations.map((invitation) => (
-            <li className="flex min-w-0 items-center gap-2 px-3 py-2" key={invitation.id}>
-              <bdi className="min-w-0 flex-1 truncate text-sm" dir="ltr">
-                {invitation.email}
-              </bdi>
-              <CopyButton
-                copiedLabel={t('people.invitations.copied')}
-                failedLabel={t('people.invitations.copyFailed')}
-                label={t('people.invitations.copyLinkFor', { email: invitation.email })}
-                size="sm"
-                value={inviteAcceptUrl(invitation.id)}
-                variant="outline"
-              >
-                {t('people.invitations.copyLink')}
-              </CopyButton>
-            </li>
-          ))}
+        <ul aria-label={t('people.invite.recipients')} className="divide-y divide-border rounded-lg border border-border">
+          {result.invitations.map((invitation) => {
+            const delivery = deliveries[invitation.id] ?? invitation.delivery;
+            const view = DELIVERY_VIEW[delivery];
+            return (
+              <li className="flex min-w-0 flex-wrap items-center gap-2 px-3 py-2" data-delivery={delivery} key={invitation.id}>
+                <bdi className="min-w-0 flex-1 truncate text-sm" dir="ltr">
+                  {invitation.email}
+                </bdi>
+                <StatusBadge size="sm" tone={view.tone}>
+                  {t(view.label)}
+                </StatusBadge>
+                {delivery === 'failed' ? (
+                  <TooltipButton
+                    aria-label={t('people.invite.retryFor', { email: invitation.email })}
+                    loading={retrying === invitation.id}
+                    onClick={() => void retry(invitation)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <RefreshCw aria-hidden className="size-4" /> {t('people.invite.retry')}
+                  </TooltipButton>
+                ) : null}
+                <CopyButton
+                  copiedLabel={t('people.invitations.copied')}
+                  failedLabel={t('people.invitations.copyFailed')}
+                  label={t('people.invitations.copyLinkFor', { email: invitation.email })}
+                  size="sm"
+                  value={inviteAcceptUrl(invitation.id)}
+                  variant="outline"
+                >
+                  {t('people.invitations.copyLink')}
+                </CopyButton>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
       {result.existingMembers.length ? (

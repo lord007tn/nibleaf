@@ -184,6 +184,130 @@ describe.skipIf(process.env.ORG_PEOPLE_INTEGRATION !== '1')('organization people
     expect((await people.suggestPeopleToInvite(siteAdmin.id, f.org.id, loner.email, f.docs.id)).map((u) => u.id)).toEqual([loner.id]);
   });
 
+  describe('council fixes on #441', () => {
+    const siteAdminOf = async (f: Awaited<ReturnType<typeof fixture>>, projectId: string) => {
+      const admin = await person('Site admin');
+      await db.prisma.member.create({ data: { organizationId: f.org.id, userId: admin.id, orgRole: 'member', role: 'viewer' } });
+      await db.prisma.projectMember.create({ data: { organizationId: f.org.id, projectId, userId: admin.id, role: 'admin' } });
+      return admin;
+    };
+
+    it('deleting a join link keeps it as a tombstone with its admission history and who deleted it, from where', async () => {
+      const f = await fixture();
+      const links = await import('./join-links');
+      const { link, token } = await organizations.createOrganizationJoinLink(f.org.id, f.owner.id, {
+        grants: [{ projectId: f.docs.id, role: 'viewer' }],
+      });
+      const joiner = await person('Joiner');
+      await admissions.admit(joiner.id, { token });
+      await organizations.changeOrganizationJoinLink(f.org.id, f.owner.id, link.id, false);
+      const before = Date.now();
+      await organizations.deleteOrganizationJoinLink(f.org.id, f.owner.id, link.id);
+      const row = await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } });
+      expect(row).toMatchObject({ deletedById: f.owner.id, deletedScope: 'organization' });
+      expect(row.deletedAt?.getTime()).toBeGreaterThanOrEqual(before - 1000);
+      expect(row.revokedAt).not.toBeNull();
+      expect(await db.prisma.joinLinkUse.findMany({ where: { joinLinkId: link.id }, select: { userId: true } })).toEqual([{ userId: joiner.id }]);
+      expect((await organizations.listOrganizationJoinLinks(f.org.id)).map((listed) => listed.id)).not.toContain(link.id);
+      await expect(links.getJoinLinkPreview(token)).rejects.toMatchObject({ code: 'join:invalid' });
+      await expect(organizations.deleteOrganizationJoinLink(f.org.id, f.owner.id, link.id)).rejects.toMatchObject({ status: 404 });
+      await expect(organizations.changeOrganizationJoinLink(f.org.id, f.owner.id, link.id, true)).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('a link that lost its creator is revoked when deleted, so even the PR 1 floor admits nobody', async () => {
+      const f = await fixture();
+      const creator = await siteAdminOf(f, f.docs.id);
+      const { link } = await organizations.createOrganizationJoinLink(
+        f.org.id,
+        creator.id,
+        { grants: [{ projectId: f.docs.id, role: 'viewer' }] },
+        f.docs.id,
+      );
+      // The creator loses the grant without the revocation hook: the link is inactive but not revoked.
+      await db.prisma.projectMember.deleteMany({ where: { userId: creator.id } });
+      expect((await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).revokedAt).toBeNull();
+      await organizations.deleteOrganizationJoinLink(f.org.id, f.owner.id, link.id);
+      expect((await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).revokedAt).not.toBeNull();
+    });
+
+    it('denies deleting a join link of another organization or, from a website, of another website', async () => {
+      const f = await fixture();
+      const other = await fixture();
+      const links = await import('./join-links');
+      const { link: apiLink } = await organizations.createOrganizationJoinLink(f.org.id, f.owner.id, {
+        grants: [{ projectId: f.api.id, role: 'viewer' }],
+      });
+      await organizations.changeOrganizationJoinLink(f.org.id, f.owner.id, apiLink.id, false);
+      await expect(organizations.deleteOrganizationJoinLink(other.org.id, other.owner.id, apiLink.id)).rejects.toMatchObject({ status: 404 });
+      await expect(organizations.deleteOrganizationJoinLink(f.org.id, other.owner.id, apiLink.id)).rejects.toMatchObject({ status: 404 });
+      const docsAdmin = await siteAdminOf(f, f.docs.id);
+      await expect(links.deleteJoinLink(f.org.id, apiLink.id, { id: docsAdmin.id, role: 'admin' }, f.docs.id)).rejects.toMatchObject({ status: 404 });
+      await expect(organizations.deleteOrganizationJoinLink(f.org.id, docsAdmin.id, apiLink.id)).rejects.toMatchObject({ status: 403 });
+      expect(await db.prisma.joinLink.findUniqueOrThrow({ where: { id: apiLink.id } })).toMatchObject({ deletedAt: null, deletedById: null });
+    });
+
+    it.each(['pending', 'accepted', 'canceled'] as const)(
+      'an out-of-scope %s invitation is 404 to a site Admin for resend and revoke, and nothing changes',
+      async (state) => {
+        const f = await fixture();
+        const docsAdmin = await siteAdminOf(f, f.docs.id);
+        const invitee = await person('Elsewhere');
+        const { invitations } = await organizations.inviteOrganizationMembers(
+          f.org.id,
+          f.owner.id,
+          { emails: [invitee.email], orgRole: 'member', grants: [{ projectId: f.api.id, role: 'viewer' }] },
+          { sendEmail: false },
+        );
+        const id = invitations[0]?.id ?? '';
+        if (state === 'accepted') await admissions.admit(invitee.id, { invitationId: id });
+        if (state === 'canceled') await organizations.cancelOrganizationInvitation(f.org.id, f.owner.id, id);
+        const before = await db.prisma.invitation.findUniqueOrThrow({ where: { id }, include: { grants: true } });
+        await expect(members.resendInvitation(f.org.id, id, docsAdmin.id, f.docs.id)).rejects.toMatchObject({ status: 404 });
+        await expect(members.cancelInvitation(f.org.id, id, docsAdmin.id, f.docs.id)).rejects.toMatchObject({ status: 404 });
+        expect(await db.prisma.invitation.findUniqueOrThrow({ where: { id }, include: { grants: true } })).toEqual(before);
+      },
+    );
+
+    it('reports each recipient whose email could not be queued, and keeps their invitation', async () => {
+      const f = await fixture();
+      jobs.createJob.mockImplementation(async (...args: unknown[]) => {
+        if (JSON.stringify(args).includes('broken@example.test')) throw new Error('queue down');
+      });
+      try {
+        const partial = await organizations.inviteOrganizationMembers(f.org.id, f.owner.id, {
+          emails: ['ok@example.test', 'broken@example.test'],
+          orgRole: 'member',
+          grants: [],
+        });
+        expect(partial.emailed).toBe(false);
+        expect(partial.invitations.map((i) => [i.email, i.delivery])).toEqual([
+          ['ok@example.test', 'queued'],
+          ['broken@example.test', 'failed'],
+        ]);
+        expect(await db.prisma.invitation.count({ where: { organizationId: f.org.id, status: 'pending' } })).toBe(2);
+        const broken = partial.invitations.find((i) => i.email === 'broken@example.test')?.id ?? '';
+        await expect(organizations.resendOrganizationInvitation(f.org.id, f.owner.id, broken)).resolves.toMatchObject({
+          delivery: 'failed',
+          emailed: false,
+        });
+
+        jobs.createJob.mockRejectedValue(new Error('queue down'));
+        const full = await organizations.inviteOrganizationMembers(f.org.id, f.owner.id, {
+          emails: ['a@example.test', 'b@example.test'],
+          orgRole: 'admin',
+          grants: [],
+        });
+        expect(full.invitations.map((i) => i.delivery)).toEqual(['failed', 'failed']);
+        expect(full.emailed).toBe(false);
+        const site = await members.inviteMember(f.org.id, f.owner.id, 'owner', { email: 'c@example.test', role: 'viewer' }, { projectId: f.docs.id });
+        expect(site).toMatchObject({ delivery: 'failed', emailed: false });
+      } finally {
+        jobs.createJob.mockReset();
+        jobs.createJob.mockImplementation(async () => undefined);
+      }
+    });
+  });
+
   it('reports last activity from the newest session', async () => {
     const f = await fixture();
     const at = new Date('2026-11-01T10:00:00.000Z');

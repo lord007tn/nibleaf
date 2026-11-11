@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emailsError, invitationTiming, parseEmails } from './invitations';
+import { deliverySummary, emailsError, invitationTiming, parseEmails } from './invitations';
 import { draftNeedsWarning, type JoinLinkDraft, joinLinkBody, joinLinkErrors, linkActions, normalizeDomain } from './join-links';
 import { assignableSiteRoles, DEFAULT_INVITE_SITE_ROLE, DEFAULT_JOIN_LINK_SITE_ROLE, orgRoleLabel, SITE_ROLE_OPTIONS, siteRoleLabel } from './roles';
 
@@ -13,6 +13,11 @@ describe('invite emails', () => {
     expect(emailsError('a@x.io')).toBeNull();
     expect(emailsError('a@x.io b@', {})).toEqual({ key: 'people.invite.error.invalid', values: { emails: 'b@' } });
     expect(emailsError('a@x.io b@x.io', { single: true })).toEqual({ key: 'people.invite.error.oneAddress' });
+  });
+  it('summarizes email delivery without ever claiming "sent"', () => {
+    expect(deliverySummary(['queued', 'queued'])).toEqual({ key: 'people.invite.emailed' });
+    expect(deliverySummary(['queued', 'failed', 'failed'])).toEqual({ key: 'people.invite.someFailed', count: 2 });
+    expect(deliverySummary(['disabled'])).toEqual({ key: 'people.invite.notEmailed' });
   });
   it('counts the days an invitation has left', () => {
     const now = Date.parse('2026-11-10T12:00:00Z');

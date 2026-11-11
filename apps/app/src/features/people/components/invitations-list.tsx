@@ -9,7 +9,7 @@ import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { useFormatters } from '@/lib/format';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { isAlreadyAccepted } from '../api/mutations';
-import { invitationTiming } from '../model/invitations';
+import { type InvitationDelivery, invitationTiming } from '../model/invitations';
 
 export interface InvitationRowModel {
   id: string;
@@ -36,7 +36,7 @@ export function InvitationsList({
 }: {
   rows: InvitationRowModel[];
   canManage: boolean;
-  onResend: (id: string) => Promise<{ emailed: boolean }>;
+  onResend: (id: string) => Promise<{ delivery: InvitationDelivery }>;
   onRevoke: (id: string) => Promise<unknown>;
   /** "Revoke invitation" (org) or "Remove from this invitation" (a website's part of it). */
   revokeLabel: string;
@@ -56,8 +56,13 @@ export function InvitationsList({
   const resend = async (row: InvitationRowModel) => {
     setResending(row.id);
     try {
-      const { emailed } = await onResend(row.id);
-      toast.success(emailed ? t('people.invitations.resent', { email: row.email }) : t('people.invitations.renewed', { email: row.email }));
+      const { delivery } = await onResend(row.id);
+      // Queued is not sent: the copy never claims more than the server confirmed.
+      if (delivery === 'failed') toast.error(t('people.invitations.resendNotQueued', { email: row.email }));
+      else
+        toast.success(
+          delivery === 'queued' ? t('people.invitations.resent', { email: row.email }) : t('people.invitations.renewed', { email: row.email }),
+        );
     } catch (error) {
       toast.error(t('people.invitations.resendFailed', { email: row.email }), {
         description: friendlyErrorMessage(t, error, 'people.invitations.resendFailedDetail'),

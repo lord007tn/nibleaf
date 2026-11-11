@@ -43,3 +43,20 @@ export function invitationTiming(expiresAt: string | Date, now = Date.now()): { 
   const left = new Date(expiresAt).getTime() - now;
   return { expired: left <= 0, daysLeft: Math.max(0, Math.ceil(left / DAY)) };
 }
+
+/** What happened to an invitation's email (server `delivery`): queued for sending, not queued, or no email at all. */
+export type InvitationDelivery = 'queued' | 'failed' | 'disabled';
+
+export const DELIVERY_VIEW: Record<InvitationDelivery, { label: MessageKey; tone: 'success' | 'danger' | 'neutral' }> = {
+  queued: { label: 'people.delivery.queued', tone: 'success' },
+  failed: { label: 'people.delivery.failed', tone: 'danger' },
+  disabled: { label: 'people.delivery.disabled', tone: 'neutral' },
+};
+
+/** One line for the invite result: all queued, emails off, or how many couldn't be queued. Never "sent": the worker sends. */
+export function deliverySummary(deliveries: InvitationDelivery[]): { key: MessageKey; count?: number } {
+  const failed = deliveries.filter((delivery) => delivery === 'failed').length;
+  if (failed) return { key: 'people.invite.someFailed', count: failed };
+  if (deliveries.length && deliveries.every((delivery) => delivery === 'disabled')) return { key: 'people.invite.notEmailed' };
+  return { key: 'people.invite.emailed' };
+}

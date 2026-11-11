@@ -4,14 +4,14 @@ import { CopyButton } from '@nibleaf/design-system/components/ui/copy-button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, RefreshCw } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { fieldErrorsVisible } from '@/lib/forms/field-errors';
 import { inviteAcceptUrl } from '@/lib/invitations';
-import { useInviteToSite } from '../api/mutations';
-import { emailsError, parseEmails } from '../model/invitations';
+import { useInviteToSite, useResendSiteInvitation } from '../api/mutations';
+import { emailsError, type InvitationDelivery, parseEmails } from '../model/invitations';
 import { DEFAULT_INVITE_SITE_ROLE, SITE_ROLE_OPTIONS, type SiteRole, siteRoleLabel } from '../model/roles';
 import { InviteEmailField } from './invite-email-field';
 import { RoleOptionList } from './role-options';
@@ -43,7 +43,8 @@ export function AddPeopleDialog({
   const [blurred, setBlurred] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
-  const [invited, setInvited] = useState<{ id: string; email: string; emailed: boolean } | null>(null);
+  const [invited, setInvited] = useState<{ id: string; email: string; delivery: InvitationDelivery } | null>(null);
+  const resend = useResendSiteInvitation(projectId);
   const error = emailsError(email, { single: true });
   // The shared timing rule (lib/forms, ui-overhaul §6.4): after leaving the field or a submit attempt.
   const showError = fieldErrorsVisible({ errors: error ? [error.key] : [], isBlurred: blurred }, attempts);
@@ -74,7 +75,7 @@ export function AddPeopleDialog({
             : t('people.site.added', { email: address, site: siteName, role: t(siteRoleLabel(role)) }),
         );
         onOpenChange(false);
-      } else setInvited({ id: result.id, email: address, emailed: Boolean(result.emailed) });
+      } else setInvited({ id: result.id, email: address, delivery: result.delivery ?? 'disabled' });
     } catch (cause) {
       setFailure(friendlyErrorMessage(t, cause, 'people.site.addFailed', { 409: 'members.toast.alreadyMember' }));
     }
@@ -91,9 +92,28 @@ export function AddPeopleDialog({
                 {t('people.site.invitedTitle')}
               </DialogTitle>
               <DialogDescription>
-                {invited.emailed ? t('people.site.invitedEmailed', { email: invited.email }) : t('people.site.invitedLink', { email: invited.email })}
+                {invited.delivery === 'queued'
+                  ? t('people.site.invitedEmailed', { email: invited.email })
+                  : invited.delivery === 'failed'
+                    ? t('people.site.invitedFailed', { email: invited.email })
+                    : t('people.site.invitedLink', { email: invited.email })}
               </DialogDescription>
             </DialogHeader>
+            {invited.delivery === 'failed' ? (
+              <Button
+                loading={resend.isPending}
+                onClick={() =>
+                  resend.mutate(invited.id, {
+                    onSuccess: ({ delivery }) => setInvited({ ...invited, delivery }),
+                    onError: (error) => toast.error(friendlyErrorMessage(t, error, 'people.invitations.resendFailedDetail')),
+                  })
+                }
+                type="button"
+                variant="outline"
+              >
+                <RefreshCw aria-hidden className="size-4" /> {t('people.invite.retry')}
+              </Button>
+            ) : null}
             <CopyButton
               copiedLabel={t('people.invitations.copied')}
               failedLabel={t('people.invitations.copyFailed')}

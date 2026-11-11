@@ -4,6 +4,7 @@ import type { OrganizationMember } from '@/hooks/api/organization-query-options'
 import type { useProjectMembers } from '@/hooks/api/queries';
 import { useSessionMutation, useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
+import type { InvitationDelivery } from '../model/invitations';
 import type { SiteRole } from '../model/roles';
 import { peopleKeys } from './keys';
 import type { JoinLinkRecord, OrgInvitation } from './query-options';
@@ -48,8 +49,16 @@ const refreshOrgPeople = (qc: QueryClient, organizationId: string) =>
 
 // ─── Organization ───────────────────────────────────────────────────────────
 
+/** A resend: the fresh expiry and whether its email was queued. */
+export interface ResendResult {
+  id: string;
+  expiresAt: string;
+  delivery: InvitationDelivery;
+}
+
 export interface InviteResult {
-  invitations: Array<{ id: string; email: string }>;
+  /** Each new invitation with what happened to its email (queued / failed / disabled). */
+  invitations: Array<{ id: string; email: string; delivery: InvitationDelivery }>;
   existingMembers: Array<{ userId: string; email: string; changed: boolean }>;
   emailed: boolean;
 }
@@ -134,7 +143,7 @@ export const useResendOrgInvitation = (organizationId: string) => {
   const qc = useSessionQueryClient();
   return useSessionMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string; expiresAt: string; emailed: boolean }>(
+      mutateData<ResendResult>(
         await api.app.organizations[':organizationId'].invitations[':id'].resend.$post({ param: { organizationId, id } }),
         'Could not resend.',
       ),
@@ -153,7 +162,7 @@ export const useInviteToSite = (projectId: string) => {
   const qc = useSessionQueryClient();
   return useSessionMutation({
     mutationFn: async (body: { email: string; role: SiteRole }) =>
-      mutateData<{ id: string; email: string; role: string; status: string; emailed?: boolean; changed?: boolean }>(
+      mutateData<{ id: string; email: string; role: string; status: string; delivery?: InvitationDelivery; changed?: boolean }>(
         await api.app.projects[':projectId'].members.invite.$post({ param: { projectId }, json: body }),
         'Could not add this person.',
       ),
@@ -225,7 +234,7 @@ export const useResendSiteInvitation = (projectId: string) => {
   const qc = useSessionQueryClient();
   return useSessionMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string; expiresAt: string; emailed: boolean }>(
+      mutateData<ResendResult>(
         await api.app.projects[':projectId'].members.invitations[':id'].resend.$post({ param: { projectId, id } }),
         'Could not resend.',
       ),

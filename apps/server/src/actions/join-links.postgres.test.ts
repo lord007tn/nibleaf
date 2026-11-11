@@ -61,7 +61,12 @@ describe.skipIf(process.env.JOIN_LINKS_INTEGRATION !== '1')('website join-link c
     });
     await links.revokeJoinLink(id, link.id, { id, role: 'owner' }, projectId);
     await expect(links.deleteJoinLink(id, link.id, { id, role: 'owner' }, projectId)).resolves.toEqual({ id: link.id });
-    expect(await db.prisma.joinLink.count({ where: { id: link.id } })).toBe(0);
+    // A tombstone: hidden from the list, kept with who deleted it and from where.
+    expect(await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).toMatchObject({
+      deletedById: id,
+      deletedScope: `website:${projectId}`,
+    });
+    expect((await links.listJoinLinks(id, projectId)).some((listed) => listed.id === link.id)).toBe(false);
     await expect(links.deleteJoinLink(id, link.id, { id, role: 'owner' }, projectId)).rejects.toMatchObject({ status: 404 });
   });
   it('uses the shared admission and returns its exact landing', async () => {

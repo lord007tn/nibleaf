@@ -133,7 +133,7 @@ export const inviteMember = async (
     { ...options, siteProjectId: projectId },
   );
   const invitation = result.invitations[0];
-  if (invitation) return { ...invitation, role: body.role, emailed: result.emailed };
+  if (invitation) return { ...invitation, role: body.role, emailed: invitation.delivery === 'queued' };
   const existing = result.existingMembers[0];
   if (!existing) throw notFound('member');
   return { id: existing.userId, email: body.email, role: body.role, status: 'existing_member', changed: existing.changed };
@@ -196,11 +196,16 @@ export const cancelInvitation = async (organizationId: string, id: string, actor
     actorId,
     async (tx) => {
       await siteActor(tx, organizationId, projectId, actorId);
-      assertRevocable(await tx.invitation.findFirst({ where: { id, organizationId }, select: { status: true, expiresAt: true } }));
-      const removed = await tx.invitationGrant.deleteMany({ where: { invitationId: id, organizationId, projectId } });
-      if (!removed.count) throw notFound('invitation');
-      if (!(await tx.invitationGrant.count({ where: { invitationId: id } })))
-        await tx.invitation.update({ where: { id }, data: { status: 'canceled' } });
+      // Scope first: an invitation that doesn't grant this website is "not found" whatever its status.
+      assertRevocable(
+        await tx.invitation.findFirst({ where: { id, organizationId, grants: { some: { projectId } } }, select: { status: true, expiresAt: true } }),
+      );
+      // Only this website's part goes. When it was the whole invitation, cancel it and keep the
+      // grant, so it stays in this website's scope: revoking again answers 409 "no longer pending"
+      // (#421), never a 404 that would read like someone else's invitation.
+      if (await tx.invitationGrant.count({ where: { invitationId: id, NOT: { projectId } } }))
+        await tx.invitationGrant.deleteMany({ where: { invitationId: id, organizationId, projectId } });
+      else await tx.invitation.update({ where: { id }, data: { status: 'canceled' } });
       return { id };
     },
     false,
