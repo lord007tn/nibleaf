@@ -244,10 +244,32 @@ const validInstant = (value: Date | string): number | null => {
   return Number.isFinite(timestamp) ? timestamp : null;
 };
 
+/** The plan every organization is on without an active assignment (usage
+ *  provisioning's default). It carries no entitlement rows: eligibility alone
+ *  decides, so it can never unlock an add-on that is not offered on `free`. */
+export const DEFAULT_ADDON_PLAN: AddonDeliveryPlanAssignment['plan'] = { key: 'free', active: true, entitlements: [] };
+
+/**
+ * Whether a plan makes an add-on available. Same rule as the server's
+ * capability resolver (`resolveProjectCapability`), so settings and delivery
+ * never disagree: an explicit entitlement row decides (enabled, and its meter
+ * active); without one, the plan must be among the add-on's eligible plans.
+ * `coming_soon` add-ons are never available.
+ */
+export const addonAvailableForPlan = (availability: AddonDefinition['availability'], plan: AddonDeliveryPlanAssignment['plan']): boolean => {
+  if (availability.state === 'coming_soon') return false;
+  const entitlement = plan.entitlements.find((item) => item.capabilityKey === availability.entitlement);
+  if (entitlement) return entitlement.enabled && (entitlement.meter?.active ?? true);
+  return availability.plans.some((planKey) => planKey === plan.key);
+};
+
 /** Resolve the add-ons that may reach public delivery or publish execution.
- * Durable enabled state remains the user's preference, while the current plan
- * and capability state are a separate fail-closed gate. Meter quantities and
- * limits are intentionally absent: usage enforcement is advisory. */
+ * Durable enabled state remains the user's preference; the plan is a separate
+ * gate. An organization without an ACTIVE assignment (missing, inactive,
+ * expired or not yet effective) is gated by the default free plan, never by a
+ * paid one, so add-ons offered on every plan (CI checks, broken links) are
+ * never dropped and paid-only add-ons stay off. Meter quantities and limits are
+ * intentionally absent: usage enforcement is advisory. */
 export const projectAddonRowsForDelivery = (
   rows: readonly { key: string; enabled: boolean; config: unknown }[],
   assignment: AddonDeliveryPlanAssignment | null | undefined,
@@ -263,20 +285,13 @@ export const projectAddonRowsForDelivery = (
     effectiveAt !== null &&
     effectiveAt <= nowAt &&
     (assignment.expiresAt === null || (expiresAt !== null && expiresAt > nowAt));
+  const plan = activePlan ? assignment.plan : DEFAULT_ADDON_PLAN;
 
   return addonDefinitions.map((definition) => {
     const row = byId.get(definition.id);
-    const availability: AddonDefinition['availability'] = definition.availability;
-    const entitlement = assignment?.plan.entitlements.find((item) => item.capabilityKey === definition.availability.entitlement);
-    const capabilityAvailable =
-      activePlan &&
-      availability.state !== 'coming_soon' &&
-      availability.plans.some((planKey) => planKey === assignment.plan.key) &&
-      entitlement?.enabled === true &&
-      (entitlement.meter?.active ?? true);
     return {
       key: definition.id,
-      enabled: (row?.enabled ?? definition.defaultEnabled) && capabilityAvailable,
+      enabled: (row?.enabled ?? definition.defaultEnabled) && addonAvailableForPlan(definition.availability, plan),
       config: row?.config ?? definition.defaultConfig,
     };
   });

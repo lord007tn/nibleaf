@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addonAvailableForPlan,
   addonConfigSchemas,
   addonDefinitions,
+  DEFAULT_ADDON_PLAN,
   defaultProjectAddonProvisioning,
   legacyConsentBannerEnabled,
   parseAddonConfigRecord,
@@ -151,14 +153,49 @@ describe('delivery entitlement projection', () => {
   const feedback = [{ key: 'feedback' as const, enabled: true, config: { placement: 'after-content', presentation: 'compact' } }];
   const now = new Date('2026-08-24T00:00:00.000Z');
 
-  it('fails closed for missing and expired plan state', () => {
-    expect(projectAddonRowsForDelivery(feedback, null, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
-    expect(projectAddonRowsForDelivery(feedback, assignment(), now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
-    expect(
-      projectAddonRowsForDelivery(feedback, assignment({ expiresAt: new Date('2026-08-23T00:00:00.000Z') }), now).find(
-        (addon) => addon.key === 'feedback',
-      ),
-    ).toMatchObject({ enabled: false });
+  const enabledAddon = (rows: ReturnType<typeof projectAddonRowsForDelivery>, key: string) => rows.find((addon) => addon.key === key)?.enabled;
+  const allOn = ['ci-checks', 'broken-links', 'feedback'].map((key) => ({ key, enabled: true, config: {} }));
+
+  it('keeps add-ons offered on every plan when the organization has no plan assignment', () => {
+    const rows = projectAddonRowsForDelivery(allOn, null, now);
+    expect(enabledAddon(rows, 'ci-checks')).toBe(true);
+    expect(enabledAddon(rows, 'broken-links')).toBe(true);
+    expect(enabledAddon(rows, 'feedback')).toBe(true);
+    expect(enabledAddon(projectAddonRowsForDelivery(allOn, undefined, now), 'broken-links')).toBe(true);
+  });
+
+  it('falls back to the free default, not the assigned paid plan, when the assignment is expired, inactive or not yet effective', () => {
+    // A paid plan that would unlock everything if it were honoured.
+    const paid = { key: 'enterprise', active: true, entitlements: [{ capabilityKey: 'addons.feedback', enabled: true, meter: null }] };
+    for (const state of [
+      assignment({ plan: paid, expiresAt: new Date('2026-08-23T00:00:00.000Z') }),
+      assignment({ plan: { ...paid, active: false } }),
+      assignment({ plan: paid, status: 'canceled' }),
+      assignment({ plan: paid, effectiveAt: new Date('2026-09-01T00:00:00.000Z') }),
+    ]) {
+      const rows = projectAddonRowsForDelivery(allOn, state, now);
+      expect(enabledAddon(rows, 'ci-checks')).toBe(true);
+      expect(enabledAddon(rows, 'broken-links')).toBe(true);
+    }
+  });
+
+  it('matches the settings resolver: no entitlement row means the plan eligibility decides', () => {
+    // The seeded free plan has no entitlement rows at all.
+    const free = assignment({ plan: { key: 'free', active: true, entitlements: [] } });
+    expect(enabledAddon(projectAddonRowsForDelivery(allOn, free, now), 'broken-links')).toBe(true);
+    expect(enabledAddon(projectAddonRowsForDelivery(feedback, assignment(), now), 'feedback')).toBe(true);
+  });
+
+  it('never grants a paid-only add-on through the free fallback', () => {
+    const paidOnly = { state: 'available', plans: ['pro', 'team', 'enterprise'], entitlement: 'addons.feedback' } as const;
+    expect(addonAvailableForPlan(paidOnly, DEFAULT_ADDON_PLAN)).toBe(false);
+    expect(addonAvailableForPlan(paidOnly, { key: 'pro', active: true, entitlements: [] })).toBe(true);
+    expect(addonAvailableForPlan({ ...paidOnly, state: 'coming_soon' }, { key: 'pro', active: true, entitlements: [] })).toBe(false);
+  });
+
+  it('keeps a user-disabled add-on off whatever the plan', () => {
+    const rows = projectAddonRowsForDelivery([{ key: 'broken-links', enabled: false, config: {} }], null, now);
+    expect(enabledAddon(rows, 'broken-links')).toBe(false);
   });
 
   it('suppresses disabled and unavailable entitlements without changing the stored preference', () => {
