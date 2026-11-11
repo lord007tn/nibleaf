@@ -49,12 +49,14 @@
     "./markdown-text": "./src/markdown-text.ts",
     "./markdown-code-usage": "./src/markdown-code-usage.ts",
     "./page-history": "./src/page-history.ts",
+    "./testing/growth": "./src/testing/growth.ts",
     "./uuid": "./src/uuid.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache",
+    "test:growth": "vitest run --mode growth --no-file-parallelism --maxWorkers=1 growth"
   },
   "dependencies": {
     "github-slugger": "^2.0.0",

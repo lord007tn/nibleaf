@@ -37,17 +37,6 @@ const site: SiteSnapshot = {
   openapi: { title: 'API', path: 'api-reference', contentHash: 'h', updatedAt: '2026-11-01T00:00:00.000Z', document: {} },
 } as SiteSnapshot;
 
-/** Elapsed milliseconds for `run`, best of three to damp machine noise. */
-const time = (run: () => void): number => {
-  let best = Number.POSITIVE_INFINITY;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const started = performance.now();
-    run();
-    best = Math.min(best, performance.now() - started);
-  }
-  return best;
-};
-
 describe('trimSlashes', () => {
   it('trims leading and trailing slashes only', () => {
     expect(trimSlashes('///a/b//c///')).toBe('a/b//c');
@@ -58,18 +47,19 @@ describe('trimSlashes', () => {
 });
 
 describe('site routes on adversarial paths', () => {
-  // Paths longer than the reader serves are rejected before any work, so a
-  // 100k-slash path costs a constant amount of time, not a multiple of a scan.
-  const runs = '/'.repeat(100_000);
-  const inputs = [`${runs}guide${runs}`, `${runs}x${runs}y`, runs, `latest${runs}guide`];
-
-  it.each(inputs.map((input, index) => [index, input] as const))('rejects over-long path %i immediately', (_index, input) => {
-    const elapsed = time(() => {
-      expect(resolveSiteRoute(site, input)).toEqual({ kind: 'not-found', reason: 'path-too-long' });
-      expect(resolveSitePage(site, input, undefined, 'latest')).toBeNull();
-      expect(sitePathWithinVersion(site, input, 'latest').length).toBeLessThanOrEqual(MAX_SITE_PATH_LENGTH);
-    });
-    expect(elapsed).toBeLessThan(20);
+  // Paths longer than the reader serves are rejected before any work (their cost
+  // is bounded in site-route.growth.test.ts, pnpm test:growth).
+  const shapes = [
+    (runs: string) => `${runs}guide${runs}`,
+    (runs: string) => `${runs}x${runs}y`,
+    (runs: string) => runs,
+    (runs: string) => `latest${runs}guide`,
+  ];
+  it.each(shapes.map((shape, index) => [index, shape] as const))('rejects over-long path %i immediately', (_index, shape) => {
+    const input = shape('/'.repeat(100_000));
+    expect(resolveSiteRoute(site, input)).toEqual({ kind: 'not-found', reason: 'path-too-long' });
+    expect(resolveSitePage(site, input, undefined, 'latest')).toBeNull();
+    expect(sitePathWithinVersion(site, input, 'latest').length).toBeLessThanOrEqual(MAX_SITE_PATH_LENGTH);
   });
 
   it('still resolves a legitimate 2,000-character path', () => {
