@@ -55,6 +55,7 @@ import {
   aiAssistState,
   draftUnsavable,
   isEditorRevisionConflict,
+  isPageTooLarge,
   nextHydration,
   type ServerSnapshot,
   shouldAutosave,
@@ -356,6 +357,8 @@ function EditorPage() {
   // Markdown source is an editing workspace; Viewers read the visual page.
   const effectiveMode = viewOnly && editorMode === 'markdown' ? visualMode : editorMode;
   const [status, setStatus] = useState<SaveState>('idle');
+  // Why the last save failed, for the save-error banner and toasts.
+  const [saveError, setSaveError] = useState<unknown>(null);
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
   // page, so opening a page's settings from the tree does NOT switch what you're
@@ -506,6 +509,10 @@ function EditorPage() {
   // The freshest server copy we know of (a save response can be newer than the
   // detail query, which refetches after it).
   const lastSavedRef = useRef<PageNode | null>(null);
+  // The last draft the server refused for its size, with that refusal. Autosave
+  // never sends the same text again (it would fail the same way); the next edit
+  // does, and Retry still can.
+  const tooLargeDraftRef = useRef<{ id: string; title: string; content: string; error: unknown } | null>(null);
   useLayoutEffect(() => {
     draftRef.current = { synced, draft: { title, content }, page };
     updatePageRef.current = updatePage;
@@ -545,7 +552,9 @@ function EditorPage() {
             }
             return saved;
           } catch (error) {
+            if (isPageTooLarge(error)) tooLargeDraftRef.current = { id: draft.id, title: draft.title, content: draft.content, error };
             if (mounted.current && draftRef.current.synced?.id === draft.id) {
+              setSaveError(error);
               setStatus(navigator.onLine === false ? 'offline' : 'error');
               if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
             }
@@ -555,6 +564,13 @@ function EditorPage() {
         (saved) => saved.updatedAt,
       ),
     [],
+  );
+  // A refusal with its own fix (the page is too large) says so; other failures
+  // keep the general "could not be saved" wording.
+  const saveFailedMessage = (error: unknown) => (isPageTooLarge(error) ? friendlyErrorMessage(t, error, 'editor.saveError') : t('editor.saveError'));
+  const saveErrorText = useMemo(
+    () => (isPageTooLarge(saveError) ? friendlyErrorMessage(t, saveError, 'editor.saveError') : t('editor.saveError')),
+    [saveError, t],
   );
   const saveDraft = useDebouncer(
     (draft: PageDraft) => {
@@ -570,6 +586,15 @@ function EditorPage() {
       // Undoing back to the server copy must cancel an older queued draft.
       saveDraft.cancel();
       if (!saveQueue.hasPending()) setStatus((current) => (current === 'saving' ? 'saved' : current));
+      return;
+    }
+    const refused = tooLargeDraftRef.current;
+    if (refused && refused.id === page.id && refused.title === title && refused.content === content) {
+      // Still the text the server refused for its size: keep the draft and the
+      // error, and wait for the next edit instead of sending it again.
+      saveDraft.cancel();
+      setSaveError(refused.error);
+      setStatus('error');
       return;
     }
     setStatus('saving');
@@ -610,8 +635,8 @@ function EditorPage() {
     try {
       await flushCurrentDraft();
       action();
-    } catch {
-      toast.error(t('editor.saveError'));
+    } catch (error) {
+      toast.error(saveFailedMessage(error));
       onError?.();
     } finally {
       transitionInFlight.current = false;
@@ -637,8 +662,8 @@ function EditorPage() {
       try {
         await flushCurrentDraft();
         return !(await guardConfigChanges());
-      } catch {
-        toast.error(t('editor.saveError'));
+      } catch (error) {
+        toast.error(saveFailedMessage(error));
         return true;
       }
     },
@@ -1460,7 +1485,7 @@ function EditorPage() {
                 >
                   <TriangleAlert className="size-4 shrink-0" />
                   <span className="min-w-0 flex-1">
-                    {t(conflictedPageId === page.id ? 'editor.conflict.body' : status === 'offline' ? 'site.aiOffline' : 'editor.saveError')}
+                    {conflictedPageId === page.id ? t('editor.conflict.body') : status === 'offline' ? t('site.aiOffline') : saveErrorText}
                   </span>
                   <Button
                     size="sm"
