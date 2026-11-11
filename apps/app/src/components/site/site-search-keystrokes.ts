@@ -154,9 +154,6 @@ export function holdSearchKeystrokes(field: HTMLInputElement, label?: string): (
   };
 }
 
-/** Whether search is keeping keystrokes right now. */
-export const searchKeystrokesActive = (): boolean => capture !== null;
-
 /**
  * Ends the capture and returns everything typed, or `null` when nothing was
  * being kept. When the reader is mid-composition (an IME candidate is still

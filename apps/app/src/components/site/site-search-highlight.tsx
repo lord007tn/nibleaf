@@ -9,7 +9,7 @@ const ARABIC_LETTER = /[ء-يٱ-ۓ]/;
 const ARABIC_WORD = /^[ء-غف-يٱؐ-ًؚ-ٰٟۖ-ۭـ]+$/u;
 
 /** One character, folded for matching ('' for marks that matching ignores). */
-export const foldSearchChar = (char: string): string =>
+const foldSearchChar = (char: string): string =>
   ARABIC_MARKS.test(char)
     ? ''
     : char
