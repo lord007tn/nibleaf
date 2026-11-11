@@ -104,6 +104,7 @@ export const admit = async (userId: string, source: { invitationId: string } | {
         link?.orgRole !== 'member' ||
         !grants.length ||
         link.revokedAt ||
+        link.deletedAt ||
         (link.expiresAt && link.expiresAt <= new Date()) ||
         !(await issuerAuthorizes(tx, org.id, issuerId, 'member', grants))
       )

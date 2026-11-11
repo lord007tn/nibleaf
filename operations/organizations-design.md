@@ -972,14 +972,27 @@ never hand an old server more than the new model grants.
 
 **Cutover:** stop-then-start for this release (maintenance window of a few
 minutes; the deploy runbook says so), and the expand-only migration is the
-defence in depth if anything old keeps running. **Rollback:** redeploying the
-previous image is safe until the first organization holds two websites or the
-merge runs; after that, roll forward only.
+defence in depth if anything old keeps running.
+
+**Rollback boundaries (release rule).** **PR 1 (`0a18349c`) is the minimum
+supported rollback image.** The pre-organizations release (`8a3ce217`) is no
+longer a rollback target once PR 2 has been deployed; below the floor, roll
+forward only.
+
+| Release deployed | Supported rollback target | Why it is safe |
+| --- | --- | --- |
+| PR 1 (`0a18349c`) | the pre-organizations release (`8a3ce217`), **only** until the first organization holds two websites or the merge runs | expand-only migration, least-privilege legacy mirror; proved by the `8a3ce217` harness below (PR 1 deploy only) |
+| PR 2 | PR 1 (`0a18349c`) | PR 1 reads `orgRole` + grants and `dataTenantId`, and erases each website before its org |
+| PR 3 and later | PR 1 (`0a18349c`), the floor | PR 3's migrations are expand-only (nullable columns PR 1 ignores); PR 1's resolver, pinned in `rollback-pr1-access.fixture.ts`, is run against PR 3's writes in `rollback-safety.postgres.test.ts` and grants nothing PR 3 doesn't |
+
+Everything below that mentions "the previous release" describes the PR 1
+deploy (rolling back from PR 1 to `8a3ce217`); it does not apply to later
+releases.
 
 #### Rollback compatibility (merge council on #415)
 
-The rule is absolute: **after a rollback, the previous release must never
-grant more than the new model.** Each case below has a regression test
+The rule is absolute: **after a rollback, the rollback image (`8a3ce217` for
+the PR 1 deploy, PR 1 from PR 2 on) must never grant more than the new model.** Each case below has a regression test
 (`rollback-safety.postgres.test.ts`) and a rollback step in the old-release
 harness (`scripts/legacy-schema-compat.mjs`: new code acts, the previous
 release runs `legacy-rollback-scenario.fixture`, new code re-reads).
@@ -991,17 +1004,19 @@ release runs `legacy-rollback-scenario.fixture`, new code re-reads).
      current legacy role and its lowest grant. A grant never raises the legacy
      role (a rollback can only under-grant); a demotion lowers it at once
      (legacy Admin demoted to Viewer → `viewer`).
-   - org `member` with **zero** grants: the `Member` row is **deleted**
-     (decision). The previous release treats any `Member` row as access
-     (project list, private-reader access, analytics, MCP, site sign-in), so
-     no role value means "no access" there. In PR 1 orgs are 1:1, so removing
-     someone from the only website is removing them from the org. To keep
-     that equivalence, PR 1 refuses (409) every other way to reach zero
-     grants: an org-member invitation with no website, an access replacement
-     with no website, and an org Admin → member demotion with no website.
-     PR 2/3 (org members without websites) revisit this together with the
-     contract migration; rolling back to PR 1 from there must be preceded by
-     the same deletion.
+   - org `member` with **zero** grants: **PR 1** deleted the `Member` row
+     and refused (409) every other way to reach zero grants (an org-member
+     invitation with no website, an access replacement with no website, an
+     org Admin → member demotion with no website), because the
+     pre-organizations release treats any `Member` row as access.
+     **From PR 3 on** an org member without websites is legitimate (§5, §6):
+     the rollback target is PR 1/PR 2, which read `orgRole` + grants (no
+     grant → 404 on every website), so the row grants nothing there. PR 3
+     therefore allows zero grants on invitation, access replacement and
+     demotion, keeps the `Member` row when the last grant goes (removal from
+     the organization stays an explicit action, §6.7), and mirrors the
+     legacy `Member.role` down to `viewer`, the least privilege. Rolling back
+     past PR 1 was already unsupported once PR 2 ran (below).
    - The UPDATE sets `role` and `orgRole` together, so the legacy-writer
      triggers treat it as an explicit new-model write and leave grants alone.
    - Org Owner/Admin rows keep the explicit `owner`/`admin` mirror (old
@@ -1029,12 +1044,28 @@ Harness rollback steps (all four must pass before a deploy):
 | Step | New release does | Previous release must see |
 | --- | --- | --- |
 | Demote, then roll back | legacy Admin → Viewer | role `viewer`; cannot edit or administer |
-| Remove from website, then roll back | legacy Admin removed | no `Member` row; site not listed; 404 |
+| Remove from website, then roll back | legacy Admin removed | no `Member` row; site not listed; 404 (PR 1 deploy only; from PR 3 the row stays with legacy `viewer` and no grant, which PR 1/PR 2 read as 404) |
 | Create a website, then roll back | `createProject` | owner access; `dataTenantId = organizationId` |
 | Delete a website, then roll back | — (old code deletes) | site **and** org gone; nothing half-erased |
 
 Because the FK is Cascade again, the previous release's own suites no longer
 need the cleanup-only adapter (`--cleanup-adapter`) to tear down.
+
+**PR 3 (done), on the PR 1 floor:** org members may hold zero websites (invite with "None yet",
+access replacement to none, demotion to none); removing someone's last
+website grant keeps their `Member` row with legacy role `viewer`; the 404
+invariant is unchanged (no grant → website 404). `rollback-safety.postgres.test.ts`
+asserts all three paths and the 404, and `organization-people.postgres.test.ts`
+covers the invitations list, resend and last-grant removal. The same suite runs
+PR 1's pinned resolver (`rollback-pr1-access.fixture.ts`, vendored from
+`0a18349c`) after PR 3's writes — a member reduced to zero websites, one removed
+from their last website, an accepted invitation with no website, sibling
+websites after a merge, and an Admin demoted to one website — and asserts PR 1
+grants nothing PR 3 doesn't. Join-link deletion is a tombstone
+(`join_link.deletedAt/deletedById/deletedScope`, migration
+`20261112090000_join_link_tombstone`, expand-only): the admission history in
+`join_link_use` survives, and a deleted link is always revoked, so PR 1 admits
+nobody through it either.
 
 **PR 2 (done):** new websites get an independent `dataTenantId` (the Prisma
 cuid default; `createProject`, the platform-created and starter sites no

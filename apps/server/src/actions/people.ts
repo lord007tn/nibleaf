@@ -121,6 +121,13 @@ export const suggestPeopleToInvite = async (actorUserId: string, organizationId:
     administered.map((site) => site.id),
     administered.map((site) => site.organizationId),
   );
+  // Org Owner/Admins search the whole roster of their org, members without websites included (design §6.5).
+  const actor = await prisma.member.findUnique({
+    where: { organizationId_userId: { organizationId, userId: actorUserId } },
+    select: { orgRole: true },
+  });
+  const roster: Prisma.MemberWhereInput =
+    actor && (actor.orgRole === 'owner' || actor.orgRole === 'admin') ? { OR: [membershipWhere, { organizationId }] } : membershipWhere;
   return prisma.user.findMany({
     where: {
       id: { not: actorUserId },
@@ -130,7 +137,7 @@ export const suggestPeopleToInvite = async (actorUserId: string, organizationId:
         {
           OR: [
             {
-              members: { some: membershipWhere },
+              members: { some: roster },
               OR: [
                 { email: { startsWith: q, mode: 'insensitive' } },
                 { name: { startsWith: q, mode: 'insensitive' } },

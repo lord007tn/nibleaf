@@ -67,6 +67,8 @@ export interface OrganizationMember {
   userId: string;
   orgRole: OrgRole;
   createdAt: string;
+  /** When they last used Nibleaf (their newest session); null if never signed in. */
+  lastActiveAt: string | null;
   user: { id: string; name: string; email: string; image: string | null };
   projectGrants: Array<{ projectId: string; role: string; project: { id: string; name: string } }>;
 }
@@ -142,6 +144,9 @@ export const organizationMembersQueryOptions = (organizationId: string | undefin
       ? async () =>
           getData<OrganizationMember[]>(await api.app.organizations[':organizationId'].members.$get({ param: { organizationId } }), 'members')
       : skipToken,
+    // Joins and accepted invitations happen elsewhere: keep the list current (#421).
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
   });
 
 export const organizationUsageQueryOptions = (organizationId: string | undefined) =>
