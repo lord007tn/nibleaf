@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   projectFindUnique: vi.fn(),
   planFindUnique: vi.fn(),
+  defaultPlanFindUnique: vi.fn(),
   organizationFindUnique: vi.fn(),
   deploymentFindFirst: vi.fn(),
   queryRaw: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('@nibleaf/database', () => ({
     project: { findUnique: mocks.projectFindUnique, findMany: mocks.projectFindMany },
     member: { findUnique: mocks.memberFindUnique },
     organizationUsagePlan: { findUnique: mocks.planFindUnique },
+    usagePlan: { findUnique: mocks.defaultPlanFindUnique },
     organization: { findUnique: mocks.organizationFindUnique },
     deployment: { findFirst: mocks.deploymentFindFirst },
     usageIngestCheckpoint: { findFirst: mocks.pendingFindFirst },
@@ -69,6 +71,7 @@ describe('usage authorization and entitlement policy', () => {
     mocks.memberFindUnique.mockResolvedValue({ role: 'owner', orgRole: 'owner' });
     mocks.organizationFindUnique.mockResolvedValue({ metadata: null });
     mocks.planFindUnique.mockResolvedValue(activePlan());
+    mocks.defaultPlanFindUnique.mockResolvedValue(null);
     mocks.deploymentFindFirst.mockResolvedValue({ pagesCount: 12 });
     mocks.queryRaw
       .mockResolvedValueOnce([{ quantity: 2n }])
@@ -128,7 +131,13 @@ describe('usage authorization and entitlement policy', () => {
     mocks.planFindUnique.mockResolvedValue({ ...activePlan(), expiresAt: new Date('2026-02-01T00:00:00Z') });
     await expect(
       resolveProjectCapability(apiContext('project-a'), 'project-a', { capabilityKey: 'addons.feedback', eligiblePlanKeys: ['pro'] }),
-    ).resolves.toMatchObject({ availability: 'unavailable', decision: 'unknown', source: 'plan' });
+    ).resolves.toMatchObject({ availability: 'unavailable', decision: 'unknown', source: null });
+    // With the canonical free plan configured, an expired paid plan falls back to
+    // free (its real policy), never keeping a pro-only capability.
+    mocks.defaultPlanFindUnique.mockResolvedValue({ key: 'free', active: true, meters: [], entitlements: [] });
+    await expect(
+      resolveProjectCapability(apiContext('project-a'), 'project-a', { capabilityKey: 'addons.feedback', eligiblePlanKeys: ['pro'] }),
+    ).resolves.toMatchObject({ availability: 'complete', decision: 'disabled', planKey: 'free', source: 'plan' });
   });
 
   it('treats oversized compatibility metadata as unknown without parsing it', async () => {
