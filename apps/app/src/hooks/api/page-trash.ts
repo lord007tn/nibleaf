@@ -40,7 +40,7 @@ export interface RestoredPage {
 
 /** How many items a branch's Trash holds (the default branch when omitted).
  *  A cheap read for the page tree's footer; it never purges. */
-export const pageTrashCountQueryOptions = (projectId: string | undefined, branchId?: string) =>
+const pageTrashCountQueryOptions = (projectId: string | undefined, branchId?: string) =>
   queryOptions({
     queryKey: queryKeys.pageTrash.count(projectId ?? '', branchId),
     queryFn: projectId
@@ -53,7 +53,7 @@ export const pageTrashCountQueryOptions = (projectId: string | undefined, branch
   });
 
 /** A branch's Trash, newest first: read only while the Trash dialog is open. */
-export const pageTrashQueryOptions = (projectId: string | undefined, branchId?: string) =>
+const pageTrashQueryOptions = (projectId: string | undefined, branchId?: string) =>
   queryOptions({
     queryKey: queryKeys.pageTrash.list(projectId ?? '', branchId),
     queryFn: projectId

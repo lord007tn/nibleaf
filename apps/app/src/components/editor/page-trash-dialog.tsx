@@ -5,13 +5,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale } from '@nibleaf/i18n/react';
 import { FileText, Folder, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Language } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { type PageTrashItem, usePageTrash, usePurgePageTrash } from '@/hooks/api/page-trash';
-import { useFormatters } from '@/lib/format';
+import { localeTag, useFormatters } from '@/lib/format';
 import { useRestoreFromTrash } from './use-delete-page';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -44,7 +44,9 @@ export default function PageTrashDialog({
   open,
   onOpenChange,
 }: PageTrashProps & { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const t = useT();
+  const { locale, t } = useLocale();
+  /** Whole days from now, said the locale's way (“in 3 days”, “tomorrow”, “today”). */
+  const relativeDays = (days: number) => new Intl.RelativeTimeFormat(localeTag(locale), { numeric: 'auto' }).format(days, 'day');
   const fmt = useFormatters();
   // Read (and purged of expired items) only while the dialog is open.
   const trash = usePageTrash(projectId, branchId, open);
@@ -86,7 +88,7 @@ export default function PageTrashDialog({
           <DataListItem
             badges={
               <StatusBadge size="sm" tone={left <= WARN_DAYS ? 'warning' : 'neutral'}>
-                {t('editor.trash.expires', { when: fmt.relativeDays(left) })}
+                {t('editor.trash.expires', { when: relativeDays(left) })}
               </StatusBadge>
             }
             data-testid="page-trash-item"

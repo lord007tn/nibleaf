@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   toast: { success: vi.fn(() => 'toast-1'), error: vi.fn(), dismiss: vi.fn() },
 }));
 
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.t }));
+vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.t, useLocale: () => ({ locale: 'en', t: mocks.t }) }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
 vi.mock('@/hooks/api', () => ({

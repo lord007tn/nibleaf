@@ -32,8 +32,6 @@ export function useFormatters() {
     shortDate: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { month: 'short', day: 'numeric' }).format(toDate(value)),
     /** Full date + time (e.g. for "last imported"), locale-aware. */
     dateTime: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)),
-    /** Whole days from now, said the locale's way (“in 3 days”, “tomorrow”, “today”). */
-    relativeDays: (days: number) => new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(days, 'day'),
     /** Locale-aware relative time (e.g. “5m ago” / “قبل 5 دقائق”). Picks the
      *  largest sensible unit and lets Intl supply the words + digits. */
     relativeTime: (value: string | number | Date) => {
