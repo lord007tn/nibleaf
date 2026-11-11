@@ -1,5 +1,6 @@
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
-import { defaultLanguage, pageDescription, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { excerpt, pageDescription } from '@nibleaf/shared/markdown-text';
+import { defaultLanguage, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
 /**
  * Pure builders for a published site's llms.txt / llms-full.txt — the
@@ -62,7 +63,7 @@ const siteHeader = (snapshot: SiteSnapshot): string[] => {
   const lines = [`# ${oneLine(snapshot.project.name)}`];
   const description = snapshot.project.description?.trim();
   if (description) {
-    lines.push('', `> ${oneLine(description)}`);
+    lines.push('', `> ${excerpt(description)}`);
   }
   return lines;
 };
@@ -94,9 +95,9 @@ export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string, options: Llms
 export const buildLlmsFullTxt = (snapshot: SiteSnapshot, base: string, options: LlmsOptions = {}): string => {
   const sections = llmsIndexablePages(snapshot, options).map((page) => {
     const header = [`# ${oneLine(page.title)}`, '', `Source: ${llmsPageUrl(snapshot, page, base)}`];
-    const description = page.description?.trim();
+    const description = page.config?.seo?.metaDescription?.trim() || page.description?.trim();
     if (description) {
-      header.push('', `> ${oneLine(description)}`);
+      header.push('', `> ${excerpt(description)}`);
     }
     return `${header.join('\n')}\n\n${page.content.trim()}\n`;
   });
