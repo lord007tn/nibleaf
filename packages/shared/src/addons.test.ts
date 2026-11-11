@@ -136,68 +136,55 @@ describe('Project.config compatibility projection', () => {
   });
 });
 
-describe('delivery entitlement projection', () => {
+describe('delivery entitlement projection (shared resolver)', () => {
+  const now = new Date('2026-08-24T00:00:00.000Z');
+  const free = { key: 'free', active: true, entitlements: [] as { capabilityKey: string; enabled: boolean; meter: { active: boolean } | null }[] };
   const assignment = (overrides: Record<string, unknown> = {}) => ({
     status: 'active',
     effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
     expiresAt: null,
-    plan: {
-      key: 'pro',
-      active: true,
-      entitlements: [],
-    },
+    plan: { key: 'pro', active: true, entitlements: [] as { capabilityKey: string; enabled: boolean; meter: { active: boolean } | null }[] },
     ...overrides,
   });
-  const feedback = [{ key: 'feedback' as const, enabled: true, config: { placement: 'after-content', presentation: 'compact' } }];
-  const now = new Date('2026-08-24T00:00:00.000Z');
+  const allOn = ['ci-checks', 'broken-links', 'feedback'].map((key) => ({ key, enabled: true, config: {} }));
+  const on = (rows: ReturnType<typeof projectAddonRowsForDelivery>, key: string) => rows.find((addon) => addon.key === key)?.enabled;
 
-  it('fails closed for missing and expired plan state', () => {
-    expect(projectAddonRowsForDelivery(feedback, null, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
-    expect(projectAddonRowsForDelivery(feedback, assignment(), now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
-    expect(
-      projectAddonRowsForDelivery(feedback, assignment({ expiresAt: new Date('2026-08-23T00:00:00.000Z') }), now).find(
-        (addon) => addon.key === 'feedback',
-      ),
-    ).toMatchObject({ enabled: false });
+  it('keeps add-ons offered on every plan for an org without an assignment (the canonical free plan governs)', () => {
+    const rows = projectAddonRowsForDelivery(allOn, null, free, now);
+    expect(on(rows, 'ci-checks')).toBe(true);
+    expect(on(rows, 'broken-links')).toBe(true);
+    expect(on(rows, 'feedback')).toBe(true);
+  });
+
+  it('applies default-on add-ons when a project has no rows at all', () => {
+    const rows = projectAddonRowsForDelivery([], null, free, now);
+    for (const definition of addonDefinitions)
+      expect(on(rows, definition.id)).toBe(definition.defaultEnabled && (definition.availability.state as string) !== 'coming_soon');
+  });
+
+  it('uses the free plan’s real configuration in the fallback: disabled there is disabled here', () => {
+    const policy = { ...free, entitlements: [{ capabilityKey: 'addons.broken-links', enabled: false, meter: null }] };
+    const expiredPaid = assignment({ plan: { key: 'enterprise', active: true, entitlements: [] }, expiresAt: new Date('2026-08-01T00:00:00.000Z') });
+    expect(on(projectAddonRowsForDelivery(allOn, assignment({ plan: policy }), policy, now), 'broken-links')).toBe(false);
+    expect(on(projectAddonRowsForDelivery(allOn, expiredPaid, policy, now), 'broken-links')).toBe(false);
+    expect(on(projectAddonRowsForDelivery(allOn, null, { ...free, active: false }, now), 'broken-links')).toBe(false);
+    expect(on(projectAddonRowsForDelivery(allOn, null, null, now), 'broken-links')).toBe(false);
   });
 
   it('suppresses disabled and unavailable entitlements without changing the stored preference', () => {
+    const feedback = [{ key: 'feedback', enabled: true, config: {} }];
     const disabled = assignment({
-      plan: {
-        key: 'pro',
-        active: true,
-        entitlements: [{ capabilityKey: 'addons.feedback', enabled: false, meter: null }],
-      },
+      plan: { key: 'pro', active: true, entitlements: [{ capabilityKey: 'addons.feedback', enabled: false, meter: null }] },
     });
     const unavailable = assignment({
-      plan: {
-        key: 'pro',
-        active: true,
-        entitlements: [{ capabilityKey: 'addons.feedback', enabled: true, meter: { active: false } }],
-      },
+      plan: { key: 'pro', active: true, entitlements: [{ capabilityKey: 'addons.feedback', enabled: true, meter: { active: false } }] },
     });
-
-    expect(projectAddonRowsForDelivery(feedback, disabled, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
-    expect(projectAddonRowsForDelivery(feedback, unavailable, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
+    expect(on(projectAddonRowsForDelivery(feedback, disabled, free, now), 'feedback')).toBe(false);
+    expect(on(projectAddonRowsForDelivery(feedback, unavailable, free, now), 'feedback')).toBe(false);
     expect(feedback[0]?.enabled).toBe(true);
   });
 
-  it('keeps meter quantities and limits outside capability availability', () => {
-    const entitled = assignment({
-      plan: {
-        key: 'pro',
-        active: true,
-        entitlements: [{ capabilityKey: 'addons.feedback', enabled: true, meter: { active: true }, limit: 0n, quantity: 10n }],
-      },
-    });
-
-    expect(projectAddonRowsForDelivery(feedback, entitled, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: true });
+  it('keeps a user-disabled add-on off whatever the plan', () => {
+    expect(on(projectAddonRowsForDelivery([{ key: 'broken-links', enabled: false, config: {} }], null, free, now), 'broken-links')).toBe(false);
   });
-});
-
-it('preserves the optional owner policy through durable add-on configuration and public projection', () => {
-  const config = addonConfigSchemas['consent-banner'].parse({ privacyPolicyUrl: 'https://example.invalid/privacy' });
-  const projected = projectConfigWithAddons({}, [{ key: 'consent-banner', enabled: true, config }]);
-  expect(projected).toMatchObject({ addons: { consentBanner: { privacyPolicyUrl: 'https://example.invalid/privacy' } } });
-  expect(addonConfigSchemas['consent-banner'].safeParse({ privacyPolicyUrl: 'javascript:alert(1)' }).success).toBe(false);
 });

@@ -23,7 +23,8 @@ import {
 } from '@/components/app/start-here';
 import { isOrgAdmin, useCurrentOrganization } from '@/components/organization/organization-context';
 import { QueryErrorState } from '@/components/query-error-state';
-import { type SiteRole, useOrganizationAnalytics, useOrganizationProjects, useProjectMembers } from '@/hooks/api';
+import { useOrgInvitations } from '@/features/people/api/hooks';
+import { type SiteRole, useOrganizationAnalytics, useOrganizationMembers, useOrganizationProjects } from '@/hooks/api';
 import { analyticsTimezone } from '@/hooks/api/analytics/query-options';
 import { organizationKeys } from '@/hooks/api/organization-keys';
 import { organizationAnalyticsQueryOptions, organizationProjectsQueryOptions } from '@/hooks/api/organization-query-options';
@@ -85,9 +86,10 @@ function WebsitesPage() {
   const [dismissedNow, setDismissedNow] = useState(false);
   const dismissed = storedDismissed || dismissedNow || !canCreate;
   const siteList = useMemo(() => projects.data ?? [], [projects.data]);
-  const focusId = useMemo(() => startHereProgress(siteList, undefined).focus?.id, [siteList]);
-  const { data: team } = useProjectMembers(dismissed ? undefined : focusId);
-  const teamSize = team ? team.members.length + (team.invitations?.length ?? 0) : undefined;
+  // Invited counts across the organization, not the newest website (WORKSPACE-13). Only Owner/Admins see the checklist.
+  const orgMembers = useOrganizationMembers(dismissed ? undefined : organization.id);
+  const orgInvitations = useOrgInvitations(dismissed ? undefined : organization.id);
+  const teamSize = orgMembers.data && orgInvitations.data ? orgMembers.data.length + orgInvitations.data.length : undefined;
   const requests = useMemo(() => (dismissed ? NO_REQUESTS : startHereRequests(siteList)), [dismissed, siteList]);
   const activity = useStartHereActivity(requests.deploymentSiteIds, requests.pageSiteIds);
   const progress = startHereProgress(siteList, teamSize, activity);
@@ -131,7 +133,9 @@ function WebsitesPage() {
         description={t('organization.websites.subtitle', { org: organization.name })}
         title={t('nav.websites')}
       />
-      {showStartHere ? <StartHere onCreateSite={() => setCreateOpen(true)} onDismiss={dismissStartHere} progress={progress} /> : null}
+      {showStartHere ? (
+        <StartHere onCreateSite={() => setCreateOpen(true)} onDismiss={dismissStartHere} orgSlug={organization.slug} progress={progress} />
+      ) : null}
       {hasSites ? (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-0 flex-1 basis-60 sm:max-w-md">

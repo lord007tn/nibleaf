@@ -171,7 +171,12 @@ async function shutdown(signal: string) {
   shuttingDown = true;
   clearTimeout(storageRetry);
   ready = false;
-  logger.info({ signal }, 'shutting down API');
+  logger.info({ signal, drainDelayMs: env.API_DRAIN_DELAY_MS }, 'shutting down API');
+  if (env.API_DRAIN_DELAY_MS > 0) {
+    // /health already answers 503; keep accepting requests until the proxy
+    // has seen that and stopped routing new ones here.
+    await new Promise((resolve) => setTimeout(resolve, env.API_DRAIN_DELAY_MS).unref());
+  }
 
   const activeServer = server;
   if (activeServer) {

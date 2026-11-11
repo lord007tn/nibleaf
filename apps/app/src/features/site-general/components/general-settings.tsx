@@ -18,6 +18,7 @@ import { FormField } from '@/components/ui/form-field';
 import { env } from '@/env';
 import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
+import { isolate } from '@/lib/bidi';
 import { validateOnBlurThenChange, withServerError } from '@/lib/forms/field-errors';
 import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
@@ -267,7 +268,7 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
                     dir={dirOf(selectedLanguage)}
                     lang={selectedLanguage.code}
                     onChange={(event) => onValueChange(event.target.value)}
-                    placeholder={defaultName}
+                    placeholder={isolate(defaultName)}
                     value={value}
                   />
                 )}
@@ -292,7 +293,7 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
                     dir={dirOf(selectedLanguage)}
                     lang={selectedLanguage.code}
                     onChange={(event) => onValueChange(event.target.value)}
-                    placeholder={defaultDescription || undefined}
+                    placeholder={defaultDescription ? isolate(defaultDescription) : undefined}
                     value={value}
                   />
                 )}

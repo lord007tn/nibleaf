@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { type AnyRoute, createMemoryHistory, createRootRoute, createRoute, createRouter, isNotFound } from '@tanstack/react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { MARKETING_SITEMAP, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { loadMarketingPage, MARKETING_ROUTES, matchMarketingRoute } from './routes';
@@ -98,6 +98,14 @@ describe('marketing URLs (#345)', () => {
 });
 
 describe('marketing heads (#345)', () => {
+  // The first page loaded pays for importing the marketing pages, their SEO
+  // helpers and the blog: about 2 s alone, and more than the default 5 s test
+  // timeout when the whole suite runs in parallel. Load it once up front with
+  // its own budget, so each case below measures only its own page.
+  beforeAll(async () => {
+    await loadMarketingPage('/');
+  }, 60_000);
+
   it.each(sitemapPaths)('gives %s a canonical link and og:url for its own URL', async (path) => {
     const { head } = await loadMarketingPage(path);
     const links = (head?.links ?? []) as Link[];
