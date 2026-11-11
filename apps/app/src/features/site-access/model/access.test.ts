@@ -40,6 +40,19 @@ const cases: { name: string; action: SiteAction; expected: readonly string[] }[]
     action: { type: 'site.member.remove', member: { role: 'admin', orgRole: 'admin', viaOrganization: false } },
     expected: nobody,
   },
+  // changeRole follows exactly the same rules as remove (actions/members.ts updateMemberRole).
+  ...roles.flatMap((role) =>
+    [false, true].map((viaOrganization) => ({
+      name: `changeRole ${role} viaOrganization=${viaOrganization}`,
+      action: { type: 'site.member.changeRole', member: { role, orgRole: 'member', viaOrganization } } satisfies SiteAction,
+      expected: viaOrganization || role === 'owner' ? nobody : adminOnly,
+    })),
+  ),
+  {
+    name: 'changeRole org admin',
+    action: { type: 'site.member.changeRole', member: { role: 'admin', orgRole: 'admin', viaOrganization: false } },
+    expected: nobody,
+  },
   ...(['owner', 'admin', 'member', null] as const).map((orgRole) => ({
     name: `transfer to ${orgRole}`,
     action: { type: 'site.ownership.transfer', target: target(orgRole), sessionUserId: 'me' } satisfies SiteAction,
@@ -204,10 +217,17 @@ describe('site access from the organization and the site grant', () => {
   });
 
   // Server: updateMemberRole lets a site Admin assign any role up to their own
-  // (canAssignRole), themselves included; the members UI gates the change with
-  // `site.members.manage` and refuses organization-managed rows like removal.
+  // (canAssignRole), themselves included. `site.member.changeRole` without the
+  // identity params mirrors that; the Team page's stricter self rule is opt-in.
   it('lets a site-only Admin demote themselves, as the server does', () => {
-    expect(decide(accessFor('member', 'admin'), { type: 'site.members.manage' }).kind).toBe('allowed');
+    const selfRow = { role: 'admin' as const, orgRole: 'member' as const, viaOrganization: false };
+    expect(decide(accessFor('member', 'admin'), { type: 'site.member.changeRole', member: selfRow }).kind).toBe('allowed');
+    expect(
+      decide(accessFor('admin', null), { type: 'site.member.changeRole', member: { ...selfRow, orgRole: 'admin', viaOrganization: true } }),
+    ).toEqual({
+      kind: 'denied',
+      reason: 'access.reason.organizationMember',
+    });
     expect(canAssignRole('admin', 'member')).toBe(true);
     expect(canAssignRole('admin', 'owner')).toBe(false);
   });
@@ -241,6 +261,15 @@ describe('website Team page: changing roles and removing (ported from the people
     const self = member({ role: 'admin', userId: 'me' });
     expect(outcome(decide(ready('admin'), { type: 'site.member.remove', member: self, sessionUserId: 'me' }))).toBe('people.reason.removeSelfSite');
     expect(outcome(decide(ready('admin'), { type: 'site.member.changeRole', member: self, sessionUserId: 'me' }))).toBe('people.reason.ownRole');
+  });
+  it.each(['site.member.changeRole', 'site.member.remove'] as const)('%s: a site Admin may act on another Admin of the same rank', (type) => {
+    expect(outcome(decide(ready('admin'), { type, member: member({ role: 'admin' }), sessionUserId: 'me' }))).toBe('allowed');
+  });
+  it.each(['site.member.changeRole', 'site.member.remove'] as const)('%s: without identity params there is no self rule (server parity)', (type) => {
+    const self = member({ role: 'admin', userId: 'me' });
+    expect(outcome(decide(ready('admin'), { type, member: self }))).toBe('allowed');
+    expect(outcome(decide(ready('admin'), { type, member: { ...self, userId: undefined }, sessionUserId: 'me' }))).toBe('allowed');
+    expect(outcome(decide(ready('admin'), { type, member: self, sessionUserId: '' }))).toBe('allowed');
   });
   it('explains to an Editor why they cannot change anyone', () => {
     expect(outcome(decide(ready('member'), { type: 'site.member.changeRole', member: member({ role: 'viewer' }), sessionUserId: 'me' }))).toBe(
