@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reader Ask AI: low-fi mockups</title>
+<!--
+  Low-fidelity wireframes for operations/ux/reader-ask-ai.md.
+  Grey boxes on purpose: they show structure, order, states and copy, not visual design.
+  Each .frame is rendered to its own PNG (frame id = file name) with a headless browser.
+  Purple notes name the rule or the design-system primitive behind an element.
+-->
+<style>
+  :root { --ink:#1d1d1f; --muted:#6b6b70; --line:#d4d4d8; --soft:#f4f4f5; --ok:#1f7a4d; --warn:#9a6700; --bad:#b42318; --accent:#2f5bd3; --note:#6d28d9; --hl:#fff4c2; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, "Segoe UI", "Noto Sans Arabic", sans-serif; color: var(--ink); background: #e9e9ec; }
+  .frame { position: relative; background: #fff; margin: 24px; border: 1px solid var(--line); overflow: hidden; }
+  .w1200 { width: 1200px; height: 760px; }
+  .w390 { width: 390px; height: 844px; }
+  .wstrip { width: 1200px; }
+  .tag { position: absolute; top: 0; inset-inline-start: 0; z-index: 5; background: #111; color: #fff; font: 600 11px/1 system-ui; padding: 6px 8px; }
+  .note { color: var(--note); font-size: 11px; line-height: 1.35; }
+  .note::before { content: "◆ "; }
+  .top { height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; padding: 0 20px; }
+  .logo { font-weight: 700; }
+  .search { flex: 0 1 380px; margin-inline: auto; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; }
+  .kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 11px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-size: 13px; background: #fff; white-space: nowrap; }
+  .btn.p { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn.s { padding: 3px 9px; font-size: 12px; }
+  .btn.link { border: 0; padding: 0; color: var(--accent); background: none; }
+  .body { display: flex; height: calc(100% - 56px); }
+  .nav { width: 200px; border-inline-end: 1px solid var(--line); padding: 16px 12px; background: var(--soft); font-size: 12.5px; color: var(--muted); }
+  .nav div { padding: 4px 6px; }
+  .nav .on { background: #fff; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-weight: 600; }
+  .doc { flex: 1; padding: 24px 32px; overflow: hidden; min-width: 0; }
+  .doc h1 { font-size: 22px; margin: 0 0 10px; }
+  .doc h2 { font-size: 15px; margin: 18px 0 6px; }
+  .doc p, .doc li { font-size: 13px; color: #3f3f46; margin: 4px 0; }
+  .doc .hl { background: var(--hl); outline: 2px solid #e8c547; border-radius: 4px; padding: 4px 6px; margin-inline: -6px; }
+  .panel { width: 430px; border-inline-start: 1px solid var(--line); display: flex; flex-direction: column; background: #fff; flex-shrink: 0; }
+  .ph { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+  .ph b { font-size: 15px; }
+  .ph .sp { flex: 1; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: 11px; color: var(--muted); }
+  .log { flex: 1; overflow: hidden; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .q { align-self: flex-end; max-width: 85%; background: #eef2ff; border-radius: 12px; padding: 8px 12px; font-size: 13px; }
+  [dir="rtl"] .q { align-self: flex-start; }
+  .a { font-size: 13.5px; line-height: 1.6; }
+  .a p { margin: 0 0 10px; }
+  .a ol { margin: 0 0 10px; padding-inline-start: 20px; }
+  .a li { margin: 0 0 6px; }
+  .cite { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; margin-inline-start: 3px; border-radius: 5px; background: #e0e7ff; color: #1e3a8a; font-size: 11px; font-weight: 600; vertical-align: 1px; }
+  .cite.f { outline: 2px solid var(--accent); }
+  code { font: 12px ui-monospace, Consolas, monospace; background: var(--soft); border-radius: 4px; padding: 0 4px; }
+  .srcs { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .srcs h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .src { display: flex; gap: 8px; padding: 6px 0; font-size: 12.5px; }
+  .src + .src { border-top: 1px dashed var(--line); }
+  .src .n { flex-shrink: 0; }
+  .src .t { font-weight: 600; }
+  .src .h { color: var(--muted); }
+  .src .lang { font-size: 10.5px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--muted); margin-inline-start: 4px; }
+  .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .fu { display: flex; flex-direction: column; gap: 6px; }
+  .fu .btn { justify-content: flex-start; white-space: normal; text-align: start; }
+  .callout { border: 1px solid var(--line); background: var(--soft); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .callout.warn { border-color: #e9c46a; background: #fffaeb; }
+  .callout b { display: block; margin-bottom: 2px; }
+  .composer { border-top: 1px solid var(--line); padding: 10px 14px 12px; }
+  .field { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--muted); font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+  .disc { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .status { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .draft { border-inline-start: 3px solid var(--line); padding-inline-start: 10px; color: #52525b; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 36px 16px 16px; }
+  .cell { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  .cell h5 { margin: 0 0 6px; font-size: 12px; }
+  .sheet { height: 100%; display: flex; flex-direction: column; }
+  .sheet .ph { padding-top: 14px; }
+  .mobile .log { padding: 12px; }
+  .crumbs { font-size: 11px; color: var(--muted); }
+  .a bdi, .a code { white-space: nowrap; }
+  .sheet { padding-top: 22px; }
+</style>
+</head>
+<body>
+
+<!-- A: desktop EN answered, non-modal panel, cited section highlighted in the page -->
+<div class="frame w1200" id="mockup-a-answer-en-1440">
+  <span class="tag">A · EN 1440 · answered, citation [1] opened in the page</span>
+  <div class="top"><span class="logo">Nibleaf Docs</span><span class="search">Search documentation… <span class="kbd">Ctrl K</span></span><span class="btn">✦ Ask AI <span class="kbd">Ctrl I</span></span><span class="btn s">English ▾</span></div>
+  <div class="body">
+    <div class="nav"><div>Choose your path</div><div>Publish your changes</div><div class="on">Connect a custom domain</div><div>Choose a theme</div><div>Invite your team</div></div>
+    <div class="doc">
+      <h1>Connect a custom domain</h1>
+      <h2>Before you start</h2><p>You need to be the site's Owner or an Admin…</p>
+      <div class="hl"><h2 style="margin-top:0">Add your domain</h2>
+      <p>1. Open <b>Settings → Custom domain</b>.</p><p>2. Enter your domain, for example <code>docs.example.com</code>, and select <b>Add domain</b>.</p><p>3. Nibleaf shows <b>Add these DNS records at your provider</b>…</p></div>
+      <p class="note">The page stays readable: the panel docks beside it (no backdrop, no blur). Opening a citation scrolls the page to the section and highlights it for 2 s; the panel stays open.</p>
+      <h2>Wait for the connection</h2><p>DNS changes usually take a few minutes…</p>
+    </div>
+    <div class="panel">
+      <div class="ph"><b>Ask AI</b><span class="pill">AI</span><span class="sp"></span><span class="btn s">＋ New chat</span><span class="btn s">✕ Close</span></div>
+      <div class="log">
+        <div class="q">How do I add a custom domain?</div>
+        <div class="a">
+          <p>Add the domain in Nibleaf, then add two DNS records at your domain provider.<span class="cite f">1</span></p>
+          <ol><li>Open <b>Settings → Custom domain</b>, enter <code>docs.example.com</code> and select <b>Add domain</b>.<span class="cite">1</span></li>
+          <li>Add the <b>CNAME</b> and <b>TXT</b> records Nibleaf shows at your provider, then select <b>Check again</b>.<span class="cite">1</span></li></ol>
+          <p>DNS can take up to 24 hours. The domain then shows <b>Connected — secure (HTTPS) ✓</b>.<span class="cite">2</span></p>
+        </div>
+        <div class="srcs"><h4>Sources · from 1 page</h4>
+          <div class="crumbs">Connect a custom domain</div>
+          <div class="src"><span class="cite">1</span><span><span class="t">Add your domain</span></span></div>
+          <div class="src"><span class="cite">2</span><span><span class="t">Wait for the connection</span></span></div>
+        </div>
+        <div class="acts"><span class="btn s">⧉ Copy</span><span class="btn s">👍 Helpful</span><span class="btn s">👎 Not helpful</span></div>
+        <div class="fu"><span class="btn s">What if it's still not connected after 24 hours?</span><span class="btn s">How do I make it the main address?</span></div>
+      </div>
+      <div class="composer"><div class="field">Ask a follow-up… <span>➤</span></div><div class="disc">AI answers come only from these docs and can still be wrong. Check the sources.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- B: desktop EN not in the docs -->
+<div class="frame w1200" id="mockup-b-not-in-docs-en-1440">
+  <span class="tag">B · EN 1440 · not in these docs (no guess, a way forward)</span>
+  <div class="top"><span class="logo">Nibleaf Docs</span><span class="search">Search documentation… <span class="kbd">Ctrl K</span></span><span class="btn">✦ Ask AI</span></div>
+  <div class="body">
+    <div class="nav"><div class="on">Connect a custom domain</div></div>
+    <div class="doc"><h1>Connect a custom domain</h1><p>…</p>
+      <p class="note">Shown when retrieval finds nothing relevant, the model declines, or every claim fails the citation check. It is never a streamed answer that disappears: see frame C.</p>
+      <p class="note">Search results are a real search run on the reader's words (the existing reader search), not "suggested articles" from weak AI retrieval (removed in #452 for showing unrelated pages).</p>
+    </div>
+    <div class="panel">
+      <div class="ph"><b>Ask AI</b><span class="pill">AI</span><span class="sp"></span><span class="btn s">＋ New chat</span><span class="btn s">✕ Close</span></div>
+      <div class="log">
+        <div class="q">Can I use a wildcard domain like <bdi dir="ltr">*.example.com</bdi>?</div>
+        <div class="callout"><b>These docs don't cover that.</b>I didn't find anything about it in these docs, so I won't guess.</div>
+        <div class="acts"><span class="btn p s">⌕ Search the docs for “wildcard domain”</span><span class="btn s">Contact support ↗</span></div>
+        <div class="srcs"><h4>Closest sections (not an answer)</h4>
+          <div class="src"><span>•</span><span><span class="t">Connect a custom domain</span> <span class="h">› Before you start</span></span></div>
+        </div>
+        <p class="note">"Closest sections" only when search returns hits above the reader-relevance floor; otherwise this block is absent. D3 decides whether it ships.</p>
+        <div class="acts"><span class="btn s">👎 I expected an answer</span></div>
+      </div>
+      <div class="composer"><div class="field">Ask something else… <span>➤</span></div><div class="disc">AI answers come only from these docs and can still be wrong. Check the sources.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- C: states strip -->
+<div class="frame wstrip" id="mockup-c-states-en">
+  <span class="tag">C · EN · states: working, checked, held back, errors and limits</span>
+  <div class="grid">
+    <div class="cell"><h5>1 · Searching (before first words)</h5><div class="status"><span class="dot"></span>Looking through the docs…</div><p class="note">role=status, announced once. After 8 s: "Still working. Answers can take up to 20 seconds."</p></div>
+    <div class="cell"><h5>2 · Streaming</h5><div class="a draft"><p>Add the domain in Nibleaf, then add two DNS records…<span class="cite">1</span></p></div><div class="status"><span class="dot"></span>Writing · sources are checked when it's done</div><p class="note">Citations are shown as they arrive (resolved against retrieved sections server-side), not stripped and re-added.</p></div>
+    <div class="cell"><h5>3 · Checked</h5><div class="a"><p>…<span class="cite">1</span></p></div><div class="status">✓ Every statement links to a source</div><p class="note">Draft bar disappears; nothing reflows.</p></div>
+    <div class="cell"><h5>4 · Partly removed</h5><div class="a"><p>…<span class="cite">1</span></p></div><div class="callout">I removed one sentence I couldn't back up with these docs.</div><p class="note">Server drops uncited blocks before they are shown (buffered by block).</p></div>
+    <div class="cell"><h5>5 · Held back</h5><div class="callout warn"><b>I couldn't back this answer up with these docs, so I'm not showing it.</b>Try the search results instead.</div><div class="acts" style="margin-top:6px"><span class="btn p s">⌕ Search the docs</span></div><p class="note">Replaces today's stream-then-vanish (shots 13→14).</p></div>
+    <div class="cell"><h5>6 · Stopped</h5><div class="callout">You stopped this answer.</div><div class="acts" style="margin-top:6px"><span class="btn s">Ask again</span></div></div>
+    <div class="cell"><h5>7 · Too many questions</h5><div class="callout">You're asking quickly. You can ask again in 30 seconds.</div><div class="acts" style="margin-top:6px"><span class="btn s" style="opacity:.5">Ask again (0:30)</span><span class="btn s">⌕ Search the docs</span></div></div>
+    <div class="cell"><h5>8 · Daily limit reached</h5><div class="callout">AI answers are paused for today on this site. Search still works.</div><div class="acts" style="margin-top:6px"><span class="btn p s">⌕ Search the docs</span></div><p class="note">No Retry (it can't succeed).</p></div>
+    <div class="cell"><h5>9 · AI unavailable / offline</h5><div class="callout">AI answers aren't available right now. Search still works.</div><div class="acts" style="margin-top:6px"><span class="btn s">Try again</span><span class="btn p s">⌕ Search the docs</span></div><p class="note">Offline: "You're offline. Your question is kept here; send it when you're back."</p></div>
+  </div>
+</div>
+
+<!-- D: AR 390, Arabic question on English-only docs -->
+<div class="frame w390 mobile" id="mockup-d-answer-ar-390" dir="rtl" lang="ar">
+  <span class="tag">D · AR 390 · سؤال عربي، توثيق إنجليزي</span>
+  <div class="sheet">
+    <div class="ph"><b>اسأل المساعد</b><span class="pill">ذكاء اصطناعي</span><span class="sp"></span><span class="btn s">＋ محادثة جديدة</span><span class="btn s">✕</span></div>
+    <div class="log">
+      <div class="q">كيف أربط نطاقًا مخصّصًا بموقعي؟</div>
+      <div class="callout" style="font-size:12px">هذه الإجابة من صفحات متوفرة بالإنجليزية فقط.</div>
+      <div class="a">
+        <p>أضف النطاق من إعدادات Nibleaf، ثم أضف سجلَّي DNS لدى مزوّد النطاق.<span class="cite">1</span></p>
+        <ol><li>افتح <b><bdi dir="ltr">Settings → Custom domain</bdi></b>، وأدخل نطاقك مثل <code dir="ltr">docs.example.com</code>، ثم اختر <b><bdi dir="ltr">Add domain</bdi></b>.<span class="cite">1</span></li>
+        <li>أضف سجلَّي <b>CNAME</b> و<b>TXT</b> لدى مزوّدك، ثم اختر <b><bdi dir="ltr">Check again</bdi></b>.<span class="cite">1</span></li></ol>
+        <p>قد يستغرق ذلك حتى 24 ساعة.<span class="cite">2</span></p>
+      </div>
+      <div class="srcs"><h4>المصادر · من صفحة واحدة</h4>
+        <div class="crumbs"><bdi dir="ltr">Connect a custom domain</bdi><span class="src lang" style="display:inline;border:1px solid var(--line);padding:0 4px">بالإنجليزية</span></div>
+        <div class="src"><span class="cite">1</span><span class="t"><bdi dir="ltr">Add your domain</bdi></span></div>
+        <div class="src"><span class="cite">2</span><span class="t"><bdi dir="ltr">Wait for the connection</bdi></span></div>
+      </div>
+      <p class="note" dir="ltr">Each UI label, code, path and URL is a bdi/dir=ltr island; the marker sits after the island with no-break so "1" never wraps alone. Card names the page's language.</p>
+      <div class="acts"><span class="btn s">⧉ نسخ</span><span class="btn s">👍 مفيدة</span><span class="btn s">👎 غير مفيدة</span></div>
+    </div>
+    <div class="composer"><div class="field">اكتب سؤال متابعة… <span>➤</span></div><div class="disc">تأتي إجابات الذكاء الاصطناعي من هذا التوثيق فقط، وقد تخطئ. راجع المصادر.</div></div>
+  </div>
+</div>
+
+<!-- E: AR 390, not in docs and daily limit -->
+<div class="frame w390 mobile" id="mockup-e-not-in-docs-ar-390" dir="rtl" lang="ar">
+  <span class="tag">E · AR 390 · غير موجود في التوثيق + الحد اليومي</span>
+  <div class="sheet">
+    <div class="ph"><b>اسأل المساعد</b><span class="pill">ذكاء اصطناعي</span><span class="sp"></span><span class="btn s">✕</span></div>
+    <div class="log">
+      <div class="q">هل يمكنني استخدام نطاق عام مثل <bdi dir="ltr">*.example.com</bdi>؟</div>
+      <div class="callout"><b>لا يغطي هذا التوثيق ذلك.</b>لم أجد شيئًا عنه في هذا التوثيق، لذا لن أخمّن.</div>
+      <div class="acts"><span class="btn p s">⌕ ابحث في التوثيق عن «نطاق عام»</span><span class="btn s">تواصل مع الدعم ↗</span></div>
+      <div class="q">كيف أدعو فريقي؟</div>
+      <div class="callout">توقفت إجابات الذكاء الاصطناعي لهذا اليوم على هذا الموقع. لا يزال البحث متاحًا.</div>
+      <div class="acts"><span class="btn p s">⌕ ابحث في التوثيق</span></div>
+      <p class="note" dir="ltr">One Arabic term for docs everywhere: «التوثيق» (glossary). Today the panel mixes «الوثائق» and «الدليل».</p>
+    </div>
+    <div class="composer"><div class="field">سؤالك… <span>➤</span></div><div class="disc">تأتي إجابات الذكاء الاصطناعي من هذا التوثيق فقط، وقد تخطئ. راجع المصادر.</div></div>
+  </div>
+</div>
+
+<!-- F: entry points -->
+<div class="frame w1200" id="mockup-f-entry-points-en-1440" style="height:520px">
+  <span class="tag">F · EN 1440 · entry points (first visit, consent banner showing)</span>
+  <div class="top"><span class="logo">Nibleaf Docs</span><span class="search">Search documentation… <span class="kbd">Ctrl K</span></span><span class="btn">✦ Ask AI <span class="kbd">Ctrl I</span></span><span class="btn s">English ▾</span></div>
+  <div class="body">
+    <div class="nav"><div class="on">Connect a custom domain</div></div>
+    <div class="doc">
+      <h1>Connect a custom domain</h1>
+      <p class="note">"Ask AI" lives in the header next to search, server-rendered, so it exists on first visit even while the consent banner holds the corner where the floating launcher goes (today it is absent until the reader answers the banner: shot 01).</p>
+      <div style="border:1px solid var(--line);border-radius:12px;width:520px;margin-top:16px;padding:10px">
+        <div class="field">add a custom domain <span class="kbd">Esc</span></div>
+        <div class="src" style="background:#eef2ff;border-radius:8px;padding:8px;margin-top:8px">✦ <span><b>Ask AI:</b> “add a custom domain” <span class="h">· an answer written from these docs, with sources</span></span></div>
+        <div class="src">📄 <span><span class="t">Connect a custom domain</span> <span class="h">› Add your domain</span></span></div>
+        <div class="src">📄 <span><span class="t">Publish your changes</span> <span class="h">› Check what readers see</span></span></div>
+        <p class="note">Search hand-off stays (it exists today). Phones: the same "Ask AI" sits in the search sheet; the floating launcher remains for long pages.</p>
+      </div>
+    </div>
+    <div style="position:absolute;inset-inline-end:24px;bottom:24px;width:360px" class="callout"><b>Optional analytics</b>This site uses optional analytics cookies… <div class="acts" style="margin-top:6px"><span class="btn s">Decline</span><span class="btn s">Accept analytics</span></div></div>
+  </div>
+</div>
+
+</body>
+</html>
