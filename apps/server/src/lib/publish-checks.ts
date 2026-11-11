@@ -1,6 +1,6 @@
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
-import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, markdownProseLines } from '@nibleaf/shared/publish-checks';
+import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, pageContentFacts } from '@nibleaf/shared/publish-checks';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
 /**
@@ -90,47 +90,6 @@ const isUnreadableSlug = (slug: string): boolean => {
   );
 };
 
-const MARKDOWN_IMAGE = /!\[((?:[^[\]]|\[[^[\]]*\])*)\]\(\s*(<[^>]*>|[^)\s]+)/g;
-const HTML_IMAGE = /<img\b[^>]*>/gi;
-
-/** The sources of images that have no alt text. */
-const imagesWithoutAlt = (lines: readonly string[]): string[] => {
-  const sources: string[] = [];
-  for (const line of lines) {
-    for (const match of line.matchAll(MARKDOWN_IMAGE)) {
-      if (!match[1]?.replace(/\\/g, '').trim()) sources.push((match[2] ?? '').replace(/^<|>$/g, ''));
-    }
-    for (const match of line.matchAll(HTML_IMAGE)) {
-      const tag = match[0];
-      // `alt={expression}` is authored on purpose; only a missing or blank one is flagged.
-      const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)'|(\{))/i.exec(tag);
-      if (!alt || (!alt[3] && !(alt[1] ?? alt[2] ?? '').trim())) {
-        sources.push(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag)?.slice(1).find(Boolean) ?? '');
-      }
-    }
-  }
-  return sources;
-};
-
-/** Leftovers from imports and the slash menu: a paragraph that is only `/`,
- *  or a `---` that was stored as literal text (escaped, or inside `<p>`)
- *  instead of becoming a divider. */
-const strayParagraphs = (lines: readonly string[]): string[] => {
-  const stray: string[] = [];
-  const blank = (index: number) => index < 0 || index >= lines.length || !lines[index]?.trim();
-  lines.forEach((line, index) => {
-    const text = line.trim();
-    const paragraph = /^<p>\s*([\s\S]*?)\s*<\/p>$/i.exec(text)?.[1]?.trim();
-    const ownParagraph = blank(index - 1) && blank(index + 1);
-    if ((text === '/' && ownParagraph) || paragraph === '/') {
-      stray.push('/');
-    } else if ((text.includes('\\') && /^-{3,}$/.test(text.replace(/\\/g, ''))) || (paragraph !== undefined && /^-{3,}$/.test(paragraph))) {
-      stray.push('---');
-    }
-  });
-  return stray;
-};
-
 /** Whether anything but HTML/MDX comments and whitespace is left. Splits on
  *  the comments instead of stripping them: nothing here is rendered, it only
  *  decides whether a page is empty. */
@@ -169,14 +128,13 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
     }
     if (isUnreadableSlug(page.slug)) add(page, 'unreadable-slug', page.slug);
     if (page.kind !== 'PAGE') continue;
-    if (!hasBody(page.content)) {
-      add(page, 'empty-page');
-      continue;
-    }
-    const lines = markdownProseLines(page.content);
+    // No shortcut for an empty page: every finding is still reported, so the
+    // dialog can never hide a link the worker would block on.
+    if (!hasBody(page.content)) add(page, 'empty-page');
+    const facts = pageContentFacts(page.content);
     addEach(page, 'broken-internal-link', brokenLinks.get(page.id) ?? [], linkSeverity);
-    addEach(page, 'missing-alt', imagesWithoutAlt(lines));
-    addEach(page, 'stray-characters', strayParagraphs(lines));
+    addEach(page, 'missing-alt', facts.imagesWithoutAlt);
+    addEach(page, 'stray-characters', facts.strayText);
   }
   for (const siblings of siblingsByTitle.values()) {
     if (siblings.length < 2) continue;

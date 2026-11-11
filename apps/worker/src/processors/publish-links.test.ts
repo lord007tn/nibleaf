@@ -104,7 +104,7 @@ function deliveredSnapshot(assignment: AddonDeliveryPlanAssignment | null): Site
       config: { addons: { ciChecks: true, brokenLinks: true } },
       languages: [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, enabled: true, config: null }],
       branches: [{ id: 'b', name: 'main', isDefault: true }],
-      addons: projectAddonRowsForDelivery(STORED_ADDONS, assignment),
+      addons: projectAddonRowsForDelivery(STORED_ADDONS, assignment, null),
     },
     [
       {
