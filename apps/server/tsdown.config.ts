@@ -8,4 +8,5 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
+  copy: [{ from: 'src/assets/og/*', to: 'dist/assets/og' }],
 });
