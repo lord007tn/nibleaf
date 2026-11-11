@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "أضف لغة أخرى للموقع لنقل هذه الصفحة إليها.",
+  "editor_pagesettings_invalidicon": "اختر اسم أيقونة مدعومًا، مثل rocket أو book-open أو code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "اتصالات الصياغة",
   "analytics_drafting_description": "أحداث بدء الصياغة واكتمالها وفشلها في الفترة المحددة.",

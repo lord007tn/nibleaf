@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "Fügen Sie eine weitere Website-Sprache hinzu, um diese Seite zu verschieben.",
+  "editor_pagesettings_invalidicon": "Wählen Sie einen unterstützten Symbolnamen wie rocket, book-open oder code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "Verbindungen für Entwürfe",
   "analytics_drafting_description": "Gestartete, abgeschlossene und fehlgeschlagene Entwurfsereignisse im gewählten Zeitraum.",

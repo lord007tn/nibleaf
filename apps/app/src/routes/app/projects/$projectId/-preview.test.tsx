@@ -35,7 +35,7 @@ vi.mock('@/components/site/page-icon', () => ({ PageIcon: () => null }));
 vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/lib/site-theme', () => ({ projectThemeStyle: () => ({}), projectThemeVariables: () => ({}), resolveProjectTheme: () => undefined }));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
-  DocumentationThemeProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DocumentationThemeProvider: ({ children }: { children?: ReactNode }) => <div data-site-theme="">{children}</div>,
   DocumentationProjectPreviewLayout: ({ content }: { content: ReactNode }) => <div>{content}</div>,
 }));
 
@@ -76,5 +76,14 @@ describe('preview content', () => {
     await act(async () => root.render(<ProjectPreview />));
     expect(container.textContent).toContain('preview.empty');
     expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('keeps the authoring chrome outside the site theme', async () => {
+    queries.pages = { data: [], isPending: false, isError: false };
+    await act(async () => root.render(<ProjectPreview />));
+    const chrome = container.querySelector('[data-preview-app-chrome]');
+    expect(chrome).not.toBeNull();
+    expect(chrome?.closest('[data-site-theme]')).toBeNull();
+    expect(container.querySelector('[data-site-theme]')).not.toBeNull();
   });
 });

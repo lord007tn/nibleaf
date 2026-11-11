@@ -142,9 +142,10 @@ export function PageIcon({ name, className }: { name?: string | null; className?
   if (!name) {
     return null;
   }
-  const Icon = ICONS[normalize(name)];
+  const key = normalize(name);
+  const Icon = Object.hasOwn(ICONS, key) ? ICONS[key] : undefined;
   return Icon ? <Icon className={className} aria-hidden /> : null;
 }
 
 /** Whether an authored icon name resolves to a real icon. */
-export const hasIcon = (name?: string | null): boolean => Boolean(name && ICONS[normalize(name)]);
+export const hasIcon = (name?: string | null): boolean => Boolean(name && Object.hasOwn(ICONS, normalize(name)));

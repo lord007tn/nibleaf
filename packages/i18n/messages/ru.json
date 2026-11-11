@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "Добавьте ещё один язык сайта, чтобы переместить эту страницу.",
+  "editor_pagesettings_invalidicon": "Выберите поддерживаемое имя значка, например rocket, book-open или code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "Подключения для черновиков",
   "analytics_drafting_description": "События начала, завершения и сбоя создания черновиков за выбранный период.",

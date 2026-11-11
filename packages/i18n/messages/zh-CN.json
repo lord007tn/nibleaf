@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "添加另一种网站语言后即可移动此页面。",
+  "editor_pagesettings_invalidicon": "请选择支持的图标名称，例如 rocket、book-open 或 code。",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "起草连接",
   "analytics_drafting_description": "所选期间内起草开始、完成和失败的事件。",

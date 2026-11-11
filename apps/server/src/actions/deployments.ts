@@ -340,13 +340,14 @@ export const getDeploymentDiff = async (projectId: string, id: string) => {
   });
 
   const currentSnapshot = deployment.snapshot as unknown as SiteSnapshot;
+  const currentPages = currentSnapshot.pages.filter((page) => page.kind === 'PAGE');
   const previousSnapshot = previousDeployment?.snapshot ? (previousDeployment.snapshot as unknown as SiteSnapshot) : null;
-  const previousPages = previousSnapshot ? previousSnapshot.pages : [];
+  const previousPages = previousSnapshot ? previousSnapshot.pages.filter((page) => page.kind === 'PAGE') : [];
   const previousById = new Map(previousPages.map((page) => [page.id, page]));
-  const currentIds = new Set(currentSnapshot.pages.map((page) => page.id));
+  const currentIds = new Set(currentPages.map((page) => page.id));
   const changes: DeploymentPageDiff[] = [];
 
-  for (const page of currentSnapshot.pages) {
+  for (const page of currentPages) {
     const previous = previousById.get(page.id);
     if (!previous) {
       changes.push(pageSummary(page, 'added'));
@@ -375,7 +376,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const latest = await getLatestReadyDeployment(projectId);
   const validation = validateSnapshotRedirects(draftSnapshot ?? (await getCurrentSnapshot(projectId)));
   const currentSnapshot = validation.snapshot;
-  const current = currentSnapshot.pages;
+  const current = currentSnapshot.pages.filter((page) => page.kind === 'PAGE');
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
@@ -393,7 +394,8 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   }
 
   const snap = latest.snapshot as unknown as SiteSnapshot;
-  const prevById = new Map(snap.pages.map((p) => [p.id, p]));
+  const previous = snap.pages.filter((page) => page.kind === 'PAGE');
+  const prevById = new Map(previous.map((p) => [p.id, p]));
   const currentIds = new Set(current.map((p) => p.id));
   const changes: PendingChange[] = [];
 
@@ -405,7 +407,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
       changes.push(pageSummary(p, 'modified', prev));
     }
   }
-  for (const prev of snap.pages) {
+  for (const prev of previous) {
     if (!currentIds.has(prev.id)) {
       changes.push(pageSummary(prev, 'removed', prev));
     }

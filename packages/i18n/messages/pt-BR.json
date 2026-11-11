@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "Adicione outro idioma ao site para mover esta página.",
+  "editor_pagesettings_invalidicon": "Escolha um nome de ícone disponível, como rocket, book-open ou code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "Conexões de redação",
   "analytics_drafting_description": "Eventos de redação iniciados, concluídos e com falha no período selecionado.",

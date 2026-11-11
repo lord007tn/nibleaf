@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "Tambahkan bahasa situs lain untuk memindahkan halaman ini.",
+  "editor_pagesettings_invalidicon": "Pilih nama ikon yang didukung, seperti rocket, book-open atau code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "Koneksi penyusunan",
   "analytics_drafting_description": "Peristiwa penyusunan yang dimulai, selesai, dan gagal dalam periode terpilih.",

@@ -149,7 +149,14 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
             {available.length === 0 ? (
               <p className="px-4 pt-2 text-muted-foreground text-sm">{t('editor.addLanguage.allAdded')}</p>
             ) : (
-              <Command className="rounded-none bg-transparent">
+              <Command
+                className="rounded-none bg-transparent"
+                label={t('editor.addLanguage.searchPlaceholder')}
+                filter={(value, search) => {
+                  const language = available.find((item) => item.code === value);
+                  return language && matchesLanguage(language, search) ? 1 : 0;
+                }}
+              >
                 <CommandInput placeholder={t('editor.addLanguage.searchPlaceholder')} />
                 <CommandList className="max-h-72 pb-1">
                   <CommandEmpty>{t('editor.addLanguage.noResults')}</CommandEmpty>
@@ -158,7 +165,7 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
                       <CommandItem
                         key={lang.code}
                         // Search across native name, English name, and code.
-                        value={`${lang.label} ${lang.native} ${lang.code}`}
+                        value={lang.code}
                         onSelect={() => void handleAdd(lang)}
                         disabled={submitting}
                       >
@@ -185,5 +192,20 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Match names at word starts and codes at their prefix, without fuzzy hits. */
+function matchesLanguage(language: CatalogLanguage, search: string): boolean {
+  const query = search.trim().normalize('NFC').toLocaleLowerCase();
+  return (
+    language.code.toLowerCase().startsWith(query) ||
+    [language.label, language.native].some((name) =>
+      name
+        .normalize('NFC')
+        .toLocaleLowerCase()
+        .split(/[\s()-]+/u)
+        .some((_word, index, words) => words.slice(index).join(' ').startsWith(query)),
+    )
   );
 }

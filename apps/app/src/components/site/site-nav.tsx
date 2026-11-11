@@ -225,6 +225,7 @@ function NavItems({ id, hidden, nodes, rail, ...rest }: NavItemProps & { id?: st
     <ul id={id} hidden={hidden} className={cn('space-y-px', rail && 'ms-3 border-border/70 border-s ps-3')}>
       {nodes.map((node) => {
         if (node.kind === 'GROUP') {
+          if (!firstLeafPath(node.children)) return null;
           return rest.depth === 0 ? <NavSection key={node.id} node={node} {...rest} /> : <NavSubGroup key={node.id} node={node} {...rest} />;
         }
         return <NavLink key={node.id} node={node} rail={rail} {...rest} />;

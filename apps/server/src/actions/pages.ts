@@ -152,12 +152,12 @@ export const uniqueSiblingSlug = async (
 };
 
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
-/** The dashboard creates pages/groups with a placeholder title in the author's
- *  interface locale (`editor.untitled` / `editor.newGroup`), so "still a
- *  placeholder" must be recognised in every locale, not only English. */
-const PLACEHOLDER_TITLES = new Set<string>(
-  INTERFACE_LOCALES.flatMap(({ code }) => [editor_untitled(undefined, { locale: code }), editor_newgroup(undefined, { locale: code })]),
-);
+/** New pages have an empty title. Also recognize existing localized placeholder
+ *  titles when their first real title supplies the address. */
+const PLACEHOLDER_TITLES = new Set<string>([
+  '',
+  ...INTERFACE_LOCALES.flatMap(({ code }) => [editor_untitled(undefined, { locale: code }), editor_newgroup(undefined, { locale: code })]),
+]);
 
 type PageTreeNode = { id: string; parentId: string | null; branchId: string; languageId: string };
 
@@ -255,7 +255,7 @@ export const createPage = async (projectId: string, body: CreatePageBody, userId
       const languageId =
         parent.languageId ??
         (body.languageId ? (await assertLanguageInProject(projectId, body.languageId, tx)).id : (await getDefaultLanguage(projectId, tx)).id);
-      const slug = await uniqueSiblingSlug(tx, projectId, languageId, branchId, parentId, body.slug || body.title);
+      const slug = await uniqueSiblingSlug(tx, projectId, languageId, branchId, parentId, body.slug || body.title || 'untitled');
       const maxPosition = await tx.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
       return tx.page.create({
         data: {

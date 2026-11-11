@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "এই পৃষ্ঠাটি সরাতে সাইটে আরেকটি ভাষা যোগ করুন।",
+  "editor_pagesettings_invalidicon": "সমর্থিত আইকনের নাম বেছে নিন, যেমন rocket, book-open বা code।",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "খসড়া সংযোগ",
   "analytics_drafting_description": "নির্বাচিত সময়ে খসড়া শুরু, সম্পন্ন ও ব্যর্থ হওয়ার ঘটনা।",

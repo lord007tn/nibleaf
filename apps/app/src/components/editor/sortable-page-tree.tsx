@@ -1020,7 +1020,8 @@ const RowPresentation = memo(function RowPresentation({
   const t = useT();
   const isGroup = node.kind === 'GROUP';
   // Renaming edits the name the row shows (the sidebar title when there is one).
-  const { label, field: nameField } = rowName(node);
+  const { label: savedLabel, field: nameField } = rowName(node);
+  const label = savedLabel || t('editor.untitled');
   const collapsible = Boolean(hasChildren && onToggleCollapse);
   const dragging = placeholder !== undefined;
   const iconClass = cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground');
@@ -1144,7 +1145,7 @@ const RowPresentation = memo(function RowPresentation({
         )}
         {renaming ? (
           <RenameInput
-            initialValue={label}
+            initialValue={savedLabel}
             label={nameField === 'sidebarTitle' ? t('editor.pageSettings.sidebarTitle') : t('editor.rename')}
             onDone={(title) => onRename?.(node.id, title, nameField)}
           />
@@ -1157,10 +1158,7 @@ const RowPresentation = memo(function RowPresentation({
               onSelect?.(node.id);
             }}
             onDoubleClick={onStartRename ? () => onStartRename(node.id) : undefined}
-            className={cn(
-              'flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm pointer-coarse:py-2.5',
-              isGroup && 'font-semibold text-[11px] uppercase tracking-wide',
-            )}
+            className={cn('flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm pointer-coarse:py-2.5', isGroup && 'font-semibold')}
           >
             {isGroup ? (
               <Folder className={iconClass} />
@@ -1173,6 +1171,7 @@ const RowPresentation = memo(function RowPresentation({
             <span className="truncate" dir="auto">
               <MatchText text={label} query={filter} />
             </span>
+            {!isGroup && !node.title.trim() ? <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden /> : null}
             {filter && pageMatchRanges(node.path, filter).length > 0 ? (
               <span className="truncate text-xs text-muted-foreground" dir="auto">
                 <MatchText text={node.path} query={filter} />

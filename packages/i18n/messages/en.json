@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "Add another site language to move this page.",
+  "editor_pagesettings_invalidicon": "Choose a supported icon name, such as rocket, book-open or code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "Drafting connections",
   "analytics_drafting_description": "Started, completed, and failed drafting events in the selected period.",

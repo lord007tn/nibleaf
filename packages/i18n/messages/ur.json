@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "اس صفحے کو منتقل کرنے کے لیے سائٹ میں ایک اور زبان شامل کریں۔",
+  "editor_pagesettings_invalidicon": "تعاون یافتہ آئیکن کا نام منتخب کریں، جیسے rocket، book-open یا code۔",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "مسودہ سازی کے کنکشن",
   "analytics_drafting_description": "منتخب مدت میں مسودہ سازی شروع ہونے، مکمل ہونے اور ناکام ہونے کے واقعات۔",

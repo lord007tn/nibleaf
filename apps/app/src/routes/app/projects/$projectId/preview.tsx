@@ -165,177 +165,184 @@ function ProjectPreview() {
   }
 
   return (
-    <DocumentationThemeProvider
-      appearance={previewMode}
-      className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden"
-      context="project-preview"
-      direction={contentDir}
-      style={{ ...projectThemeVariables(project?.config, previewMode), ...projectThemeStyle(project?.config) }}
-      theme={theme}
-    >
-      <DocumentationProjectPreviewLayout
-        mobileNavigation={
-          <div className="border-border border-b bg-card/40 md:hidden" data-theme-region="sidebar">
-            <button
-              aria-controls="mobile-preview-navigation"
-              aria-expanded={mobileNavigationOpen}
-              className="flex w-full items-center gap-3 px-4 py-3 text-start"
-              onClick={() => setMobileNavigationOpen((open) => !open)}
-              type="button"
-            >
-              <Eye className="size-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1">
-                <span className="block font-semibold text-sm">{t('preview.title')}</span>
-                <span className="block truncate text-muted-foreground text-xs">
-                  {selected?.title ?? (failedQuery ? t('error.title') : t('preview.empty'))}
-                </span>
-              </span>
-              <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', mobileNavigationOpen && 'rotate-180')} />
-            </button>
-
-            {mobileNavigationOpen ? (
-              <div className="max-h-[min(55vh,28rem)] overflow-y-auto border-border border-t p-3" id="mobile-preview-navigation">
-                <p className="mb-3 text-muted-foreground text-xs">{t('preview.description')}</p>
-                <div className="mb-3 grid gap-2">{scopeSelects}</div>
-                {pagesPending ? <PageListSkeleton rows={2} /> : null}
-                {(pages ?? []).map((item) => (
-                  <button
-                    className={cn(
-                      'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-start text-sm transition-colors',
-                      item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
-                      item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      item.hidden && 'opacity-55',
-                    )}
-                    disabled={item.kind === 'GROUP'}
-                    key={item.id}
-                    onClick={() => {
-                      updateSearch({ pageId: item.id });
-                      setMobileNavigationOpen(false);
-                    }}
-                    style={{ paddingInlineStart: `${8 + item.path.split('/').length * 8}px` }}
-                    type="button"
-                  >
-                    {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
-                    <span className="truncate">{item.title}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        }
-        navigation={
-          <>
-            <div className="shrink-0 border-border border-b p-4">
-              <div className="flex items-center gap-2 font-semibold text-sm">
-                <Eye className="size-4 text-muted-foreground" /> {t('preview.title')}
-              </div>
-              <p className="mt-1 text-muted-foreground text-xs">{t('preview.description')}</p>
-              <div className="mt-4 grid gap-2">{scopeSelects}</div>
-            </div>
-
-            <ScrollArea className="min-h-0 flex-1">
-              <div className="p-3" data-theme-region="sidebar-content">
-                {pagesPending ? <PageListSkeleton rows={3} /> : null}
-                {(pages ?? []).map((item) => (
-                  <button
-                    className={cn(
-                      'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm transition-colors',
-                      item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
-                      item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      item.hidden && 'opacity-55',
-                    )}
-                    disabled={item.kind === 'GROUP'}
-                    key={item.id}
-                    onClick={() => updateSearch({ pageId: item.id })}
-                    style={{ paddingInlineStart: `${8 + item.path.split('/').length * 8}px` }}
-                    type="button"
-                  >
-                    {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
-                    <span className="truncate">{item.title}</span>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </>
-        }
-        content={
-          // The site layout already renders the page's <main>; this is the
-          // skip target, past the preview's own page list.
-          <div className="min-h-0 flex-1 overflow-y-auto bg-background outline-none" data-theme-region="preview-main" id="main-content" tabIndex={-1}>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-border border-b p-3">
-              {/* Back to the page being previewed, not the first page of the site. */}
-              <Button
-                variant="outline"
-                nativeButton={false}
-                render={<Link to="/app/projects/$projectId/editor" params={{ projectId }} search={page ? { page: page.id } : {}} />}
-              >
-                <ArrowLeft aria-hidden className="size-4 rtl:-scale-x-100" />
-                {t('preview.backToEditor')}
-              </Button>
-              {project ? (
-                <PublishControl
-                  project={project}
-                  currentPage={
-                    page
-                      ? {
-                          path: page.path,
-                          title: page.title,
-                          languageCode: activeLanguage?.code,
-                          // A non-default version lives under its own prefix (`/v2/…`).
-                          versionSlug: publishedVersionSlugFor(branches, page.branchId ?? activeBranchId),
-                        }
-                      : undefined
+    <div className="flex h-[calc(100dvh-3.5rem)] min-w-0 flex-col">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-border border-b bg-background p-3" data-preview-app-chrome="">
+        {/* Back to the page being previewed, not the first page of the site. */}
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link to="/app/projects/$projectId/editor" params={{ projectId }} search={page ? { page: page.id } : {}} />}
+        >
+          <ArrowLeft aria-hidden className="size-4 rtl:-scale-x-100" />
+          {t('preview.backToEditor')}
+        </Button>
+        {project ? (
+          <PublishControl
+            project={project}
+            currentPage={
+              page
+                ? {
+                    path: page.path,
+                    title: page.title,
+                    languageCode: activeLanguage?.code,
+                    // A non-default version lives under its own prefix (`/v2/…`).
+                    versionSlug: publishedVersionSlugFor(branches, page.branchId ?? activeBranchId),
                   }
-                />
+                : undefined
+            }
+          />
+        ) : null}
+      </div>
+      <DocumentationThemeProvider
+        appearance={previewMode}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        context="project-preview"
+        direction={contentDir}
+        style={{ ...projectThemeVariables(project?.config, previewMode), ...projectThemeStyle(project?.config) }}
+        theme={theme}
+      >
+        <DocumentationProjectPreviewLayout
+          mobileNavigation={
+            <div className="border-border border-b bg-card/40 md:hidden" data-theme-region="sidebar">
+              <button
+                aria-controls="mobile-preview-navigation"
+                aria-expanded={mobileNavigationOpen}
+                className="flex w-full items-center gap-3 px-4 py-3 text-start"
+                onClick={() => setMobileNavigationOpen((open) => !open)}
+                type="button"
+              >
+                <Eye className="size-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-sm">{t('preview.title')}</span>
+                  <span className="block truncate text-muted-foreground text-xs">
+                    {selected?.title ?? (failedQuery ? t('error.title') : t('preview.empty'))}
+                  </span>
+                </span>
+                <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', mobileNavigationOpen && 'rotate-180')} />
+              </button>
+
+              {mobileNavigationOpen ? (
+                <div className="max-h-[min(55vh,28rem)] overflow-y-auto border-border border-t p-3" id="mobile-preview-navigation">
+                  <p className="mb-3 text-muted-foreground text-xs">{t('preview.description')}</p>
+                  <div className="mb-3 grid gap-2">{scopeSelects}</div>
+                  {pagesPending ? <PageListSkeleton rows={2} /> : null}
+                  {(pages ?? []).map((item) => (
+                    <button
+                      className={cn(
+                        'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-start text-sm transition-colors',
+                        item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
+                        item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        item.hidden && 'opacity-55',
+                      )}
+                      disabled={item.kind === 'GROUP'}
+                      key={item.id}
+                      onClick={() => {
+                        updateSearch({ pageId: item.id });
+                        setMobileNavigationOpen(false);
+                      }}
+                      style={{ paddingInlineStart: `${8 + item.path.split('/').length * 8}px` }}
+                      type="button"
+                    >
+                      {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
+                      <span className="truncate">{item.title}</span>
+                    </button>
+                  ))}
+                </div>
               ) : null}
             </div>
-            {/* Same typography variables the published site sets on its chrome, so
-            the preview reads exactly like production. */}
-            <article
-              aria-busy={contentPending || undefined}
-              className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10"
-              data-theme-region="article"
-              dir={contentDir}
+          }
+          navigation={
+            <>
+              <div className="shrink-0 border-border border-b p-4">
+                <div className="flex items-center gap-2 font-semibold text-sm">
+                  <Eye className="size-4 text-muted-foreground" /> {t('preview.title')}
+                </div>
+                <p className="mt-1 text-muted-foreground text-xs">{t('preview.description')}</p>
+                <div className="mt-4 grid gap-2">{scopeSelects}</div>
+              </div>
+
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="p-3" data-theme-region="sidebar-content">
+                  {pagesPending ? <PageListSkeleton rows={3} /> : null}
+                  {(pages ?? []).map((item) => (
+                    <button
+                      className={cn(
+                        'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm transition-colors',
+                        item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
+                        item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        item.hidden && 'opacity-55',
+                      )}
+                      disabled={item.kind === 'GROUP'}
+                      key={item.id}
+                      onClick={() => updateSearch({ pageId: item.id })}
+                      style={{ paddingInlineStart: `${8 + item.path.split('/').length * 8}px` }}
+                      type="button"
+                    >
+                      {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
+                      <span className="truncate">{item.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </>
+          }
+          content={
+            // The site layout already renders the page's <main>; this is the
+            // skip target, past the preview's own page list.
+            <div
+              className="min-h-0 flex-1 overflow-y-auto bg-background outline-none"
+              data-theme-region="preview-main"
+              id="main-content"
+              tabIndex={-1}
             >
-              {contentPending ? (
-                // Shaped like the page header (address, title) and its first paragraphs.
-                <>
-                  <p className="sr-only" role="status">
-                    {t('common.loading')}
-                  </p>
-                  <div aria-hidden className="mb-8 flex flex-col gap-3 border-border border-b pb-5">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-9 w-64 max-w-full" />
-                  </div>
-                  <SkeletonText lines={4} />
-                </>
-              ) : page ? (
-                <>
-                  <div className="mb-8 border-border border-b pb-5">
-                    {/* The page's web address (the title is the heading right below). */}
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <PageIcon className="size-4 shrink-0" name={page.icon} />
-                      <span className="min-w-0 truncate font-mono text-xs" dir="ltr">
-                        /{page.path}
-                      </span>
+              {/* Same typography variables the published site sets on its chrome, so
+            the preview reads exactly like production. */}
+              <article
+                aria-busy={contentPending || undefined}
+                className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10"
+                data-theme-region="article"
+                dir={contentDir}
+              >
+                {contentPending ? (
+                  // Shaped like the page header (address, title) and its first paragraphs.
+                  <>
+                    <p className="sr-only" role="status">
+                      {t('common.loading')}
+                    </p>
+                    <div aria-hidden className="mb-8 flex flex-col gap-3 border-border border-b pb-5">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-9 w-64 max-w-full" />
                     </div>
-                    <h1 className="mt-2 font-semibold text-3xl tracking-tight" dir="auto">
-                      {page.title}
-                    </h1>
-                    {page.description ? <p className="mt-2 text-muted-foreground">{page.description}</p> : null}
-                  </div>
-                  <Markdown content={page.content} site={{ projectId, lang: activeLanguage?.code, version: activeBranchId }} />
-                </>
-              ) : failedQuery ? (
-                <QueryErrorState onRetry={() => void failedQuery.refetch()} retrying={failedQuery.isFetching} />
-              ) : (
-                <div className="text-muted-foreground text-sm">{t('preview.empty')}</div>
-              )}
-            </article>
-          </div>
-        }
-      />
-    </DocumentationThemeProvider>
+                    <SkeletonText lines={4} />
+                  </>
+                ) : page ? (
+                  <>
+                    <div className="mb-8 border-border border-b pb-5">
+                      {/* The page's web address (the title is the heading right below). */}
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <PageIcon className="size-4 shrink-0" name={page.icon} />
+                        <span className="min-w-0 truncate font-mono text-xs" dir="ltr">
+                          /{page.path}
+                        </span>
+                      </div>
+                      <h1 className="mt-2 font-semibold text-3xl tracking-tight" dir="auto">
+                        {page.title}
+                      </h1>
+                      {page.description ? <p className="mt-2 text-muted-foreground">{page.description}</p> : null}
+                    </div>
+                    <Markdown content={page.content} site={{ projectId, lang: activeLanguage?.code, version: activeBranchId }} />
+                  </>
+                ) : failedQuery ? (
+                  <QueryErrorState onRetry={() => void failedQuery.refetch()} retrying={failedQuery.isFetching} />
+                ) : (
+                  <div className="text-muted-foreground text-sm">{t('preview.empty')}</div>
+                )}
+              </article>
+            </div>
+          }
+        />
+      </DocumentationThemeProvider>
+    </div>
   );
 }
 

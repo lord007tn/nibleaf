@@ -1,0 +1,12 @@
+- dialog "إضافة لغة":
+  - heading "إضافة لغة" [level=2]
+  - paragraph: أنشئ نسخة مترجمة جديدة من صفحات هذا الموقع.
+  - text: ابحث عن لغة…
+  - group:
+    - combobox "ابحث عن لغة…" [expanded]: Arab
+    - group
+  - listbox "Suggestions":
+    - group:
+      - option "العربية Arabic ar من اليمين إلى اليسار" [selected]
+  - button "إضافة لغة غير مدرجة"
+  - button "إغلاق"

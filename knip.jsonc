@@ -19,7 +19,8 @@
         "scripts/site-preview-mock.mjs",
         "scripts/site-preview-shots.mjs",
         "scripts/split-ghost-by-language.mjs",
-        "tests/integration/delete-inbound-links/browser.mjs"
+        "tests/integration/delete-inbound-links/browser.mjs",
+        "tests/integration/editor-p2/browser.mjs"
       ]
     },
     "apps/server": {
