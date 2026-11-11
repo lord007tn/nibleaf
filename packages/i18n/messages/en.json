@@ -4774,5 +4774,12 @@
   "editor_history_snapshottoolarge": "The current draft or selected entry is too large to restore safely.",
   "editor_history_restored": "Page restored",
   "editor_history_added": "Added",
-  "editor_history_removed": "Removed"
+  "editor_history_removed": "Removed",
+  "publishes_title": "Publishes",
+  "publishes_superseded": "Replaced",
+  "publishes_restore": "Restore this version",
+  "publishes_changessince": "Changes since version {version}",
+  "publishes_settingschanged": "This version also changed site settings.",
+  "publishes_truncated": "Showing the first {shown} of {total} changed pages.",
+  "overview_activity_viewall": "View all"
 }

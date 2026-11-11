@@ -4799,5 +4799,12 @@
   "editor_history_snapshottoolarge": "Текущий черновик или выбранная запись слишком велики для безопасного восстановления.",
   "editor_history_restored": "Страница восстановлена",
   "editor_history_added": "Добавлено",
-  "editor_history_removed": "Удалено"
+  "editor_history_removed": "Удалено",
+  "publishes_title": "Публикации",
+  "publishes_superseded": "Заменена",
+  "publishes_restore": "Восстановить эту версию",
+  "publishes_changessince": "Изменения с версии {version}",
+  "publishes_settingschanged": "В этой версии также изменились настройки сайта.",
+  "publishes_truncated": "Показаны первые {shown} из {total} изменённых страниц.",
+  "overview_activity_viewall": "Показать все"
 }

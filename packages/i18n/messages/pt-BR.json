@@ -4775,5 +4775,12 @@
   "editor_history_snapshottoolarge": "O rascunho atual ou a entrada selecionada é grande demais para restaurar com segurança.",
   "editor_history_restored": "Página restaurada",
   "editor_history_added": "Adicionado",
-  "editor_history_removed": "Removido"
+  "editor_history_removed": "Removido",
+  "publishes_title": "Publicações",
+  "publishes_superseded": "Substituída",
+  "publishes_restore": "Restaurar esta versão",
+  "publishes_changessince": "Alterações desde a versão {version}",
+  "publishes_settingschanged": "Esta versão também alterou as configurações do site.",
+  "publishes_truncated": "Mostrando as primeiras {shown} de {total} páginas alteradas.",
+  "overview_activity_viewall": "Ver tudo"
 }

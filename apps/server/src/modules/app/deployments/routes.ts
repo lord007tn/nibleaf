@@ -10,6 +10,18 @@ const deploymentsRoutes = {
   list: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'List deployments for a project.', responses: ok }),
   latest: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Get the latest READY deployment.', responses: ok }),
   changes: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Pending changes vs. the last publish.', responses: ok }),
+  history: createRouteConfig({
+    guard: [...member],
+    tags: ['deployments'],
+    description: 'Publish history, newest first, paginated by version (`cursor`), with the live version.',
+    responses: ok,
+  }),
+  historyDetail: createRouteConfig({
+    guard: [...member],
+    tags: ['deployments'],
+    description: 'One version of the publish history and, when it went live, a bounded summary of what it changed.',
+    responses: ok,
+  }),
   diff: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Page and content diff for a deployment.', responses: ok }),
   publish: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.MEMBER)],

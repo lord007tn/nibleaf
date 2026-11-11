@@ -4709,5 +4709,12 @@
   "editor_history_snapshottoolarge": "वर्तमान मसौदा या चुनी गई प्रविष्टि सुरक्षित रूप से बहाल करने के लिए बहुत बड़ी है।",
   "editor_history_restored": "पृष्ठ बहाल हो गया",
   "editor_history_added": "जोड़ा गया",
-  "editor_history_removed": "हटाया गया"
+  "editor_history_removed": "हटाया गया",
+  "publishes_title": "प्रकाशन",
+  "publishes_superseded": "बदला गया",
+  "publishes_restore": "यह संस्करण बहाल करें",
+  "publishes_changessince": "संस्करण {version} के बाद के बदलाव",
+  "publishes_settingschanged": "इस संस्करण ने साइट सेटिंग्स भी बदलीं।",
+  "publishes_truncated": "{total} बदले गए पेजों में से पहले {shown} दिखाए जा रहे हैं।",
+  "overview_activity_viewall": "सभी देखें"
 }

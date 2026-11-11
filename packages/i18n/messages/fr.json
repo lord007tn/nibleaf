@@ -4774,5 +4774,12 @@
   "editor_history_snapshottoolarge": "Le brouillon actuel ou l’entrée sélectionnée est trop volumineux pour une restauration sûre.",
   "editor_history_restored": "Page restaurée",
   "editor_history_added": "Ajouté",
-  "editor_history_removed": "Supprimé"
+  "editor_history_removed": "Supprimé",
+  "publishes_title": "Publications",
+  "publishes_superseded": "Remplacée",
+  "publishes_restore": "Restaurer cette version",
+  "publishes_changessince": "Modifications depuis la version {version}",
+  "publishes_settingschanged": "Cette version a aussi modifié les paramètres du site.",
+  "publishes_truncated": "Affichage des {shown} premières pages modifiées sur {total}.",
+  "overview_activity_viewall": "Tout afficher"
 }

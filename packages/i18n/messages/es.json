@@ -4774,5 +4774,12 @@
   "editor_history_snapshottoolarge": "El borrador actual o la entrada seleccionada es demasiado grande para restaurarlo de forma segura.",
   "editor_history_restored": "Página restaurada",
   "editor_history_added": "Añadido",
-  "editor_history_removed": "Eliminado"
+  "editor_history_removed": "Eliminado",
+  "publishes_title": "Publicaciones",
+  "publishes_superseded": "Reemplazada",
+  "publishes_restore": "Restaurar esta versión",
+  "publishes_changessince": "Cambios desde la versión {version}",
+  "publishes_settingschanged": "Esta versión también cambió la configuración del sitio.",
+  "publishes_truncated": "Se muestran las primeras {shown} de {total} páginas modificadas.",
+  "overview_activity_viewall": "Ver todo"
 }
