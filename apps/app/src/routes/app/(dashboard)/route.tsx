@@ -1,15 +1,15 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router';
-import { DashboardLayout } from '@/layouts/dashboard';
+import { AccountLayout } from '@/layouts/account';
 
 export const Route = createFileRoute('/app/(dashboard)')({
-  component: DashboardRoute,
+  component: AccountRoute,
 });
 
-/** Pathless layout: provides the dashboard chrome (sidebar + topbar + palette). */
-function DashboardRoute() {
+/** Pathless layout for personal pages (Account settings): no organization chrome (§5.4.4). */
+function AccountRoute() {
   return (
-    <DashboardLayout>
+    <AccountLayout>
       <Outlet />
-    </DashboardLayout>
+    </AccountLayout>
   );
 }

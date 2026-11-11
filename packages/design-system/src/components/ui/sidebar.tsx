@@ -305,9 +305,15 @@ function SidebarRail({ className, label = "Toggle Sidebar", ...props }: React.Co
   )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+/** `as="div"` when the layout renders its own `<main>` for the content below a
+ *  header, so the page has one main landmark that excludes the banner. */
+function SidebarInset({
+  className,
+  as: Comp = "main",
+  ...props
+}: Omit<React.ComponentProps<"main">, "ref"> & { as?: "main" | "div" }) {
   return (
-    <main
+    <Comp
       data-slot="sidebar-inset"
       className={cn(
         "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ms-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ms-2",
