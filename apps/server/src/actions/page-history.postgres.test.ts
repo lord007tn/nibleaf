@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { PAGE_HISTORY_MAX_BYTES, PAGE_REVISION_MAX_BYTES } from '@nibleaf/shared/page-history';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -178,7 +179,8 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
     });
     const selection = { source: 'published' as const, entryId: deployment.id };
     const listed = await history.listPageHistory(f.project.id, f.page.id, { source: 'published' });
-    expect(listed.entries).toEqual([expect.objectContaining({ title: 'Published', contentBytes: 23, version: 1 })]);
+    expect(listed.entries).toEqual([expect.objectContaining({ title: 'Published', version: 1 })]);
+    expect(listed.entries[0]?.contentBytes).toBeGreaterThan(23);
     expect(JSON.stringify(listed)).not.toContain('secret');
     const compared = await history.comparePageHistory(f.project.id, f.page.id, selection);
     expect(compared).toMatchObject({ diff: { status: 'changed' }, title: { before: 'Published', after: 'Guide' } });
@@ -225,6 +227,234 @@ describe.skipIf(process.env.PAGE_HISTORY_INTEGRATION !== '1')('page history Post
     const second = await history.listPageHistory(f.project.id, f.page.id, { source: 'published', ...first.next });
     expect(second.entries.map((entry) => entry.id)).toEqual(expected.slice(20));
     expect(second.next).toBeNull();
+  });
+
+  it('bounds missing-page published reads to one candidate batch and advances past every examined deployment', async () => {
+    const f = await fixture();
+    const snapshot = { pages: Array.from({ length: 300 }, (_, i) => ({ id: `other-${i}`, title: 'Other', content: 'x'.repeat(2048) })) };
+    const createdAt = new Date('2026-11-11T09:00:00.000Z');
+    const ids = Array.from({ length: 61 }, (_, i) => `missing-${String(i).padStart(3, '0')}-${randomUUID()}`);
+    await db.prisma.deployment.createMany({
+      data: ids.map((id, i) => ({ id, projectId: f.project.id, version: i + 1, status: 'READY', createdAt, snapshot })),
+    });
+    await db.prisma.deployment.createMany({
+      data: Array.from({ length: 2000 }, (_, i) => ({
+        projectId: f.project.id,
+        version: i + 62,
+        status: 'READY',
+        createdAt: new Date('2020-01-01'),
+        snapshot: {},
+      })),
+    });
+    await db.prisma.$executeRaw`ANALYZE deployment`;
+    const capture = vi.spyOn(db.prisma, '$queryRaw');
+    const first = await history.listPageHistory(f.project.id, f.page.id, { source: 'published' });
+    const [strings, ...values] = capture.mock.calls[0] ?? [];
+    capture.mockRestore();
+    expect(first.entries).toEqual([]);
+    expect(first.next).toEqual({ before: createdAt.toISOString(), beforeId: ids[41] });
+    const second = await history.listPageHistory(f.project.id, f.page.id, { source: 'published', ...first.next });
+    expect(second.entries).toEqual([]);
+    expect(second.next).toEqual({ before: createdAt.toISOString(), beforeId: ids[21] });
+    const statement = db.Prisma.sql(strings as TemplateStringsArray, ...values);
+    type Plan = { 'Subplan Name'?: string; 'Index Name'?: string; 'Actual Loops'?: number; 'Actual Rows': number; Plans?: Plan[] };
+    const explained = await db.prisma.$queryRaw<Array<{ 'QUERY PLAN': Array<{ Plan: Plan }> }>>(
+      db.Prisma.sql`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${statement}`,
+    );
+    const nodes = (plan: Plan): Plan[] => [plan, ...(plan.Plans ?? []).flatMap(nodes)];
+    const plans = nodes(explained[0]?.['QUERY PLAN'][0]?.Plan as Plan);
+    expect(plans.find((plan) => plan['Subplan Name'] === 'CTE candidates')?.['Actual Rows']).toBe(20);
+    expect(plans.find((plan) => plan['Subplan Name'] === 'CTE extracted')?.['Actual Rows']).toBe(20);
+    expect(plans.find((plan) => plan['Index Name'] === 'deployment_pkey')).toMatchObject({ 'Actual Rows': 1, 'Actual Loops': 20 });
+    if (process.env.PAGE_HISTORY_EXPLAIN_FILE) {
+      const text = await db.prisma.$queryRaw<Array<{ 'QUERY PLAN': string }>>(db.Prisma.sql`EXPLAIN (ANALYZE, BUFFERS) ${statement}`);
+      writeFileSync(process.env.PAGE_HISTORY_EXPLAIN_FILE, text.map((line) => line['QUERY PLAN']).join('\n'));
+    }
+  }, 60_000);
+
+  it('captures settings-only changes and restores exact settings, removing newer config keys', async () => {
+    const f = await fixture();
+    const config = { seo: { metaTitle: 'Original SEO' }, sidebarTitle: 'Original sidebar' };
+    await db.prisma.page.update({ where: { id: f.page.id }, data: { description: 'Original description', icon: 'Book', config } });
+    const changed = await pages.updatePage(
+      f.project.id,
+      f.page.id,
+      { description: null, icon: null, hidden: true, config: { mode: 'wide', seo: { noindex: true } } },
+      author,
+    );
+    expect(changed.historySnapshot).toBe('stored');
+    const revision = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id } });
+    expect(revision).toMatchObject({ description: 'Original description', icon: 'Book', hidden: false, config });
+    expect(revision.contentBytes).toBeGreaterThan(Buffer.byteLength(`${revision.title}${revision.content}Original descriptionBook`));
+    const selection = { source: 'revision' as const, entryId: revision.id };
+    expect((await history.comparePageHistory(f.project.id, f.page.id, selection)).diff.status).toBe('changed');
+    const restored = await history.restorePageHistory(
+      f.project.id,
+      f.page.id,
+      { ...selection, expectedUpdatedAt: changed.updatedAt.toISOString() },
+      author,
+    );
+    expect(restored).toMatchObject({ description: 'Original description', icon: 'Book', hidden: false });
+    expect(restored.config).toEqual(config);
+  });
+
+  it('round-trips mixed content and settings, including nulls, through restore and its undo revision', async () => {
+    const f = await fixture();
+    const mixed = {
+      title: 'New title',
+      content: 'New content',
+      description: 'New description',
+      icon: 'Star',
+      hidden: true,
+      config: { mode: 'wide' as const, hideToc: true },
+    };
+    const saved = await pages.updatePage(f.project.id, f.page.id, mixed, author);
+    const original = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id } });
+    const restored = await history.restorePageHistory(
+      f.project.id,
+      f.page.id,
+      { source: 'revision', entryId: original.id, expectedUpdatedAt: saved.updatedAt.toISOString() },
+      author,
+    );
+    expect(restored).toMatchObject({ title: 'Guide', content: 'Original', description: null, icon: null, hidden: false, config: null });
+    const undo = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id, reason: 'before-restore' } });
+    expect(undo).toMatchObject(mixed);
+    expect(
+      await history.restorePageHistory(
+        f.project.id,
+        f.page.id,
+        { source: 'revision', entryId: undo.id, expectedUpdatedAt: restored.updatedAt.toISOString() },
+        author,
+      ),
+    ).toMatchObject(mixed);
+  });
+
+  it('includes recoverable settings in the revision byte cap', async () => {
+    const f = await fixture();
+    await db.prisma.page.update({ where: { id: f.page.id }, data: { config: { sidebarTitle: 'x'.repeat(PAGE_REVISION_MAX_BYTES) } } });
+    const saved = await pages.updatePage(f.project.id, f.page.id, { icon: 'Star' }, author);
+    expect(saved.historySnapshot).toBe('too-large');
+    expect(await db.prisma.pageRevision.count({ where: { pageId: f.page.id } })).toBe(0);
+  });
+
+  it('prunes more than 200 tiny recent revisions to the newest 200', async () => {
+    const f = await fixture();
+    await db.prisma.pageRevision.createMany({
+      data: Array.from({ length: 250 }, (_, i) => ({
+        projectId: f.project.id,
+        pageId: f.page.id,
+        id: `tiny-${i}-${randomUUID()}`,
+        title: 'Tiny',
+        content: '',
+        contentBytes: 4,
+        reason: 'autosave',
+        createdAt: new Date(Date.now() - (250 - i) * 1000),
+      })),
+    });
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Trigger prune' }, author);
+    expect(await db.prisma.pageRevision.count({ where: { pageId: f.page.id } })).toBe(200);
+    expect(await db.prisma.pageRevision.findFirst({ where: { pageId: f.page.id, id: { startsWith: 'tiny-0-' } } })).toBeNull();
+    expect(await db.prisma.pageRevision.findFirst({ where: { pageId: f.page.id, content: 'Original' } })).not.toBeNull();
+  });
+
+  it('keeps the current placeholder URL and performs no address rewriting when restoring an older title', async () => {
+    const f = await fixture();
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Edited' }, author);
+    const revision = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id } });
+    const placeholder = await db.prisma.page.update({ where: { id: f.page.id }, data: { title: 'Untitled', slug: 'untitled', path: 'untitled' } });
+    const projectBefore = await db.prisma.project.findUniqueOrThrow({ where: { id: f.project.id } });
+    const restored = await history.restorePageHistory(
+      f.project.id,
+      f.page.id,
+      { source: 'revision', entryId: revision.id, expectedUpdatedAt: placeholder.updatedAt.toISOString() },
+      author,
+    );
+    expect(restored).toMatchObject({
+      title: 'Guide',
+      slug: 'untitled',
+      path: 'untitled',
+      redirectsAdded: 0,
+      linksUpdated: 0,
+      documentsSkipped: 0,
+      addressChanged: false,
+    });
+    expect((await db.prisma.project.findUniqueOrThrow({ where: { id: f.project.id } })).config).toEqual(projectBefore.config);
+  });
+
+  it('restores a moved page in its current parent, position and address', async () => {
+    const f = await fixture();
+    await pages.updatePage(f.project.id, f.page.id, { content: 'Edited' }, author);
+    const revision = await db.prisma.pageRevision.findFirstOrThrow({ where: { pageId: f.page.id } });
+    const parent = await db.prisma.page.create({
+      data: {
+        projectId: f.project.id,
+        branchId: f.page.branchId,
+        languageId: f.page.languageId,
+        title: 'Moved',
+        slug: 'moved',
+        path: 'moved',
+        kind: 'GROUP',
+      },
+    });
+    const moved = await pages.updatePage(f.project.id, f.page.id, { parentId: parent.id }, author);
+    const projectBefore = await db.prisma.project.findUniqueOrThrow({ where: { id: f.project.id } });
+    const restored = await history.restorePageHistory(
+      f.project.id,
+      f.page.id,
+      { source: 'revision', entryId: revision.id, expectedUpdatedAt: moved.updatedAt.toISOString() },
+      author,
+    );
+    expect(restored).toMatchObject({
+      content: 'Original',
+      parentId: parent.id,
+      position: moved.position,
+      slug: moved.slug,
+      path: 'moved/guide',
+      redirectsAdded: 0,
+      linksUpdated: 0,
+      addressChanged: false,
+    });
+    expect((await db.prisma.project.findUniqueOrThrow({ where: { id: f.project.id } })).config).toEqual(projectBefore.config);
+  });
+
+  it('restores published settings where present and retains current settings omitted by legacy snapshots', async () => {
+    const f = await fixture();
+    const settings = { description: 'Published description', icon: 'Book', hidden: true, config: { mode: 'wide' } };
+    const published = await db.prisma.deployment.create({
+      data: {
+        projectId: f.project.id,
+        version: 1,
+        status: 'READY',
+        snapshot: {
+          pages: [
+            { id: f.page.id, title: 'Published', content: 'Published body', ...settings, parentId: 'old-parent', slug: 'old-slug', path: 'old-path' },
+          ],
+        },
+      },
+    });
+    const restored = await history.restorePageHistory(
+      f.project.id,
+      f.page.id,
+      { source: 'published', entryId: published.id, expectedUpdatedAt: f.page.updatedAt.toISOString() },
+      author,
+    );
+    expect(restored).toMatchObject({ ...settings, slug: 'guide', path: 'guide', parentId: null });
+    const legacy = await db.prisma.deployment.create({
+      data: {
+        projectId: f.project.id,
+        version: 2,
+        status: 'READY',
+        snapshot: { pages: [{ id: f.page.id, title: 'Legacy', content: 'Legacy body' }] },
+      },
+    });
+    expect(
+      await history.restorePageHistory(
+        f.project.id,
+        f.page.id,
+        { source: 'published', entryId: legacy.id, expectedUpdatedAt: restored.updatedAt.toISOString() },
+        author,
+      ),
+    ).toMatchObject({ ...settings, title: 'Legacy', content: 'Legacy body' });
   });
 
   it('anonymizes retained revisions and cascades throttle state when an account is deleted', async () => {

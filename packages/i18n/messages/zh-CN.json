@@ -4688,5 +4688,7 @@
   "editor_history_restore": "恢复",
   "editor_history_confirm": "将草稿替换为此记录吗？我们会保存当前草稿的副本，以便您撤销恢复。",
   "editor_history_snapshottoolarge": "当前草稿或所选记录过大，无法安全恢复。",
-  "editor_history_restored": "页面已恢复"
+  "editor_history_restored": "页面已恢复",
+  "editor_history_added": "已添加",
+  "editor_history_removed": "已删除"
 }

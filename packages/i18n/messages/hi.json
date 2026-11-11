@@ -4690,5 +4690,7 @@
   "editor_history_restore": "बहाल करें",
   "editor_history_confirm": "मसौदे को इस प्रविष्टि से बदलें? वर्तमान मसौदे की एक प्रति सहेजी जाएगी ताकि आप बहाली को पूर्ववत कर सकें।",
   "editor_history_snapshottoolarge": "वर्तमान मसौदा या चुनी गई प्रविष्टि सुरक्षित रूप से बहाल करने के लिए बहुत बड़ी है।",
-  "editor_history_restored": "पृष्ठ बहाल हो गया"
+  "editor_history_restored": "पृष्ठ बहाल हो गया",
+  "editor_history_added": "जोड़ा गया",
+  "editor_history_removed": "हटाया गया"
 }

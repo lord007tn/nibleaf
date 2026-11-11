@@ -7,6 +7,10 @@ CREATE TABLE "page_revision" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "title" TEXT NOT NULL,
   "content" TEXT NOT NULL,
+  "description" TEXT,
+  "icon" TEXT,
+  "hidden" BOOLEAN NOT NULL DEFAULT false,
+  "config" JSONB,
   "contentBytes" INTEGER NOT NULL CHECK ("contentBytes" >= 0 AND "contentBytes" <= 524288),
   "reason" TEXT NOT NULL CHECK ("reason" IN ('autosave', 'before-restore'))
 );
@@ -22,3 +26,4 @@ CREATE TABLE "page_revision_state" (
 );
 CREATE INDEX "page_revision_state_projectId_idx" ON "page_revision_state"("projectId");
 CREATE INDEX "page_revision_state_userId_idx" ON "page_revision_state"("userId");
+CREATE INDEX "deployment_projectId_status_createdAt_id_idx" ON "deployment"("projectId", "status", "createdAt" DESC, "id" DESC);

@@ -177,9 +177,14 @@ export default function PageHistoryPanel({
                         aria-label={t('editor.history.diff')}
                       >
                         {compared.diff.lines.map((line, index) => (
+                          // biome-ignore lint/a11y/useSemanticElements: diff text groups are not form fieldsets
                           <div
                             // biome-ignore lint/suspicious/noArrayIndexKey: immutable server diff lines have positional identity
                             key={index}
+                            role="group"
+                            aria-label={
+                              line.kind === 'same' ? undefined : t(line.kind === 'added' ? 'editor.history.added' : 'editor.history.removed')
+                            }
                             className={
                               line.kind === 'added'
                                 ? 'bg-emerald-500/10 px-3'

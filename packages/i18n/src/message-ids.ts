@@ -4610,6 +4610,8 @@ export const MESSAGE_IDS = {
   'publish.checks.duplicateTitle': 'publish_checks_duplicatetitle',
   'publish.checks.duplicateTitleHint': 'publish_checks_duplicatetitlehint',
   'newSite.addressUnavailable': 'newsite_addressunavailable',
+  'editor.history.added': 'editor_history_added',
+  'editor.history.removed': 'editor_history_removed',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

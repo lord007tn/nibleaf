@@ -4746,5 +4746,7 @@
   "editor_history_restore": "بحال کریں",
   "editor_history_confirm": "مسودے کو اس اندراج سے بدل دیں؟ موجودہ مسودے کی ایک نقل محفوظ ہوگی تاکہ آپ بحالی کو واپس لے سکیں۔",
   "editor_history_snapshottoolarge": "موجودہ مسودہ یا منتخب اندراج محفوظ بحالی کے لیے بہت بڑا ہے۔",
-  "editor_history_restored": "صفحہ بحال ہو گیا"
+  "editor_history_restored": "صفحہ بحال ہو گیا",
+  "editor_history_added": "شامل کیا گیا",
+  "editor_history_removed": "حذف کیا گیا"
 }

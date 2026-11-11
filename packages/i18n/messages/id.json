@@ -4688,5 +4688,7 @@
   "editor_history_restore": "Pulihkan",
   "editor_history_confirm": "Ganti draf dengan entri ini? Salinan draf saat ini akan disimpan agar Anda dapat membatalkan pemulihan.",
   "editor_history_snapshottoolarge": "Draf saat ini atau entri terpilih terlalu besar untuk dipulihkan dengan aman.",
-  "editor_history_restored": "Halaman dipulihkan"
+  "editor_history_restored": "Halaman dipulihkan",
+  "editor_history_added": "Ditambahkan",
+  "editor_history_removed": "Dihapus"
 }

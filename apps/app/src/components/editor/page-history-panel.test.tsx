@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { computeAccessibleName, getRole } from 'dom-accessibility-api';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -113,6 +114,10 @@ describe('page history panel', () => {
     expect(host.textContent).toContain('Fictional editor');
     await click('editor.history.compare');
     expect(host.textContent).toContain('Old body');
+    const getByRole = (role: string, name: string) =>
+      [...host.querySelectorAll('[role]')].find((element) => getRole(element) === role && computeAccessibleName(element) === name);
+    expect(getByRole('group', 'editor.history.removed')?.textContent).toContain('Old body');
+    expect(getByRole('group', 'editor.history.added')?.textContent).toContain('Current body');
     await click('editor.history.restore');
     await click('confirm');
     expect(mocks.restore).toHaveBeenCalledExactlyOnceWith('project', 'page', { source: 'revision', entryId: 'revision' }, '2026-11-11T09:00:00.000Z');

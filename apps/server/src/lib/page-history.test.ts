@@ -9,7 +9,17 @@ const fixture = () => {
     pageRevisionState: { findUnique: vi.fn().mockResolvedValue(null), upsert: vi.fn() },
     $executeRaw: vi.fn(),
   };
-  const page = { id: 'page', projectId: 'project', kind: 'PAGE', title: 'Guide', content: 'Old' } as Page;
+  const page = {
+    id: 'page',
+    projectId: 'project',
+    kind: 'PAGE',
+    title: 'Guide',
+    content: 'Old',
+    description: null,
+    icon: null,
+    hidden: false,
+    config: null,
+  } as Page;
   return { tx, client: tx as unknown as Prisma.TransactionClient, page };
 };
 
@@ -25,7 +35,7 @@ describe('snapshot policy under the page lock', () => {
         title: 'Guide',
         content: 'Old',
         reason: 'autosave',
-        contentBytes: 8,
+        contentBytes: 69,
       }),
     });
     expect(tx.pageRevision.create).toHaveBeenCalledBefore(tx.$executeRaw);
@@ -48,9 +58,9 @@ describe('snapshot policy under the page lock', () => {
   it('applies the byte cap and deduplication to the previous draft rather than the incoming content', async () => {
     const { tx, client, page } = fixture();
     expect(await snapshotPage(client, page, { title: 'Renamed', content: 'x'.repeat(PAGE_REVISION_MAX_BYTES + 1) }, 'author', false)).toBe('stored');
-    expect(tx.pageRevision.create).toHaveBeenCalledWith({ data: expect.objectContaining({ title: 'Guide', content: 'Old', contentBytes: 8 }) });
+    expect(tx.pageRevision.create).toHaveBeenCalledWith({ data: expect.objectContaining({ title: 'Guide', content: 'Old', contentBytes: 69 }) });
     tx.pageRevision.create.mockClear();
-    tx.pageRevision.findFirst.mockResolvedValue({ title: 'Guide', content: 'Old' });
+    tx.pageRevision.findFirst.mockResolvedValue({ title: 'Guide', content: 'Old', description: null, icon: null, hidden: false, config: null });
     expect(await snapshotPage(client, page, { title: 'Guide', content: 'New' }, 'author', false)).toBe('unchanged');
     expect(tx.pageRevision.create).not.toHaveBeenCalled();
   });
@@ -63,7 +73,7 @@ describe('snapshot policy under the page lock', () => {
       data: expect.objectContaining({ title: 'Guide', content: 'Old', reason: 'before-restore' }),
     });
     tx.pageRevision.create.mockClear();
-    tx.pageRevision.findFirst.mockResolvedValue({ title: 'Guide', content: 'Old' });
+    tx.pageRevision.findFirst.mockResolvedValue({ title: 'Guide', content: 'Old', description: null, icon: null, hidden: false, config: null });
     expect(await snapshotPage(client, page, { title: 'Guide', content: 'Restored' }, 'author', true)).toBe('stored');
     expect(tx.pageRevision.create).toHaveBeenCalledExactlyOnceWith({
       data: expect.objectContaining({ content: 'Old', reason: 'before-restore' }),

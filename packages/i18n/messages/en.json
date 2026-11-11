@@ -4755,5 +4755,7 @@
   "editor_history_restore": "Restore",
   "editor_history_confirm": "Replace the draft with this entry? A copy of the current draft will be saved so you can undo the restore.",
   "editor_history_snapshottoolarge": "The current draft or selected entry is too large to restore safely.",
-  "editor_history_restored": "Page restored"
+  "editor_history_restored": "Page restored",
+  "editor_history_added": "Added",
+  "editor_history_removed": "Removed"
 }

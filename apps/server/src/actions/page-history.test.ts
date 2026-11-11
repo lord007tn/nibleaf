@@ -7,12 +7,15 @@ vi.mock('./pages', () => ({ getPage: mocks.getPage, updatePage: mocks.updatePage
 import { comparePageHistory, restorePageHistory } from './page-history';
 
 describe('page history restore boundary', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.getPage.mockResolvedValue({});
+  });
   it('passes the exact reviewed revision to the normal save and returns its existing conflict unchanged', async () => {
     const expectedUpdatedAt = '2026-11-11T09:00:00.000Z';
     const conflict = { status: 409, code: 'page:revision_conflict' };
     mocks.getPage.mockResolvedValue({ id: 'page' });
-    mocks.raw.mockResolvedValue([{ title: 'Older title', content: 'Older content' }]);
+    mocks.raw.mockResolvedValue([{ title: 'Older title', content: 'Older content', settings: {} }]);
     mocks.updatePage.mockRejectedValue(conflict);
     await expect(restorePageHistory('project', 'page', { source: 'revision', entryId: 'revision', expectedUpdatedAt }, 'author')).rejects.toBe(
       conflict,
@@ -22,7 +25,7 @@ describe('page history restore boundary', () => {
       'page',
       { title: 'Older title', content: 'Older content', expectedUpdatedAt },
       'author',
-      { beforeRestore: true },
+      { restore: true },
     );
   });
   it('does not attempt a restore when the selected entry is missing or over the byte limit', async () => {

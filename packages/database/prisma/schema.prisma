@@ -1645,6 +1645,7 @@ model Deployment {
 
   @@unique([projectId, version])
   @@index([projectId, status])
+  @@index([projectId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("deployment")
 }
 
@@ -2122,7 +2123,11 @@ model PageRevision {
   createdAt DateTime @default(now())
   title String
   content String
-  /// UTF-8 bytes of title + content, used for the hard storage budget.
+  description String?
+  icon String?
+  hidden Boolean @default(false)
+  config Json?
+  /// UTF-8 bytes of title, content and serialized recoverable settings.
   contentBytes Int
   reason String
 

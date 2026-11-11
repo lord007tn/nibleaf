@@ -1,4 +1,5 @@
-import type { Page, Prisma } from '@nibleaf/database';
+import { isDeepStrictEqual } from 'node:util';
+import { type Page, Prisma } from '@nibleaf/database';
 import {
   exceedsUtf8Bytes,
   PAGE_HISTORY_IDLE_MS,
@@ -13,21 +14,29 @@ import { badRequest } from '@/errors';
 export async function snapshotPage(
   tx: Prisma.TransactionClient,
   page: Page,
-  next: { title: string; content: string },
+  next: { title: string; content: string; description?: string | null; icon?: string | null; hidden?: boolean; config?: unknown },
   userId: string | undefined,
   beforeRestore: boolean,
 ): Promise<'stored' | 'unchanged' | 'throttled' | 'too-large'> {
   if (page.kind !== 'PAGE') return 'unchanged';
-  const changed = next.title !== page.title || next.content !== page.content;
+  const settings = { description: page.description, icon: page.icon, hidden: page.hidden, config: page.config };
+  const nextSettings = {
+    description: next.description === undefined ? page.description : next.description,
+    icon: next.icon === undefined ? page.icon : next.icon,
+    hidden: next.hidden ?? page.hidden,
+    config: next.config === undefined ? page.config : next.config,
+  };
+  const changed = next.title !== page.title || next.content !== page.content || !isDeepStrictEqual(settings, nextSettings);
   if (!changed) return 'unchanged';
   const now = new Date();
   // Preserve what the author is replacing, including their very first edit.
   const snapshot = page;
   // A restore must remain undoable. Refuse it before any write when its safety
   // copy exceeds the cap; ordinary autosaves still succeed with an explicit note.
-  const tooLarge =
-    exceedsUtf8Bytes(snapshot.content, PAGE_REVISION_MAX_BYTES) ||
-    Buffer.byteLength(snapshot.title) + Buffer.byteLength(snapshot.content) > PAGE_REVISION_MAX_BYTES;
+  const contentBytes = exceedsUtf8Bytes(snapshot.content, PAGE_REVISION_MAX_BYTES)
+    ? PAGE_REVISION_MAX_BYTES + 1
+    : Buffer.byteLength(snapshot.title) + Buffer.byteLength(snapshot.content) + Buffer.byteLength(JSON.stringify(settings));
+  const tooLarge = contentBytes > PAGE_REVISION_MAX_BYTES;
   if (beforeRestore && tooLarge)
     throw badRequest('The current draft is too large to back up before restoring.', { reason: 'history_snapshot_too_large' });
   let due = beforeRestore;
@@ -51,9 +60,9 @@ export async function snapshotPage(
     const latest = await tx.pageRevision.findFirst({
       where: { projectId: page.projectId, pageId: page.id },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { title: true, content: true },
+      select: { title: true, content: true, description: true, icon: true, hidden: true, config: true },
     });
-    if (latest?.title === snapshot.title && latest.content === snapshot.content) return 'unchanged';
+    if (latest && isDeepStrictEqual(latest, { title: snapshot.title, content: snapshot.content, ...settings })) return 'unchanged';
   }
   await tx.pageRevision.create({
     data: {
@@ -62,7 +71,9 @@ export async function snapshotPage(
       userId: userId ?? null,
       title: snapshot.title,
       content: snapshot.content,
-      contentBytes: Buffer.byteLength(snapshot.title) + Buffer.byteLength(snapshot.content),
+      ...settings,
+      config: snapshot.config ?? Prisma.JsonNull,
+      contentBytes,
       reason: beforeRestore ? 'before-restore' : 'autosave',
       createdAt: now,
     },
@@ -75,7 +86,7 @@ export async function snapshotPage(
     });
   }
   // Retain the newest 50 OR everything less than 30 days old. The hard byte
-  // budget overrides both. Window sums retain a contiguous newest-first prefix,
+  // budget and 200-row cap override both. Window sums retain a contiguous newest-first prefix,
   // so even many tiny/empty revisions never cause a JS content scan.
   await tx.$executeRaw`
     WITH ranked AS (
@@ -85,7 +96,7 @@ export async function snapshotPage(
       FROM page_revision WHERE "projectId" = ${page.projectId} AND "pageId" = ${page.id}
     )
     DELETE FROM page_revision WHERE "projectId" = ${page.projectId} AND "pageId" = ${page.id}
-      AND id IN (SELECT id FROM ranked WHERE bytes > ${PAGE_HISTORY_MAX_BYTES}
+      AND id IN (SELECT id FROM ranked WHERE position > 200 OR bytes > ${PAGE_HISTORY_MAX_BYTES}
         OR (position > 50 AND "createdAt" < ${new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)}))
   `;
   return 'stored';

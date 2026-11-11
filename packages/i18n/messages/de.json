@@ -4755,5 +4755,7 @@
   "editor_history_restore": "Wiederherstellen",
   "editor_history_confirm": "Möchten Sie den Entwurf durch diesen Eintrag ersetzen? Eine Kopie des aktuellen Entwurfs wird gespeichert, damit Sie die Wiederherstellung rückgängig machen können.",
   "editor_history_snapshottoolarge": "Der aktuelle Entwurf oder der ausgewählte Eintrag ist zu groß für eine sichere Wiederherstellung.",
-  "editor_history_restored": "Seite wiederhergestellt"
+  "editor_history_restored": "Seite wiederhergestellt",
+  "editor_history_added": "Hinzugefügt",
+  "editor_history_removed": "Entfernt"
 }

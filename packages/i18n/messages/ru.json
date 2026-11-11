@@ -4780,5 +4780,7 @@
   "editor_history_restore": "Восстановить",
   "editor_history_confirm": "Заменить черновик этой записью? Копия текущего черновика будет сохранена, чтобы можно было отменить восстановление.",
   "editor_history_snapshottoolarge": "Текущий черновик или выбранная запись слишком велики для безопасного восстановления.",
-  "editor_history_restored": "Страница восстановлена"
+  "editor_history_restored": "Страница восстановлена",
+  "editor_history_added": "Добавлено",
+  "editor_history_removed": "Удалено"
 }

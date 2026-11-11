@@ -4805,5 +4805,7 @@
   "editor_history_restore": "استعادة",
   "editor_history_confirm": "هل تريد استبدال المسودة بهذا المحتوى؟ سنحفظ نسخة من المسودة الحالية لتتمكن من التراجع عن الاستعادة.",
   "editor_history_snapshottoolarge": "المسودة الحالية أو المحتوى المختار أكبر من أن يُستعاد بأمان.",
-  "editor_history_restored": "تمت استعادة الصفحة"
+  "editor_history_restored": "تمت استعادة الصفحة",
+  "editor_history_added": "مضاف",
+  "editor_history_removed": "محذوف"
 }

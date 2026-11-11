@@ -4690,5 +4690,7 @@
   "editor_history_restore": "পুনরুদ্ধার করুন",
   "editor_history_confirm": "এই এন্ট্রি দিয়ে খসড়াটি প্রতিস্থাপন করবেন? বর্তমান খসড়ার একটি অনুলিপি সংরক্ষিত হবে, যাতে পুনরুদ্ধারটি পূর্বাবস্থায় ফেরাতে পারেন।",
   "editor_history_snapshottoolarge": "বর্তমান খসড়া বা নির্বাচিত এন্ট্রি নিরাপদে পুনরুদ্ধার করার জন্য অনেক বড়।",
-  "editor_history_restored": "পৃষ্ঠা পুনরুদ্ধার করা হয়েছে"
+  "editor_history_restored": "পৃষ্ঠা পুনরুদ্ধার করা হয়েছে",
+  "editor_history_added": "যোগ করা হয়েছে",
+  "editor_history_removed": "সরানো হয়েছে"
 }
