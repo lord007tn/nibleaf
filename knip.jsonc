@@ -35,6 +35,11 @@
         "@inlang/plugin-m-function-matcher"
       ]
     },
+    "packages/shared": {
+      // Golden-test inputs read by path (public-markdown-golden.test.ts). The
+      // remark-mdx dependency makes knip treat .mdx as source files.
+      "ignore": ["src/__fixtures__/**"]
+    },
     "packages/tsconfig": {
       "ignoreDependencies": ["vite"]
     }

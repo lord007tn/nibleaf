@@ -49,9 +49,11 @@ import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
 import { deepLinkBranchDecision, publishedVersionSlugFor } from '@/components/editor/docs-version';
 import { ConfigCanvas, EmptyCanvas, GroupCanvas, PageCanvasSkeleton, PageLoadFailedCanvas } from '@/components/editor/editor-canvas-states';
+import { EditorConflictDialog } from '@/components/editor/editor-conflict-dialog';
 import {
   aiAssistState,
   draftUnsavable,
+  isEditorRevisionConflict,
   nextHydration,
   type ServerSnapshot,
   shouldAutosave,
@@ -74,7 +76,7 @@ import { aiAssistPageId, useAiAssistSession } from '@/components/editor/use-ai-a
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
 import { useMediaQuery } from '@/components/editor/use-media-query';
 import { AccessUnknownBanner, ViewOnlyBadge, ViewOnlyBanner } from '@/components/project/view-only-notice';
-import type { Deployment, Language, PageNode } from '@/hooks/api';
+import type { Deployment, Language, Page, PageNode } from '@/hooks/api';
 import {
   addressMayFollowTitle,
   friendlyErrorMessage,
@@ -359,6 +361,8 @@ function EditorPage() {
   // exact title/content we last loaded (or saved) and its revision stamp. Drives
   // re-seeding so the editor recovers when the server copy changes — without
   // clobbering edits — and pins autosaves to the page the draft was loaded from.
+  const [conflictedPageId, setConflictedPageId] = useState<string | null>(null);
+  const [conflictServer, setConflictServer] = useState<Page | null>(null);
   const [synced, setSynced] = useState<ServerSnapshot | null>(null);
 
   // Resizable left sidebar (persisted). Clamp to a sensible range.
@@ -466,7 +470,7 @@ function EditorPage() {
   // with a draft that belongs to a different page than `page`: the editor below
   // is keyed by page id and mounts straight onto the right document, and the
   // autosave effect can never observe the previous page's body under the new id.
-  const hydration = nextHydration({ synced, draft: { title, content } }, page);
+  const hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page);
   if (hydration) {
     setSynced(hydration);
     setTitle(hydration.title);
@@ -504,53 +508,63 @@ function EditorPage() {
   }, [synced, title, content, page, updatePage, queryClient, projectId]);
   const saveQueue = useMemo(
     () =>
-      createEditorSaveQueue(async (draft: PageDraft) => {
-        try {
-          // An unpublished page's address keeps following its title.
-          const server = freshestServerCopy(draft.id, draftRef.current.page, lastSavedRef.current);
-          const slug = server
-            ? titleSlugToFollow({
-                slug: server.slug,
-                serverTitle: server.title,
-                nextTitle: draft.title,
-                unpublished: addressFollowsTitleRef.current(draft.id),
-              })
-            : undefined;
-          const saved = await updatePageRef.current.mutateAsync({
-            pageId: draft.id,
-            body: { title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
-          });
-          lastSavedRef.current = saved;
-          setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
-          const latest = draftRef.current;
-          if (latest.synced?.id === draft.id) {
-            setStatus(latest.draft.title === draft.title && latest.draft.content === draft.content ? 'saved' : 'saving');
+      createEditorSaveQueue(
+        async (draft: PageDraft) => {
+          try {
+            // An unpublished page's address keeps following its title.
+            const server = freshestServerCopy(draft.id, draftRef.current.page, lastSavedRef.current);
+            const slug = server
+              ? titleSlugToFollow({
+                  slug: server.slug,
+                  serverTitle: server.title,
+                  nextTitle: draft.title,
+                  unpublished: addressFollowsTitleRef.current(draft.id),
+                })
+              : undefined;
+            const saved = await updatePageRef.current.mutateAsync({
+              pageId: draft.id,
+              body: { expectedUpdatedAt: draft.expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
+            });
+            lastSavedRef.current = saved;
+            setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
+            const latest = draftRef.current;
+            if (latest.synced?.id === draft.id) {
+              setStatus(latest.draft.title === draft.title && latest.draft.content === draft.content ? 'saved' : 'saving');
+            }
+            return saved;
+          } catch (error) {
+            if (draftRef.current.synced?.id === draft.id) {
+              setStatus('error');
+              if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
+            }
+            throw error;
           }
-          return saved;
-        } catch (error) {
-          if (draftRef.current.synced?.id === draft.id) setStatus('error');
-          throw error;
-        }
-      }),
+        },
+        (saved) => saved.updatedAt,
+      ),
     [],
   );
   const saveDraft = useDebouncer(
     (draft: PageDraft) => {
-      void saveQueue.save(draft).catch(() => undefined);
+      void saveQueue.save(draft).catch((error: unknown) => {
+        if (draftRef.current.synced?.id !== draft.id) return;
+        setStatus('error');
+        if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
+      });
     },
     { wait: 700, onUnmount: (debouncer) => debouncer.flush() },
   );
 
   // Hydration pins every draft to its page, including intentional empty bodies.
   useEffect(() => {
-    if (!page || !canEditContent || !shouldAutosave({ synced, draft: { title, content } }, page)) {
+    if (!page || !canEditContent || !shouldAutosave({ synced, draft: { title, content }, conflicted: conflictedPageId === page.id }, page)) {
       // Undoing back to the server copy must cancel an older queued draft.
       saveDraft.cancel();
       return;
     }
     setStatus('saving');
-    saveDraft.maybeExecute({ id: page.id, title, content });
-  }, [title, content, page, synced, saveDraft, canEditContent]);
+    saveDraft.maybeExecute({ id: page.id, title, content, expectedUpdatedAt: synced?.updatedAt });
+  }, [title, content, page, synced, saveDraft, canEditContent, conflictedPageId]);
 
   const flushCurrentDraft = async () => {
     saveDraft.cancel();
@@ -570,7 +584,7 @@ function EditorPage() {
     // Typing while a slow request runs must also reach the server before a
     // navigation or publish can proceed.
     for (;;) {
-      const snapshot: PageDraft = { id: pageId, ...current.draft };
+      const snapshot: PageDraft = { id: pageId, ...current.draft, expectedUpdatedAt: current.synced?.updatedAt };
       setStatus('saving');
       await saveQueue.save(snapshot);
       current = draftRef.current;
@@ -1174,8 +1188,10 @@ function EditorPage() {
                     languages={treeLanguages}
                     dir={uiDir}
                     readOnly={!canEditContent}
-                    onMove={(items) =>
-                      reorderPages.mutate({ items }, { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.reorderFailed')) })
+                    moving={reorderPages.isPending}
+                    onExpandLanguage={expandLang}
+                    onMove={(move) =>
+                      reorderPages.mutateAsync(move, { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.reorderFailed')) })
                     }
                   >
                     {orderedLanguages.map((lang) => {
@@ -1270,7 +1286,7 @@ function EditorPage() {
 
                           {/* This language's page tree — Notion-style drag-and-drop. Its rows follow
                               the dashboard's direction; only each title follows its own script. */}
-                          {langCollapsed || langPages.length === 0 ? null : (
+                          {langPages.length === 0 ? null : (
                             <SortablePageTree
                               languageId={lang.id}
                               activeId={activeTreeId}
@@ -1388,10 +1404,47 @@ function EditorPage() {
                   className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
                 >
                   <TriangleAlert className="size-4 shrink-0" />
-                  <span className="min-w-0 flex-1">{t('editor.saveError')}</span>
-                  <Button size="sm" variant="outline" onClick={() => void runAfterSavingDraft({ action: () => undefined })}>
-                    {t('editor.retrySave')}
+                  <span className="min-w-0 flex-1">{t(conflictedPageId === page.id ? 'editor.conflict.body' : 'editor.saveError')}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (conflictedPageId !== page.id) {
+                        void runAfterSavingDraft({ action: () => undefined });
+                        return;
+                      }
+                      void pageQuery
+                        .refetch()
+                        .then((result) => {
+                          if (result.data) setConflictServer(result.data);
+                        })
+                        .catch(() => toast.error(t('editor.saveError')));
+                    }}
+                  >
+                    {t(conflictedPageId === page.id ? 'editor.conflict.review' : 'editor.retrySave')}
                   </Button>
+                  {conflictServer?.id === page.id ? (
+                    <EditorConflictDialog
+                      server={conflictServer}
+                      draft={{ title, content }}
+                      onClose={(merged) => {
+                        setTitle(merged.title);
+                        setContent(merged.content);
+                        setConflictServer(null);
+                      }}
+                      onResolve={(merged) => {
+                        saveDraft.cancel();
+                        saveQueue.resolveConflict(page.id, conflictServer.updatedAt);
+                        lastSavedRef.current = conflictServer;
+                        setSynced({ id: page.id, title: conflictServer.title, content: conflictServer.content, updatedAt: conflictServer.updatedAt });
+                        setTitle(merged.title);
+                        setContent(merged.content);
+                        setConflictedPageId(null);
+                        setConflictServer(null);
+                        setStatus('idle');
+                      }}
+                    />
+                  ) : null}
                 </div>
               ) : null}
               {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the

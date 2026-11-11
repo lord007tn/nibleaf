@@ -13,6 +13,7 @@ import { defineConfig, loadEnv } from 'vite';
 import { z } from 'zod';
 import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
 import { DASHBOARD_PRELOADS_CACHE_CONTROL, dashboardPreloadPlugin } from './scripts/dashboard-preload-plugin.ts';
+import { readerIconGroups } from './scripts/reader-icons.ts';
 
 // Baseline browser hardening for every dashboard, marketing, and published-site
 // response. The custom server entry adds the per-response nonce-based CSP to
@@ -108,6 +109,9 @@ export default defineConfig(({ mode }) => {
                         id.replaceAll('\\', '/'),
                       ),
                   },
+                  // The icons a docs page renders, in two chunks instead of ~45 one-icon files
+                  // (scripts/reader-icons.ts).
+                  ...readerIconGroups(import.meta.dirname),
                   {
                     name: 'standalone-i18n',
                     test: (id) =>
