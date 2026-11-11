@@ -9,9 +9,9 @@
  * sides share.
  *
  * - Content is read from the parsed tree, not by scanning lines: a link counts
- *   only when it renders as one. Code (fenced, indented, inline), raw HTML
- *   (including comments) and MDX expressions render no link. Only literal
- *   hrefs on JSX elements the reader renders as links count as links.
+ *   only when it renders as one. Code, comments, MDX expressions and discarded
+ *   HTML contexts render no link. Only literal hrefs on JSX/HTML elements the
+ *   reader renders as links count as attribute destinations.
  *   Reference links resolve through their definition (CommonMark: the first
  *   definition of a label wins); a definition nothing uses renders nothing.
  * - A link is rendered as the reader renders it (relative to the page URL, or
@@ -19,8 +19,13 @@
  *   with `resolveSiteRoute`, the reader's own route order, following redirects.
  */
 import { createHash } from 'node:crypto';
+import type { Root } from 'mdast';
+import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
@@ -97,16 +102,18 @@ const mdxParser = unified().use(remarkParse).use(remarkMdx);
 // included, which MDX disables) comes from this parse, and invalid MDX is read
 // with it entirely, where JSX and comments are raw HTML.
 const markdownParser = unified().use(remarkParse);
+// Fallback links use the reader's CommonMark/GFM -> HAST -> parse5 pipeline.
+const htmlParser = unified().use(remarkParse).use(remarkGfm).use(remarkRehype, { allowDangerousHtml: true }).use(rehypeRaw);
 /** Without GFM a footnote (`[^1]` with `[^1]: text`) parses as a reference
  *  link; the reader renders it as an in-page footnote, never a page link. */
 const isFootnoteLabel = (identifier: string | undefined): boolean => identifier?.startsWith('^') === true;
 
-/** Never-rendering subtrees: code, raw HTML (comments included), MDX expressions and ESM. */
+/** Excluded from the MDX walk; fallback HTML links are collected separately. */
 const SILENT = new Set(['code', 'inlineCode', 'html', 'mdxFlowExpression', 'mdxTextExpression', 'mdxjsEsm', 'yaml', 'toml']);
 // `site/mdx/component-map.tsx` renders these components as anchors, alongside
 // the reader's plain <a>. HTML parsing makes tag/attribute names case-insensitive.
-// None of these renderers consumes `to`; container props are not destinations.
 const LINK_ELEMENTS = new Set(['a', 'card', 'button', 'relatedcard']);
+const NON_LINK_CONTEXTS = new Set(['script', 'textarea', 'template', 'style', 'noscript', 'iframe', 'title']);
 const STRAY = /^(?:\/|-{3,})$/;
 const HTML_IMAGE = /<img\b[^>]*>/gi;
 const HTML_STRAY_PARAGRAPH = /<p>\s*(\/|-{3,})\s*<\/p>/gi;
@@ -115,6 +122,58 @@ const textOf = (node: MarkdownNode): string => (node.type === 'text' ? (node.val
 
 const jsxAttribute = (node: MarkdownNode, name: string): JsxAttribute | undefined =>
   node.attributes?.find((attribute) => attribute.type === 'mdxJsxAttribute' && attribute.name === name);
+
+type HtmlNode = {
+  type: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: HtmlNode[];
+  position?: { start: { offset?: number } };
+};
+
+/** CommonMark may end a raw HTML node at a blank line inside e.g. <title>.
+ * Keep the source HTML context even if rehype-raw reparents generated nodes. */
+const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: number }[] => {
+  const masked = content.split('');
+  const maskCode = (node: MarkdownNode) => {
+    const start = node.position?.start.offset;
+    const end = node.position?.end.offset;
+    if ((node.type === 'code' || node.type === 'inlineCode') && start !== undefined && end !== undefined) masked.fill(' ', start, end);
+    else for (const child of node.children ?? []) maskCode(child);
+  };
+  maskCode(tree);
+  const ranges: { start: number; end: number }[] = [];
+  const visit = (node: DefaultTreeAdapterTypes.ChildNode) => {
+    if ('tagName' in node && NON_LINK_CONTEXTS.has(node.tagName) && node.sourceCodeLocation) {
+      ranges.push({ start: node.sourceCodeLocation.startOffset, end: node.sourceCodeLocation.endOffset });
+      return;
+    }
+    if ('childNodes' in node) for (const child of node.childNodes) visit(child);
+  };
+  for (const child of parseFragment(masked.join(''), { sourceCodeLocationInfo: true }).childNodes) visit(child);
+  return ranges;
+};
+
+/** Link destinations after HTML parsing, never text that merely looks like a tag. */
+const htmlLinks = (tree: Root, content: string): string[] => {
+  const links: string[] = [];
+  const suppressed = htmlNonLinkRanges(tree, content);
+  const visit = (node: HtmlNode) => {
+    if (node.tagName && NON_LINK_CONTEXTS.has(node.tagName)) return;
+    if (node.tagName && LINK_ELEMENTS.has(node.tagName)) {
+      const offset = node.position?.start.offset;
+      if (offset !== undefined && suppressed.some((range) => offset >= range.start && offset < range.end)) return;
+      const properties = node.properties ?? {};
+      const href = properties.href;
+      // In fallback HTML, parse5 retains an authored JSX spread as an attribute.
+      const spread = Object.keys(properties).some((name) => name.startsWith('{'));
+      if (!spread && typeof href === 'string' && !href.trimStart().startsWith('{')) links.push(href);
+    }
+    for (const child of node.children ?? []) visit(child);
+  };
+  visit(htmlParser.runSync(tree));
+  return links;
+};
 
 /** Raw `<img>` tags (as rehype-raw renders them) without a usable alt. */
 const htmlImagesWithoutAlt = (html: string): string[] =>
@@ -135,7 +194,7 @@ const collectFacts = (content: string): PageContentFacts => {
   try {
     tree = mdxParser.parse(content) as MarkdownNode;
   } catch {
-    tree = markdownParser.parse(content) as MarkdownNode;
+    tree = htmlParser.parse(content) as MarkdownNode;
     isMdx = false;
   }
   // Code ranges as the reader sees them. Only needed when the MDX parse may have
@@ -159,7 +218,7 @@ const collectFacts = (content: string): PageContentFacts => {
   // CommonMark: the first definition of a label wins.
   const definitions = new Map<string, string>();
   const collectDefinitions = (node: MarkdownNode) => {
-    if (SILENT.has(node.type) || inCode(node)) return;
+    if (SILENT.has(node.type) || inCode(node) || NON_LINK_CONTEXTS.has(node.name?.toLowerCase() ?? '')) return;
     if (
       node.type === 'definition' &&
       node.identifier &&
@@ -177,7 +236,7 @@ const collectFacts = (content: string): PageContentFacts => {
   // Inside a lowercase JSX element (`<div>`, `<p>`), as #426: the reader renders
   // it as raw HTML, where Markdown links are not links.
   const visit = (node: MarkdownNode, linksRender: boolean) => {
-    if (inCode(node)) return;
+    if (inCode(node) || NON_LINK_CONTEXTS.has(node.name?.toLowerCase() ?? '')) return;
     if (SILENT.has(node.type)) {
       if (node.type === 'html' && !node.value?.trimStart().startsWith('<!--')) {
         facts.imagesWithoutAlt.push(...htmlImagesWithoutAlt(node.value ?? ''));
@@ -210,7 +269,10 @@ const collectFacts = (content: string): PageContentFacts => {
       }
       case 'mdxJsxFlowElement':
       case 'mdxJsxTextElement': {
-        if (LINK_ELEMENTS.has(node.name?.toLowerCase() ?? '')) {
+        if (
+          LINK_ELEMENTS.has(node.name?.toLowerCase() ?? '') &&
+          !node.attributes?.some((attribute) => attribute.type === 'mdxJsxExpressionAttribute')
+        ) {
           const href = node.attributes?.find((attribute) => attribute.type === 'mdxJsxAttribute' && attribute.name?.toLowerCase() === 'href')?.value;
           if (typeof href === 'string') facts.links.push(href);
         }
@@ -233,6 +295,7 @@ const collectFacts = (content: string): PageContentFacts => {
     for (const child of node.children ?? []) visit(child, linksRender);
   };
   visit(tree, true);
+  if (!isMdx) facts.links = htmlLinks(tree as Root, content);
   return facts;
 };
 

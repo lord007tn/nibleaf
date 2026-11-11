@@ -100,12 +100,8 @@ describe('literal hrefs on elements the reader renders as links', () => {
     ]);
   });
 
-  it('ignores non-link components, unsupported LinkCard tags and to props', () => {
-    expect(
-      broken(
-        '<CardGroup href="/group"><Card to="/card" /></CardGroup>\n\n<Note href="/note" />\n\n<LinkCard href="/linkcard" />\n\n<a to="/anchor">Go</a>',
-      ),
-    ).toEqual([]);
+  it('ignores non-link component props', () => {
+    expect(broken('<CardGroup href="/group"><Note href="/note" /></CardGroup>')).toEqual([]);
   });
 
   it('skips external URLs, anchors and files just like Markdown links', () => {

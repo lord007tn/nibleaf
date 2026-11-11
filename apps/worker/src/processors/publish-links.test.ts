@@ -1,70 +1,8 @@
 import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-vi.mock('@nibleaf/clickhouse', () => ({
-  keys: () => ({}),
-  clickHouseWritesEnabled: () => false,
-  deterministicAnalyticsEventId: vi.fn(),
-  buildAnalyticsEvent: vi.fn(),
-}));
-vi.mock('@nibleaf/database', () => ({ Prisma: { DbNull: null }, prisma: {} }));
-vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), getJob: vi.fn(), QueueNames: { SEARCH: 'search', PUBLISH: 'publish' } }));
-vi.mock('../lib/publish-activation', () => ({ recordPublishReady: vi.fn() }));
-vi.mock('../env', () => ({ env: { APP_URL: 'https://nibleaf.test' } }));
-vi.mock('../lib/notify', () => ({ notifyDeployment: vi.fn() }));
-vi.mock('../lib/usage-ingest', () => ({ DurableUsageEnqueueError: Error, enqueueAnalyticsEvent: vi.fn() }));
-
-// The publish dialog's preflight lives in the server app; the parity test runs
-// the same snapshot through it and through this worker gate.
-import { collectPublishChecks } from '../../../server/src/lib/publish-checks';
-import { collectPublishIssues } from './publish';
-
-let sequence = 0;
-const page = (overrides: Partial<SnapshotPage> & Pick<SnapshotPage, 'path'>): SnapshotPage => {
-  sequence += 1;
-  return {
-    id: `page-${sequence}`,
-    parentId: null,
-    versionId: 'v1',
-    updatedAt: '2026-11-01T00:00:00.000Z',
-    languageCode: 'en',
-    kind: 'PAGE',
-    title: `Page ${sequence}`,
-    slug: overrides.path.split('/').at(-1) ?? '',
-    icon: null,
-    description: null,
-    content: 'Body.',
-    config: null,
-    translationKey: null,
-    position: sequence,
-    hidden: false,
-    ...overrides,
-  };
-};
-
-const snapshot = (pages: SnapshotPage[], config: Record<string, unknown> | null = null, extra: Partial<SiteSnapshot> = {}): SiteSnapshot => ({
-  project: {
-    id: 'project-1',
-    name: 'Docs',
-    slug: 'docs',
-    description: null,
-    icon: null,
-    config,
-    languages: [
-      { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null },
-      { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, config: null },
-      { code: 'fr', label: 'Français', direction: 'LTR', isDefault: false, enabled: false, config: null },
-    ],
-    versions: [
-      { id: 'v1', name: 'Latest', slug: 'latest', isDefault: true },
-      { id: 'v2', name: 'v2', slug: 'v2', isDefault: false },
-    ],
-  },
-  pages,
-  generatedAt: '2026-11-01T00:00:00.000Z',
-  ...extra,
-});
+import { collectPublishChecks, collectPublishIssues, page, snapshot } from './publish-links.test-helpers';
 
 /** The hrefs the worker gate rejects, read back from its issue details. */
 const brokenLinks = (site: SiteSnapshot): string[] =>
@@ -219,6 +157,55 @@ describe('worker broken-link gate: what still blocks', () => {
 });
 
 describe('publish dialog and worker parity', () => {
+  const expectLinks = (content: string, expected: string[]) => {
+    const site = snapshot([page({ path: 'start', content }), page({ path: 'exists' })]);
+    const dialog = collectPublishChecks(site).filter((check) => check.code === 'broken-internal-link');
+    expect(dialog.map((check) => check.detail)).toEqual(expected);
+    expect(dialog.every((check) => check.severity === 'error')).toBe(true);
+    expect(brokenLinks(site)).toEqual(expected);
+  };
+
+  it.each(['script', 'textarea', 'template', 'style', 'noscript', 'iframe', 'title'])('ignores descendants of %s in MDX and fallback HTML', (tag) => {
+    for (const prefix of ['', '<!-- force HTML fallback -->\n\n']) {
+      expectLinks(
+        `${prefix}<${tag}>\n\n<Card href="/hidden-card">Hidden</Card>\n\n<a href="/hidden-anchor">Hidden</a>\n\n[Hidden](/hidden-markdown)\n\n</${tag}>\n\n<Card href="/visible">Visible</Card>`,
+        ['/visible'],
+      );
+    }
+  });
+
+  it.each(['Card', 'Button', 'RelatedCard', 'a'])('ignores %s spreads in either attribute order', (tag) => {
+    for (const prefix of ['', '<!-- force HTML fallback -->\n\n']) {
+      for (const spread of ['{...props}', '{ ...props }']) {
+        expectLinks(`${prefix}<${tag} href="/missing" ${spread}>Next</${tag}>`, []);
+        expectLinks(`${prefix}<${tag} ${spread} href="/missing">Next</${tag}>`, []);
+      }
+    }
+  });
+
+  it('checks component literals after HTML comments while skipping commented-out links', () => {
+    expectLinks('<!-- <Card href="/commented" /> -->\n\n<Card href="/missing">Next</Card>\n\n<Card href="/exists">Exists</Card>', ['/missing']);
+  });
+
+  it('checks unquoted anchors with HTML entity decoding', () => {
+    expectLinks('<a href=/missing>Missing</a>\n\n<a href=/exists>Exists</a>', ['/missing']);
+    expectLinks('<div><a href=/missing?lang=en&amp;x=1>Missing</a></div>', ['/missing?lang=en&x=1']);
+  });
+
+  it('keeps fenced, inline and indented code excluded in the HTML fallback', () => {
+    expectLinks(
+      '<!-- c -->\n\n```html\n<a href=/fenced>Hidden</a>\n```\n\n`<a href=/inline>Hidden</a>`\n\n    <a href=/indented>Hidden</a>\n\n<a href=/visible>Visible</a>',
+      ['/visible'],
+    );
+    expectLinks('<!-- c -->\n\n```html\n<script>\n```\n\n`<template>`\n\n<a href=/visible>Visible</a>', ['/visible']);
+  });
+
+  it('ignores expression and template-literal destinations in both parses', () => {
+    for (const prefix of ['', '<!-- c -->\n\n']) {
+      expectLinks(`${prefix}<Card href={destination} />\n\n<Button href={\`/missing\`}>Next</Button>`, []);
+    }
+  });
+
   it('reports exactly the same broken links for the same snapshot', () => {
     const pages = [
       page({ path: 'start', title: 'Start' }),
