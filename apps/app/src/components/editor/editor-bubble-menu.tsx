@@ -233,6 +233,9 @@ export function LinkEditorPanel({
 
 const isApplePlatform = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
+/** The text menu's bubble plugin; it also reads a 'hide' meta under this key. */
+const TEXT_MENU_KEY = 'nibleaf-text-menu';
+
 /** The toolbar's own controls, in order, for arrow-key movement. */
 const TOOLBAR_ITEM = '[data-toolbar-item]:not([disabled])';
 
@@ -337,7 +340,11 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
   const comment = () => {
     const { from, to } = editor.state.selection;
     const quote = editor.state.doc.textBetween(from, to, ' ').trim();
-    if (quote) onComment?.({ quote, from, to });
+    if (!quote || !onComment) return;
+    onComment({ quote, from, to });
+    // The writer continues in the comment composer: put the menu away until
+    // they come back to the text.
+    editor.view.dispatch(editor.state.tr.setMeta(TEXT_MENU_KEY, 'hide').setMeta('addToHistory', false));
   };
 
   // Arrow keys move along the toolbar in reading order (mirrored in RTL).
@@ -372,10 +379,10 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
       data-editor-bubble-menu=""
       {...{ [MOD_K_OWNER_ATTRIBUTE]: '' }}
       editor={editor}
-      pluginKey="nibleaf-text-menu"
+      pluginKey={TEXT_MENU_KEY}
       options={options}
       shouldShow={shouldShow}
-      className="flex max-w-[calc(100vw-2rem)] flex-col rounded-lg border border-border bg-card p-1 shadow-lg"
+      className="flex max-w-[calc(100vw-1rem)] flex-col rounded-lg border border-border bg-card p-1 shadow-lg"
     >
       {!inspectingLink ? (
         // biome-ignore lint/a11y/noNoninteractiveElementInteractions: a toolbar moves focus between its buttons with the arrow keys (WAI-ARIA toolbar pattern).

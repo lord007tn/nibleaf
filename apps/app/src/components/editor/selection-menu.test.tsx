@@ -365,6 +365,8 @@ describe('Comment from the selection menu (AUTH-37)', () => {
 
     const { from, to } = editor.state.selection;
     expect(onAddComment).toHaveBeenCalledWith({ quote: 'the guide', from, to });
+    // The writer continues in the composer; the menu steps aside until they return.
+    await waitFor(() => expect(textMenu()).toBeNull());
   });
 
   it('is not offered where comments are unavailable', async () => {
