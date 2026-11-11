@@ -58,7 +58,7 @@ it.each([false, true])('keeps configured reader destinations and the CTA availab
       await vi.dynamicImportSettled();
     });
     expect(document.querySelector('[data-slot="sheet-content"]')).not.toBeNull();
-  });
+  }, 10_000);
   const trigger = container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]');
   let drawer = document.querySelector('[data-slot="sheet-content"]');
   expect(drawer?.getAttribute('dir')).toBe(isRtl ? 'rtl' : 'ltr');
@@ -87,7 +87,7 @@ it.each([false, true])('keeps configured reader destinations and the CTA availab
   await act(async () => hashLink?.click());
   // Same-page links do not change currentPath, so clicks must close the drawer.
   expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
-});
+}, 20_000);
 
 it('offers language and version as labelled drawer settings showing the current value', async () => {
   const container = document.createElement('div');

@@ -40,10 +40,13 @@ export function MobileNavDrawer({
   }, [start.focusTrigger]);
   const navigationLinks = [...links, ...anchors];
   const settings = choices.filter((choice) => choice.options.length > 1);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: close the drawer when the route (currentPath) changes.
-  useEffect(() => {
+  // Close the drawer when the route changes. Not on mount: a reader who clicked
+  // the menu button before this code loaded gets it open.
+  const [openedPath, setOpenedPath] = useState(currentPath);
+  if (openedPath !== currentPath) {
+    setOpenedPath(currentPath);
     setOpen(false);
-  }, [currentPath]);
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
