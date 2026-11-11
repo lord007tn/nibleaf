@@ -2184,6 +2184,7 @@
   "site_results": "Resultados",
   "site_loading": "Cargando…",
   "site_articleloadfailed": "No se pudo cargar esta página. Reintentar",
+  "site_controlloadfailed": "No se pudo abrir. Selecciónalo de nuevo para reintentar.",
   "site_previous": "Anterior",
   "site_next": "Siguiente",
   "site_onthispage": "En esta página",
@@ -4665,5 +4666,51 @@
   "newsite_starter_faq_title": "Preguntas frecuentes",
   "newsite_starter_faq_content": "## Dudas habituales\n\nResponde una pregunta real en pocas frases.\n\n- Explica dónde encontrar los ajustes de la cuenta.\n- Indica cómo contactar con tu equipo.\n",
   "newsite_addresslatinhint": "Las direcciones de los sitios usan letras latinas. Elige una que sea fácil de leer, por ejemplo, help-center.",
-  "newsite_addressunavailable": "Esta dirección está reservada o no está disponible. Elige otra dirección."
+  "newsite_addressunavailable": "Esta dirección está reservada o no está disponible. Elige otra dirección.",
+  "publish_checks_title": "Comprobaciones",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} error",
+        "form=*": "{count} errores"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} advertencia",
+        "form=*": "{count} advertencias"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "aún puedes publicar",
+  "publish_checks_mustfix": "corrige los errores para publicar",
+  "publish_checks_allclear": "Todas las comprobaciones superadas",
+  "publish_checks_allclearhint": "No hay enlaces rotos, imágenes sin texto alternativo, páginas sin título ni caracteres sobrantes.",
+  "publish_checks_fix": "Corregir",
+  "publish_checks_fixlabel": "Corregir {title} en el editor",
+  "publish_checks_blockedreason": "Corrige los errores de Comprobaciones antes de publicar.",
+  "publish_checks_error": "Error",
+  "publish_checks_warning": "Advertencia",
+  "publish_checks_duplicateof": "Mismo título que {path}",
+  "publish_checks_pathtoolong": "Dirección del enlace demasiado larga (más de 2048 caracteres)",
+  "publish_checks_brokenlink": "Enlaces rotos",
+  "publish_checks_brokenlinkhint": "Estos enlaces llevan a una página que no existirá en el sitio publicado.",
+  "publish_checks_missingalt": "Imágenes sin texto alternativo",
+  "publish_checks_missingalthint": "Los lectores de pantalla no pueden describir estas imágenes. Añade texto alternativo a cada una.",
+  "publish_checks_untitledpage": "Páginas sin título",
+  "publish_checks_untitledpagehint": "Pon a estas páginas un título real para que los lectores las encuentren.",
+  "publish_checks_straycharacters": "Caracteres sobrantes",
+  "publish_checks_straycharactershint": "Una / suelta o un --- literal se muestra en la página como texto.",
+  "publish_checks_unreadableslug": "Direcciones web difíciles de leer",
+  "publish_checks_unreadableslughint": "Usa una dirección corta hecha de palabras para que el enlace sea fácil de leer y compartir.",
+  "publish_checks_emptypage": "Páginas vacías",
+  "publish_checks_emptypagehint": "Estas páginas aún no tienen contenido, así que los lectores verían una página en blanco.",
+  "publish_checks_duplicatetitle": "Títulos duplicados",
+  "publish_checks_duplicatetitlehint": "Varias páginas de la misma sección comparten título, así que los lectores no pueden distinguirlas."
 }

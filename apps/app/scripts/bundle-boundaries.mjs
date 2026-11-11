@@ -1,3 +1,5 @@
+import { KNOWN_MARKETING_READER_ICONS } from './reader-icons.ts';
+
 // Modules that must never reach a published docs page, and the route-module
 // bytes that do. `check-bundle-budget.mjs` applies both to the module report
 // that `BUNDLE_ANALYZE=true` builds write; see BUNDLE_BUDGET.md.
@@ -45,35 +47,11 @@ export const forbiddenModuleIds = (moduleIds) => moduleIds.filter((id) => forbid
 // its own copies (`components/marketing/site/marketing-icons.ts`) instead.
 // The chunks are already partitioned around the reader icons marketing shared
 // on main@88daac87 (mostly page-icon choices and the reader's own controls);
-// a new one is what re-splits them. Add an icon here only with its measured
-// public-docs cost.
+// a new one is what re-splits them. Add an icon to `KNOWN_MARKETING_READER_ICONS`
+// (`reader-icons.ts`, which also groups those icons into one chunk) only with
+// its measured public-docs cost.
 const MARKETING_MODULE = /\/apps\/app\/src\/components\/(?:cloud-marketing\.tsx|marketing\/)/;
 const LUCIDE_ICON = /\/node_modules\/lucide-react\/dist\/esm\/icons\/([\w-]+)\.mjs$/;
-const KNOWN_MARKETING_READER_ICONS = new Set([
-  'book-open',
-  'chart-column',
-  'check',
-  'circle-question-mark',
-  'clock',
-  'cloud',
-  'compass',
-  'external-link',
-  'globe',
-  'languages',
-  'life-buoy',
-  'link-2',
-  'menu',
-  'moon',
-  'palette',
-  'pen-line',
-  'search',
-  'server',
-  'sparkles',
-  'sun',
-  'terminal',
-  'users',
-  'x',
-]);
 
 /** Reader icons that marketing code newly shares: Lucide icons in an
  *  icon-only chunk of a public profile (`publicFiles`) that a chunk holding
