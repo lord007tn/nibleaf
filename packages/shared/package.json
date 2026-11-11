@@ -34,6 +34,7 @@
     "./theme-repository": "./src/theme-repository.ts",
     "./theme-repository-templates": "./src/theme-repository-templates/index.ts",
     "./export-schedule": "./src/export-schedule.ts",
+    "./site-slug": "./src/site-slug.ts",
     "./utils": "./src/utils.ts",
     "./organization-handles": "./src/organization-handles.ts"
   },

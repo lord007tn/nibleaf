@@ -5,7 +5,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { useLocale } from '@nibleaf/i18n/react';
 import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
-import { slugify } from '@nibleaf/shared/utils';
+import { deriveSiteSlug } from '@nibleaf/shared/site-slug';
 import { type CreateProjectBody, createProjectBody, projectSlug } from '@nibleaf/validators';
 import { useForm, useStore } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
@@ -32,6 +32,7 @@ function CreateSiteDialog({ onOpenChange, organizationId, organizationName }: Om
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [editingAddress, setEditingAddress] = useState(false);
+  const [addressEdited, setAddressEdited] = useState(false);
   const [conflict, setConflict] = useState<{ slug: string; suggestion: string } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -48,7 +49,9 @@ function CreateSiteDialog({ onOpenChange, organizationId, organizationName }: Om
   });
   const values = useStore(form.store, (state) => state.values);
   const name = values.name.trim();
-  const typedSlug = editingAddress ? values.slug : undefined;
+  const derived = deriveSiteSlug(name);
+  const showAddress = editingAddress || addressEdited || (Boolean(name) && derived.needsCustomAddress);
+  const typedSlug = addressEdited ? values.slug : undefined;
   const validSlug = typedSlug === undefined || projectSlug.safeParse(typedSlug).success;
   const [checked, setChecked] = useState({ name, slug: typedSlug });
   useEffect(() => {
@@ -63,7 +66,7 @@ function CreateSiteDialog({ onOpenChange, organizationId, organizationName }: Om
     !pending && Boolean(name) && name.length <= 120 && validSlug && current,
   );
   const result = current ? availability.data : undefined;
-  const slug = typedSlug ?? result?.slug ?? (slugify(name).slice(0, 63).replace(/-+$/g, '') || 'docs');
+  const slug = typedSlug ?? result?.slug ?? (name ? derived.slug : 'docs');
   const baseDomain = env.VITE_SITE_BASE_DOMAIN?.replace(/^\*\./, '').replace(/\.$/, '') || 'nibleaf.com';
   const activeConflict = conflict?.slug === slug ? conflict : null;
   const taken = Boolean(activeConflict || (result && !result.available));
@@ -99,6 +102,7 @@ function CreateSiteDialog({ onOpenChange, organizationId, organizationName }: Om
       ) {
         form.setFieldValue('slug', slug);
         setEditingAddress(true);
+        setAddressEdited(true);
         setConflict({ slug, suggestion: error.details.suggestedSlug });
         setStep(1);
         setFailure(null);
@@ -170,22 +174,28 @@ function CreateSiteDialog({ onOpenChange, organizationId, organizationName }: Om
                   )}
                 </form.Field>
                 <div className="grid min-w-0 gap-1.5">
-                  {editingAddress ? (
+                  {showAddress ? (
                     <form.Field name="slug">
                       {(field) => (
-                        <FormField<string> field={field} label={t('newSite.address')} layout="stacked">
+                        <FormField<string>
+                          field={field}
+                          label={t('newSite.address')}
+                          layout="stacked"
+                          description={derived.needsCustomAddress ? t('newSite.addressLatinHint') : undefined}
+                        >
                           {({ controlProps, value, onValueChange }) => (
                             <Input
                               {...controlProps}
-                              aria-describedby="site-address-status"
+                              aria-describedby={[controlProps['aria-describedby'], 'site-address-status'].filter(Boolean).join(' ')}
                               aria-invalid={!validSlug || taken}
                               autoCapitalize="none"
                               spellCheck={false}
                               dir="ltr"
                               maxLength={63}
-                              value={value}
+                              value={addressEdited ? value : slug}
                               onChange={(event) => {
                                 setConflict(null);
+                                setAddressEdited(true);
                                 onValueChange(event.target.value);
                               }}
                             />
@@ -225,6 +235,7 @@ function CreateSiteDialog({ onOpenChange, organizationId, organizationName }: Om
                           onClick={() => {
                             if (suggestion) {
                               form.setFieldValue('slug', suggestion);
+                              setAddressEdited(true);
                               setConflict(null);
                             }
                           }}

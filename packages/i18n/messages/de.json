@@ -4311,5 +4311,6 @@
   "newsite_starter_firstguide_title": "Ihre erste Anleitung",
   "newsite_starter_firstguide_content": "## Eine Aufgabe erledigen\n\nErsetzen Sie dieses Beispiel durch eine typische Kundenaufgabe.\n\n- Beschreiben Sie die erste Aktion.\n- Zeigen Sie, wie sich der Erfolg überprüfen lässt.\n",
   "newsite_starter_faq_title": "Häufige Fragen",
-  "newsite_starter_faq_content": "## Typische Fragen\n\nBeantworten Sie eine echte Frage in wenigen Sätzen.\n\n- Erklären Sie, wo die Kontoeinstellungen zu finden sind.\n- Sagen Sie den Lesern, wie sie Ihr Team erreichen.\n"
+  "newsite_starter_faq_content": "## Typische Fragen\n\nBeantworten Sie eine echte Frage in wenigen Sätzen.\n\n- Erklären Sie, wo die Kontoeinstellungen zu finden sind.\n- Sagen Sie den Lesern, wie sie Ihr Team erreichen.\n",
+  "newsite_addresslatinhint": "Website-Adressen verwenden lateinische Buchstaben. Wählen Sie eine gut lesbare Adresse, z. B. help-center."
 }

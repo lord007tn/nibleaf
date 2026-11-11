@@ -259,4 +259,64 @@ describe('create site dialog', () => {
     await act(async () => resolve({ id: 'site', firstPageId: 'welcome-page' }));
     expect(close).toHaveBeenCalledWith(false);
   });
+  it.each([
+    ['مركز المساعدة', 'site-0s7xtf9', true],
+    ['وثائق جود 263', 'site-178xry5', true],
+    ['Jood وثائق', 'jood', false],
+    ['Acme Docs', 'acme-docs', false],
+    ['وثائق جود للمساعدة X', 'site-12zr2ig', true],
+  ] as const)('previews a usable address and prompts for Latin letters when needed: %s', async (name, expected, fallback) => {
+    mocks.availability.mockImplementation(async ({ query }: { query: { slug?: string } }) =>
+      Response.json({ data: { slug: query.slug ?? expected, available: true, suggestedSlug: query.slug ?? expected, nameTaken: false } }),
+    );
+    await render();
+    await type(nameField(), name);
+    // Check the immediate local preview, before the debounced server response.
+    expect(document.querySelector('output')?.textContent).toBe(`${expected}.nibleaf.com`);
+    const address = document.querySelector<HTMLInputElement>('input[dir="ltr"]');
+    expect(Boolean(address)).toBe(fallback);
+    if (fallback) {
+      expect(address?.value).toBe(expected);
+      expect(document.body.textContent).toContain('newSite.addressLatinHint');
+    } else {
+      expect(document.body.textContent).not.toContain('newSite.addressLatinHint');
+    }
+    await settle();
+    expect(isDisabled(button('newSite.continue'))).toBe(false);
+  });
+
+  it('creates with the preselected Product docs starter without clicking a card', async () => {
+    await render();
+    await nameSite();
+    await click(button('newSite.continue'));
+    expect(element<HTMLInputElement>('input[value="product-docs"]').checked).toBe(true);
+    expect(isDisabled(button('newSite.create'))).toBe(false);
+    await click(button('newSite.create'));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ starter: 'product-docs' }));
+  });
+
+  it('shows the final neutral suffix and preserves an address the author edits', async () => {
+    mocks.availability.mockImplementation(async ({ query }: { query: { slug?: string } }) =>
+      Response.json({
+        data: { slug: query.slug ?? 'site-178xry5-2', available: true, suggestedSlug: query.slug ?? 'site-178xry5-2', nameTaken: false },
+      }),
+    );
+    await render();
+    await type(nameField(), 'وثائق جود 263');
+    await settle();
+    const address = element<HTMLInputElement>('input[dir="ltr"]');
+    expect(address.value).toBe('site-178xry5-2');
+    expect(document.querySelector('output')?.textContent).toBe('site-178xry5-2.nibleaf.com');
+    await type(address, 'help-center');
+    await settle();
+    await type(nameField(), 'مركز المساعدة');
+    await settle();
+    expect(address.value).toBe('help-center');
+    await type(nameField(), 'Jood Docs');
+    await settle();
+    expect(element<HTMLInputElement>('input[dir="ltr"]').value).toBe('help-center');
+    await click(button('newSite.continue'));
+    await click(button('newSite.create'));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ slug: 'help-center' }));
+  });
 });

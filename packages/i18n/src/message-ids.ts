@@ -1,5 +1,6 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'newSite.addressLatinHint': 'newsite_addresslatinhint',
   'newSite.address': 'newsite_address',
   'newSite.editAddress': 'newsite_editaddress',
   'newSite.language': 'newsite_language',

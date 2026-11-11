@@ -4246,5 +4246,6 @@
   "newsite_starter_firstguide_title": "Panduan pertama Anda",
   "newsite_starter_firstguide_content": "## Selesaikan tugas\n\nGanti contoh ini dengan tugas umum pelanggan.\n\n- Jelaskan tindakan pertama.\n- Tunjukkan cara memastikan keberhasilannya.\n",
   "newsite_starter_faq_title": "Pertanyaan umum",
-  "newsite_starter_faq_content": "## Pertanyaan yang sering diajukan\n\nJawab pertanyaan nyata dalam beberapa kalimat.\n\n- Jelaskan lokasi pengaturan akun.\n- Beri tahu cara menghubungi tim Anda.\n"
+  "newsite_starter_faq_content": "## Pertanyaan yang sering diajukan\n\nJawab pertanyaan nyata dalam beberapa kalimat.\n\n- Jelaskan lokasi pengaturan akun.\n- Beri tahu cara menghubungi tim Anda.\n",
+  "newsite_addresslatinhint": "Alamat situs menggunakan huruf Latin. Pilih alamat yang mudah dibaca, misalnya help-center."
 }

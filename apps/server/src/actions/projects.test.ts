@@ -413,4 +413,26 @@ describe('site creation language, starters and address availability', () => {
     await expect(checkProjectAvailability('user-1', { organizationId: 'private-org', name: 'Docs' })).rejects.toThrow('organization not found');
     expect(mocks.projectFindMany).not.toHaveBeenCalled();
   });
+  it.each([
+    ['مركز المساعدة', 'site-0s7xtf9'],
+    ['وثائق جود 263', 'site-178xry5'],
+    ['Jood وثائق', 'jood'],
+    ['Acme Docs', 'acme-docs'],
+    ['وثائق جود للمساعدة X', 'site-12zr2ig'],
+  ])('derives the same usable address for preview and creation: %s', async (name, expected) => {
+    await createProject('user-1', { name });
+    expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ slug: expected }) });
+    await expect(checkProjectAvailability('user-1', { name })).resolves.toMatchObject({ slug: expected, available: true });
+  });
+
+  it('checks collisions for neutral addresses and returns the final suffixed preview', async () => {
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.slug === 'site-178xry5' ? { id: 'other' } : null));
+    await expect(checkProjectAvailability('user-1', { name: 'وثائق جود 263' })).resolves.toMatchObject({ slug: 'site-178xry5-2', available: true });
+    await createProject('user-1', { name: 'وثائق جود 263' });
+    expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ slug: 'site-178xry5-2' }) });
+  });
+  it('retains a numeric address that the author explicitly types', async () => {
+    await createProject('user-1', { name: 'وثائق جود 263', slug: '263' });
+    expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ slug: '263' }) });
+  });
 });

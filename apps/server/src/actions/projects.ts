@@ -2,8 +2,8 @@ import { eraseProject, TenantErasureProjectNotFoundError, TenantUsageDeletionPen
 import { Prisma, prisma } from '@nibleaf/database';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
+import { deriveSiteSlug } from '@nibleaf/shared/site-slug';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
-import { slugify } from '@nibleaf/shared/utils';
 import type { CreateProjectBody, ProjectConfigUpdate, projectAvailabilityQuery, UpdateProjectBody } from '@nibleaf/validators';
 import type { z } from 'zod';
 import { badRequest, conflict, forbidden, notFound } from '@/errors';
@@ -48,8 +48,7 @@ const candidateSlug = (base: string, index: number) => {
   return `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '') || 'docs'}${suffix}`;
 };
 
-const uniqueProjectSlug = async (desired: string) => {
-  const base = slugify(desired) || 'docs';
+const uniqueProjectSlug = async (base: string) => {
   for (let i = 0; i < 100; i++) {
     const candidate = candidateSlug(base, i);
     const existing = await prisma.project.findFirst({ where: { slug: candidate }, select: { id: true } });
@@ -203,7 +202,7 @@ export const checkProjectAvailability = async (userId: string, query: z.infer<ty
   const ids = await accessibleProjectIds(userId, organizationId);
   const [names, suggestedSlug] = await Promise.all([
     prisma.project.findMany({ where: { id: { in: ids } }, select: { name: true } }),
-    uniqueProjectSlug(query.slug ?? query.name),
+    uniqueProjectSlug(query.slug ?? deriveSiteSlug(query.name).slug),
   ]);
   return {
     slug: query.slug ?? suggestedSlug,
@@ -216,7 +215,7 @@ export const checkProjectAvailability = async (userId: string, query: z.infer<ty
 /** Create a website inside an existing organization (design §6.10). */
 export const createProject = async (userId: string, body: CreateProjectBody) => {
   const organizationId = await resolveWebsiteOrganization(userId, body.organizationId);
-  const slug = body.slug ?? (await uniqueProjectSlug(body.name));
+  const slug = body.slug ?? (await uniqueProjectSlug(deriveSiteSlug(body.name).slug));
   const slugConflict = async () =>
     conflict('That site address is already in use.', { reason: 'slug_taken', slug, suggestedSlug: await uniqueProjectSlug(slug) });
   if (body.slug && (await prisma.project.findFirst({ where: { slug }, select: { id: true } }))) throw await slugConflict();
