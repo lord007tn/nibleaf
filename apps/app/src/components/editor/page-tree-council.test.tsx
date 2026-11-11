@@ -13,41 +13,75 @@ const original = [
   { id: 'guide', title: 'Quickstart', position: 0 },
   { id: 'moving', title: 'Configuration', position: 1 },
   { id: 'next', title: 'Next page', position: 2 },
-].map((page) => ({ ...page, parentId: null, branchId: 'branch', languageId: 'en', kind: 'PAGE', slug: page.id, path: page.id, icon: null, hidden: false, description: null, updatedAt: '' })) as PageNode[];
+].map((page) => ({
+  ...page,
+  parentId: null,
+  branchId: 'branch',
+  languageId: 'en',
+  kind: 'PAGE',
+  slug: page.id,
+  path: page.id,
+  icon: null,
+  hidden: false,
+  description: null,
+  updatedAt: '',
+})) as PageNode[];
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 const flush = async (ms = 20) => act(async () => new Promise((resolve) => setTimeout(resolve, ms)));
 const row = (id: string) => container.querySelector<HTMLElement>(`[role="treeitem"][data-page-id="${id}"]`);
-const key = async (element: Element, value: string, extra: KeyboardEventInit = {}) => act(async () => {
-  element.dispatchEvent(new KeyboardEvent('keydown', { key: value, code: value === ' ' ? 'Space' : value, bubbles: true, cancelable: true, ...extra }));
-});
+const key = async (element: Element, value: string, extra: KeyboardEventInit = {}) =>
+  act(async () => {
+    element.dispatchEvent(
+      new KeyboardEvent('keydown', { key: value, code: value === ' ' ? 'Space' : value, bubbles: true, cancelable: true, ...extra }),
+    );
+  });
 async function render(options: { collapsed?: boolean; pending?: boolean } = {}) {
   if (options.collapsed) localStorage.setItem('nibleaf.editor.collapsedGroups:en', '["guide"]');
-  const initial = options.collapsed ? [...original, { ...original[0], id: 'existing', title: 'Existing child', parentId: 'guide', position: 0 } as PageNode] : original;
+  const initial = options.collapsed
+    ? [...original, { ...original[0], id: 'existing', title: 'Existing child', parentId: 'guide', position: 0 } as PageNode]
+    : original;
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
   let complete: (pages: PageNode[]) => void = vi.fn();
   let fail: (error: Error) => void = vi.fn();
-  const moved = initial.map((page) => page.id === 'moving' ? { ...page, parentId: 'guide', position: options.collapsed ? 1 : 0 } : page);
+  const moved = initial.map((page) => (page.id === 'moving' ? { ...page, parentId: 'guide', position: options.collapsed ? 1 : 0 } : page));
   const onMove = vi.fn();
   function Forest() {
     const [pages, setPages] = useState(initial);
-    return <PageTreeDndProvider pages={pages} languages={[{ id: 'en', label: 'English', collapsed: false }]} dir="ltr"
-      onMove={(request) => {
-        onMove(request);
-        setPages(moved);
-        if (!options.pending) return Promise.resolve(moved);
-        return new Promise<PageNode[]>((resolve, reject) => {
-          complete = resolve;
-          fail = (error) => { setPages(initial); reject(error); };
-        });
-      }}>
-      <LanguageDropTarget languageId="en"><button type="button">English</button></LanguageDropTarget>
-      <SortablePageTree languageId="en" activeId="moving" onSelect={vi.fn()} onAddChild={vi.fn()} onSettings={vi.fn()}
-        onDelete={(id) => setPages((current) => current.filter((page) => page.id !== id))}
-        onRename={(id, title) => setPages((current) => current.map((page) => page.id === id ? { ...page, title } : page))} />
-    </PageTreeDndProvider>;
+    return (
+      <PageTreeDndProvider
+        pages={pages}
+        languages={[{ id: 'en', label: 'English', collapsed: false }]}
+        dir="ltr"
+        onMove={(request) => {
+          onMove(request);
+          setPages(moved);
+          if (!options.pending) return Promise.resolve(moved);
+          return new Promise<PageNode[]>((resolve, reject) => {
+            complete = resolve;
+            fail = (error) => {
+              setPages(initial);
+              reject(error);
+            };
+          });
+        }}
+      >
+        <LanguageDropTarget languageId="en">
+          <button type="button">English</button>
+        </LanguageDropTarget>
+        <SortablePageTree
+          languageId="en"
+          activeId="moving"
+          onSelect={vi.fn()}
+          onAddChild={vi.fn()}
+          onSettings={vi.fn()}
+          onDelete={(id) => setPages((current) => current.filter((page) => page.id !== id))}
+          onRename={(id, title) => setPages((current) => current.map((page) => (page.id === id ? { ...page, title } : page)))}
+        />
+      </PageTreeDndProvider>
+    );
   }
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
     const measured = this.closest<HTMLElement>('[data-sortable-page-id]') ?? this.querySelector<HTMLElement>('[data-sortable-page-id]');
@@ -144,6 +178,8 @@ it.each(['success', 'failure'] as const)('council P2: announces preview, pending
   expect(announcement()).toBe('Configuration will move inside Quickstart, position 1 of 1.');
   await key(handle, ' ');
   expect(announcement()).toBe('Moving Configuration…');
-  await act(async () => outcome === 'success' ? state.complete() : state.fail());
-  expect(announcement()).toBe(outcome === 'success' ? 'Configuration moved inside Quickstart, position 1 of 1.' : "Couldn't move Configuration. Restored to its place.");
+  await act(async () => (outcome === 'success' ? state.complete() : state.fail()));
+  expect(announcement()).toBe(
+    outcome === 'success' ? 'Configuration moved inside Quickstart, position 1 of 1.' : "Couldn't move Configuration. Restored to its place.",
+  );
 });

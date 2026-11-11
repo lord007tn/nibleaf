@@ -1,5 +1,11 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'editor.tree.previewInside': 'editor_tree_previewinside',
+  'editor.tree.previewRoot': 'editor_tree_previewroot',
+  'editor.tree.moving': 'editor_tree_moving',
+  'editor.tree.moveFailed': 'editor_tree_movefailed',
+  'editor.tree.moveBusy': 'editor_tree_movebusy',
+  'editor.tree.structureChanged': 'editor_tree_structurechanged',
   'editor.tree.search': 'editor_tree_search',
   'editor.tree.noResults': 'editor_tree_noresults',
   'editor.tree.filterReason': 'editor_tree_filterreason',

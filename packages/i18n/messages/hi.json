@@ -4534,5 +4534,11 @@
   "editor_tree_filterreason": "पृष्ठ ले जाने के लिए फ़िल्टर साफ़ करें।",
   "editor_tree_instructions": "नेविगेट करने के लिए तीर कुंजियाँ, खोलने के लिए Enter, नाम बदलने के लिए F2, कार्रवाइयों के लिए Shift+F10 और ड्रैग हैंडल के लिए Alt+Shift+D दबाएँ। हैंडल पर ले जाने के लिए स्पेस, गंतव्य चुनने के लिए तीर, छोड़ने के लिए स्पेस या रद्द करने के लिए Escape दबाएँ।",
   "editor_tree_movedinside": "{title} को {parent} के अंदर ले जाया गया, स्थान {position}, कुल {total}।",
-  "editor_tree_movedroot": "{title} को {language} में ले जाया गया, स्थान {position}, कुल {total}।"
+  "editor_tree_movedroot": "{title} को {language} में ले जाया गया, स्थान {position}, कुल {total}।",
+  "editor_tree_previewinside": "{title} को {parent} के अंदर ले जाया जाएगा, स्थान {position}, कुल {total}।",
+  "editor_tree_previewroot": "{title} को {language} में ले जाया जाएगा, स्थान {position}, कुल {total}।",
+  "editor_tree_moving": "{title} को ले जाया जा रहा है…",
+  "editor_tree_movefailed": "{title} को ले जाया नहीं जा सका। इसे अपनी जगह वापस रखा गया है।",
+  "editor_tree_movebusy": "दूसरा पृष्ठ ले जाने से पहले मौजूदा स्थानांतरण पूरा होने तक प्रतीक्षा करें।",
+  "editor_tree_structurechanged": "पृष्ठों की संरचना कहीं और बदली गई है। सूची रीफ़्रेश कर दी गई है। फिर से ले जाने की कोशिश करें।"
 }

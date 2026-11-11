@@ -59,6 +59,7 @@ it('measures expanding 120 children in a 313-page site', async () => {
       const start = performance.now();
       await act(async () => button?.click());
       const elapsed = performance.now() - start;
+      expect(elapsed).toBeLessThan(1500);
       if (run > 0) samples.push(elapsed);
       console.info(`TREE_TIMING run=${run} expand_ms=${elapsed.toFixed(1)} react_ms=${commits.reduce((a, b) => a + b, 0).toFixed(1)}`);
       expect(container.textContent).toContain('Page 120');

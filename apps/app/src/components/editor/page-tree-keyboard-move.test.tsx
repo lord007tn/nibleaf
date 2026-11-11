@@ -55,7 +55,7 @@ it('shows a keyboard nest through the real reorder cache immediately and rolls b
         pages={data}
         languages={[{ id: 'en', label: 'English', collapsed: false }]}
         dir="ltr"
-        onMove={(items) => reorder.mutate({ items }, { onError: mocks.toast })}
+        onMove={(move) => reorder.mutateAsync(move, { onError: mocks.toast })}
       >
         <SortablePageTree languageId="en" activeId="config" onSelect={noop} onAddChild={noop} onSettings={noop} />
       </PageTreeDndProvider>

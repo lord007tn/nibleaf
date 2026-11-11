@@ -4599,5 +4599,11 @@
   "editor_tree_filterreason": "Clear the filter to move pages.",
   "editor_tree_instructions": "Use arrows to navigate, Enter to open, F2 to rename, Shift+F10 for actions, and Alt+Shift+D for the drag handle. On the handle, press Space to move, arrows to choose a destination, Space to drop, or Escape to cancel.",
   "editor_tree_movedinside": "{title} moved inside {parent}, position {position} of {total}.",
-  "editor_tree_movedroot": "{title} moved to {language}, position {position} of {total}."
+  "editor_tree_movedroot": "{title} moved to {language}, position {position} of {total}.",
+  "editor_tree_previewinside": "{title} will move inside {parent}, position {position} of {total}.",
+  "editor_tree_previewroot": "{title} will move to {language}, position {position} of {total}.",
+  "editor_tree_moving": "Moving {title}…",
+  "editor_tree_movefailed": "Couldn't move {title}. Restored to its place.",
+  "editor_tree_movebusy": "Wait for the current move to finish before moving another page.",
+  "editor_tree_structurechanged": "The page tree changed elsewhere. It has been refreshed. Try the move again."
 }

@@ -4590,5 +4590,11 @@
   "editor_tree_filterreason": "صفحات منتقل کرنے کے لیے فلٹر صاف کریں۔",
   "editor_tree_instructions": "حرکت کے لیے تیر، کھولنے کے لیے Enter، نام بدلنے کے لیے F2، کارروائیوں کے لیے Shift+F10 اور ڈریگ ہینڈل کے لیے Alt+Shift+D دبائیں۔ ہینڈل پر منتقلی شروع کرنے کے لیے اسپیس، منزل چننے کے لیے تیر، چھوڑنے کے لیے اسپیس یا منسوخ کرنے کے لیے Escape دبائیں۔",
   "editor_tree_movedinside": "{title} کو {parent} کے اندر منتقل کیا گیا، مقام {position} از {total}۔",
-  "editor_tree_movedroot": "{title} کو {language} میں منتقل کیا گیا، مقام {position} از {total}۔"
+  "editor_tree_movedroot": "{title} کو {language} میں منتقل کیا گیا، مقام {position} از {total}۔",
+  "editor_tree_previewinside": "{title} کو {parent} کے اندر منتقل کیا جائے گا، مقام {position} از {total}۔",
+  "editor_tree_previewroot": "{title} کو {language} میں منتقل کیا جائے گا، مقام {position} از {total}۔",
+  "editor_tree_moving": "{title} منتقل کیا جا رہا ہے…",
+  "editor_tree_movefailed": "{title} کو منتقل نہیں کیا جا سکا۔ اسے اپنی جگہ واپس رکھ دیا گیا ہے۔",
+  "editor_tree_movebusy": "دوسرا صفحہ منتقل کرنے سے پہلے موجودہ منتقلی مکمل ہونے کا انتظار کریں۔",
+  "editor_tree_structurechanged": "صفحات کی ترتیب کہیں اور بدل گئی ہے۔ فہرست تازہ کر دی گئی ہے۔ دوبارہ منتقل کرنے کی کوشش کریں۔"
 }

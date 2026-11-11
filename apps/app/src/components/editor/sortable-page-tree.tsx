@@ -35,6 +35,7 @@ import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
+import type { MovePageBody } from '@nibleaf/validators';
 import { ChevronRight, CornerDownRight, FileText, Folder, GripVertical, MoreHorizontal, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
 import {
   createContext,
@@ -286,6 +287,27 @@ export function buildMove(full: TreeItem[], activeId: string, overId: string, pr
   return out;
 }
 
+/** Only the user's intent crosses the network. Other pages in buildMove are a
+ * local projection, not authority to overwrite a collaborator's structure. */
+export function buildMoveOperation(full: TreeItem[], activeId: string, overId: string, projection: Projection): MovePageBody | null {
+  const items = buildMove(full, activeId, overId, projection);
+  const moved = items.find((item) => item.id === activeId);
+  const source = full.find((item): item is Flat => !isMarker(item) && item.id === activeId);
+  if (!moved || !source) return null;
+  const siblings = items
+    .filter((item) => item.parentId === moved.parentId && item.languageId === moved.languageId)
+    .sort((a, b) => a.position - b.position);
+  const index = siblings.findIndex((item) => item.id === activeId);
+  const next = siblings[index + 1];
+  const previous = siblings[index - 1];
+  return {
+    pageId: activeId,
+    parentId: moved.parentId,
+    position: next ? { before: next.id } : previous ? { after: previous.id } : { at: 'end' },
+    ...(moved.languageId === source.languageId ? {} : { languageId: moved.languageId }),
+  };
+}
+
 type RenameField = 'title' | 'sidebarTitle';
 /** The name a tree row shows, and which page field holds it. */
 export const rowName = (node: Pick<PageNode, 'title' | 'config'>): { label: string; field: RenameField } => {
@@ -313,6 +335,8 @@ export interface TreeLanguage {
 
 interface TreeDndState {
   readOnly: boolean;
+  movePending: boolean;
+  claimFocus: (id: string) => void;
   filter: string;
   dir: 'ltr' | 'rtl';
   languageLabel: (id: string) => string;
@@ -342,7 +366,9 @@ export function PageTreeDndProvider({
   languages,
   dir,
   readOnly = false,
+  moving = false,
   onMove,
+  onExpandLanguage,
   children,
 }: {
   /** Every page of every language on the active branch. */
@@ -353,15 +379,22 @@ export function PageTreeDndProvider({
   dir: 'ltr' | 'rtl';
   /** Viewers browse the tree: no dragging, renaming, adding or deleting. */
   readOnly?: boolean;
-  onMove: (items: PageMoveItem[]) => void;
+  moving?: boolean;
+  onMove: (move: MovePageBody) => void | Promise<void> | Promise<PageNode[]>;
+  onExpandLanguage?: (languageId: string) => void;
   children: ReactNode;
 }) {
   const t = useT();
   const [filter, setFilter] = useState('');
   const filtering = filter.trim().length > 0;
   const instructionId = useId();
+  const forestRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLInputElement>(null);
+  const focusOwner = useRef<{ id: string; ancestors: string[]; neighbours: string[] } | null>(null);
+  const pendingMove = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const movePending = moving || saving;
   const [announcement, setAnnouncement] = useState('');
-  const finalAnnouncement = useRef('');
   useEffect(() => {
     if (!announcement) return;
     const timeout = setTimeout(() => setAnnouncement(''), 1500);
@@ -444,6 +477,65 @@ export function PageTreeDndProvider({
     [visible, draggingId, overId, dragOffset],
   );
   const pageById = useMemo(() => new Map(pages.map((page) => [page.id, page])), [pages]);
+  const claimFocus = useCallback(
+    (id: string) => {
+      const ancestors: string[] = [];
+      let parent = pageById.get(id)?.parentId;
+      while (parent && !ancestors.includes(parent)) {
+        ancestors.push(parent);
+        parent = pageById.get(parent)?.parentId;
+      }
+      const order = visible.filter((item): item is Flat => !isMarker(item)).map((item) => item.id);
+      const index = order.indexOf(id);
+      const neighbours: string[] = [];
+      for (let distance = 1; distance < order.length; distance++) {
+        const after = order[index + distance];
+        const before = order[index - distance];
+        if (after) neighbours.push(after);
+        if (before) neighbours.push(before);
+      }
+      focusOwner.current = { id, ancestors, neighbours };
+    },
+    [pageById, visible],
+  );
+  useLayoutEffect(() => {
+    const releaseFocus = (event: FocusEvent) => {
+      const target = event.target;
+      if (target === document.body) return;
+      if (!(target instanceof HTMLElement) || !forestRef.current?.contains(target) || !target.closest('[role="treeitem"]')) focusOwner.current = null;
+    };
+    const outsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Element && !forestRef.current?.contains(target) && !target.closest('[role="menu"]')) focusOwner.current = null;
+    };
+    document.addEventListener('focusin', releaseFocus, true);
+    document.addEventListener('pointerdown', outsidePointer, true);
+    return () => {
+      document.removeEventListener('focusin', releaseFocus, true);
+      document.removeEventListener('pointerdown', outsidePointer, true);
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const restore = () => {
+      const owner = focusOwner.current;
+      if (!owner) return;
+      const active = document.activeElement;
+      // A connected field, menu or outside control owns its own focus. In
+      // particular, saving a rename on blur must never pull focus back here.
+      if (active && active !== document.body && active.isConnected) return;
+      const elements = new Map(
+        Array.from(forestRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"][data-page-id]') ?? [])
+          .filter((element) => element.getAttribute('aria-hidden') !== 'true')
+          .map((element) => [element.dataset.pageId, element]),
+      );
+      const target = [owner.id, ...owner.ancestors, ...owner.neighbours].map((id) => elements.get(id)).find(Boolean);
+      (target ?? filterRef.current)?.focus();
+    };
+    restore();
+    // Menu teardown can restore focus after layout effects. Recheck ownership
+    // and the active element, so a genuine outside interaction still wins.
+    queueMicrotask(restore);
+  });
   const sourceLanguageId = draggingId ? (pageById.get(draggingId)?.languageId ?? null) : null;
   const languageLabel = (id: string) => languages.find((language) => language.id === id)?.label ?? '';
 
@@ -471,33 +563,35 @@ export function PageTreeDndProvider({
     setDraggingId(String(active.id));
     setOverId(String(active.id));
   };
-  const moveFeedback = (active: string, over: string, projected: Projection) => {
-    const items = buildMove(full, active, over, projected);
+  const moveFeedback = (active: string, over: string, projected: Projection, phase: 'preview' | 'success' = 'preview', savedPages?: PageNode[]) => {
+    const items = savedPages ?? buildMove(full, active, over, projected);
     const moved = items.find((item) => item.id === active);
-    const parent = projected.parentId ? pageById.get(projected.parentId) : undefined;
+    const parentId = moved ? moved.parentId : projected.parentId;
+    const languageId = moved?.languageId ?? projected.languageId;
+    const parent = parentId ? (savedPages?.find((page) => page.id === parentId) ?? pageById.get(parentId)) : undefined;
     const variables = {
       title: titleOf(active),
       parent: parent ? rowName(parent).label : '',
-      language: languageLabel(projected.languageId),
+      language: languageLabel(languageId),
       position: (moved?.position ?? 0) + 1,
-      total: items.filter((item) => item.languageId === projected.languageId && item.parentId === projected.parentId).length,
+      total: items.filter((item) => item.languageId === languageId && item.parentId === parentId).length,
     };
-    return parent ? t('editor.tree.movedInside', variables) : t('editor.tree.movedRoot', variables);
+    return parent
+      ? t(phase === 'preview' ? 'editor.tree.previewInside' : 'editor.tree.movedInside', variables)
+      : t(phase === 'preview' ? 'editor.tree.previewRoot' : 'editor.tree.movedRoot', variables);
   };
   const onDragMove = ({ delta }: DragMoveEvent) => {
+    if (pendingMove.current || moving) return;
     const offset = inlineDragOffset(delta.x, dir);
     setDragOffset(offset);
     if (draggingId && overId) setAnnouncement(moveFeedback(draggingId, overId, getProjection(visible, draggingId, overId, offset, INDENT)));
   };
   const onDragOver = ({ over }: DragOverEvent) => setOverId(over ? String(over.id) : null);
-  const onDragEnd = ({ active, over, delta }: DragEndEvent) => {
+  const onDragEnd = async ({ active, over, delta }: DragEndEvent) => {
     const finalProjection = over ? getProjection(visible, String(active.id), String(over.id), inlineDragOffset(delta.x, dir), INDENT) : null;
-    finalAnnouncement.current =
-      finalProjection && over
-        ? moveFeedback(String(active.id), String(over.id), finalProjection)
-        : t('editor.dnd.cancelled', { title: titleOf(active.id) });
     reset();
-    if (!finalProjection || !over) {
+    if (!finalProjection || !over || pendingMove.current || moving || readOnly || filtering) {
+      if (!pendingMove.current && !moving) setAnnouncement(t('editor.dnd.cancelled', { title: titleOf(active.id) }));
       return;
     }
     const before = pageById.get(String(active.id));
@@ -506,8 +600,33 @@ export function PageTreeDndProvider({
       const page = pageById.get(item.id);
       return !page || page.parentId !== item.parentId || page.position !== item.position || page.languageId !== item.languageId;
     });
-    if (before && items.length > 0 && changed) {
-      onMove(items);
+    const operation = buildMoveOperation(full, String(active.id), String(over.id), finalProjection);
+    if (!before || !operation || !changed) return;
+    // Reveal the destination before the optimistic re-parent can remove the
+    // focused row. Remembered page IDs survive React's subtree remount.
+    setCollapsed((current) => {
+      const next = new Set(current);
+      let parent = finalProjection.parentId;
+      const seen = new Set<string>();
+      while (parent && !seen.has(parent)) {
+        seen.add(parent);
+        next.delete(parent);
+        parent = pageById.get(parent)?.parentId ?? null;
+      }
+      return next;
+    });
+    onExpandLanguage?.(finalProjection.languageId);
+    pendingMove.current = true;
+    setSaving(true);
+    setAnnouncement(t('editor.tree.moving', { title: titleOf(active.id) }));
+    try {
+      const saved = await onMove(operation);
+      setAnnouncement(moveFeedback(String(active.id), String(over.id), finalProjection, 'success', saved ?? undefined));
+    } catch {
+      setAnnouncement(t('editor.tree.moveFailed', { title: titleOf(active.id) }));
+    } finally {
+      pendingMove.current = false;
+      setSaving(false);
     }
   };
 
@@ -524,13 +643,13 @@ export function PageTreeDndProvider({
       setAnnouncement(t('editor.dnd.pickedUp', { title: titleOf(active.id) }));
     },
     onDragOver: ({ active, over }) => {
-      if (over)
+      if (over && !pendingMove.current && !moving)
         setAnnouncement(
           moveFeedback(String(active.id), String(over.id), getProjection(visible, String(active.id), String(over.id), dragOffset, INDENT)),
         );
     },
     onDragEnd: () => {
-      setAnnouncement(finalAnnouncement.current);
+      /* The async drop handler announces pending, success or failure. */
     },
     onDragCancel: ({ active }) => {
       setAnnouncement(t('editor.dnd.cancelled', { title: titleOf(active.id) }));
@@ -550,6 +669,8 @@ export function PageTreeDndProvider({
 
   const state: TreeDndState = {
     readOnly,
+    movePending,
+    claimFocus,
     filter,
     dir,
     languageLabel,
@@ -570,6 +691,7 @@ export function PageTreeDndProvider({
     <TreeDndContext value={state}>
       <div dir={dir} className="mb-2 space-y-1">
         <Input
+          ref={filterRef}
           type="search"
           density="compact"
           aria-label={t('editor.tree.search')}
@@ -585,6 +707,11 @@ export function PageTreeDndProvider({
           }}
         />
         {filtering ? <p className="text-xs text-muted-foreground">{t('editor.tree.filterReason')}</p> : null}
+        {movePending ? (
+          <p role="status" className="text-xs text-muted-foreground">
+            {t('editor.tree.moveBusy')}
+          </p>
+        ) : null}
       </div>
       <p id={instructionId} className="sr-only">
         {t('editor.tree.instructions')}
@@ -593,7 +720,7 @@ export function PageTreeDndProvider({
         {announcement}
       </div>
       <DndContext
-        accessibility={{ announcements, screenReaderInstructions: { draggable: '' } }}
+        accessibility={{ announcements, screenReaderInstructions: { draggable: '' }, restoreFocus: false }}
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={onDragStart}
@@ -603,7 +730,7 @@ export function PageTreeDndProvider({
         onDragCancel={reset}
       >
         <SortableContext items={visible.map((item) => item.id)} strategy={sortingStrategy}>
-          {children}
+          <div ref={forestRef}>{children}</div>
           {filtering && !visible.some((item) => !isMarker(item)) ? <EmptyState title={t('editor.tree.noResults')} /> : null}
         </SortableContext>
         <DragOverlay>{draggingNode ? <RowPresentation node={draggingNode} depth={0} overlay hint={dropHint ?? undefined} /> : null}</DragOverlay>
@@ -616,10 +743,10 @@ export function PageTreeDndProvider({
  *  dragging and takes a drop as "top of this language". Highlighted when the
  *  dragged page would land in this language from another one. */
 export function LanguageDropTarget({ languageId, className, children }: { languageId: string; className?: string; children: ReactNode }) {
-  const { readOnly, filter, dir, projection, sourceLanguageId, instructionId, languageLabel } = useTreeDnd();
+  const { readOnly, movePending, filter, dir, projection, sourceLanguageId, instructionId, languageLabel } = useTreeDnd();
   const { setNodeRef, transform, transition } = useSortable({
     id: languageMarkerId(languageId),
-    disabled: { draggable: true, droppable: readOnly || Boolean(filter.trim()) },
+    disabled: { draggable: true, droppable: readOnly || movePending || Boolean(filter.trim()) },
   });
   const target = Boolean(projection && sourceLanguageId && projection.languageId === languageId && projection.languageId !== sourceLanguageId);
   return (
@@ -658,13 +785,34 @@ export function SortablePageTree({
   onRename?: (id: string, title: string, field: RenameField) => void;
   onDelete?: (id: string) => void;
 }) {
-  const { readOnly, filter, dir, instructionId, rowsFor, depthOf, parentIds, collapsed, toggleCollapse, projection, draggingId, dropHint } =
-    useTreeDnd();
+  const {
+    readOnly,
+    movePending,
+    claimFocus,
+    filter,
+    dir,
+    instructionId,
+    rowsFor,
+    depthOf,
+    parentIds,
+    collapsed,
+    toggleCollapse,
+    projection,
+    draggingId,
+    dropHint,
+  } = useTreeDnd();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   const typeahead = useRef({ text: '', time: 0 });
   const rows = rowsFor(languageId);
+  const onFocusRow = useCallback(
+    (id: string) => {
+      setFocusedId(id);
+      claimFocus(id);
+    },
+    [claimFocus],
+  );
   const tabStopId = rows.some((item) => item.id === focusedId) ? focusedId : rows[0]?.id;
   const navigate = (event: KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
@@ -740,10 +888,10 @@ export function SortablePageTree({
         onSettings={readOnly ? undefined : onSettings}
         onDelete={readOnly ? undefined : onDelete}
         readOnly={readOnly}
-        dragDisabled={Boolean(filter.trim())}
+        dragDisabled={movePending || Boolean(filter.trim())}
         filter={filter}
         focused={tabStopId === item.id}
-        onFocusRow={setFocusedId}
+        onFocusRow={onFocusRow}
         instructionId={instructionId}
         setSize={siblings.length}
         posInSet={index + 1}
@@ -1063,7 +1211,7 @@ const RowPresentation = memo(function RowPresentation({
               >
                 <MoreHorizontal className="size-3.5" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52" finalFocus={() => !holdMenuFocus.current}>
+              <DropdownMenuContent align="end" className="w-52" finalFocus={() => !holdMenuFocus.current} onFocus={() => onFocusRow?.(node.id)}>
                 {onStartRename ? (
                   <DropdownMenuItem
                     onClick={() => {

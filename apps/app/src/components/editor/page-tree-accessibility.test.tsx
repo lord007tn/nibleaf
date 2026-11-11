@@ -149,12 +149,7 @@ it('moves a page through another language header using the shared dnd context', 
   await key(handle, 'ArrowDown');
   expect(container.querySelector('[data-language-id="ar"]')?.getAttribute('data-drop-target')).toBe('language');
   await key(handle, ' ');
-  expect(onMove).toHaveBeenCalledWith(
-    expect.arrayContaining([
-      { id: 'config', parentId: null, languageId: 'ar', position: 0 },
-      { id: 'ar-guide', parentId: null, languageId: 'ar', position: 1 },
-    ]),
-  );
+  expect(onMove).toHaveBeenCalledWith({ pageId: 'config', parentId: null, languageId: 'ar', position: { before: 'ar-guide' } });
   expect(container.querySelector('[data-tree-announcement]')?.textContent).toBe('Configuration moved to العربية, position 1 of 2.');
 });
 
@@ -253,7 +248,7 @@ it.each(['ltr', 'rtl'] as const)(
     await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
     await key(handle, dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight');
     await key(handle, ' ');
-    expect(onMove).toHaveBeenCalledWith(expect.arrayContaining([{ id: 'config', parentId: 'guide', languageId: 'en', position: 1 }]));
+    expect(onMove).toHaveBeenCalledWith({ pageId: 'config', parentId: 'guide', position: { after: 'child' } });
     expect(container.querySelector('[data-tree-announcement]')?.textContent).toBe('Configuration moved inside Quickstart, position 2 of 2.');
     await act(async () => new Promise((resolve) => setTimeout(resolve, 1600)));
     expect(container.querySelector('[data-tree-announcement]')?.textContent).toBe('');

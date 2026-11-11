@@ -1174,8 +1174,10 @@ function EditorPage() {
                     languages={treeLanguages}
                     dir={uiDir}
                     readOnly={!canEditContent}
-                    onMove={(items) =>
-                      reorderPages.mutate({ items }, { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.reorderFailed')) })
+                    moving={reorderPages.isPending}
+                    onExpandLanguage={expandLang}
+                    onMove={(move) =>
+                      reorderPages.mutateAsync(move, { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.reorderFailed')) })
                     }
                   >
                     {orderedLanguages.map((lang) => {

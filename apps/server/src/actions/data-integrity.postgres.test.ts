@@ -110,7 +110,13 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
       await db.prisma.member.create({ data: { organizationId: organization.id, userId: user.id, role: 'viewer', orgRole: 'member' } });
       await db.prisma.projectMember.create({ data: { organizationId: organization.id, projectId: project.id, userId: user.id, role: 'member' } });
     }
-    const group = await pages.createPage(project.id, { title: 'Synthetic group', slug: 'group', kind: 'GROUP', branchId: branch.id, languageId: language.id });
+    const group = await pages.createPage(project.id, {
+      title: 'Synthetic group',
+      slug: 'group',
+      kind: 'GROUP',
+      branchId: branch.id,
+      languageId: language.id,
+    });
     const first = await pages.createPage(project.id, { title: 'Synthetic first', slug: 'first', branchId: branch.id, languageId: language.id });
     const second = await pages.createPage(project.id, { title: 'Synthetic second', slug: 'second', branchId: branch.id, languageId: language.id });
     const snapshot = await pages.listPages(project.id, undefined, branch.id);
@@ -125,7 +131,11 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
       parentId: group.id,
       position: { at: 'end' as const },
       ...(expectedStructureRevision ? { expectedStructureRevision } : {}),
-      items: snapshot.map((page) => ({ id: page.id, parentId: page.id === pageId ? group.id : page.parentId, position: page.id === pageId ? 0 : page.position })),
+      items: snapshot.map((page) => ({
+        id: page.id,
+        parentId: page.id === pageId ? group.id : page.parentId,
+        position: page.id === pageId ? 0 : page.position,
+      })),
     });
     return { project, group, first, second, snapshot, request };
   };
@@ -146,15 +156,26 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
   it('council P1: a stale structure revision returns a typed 409 after the current-state lock', async () => {
     const { project, group, first, second, snapshot, request } = await staleTreeFixture();
     // Public revision protocol: SHA-256 of the ID-sorted structural tuples.
-    const revision = createHash('sha256').update(JSON.stringify([...snapshot].sort((a, b) => a.id.localeCompare(b.id))
-      .map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]))).digest('hex');
+    const revision = createHash('sha256')
+      .update(
+        JSON.stringify(
+          [...snapshot]
+            .sort((a, b) => a.id.localeCompare(b.id))
+            .map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]),
+        ),
+      )
+      .digest('hex');
     const outcomes = await whileLocked(
       (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR NO KEY UPDATE`,
       () => [pages.reorderPages(project.id, request(first.id, revision)), pages.reorderPages(project.id, request(second.id, revision))],
     );
     expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
     const refused = outcomes.find((outcome) => outcome.status === 'rejected');
-    expect(refused?.status === 'rejected' ? refused.reason : null).toMatchObject({ status: 409, code: 'database:conflict', details: { reason: 'structure_changed' } });
+    expect(refused?.status === 'rejected' ? refused.reason : null).toMatchObject({
+      status: 409,
+      code: 'database:conflict',
+      details: { reason: 'structure_changed' },
+    });
     expect(await db.prisma.page.count({ where: { projectId: project.id, parentId: group.id } })).toBe(1);
   });
 
