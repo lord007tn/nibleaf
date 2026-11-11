@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { prisma } from '@nibleaf/database';
-import { excerpt } from '@nibleaf/shared/utils';
+import { truncateText } from '@nibleaf/shared/utils';
 import { getObjectStream } from '@nibleaf/storage';
-import { Resvg, renderAsync } from '@resvg/resvg-js';
+import { renderAsync } from '@resvg/resvg-js';
 import { imageSize } from 'image-size';
 import { fetchPublicImage } from '@/actions/importers/ghost-assets';
 import { LruCache } from './lru';
@@ -97,7 +97,7 @@ const graphemes = (text: string): string[] =>
  *  to resvg's bidi/shaping engine. Only a single token longer than a line is
  *  split, and then by graphemes, so Arabic is never reversed or broken apart. */
 export const titleLines = (title: string): string[] => {
-  const text = excerpt(title, 120);
+  const text = truncateText(title, 120);
   const lines: string[] = [];
   let line: string[] = [];
   const flush = () => {
@@ -120,7 +120,30 @@ export const titleLines = (title: string): string[] => {
     line.push(...units);
   }
   flush();
-  return lines.length > 4 ? [...lines.slice(0, 3), excerpt(lines.slice(3).join(' '), TITLE_LINE)] : lines;
+  return lines.length > 4 ? [...lines.slice(0, 3), truncateText(lines.slice(3).join(' '), TITLE_LINE)] : lines;
+};
+
+/** Conservative advance widths in em for Noto Sans Arabic, by character class.
+ *  Each card renders with ONE native renderer: resvg-js 2.6.2 reads font files
+ *  per instance and has no font-buffer API (only the 2.7 alphas do), so a
+ *  separate measuring pass would load the font twice per card. The test
+ *  'fits the widest titles' checks these bounds against real glyph widths. */
+const advance = (char: string): number => {
+  if (char === ' ') return 0.26;
+  if (/[iljIt.,:;'|!()[\]]/u.test(char)) return 0.34;
+  if (/[mwMW@%]/u.test(char)) return 0.98;
+  if (/[A-Z]/u.test(char)) return 0.74;
+  // Lowercase Latin, digits, Arabic (contextual forms) and everything else.
+  return 0.62;
+};
+
+const TITLE_WIDTH = 1040;
+const TITLE_MAX_SIZE = 64;
+
+/** Largest font size (at most 64) at which every line fits the 1040 px text box. */
+export const titleFontSize = (lines: string[]): number => {
+  const widest = Math.max(1, ...lines.map((line) => graphemes(line).reduce((sum, unit) => sum + advance(unit), 0)));
+  return Math.min(TITLE_MAX_SIZE, Math.floor(TITLE_WIDTH / widest));
 };
 
 export const renderSiteOg = async (data: SiteOgData): Promise<Buffer> => {
@@ -132,19 +155,14 @@ export const renderSiteOg = async (data: SiteOgData): Promise<Buffer> => {
   const text = lines
     .map((line, index) => `<text x="${x}" y="${240 + index * 78}" text-anchor="${anchor}">${svgText(line, data.rtl)}</text>`)
     .join('');
-  // Measure using the same bundled font/shaper so wide Latin titles fit too.
-  const measured = new Resvg(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><g font-family="Noto Sans Arabic" font-size="64">${text}</g></svg>`,
-    { font },
-  ).innerBBox();
-  const size = Math.min(64, (64 * 1040) / Math.max(1, measured?.width ?? 1040));
+  const size = titleFontSize(lines);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
     <rect width="1200" height="630" fill="#101827"/>
     <rect width="1200" height="18" fill="${color}"/>
     <circle cx="1160" cy="650" r="230" fill="${color}" opacity="0.18"/>
     ${logo ? `<image href="${logo}" x="${data.rtl ? 1040 : 80}" y="62" width="80" height="80" preserveAspectRatio="xMidYMid meet"/>` : ''}
     <g fill="#ffffff" font-family="Noto Sans Arabic" font-size="${size}">${text}</g>
-    <text x="${x}" y="570" text-anchor="${anchor}" fill="#cbd5e1" font-family="Noto Sans Arabic" font-size="28">${svgText(excerpt(data.siteName, 55), data.rtl)}</text>
+    <text x="${x}" y="570" text-anchor="${anchor}" fill="#cbd5e1" font-family="Noto Sans Arabic" font-size="28">${svgText(truncateText(data.siteName, 55), data.rtl)}</text>
   </svg>`;
   return (await renderAsync(svg, { font })).asPng();
 };

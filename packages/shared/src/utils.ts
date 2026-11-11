@@ -125,39 +125,11 @@ export const stripMarkdownLinks = (value: string): string => {
   return output;
 };
 
-/** Shared plain text for reader metadata, structured data and AI summaries. */
-export const markdownToPlainText = (markdown: string): string => {
-  const lines = markdown.split(/\r?\n/u);
-  const code = fencedMarkdownLines(lines);
-  const prose = lines.filter((line, index) => !code[index] && !(line.includes('---') && /^[\s:|-]+$/u.test(line))).join('\n');
-  return stripMarkdownLinks(
-    prose
-      .replace(/<!--[\s\S]*?-->/g, ' ')
-      .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ')
-      .replace(/^\s*\[[^\]\n]+\]:\s+\S+.*$/gm, ' ')
-      .replace(/!\[[^\]\n]*\]\[[^\]\n]*\]/g, ' ')
-      .replace(/\[([^\]\n]+)\]\[[^\]\n]*\]/g, '$1'),
-  )
-    .replace(/<\/?[A-Za-z][^>]*>/g, ' ')
-    .replace(/\[!\w+\]/gi, ' ')
-    .replace(/!\[[^\]\n]*\]/g, ' ')
-    .replace(/\[([^\]\n]+)\]/g, '$1')
-    .replace(/\\([-+*.])/g, '$1')
-    .replace(/^\s*(?:>\s*)*(?:#{1,6}\s+|[-+*]\s*\d+-\s*|[-+*]\s+|\d+[.)]\s+)/gm, '')
-    .replace(/[*`~]/g, '')
-    .replace(/(?<![\p{L}\p{N}])_+|_+(?![\p{L}\p{N}])/gu, '')
-    .replace(/[|>]/g, ' ')
-    .replace(
-      /&(?:amp|lt|gt|quot|apos|nbsp);/g,
-      (entity) => ({ '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'", '&nbsp;': ' ' })[entity] ?? entity,
-    )
-    .replace(/\s+/g, ' ')
-    .trim();
-};
-
-/** Word-boundary summary, counting graphemes so Arabic marks and emoji stay whole. */
-export const excerpt = (markdown: string, max = 160): string => {
-  const text = markdownToPlainText(markdown);
+/** Word-boundary truncation of text that is ALREADY plain (whitespace collapsed),
+ *  counting graphemes so Arabic marks and emoji stay whole. It never re-parses
+ *  or strips markup: cleaning happens once, server-side, in `./markdown-text`. */
+export const truncateText = (value: string, max = 160): string => {
+  const text = value.replace(/\s+/gu, ' ').trim();
   if (!Number.isFinite(max)) return text;
   if (max <= 0) return '';
   const graphemes: string[] = [];

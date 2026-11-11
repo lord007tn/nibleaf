@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { excerpt, joinPath, markdownToPlainText, plural, slugify, slugifyUnicode, stripMarkdownLinks } from './utils';
+import { joinPath, plural, slugify, slugifyUnicode, stripMarkdownLinks, truncateText } from './utils';
 
 describe('slugify', () => {
   it('lowercases and dashes non-alphanumerics', () => {
@@ -105,49 +105,19 @@ describe('stripMarkdownLinks', () => {
   });
 });
 
-describe('excerpt', () => {
-  it('cleans tables, emphasis, callouts, escaped lists, links, images, headings and HTML', () => {
-    const markdown =
-      '# **Guide**\n> [!IMPORTANT]\n\n| Name | Value |\n| :--- | ---: |\n| *Token* | `secret` |\n\n\\-1- [Read me](/guide)\n![Diagram](/image.png)\n<b>Finish</b>';
-    expect(markdownToPlainText(markdown)).toBe('Guide Name Value Token secret Read me Finish');
-    expect(excerpt(markdown)).toBe('Guide Name Value Token secret Read me Finish');
-  });
-  it('keeps Arabic vocalization and grapheme clusters intact while truncating', () => {
-    const source = 'مَرْحَبًا بِكُمْ في دَلِيلِ الاستخدام والتوثيق';
-    expect(excerpt(source)).toBe(source);
-    expect(excerpt(source, 14)).toBe('مَرْحَبًا بِكُمْ في…');
-    expect(excerpt('أَ'.repeat(200), 8)).toBe(`${'أَ'.repeat(7)}…`);
-    expect(excerpt('👨‍👩‍👧‍👦'.repeat(20), 4)).toBe('👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦…');
-  });
-  it('truncates at a whole word and removes reference-link syntax', () => {
-    expect(excerpt('A useful introduction to authentication', 25)).toBe('A useful introduction…');
-    expect(excerpt('[Read me][docs]\n\n[docs]: https://example.com\n\n![hidden][image]')).toBe('Read me');
-    expect(excerpt('Use `api_key` with _care_ and **attention**.')).toBe('Use api_key with care and attention.');
-    expect(excerpt('[Read more](https://example.com/docs_(intro))')).toBe('Read more');
-  });
-  it('strips fenced code, links, and markdown punctuation', () => {
-    const md = '# Title\n\nSee [the docs](https://x) for `code`.\n\n```js\nconst a = 1;\n```';
-    const out = excerpt(md);
-    expect(out).not.toContain('```');
-    expect(out).not.toContain('const a = 1');
-    expect(out).toContain('the docs');
-    expect(out).not.toContain('https://x');
-  });
-  it('removes Markdown images instead of leaking image syntax or URLs', () => {
-    const out = excerpt('Add the company settings\n\n![](https://ghost.example.com/content/images/steps.jpg)\n\nThen continue.');
-    expect(out).toBe('Add the company settings Then continue.');
-  });
-  it('truncates past the max with an ellipsis', () => {
-    const out = excerpt('a '.repeat(200), 20);
-    expect(out.length).toBeLessThanOrEqual(20);
-    expect(out.endsWith('…')).toBe(true);
-  });
-});
-
 describe('plural', () => {
   it('omits the suffix only for a count of one', () => {
     expect(plural(1, 'page')).toBe('1 page');
     expect(plural(2, 'page')).toBe('2 pages');
     expect(plural(0, 'site')).toBe('0 sites');
+  });
+});
+
+describe('truncateText', () => {
+  it('only truncates already-plain text, never re-parsing markup', () => {
+    expect(truncateText('Use <Token> with care.')).toBe('Use <Token> with care.');
+    expect(truncateText('  a   b \n c ')).toBe('a b c');
+    expect(truncateText('A useful introduction to authentication', 25)).toBe('A useful introduction…');
+    expect(truncateText('أَ'.repeat(200), 8)).toBe(`${'أَ'.repeat(7)}…`);
   });
 });

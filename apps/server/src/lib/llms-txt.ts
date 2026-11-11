@@ -1,6 +1,6 @@
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
-import { defaultLanguage, pageDescription, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
-import { excerpt } from '@nibleaf/shared/utils';
+import { excerpt, pageDescription } from '@nibleaf/shared/markdown-text';
+import { defaultLanguage, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
 /**
  * Pure builders for a published site's llms.txt / llms-full.txt — the

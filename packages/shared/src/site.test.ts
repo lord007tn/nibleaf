@@ -8,8 +8,6 @@ import {
   interpolateVariables,
   isPageTranslation,
   mergeLanguageChrome,
-  pageDescription,
-  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
@@ -20,6 +18,7 @@ import {
   type SnapshotProject,
   withOpenApiNav,
 } from './site';
+import { pageDescription, pageExcerpt } from './markdown-text';
 
 describe('isPageTranslation', () => {
   it('uses an explicit translation key when localized paths differ', () => {

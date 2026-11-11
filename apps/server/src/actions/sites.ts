@@ -5,6 +5,7 @@ import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
 import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
+import { pageDescription, pageExcerpt } from '@nibleaf/shared/markdown-text';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -14,7 +15,6 @@ import {
   isPageTranslation,
   mergeLanguageChrome,
   type NavNode,
-  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
@@ -707,6 +707,8 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       // the page's own first paragraph twice.
       description: explicitPageDescription(page),
       excerpt: pageExcerpt(page),
+      // Cleaned once here; the reader only truncates (never re-parses) it.
+      seoDescription: pageDescription(page),
       icon: page.icon,
       path: page.path,
       content: page.content,

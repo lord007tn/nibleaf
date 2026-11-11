@@ -23,7 +23,8 @@ export const proxySiteOg = async (
     const publicImage = upstream.statusCode === 200 || upstream.statusCode === 304;
     const result = new Headers({
       'content-type': 'image/png',
-      'cache-control': publicImage ? 'public, max-age=86400' : 'private, no-store',
+      'cache-control': // Revalidate every use (see apps/server/src/modules/public/sites/og.ts).
+      publicImage ? 'public, no-cache, must-revalidate' : 'private, no-store',
       'x-content-type-options': 'nosniff',
     });
     for (const name of ['etag', 'retry-after']) {

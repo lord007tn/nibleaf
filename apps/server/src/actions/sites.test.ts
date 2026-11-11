@@ -38,7 +38,7 @@ vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ ki
 
 import og from '@/modules/public/sites/og';
 import { resolveViewerAccess } from './reader-access';
-import { getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
+import { getSiteOgData, getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id' | 'path' | 'position'>): SnapshotPage => ({
   parentId: null,
@@ -108,7 +108,7 @@ describe('getSitePage lede vs excerpt', () => {
     const response = await app.request('/sites/project-1/og/authentication.png');
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/png');
-    expect(response.headers.get('cache-control')).toBe('public, max-age=86400');
+    expect(response.headers.get('cache-control')).toBe('public, no-cache, must-revalidate');
     const bytes = Buffer.from(await response.arrayBuffer());
     expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
     expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([1200, 630]);
@@ -140,8 +140,11 @@ describe('getSitePage lede vs excerpt', () => {
             }
           : result;
       });
-      // An authenticated reader is still forbidden from publishing a private card.
-      vi.mocked(resolveViewerAccess).mockResolvedValueOnce({ kind: 'workspace', allowedPageIds: null });
+      // On a private site even an authenticated reader is refused a public card. Every
+      // other state keeps a PUBLIC viewer, so the 404 comes from page resolution, not the viewer gate.
+      vi.mocked(resolveViewerAccess).mockResolvedValueOnce(
+        ['WORKSPACE', 'READERS'].includes(state) ? { kind: 'workspace', allowedPageIds: null } : { kind: 'public', allowedPageIds: null },
+      );
       if (state === 'unpublished') mocks.deploymentFindFirst.mockResolvedValue(null);
       invalidatePublishedSiteConfig('project-1');
       const response = await app.request(`/sites/project-1/og/${state === 'missing-page' ? 'missing' : 'authentication'}.png`, {
@@ -483,5 +486,83 @@ describe('searchSite multilingual scope', () => {
     expect(mocks.getCachedIndex).toHaveBeenCalledTimes(1);
     expect(mocks.getCachedIndex.mock.calls[0]?.[2]).toBe('ar');
     expect(result.hits).toEqual([expect.objectContaining({ id: 'page-ar', language: 'ar' })]);
+  });
+});
+
+describe('OG card page resolution: hidden pages, languages and versions', () => {
+  const rich: SiteSnapshot = {
+    ...snapshot,
+    project: {
+      ...snapshot.project,
+      languages: [
+        { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null },
+        { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, config: null },
+      ],
+      versions: [
+        { id: 'version-1', name: 'main', slug: 'main', isDefault: true },
+        { id: 'version-2', name: 'v2', slug: 'v2', isDefault: false },
+      ],
+    },
+    pages: [
+      ...snapshot.pages,
+      page({ id: 'hidden', path: 'internal', position: 5, title: 'Internal plan', hidden: true }),
+      page({ id: 'ar-auth', path: 'authentication', position: 0, languageCode: 'ar', title: 'المصادقة' }),
+      page({ id: 'v2-auth', path: 'authentication', position: 0, versionId: 'version-2', title: 'Authentication v2' }),
+    ],
+  };
+  const liveLanguages = (arEnabled: boolean) => [
+    { code: 'en', enabled: true, config: null, projectTranslations: [] },
+    { code: 'ar', enabled: arEnabled, config: null, projectTranslations: [] },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(resolveViewerAccess).mockReset().mockResolvedValue({ kind: 'public', allowedPageIds: null });
+    mocks.deploymentFindFirst.mockResolvedValue({ id: `og-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValue({ snapshot: rich });
+  });
+
+  const live = (arEnabled: boolean) =>
+    mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
+      'name' in select
+        ? {
+            name: 'Docs',
+            description: null,
+            icon: null,
+            config: {},
+            accessMode: 'PUBLIC',
+            takedownAt: null,
+            domains: [],
+            languages: liveLanguages(arEnabled),
+            addons: [],
+            organization: { usagePlan: null },
+          }
+        : { id: 'project-1' },
+    );
+
+  it('never makes a card for a hidden page', async () => {
+    live(true);
+    invalidatePublishedSiteConfig('project-1');
+    await expect(getSiteOgData('project-1', 'internal')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('uses the language card when the language is enabled, RTL included', async () => {
+    live(true);
+    invalidatePublishedSiteConfig('project-1');
+    await expect(getSiteOgData('project-1', 'authentication', 'ar')).resolves.toMatchObject({ title: 'المصادقة', rtl: true });
+  });
+
+  it('never leaks a disabled language: it falls back to the default-language card', async () => {
+    live(false);
+    invalidatePublishedSiteConfig('project-1');
+    const card = await getSiteOgData('project-1', 'authentication', 'ar');
+    expect(card).toMatchObject({ title: 'Authentication', rtl: false });
+  });
+
+  it('resolves a versioned path to that version, and an unknown page to 404', async () => {
+    live(true);
+    invalidatePublishedSiteConfig('project-1');
+    await expect(getSiteOgData('project-1', 'v2/authentication', undefined, 'v2')).resolves.toMatchObject({ title: 'Authentication v2' });
+    await expect(getSiteOgData('project-1', 'v2/no-such-page', undefined, 'v2')).rejects.toMatchObject({ status: 404 });
   });
 });

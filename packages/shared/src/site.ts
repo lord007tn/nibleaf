@@ -1,7 +1,7 @@
 import GithubSlugger from 'github-slugger';
 import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
 import { fencedMarkdownLines } from './markdown-code';
-import { excerpt, stripMarkdownLinks } from './utils';
+import { stripMarkdownLinks } from './utils';
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
  *  `pageConfigSchema` in @nibleaf/validators (kept inline to avoid a dep). */
@@ -468,15 +468,6 @@ export const extractHeadings = (markdown: string): Heading[] => {
  *  the ONLY source for a visible lede: a derived excerpt must never be shown as
  *  one, or a page without a description repeats its own first paragraph. */
 export const explicitPageDescription = (page: Pick<SnapshotPage, 'description'>): string | null => page.description?.trim() || null;
-
-/** A summary derived from the page body for machine surfaces (SEO/social meta,
- *  llms.txt, exports). Truncation lands on a word boundary and ends with an
- *  ellipsis so a cut summary never stops mid-word ("…in about t…"). */
-export const pageExcerpt = (page: Pick<SnapshotPage, 'content'>, max = 160): string => excerpt(page.content, max);
-
-/** Build a one-line description with the author's SEO override first. */
-export const pageDescription = (page: Pick<SnapshotPage, 'description' | 'content'> & { config?: SnapshotPageConfig | null }): string =>
-  excerpt(page.config?.seo?.metaDescription?.trim() || explicitPageDescription(page) || page.content);
 
 /** Replace Mintlify-style `{{ key }}` content variables with their configured
  *  values at snapshot-build time. Tokens whose key isn't defined are left intact

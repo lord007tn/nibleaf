@@ -1,7 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
-import { excerpt } from '@nibleaf/shared/utils';
+import { truncateText } from '@nibleaf/shared/utils';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
 import { hydratedCustomDomainProjectId } from '@/lib/custom-domain-rewrite';
 
@@ -358,8 +358,12 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // next, then the excerpt derived from its body, so a project/language default
   // cannot stamp the same description onto every URL. Site-wide descriptions are
   // fallbacks for pages with no body text at all.
-  const description = excerpt(
-    pageSeo?.metaDescription?.trim() ||
+  // The page description arrives already cleaned by the API (`seoDescription`).
+  // Here it is only truncated: re-parsing cleaned text would drop real content
+  // such as a literal "<Token>".
+  const description = truncateText(
+    data.page.seoDescription ||
+      pageSeo?.metaDescription?.trim() ||
       data.page.description ||
       data.page.excerpt ||
       langSeo?.metaDescription ||

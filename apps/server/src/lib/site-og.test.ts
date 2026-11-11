@@ -6,7 +6,9 @@ vi.mock('@nibleaf/database', () => ({ prisma: { asset: { findUnique: mocks.asset
 vi.mock('@nibleaf/storage', () => ({ getObjectStream: mocks.object }));
 vi.mock('@/actions/importers/ghost-assets', () => ({ fetchPublicImage: mocks.remote }));
 
-import { cachedSiteOg, renderSiteOg, type SiteOgData, siteOgEtag, titleLines } from './site-og';
+import { fileURLToPath } from 'node:url';
+import { Resvg } from '@resvg/resvg-js';
+import { cachedSiteOg, renderSiteOg, type SiteOgData, siteOgEtag, titleFontSize, titleLines } from './site-og';
 
 const data: SiteOgData = {
   projectId: 'project',
@@ -126,5 +128,31 @@ describe('OG title wrapping', () => {
 
   it('caps the card at four lines', () => {
     expect(titleLines(Array.from({ length: 40 }, (_, i) => `word${i}`).join(' ')).length).toBeLessThanOrEqual(4);
+  });
+});
+
+describe('OG title size: one renderer per card', () => {
+  const fontFile = fileURLToPath(new URL('../assets/og/NotoSansArabic.ttf', import.meta.url));
+  /** Real rendered width of a line, measured with resvg itself (test only). */
+  const realWidth = (line: string, size: number, rtl = false) => {
+    const text = rtl ? `&#x202b;${line.replace(/&/g, '&amp;').replace(/</g, '&lt;')}&#x202c;` : line.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="4000" height="200"><text x="10" y="120" font-family="Noto Sans Arabic" font-size="${size}">${text}</text></svg>`;
+    return new Resvg(svg, { font: { fontFiles: [fontFile], loadSystemFonts: false, defaultFontFamily: 'Noto Sans Arabic' } }).innerBBox()?.width ?? 0;
+  };
+
+  it.each([
+    ['wide capitals', 'W'.repeat(30)],
+    ['wide lowercase', 'mwmwmwmwmwmwmwmwmwmwmwmwmwmwmw'],
+    ['capitals and digits', 'AUTHENTICATION 2026 OVERVIEW XY'],
+    ['typical title', 'Introduction to Nibleaf: write,'],
+    ['Arabic', 'مقدمة إلى Nibleaf: اكتب وانشر'],
+    ['Arabic with tashkeel', 'مَرْحَبًا بِكُمْ فِي الوَثَائِقِ الجَدِيدَة'],
+  ])('fits the widest titles in the 1040 px box: %s', (_, line) => {
+    const size = titleFontSize([line]);
+    expect(realWidth(line, size, /\p{Script=Arabic}/u.test(line))).toBeLessThanOrEqual(1040);
+  });
+
+  it('keeps typical titles large', () => {
+    expect(titleFontSize(titleLines('Introduction to Nibleaf: write, publish and answer questions from your docs'))).toBeGreaterThanOrEqual(52);
   });
 });

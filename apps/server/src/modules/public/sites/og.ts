@@ -5,6 +5,11 @@ import type { HonoEnv } from '@/lib/hono/context';
 import { cachedSiteOg, type SiteOgData, siteOgEtag } from '@/lib/site-og';
 import { rateLimit } from '@/middlewares/rate-limit';
 
+/** Caches may store a card but must revalidate EVERY use, so a site going
+ *  private, being taken down, renamed or republished takes effect at once. The
+ *  revalidation is a cheap 304 from the ETag, issued only after the access check below. */
+export const OG_CACHE_CONTROL = 'public, no-cache, must-revalidate';
+
 /** Access is rechecked before cache hits AND conditional responses. A signed-in
  * private reader must get the same non-disclosing 404 as an anonymous crawler. */
 const app: Hono<HonoEnv> = new Hono<HonoEnv>().get('/:id/og/*', rateLimit({ windowMs: 60_000, max: 60 }), async (ctx) => {
@@ -31,13 +36,13 @@ const app: Hono<HonoEnv> = new Hono<HonoEnv>().get('/:id/og/*', rateLimit({ wind
       ?.split(',')
       .some((value) => value.trim().replace(/^W\//u, '') === etag || value.trim() === '*')
   ) {
-    return ctx.body(null, 304, { 'Cache-Control': 'public, max-age=86400', ETag: etag });
+    return ctx.body(null, 304, { 'Cache-Control': OG_CACHE_CONTROL, ETag: etag });
   }
   const generation = cachedSiteOg(data);
   if (!generation) return ctx.body(null, 429, { 'Retry-After': '60' });
   return ctx.body(new Uint8Array(await generation), 200, {
     'Content-Type': 'image/png',
-    'Cache-Control': 'public, max-age=86400',
+    'Cache-Control': OG_CACHE_CONTROL,
     ETag: etag,
     'X-Content-Type-Options': 'nosniff',
   });
