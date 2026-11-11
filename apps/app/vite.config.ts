@@ -172,6 +172,10 @@ export default defineConfig(({ mode }) => {
       nitro({
         routeRules: {
           '/**': { headers: SECURITY_HEADERS },
+          // Marks static build output for the custom-domain edge, which shares one
+          // cache entry per content-hashed `/assets/*` file across every hostname
+          // and requires this marker (apps/custom-domain-edge/src/index.ts).
+          '/assets/**': { headers: { 'x-nibleaf-static-build': '1' } },
           // Nitro otherwise treats dotted asset keys as app/static paths before
           // the broad API proxy, leaving imported images as published-site 404s.
           '/api/public/assets/**': { proxy: `${apiTarget}/api/public/assets/**` },
