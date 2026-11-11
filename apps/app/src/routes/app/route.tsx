@@ -27,11 +27,24 @@ export const Route = createFileRoute('/app')({
       const { signInReturnSearch } = await import('@/lib/invitations');
       throw redirect({ to: '/sign-in', search: signInReturnSearch(location.href) });
     }
+    // UI-only: invitations, join links, sign-out and machine APIs live outside
+    // /app. Let admission finish before asking for a dashboard display name.
+    if (!routeSession.user.name?.trim()) {
+      const { nameReturnPath } = await import('@/lib/name-onboarding');
+      throw redirect({ to: '/welcome/name', search: { redirect: nameReturnPath(location.href) } });
+    }
     return { routeSession };
   },
   // Organizations feed every signed-in screen (switcher, palette, landing), so
   // start them with the session check instead of after the shell mounts.
-  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, switcherQueryOptions()),
+  // The bell's unread count too, so its badge is there on first paint (audit WORKSPACE-28).
+  // Lazily, from its own small module: this file is in the router's eager chunk,
+  // which public docs pages load, so nothing here may add to their first load.
+  loader: async ({ context: { queryClient } }) => {
+    prefetchRouteData(queryClient, switcherQueryOptions());
+    const { unreadNotificationCountQueryOptions } = await import('@/hooks/api/notification-query-options');
+    prefetchRouteData(queryClient, unreadNotificationCountQueryOptions());
+  },
   head: () => ({
     meta: [{ name: 'robots', content: 'noindex' }],
   }),
@@ -65,7 +78,7 @@ function AppGuard() {
   };
   const impersonatedBy = supportSession.session?.impersonatedBy;
   return (
-    <div className={impersonatedBy ? 'pb-14' : undefined}>
+    <div className={impersonatedBy ? 'pb-14' : undefined} data-dashboard-shell="">
       <SkipToContent />
       <ProjectProvider key={resolvedSession.user.id}>
         {/* One switcher and one palette for every signed-in screen (org pages, site pages, editor). */}

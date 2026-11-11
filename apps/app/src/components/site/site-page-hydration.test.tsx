@@ -236,19 +236,30 @@ describe('when the article renderer cannot load', () => {
     });
     return downloads;
   };
-  /** Moves the retry clock on a second at a time. Between steps, real I/O
-   *  turns let a mocked chunk download settle and schedule its next retry. */
+  /** Waits until every chunk import in flight has settled and its outcome has
+   *  run (a failure schedules the next retry). Waits on the imports themselves,
+   *  never on wall-clock time or a guessed number of event-loop turns. */
+  const settleImports = async () => {
+    for (let round = 0; round < 3; round++) {
+      await vi.dynamicImportSettled();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+  };
+  /** Moves the retry clock on a second at a time, settling the downloads each
+   *  step starts. Only the test moves the fake clock (no `shouldAdvanceTime`). */
   const advance = async (ms: number) => {
     for (let elapsed = 0; elapsed < ms; elapsed += 1000) {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(Math.min(1000, ms - elapsed));
-        for (let turn = 0; turn < 10; turn++) await new Promise((resolve) => setImmediate(resolve));
+        await settleImports();
       });
     }
   };
   const bodyText = () => [...(container?.querySelectorAll('article p') ?? [])].filter((node) => node.textContent === text);
 
   it('keeps the server-rendered body, with no error page, and stops retrying after a few attempts', async () => {
+    // Server rendering and hydration need real time to pass, so the clock also
+    // advances on its own here; the retry steps are still settled per import.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
     let downloads = { count: 0 };
     const { recoverableErrors } = await serverRenderThenHydrate(sitePage('en', text), async () => {
@@ -272,6 +283,8 @@ describe('when the article renderer cannot load', () => {
   }, 30_000);
 
   it('swaps in the renderer when a retry succeeds', async () => {
+    // Server rendering and hydration need real time to pass, so the clock also
+    // advances on its own here; the retry steps are still settled per import.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
     let downloads = { count: 0 };
     const { recoverableErrors } = await serverRenderThenHydrate(
@@ -301,7 +314,8 @@ describe('when the article renderer cannot load', () => {
 
   it('says so inline on a client navigation, and its retry loads the page', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    // Only the test moves this clock: each retry happens exactly when advanced.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const downloads = failArticleRenderer(4);
     // A navigation: the loader's download fails (and is caught), then the page
     // renders on the client with no server markup.
@@ -333,10 +347,11 @@ describe('when the article renderer cannot load', () => {
     });
     expect(downloads.count).toBe(5);
     expect(container.querySelector('[role="alert"]')).toBeNull();
-    // The real renderer still has to import.
+    // The real renderer still has to import: wait for that import, not the clock.
     await act(async () => {
-      await vi.waitFor(() => expect(bodyText()).toHaveLength(1), { timeout: 10_000 });
+      await settleImports();
     });
+    expect(bodyText()).toHaveLength(1);
     expect(errors).toEqual([]);
   }, 30_000);
 });

@@ -9,6 +9,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import type { IntegrationCatalogEntry, IntegrationCategory, IntegrationProviderId, IntegrationPublicConfig } from '@nibleaf/shared/integrations';
+import { randomUUID } from '@nibleaf/shared/uuid';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Activity,
@@ -220,7 +221,7 @@ const isConfigurableProvider = (providerId: IntegrationProviderId): providerId i
   providerId === 'slack' || providerId === 'discord' || providerId === 'zapier';
 
 const isAnalyticsProvider = (providerId: IntegrationProviderId) => providerId === 'google-analytics' || providerId === 'plausible';
-const newIdempotencyKey = () => crypto.randomUUID();
+const newIdempotencyKey = () => randomUUID();
 
 function IntegrationStatus({ entry }: { entry: IntegrationCatalogEntry }) {
   const t = useT();

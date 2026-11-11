@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   runPublishedSearch: vi.fn(),
   getCachedIndex: vi.fn(),
   warn: vi.fn(),
+  // Whether this instance can encrypt and write conversation text.
+  storageReady: true,
 }));
 vi.mock('@nibleaf/logger', () => ({ logger: { warn: mocks.warn, info: vi.fn(), debug: vi.fn(), error: vi.fn() } }));
 
@@ -39,6 +41,12 @@ vi.mock('@nibleaf/search', async (importOriginal) => ({
 vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: { headers: new Headers() } } }) }));
 vi.mock('@/env', () => ({ env: { APP_URL: 'https://app.example.test' } }));
 vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
+vi.mock('@/lib/ai-search/conversation-archive', () => ({
+  readerQuestionStorage: (captureSetting: boolean) =>
+    captureSetting && mocks.storageReady
+      ? { storesQuestions: true, questionRetentionDays: 30 }
+      : { storesQuestions: false, questionRetentionDays: null },
+}));
 vi.mock('@/lib/ai-search/runtime', () => ({
   answerPublishedSearch: vi.fn(),
   answerSearchAvailable: vi.fn(async () => false),
@@ -209,6 +217,25 @@ describe('page bodies for a page-scoped reader', () => {
     mocks.resolveViewerAccess.mockResolvedValue(pageReader('parent', 'child'));
     const result = await getSitePage('project-1', 'plan');
     expect(result.page).toMatchObject({ id: 'parent', content: PARENT_BODY });
+  });
+});
+
+describe('question storage in the site shell', () => {
+  it('says questions are stored only when the site keeps them and the instance can', async () => {
+    mocks.storageReady = true;
+    expect((await getSite('project-1')).capabilities).toMatchObject({ storesQuestions: true, questionRetentionDays: 30 });
+
+    mocks.storageReady = false;
+    invalidatePublishedSiteConfig('project-1');
+    expect((await getSite('project-1')).capabilities).toMatchObject({ storesQuestions: false, questionRetentionDays: null });
+
+    mocks.storageReady = true;
+    invalidatePublishedSiteConfig('project-1');
+    // The site's live setting, as the chat itself reads it.
+    mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
+      'name' in select ? liveChrome({ search: { aiConversationCapture: false } }) : { id: 'project-1' },
+    );
+    expect((await getSite('project-1')).capabilities).toMatchObject({ storesQuestions: false, questionRetentionDays: null });
   });
 });
 

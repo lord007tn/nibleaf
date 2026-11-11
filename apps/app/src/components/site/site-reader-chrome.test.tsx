@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
@@ -117,7 +117,8 @@ describe('published reader chrome', () => {
     expect(header?.className).toContain('flex-nowrap');
     expect(header?.className).not.toContain('flex-wrap ');
     // The header switchers are hidden below `sm`; the drawer carries them there.
-    const switchers = container.querySelector('[aria-label="اللغة: العربية"]')?.parentElement;
+    // The group holding the switchers (each sits in its own trigger wrapper).
+    const switchers = container.querySelector('[aria-label="اللغة: العربية"]')?.closest('div');
     expect(switchers?.className).toMatch(/(^| )hidden( |$)/);
     expect(switchers?.className).toContain('sm:flex');
     expect(container.querySelector('[aria-label="الإصدار: main"]')).not.toBeNull();
@@ -158,6 +159,14 @@ describe('published reader chrome', () => {
 });
 
 describe('published page loader', () => {
+  // The loader imports the article renderer before it returns. Import it once
+  // here, with room for a cold transform on a busy machine, so each test times
+  // the loader's own work rather than that first transform.
+  beforeAll(async () => {
+    await import('@/lib/reader-hydration-modules');
+    await import('@/lib/highlight-languages');
+    await import('@/components/markdown');
+  }, 120_000);
   const page = { versions: [], activeVersion: 'main', page: { path: 'start' } } as unknown as SitePage;
   const load = (queryClient: QueryClient) =>
     (
@@ -170,6 +179,13 @@ describe('published page loader', () => {
     )({ params: { projectId: 'docs', _splat: 'start' }, deps: { lang: 'ar' }, location: { searchStr: '' }, context: { queryClient } });
 
   it('reads pages through the shared query cache, so a preloaded or recent page opens without another request', async () => {
+    // Freshness is the query client's 30 s stale time, not how long this machine
+    // takes to run the first load (it imports the article renderer cold): the
+    // clock stands still for the two loads.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     mocks.getSitePage.mockResolvedValue(page);
     // The app's client: a page read moments ago is still fresh.
     const queryClient = createQueryClient();

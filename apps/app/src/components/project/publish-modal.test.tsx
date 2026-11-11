@@ -2,7 +2,7 @@
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Project } from '@/hooks/api/types';
+import type { Project, PublishCheck } from '@/hooks/api/types';
 import { PublishModal, reviewRows } from './publish-modal';
 
 const { mutate, showError, preflight, refreshPreflight, retryMembers, domains } = vi.hoisted(() => ({
@@ -18,6 +18,7 @@ const { mutate, showError, preflight, refreshPreflight, retryMembers, domains } 
     membersFetching: false,
     sessionPending: false,
     issues: [] as Array<{ code: 'cycle'; message: string; sequence: string[]; rowIndexes: number[] }>,
+    checks: [] as PublishCheck[],
   },
   refreshPreflight: vi.fn(),
   retryMembers: vi.fn(),
@@ -56,7 +57,13 @@ vi.mock('@/hooks/api', () => ({
   }),
   usePendingChanges: () => ({
     // One edited page: publishing is only offered when there is something to publish.
-    data: { changes: [pendingChange], redirectIssues: preflight.issues, hasBaseline: true, reviewedStateHash: 'reviewed-hash' },
+    data: {
+      changes: [pendingChange],
+      redirectIssues: preflight.issues,
+      checks: preflight.checks,
+      hasBaseline: true,
+      reviewedStateHash: 'reviewed-hash',
+    },
     isPending: false,
     isFetching: preflight.isFetching,
     isError: false,
@@ -74,6 +81,7 @@ describe('publish draft barrier', () => {
     vi.clearAllMocks();
     preflight.isFetching = false;
     preflight.issues = [];
+    preflight.checks = [];
     preflight.role = 'admin';
     preflight.membersPending = false;
     preflight.membersError = false;
@@ -139,15 +147,104 @@ describe('publish draft barrier', () => {
     expect(showError).toHaveBeenCalledWith('publish.reviewChanged');
   });
 
+  const check = (overrides: Partial<PublishCheck>): PublishCheck => ({
+    code: 'missing-alt',
+    severity: 'warning',
+    pageId: 'page-b',
+    languageCode: 'en',
+    title: 'Install guide',
+    path: 'guides/install',
+    detail: '/diagram.png',
+    ...overrides,
+  });
+  const publishButton = () => {
+    const publish = [...document.querySelectorAll('button')].find((button) => button.textContent === 'publish.now');
+    if (!publish) throw new Error('Publish action was not rendered');
+    return publish;
+  };
+  const isUnavailable = (button: HTMLButtonElement) => button.disabled || button.getAttribute('aria-disabled') === 'true';
+
+  it('says every check passed when there is nothing to fix', async () => {
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const checks = document.querySelector('[data-testid="publish-checks"]');
+    expect(checks?.textContent).toContain('publish.checks.allClear');
+    expect(isUnavailable(publishButton())).toBe(false);
+  });
+
+  it('lists warnings by type with a summary and still publishes', async () => {
+    preflight.checks = [
+      check({}),
+      check({ detail: '/screenshot.png' }),
+      check({ code: 'untitled-page', pageId: 'page-c', title: 'Untitled', path: 'untitled', detail: '' }),
+    ];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const checks = document.querySelector('[data-testid="publish-checks"]');
+    expect(checks?.textContent).toContain('publish.checks.warningCount · publish.checks.stillAllowed');
+    const groups = [...(checks?.querySelectorAll('h4') ?? [])].map((heading) => heading.textContent);
+    expect(groups).toEqual(['publish.checks.untitledPage', 'publish.checks.missingAlt']);
+    // Both images on one page are one row with both sources.
+    const rows = checks?.querySelectorAll('[data-slot="data-list-item"]');
+    expect(rows).toHaveLength(2);
+    expect(rows?.[1]?.textContent).toContain('/diagram.png');
+    expect(rows?.[1]?.textContent).toContain('/screenshot.png');
+
+    const publish = publishButton();
+    expect(isUnavailable(publish)).toBe(false);
+    await act(async () => publish.click());
+    expect(mutate).toHaveBeenCalledOnce();
+  });
+
+  it('disables publishing with the reason while a check error remains', async () => {
+    preflight.checks = [check({ code: 'broken-internal-link', severity: 'error', detail: '/configuration' }), check({})];
+    const beforePublish = vi.fn();
+    await act(async () =>
+      root.render(<PublishModal beforePublish={beforePublish} onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />),
+    );
+    const checks = document.querySelector('[data-testid="publish-checks"]');
+    expect(checks?.textContent).toContain('publish.checks.errorCount · publish.checks.warningCount · publish.checks.mustFix');
+    expect(checks?.textContent).toContain('/configuration');
+    const publish = publishButton();
+    expect(isUnavailable(publish)).toBe(true);
+    const reasonId = publish.getAttribute('aria-describedby')?.split(' ').at(-1);
+    expect(reasonId && document.getElementById(reasonId)?.textContent).toBe('publish.checks.blockedReason');
+    await act(async () => publish.click());
+    expect(beforePublish).not.toHaveBeenCalled();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('does not publish when the post-save preflight finds a check error', async () => {
+    refreshPreflight.mockResolvedValue({
+      data: { redirectIssues: [], checks: [check({ code: 'broken-internal-link', severity: 'error' })], reviewedStateHash: 'reviewed-hash' },
+      isError: false,
+    });
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    await act(async () => publishButton().click());
+    expect(refreshPreflight).toHaveBeenCalledOnce();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it('opens the page in the editor from Fix and closes the dialog', async () => {
+    preflight.checks = [check({ code: 'broken-internal-link', severity: 'error', detail: '/configuration' })];
+    const onOpenChange = vi.fn();
+    await act(async () => root.render(<PublishModal onOpenChange={onOpenChange} onPublished={vi.fn()} open project={project} />));
+    const fix = [...document.querySelectorAll<HTMLAnchorElement>('[data-testid="publish-checks"] a')].find(
+      (link) => link.textContent === 'publish.checks.fix',
+    );
+    expect(fix?.getAttribute('href')).toBe('/app/projects/project-a/editor?page=page-b');
+    expect(fix?.getAttribute('aria-label')).toBe('publish.checks.fixLabel');
+    // jsdom cannot follow a link; the router handles it in the app.
+    fix?.addEventListener('click', (event) => event.preventDefault());
+    await act(async () => fix?.click());
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it.each(['admin', 'owner'])('links %s directly to the Redirects subsection', async (role) => {
     preflight.role = role;
     preflight.issues = [{ code: 'cycle', message: 'RAW developer cycle trace', sequence: ['/old', '/new', '/old'], rowIndexes: [0, 1] }];
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
     expect(document.body.textContent).toContain('publish.redirectIssue.cycle');
     expect(document.body.textContent).not.toContain('RAW developer');
-    const link = document.querySelector<HTMLAnchorElement>(
-      'a[href="/app/projects/project-a/settings?section=appearance&appearanceSection=redirects"]',
-    );
+    const link = document.querySelector<HTMLAnchorElement>('a[href="/app/projects/project-a/settings?section=redirects"]');
     expect(link?.textContent).toBe('publish.editRedirects');
     const publish = [...document.querySelectorAll('button')].find((button) => button.textContent === 'publish.now');
     expect(publish?.disabled).toBe(true);
@@ -197,7 +294,7 @@ describe('publish draft barrier', () => {
     preflight.membersError = false;
     preflight.membersMissing = false;
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
-    expect(document.querySelector('a[href*="appearanceSection=redirects"]')).not.toBeNull();
+    expect(document.querySelector('a[href*="section=redirects"]')).not.toBeNull();
   });
 
   it.each(['admin', 'owner', 'member'])('retains the cached %s role after a failed background refetch', async (role) => {
@@ -212,7 +309,7 @@ describe('publish draft barrier', () => {
     if (role === 'member') {
       expect(document.body.textContent).toContain('publish.redirectsAskAdmin');
     } else {
-      expect(document.querySelector('a[href*="appearanceSection=redirects"]')).not.toBeNull();
+      expect(document.querySelector('a[href*="section=redirects"]')).not.toBeNull();
       expect(document.body.textContent).not.toContain('publish.redirectsAskAdmin');
     }
   });

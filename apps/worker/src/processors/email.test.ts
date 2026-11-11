@@ -15,11 +15,13 @@ const mocks = vi.hoisted(() => ({
     error: vi.fn(),
   },
   postmarkSend: vi.fn(),
+  findUser: vi.fn(),
   postmarkCreate: vi.fn(),
   smtpSend: vi.fn(),
   smtpCreate: vi.fn(),
 }));
 
+vi.mock('@nibleaf/database', () => ({ prisma: { user: { findUnique: mocks.findUser } } }));
 vi.mock('@/env', () => ({ env: mocks.env }));
 vi.mock('@nibleaf/logger', () => ({ createLogger: () => mocks.log }));
 vi.mock('postmark', () => ({
@@ -58,6 +60,21 @@ describe('handleEmailJobs', () => {
     mocks.env.EMAIL_DELIVERY_REQUIRED = false;
     vi.clearAllMocks();
     mocks.smtpCreate.mockReturnValue({ sendMail: mocks.smtpSend });
+  });
+
+  it('suppresses unknown recipients on closed instances and delivers to existing accounts', async () => {
+    mocks.env.POSTMARK_API_KEY = 'synthetic';
+    mocks.postmarkSend.mockResolvedValue({ MessageID: 'synthetic' });
+    const closed = {
+      ...job,
+      data: { ...job.data, auth: { purpose: 'otp', expiresAt: Date.now() + 60_000, existingUserOnly: true } },
+    } as Job<SendEmailJobData>;
+    mocks.findUser.mockResolvedValue(null);
+    await expect(handleEmailJobs(closed)).resolves.toEqual({ sent: false });
+    expect(mocks.postmarkSend).not.toHaveBeenCalled();
+    mocks.findUser.mockResolvedValue({ id: 'existing' });
+    await expect(handleEmailJobs(closed)).resolves.toEqual({ sent: true });
+    expect(mocks.postmarkSend).toHaveBeenCalledOnce();
   });
 
   it('fails a required delivery when no provider is configured', async () => {

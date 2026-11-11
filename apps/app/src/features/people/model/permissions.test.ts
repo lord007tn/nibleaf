@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canManageOrgPeople, canManageSiteTeam, canOnOrgMember, canOnSiteMember, type OrgAction } from './permissions';
+import { canManageOrgPeople, canOnOrgMember, type OrgAction } from './permissions';
 
 const owner = { userId: 'u-owner', orgRole: 'owner' as const };
 const admin = { userId: 'u-admin', orgRole: 'admin' as const };
@@ -29,29 +29,5 @@ describe('org people permissions', () => {
     ['owner', 'transferOwnership', { userId: 'u-owner', orgRole: 'owner' }, 'people.reason.alreadyOwner'],
   ])('%s → %s on %o: %s', (who, action, target, expected) => {
     expect(reason(canOnOrgMember(who === 'owner' ? owner : admin, action, target))).toBe(expected);
-  });
-});
-
-describe('website team permissions', () => {
-  const siteAdmin = { userId: 'me', role: 'admin' as const };
-  it('lets only site Admins (incl. org Owner/Admins) manage the team', () => {
-    expect(canManageSiteTeam({ role: 'owner' })).toBe(true);
-    expect(canManageSiteTeam({ role: 'admin' })).toBe(true);
-    expect(canManageSiteTeam({ role: 'member' })).toBe(false);
-    expect(canManageSiteTeam({ role: 'viewer' })).toBe(false);
-    expect(canManageSiteTeam({ role: null })).toBe(false);
-  });
-  it.each([
-    [{ userId: 'x', role: 'member', viaOrganization: false }, 'changeRole', 'allowed'],
-    [{ userId: 'x', role: 'owner', viaOrganization: true }, 'remove', 'people.reason.viaOrganization'],
-    [{ userId: 'me', role: 'admin', viaOrganization: false }, 'remove', 'people.reason.removeSelfSite'],
-    [{ userId: 'me', role: 'admin', viaOrganization: false }, 'changeRole', 'people.reason.ownRole'],
-  ] as const)('site Admin on %o %s: %s', (target, action, expected) => {
-    const decision = canOnSiteMember(siteAdmin, action, target);
-    expect(decision.allowed ? 'allowed' : decision.reason).toBe(expected);
-  });
-  it('explains to an Editor why they cannot change anyone', () => {
-    const decision = canOnSiteMember({ userId: 'me', role: 'member' }, 'changeRole', { userId: 'x', role: 'viewer', viaOrganization: false });
-    expect(decision).toEqual({ allowed: false, reason: 'people.reason.siteAdminOnly' });
   });
 });

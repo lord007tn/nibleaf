@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Command as CommandPrimitive } from "cmdk"
+import { Command as CommandPrimitive, defaultFilter, useCommandState } from "cmdk"
 
 import { cn } from '../../lib/utils'
 import {
@@ -39,12 +39,20 @@ function CommandDialog({
   children,
   className,
   showCloseButton = false,
+  filter,
+  label,
   ...props
 }: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
   title?: string
   description?: string
   className?: string
   showCloseButton?: boolean
+  /** The search input's accessible name. cmdk names its input with
+   *  `aria-labelledby` pointing at its own label, which overrides `aria-label`
+   *  on the input, so the name must be given here. */
+  label?: string
+  /** cmdk's ranking; see `contiguousFirstFilter`. */
+  filter?: React.ComponentProps<typeof CommandPrimitive>["filter"]
   children: React.ReactNode
 }) {
   return (
@@ -62,20 +70,55 @@ function CommandDialog({
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
         {/* cmdk root: CommandInput/CommandList read their store from this context. */}
-        <Command>{children}</Command>
+        <Command filter={filter} label={label}>{children}</Command>
       </DialogContent>
     </Dialog>
   )
 }
 
+/**
+ * cmdk 1.1.1 records the active option's id inside the same scheduled flush
+ * that selects the first match after a search, before the options re-render,
+ * so after typing `aria-activedescendant` names the previous option (or none)
+ * until the next arrow key. Re-point it at the option that is actually
+ * selected after every commit. React only patches the attribute when cmdk's
+ * own value changes, so this correction stays until the next selection.
+ */
+function useActiveDescendantFix(input: React.RefObject<HTMLInputElement | null>) {
+  const selected = useCommandState((state) => state.value)
+  const search = useCommandState((state) => state.search)
+  React.useLayoutEffect(() => {
+    const element = input.current
+    const listId = element?.getAttribute("aria-controls")
+    if (!element || !listId) return
+    const option = document
+      .getElementById(listId)
+      ?.querySelector<HTMLElement>('[cmdk-item][aria-selected="true"]')
+    if (option?.id) element.setAttribute("aria-activedescendant", option.id)
+    else element.removeAttribute("aria-activedescendant")
+  }, [input, selected, search])
+}
+
 function CommandInput({
   className,
+  ref,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
+  const inputRef = React.useRef<HTMLInputElement | null>(null)
+  const setRef = React.useCallback(
+    (node: HTMLInputElement | null) => {
+      inputRef.current = node
+      if (typeof ref === "function") ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref]
+  )
+  useActiveDescendantFix(inputRef)
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
       <InputGroup className="rounded-md! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:ps-2! has-[[data-slot=command-input]:focus-visible]:border-ring has-[[data-slot=command-input]:focus-visible]:ring-3 has-[[data-slot=command-input]:focus-visible]:ring-ring/50">
         <CommandPrimitive.Input
+          ref={setRef}
           data-slot="command-input"
           className={cn(
             "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
@@ -185,7 +228,21 @@ function CommandShortcut({
   )
 }
 
+/**
+ * cmdk's fuzzy score, but any item whose value or keywords contain the query
+ * as one piece outranks one that only matches letters scattered across words
+ * ("domain" → "Custom domain" before "DOcuMentAtIoN").
+ */
+const contiguousFirstFilter: NonNullable<React.ComponentProps<typeof CommandPrimitive>["filter"]> = (value, search, keywords) => {
+  const fuzzy = defaultFilter(value, search, keywords)
+  if (!fuzzy) return 0
+  const query = search.trim().toLowerCase()
+  const haystack = [value, ...(keywords ?? [])].join(" ").toLowerCase()
+  return query && haystack.includes(query) ? 0.5 + fuzzy / 2 : fuzzy / 2
+}
+
 export {
+  contiguousFirstFilter,
   Command,
   CommandDialog,
   CommandInput,
