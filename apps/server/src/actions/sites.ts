@@ -913,7 +913,7 @@ export const resolvePublishedAnswerContext = async (identifier: string, lang?: s
 /** Grounded answer mode uses the exact same server-derived publication and
  * reader scope as results mode. The client cannot submit any tenant/page filter. */
 export const answerSite = async (identifier: string, query: string, lang?: string, version?: string) => {
-  const { snapshot, scope, available } = await resolvePublishedAnswerContext(identifier, lang, version);
+  const { snapshot, scope, available, versionPages } = await resolvePublishedAnswerContext(identifier, lang, version);
   if (!available) {
     throw new AppError({ code: 'search:unavailable', message: 'AI answers are not ready for this workspace.' });
   }
@@ -923,7 +923,11 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
   if (!quota.allowed) {
     throw new AppError({ code: 'http:rate_limited', message: 'This site has reached its daily AI answer quota.' });
   }
-  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal).catch((cause) => {
+  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal, {
+    languages: resolvePublishedSearchLanguages(snapshot),
+    defaultLanguage: defaultLanguage(snapshot.project).code,
+    pages: versionPages,
+  }).catch((cause) => {
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
   });

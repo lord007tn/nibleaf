@@ -2529,7 +2529,7 @@
   "email_deployment_failed_title": "فشل نشر {projectName}",
   "email_deployment_failed_message": "تعذّر نشر الإصدار {version} من {projectName}.",
   "email_deployment_failed_detail": "الخطأ: {error}",
-  "site_noanswergrounded": "لم أجد معلومات كافية في الوثائق المتاحة للإجابة بثقة.",
+  "site_noanswergrounded": "لم أجد إجابة واضحة في الدليل. جرّب البحث بكلمات أخرى، أو تواصل مع الدعم للمساعدة.",
   "site_importblog": "المدونة",
   "site_importpages": "الصفحات",
   "site_importadditionalpages": "صفحات إضافية",

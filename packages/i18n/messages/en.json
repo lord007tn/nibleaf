@@ -2494,7 +2494,7 @@
   "email_deployment_failed_title": "{projectName} failed to publish",
   "email_deployment_failed_message": "Publishing version v{version} of {projectName} failed.",
   "email_deployment_failed_detail": "Error: {error}",
-  "site_noanswergrounded": "I could not find enough information in the available documentation to answer confidently.",
+  "site_noanswergrounded": "I couldn’t find a clear answer in the docs. Try searching with different words, or contact support for help.",
   "site_importblog": "Blog",
   "site_importpages": "Pages",
   "site_importadditionalpages": "Additional pages",
