@@ -161,7 +161,6 @@
   "preview_privatebody": "Nur Mitglieder dieser Website können ihre Pull-Request-Vorschauen öffnen. Melden Sie sich mit Ihrem Team-Konto an, dann kommen Sie hierher zurück.",
   "editor_previewsaveerror": "Der neueste Entwurf konnte vor dem Öffnen der Vorschau nicht gespeichert werden.",
   "editor_previewpopupblocked": "Lassen Sie Pop-ups zu, um die Entwurfsvorschau in einem neuen Tab zu öffnen.",
-  "settings_heading": "Site-Konfigurationen",
   "settings_group_site": "Website",
   "settings_group_deployment": "Import & Synchronisierung",
   "settings_group_workspace": "Arbeitsbereich",

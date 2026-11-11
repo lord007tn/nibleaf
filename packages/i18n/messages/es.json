@@ -161,7 +161,6 @@
   "preview_privatebody": "Solo los miembros de este sitio pueden abrir las vistas previas de sus pull requests. Inicia sesión con tu cuenta del equipo y volverás aquí.",
   "editor_previewsaveerror": "No se pudo guardar el último borrador antes de abrir la vista previa.",
   "editor_previewpopupblocked": "Permitir que las ventanas emergentes abran la vista previa del borrador en una nueva pestaña.",
-  "settings_heading": "Configuraciones del sitio",
   "settings_group_site": "Sitio",
   "settings_group_deployment": "Importación y sincronización",
   "settings_group_workspace": "Espacio de trabajo",

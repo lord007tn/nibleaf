@@ -199,7 +199,6 @@
   "preview_privatebody": "لا يفتح معاينات طلبات الدمج لهذا الموقع إلا أعضاؤه. سجّل الدخول بحساب فريقك وستعود إلى هنا.",
   "editor_previewsaveerror": "تعذّر حفظ أحدث مسودة قبل فتح المعاينة.",
   "editor_previewpopupblocked": "اسمح بالنوافذ المنبثقة لفتح معاينة المسودة في علامة تبويب جديدة.",
-  "settings_heading": "إعدادات الموقع",
   "settings_group_site": "الموقع",
   "settings_group_deployment": "الاستيراد والمزامنة",
   "settings_group_workspace": "مساحة العمل",

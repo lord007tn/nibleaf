@@ -531,7 +531,6 @@ export const MESSAGE_IDS = {
   'preview.empty': 'preview_empty',
   'editor.previewSaveError': 'editor_previewsaveerror',
   'editor.previewPopupBlocked': 'editor_previewpopupblocked',
-  'settings.heading': 'settings_heading',
   'settings.group.site': 'settings_group_site',
   'settings.group.deployment': 'settings_group_deployment',
   'settings.group.workspace': 'settings_group_workspace',

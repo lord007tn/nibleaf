@@ -286,15 +286,15 @@ describe('site settings permissions', () => {
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     mocks.section = undefined;
     await act(async () => root.render(<SettingsPage />));
-    const nav = container.querySelector('nav');
+    const navColumn = () => container.querySelector('nav')?.parentElement;
     const content = container.querySelector('[data-testid="general-settings"]')?.closest('[tabindex="-1"]');
     // Below md the list is the page and the content waits; from md both show.
-    expect(nav?.classList.contains('hidden')).toBe(false);
+    expect(navColumn()?.classList.contains('hidden')).toBe(false);
     expect(content?.className).toContain('hidden md:block');
 
     mocks.section = 'general';
     await act(async () => root.render(<SettingsPage />));
-    expect(container.querySelector('nav')?.className).toContain('hidden md:block');
+    expect(navColumn()?.className).toContain('hidden md:block');
     const back = [...container.querySelectorAll('a')].find((link) => link.textContent === 'settings.backToAll');
     expect(back?.getAttribute('href')).toBe('/app/projects/project-1/settings');
     expect(back?.className).toContain('md:hidden');
@@ -304,7 +304,7 @@ describe('site settings permissions', () => {
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
     const nav = container.querySelector('nav');
-    expect(nav?.getAttribute('aria-label')).toBe('settings.heading');
+    expect(nav?.getAttribute('aria-label')).toBe('settings.title');
     expect(nav?.querySelectorAll('button')).toHaveLength(0);
     expect(nav?.querySelector('a[href$="?section=general"]')?.getAttribute('aria-current')).toBe('page');
     expect(nav?.querySelector('a[href$="?section=domain"]')?.hasAttribute('aria-current')).toBe(false);

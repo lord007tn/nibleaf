@@ -161,7 +161,6 @@
   "preview_privatebody": "Só membros deste site podem abrir as prévias dos pull requests. Entre com sua conta da equipe e você voltará para cá.",
   "editor_previewsaveerror": "Não foi possível salvar o rascunho mais recente antes de abrir a visualização.",
   "editor_previewpopupblocked": "Permitir que pop-ups abram a visualização do rascunho em uma nova guia.",
-  "settings_heading": "Configurações do site",
   "settings_group_site": "Local",
   "settings_group_deployment": "Importação e sincronização",
   "settings_group_workspace": "Espaço de trabalho",

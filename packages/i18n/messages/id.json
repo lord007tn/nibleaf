@@ -152,7 +152,6 @@
   "preview_privatebody": "Hanya anggota situs ini yang dapat membuka pratinjau pull request-nya. Masuk dengan akun tim Anda dan Anda akan kembali ke sini.",
   "editor_previewsaveerror": "Tidak dapat menyimpan draf terbaru sebelum membuka pratinjau.",
   "editor_previewpopupblocked": "Izinkan pop-up untuk membuka pratinjau draf di tab baru.",
-  "settings_heading": "Konfigurasi situs",
   "settings_group_site": "Situs",
   "settings_group_deployment": "Impor & sinkronisasi",
   "settings_group_workspace": "Ruang kerja",

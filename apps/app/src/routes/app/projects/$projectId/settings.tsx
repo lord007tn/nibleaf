@@ -262,53 +262,52 @@ function ProjectSettingsPage() {
 
   return (
     <ConfigDirtyProvider report={reportDirty}>
-      <div className="flex min-w-0 flex-col bg-background md:flex-row md:items-start">
-        <nav
-          aria-label={t('settings.heading')}
-          className={cn(
-            'w-full shrink-0 bg-card px-3 py-4 md:sticky md:top-12 md:max-h-[calc(100dvh-3rem)] md:w-60 md:self-start md:overflow-y-auto md:border-border md:border-e',
-            !listPage && 'hidden md:block',
-          )}
-        >
-          <h2 className="px-3 pb-3 font-semibold text-base md:text-sm">{t('settings.heading')}</h2>
-          {nav.map((group) => (
-            <div className="mt-4 first-of-type:mt-0" key={group.id}>
-              {group.labelKey ? (
-                <h3 className="px-3 pb-1 font-medium text-muted-foreground text-xs">{t(group.labelKey)}</h3>
-              ) : (
-                <div aria-hidden className="mx-3 mb-3 border-border border-t" />
-              )}
-              <ul className="flex flex-col gap-0.5">
-                {group.sections.map((id) => {
-                  const active = id === section;
-                  const Icon = SECTION_ICONS[id];
-                  return (
-                    <li key={id}>
-                      <Link
-                        aria-current={active ? 'page' : undefined}
-                        className={cn(
-                          'flex h-11 items-center gap-2.5 rounded-lg px-3 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9',
-                          active
-                            ? // The list page on a phone shows no current page; the desktop nav does.
-                              cn('font-medium', listPage ? 'md:bg-primary/10 md:text-primary' : 'bg-primary/10 text-primary hover:bg-primary/10')
-                            : 'text-muted-foreground hover:text-foreground',
-                          id === 'danger' && 'text-destructive hover:text-destructive',
-                        )}
-                        params={{ projectId }}
-                        search={{ section: id }}
-                        to="/app/projects/$projectId/settings"
-                      >
-                        <Icon aria-hidden className="size-4 shrink-0" />
-                        <span className="min-w-0 flex-1 truncate">{t(sectionLabelKey(id))}</span>
-                        <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground md:hidden rtl:rotate-180" />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </nav>
+      <div className="flex min-w-0 flex-col bg-background md:min-h-[calc(100dvh-3rem)] md:flex-row">
+        {/* The column runs the page's full height; the nav inside it sticks below the site header. */}
+        <div className={cn('w-full shrink-0 bg-card md:w-60 md:border-border md:border-e', !listPage && 'hidden md:block')}>
+          <nav aria-label={t('settings.title')} className="px-3 py-4 md:sticky md:top-12 md:max-h-[calc(100dvh-3rem)] md:overflow-y-auto">
+            <h2 className="px-3 pb-3 font-semibold text-base md:text-sm">{t('settings.title')}</h2>
+            {nav.map((group) => (
+              <div className="mt-4 first-of-type:mt-0" key={group.id}>
+                {group.labelKey ? (
+                  <h3 className="px-3 pb-1 font-medium text-muted-foreground text-xs">{t(group.labelKey)}</h3>
+                ) : (
+                  <div aria-hidden className="mx-3 mb-3 border-border border-t" />
+                )}
+                <ul className="flex flex-col gap-0.5">
+                  {group.sections.map((id) => {
+                    const active = id === section;
+                    const Icon = SECTION_ICONS[id];
+                    return (
+                      <li key={id}>
+                        <Link
+                          aria-current={active ? 'page' : undefined}
+                          className={cn(
+                            'flex h-11 items-center gap-2.5 rounded-lg px-3 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9',
+                            active
+                              ? // The list page on a phone shows no current page; the desktop nav does.
+                                listPage
+                                ? 'text-muted-foreground hover:text-foreground md:bg-primary/10 md:font-medium md:text-primary'
+                                : 'bg-primary/10 font-medium text-primary hover:bg-primary/10'
+                              : 'text-muted-foreground hover:text-foreground',
+                            id === 'danger' && 'text-destructive hover:text-destructive',
+                          )}
+                          params={{ projectId }}
+                          search={{ section: id }}
+                          to="/app/projects/$projectId/settings"
+                        >
+                          <Icon aria-hidden className="size-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">{t(sectionLabelKey(id))}</span>
+                          <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground md:hidden rtl:rotate-180" />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        </div>
 
         <div
           className={cn('min-w-0 flex-1 px-4 pt-4 pb-24 outline-none sm:px-6 md:px-9 md:pt-8 md:pb-32', listPage && 'hidden md:block')}

@@ -152,7 +152,6 @@
   "preview_privatebody": "এই সাইটের পুল রিকোয়েস্ট প্রিভিউ শুধু এর সদস্যরাই খুলতে পারেন। আপনার টিম অ্যাকাউন্ট দিয়ে লগ ইন করুন, তারপর এখানে ফিরে আসবেন।",
   "editor_previewsaveerror": "পূর্বরূপ খোলার আগে সর্বশেষ খসড়া সংরক্ষণ করা যায়নি৷",
   "editor_previewpopupblocked": "একটি নতুন ট্যাবে খসড়া পূর্বরূপ খুলতে পপ-আপগুলিকে অনুমতি দিন৷",
-  "settings_heading": "সাইট কনফিগারেশন",
   "settings_group_site": "সাইট",
   "settings_group_deployment": "ইমপোর্ট ও সিঙ্ক",
   "settings_group_workspace": "কর্মক্ষেত্র",
