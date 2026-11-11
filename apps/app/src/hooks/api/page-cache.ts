@@ -69,3 +69,25 @@ export function applyPageReorderToList<T extends CachedPage>(
 /** Page-list queries are keyed `['pages', projectId, languageId, branchId]`;
  *  page details are `['pages', projectId, pageId]`. */
 export const isPageListKey = (queryKey: readonly unknown[]) => queryKey.length === 4;
+
+/** Undo only structural fields still owned by this optimistic write. A cache
+ * edit to a title, or a later structural value, belongs to its newer writer. */
+export function rollbackPageReorder<T extends CachedPage>(current: T[], before: T[], optimistic: T[]): T[] {
+  const oldById = new Map(before.map((page) => [page.id, page]));
+  const optimisticById = new Map(optimistic.map((page) => [page.id, page]));
+  const next = current.flatMap((page) => {
+    const old = oldById.get(page.id);
+    const written = optimisticById.get(page.id);
+    if (!written) return [page];
+    if (!old) return page === written ? [] : [page];
+    const restored = { ...page };
+    for (const field of ['parentId', 'position', 'languageId'] as const) {
+      if (old[field] !== written[field] && page[field] === written[field]) Object.assign(restored, { [field]: old[field] });
+    }
+    return [restored];
+  });
+  // Restore removed language-list members only while the list is still ours;
+  // never resurrect a page a later cache write removed. Refetch settles gaps.
+  if (current === optimistic) for (const page of before) if (!optimisticById.has(page.id)) next.push(page);
+  return next;
+}
