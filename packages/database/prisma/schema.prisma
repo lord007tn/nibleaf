@@ -1339,6 +1339,11 @@ model Page {
   translationKey String?
   position       Int      @default(0)
   hidden         Boolean  @default(false)
+  /// Set when a Trash restore could not bring back all of this page's history
+  /// (the payload byte cap dropped the oldest revisions): { kept, total, at }.
+  /// The History panel says so. Cleared when the page is moved to Trash again,
+  /// so it always describes the most recent restore.
+  historyTrimmedFromTrash Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -13,6 +13,10 @@ import { pageStructureRevision, recomputeProjectPaths, STRUCTURAL_UPDATE_TIMEOUT
  * reads that table, so a trashed page is gone from the live tree, the draft
  * snapshot, publish, search and exports the moment the delete commits.
  *
+ * Since schema version 2 the payload also carries the subtree's page history
+ * (`page_revision` rows, #492), trimmed oldest-first when the byte cap needs
+ * it; throttle state (`page_revision_state`) is not kept.
+ *
  * Restore puts the rows back with their original ids under the same project
  * and page locks a page move takes, so it serializes with every tree edit.
  * Generated redirects (#426) are never touched: deleting does not redirect the
@@ -26,12 +30,14 @@ export const PAGE_TRASH_RETENTION_DAYS = 30;
 const RETENTION_MS = PAGE_TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 /** Bump when the payload shape changes. Restore reads every version from 1 up
- *  to this one; columns a newer version added get their defaults below. */
-export const PAGE_TRASH_SCHEMA_VERSION = 1;
+ *  to this one; columns a newer version added get their defaults below.
+ *  2: `revisions` and `revisionCounts` (page history, #492). */
+export const PAGE_TRASH_SCHEMA_VERSION = 2;
 
-/** The largest serialized payload one Trash row may hold. A bigger subtree is
- *  refused (never hard-deleted instead): one JSONB row must stay well inside
- *  what a transaction and a restore can carry. */
+/** The largest serialized payload one Trash row may hold. Page history is
+ *  trimmed (oldest revisions first) to fit; a subtree that does not fit even
+ *  with no history is refused (never hard-deleted instead): one JSONB row must
+ *  stay well inside what a transaction and a restore can carry. */
 export const PAGE_TRASH_MAX_PAYLOAD_BYTES = 25 * 1024 * 1024;
 
 const trashTooLarge = (id: string, bytes: number, limit: number) =>
@@ -67,6 +73,9 @@ export const trashedPageSchema = z.object({
   translationKey: z.string().nullable().default(null),
   position: z.number().int().default(0),
   hidden: z.boolean().default(false),
+  /** Never written to Trash: moving a page to Trash again clears the notice,
+   *  and restore records its own. Listed so the drift guard covers it. */
+  historyTrimmedFromTrash: jsonValue,
   createdAt: optionalDate,
   updatedAt: optionalDate,
 });
@@ -96,12 +105,34 @@ export const trashedGitImportSourceSchema = z.object({
   updatedAt: optionalDate,
 });
 
+/** One `page_revision` row. `userId` is null once its author no longer exists. */
+export const trashedRevisionSchema = z.object({
+  id: z.string().min(1),
+  pageId: z.string().min(1),
+  userId: z.string().min(1).nullable().default(null),
+  createdAt: z.coerce.date(),
+  title: z.string(),
+  content: z.string().default(''),
+  description: z.string().nullable().default(null),
+  icon: z.string().nullable().default(null),
+  hidden: z.boolean().default(false),
+  config: jsonValue,
+  contentBytes: z.number().int().nonnegative().default(0),
+  reason: z.string().min(1).default('autosave'),
+});
+
+const revisionCountSchema = z.object({ total: z.number().int().nonnegative(), kept: z.number().int().nonnegative() });
+
 export const pageTrashPayloadSchema = z.object({
   schemaVersion: z.number().int().min(1).max(PAGE_TRASH_SCHEMA_VERSION),
   pages: z.array(trashedPageSchema).min(1),
   comments: z.array(trashedCommentSchema).default([]),
   audienceGrants: z.array(trashedAudienceGrantSchema).default([]),
   gitImportSources: z.array(trashedGitImportSourceSchema).default([]),
+  /** Version 1 payloads have none. */
+  revisions: z.array(trashedRevisionSchema).default([]),
+  /** Per page with history: how many revisions it had and how many fit. */
+  revisionCounts: z.record(z.string(), revisionCountSchema).default({}),
 });
 export type PageTrashPayload = z.output<typeof pageTrashPayloadSchema>;
 
@@ -178,13 +209,54 @@ const subtreeIds = (rows: ReadonlyArray<{ id: string; parentId: string | null }>
 interface DeletePageOptions {
   /** Overrides {@link PAGE_TRASH_MAX_PAYLOAD_BYTES} (tests). */
   maxPayloadBytes?: number;
-  /** Tests only: runs between reading comments and locking their authors. */
+  /** Tests only: runs between reading comments and revisions and locking their authors. */
   afterCommentsRead?: () => Promise<void>;
-  /** Tests only: runs once the comment authors are locked. */
+  /** Tests only: runs once the comment and revision authors are locked. */
   afterAuthorsLocked?: () => Promise<void>;
 }
 
-/** The comment authors that still exist, locked FOR SHARE until the trash write
+type TrashedRevision = Omit<z.input<typeof trashedRevisionSchema>, 'createdAt'> & { id: string; pageId: string; createdAt: string };
+type RevisionCounts = Record<string, { total: number; kept: number }>;
+
+/**
+ * Keep the newest revisions that fit: everything else in the payload is fixed,
+ * so drop the oldest revisions (across the subtree, by createdAt then id) until
+ * the total fits. Each revision is serialized once; the rest of the payload is
+ * measured once, with every count at its upper bound. Returns null when the
+ * payload does not fit even with no history.
+ */
+export const fitRevisions = (
+  basePayload: Record<string, unknown>,
+  revisions: readonly TrashedRevision[],
+  limit: number,
+): { revisions: TrashedRevision[]; counts: RevisionCounts } | null => {
+  const counts: RevisionCounts = {};
+  for (const revision of revisions) {
+    const count = counts[revision.pageId] ?? { total: 0, kept: 0 };
+    count.total += 1;
+    counts[revision.pageId] = count;
+  }
+  // `kept` never exceeds `total`, so measuring with kept = total is an upper bound.
+  const upperCounts = Object.fromEntries(Object.entries(counts).map(([pageId, { total }]) => [pageId, { total, kept: total }]));
+  const baseBytes = Buffer.byteLength(JSON.stringify({ ...basePayload, revisions: [], revisionCounts: upperCounts }), 'utf8');
+  if (baseBytes > limit) return null;
+  const newestFirst = [...revisions].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+  const kept: TrashedRevision[] = [];
+  let bytes = baseBytes;
+  for (const revision of newestFirst) {
+    // A comma separates every revision after the first.
+    const size = Buffer.byteLength(JSON.stringify(revision), 'utf8') + (kept.length > 0 ? 1 : 0);
+    if (bytes + size > limit) break;
+    bytes += size;
+    kept.push(revision);
+    const count = counts[revision.pageId];
+    if (count) count.kept += 1;
+  }
+  kept.reverse();
+  return { revisions: kept, counts };
+};
+
+/** The comment and revision authors that still exist, locked FOR SHARE until the trash write
  *  commits. A concurrent account deletion waits for that commit, and its
  *  `page_trash_erase_user` trigger then removes the copies; an account deleted
  *  before the lock is simply absent, so its comments are never copied. */
@@ -210,7 +282,7 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
       const pages = (await Promise.all(chunks(ids).map((chunk) => tx.page.findMany({ where: { projectId, id: { in: chunk } } })))).flat();
       const order = new Map(ids.map((pageId, index) => [pageId, index]));
       pages.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-      const [comments, audienceGrants, gitImportSources] = await Promise.all([
+      const [comments, audienceGrants, gitImportSources, revisions] = await Promise.all([
         Promise.all(chunks(ids).map((chunk) => tx.comment.findMany({ where: { projectId, pageId: { in: chunk } } }))).then((rows) => rows.flat()),
         Promise.all(chunks(ids).map((chunk) => tx.audienceGrant.findMany({ where: { projectId, pageId: { in: chunk } } }))).then((rows) =>
           rows.flat(),
@@ -218,11 +290,18 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
         Promise.all(chunks(ids).map((chunk) => tx.pageGitImportSource.findMany({ where: { projectId, pageId: { in: chunk } } }))).then((rows) =>
           rows.flat(),
         ),
+        Promise.all(
+          chunks(ids).map((chunk) =>
+            tx.pageRevision.findMany({ where: { projectId, pageId: { in: chunk } }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
+          ),
+        ).then((rows) => rows.flat()),
       ]);
       await options.afterCommentsRead?.();
-      const liveAuthors = await lockLiveAuthors(tx, [...new Set(comments.map((comment) => comment.userId))]);
+      const authors = new Set(comments.map((comment) => comment.userId));
+      for (const revision of revisions) if (revision.userId) authors.add(revision.userId);
+      const liveAuthors = await lockLiveAuthors(tx, [...authors]);
       await options.afterAuthorsLocked?.();
-      const payload = {
+      const basePayload = {
         schemaVersion: PAGE_TRASH_SCHEMA_VERSION,
         pages: pages.map((page) => ({
           id: page.id,
@@ -267,8 +346,31 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
           createdAt: iso(source.createdAt),
           updatedAt: iso(source.updatedAt),
         })),
-      } satisfies z.input<typeof pageTrashPayloadSchema>;
+      };
       const limit = options.maxPayloadBytes ?? PAGE_TRASH_MAX_PAYLOAD_BYTES;
+      const history = fitRevisions(
+        basePayload,
+        revisions.map((revision) => ({
+          id: revision.id,
+          pageId: revision.pageId,
+          // An author deleted before the fence is not carried.
+          userId: revision.userId && liveAuthors.has(revision.userId) ? revision.userId : null,
+          createdAt: iso(revision.createdAt),
+          title: revision.title,
+          content: revision.content,
+          description: revision.description,
+          icon: revision.icon,
+          hidden: revision.hidden,
+          config: revision.config,
+          contentBytes: revision.contentBytes,
+          reason: revision.reason,
+        })),
+        limit,
+      );
+      if (!history) throw trashTooLarge(id, Buffer.byteLength(JSON.stringify(basePayload), 'utf8'), limit);
+      const payload = { ...basePayload, revisions: history.revisions, revisionCounts: history.counts } satisfies z.input<
+        typeof pageTrashPayloadSchema
+      >;
       const bytes = Buffer.byteLength(JSON.stringify(payload), 'utf8');
       if (bytes > limit) throw trashTooLarge(id, bytes, limit);
       const deletedAt = new Date();
@@ -290,7 +392,8 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
         },
         select: { id: true, expiresAt: true, pageCount: true },
       });
-      // The FK cascade removes the descendants, comments, grants and sources.
+      // The FK cascade removes the descendants, comments, grants, sources and
+      // history (page_revision, page_revision_state).
       await tx.page.delete({ where: { id } });
       return { id, trashId: trash.id, pageCount: trash.pageCount, expiresAt: trash.expiresAt };
     },
@@ -395,6 +498,11 @@ export const restorePageTrashItem = async (projectId: string, trashId: string, b
       // A translation link another page of this language took meanwhile stays with it.
       const takenKeys = new Set(branchRows.flatMap((row) => (row.languageId === item.languageId && row.translationKey ? [row.translationKey] : [])));
       const now = new Date();
+      // History that did not fit the payload is gone; the History panel says so.
+      const trimmed = (pageId: string) => {
+        const count = payload.revisionCounts[pageId];
+        return count && count.kept < count.total ? { kept: count.kept, total: count.total, at: iso(now) } : undefined;
+      };
       await tx.page.createMany({
         data: payload.pages.map((page) => {
           const isRoot = page.id === root.id;
@@ -415,6 +523,7 @@ export const restorePageTrashItem = async (projectId: string, trashId: string, b
             translationKey: page.translationKey && takenKeys.has(page.translationKey) ? null : page.translationKey,
             position: isRoot ? rootPosition : page.position,
             hidden: page.hidden,
+            historyTrimmedFromTrash: trimmed(page.id),
             createdAt: page.createdAt ?? now,
             updatedAt: now,
           };
@@ -423,7 +532,12 @@ export const restorePageTrashItem = async (projectId: string, trashId: string, b
 
       // Comments by people who have since left the platform, and grants to
       // audiences deleted since, are not brought back.
-      const userIds = [...new Set(payload.comments.map((comment) => comment.userId))];
+      const userIds = [
+        ...new Set([
+          ...payload.comments.map((comment) => comment.userId),
+          ...payload.revisions.flatMap((revision) => (revision.userId ? [revision.userId] : [])),
+        ]),
+      ];
       const users = new Set(
         (await Promise.all(chunks(userIds).map((chunk) => tx.user.findMany({ where: { id: { in: chunk } }, select: { id: true } }))))
           .flat()
@@ -441,6 +555,28 @@ export const restorePageTrashItem = async (projectId: string, trashId: string, b
             resolved: comment.resolved,
             anchor: json((comment.anchor ?? null) as Prisma.JsonValue | null),
             createdAt: comment.createdAt ?? now,
+          })),
+          skipDuplicates: true,
+        });
+      }
+      // History comes back with its ids and times; an author who has left is
+      // shown as unknown, as `page_revision.userId` is SET NULL for live pages.
+      for (const chunk of chunks(payload.revisions.filter((revision) => ids.has(revision.pageId)))) {
+        await tx.pageRevision.createMany({
+          data: chunk.map((revision) => ({
+            id: revision.id,
+            projectId,
+            pageId: revision.pageId,
+            userId: revision.userId && users.has(revision.userId) ? revision.userId : null,
+            createdAt: revision.createdAt,
+            title: revision.title,
+            content: revision.content,
+            description: revision.description,
+            icon: revision.icon,
+            hidden: revision.hidden,
+            config: json((revision.config ?? null) as Prisma.JsonValue | null),
+            contentBytes: revision.contentBytes,
+            reason: revision.reason,
           })),
           skipDuplicates: true,
         });
