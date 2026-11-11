@@ -29,7 +29,12 @@ vi.mock('@/components/organization/organization-context', () => ({
 }));
 vi.mock('@/components/settings/usage-tab', () => ({
   unavailableExplanationKey: (reason?: string | null) => (reason ? `reason:${reason}` : 'settings.usage.unknownExplanation'),
-  UsageOverview: (props: { planKey: string | null; isPending: boolean }) => {
+  // As the real one, over the mocked reason keys: one reason for every missing org total.
+  sharedMissingReason: (meters: Array<{ quantity: string | null; unavailableReason?: string | null }>) => {
+    const reasons = meters.filter((meter) => meter.quantity === null).map((meter) => `reason:${meter.unavailableReason}`);
+    return reasons.length > 1 && reasons.every((reason) => reason === reasons[0]) ? reasons[0] : null;
+  },
+  UsageOverview: (props: { planKey: string | null; isPending: boolean; headingLevel?: number }) => {
     mocks.overview(props);
     return <div data-plan={props.planKey ?? ''} data-testid="usage-overview" />;
   },
@@ -114,6 +119,47 @@ describe('organization Usage & billing page', () => {
     // A website without a name falls back to its id.
     expect(rows[2]?.querySelector('td')?.textContent).toBe('p-unnamed');
     expect(host.textContent).not.toContain('organization.billing.noWebsites');
+  });
+
+  it('embeds the usage overview below its own h1', async () => {
+    await render();
+    expect(mocks.overview).toHaveBeenLastCalledWith(expect.objectContaining({ headingLevel: 2 }));
+  });
+
+  it('shows a dash without repeating a reason the overview already says once', async () => {
+    mocks.usage = {
+      isPending: false,
+      data: {
+        meters: [
+          { key: 'build', quantity: null, unavailableReason: 'metering_disabled' },
+          { key: 'public_page_view', quantity: null, unavailableReason: 'metering_disabled' },
+        ],
+        websites: [
+          {
+            projectId: 'p-docs',
+            name: 'Developer docs',
+            meters: [
+              { key: 'published_page', quantity: '42' },
+              { key: 'public_page_view', quantity: null, unavailableReason: 'metering_disabled' },
+              { key: 'asset_storage_byte', quantity: null, unavailableReason: 'query_failed' },
+              { key: 'build', quantity: null, unavailableReason: 'metering_disabled' },
+            ],
+          },
+        ],
+      },
+    };
+    const host = await render();
+    const cells = [...(breakdownRows(host)[0]?.querySelectorAll('td') ?? [])];
+    expect(cells.map((cell) => cell.textContent)).toEqual([
+      'Developer docs',
+      '42',
+      '—settings.usage.state.unknown',
+      '—reason:query_failed',
+      '—settings.usage.state.unknown',
+    ]);
+    // A different reason still says why.
+    expect(cells[3]?.querySelector('[title]')?.getAttribute('title')).toBe('reason:query_failed');
+    expect(cells[4]?.querySelector('[title]')).toBeNull();
   });
 
   it('says so when the organization has no websites', async () => {

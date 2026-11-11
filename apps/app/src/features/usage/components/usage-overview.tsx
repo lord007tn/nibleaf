@@ -118,6 +118,7 @@ export function UsageOverview({
   planKey,
   notice,
   hiddenMeters,
+  headingLevel = 1,
 }: {
   usage: (Pick<UsageSummary, 'meters' | 'period'> & { availability?: UsageSummary['availability'] }) | undefined;
   isPending: boolean;
@@ -127,6 +128,12 @@ export function UsageOverview({
   planKey?: string | null;
   notice?: ReactNode;
   hiddenMeters?: ReadonlySet<string>;
+  /**
+   * 1 when the overview is the page (website Usage); 2 when a page that has
+   * its own h1 embeds it (organization Usage & billing). Group and tile
+   * headings follow one and two levels below.
+   */
+  headingLevel?: 1 | 2;
 }) {
   const t = useT();
   const { date } = useFormatters();
@@ -147,6 +154,7 @@ export function UsageOverview({
           ) : undefined
         }
         description={description}
+        headingLevel={headingLevel}
         title={title}
       />
       <div className="-mt-4 flex flex-col gap-2">
@@ -170,11 +178,17 @@ export function UsageOverview({
         const keys = group.keys.filter((key) => !hiddenMeters?.has(key));
         const meters = usage?.meters.filter((meter) => keys.includes(meter.key)) ?? [];
         return (
-          <SettingsSection chrome="plain" description={t(group.description)} key={group.title} title={t(group.title)}>
+          <SettingsSection
+            chrome="plain"
+            description={t(group.description)}
+            headingLevel={headingLevel === 1 ? 2 : 3}
+            key={group.title}
+            title={t(group.title)}
+          >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {isPending
                 ? keys.map((key) => <SkeletonStatTile className="min-h-36" key={key} />)
-                : meters.map((meter) => <MeterTile key={meter.key} meter={meter} sharedReason={shared} />)}
+                : meters.map((meter) => <MeterTile headingLevel={headingLevel === 1 ? 3 : 4} key={meter.key} meter={meter} sharedReason={shared} />)}
             </div>
           </SettingsSection>
         );
@@ -186,7 +200,8 @@ export function UsageOverview({
 }
 
 /** One meter: its name, state, amount (of the limit) and bar, or why the number is missing. */
-function MeterTile({ meter, sharedReason }: { meter: MeterLike & { unit: string }; sharedReason: string | null }) {
+function MeterTile({ meter, sharedReason, headingLevel }: { meter: MeterLike & { unit: string }; sharedReason: string | null; headingLevel: 3 | 4 }) {
+  const Heading = headingLevel === 3 ? 'h3' : 'h4';
   const t = useT();
   const { number } = useFormatters();
   const presentation = meterPresentation(meter.key);
@@ -208,10 +223,10 @@ function MeterTile({ meter, sharedReason }: { meter: MeterLike & { unit: string 
   return (
     <article className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4" data-meter={meter.key}>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="flex min-w-0 items-center gap-2 font-medium text-sm">
+        <Heading className="flex min-w-0 items-center gap-2 font-medium text-sm">
           <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <span className="truncate">{label}</span>
-        </h3>
+        </Heading>
         <StatusBadge size="sm" tone={view.badge.tone}>
           {t(view.badge.label)}
         </StatusBadge>

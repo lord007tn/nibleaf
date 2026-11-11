@@ -152,7 +152,7 @@ export function meterView(meter: MeterLike): MeterView {
  * the page says it once instead of on each tile. Null when the reasons differ
  * or fewer than two numbers are missing.
  */
-export function sharedMissingReason(meters: readonly MeterLike[]): MessageKey | null {
+export function sharedMissingReason(meters: ReadonlyArray<Pick<MeterLike, 'quantity' | 'unavailableReason'>>): MessageKey | null {
   const reasons = meters.filter((meter) => meter.quantity === null).map((meter) => unavailableExplanationKey(meter.unavailableReason));
   if (reasons.length < 2) return null;
   return reasons.every((reason) => reason === reasons[0]) ? (reasons[0] ?? null) : null;
