@@ -4842,5 +4842,14 @@
   "editor_history_snapshottoolarge": "المسودة الحالية أو المحتوى المختار أكبر من أن يُستعاد بأمان.",
   "editor_history_restored": "تمت استعادة الصفحة",
   "editor_history_added": "مضاف",
-  "editor_history_removed": "محذوف"
+  "editor_history_removed": "محذوف",
+  "publishes_title": "سجل النشر",
+  "publishes_superseded": "سابقة",
+  "publishes_restore": "استعادة هذه النسخة",
+  "publishes_changessince": "التغييرات منذ النسخة {version}",
+  "publishes_settingschanged": "غيّرت هذه النسخة إعدادات الموقع أيضًا.",
+  "publishes_truncated": "تُعرض أول {shown} من أصل {total} صفحة تغيّرت.",
+  "overview_activity_viewall": "عرض الكل",
+  "publishes_toolarge": "هذه النسخة أكبر من أن تُقارَن هنا.",
+  "publishes_nosnapshot": "لم تعد هذه النسخة المنشورة محفوظة، لذا لا يمكن مقارنتها ولا استعادتها."
 }

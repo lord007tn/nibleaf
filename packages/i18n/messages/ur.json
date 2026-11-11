@@ -4779,5 +4779,14 @@
   "editor_history_snapshottoolarge": "موجودہ مسودہ یا منتخب اندراج محفوظ بحالی کے لیے بہت بڑا ہے۔",
   "editor_history_restored": "صفحہ بحال ہو گیا",
   "editor_history_added": "شامل کیا گیا",
-  "editor_history_removed": "حذف کیا گیا"
+  "editor_history_removed": "حذف کیا گیا",
+  "publishes_title": "اشاعتیں",
+  "publishes_superseded": "تبدیل شدہ",
+  "publishes_restore": "یہ نسخہ بحال کریں",
+  "publishes_changessince": "نسخہ {version} کے بعد کی تبدیلیاں",
+  "publishes_settingschanged": "اس نسخے میں سائٹ کی ترتیبات بھی تبدیل ہوئیں۔",
+  "publishes_truncated": "{total} تبدیل شدہ صفحات میں سے پہلے {shown} دکھائے جا رہے ہیں۔",
+  "overview_activity_viewall": "سب دیکھیں",
+  "publishes_toolarge": "یہ نسخہ یہاں موازنے کے لیے بہت بڑا ہے۔",
+  "publishes_nosnapshot": "اس نسخے کی شائع شدہ کاپی اب محفوظ نہیں، اس لیے نہ اس کا موازنہ ہو سکتا ہے اور نہ اسے بحال کیا جا سکتا ہے۔"
 }

@@ -274,6 +274,51 @@ describe('rollback progress', () => {
     expect(mocks.success).toHaveBeenCalledWith('deploy.rollback.success:2', expect.any(Object));
   });
 
+  it('follows a restore started elsewhere (the Publishes page) as a restore, superseded outcome included', async () => {
+    mocks.deployments.data = [deployment('restore-4', 4, 'PENDING'), ...mocks.deployments.data];
+    const show = (open = true) =>
+      act(async () =>
+        root.render(
+          <DeployPipeline
+            onOpenChange={close}
+            open={open}
+            project={project}
+            restoring={{ targetId: 'old-2', version: 2 }}
+            trackedDeploymentId="restore-4"
+          />,
+        ),
+      );
+    await show();
+    expect(container.querySelector('h1')?.textContent).toBe('deploy.rollback.restoring:2');
+    mocks.deployments.data = [
+      deployment('unrelated-5', 5, 'READY'),
+      ...mocks.deployments.data.map((item) => (item.id === 'restore-4' ? { ...item, status: 'READY' as const } : item)),
+    ];
+    await show(false);
+    expect(mocks.info).toHaveBeenCalledWith('deploy.rollback.superseded');
+    expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it('retries a failed restore started elsewhere with the same version, never the draft', async () => {
+    mocks.deployments.data = [{ ...deployment('restore-4', 4, 'FAILED'), completedAt: new Date().toISOString() }, ...mocks.deployments.data];
+    await act(async () =>
+      root.render(
+        <DeployPipeline
+          onOpenChange={close}
+          onRetry={retryDraft}
+          open
+          project={project}
+          restoring={{ targetId: 'old-2', version: 2 }}
+          trackedDeploymentId="restore-4"
+        />,
+      ),
+    );
+    const retry = [...container.querySelectorAll('button')].find((item) => item.textContent === 'common.retry');
+    await act(async () => retry?.click());
+    expect(retryDraft).not.toHaveBeenCalled();
+    expect(mocks.mutate).toHaveBeenLastCalledWith('old-2', expect.any(Object));
+  });
+
   describe('first publish', () => {
     /** Accessible controls by role and name, as a screen reader lists them. */
     const controls = (role: string) =>

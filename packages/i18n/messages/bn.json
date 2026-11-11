@@ -4722,5 +4722,14 @@
   "editor_history_snapshottoolarge": "বর্তমান খসড়া বা নির্বাচিত এন্ট্রি নিরাপদে পুনরুদ্ধার করার জন্য অনেক বড়।",
   "editor_history_restored": "পৃষ্ঠা পুনরুদ্ধার করা হয়েছে",
   "editor_history_added": "যোগ করা হয়েছে",
-  "editor_history_removed": "সরানো হয়েছে"
+  "editor_history_removed": "সরানো হয়েছে",
+  "publishes_title": "প্রকাশনা",
+  "publishes_superseded": "প্রতিস্থাপিত",
+  "publishes_restore": "এই সংস্করণ ফিরিয়ে আনুন",
+  "publishes_changessince": "সংস্করণ {version} থেকে পরিবর্তন",
+  "publishes_settingschanged": "এই সংস্করণে সাইটের সেটিংসও বদলেছে।",
+  "publishes_truncated": "{total}টি পরিবর্তিত পৃষ্ঠার মধ্যে প্রথম {shown}টি দেখানো হচ্ছে।",
+  "overview_activity_viewall": "সব দেখুন",
+  "publishes_toolarge": "এই সংস্করণটি এখানে তুলনা করার জন্য খুব বড়।",
+  "publishes_nosnapshot": "এই সংস্করণের প্রকাশিত কপি আর সংরক্ষিত নেই, তাই এটি তুলনা করা বা ফিরিয়ে আনা যাবে না।"
 }

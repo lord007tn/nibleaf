@@ -4634,6 +4634,15 @@ export const MESSAGE_IDS = {
   'newSite.addressUnavailable': 'newsite_addressunavailable',
   'editor.history.added': 'editor_history_added',
   'editor.history.removed': 'editor_history_removed',
+  'publishes.title': 'publishes_title',
+  'publishes.superseded': 'publishes_superseded',
+  'publishes.restore': 'publishes_restore',
+  'publishes.changesSince': 'publishes_changessince',
+  'publishes.settingsChanged': 'publishes_settingschanged',
+  'publishes.truncated': 'publishes_truncated',
+  'overview.activity.viewAll': 'overview_activity_viewall',
+  'publishes.tooLarge': 'publishes_toolarge',
+  'publishes.noSnapshot': 'publishes_nosnapshot',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

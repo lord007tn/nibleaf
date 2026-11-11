@@ -1,6 +1,7 @@
 import { createDeploymentBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { getPublishHistoryDetail, listPublishHistory } from '@/actions/deployment-history';
 import {
   createDeployment,
   getDeployment,
@@ -32,6 +33,8 @@ const publishDeploymentBody = createDeploymentBody.extend({
 
 // `status=READY`: only publishes that went live (see listDeployments).
 const listDeploymentsQuery = z.object({ status: z.literal('READY').optional() });
+// Publish history pages back by version: `cursor` is the oldest version already shown.
+const historyQuery = z.object({ cursor: z.coerce.number().int().positive().max(2_147_483_647).optional() });
 
 const app = new Hono<HonoEnv>()
   .get('/', ...deploymentsRoutes.list, validator('query', listDeploymentsQuery), async (ctx) => {
@@ -41,6 +44,14 @@ const app = new Hono<HonoEnv>()
   .get('/latest', ...deploymentsRoutes.latest, async (ctx) => {
     const { projectId } = await scope(ctx);
     return ctx.json({ data: await getLatestReadyDeployment(projectId) }, 200);
+  })
+  .get('/history', ...deploymentsRoutes.history, validator('query', historyQuery), async (ctx) => {
+    const { projectId } = await scope(ctx);
+    return ctx.json({ data: await listPublishHistory(projectId, ctx.req.valid('query').cursor) }, 200);
+  })
+  .get('/history/:id', ...deploymentsRoutes.historyDetail, async (ctx) => {
+    const { projectId } = await scope(ctx);
+    return ctx.json({ data: await getPublishHistoryDetail(projectId, ctx.req.param('id')) }, 200);
   })
   .get('/changes', ...deploymentsRoutes.changes, async (ctx) => {
     const { projectId } = await scope(ctx);
