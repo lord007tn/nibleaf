@@ -236,6 +236,13 @@ const isApplePlatform = () => typeof navigator !== 'undefined' && /Mac|iPhone|iP
 /** The text menu's bubble plugin; it also reads a 'hide' meta under this key. */
 const TEXT_MENU_KEY = 'nibleaf-text-menu';
 
+/** Marks the Turn into popup, which is portaled out of the menu but belongs to it. */
+const MENU_POPUP_ATTRIBUTE = 'data-text-menu-popup';
+
+/** Whether a node is in the menu, including its portaled Turn into popup. */
+const inMenu = (menu: Element | null | undefined, node: Node | null): boolean =>
+  node !== null && (Boolean(menu?.contains(node)) || (node instanceof Element && node.closest(`[${MENU_POPUP_ATTRIBUTE}]`) !== null));
+
 /** The toolbar's own controls, in order, for arrow-key movement. */
 const TOOLBAR_ITEM = '[data-toolbar-item]:not([disabled])';
 
@@ -297,23 +304,48 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
     };
   }, [editor]);
 
-  // Move focus once the menu is attached: the link field, or the first control.
+  // A request is for this editing session: once focus leaves both the page and
+  // the menu, it is dropped, so it can never pull focus back later.
+  useEffect(() => {
+    const leftBoth = (next: EventTarget | null) => !(next instanceof Node && (editor.view.dom.contains(next) || inMenu(menuRef.current, next)));
+    const onBlur = ({ event }: EditorEvents['blur']) => {
+      if (leftBoth(event.relatedTarget)) setPendingFocus(null);
+    };
+    const menu = menuRef.current;
+    const onMenuFocusOut = (event: FocusEvent) => {
+      if (leftBoth(event.relatedTarget)) setPendingFocus(null);
+    };
+    editor.on('blur', onBlur);
+    menu?.addEventListener('focusout', onMenuFocusOut);
+    return () => {
+      editor.off('blur', onBlur);
+      menu?.removeEventListener('focusout', onMenuFocusOut);
+    };
+  }, [editor]);
+
+  // Move focus once the menu is attached: the link field, or the toolbar's tab
+  // stop. While a link is inspected the menu holds only the link field, so a
+  // toolbar request goes there, as Ctrl/⌘+K on a link does.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the link field appears with showLinkPanel.
   useEffect(() => {
     if (!visible || !pendingFocus) return;
     const target =
-      pendingFocus === 'link'
+      pendingFocus === 'link' || inspectingLink
         ? menuRef.current?.querySelector<HTMLInputElement>('input[role="combobox"]')
         : (toolbarRef.current?.querySelector<HTMLElement>(`${TOOLBAR_ITEM}[tabindex="0"]`) ??
           toolbarRef.current?.querySelector<HTMLElement>(TOOLBAR_ITEM));
+    // A request for a control that isn't there is dropped, never kept for later.
+    setPendingFocus(null);
     if (!target) return;
     target.focus();
     if (target instanceof HTMLInputElement) target.select();
-    setPendingFocus(null);
-  }, [visible, pendingFocus, showLinkPanel]);
+  }, [visible, pendingFocus, showLinkPanel, inspectingLink]);
 
+  // Shown only while the writer is in the page or the menu, as TipTap's default
+  // rule does, so a delayed update never shows it over another field.
   const shouldShow = useCallback<NonNullable<BubbleMenuProps['shouldShow']>>(
-    ({ editor: current }) => current.isEditable && selectionMenuApplies(current.state),
+    ({ editor: current, view, element }) =>
+      current.isEditable && (view.hasFocus() || inMenu(element, document.activeElement)) && selectionMenuApplies(current.state),
     [],
   );
   const options = useMemo<BubbleMenuProps['options']>(
@@ -504,7 +536,12 @@ function TurnIntoMenu({
         <span className="hidden max-w-24 truncate text-xs sm:inline">{current ? t(current.labelKey) : t('editor.format.turnInto')}</span>
         <ChevronDown aria-hidden className="size-3 opacity-60" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent aria-label={t('editor.format.turnInto')} className="w-44" finalFocus={() => !chose.current}>
+      <DropdownMenuContent
+        {...{ [MENU_POPUP_ATTRIBUTE]: '' }}
+        aria-label={t('editor.format.turnInto')}
+        className="w-44"
+        finalFocus={() => !chose.current}
+      >
         <DropdownMenuRadioGroup
           value={kind ?? ''}
           onValueChange={(value) => {

@@ -32,9 +32,10 @@ export const TURN_INTO_OPTIONS: TurnIntoOption[] = [
  * offer (Heading 1, to-do lists), so no choice shows as selected.
  */
 export function currentTurnIntoKind(editor: Editor): TurnIntoKind | null {
-  if (editor.isActive('taskList')) return null;
-  if (editor.isActive('orderedList')) return 'orderedList';
-  if (editor.isActive('bulletList')) return 'bulletList';
+  // The nearest list decides: a bulleted list nested in a numbered one is bulleted.
+  const list = nearestListType(editor.state);
+  if (list === 'orderedList' || list === 'bulletList') return list;
+  if (list) return null;
   if (editor.isActive('heading', { level: 2 })) return 'heading2';
   if (editor.isActive('heading', { level: 3 })) return 'heading3';
   if (editor.isActive('heading')) return null;
@@ -44,6 +45,30 @@ export function currentTurnIntoKind(editor: Editor): TurnIntoKind | null {
 }
 
 const LIST_ITEMS = new Set(['listItem', 'taskItem']);
+const LISTS = new Set(['bulletList', 'orderedList', 'taskList']);
+
+/**
+ * The list type nearest to the selected textblocks: their shared innermost list,
+ * 'mixed' when they are all in lists of different types, or null when any of
+ * them is outside a list. Ancestor lists further out don't count.
+ */
+function nearestListType({ doc, selection }: Pick<EditorState, 'doc' | 'selection'>): string | null {
+  let shared: string | null | undefined;
+  doc.nodesBetween(selection.from, selection.to, (node, pos) => {
+    if (!node.isTextblock) return true;
+    const $pos = doc.resolve(pos + 1);
+    let type: string | null = null;
+    for (let depth = $pos.depth - 1; depth > 0 && !type; depth -= 1) {
+      const name = $pos.node(depth).type.name;
+      if (LISTS.has(name)) type = name;
+    }
+    if (type === null || shared === null) shared = null;
+    else if (shared === undefined) shared = type;
+    else if (shared !== type) shared = 'mixed';
+    return false;
+  });
+  return shared ?? null;
+}
 
 /** Positions inside each textblock the selection touches, in document order. */
 function selectedTextblocks(tr: Transaction): number[] {
@@ -138,10 +163,13 @@ export function turnInto(editor: Editor, kind: TurnIntoKind): boolean {
     case 'bulletList':
     case 'orderedList': {
       const isBullet = kind === 'bulletList';
-      if (editor.isActive(isBullet ? 'bulletList' : 'orderedList')) return editor.commands.focus();
-      // A whole selection in the other list type switches in place, keeping its
-      // nesting; anything else becomes list text first.
-      if (!editor.isActive(isBullet ? 'orderedList' : 'bulletList')) lift(true).setParagraph();
+      // Only the nearest list counts, so a bulleted list nested in a numbered one
+      // can still become numbered.
+      const nearest = nearestListType(editor.state);
+      if (nearest === kind) return editor.commands.focus();
+      // A selection whose nearest list is the other type switches that list in
+      // place, keeping its nesting; anything else becomes list text first.
+      if (nearest !== (isBullet ? 'orderedList' : 'bulletList')) lift(true).setParagraph();
       if (isBullet) chain.toggleBulletList();
       else chain.toggleOrderedList();
       break;

@@ -286,6 +286,35 @@ describe('Ctrl/⌘+K in the page adds a link (AUTH-10)', () => {
     expect(getMarkdown(editor)).not.toContain('old.example.com');
   });
 
+  it('drops the request when the writer leaves the page before the menu appears', async () => {
+    const { container, editor, prose } = await mountPage();
+    const outside = container.querySelector('input[aria-label="Search outside the page"]') as HTMLInputElement;
+    await caretIn(editor, 'guide', 2);
+    await key(prose, { key: 'k', ctrlKey: true });
+    // Within the menu's 250 ms show delay, the writer clicks into another field.
+    await act(async () => outside.focus());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(textMenu()).toBeNull();
+    expect(document.activeElement).toBe(outside);
+  });
+
+  it('keeps the request while focus moves within the page and its menu', async () => {
+    const { editor, prose } = await mountPage();
+    // The menu's element, from an earlier selection (it is detached while hidden).
+    await select(editor, 'See');
+    const menu = textMenu() as HTMLElement;
+    await caretIn(editor, 'guide', 2);
+    await waitFor(() => expect(textMenu()).toBeNull());
+    await key(prose, { key: 'k', ctrlKey: true });
+    await act(async () => {
+      prose.dispatchEvent(new FocusEvent('blur', { relatedTarget: menu }));
+    });
+    await waitFor(() => expect(document.activeElement).toBe(linkField()));
+    expect(selectedText(editor)).toBe('guide');
+  });
+
   it('leaves the key to an IME composition', async () => {
     const { editor, prose, onPaletteChange } = await mountPage();
     await select(editor, 'guide');
@@ -331,6 +360,11 @@ describe('Turn into (AUTH-37)', () => {
       item.click();
     });
     await settle();
+    // The menu closes before the writer can reach for it again.
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
+    // A choice returns focus to the text (in an animation frame) before the next action.
+    const page = document.querySelector<HTMLElement & { editor: Editor }>('.ProseMirror');
+    if (page) await editorFocused(page.editor);
   };
 
   const checkedChoice = async () => {
@@ -344,6 +378,7 @@ describe('Turn into (AUTH-37)', () => {
       .map((node) => node.textContent?.trim());
     await key(document.activeElement ?? document.body, { key: 'Escape' });
     await settle();
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
     return checked;
   };
 
@@ -430,6 +465,25 @@ describe('Turn into (AUTH-37)', () => {
     });
     expect(getMarkdown(editor)).toBe('AInstall the app\n\nThen sign in');
     expect([editor.state.selection.from, editor.state.selection.to]).toEqual([4, 20]);
+  });
+
+  it('treats a bulleted list nested in a numbered one by its own, nearest type', async () => {
+    const original = '1. Parent\n    - Child\n2. Second';
+    const { editor } = await mountPage({ value: original });
+    const before = getMarkdown(editor);
+    await select(editor, 'Child');
+    expect(turnIntoTrigger()?.textContent).toContain('Bullet list');
+    expect(await checkedChoice()).toEqual(['Bullet list']);
+
+    // Already a bullet list: nothing changes.
+    await chooseTurnInto('Bullet list');
+    expect(getMarkdown(editor)).toBe(before);
+
+    // Numbered: only the nested list changes; the outer list keeps its items.
+    await chooseTurnInto('Numbered list');
+    const after = getMarkdown(editor);
+    expect(after).toMatch(/^1\. Parent\n\s+1\. Child\n2\. Second$/);
+    expect(turnIntoTrigger()?.textContent).toContain('Numbered list');
   });
 
   it('switches a bulleted list to a numbered one in place', async () => {
@@ -582,6 +636,24 @@ describe('selection menu keyboard and ARIA', () => {
     await waitFor(() => expect(prose.contains(document.activeElement)).toBe(true));
     await key(prose, { key: 'F10', altKey: true });
     await waitFor(() => expect(document.activeElement).toBe(button('Comment')));
+  });
+
+  it('sends Alt+F10 to the link field while a link is inspected, and keeps no request for later', async () => {
+    const { editor, prose } = await mountPage({ value: 'Read [the guide](https://example.com) first' });
+    await caretIn(editor, 'the guide', 3);
+    await waitFor(() => expect(linkField()).not.toBeNull());
+    expect(toolbar()).toBeNull();
+
+    await key(prose, { key: 'F10', altKey: true });
+    await waitFor(() => expect(document.activeElement).toBe(linkField()));
+
+    // Selecting text brings the toolbar back; it doesn't take focus from the page.
+    await select(editor, 'Read');
+    await waitFor(() => expect(toolbar()).not.toBeNull());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    });
+    expect(prose.contains(document.activeElement)).toBe(true);
   });
 
   it('mirrors the arrow keys in an Arabic page and labels everything in Arabic', async () => {
