@@ -18,7 +18,8 @@
       "!**/*.svg",
       "!**/routeTree.gen.ts",
       "!**/src/generated",
-      "!**/components/ui"
+      "!**/components/ui",
+      "!operations/ux/**/*.html"
     ]
   },
   // Email templates run directly through tsx in production, where JSX uses the

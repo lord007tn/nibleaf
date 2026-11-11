@@ -8,7 +8,13 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import type { IntegrationCatalogEntry, IntegrationCategory, IntegrationProviderId, IntegrationPublicConfig } from '@nibleaf/shared/integrations';
+import type {
+  IntegrationCatalogEntry,
+  IntegrationCategory,
+  IntegrationProviderId,
+  IntegrationPublicConfig,
+  IntegrationSettingsSection,
+} from '@nibleaf/shared/integrations';
 import { randomUUID } from '@nibleaf/shared/uuid';
 import { useNavigate } from '@tanstack/react-router';
 import {
@@ -198,6 +204,7 @@ const AVAILABILITY_KEYS = {
   available: 'settings.integrations.availability.available',
   not_configured: 'settings.integrations.availability.notConfigured',
   unavailable: 'settings.integrations.availability.unavailable',
+  coming_soon: 'settings.integrations.availability.comingSoon',
 } as const satisfies Record<IntegrationCatalogEntry['availability'], MessageKey>;
 
 const HEALTH_KEYS = {
@@ -221,12 +228,30 @@ const isConfigurableProvider = (providerId: IntegrationProviderId): providerId i
   providerId === 'slack' || providerId === 'discord' || providerId === 'zapier';
 
 const isAnalyticsProvider = (providerId: IntegrationProviderId) => providerId === 'google-analytics' || providerId === 'plausible';
+const isComingSoon = (entry: IntegrationCatalogEntry) => entry.availability === 'coming_soon';
+
+/** Where a provider is really set up, when that is another settings page: its button and the line above it. */
+const SETTINGS_LINKS = {
+  git: { label: 'settings.integrations.openGitSettings', description: 'settings.integrations.adapterOwned', icon: GitBranch },
+  smartAi: { label: 'settings.integrations.openSmartAi', description: 'settings.integrations.smartAiOwned', icon: Bot },
+} as const satisfies Record<Exclude<IntegrationSettingsSection, 'integrations'>, { label: MessageKey; description: MessageKey; icon: ProviderIcon }>;
 const newIdempotencyKey = () => randomUUID();
 
 function IntegrationStatus({ entry }: { entry: IntegrationCatalogEntry }) {
   const t = useT();
-  const status = entry.connection?.status;
-  const label = t(status ? STATUS_KEYS[status] : AVAILABILITY_KEYS[entry.availability]);
+  const comingSoon = isComingSoon(entry);
+  const status = comingSoon ? undefined : entry.connection?.status;
+  // A site's own AI key that is saved but isn't what answers readers right now.
+  const savedKeyNotInUse = status === 'inactive' && entry.category === 'ai' && entry.connection?.ownership === 'project';
+  const label = t(
+    comingSoon && entry.connection
+      ? 'settings.integrations.status.notSendingYet'
+      : savedKeyNotInUse
+        ? 'settings.integrations.status.notInUse'
+        : status
+          ? STATUS_KEYS[status]
+          : AVAILABILITY_KEYS[entry.availability],
+  );
   return (
     <Badge
       className={cn(
@@ -293,12 +318,9 @@ function CatalogCard({ entry, onSelect }: { entry: IntegrationCatalogEntry; onSe
   const t = useT();
   const meta = PROVIDER_META[entry.id];
   const Icon = meta.icon;
-  return (
-    <button
-      className="group flex min-h-36 w-full flex-col rounded-xl border border-border bg-card p-4 text-start outline-none transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50"
-      onClick={onSelect}
-      type="button"
-    >
+  const comingSoon = isComingSoon(entry);
+  const body = (
+    <>
       <div className="flex w-full items-start justify-between gap-3">
         <span className={cn('grid size-10 shrink-0 place-items-center rounded-lg', meta.tint)}>
           <Icon className="size-5" />
@@ -306,7 +328,26 @@ function CatalogCard({ entry, onSelect }: { entry: IntegrationCatalogEntry; onSe
         <IntegrationStatus entry={entry} />
       </div>
       <div className="mt-4 font-semibold text-sm">{t(meta.name)}</div>
-      <p className="mt-1 line-clamp-2 text-muted-foreground text-sm leading-relaxed">{t(meta.description)}</p>
+      <p className="mt-1 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
+        {t(comingSoon ? 'settings.integrations.comingSoon.description' : meta.description)}
+      </p>
+    </>
+  );
+  // Nothing to open: it can't be connected yet and nothing is stored to remove.
+  if (comingSoon && !entry.connection) {
+    return (
+      <div className="flex min-h-36 w-full flex-col rounded-xl border border-border border-dashed bg-card p-4 text-start" data-coming-soon="">
+        {body}
+      </div>
+    );
+  }
+  return (
+    <button
+      className="group flex min-h-36 w-full flex-col rounded-xl border border-border bg-card p-4 text-start outline-none transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50"
+      onClick={onSelect}
+      type="button"
+    >
+      {body}
     </button>
   );
 }
@@ -411,6 +452,82 @@ function ConfirmationDialog({
   );
 }
 
+/**
+ * A provider that delivers nothing yet ("Coming soon"): a stored connection can
+ * only be removed. No test, no edit, no activation.
+ */
+function ComingSoonDetail({
+  entry,
+  onBack,
+  onRemove,
+  pending,
+  removeOpen,
+  setRemoveOpen,
+}: {
+  entry: IntegrationCatalogEntry;
+  onBack: () => void;
+  onRemove: () => void;
+  pending: boolean;
+  removeOpen: boolean;
+  setRemoveOpen: (open: boolean) => void;
+}) {
+  const t = useT();
+  const meta = PROVIDER_META[entry.id];
+  const Icon = meta.icon;
+  const name = t(meta.name);
+  const config = entry.connection?.config;
+  const label = config && 'label' in config ? config.label : null;
+  return (
+    <div className="flex flex-col gap-4">
+      <Button className="w-fit" onClick={onBack} size="sm" variant="ghost">
+        <ArrowLeft className="rtl:-scale-x-100" />
+        {t('settings.integrations.allIntegrations')}
+      </Button>
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <span className={cn('grid size-12 shrink-0 place-items-center rounded-xl', meta.tint)}>
+            <Icon className="size-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-semibold text-lg">{name}</h2>
+              <IntegrationStatus entry={entry} />
+            </div>
+            <p className="mt-1 text-muted-foreground text-sm leading-relaxed">{t('settings.integrations.comingSoon.description')}</p>
+          </div>
+        </div>
+      </section>
+      {entry.connection ? (
+        <SettingsSection title={t('settings.integrations.status.notSendingYet')} description={t('settings.integrations.comingSoon.saved')}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {label ? (
+              <p className="min-w-0 truncate font-medium text-sm">
+                <bdi>{label}</bdi>
+              </p>
+            ) : (
+              <span />
+            )}
+            <Button className="h-9" disabled={pending} onClick={() => setRemoveOpen(true)} type="button" variant="destructive">
+              <Trash2 />
+              {t('settings.integrations.remove')}
+            </Button>
+          </div>
+        </SettingsSection>
+      ) : null}
+      <ConfirmationDialog
+        confirmLabel={t('settings.integrations.remove')}
+        description={t('settings.integrations.removeDescription', { name })}
+        destructive
+        onConfirm={onRemove}
+        onOpenChange={setRemoveOpen}
+        open={removeOpen}
+        pending={pending}
+        title={t('settings.integrations.removeTitle', { name })}
+      />
+    </div>
+  );
+}
+
 function IntegrationDetail({
   projectId,
   project,
@@ -444,6 +561,32 @@ function IntegrationDetail({
   const [verifyOpen, setVerifyOpen] = useState(false);
   const pending = create.isPending || update.isPending || activate.isPending || deactivate.isPending || verify.isPending || remove.isPending;
 
+  async function deleteConnection() {
+    if (pending) return;
+    if (!connection || !isConfigurableProvider(entry.id)) return;
+    try {
+      await remove.mutateAsync({ providerId: entry.id, expectedRevision: connection.revision });
+      setDeleteOpen(false);
+      toast.success(isComingSoon(entry) ? t('settings.integrations.removedToast', { name: t(meta.name) }) : t('settings.integrations.deletedToast'));
+      onBack();
+    } catch {
+      // Toasted in plain words by the mutation (meta.errorMessage).
+    }
+  }
+
+  if (isComingSoon(entry)) {
+    return (
+      <ComingSoonDetail
+        entry={entry}
+        onBack={onBack}
+        onRemove={deleteConnection}
+        pending={remove.isPending}
+        removeOpen={deleteOpen}
+        setRemoveOpen={setDeleteOpen}
+      />
+    );
+  }
+
   if (isAnalyticsProvider(entry.id)) {
     return (
       <div className="flex flex-col gap-4">
@@ -455,6 +598,9 @@ function IntegrationDetail({
       </div>
     );
   }
+
+  const settingsSection = entry.navigation.settingsSection;
+  const settingsLink = settingsSection && settingsSection !== 'integrations' ? SETTINGS_LINKS[settingsSection] : null;
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -533,19 +679,6 @@ function IntegrationDetail({
     }
   };
 
-  const deleteConnection = async () => {
-    if (pending) return;
-    if (!connection || !isConfigurableProvider(entry.id)) return;
-    try {
-      await remove.mutateAsync({ providerId: entry.id, expectedRevision: connection.revision });
-      setDeleteOpen(false);
-      toast.success(t('settings.integrations.deletedToast'));
-      onBack();
-    } catch {
-      // Toasted in plain words by the mutation (meta.errorMessage).
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4">
       <Button className="w-fit" onClick={onBack} size="sm" variant="ghost">
@@ -591,8 +724,8 @@ function IntegrationDetail({
         </SettingsSection>
       ) : null}
 
-      {entry.navigation.settingsSection && entry.navigation.settingsSection !== 'integrations' ? (
-        <SettingsSection title={t('settings.integrations.configuration')} description={t('settings.integrations.adapterOwned')}>
+      {settingsLink ? (
+        <SettingsSection title={t('settings.integrations.configuration')} description={t(settingsLink.description)}>
           <Button
             onClick={() =>
               navigate({
@@ -603,8 +736,8 @@ function IntegrationDetail({
               })
             }
           >
-            <GitBranch />
-            {t('settings.integrations.openGitSettings')}
+            <settingsLink.icon />
+            {t(settingsLink.label)}
           </Button>
         </SettingsSection>
       ) : null}
