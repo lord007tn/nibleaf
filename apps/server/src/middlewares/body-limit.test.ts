@@ -62,7 +62,7 @@ describe('request body limit', () => {
     const { body, pulled } = streamed(100 * MiB);
     const response = await send(app, 'POST', '/api/app/projects/p/pages', body);
     expect(response.status).toBe(413);
-    expect((await response.json()).error.code).toBe('page:too_large');
+    expect(await response.json()).toMatchObject({ error: { code: 'page:too_large' } });
     expect(parsed).not.toHaveBeenCalled();
     // Read stopped just past the 16 MiB limit, far short of 100 MiB.
     expect(pulled.bytes).toBeLessThan(MAX_PAGE_REQUEST_BYTES + 2 * MiB);
@@ -77,7 +77,7 @@ describe('request body limit', () => {
     for (const body of [plain, escaped]) {
       const response = await send(app, 'PATCH', '/api/app/projects/p/pages/page-1', body);
       expect(response.status).toBe(200);
-      expect((await response.json()).length).toBe(body.length);
+      expect(await response.json()).toEqual({ length: body.length });
     }
   });
 
