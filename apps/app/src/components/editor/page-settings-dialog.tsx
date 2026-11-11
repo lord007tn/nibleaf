@@ -236,7 +236,8 @@ export function PageSettingsDialog({
         onSuccess: (result) => {
           toast.success(
             result.addressChanged
-              ? t('editor.pageSettings.addressChanged', { path: `/${page.path}`, redirects: result.redirectsAdded, links: result.linksUpdated })
+              ? // The path is isolated left-to-right so it reads /getting-started, not getting-started/, in Arabic.
+                t('editor.pageSettings.addressChanged', { path: `\u2066/${page.path}\u2069`, redirects: result.redirectsAdded, links: result.linksUpdated })
               : t('editor.pageSettings.saved'),
           );
           if (result.documentsSkipped) toast.warning(t('editor.pageSettings.linksSkipped', { count: result.documentsSkipped }));

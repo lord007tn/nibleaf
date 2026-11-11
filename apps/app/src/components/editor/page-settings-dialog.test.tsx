@@ -83,7 +83,7 @@ describe('page settings draft', () => {
     const options = mocks.update.mock.calls.at(-1)?.[1] as { onSuccess: (data: typeof result) => void };
     await act(async () => options.onSuccess(result));
     expect(mocks.success).toHaveBeenLastCalledWith(message);
-    if (result.addressChanged) expect(mocks.translate).toHaveBeenCalledWith(message, { path: '/original', redirects: 1, links: 2 });
+    if (result.addressChanged) expect(mocks.translate).toHaveBeenCalledWith(message, { path: '\u2066/original\u2069', redirects: 1, links: 2 });
     expect(close).toHaveBeenLastCalledWith(false);
   });
 
