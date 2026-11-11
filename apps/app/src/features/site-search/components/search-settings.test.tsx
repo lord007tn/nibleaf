@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+import { QueryClientProvider } from '@tanstack/react-query';
 import { type AnchorHTMLAttributes, act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '@/hooks/api';
+import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { isolate } from '@/lib/bidi';
 import { SearchSettings } from './search-settings';
 
@@ -49,18 +51,37 @@ const mocks = vi.hoisted(() => ({
   status: 'admin' as 'admin' | 'notAdmin' | 'pending',
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
+  /** Use the app's real configuration and reindex mutations (and their shared error toasts) against a mocked API. */
+  realMutations: false,
+  patchConfiguration: vi.fn(),
+  postReindex: vi.fn(),
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, translateFn: (key: string) => key }));
 vi.mock('sonner', () => ({ toast: { error: mocks.toastError, success: mocks.toastSuccess } }));
-vi.mock('@/hooks/api', () => ({
-  useProjectSearchConfiguration: () => mocks.configuration,
-  useUpdateProjectSearchConfiguration: () => ({ mutateAsync: mocks.updateConfiguration, isPending: false }),
-  useLanguages: () => ({ data: mocks.languages, isPending: false }),
-  useUpdateLanguage: () => ({ mutateAsync: mocks.updateLanguage, isPending: false }),
-  useProjectSearchIndexDiagnostics: () => ({ data: mocks.diagnostics, isPending: !mocks.diagnostics, isError: false, isFetching: false }),
-  useCreateProjectSearchReindex: () => ({ isPending: false, mutate: mocks.reindex }),
+vi.mock('@/services/api', () => ({
+  api: {
+    app: { projects: { ':projectId': { settings: { search: { $patch: mocks.patchConfiguration, reindex: { $post: mocks.postReindex } } } } } },
+  },
 }));
+vi.mock('@/hooks/api', async () => {
+  const search = await vi.importActual<typeof import('@/hooks/api/project-search')>('@/hooks/api/project-search');
+  return {
+    useProjectSearchConfiguration: () => mocks.configuration,
+    // The real hooks always run (hooks never run conditionally); a test opts into their result.
+    useUpdateProjectSearchConfiguration: (projectId: string) => {
+      const real = search.useUpdateProjectSearchConfiguration(projectId);
+      return mocks.realMutations ? real : { mutateAsync: mocks.updateConfiguration, isPending: false };
+    },
+    useLanguages: () => ({ data: mocks.languages, isPending: false }),
+    useUpdateLanguage: () => ({ mutateAsync: mocks.updateLanguage, isPending: false }),
+    useProjectSearchIndexDiagnostics: () => ({ data: mocks.diagnostics, isPending: !mocks.diagnostics, isError: false, isFetching: false }),
+    useCreateProjectSearchReindex: (projectId: string) => {
+      const real = search.useCreateProjectSearchReindex(projectId);
+      return mocks.realMutations ? real : { isPending: false, mutate: mocks.reindex };
+    },
+  };
+});
 vi.mock('@/hooks/api/workspace-ai', () => ({ useWorkspaceAi: () => ({ data: mocks.ai }) }));
 vi.mock('@/hooks/api/errors', () => ({ friendlyErrorMessage: () => 'Could not save' }));
 vi.mock('@/hooks/use-project-admin-status', () => ({ useProjectAdminStatus: () => ({ status: mocks.status, edit: 'edit' }) }));
@@ -84,8 +105,30 @@ const aiReady = {
 };
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
+let client: ReturnType<typeof createQueryClient>;
 
-const render = () => act(async () => root.render(<SearchSettings project={project} />));
+const render = () =>
+  act(async () =>
+    root.render(
+      <QueryClientProvider client={client}>
+        <SearchSettings project={project} />
+      </QueryClientProvider>,
+    ),
+  );
+/** Mounts again with the app's real mutations, which report their own failures through the shared toast. */
+const remountWithRealMutations = async () => {
+  await act(async () => root.unmount());
+  mocks.realMutations = true;
+  root = createRoot(container);
+  await render();
+};
+/** Lets the lazily loaded error toast land, then a little longer, so a second toast would have shown too. */
+const settleToasts = async () => {
+  await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+};
+/** What the API answers on failure: a technical message the person must never see. */
+const failure = (status: number) => Response.json({ error: { message: `PrismaClientKnownRequestError (${status})` } }, { status });
 
 beforeEach(async () => {
   mocks.configuration = {
@@ -99,6 +142,8 @@ beforeEach(async () => {
   mocks.diagnostics = readyIndex();
   mocks.ai = aiReady;
   mocks.status = 'admin';
+  mocks.realMutations = false;
+  client = createQueryClient();
   mocks.updateConfiguration.mockResolvedValue({});
   mocks.updateLanguage.mockResolvedValue({});
   container = document.createElement('div');
@@ -212,11 +257,22 @@ describe('SearchSettings', () => {
     expect(input('settings.search.placeholder.label').value).toBe('');
   });
 
-  it('leaves a failed configuration save to its mutation, so it is reported once, and stays dirty', async () => {
+  it('leaves a failed configuration save to its mutation, so the form adds no toast, and stays dirty', async () => {
     mocks.updateConfiguration.mockRejectedValueOnce(new Error('PrismaClientKnownRequestError'));
     await type(input('settings.search.placeholder.label'), 'Find');
     await save();
     expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(region()).not.toBeNull();
+  });
+
+  it('reports a failed configuration save exactly once, in plain words, through the real mutation', async () => {
+    await remountWithRealMutations();
+    mocks.patchConfiguration.mockResolvedValueOnce(failure(500));
+    await type(input('settings.search.placeholder.label'), 'Find');
+    await save();
+    await settleToasts();
+    expect(mocks.patchConfiguration).toHaveBeenCalledOnce();
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Could not save');
     expect(region()).not.toBeNull();
   });
 
@@ -326,14 +382,14 @@ describe('index health', () => {
     expect(described).toContain('settings.search.diagnostics.reindexActive');
   });
 
-  it('leaves a failed reindex to the hook, so it is reported once', async () => {
-    // The hook's meta.errorMessage toasts the plain-language message (see workspace-ai.test.tsx).
-    mocks.reindex.mockImplementationOnce((_variables, options: { onError?: (error: unknown) => void } | undefined) =>
-      options?.onError?.(new Error('PrismaClientKnownRequestError: Unique constraint failed')),
-    );
+  it('reports a failed reindex exactly once, in plain words, through the real mutation', async () => {
+    await remountWithRealMutations();
+    mocks.postReindex.mockResolvedValueOnce(failure(409));
     await act(async () => reindexButton().click());
-    expect(mocks.reindex).toHaveBeenCalledOnce();
-    expect(mocks.toastError).not.toHaveBeenCalled();
+    await settleToasts();
+    expect(mocks.postReindex).toHaveBeenCalledOnce();
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Could not save');
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
   it('shows the health as a status badge and the counts as rows', async () => {

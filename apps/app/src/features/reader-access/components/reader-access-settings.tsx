@@ -2,8 +2,10 @@ import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-section';
 import { Skeleton, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
+import { ConfigDirtyProvider, DirtyStateReporter, useDirtySources } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Project } from '@/hooks/api';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
@@ -29,6 +31,15 @@ export function ReaderAccessSettings({ project }: { project: Project }) {
   const data = query.data;
   const retry = <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
   const props = data ? { projectId: project.id, data, status: access.status } : null;
+  const isReaders = data?.accessMode === 'READERS';
+  // The reader controls own drafts (invitations, allowed domains, audiences,
+  // JWT settings) and their conflicts. Once shown they stay mounted, so a
+  // visibility change, here or from a refetch, never drops an unsaved edit:
+  // while one is unsaved they stay on screen with a note; otherwise they hide.
+  const readerDrafts = useDirtySources();
+  const [readersMounted, setReadersMounted] = useState(false);
+  if (isReaders && !readersMounted) setReadersMounted(true);
+  const readersKept = !isReaders && readerDrafts.sources.size > 0;
 
   let body: ReactNode = null;
   if (view.kind === 'readOnly') body = null;
@@ -40,13 +51,21 @@ export function ReaderAccessSettings({ project }: { project: Project }) {
         {/* A failed refetch keeps the last answer on screen; every write is still checked by the server. */}
         {query.isError ? retry : null}
         <VisibilitySection current={props.data.accessMode} projectId={project.id} status={access.status} />
-        {props.data.accessMode === 'READERS' ? (
-          <>
-            <ReadersSection {...props} />
-            <ReaderListSection {...props} />
-            <AccessRequestsSection {...props} />
-            <AdvancedAccess {...props} />
-          </>
+        <DirtyStateReporter dirty={readerDrafts.sources.size > 0} />
+        {readersMounted ? (
+          <ConfigDirtyProvider report={readerDrafts.report}>
+            <div className={cn('flex flex-col gap-8', !(isReaders || readersKept) && 'hidden')} data-reader-controls="">
+              {readersKept ? (
+                <Callout role="status" tone="warning">
+                  {t('settings.visibility.readersKept')}
+                </Callout>
+              ) : null}
+              <ReadersSection {...props} />
+              <ReaderListSection {...props} />
+              <AccessRequestsSection {...props} />
+              <AdvancedAccess {...props} />
+            </div>
+          </ConfigDirtyProvider>
         ) : null}
       </>
     );

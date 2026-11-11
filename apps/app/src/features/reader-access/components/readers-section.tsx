@@ -10,7 +10,7 @@ import { SettingsSection, SettingsSectionBody } from '@nibleaf/design-system/com
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
-import { useForm, useStore } from '@tanstack/react-form';
+import { useStore } from '@tanstack/react-form';
 import { Mail, RefreshCw, Search, Users } from 'lucide-react';
 import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -68,9 +68,10 @@ export function ReadersSection(props: Props) {
 }
 
 /**
- * Invites people by email. An add form with its own button (nothing to keep in
- * step with the server), so a plain TanStack form; the addresses are checked
- * when it is sent.
+ * Invites people by email. An add form with its own button, on the form
+ * lifecycle (operations/ui-overhaul.md §8.3): one invitation at a time (Enter
+ * during a send does nothing), and what is typed while one is sent is kept
+ * when it lands. The addresses are checked when it is sent.
  */
 function InviteForm({ projectId, data, status }: Props) {
   const t = useT();
@@ -87,29 +88,34 @@ function InviteForm({ projectId, data, status }: Props) {
     [groups, t],
   );
   const { disabled } = decisionProps(manageDecision(status));
+  const empty = useMemo(() => ({ emails: '', audienceId: '' }), []);
 
-  const form = useForm({
-    defaultValues: { emails: '', audienceId: '' },
-    onSubmit: async ({ value, formApi }) => {
+  const { form, ...draft } = useServerDraftForm({
+    identity: [projectId, 'invite-readers'],
+    source: empty,
+    onSubmit: async (value, outcome) => {
       const request = inviteRequest(value);
       try {
         if (request.kind === 'one') {
           const result = await inviteOne.mutateAsync({ email: request.email, audienceIds: request.audienceIds });
-          setLastLink({ email: request.email, link: result.activationUrl });
           toast.success(t('settings.visibility.invite.sentOne', { email: isolate(request.email) }));
+          if (outcome.isCurrent()) setLastLink({ email: request.email, link: result.activationUrl });
         } else {
           const result = await inviteMany.mutateAsync({ emails: request.emails, audienceIds: request.audienceIds });
-          setLastLink(undefined);
           toast.success(t('settings.visibility.invite.sentMany', { count: result.invited }));
+          if (outcome.isCurrent()) setLastLink(undefined);
         }
-        formApi.reset();
+        // Back to empty, except what was typed or chosen while it was sent.
+        outcome.succeeded(empty);
+        return 'saved';
       } catch (error) {
+        outcome.failed();
         toast.error(friendlyErrorMessage(t, error, 'settings.visibility.invite.error'));
+        return 'failed';
       }
     },
   });
   const typed = useStore(form.store, (state) => state.values.emails);
-  const submitting = useStore(form.store, (state) => state.isSubmitting);
 
   return (
     <form
@@ -117,10 +123,10 @@ function InviteForm({ projectId, data, status }: Props) {
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        void form.handleSubmit();
+        void draft.submit();
       }}
     >
-      <DirtyStateReporter dirty={Boolean(typed.trim())} />
+      <DirtyStateReporter dirty={Boolean(typed.trim()) || draft.isSaving} />
       <form.Field name="emails" validators={{ onSubmit: ({ value }) => problemText(inviteProblem(value)) }}>
         {(field) => (
           <FormField<string>
@@ -168,7 +174,7 @@ function InviteForm({ projectId, data, status }: Props) {
       ) : null}
       <SettingsSectionBody className="flex flex-col gap-3">
         <div>
-          <Button disabled={disabled} loading={submitting} type="submit">
+          <Button disabled={disabled} loading={draft.isSaving} type="submit">
             <Mail aria-hidden /> {t('settings.visibility.invite.submit')}
           </Button>
         </div>
@@ -246,6 +252,8 @@ function EmailDomainsForm({ projectId, data, status }: Props) {
       }}
       ref={formRef}
     >
+      {/* Also tells the page these reader settings hold an edit, so they stay on screen if visibility changes. */}
+      <DirtyStateReporter dirty={draft.isDirty || draft.isSaving} />
       <DraftConflicts conflicts={draft.conflicts} resolve={draft.resolveConflict} />
       <form.Field name="domains" validators={{ onSubmit: ({ value }) => problemText(emailDomainsProblem(value)) }}>
         {(field) => (

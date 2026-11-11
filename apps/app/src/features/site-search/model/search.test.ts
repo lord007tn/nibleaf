@@ -231,6 +231,18 @@ describe('index health', () => {
       kind: 'denied',
       reason: 'settings.search.diagnostics.reindexActive',
     });
+    // The provider is down for now, but a run is still queued or going.
+    for (const status of ['PENDING', 'RUNNING']) {
+      expect(reindexDecision({ availability: { reason: 'provider_unavailable' }, health: 'unavailable', latestRun: { status } }, 'admin')).toEqual({
+        kind: 'denied',
+        reason: 'settings.search.diagnostics.reindexActive',
+      });
+    }
+    for (const status of ['READY', 'FAILED', 'DISABLED']) {
+      expect(reindexDecision({ availability: { reason: 'provider_unavailable' }, health: 'unavailable', latestRun: { status } }, 'admin')).toEqual({
+        kind: 'allowed',
+      });
+    }
   });
 
   it('locks Reindex without a word while loading or for non-Admins', () => {

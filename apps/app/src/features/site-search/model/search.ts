@@ -244,7 +244,11 @@ export type IndexUnavailableReason = 'not_configured' | 'not_published' | 'provi
 export type IndexDiagnosticsLike = {
   availability: { reason: IndexUnavailableReason | null };
   health: IndexHealth;
+  latestRun?: { status: string } | null;
 };
+
+/** Run statuses the server still counts as going (apps/server/src/actions/search.ts `activeRunStatusSchema`). */
+const ACTIVE_RUN_STATUSES: ReadonlySet<string> = new Set(['PENDING', 'RUNNING']);
 
 /** The DS `StatusBadge` tones this section uses. */
 export type HealthTone = 'success' | 'pending' | 'warning' | 'danger' | 'neutral';
@@ -275,7 +279,11 @@ export function reindexDecision(data: IndexDiagnosticsLike | undefined, status: 
   if (status !== 'admin' || !data) return locked;
   const { reason } = data.availability;
   if (reason === 'not_configured' || reason === 'not_published') return denied(UNAVAILABLE_REASON[reason]);
-  if (data.health === 'indexing') return denied('settings.search.diagnostics.reindexActive');
+  // Health says "indexing" only when the provider answered; when it is down for
+  // now the server reports `unavailable` while the queued run still counts.
+  if (data.health === 'indexing' || ACTIVE_RUN_STATUSES.has(data.latestRun?.status ?? '')) {
+    return denied('settings.search.diagnostics.reindexActive');
+  }
   return allowed;
 }
 

@@ -218,6 +218,26 @@ const chooseAction = async (scope: ParentNode, text: string) => {
   await act(async () => item.click());
 };
 const openAdvanced = () => act(async () => button(container, 'settings.visibility.advanced.title')?.click());
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+/** The reader controls (invitations, list, requests, advanced access) are mounted and on screen. */
+const readerControlsShown = () => {
+  const controls = container.querySelector('[data-reader-controls]');
+  return Boolean(controls) && !controls?.classList.contains('hidden');
+};
+const enabledSwitch = () => {
+  const label = [...container.querySelectorAll<HTMLElement>('[id]')].find((el) => el.textContent === 'settings.authentication.reader.jwtEnable');
+  const toggle = label ? container.querySelector<HTMLElement>(`[role="switch"][aria-labelledby~="${label.id}"]`) : null;
+  if (!toggle) throw new Error('Expected the JWT switch');
+  return toggle;
+};
 
 describe('who can read the site', () => {
   it('offers three plain choices as radio buttons under one page heading, with nothing to save at first', async () => {
@@ -296,6 +316,24 @@ describe('inviting readers', () => {
     expect(mocks.m.inviteOne.mutateAsync).toHaveBeenCalledWith({ email: 'lee@example.com', audienceIds: [] });
     expect(container.querySelector<HTMLInputElement>('input[readonly]')?.value).toContain('activate?token=t');
     expect(emails.value).toBe('');
+  });
+
+  // Council #445: the add form reset itself after every send, wiping what was typed meanwhile.
+  it('keeps addresses typed while an invitation is sent, and sends one at a time', async () => {
+    const pending = deferred<{ activationUrl: string }>();
+    mocks.m.inviteOne.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    const emails = field('settings.visibility.invite.label');
+    await type(emails, 'lee@example.com');
+    await submitFormOf(emails);
+    await type(emails, 'kim@example.com');
+    // Enter again while the first is in flight sends nothing more.
+    await submitFormOf(emails);
+    expect(mocks.m.inviteOne.mutateAsync).toHaveBeenCalledTimes(1);
+    await act(async () => pending.resolve({ activationUrl: 'https://docs.example.com/activate?token=t' }));
+    expect(emails.value).toBe('kim@example.com');
+    expect(dirty.size).toBeGreaterThan(0);
+    expect(mocks.toast.success).toHaveBeenCalledWith('settings.visibility.invite.sentOne {"email":"lee@example.com"}');
   });
 
   it('invites several readers at once and refuses a list with a typo, under the field', async () => {
@@ -431,6 +469,130 @@ describe('advanced access', () => {
     expect(dirty.size).toBeGreaterThan(0);
   });
 
+  // Council #445: the create form reset itself after every create, wiping what was typed meanwhile.
+  it('keeps an audience name typed while another audience is created', async () => {
+    const pending = deferred<{ id: string }>();
+    mocks.m.createAudience.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await openAdvanced();
+    const name = field('settings.visibility.audiences.name');
+    await type(name, 'Customers');
+    await submitFormOf(name);
+    await type(name, 'Partners');
+    await submitFormOf(name);
+    expect(mocks.m.createAudience.mutateAsync).toHaveBeenCalledTimes(1);
+    await act(async () => pending.resolve({ id: 'aud-2' }));
+    expect(name.value).toBe('Partners');
+    expect(dirty.size).toBeGreaterThan(0);
+  });
+
+  // Council #445: the reader controls were mounted only for Invited readers, so
+  // a refetch that changed visibility unmounted them with their drafts.
+  it('keeps unsaved JWT edits and their conflicts when another admin changes visibility', async () => {
+    await render();
+    await openAdvanced();
+    await type(field('settings.visibility.jwt.issuer'), 'https://login.acme.example');
+    await refetch(readerData({ accessMode: 'WORKSPACE', jwt: { ...JWT, issuer: 'https://sso.acme.example' } }));
+
+    expect(readerControlsShown()).toBe(true);
+    expect(container.textContent).toContain('settings.visibility.readersKept');
+    expect(field('settings.visibility.jwt.issuer').value).toBe('https://login.acme.example');
+    expect(container.textContent).toContain('forms.changedElsewhere');
+    expect(region()).not.toBeNull();
+    expect(dirty.size).toBeGreaterThan(0);
+
+    // Once nothing is unsaved, the controls of a site that no longer invites readers go away.
+    await act(async () => button(region() ?? document, 'forms.discard')?.click());
+    expect(readerControlsShown()).toBe(false);
+    expect(dirty.size).toBe(0);
+  });
+
+  it('keeps the reader controls through a pending save when visibility changes', async () => {
+    const pending = deferred<undefined>();
+    mocks.m.saveJwt.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await openAdvanced();
+    // The groups claim doesn't change who can sign in, so it saves without asking.
+    await type(field('settings.visibility.jwt.groupsClaim'), 'teams');
+    await saveBar();
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ groupsClaim: 'teams' }));
+    await refetch(readerData({ accessMode: 'PUBLIC' }));
+    expect(readerControlsShown()).toBe(true);
+    expect(field('settings.visibility.jwt.groupsClaim').value).toBe('teams');
+
+    await act(async () => pending.resolve(undefined));
+    expect(region()).toBeNull();
+    expect(readerControlsShown()).toBe(false);
+  });
+
+  it('keeps unsaved reader settings when the admin makes the site public', async () => {
+    mocks.m.setMode.mutateAsync.mockResolvedValue(undefined);
+    await render();
+    const domains = field('settings.visibility.domains.label');
+    await type(domains, 'partner.example');
+    await act(async () => radios()[0]?.click());
+    await act(async () => button(container, 'settings.visibility.save')?.click());
+    await confirmDialog();
+    expect(mocks.m.setMode.mutateAsync).toHaveBeenCalledWith({ mode: 'PUBLIC' });
+    await refetch(readerData({ accessMode: 'PUBLIC' }));
+    expect(readerControlsShown()).toBe(true);
+    expect(field('settings.visibility.domains.label').value).toBe('partner.example');
+    expect(region()).not.toBeNull();
+  });
+
+  // Council #445: JWT access changes saved straight through the save bar.
+  it('asks before turning the handoff off, and says sessions run on', async () => {
+    mocks.m.saveJwt.mutateAsync.mockResolvedValue(undefined);
+    await render();
+    await openAdvanced();
+    await act(async () => enabledSwitch().click());
+    await saveBar();
+    expect(mocks.m.saveJwt.mutateAsync).not.toHaveBeenCalled();
+    expect(dialog()?.textContent).toContain('settings.visibility.jwt.confirm.title');
+    expect(dialog()?.textContent).toContain('settings.visibility.jwt.impact.disable');
+    expect(buttons(dialog() ?? document).find((b) => b.type === 'submit')?.className).toContain('bg-destructive');
+
+    // Cancel: nothing is saved and the edit stays.
+    await act(async () => button(dialog() ?? document, 'common.cancel')?.click());
+    expect(mocks.m.saveJwt.mutateAsync).not.toHaveBeenCalled();
+    expect(region()).not.toBeNull();
+
+    await saveBar();
+    await confirmDialog();
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+    expect(region()).toBeNull();
+  });
+
+  it('names a new issuer and key set in the confirmation, and keeps a failure in the dialog', async () => {
+    mocks.m.saveJwt.mutateAsync.mockRejectedValueOnce(new Error('boom'));
+    await render();
+    await openAdvanced();
+    await type(field('settings.visibility.jwt.issuer'), 'https://login.acme.example');
+    await type(field('settings.visibility.jwt.jwksUrl'), 'https://login.acme.example/jwks.json');
+    await saveBar();
+    const text = dialog()?.textContent ?? '';
+    expect(text).toContain('settings.visibility.jwt.impact.issuer');
+    expect(text).toContain('settings.visibility.jwt.impact.keys');
+    expect(text).toContain('settings.visibility.jwt.impact.sessions');
+    expect(text).not.toContain('settings.visibility.jwt.impact.audience');
+    await confirmDialog();
+    expect(dialog()?.querySelector('[data-slot="action-dialog-error"]')?.textContent).toBe('settings.saveError');
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+    expect(field('settings.visibility.jwt.issuer').value).toBe('https://login.acme.example');
+  });
+
+  it('masks a pasted test token and keeps it out of browser autofill', async () => {
+    await render();
+    await openAdvanced();
+    const token = field('settings.authentication.reader.jwtTest');
+    expect(token.type).toBe('text');
+    expect(token.className).toContain('[-webkit-text-security:disc]');
+    expect(token.getAttribute('autocomplete')).toBe('off');
+    expect(token.getAttribute('data-1p-ignore')).toBe('true');
+    expect(token.getAttribute('data-lpignore')).toBe('true');
+    expect(token.getAttribute('name')).toBe('reader-jwt-test-token');
+  });
+
   it('takes a server change to a JWT field nobody edited without touching an edited one', async () => {
     await render();
     await openAdvanced();
@@ -446,6 +608,9 @@ describe('advanced access', () => {
     await openAdvanced();
     await type(field('settings.visibility.jwt.audience'), 'docs-v2');
     await saveBar();
+    // A new audience refuses tokens made for the old one, so it asks first.
+    expect(dialog()?.textContent).toContain('settings.visibility.jwt.impact.audience');
+    await confirmDialog();
     expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ audience: 'docs-v2', jwksUrl: JWT.jwksUrl, publicJwks: null, sessionTtlMinutes: 480, maxTokenAgeSeconds: 300 }),
     );

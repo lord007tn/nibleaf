@@ -9,6 +9,7 @@ import {
   JWT_MAX_TOKEN_AGE_SECONDS,
   JWT_SESSION_TTL_MINUTES,
   type JwtValues,
+  jwtChangeImpacts,
   jwtFieldProblem,
   jwtSavedValues,
   jwtSaveRequest,
@@ -150,5 +151,41 @@ describe('access log', () => {
     expect(auditActionLabel('READER_REVOKED')).toEqual({ key: 'settings.authentication.reader.audit.action.readerRevoked' });
     expect(auditActionLabel('ACCESS_REQUESTED')).toEqual({ key: 'settings.visibility.audit.accessRequested' });
     expect(auditActionLabel('SOMETHING_NEW')).toEqual({ raw: 'SOMETHING_NEW' });
+  });
+});
+
+describe('jwtChangeImpacts', () => {
+  const saved = jwtValues({
+    enabled: true,
+    issuer: 'https://portal.example.com',
+    audience: 'docs',
+    jwksUrl: 'https://portal.example.com/jwks.json',
+    publicJwks: null,
+    groupsClaim: 'groups',
+    claimMapping: {},
+  });
+
+  it('asks before turning the handoff off, and only says that', () => {
+    expect(jwtChangeImpacts(saved, { ...saved, enabled: false, issuer: 'https://other.example.com' })).toEqual(['disable']);
+  });
+
+  it('asks before turning it on', () => {
+    expect(jwtChangeImpacts({ ...saved, enabled: false }, saved)).toEqual(['enable']);
+  });
+
+  it('names each change that refuses tokens made for the old value', () => {
+    expect(
+      jwtChangeImpacts(saved, { ...saved, issuer: 'https://login.example.com', audience: 'docs-v2', jwksUrl: '', publicJwks: '{"keys":[]}' }),
+    ).toEqual(['issuer', 'audience', 'keys']);
+    expect(jwtChangeImpacts(saved, { ...saved, jwksUrl: 'https://portal.example.com/v2/jwks.json' })).toEqual(['keys']);
+  });
+
+  it('needs no confirmation for changes that keep the same tokens working', () => {
+    expect(jwtChangeImpacts(saved, { ...saved, groupsClaim: 'teams', claimMapping: '{"acme": "aud-1"}' })).toEqual([]);
+    expect(jwtChangeImpacts(saved, { ...saved, issuer: ' https://portal.example.com ' })).toEqual([]);
+    const pasted = { ...saved, jwksUrl: '', publicJwks: '{"keys": [{"kty": "EC"}]}' };
+    expect(jwtChangeImpacts(pasted, { ...pasted, publicJwks: JSON.stringify({ keys: [{ kty: 'EC' }] }, null, 2) })).toEqual([]);
+    const off = { ...saved, enabled: false };
+    expect(jwtChangeImpacts(off, { ...off, issuer: 'https://login.example.com' })).toEqual([]);
   });
 });

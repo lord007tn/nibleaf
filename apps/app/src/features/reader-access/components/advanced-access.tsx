@@ -11,12 +11,13 @@ import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { useForm, useStore } from '@tanstack/react-form';
+import { useStore } from '@tanstack/react-form';
 import { ChevronDown } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { DirtyStateReporter } from '@/components/project-settings/shared';
+import { SecretInput } from '@/components/secret-input';
 import { FormField } from '@/components/ui/form-field';
 import type { ReaderAccessData } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
@@ -34,11 +35,15 @@ import {
   audienceScope,
   auditActionLabel,
   grantablePages,
+  JWT_IMPACT_TEXT,
   JWT_PROBLEM_TEXT,
   type JwtField,
+  type JwtImpact,
   type JwtProblem,
   type JwtValues,
+  jwtChangeImpacts,
   jwtFieldProblem,
+  jwtImpactKeepsSessions,
   jwtSavedValues,
   jwtSaveRequest,
   jwtValues,
@@ -102,20 +107,26 @@ function AudiencesSection({ projectId, data, status }: Props) {
   const required = (value: string) =>
     audienceNameProblem(value) ? t('validation.required', { label: t('settings.visibility.audiences.name') }) : undefined;
 
-  const form = useForm({
-    defaultValues: { name: '', pageIds: [] as string[] },
-    onSubmit: async ({ value, formApi }) => {
+  // An add form on the form lifecycle (operations/ui-overhaul.md §8.3): one
+  // create at a time, and a name typed while one is created is kept.
+  const empty = useMemo(() => ({ name: '', pageIds: [] as string[] }), []);
+  const { form, ...draft } = useServerDraftForm({
+    identity: [projectId, 'create-audience'],
+    source: empty,
+    onSubmit: async (value, outcome) => {
       try {
         await create.mutateAsync(audienceRequest(value));
         toast.success(t('settings.authentication.reader.audienceCreated'));
-        formApi.reset();
+        outcome.succeeded(empty);
+        return 'saved';
       } catch (error) {
+        outcome.failed();
         toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
+        return 'failed';
       }
     },
   });
   const dirty = useStore(form.store, (state) => Boolean(state.values.name.trim()) || state.values.pageIds.length > 0);
-  const submitting = useStore(form.store, (state) => state.isSubmitting);
 
   return (
     <SettingsSection
@@ -128,10 +139,10 @@ function AudiencesSection({ projectId, data, status }: Props) {
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
-          void form.handleSubmit();
+          void draft.submit();
         }}
       >
-        <DirtyStateReporter dirty={dirty} />
+        <DirtyStateReporter dirty={dirty || draft.isSaving} />
         <form.Field name="name" validators={validateOnBlurThenChange(required)}>
           {(field) => (
             <FormField<string> control="field" field={field} label={t('settings.visibility.audiences.name')}>
@@ -199,7 +210,7 @@ function AudiencesSection({ projectId, data, status }: Props) {
           </form.Field>
         )}
         <SettingsSectionBody>
-          <Button disabled={manage.disabled} loading={submitting} type="submit">
+          <Button disabled={manage.disabled} loading={draft.isSaving} type="submit">
             {t('settings.authentication.reader.createAudience')}
           </Button>
         </SettingsSectionBody>
@@ -287,6 +298,10 @@ const JWT_FIELDS: ReadonlyArray<{
  * identity `[projectId, 'reader-jwt']`) saved by the page's save bar. It is
  * kept in step with the server without ever dropping an edit, so creating an
  * audience (which refetches reader access) leaves a half-typed issuer alone.
+ *
+ * A save that changes who can sign in (turning the handoff on or off, a new
+ * issuer, audience or key set) first asks, saying what changes; the save bar
+ * waits for that answer, and the save runs from the dialog.
  */
 function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid: () => void }) {
   const t = useT();
@@ -294,6 +309,10 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
   const formRef = useRef<HTMLFormElement>(null);
   const manage = decisionProps(manageDecision(status));
   const source = useMemo(() => jwtValues(data.jwt), [data.jwt]);
+  // Set while the confirmation runs the save, so a failure shows in the dialog rather than a toast.
+  const confirming = useRef<{ failure: unknown } | null>(null);
+  const [confirmation, setConfirmation] = useState<{ impacts: JwtImpact[]; settle: (outcome: 'saved' | 'invalid' | 'failed') => void }>();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const problemText = (field: JwtField, problem: JwtProblem | undefined) => {
     if (!problem) return;
     if (problem !== 'required') return t(JWT_PROBLEM_TEXT[problem]);
@@ -320,19 +339,30 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
         return 'saved';
       } catch (error) {
         outcome.failed();
-        if (outcome.isCurrent()) toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
+        if (confirming.current) confirming.current.failure = error;
+        else if (outcome.isCurrent()) toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
         return 'failed';
       }
     },
   });
 
-  const { submit: submitDraft } = draft;
+  const { submit: submitDraft, baseline } = draft;
   // The page's save bar disables Save while saving, so 'busy' only means "nothing new to report".
-  const submit = useCallback(async () => {
+  const save = useCallback(async () => {
     const outcome = await submitDraft();
     if (outcome === 'invalid') onInvalid();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [onInvalid, submitDraft]);
+  const submit = useCallback(async (): Promise<'saved' | 'invalid' | 'failed'> => {
+    const values = form.state.values;
+    const impacts = jwtChangeImpacts(baseline, values);
+    // Nothing that changes who can sign in, or a value to fix first: save (or show the problems) now.
+    if (impacts.length === 0 || !jwtSaveRequest(values).ok) return save();
+    return new Promise((settle) => {
+      setConfirmation({ impacts, settle });
+      setConfirmOpen(true);
+    });
+  }, [baseline, form, save]);
   useSaveRegionForm('reader-jwt', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   return (
@@ -351,6 +381,8 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
         }}
         ref={formRef}
       >
+        {/* Also tells the page these reader settings hold an edit, so they stay on screen if visibility changes. */}
+        <DirtyStateReporter dirty={draft.isDirty || draft.isSaving} />
         <DraftConflicts conflicts={draft.conflicts} resolve={draft.resolveConflict} />
         <form.Field name="enabled">
           {(field) => (
@@ -413,6 +445,40 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
         ))}
       </form>
       <JwtTester disabled={manage.disabled} projectId={projectId} />
+      <ActionDialog
+        cancelLabel={t('common.cancel')}
+        confirmLabel={t('common.save')}
+        description={t('settings.visibility.jwt.confirm.body')}
+        destructive={confirmation?.impacts.includes('disable')}
+        errorMessage={(error) => friendlyErrorMessage(t, error, 'settings.saveError')}
+        fallbackErrorMessage={t('settings.saveError')}
+        onConfirm={async () => {
+          confirming.current = { failure: null };
+          try {
+            const outcome = await save();
+            if (outcome === 'failed') throw confirming.current.failure ?? new Error('The JWT settings were not saved.');
+            confirmation?.settle(outcome);
+          } finally {
+            confirming.current = null;
+          }
+        }}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          // Closed without saving: the save bar's Save ends with nothing saved (settling twice does nothing).
+          if (!open) confirmation?.settle('failed');
+        }}
+        open={confirmOpen}
+        title={t('settings.visibility.jwt.confirm.title')}
+      >
+        {confirmation ? (
+          <ul className="flex list-disc flex-col gap-1.5 ps-5 text-sm">
+            {confirmation.impacts.map((impact) => (
+              <li key={impact}>{t(JWT_IMPACT_TEXT[impact])}</li>
+            ))}
+            {jwtImpactKeepsSessions(confirmation.impacts) ? <li>{t('settings.visibility.jwt.impact.sessions')}</li> : null}
+          </ul>
+        ) : null}
+      </ActionDialog>
     </SettingsSection>
   );
 }
@@ -426,14 +492,14 @@ function JwtTester({ projectId, disabled }: { projectId: string; disabled: boole
     <SettingsRow label={t('settings.authentication.reader.jwtTest')} layout="stacked">
       {(ids) => (
         <div className="flex flex-col items-start gap-2">
-          <Textarea
+          {/* A signed token is a credential while it is valid: masked, and never filled or saved by the browser. */}
+          <SecretInput
             {...ids.controlProps}
-            className="min-h-20 font-mono text-xs"
-            dir="ltr"
+            className="text-xs"
             disabled={disabled}
+            name="reader-jwt-test-token"
             onChange={(event) => setToken(event.target.value)}
             placeholder={t('settings.authentication.reader.jwtTestPlaceholder')}
-            spellCheck={false}
             value={token}
           />
           <Button

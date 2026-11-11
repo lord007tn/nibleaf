@@ -66,6 +66,52 @@ export function jwtValues(jwt: JwtConfigLike | null | undefined): JwtValues {
   };
 }
 
+/**
+ * What a JWT save changes for people signing in from the portal, each worded
+ * in the confirmation the save asks for:
+ * - `disable`: no new sign-ins through the handoff (existing sessions run out);
+ * - `enable`: portal tokens start letting readers in;
+ * - `issuer`, `audience`, `keys`: tokens made for the old value are refused.
+ */
+export type JwtImpact = 'disable' | 'enable' | 'issuer' | 'audience' | 'keys';
+
+/** The confirmation's line for each impact. */
+export const JWT_IMPACT_TEXT: Record<JwtImpact, MessageKey> = {
+  disable: 'settings.visibility.jwt.impact.disable',
+  enable: 'settings.visibility.jwt.impact.enable',
+  issuer: 'settings.visibility.jwt.impact.issuer',
+  audience: 'settings.visibility.jwt.impact.audience',
+  keys: 'settings.visibility.jwt.impact.keys',
+};
+
+/** Whether the confirmation also says that existing sessions run on (the disable line already does). */
+export const jwtImpactKeepsSessions = (impacts: readonly JwtImpact[]) => impacts.some((impact) => impact !== 'enable' && impact !== 'disable');
+
+/** JSON text compared by meaning, so re-indenting a key set isn't a key change. */
+const jsonMeaning = (text: string) => {
+  try {
+    return JSON.stringify(JSON.parse(text));
+  } catch {
+    return text.trim();
+  }
+};
+
+/**
+ * The consequences of saving `next` over the saved `saved`, in the order the
+ * confirmation lists them. Empty when nothing changes who can sign in (the
+ * groups claim, the claim mapping, or any edit while the handoff stays off).
+ */
+export function jwtChangeImpacts(saved: JwtValues, next: JwtValues): JwtImpact[] {
+  if (saved.enabled && !next.enabled) return ['disable'];
+  if (!next.enabled) return [];
+  if (!saved.enabled) return ['enable'];
+  const impacts: JwtImpact[] = [];
+  if (saved.issuer.trim() !== next.issuer.trim()) impacts.push('issuer');
+  if (saved.audience.trim() !== next.audience.trim()) impacts.push('audience');
+  if (saved.jwksUrl.trim() !== next.jwksUrl.trim() || jsonMeaning(saved.publicJwks) !== jsonMeaning(next.publicJwks)) impacts.push('keys');
+  return impacts;
+}
+
 /** Why a JWT field can't be saved. */
 export type JwtProblem = 'required' | 'url' | 'json' | 'claim' | 'keySource' | 'invalid';
 
