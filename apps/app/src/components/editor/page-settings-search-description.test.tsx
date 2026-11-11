@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { queryKeys } from '@/hooks/api/query-keys';
+import { pageSearchDescriptionKey } from '@/hooks/api/page-search-description';
 import type { PageNode } from '@/hooks/api/types';
 import { PageSettingsDialog } from './page-settings-dialog';
 
@@ -86,7 +86,7 @@ describe('the generated search description, with the real query cache', () => {
   const settle = () => act(async () => vi.waitFor(() => expect(client.isFetching()).toBe(0)));
 
   it('waits for the refetch after a save instead of offering the answer cached for the old body', async () => {
-    client.setQueryData(queryKeys.pages.searchDescription('project-a', 'page-a'), { description: 'The old body.', revision: BEFORE_SAVE });
+    client.setQueryData(pageSearchDescriptionKey('project-a', 'page-a'), { description: 'The old body.', revision: BEFORE_SAVE });
     const refetch = pendingResponse();
     mocks.searchDescription.mockReturnValue(refetch.response);
     await openSeo();
@@ -107,7 +107,7 @@ describe('the generated search description, with the real query cache', () => {
   });
 
   it('shows a cached answer for the current body at once, but adopts it only after the refetch confirms it', async () => {
-    client.setQueryData(queryKeys.pages.searchDescription('project-a', 'page-a'), { description: 'The current body.', revision: AFTER_SAVE });
+    client.setQueryData(pageSearchDescriptionKey('project-a', 'page-a'), { description: 'The current body.', revision: AFTER_SAVE });
     const refetch = pendingResponse();
     mocks.searchDescription.mockReturnValue(refetch.response);
     await openSeo();

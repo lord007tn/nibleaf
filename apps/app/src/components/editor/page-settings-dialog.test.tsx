@@ -41,6 +41,8 @@ vi.mock('@/hooks/api', () => ({
       void Promise.resolve(mocks.update(variables)).then(options?.onSuccess, options?.onError),
   }),
   useReorderPages: () => ({ isPending: false, mutate: mocks.reorder }),
+}));
+vi.mock('@/hooks/api/page-search-description', () => ({
   usePageSearchDescription: (...args: unknown[]) => mocks.searchDescription(...(args as [])),
 }));
 vi.mock('@nibleaf/design-system/components/ui/select', () => ({

@@ -26,7 +26,8 @@ import { ChevronRight, CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck, 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
-import { friendlyErrorMessage, usePageSearchDescription, useReorderPages, useUpdatePage } from '@/hooks/api';
+import { friendlyErrorMessage, useReorderPages, useUpdatePage } from '@/hooks/api';
+import { usePageSearchDescription } from '@/hooks/api/page-search-description';
 import { deepEqual } from '@/lib/forms/server-draft';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 

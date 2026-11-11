@@ -140,24 +140,6 @@ export const pageQueryOptions = (projectId: string | undefined, pageId: string |
         : skipToken,
   });
 
-/** The description the published site generates from the page's saved content
- *  when the author writes none, with the page revision (`updatedAt`) it was
- *  generated from. Content autosaves while the editor is open, so every read
- *  refetches. */
-export const pageSearchDescriptionQueryOptions = (projectId: string | undefined, pageId: string | undefined) =>
-  queryOptions({
-    queryKey: queryKeys.pages.searchDescription(projectId ?? '', pageId ?? ''),
-    staleTime: 0,
-    queryFn:
-      projectId && pageId
-        ? async () =>
-            getData<{ description: string; revision: string }>(
-              await api.app.projects[':projectId'].pages[':id']['search-description'].$get({ param: { projectId, id: pageId } }),
-              'search description',
-            )
-        : skipToken,
-  });
-
 // What the next publish will change vs. the last publish. Cheap to recompute, and
 // the editor autosaves constantly, so it must follow every save: always stale.
 export const pendingChangesQueryOptions = (projectId: string | undefined) =>
