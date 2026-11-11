@@ -15,9 +15,9 @@ const pageInboundLinksQueryOptions = (projectId: string, pageId: string) =>
     // Recheck every dialog open: links in any other page may have changed.
     staleTime: 0,
     retry: false,
-    queryFn: async () =>
+    queryFn: async ({ signal }) =>
       getData<InboundPageLinks>(
-        await api.app.projects[':projectId'].pages[':id']['inbound-links'].$get({ param: { projectId, id: pageId } }),
+        await api.app.projects[':projectId'].pages[':id']['inbound-links'].$get({ param: { projectId, id: pageId } }, { init: { signal } }),
         'inbound links',
       ),
   });

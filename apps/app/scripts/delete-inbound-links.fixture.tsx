@@ -49,6 +49,7 @@ function Providers() {
   );
 }
 const client = new QueryClient();
+Object.assign(window, { refetchInboundLinks: () => client.refetchQueries({ queryKey: ['pages', 'fixture-site', 'setup', 'inbound-links'] }) });
 const rootRoute = createRootRoute({ component: Providers });
 const routeTree = rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: '/', component: Fixture }),

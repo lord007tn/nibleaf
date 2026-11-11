@@ -6,9 +6,24 @@ import { usePageInboundLinks } from '@/hooks/api/page-inbound-links';
 import { useFormatters } from '@/lib/format';
 
 export function DeletePageInboundLinks({ projectId, pageId }: { projectId: string; pageId: string }) {
+  const { data, isFetching, isError } = usePageInboundLinks(projectId, pageId);
+  // Reserve the same advisory height even when loading, empty or unavailable.
+  // Only this region scrolls, so the dialog and destructive footer stay fixed.
+  return (
+    <div data-slot="delete-page-advisory" className="h-72 min-h-72 overflow-y-auto">
+      <InboundWarning projectId={projectId} data={data} isFetching={isFetching} isError={isError} />
+    </div>
+  );
+}
+
+function InboundWarning({
+  projectId,
+  data,
+  isFetching,
+  isError,
+}: { projectId: string } & Pick<ReturnType<typeof usePageInboundLinks>, 'data' | 'isFetching' | 'isError'>) {
   const t = useT();
   const fmt = useFormatters();
-  const { data, isFetching, isError } = usePageInboundLinks(projectId, pageId);
   // Never display stale results after a failed refresh or while checking again.
   if (isFetching)
     return (

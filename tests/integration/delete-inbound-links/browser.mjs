@@ -94,18 +94,57 @@ try {
             release = resolveWait;
           });
         if (mode === 'error') return route.fulfill({ status: 503, json: { error: { message: 'Fixture unavailable' } } });
-        return route.fulfill({ json: { data: { total: 8, pages: names.map((title, i) => ({ id: `source-${i}`, title, path: `source-${i}` })) } } });
+        return route.fulfill({
+          json: {
+            data: {
+              total: mode === 'empty' ? 0 : 8,
+              pages:
+                mode === 'empty'
+                  ? []
+                  : names.map((title, i) => ({
+                      id: `source-${i}`,
+                      title: mode === 'long' ? `${title} ${title} ${title} ${title}` : title,
+                      path: `source-${i}`,
+                    })),
+            },
+          },
+        });
       });
       const deleteLabel = locale === 'ar' ? 'حذف الصفحة' : 'Delete page';
       const cancelLabel = locale === 'ar' ? 'إلغاء' : 'Cancel';
+      const boxes = {};
+      const record = async (state) => {
+        const dialog = page.getByRole('dialog', { name: deleteLabel });
+        const remove = await dialog.getByRole('button', { name: deleteLabel, exact: true }).boundingBox();
+        const footer = await dialog.locator('[data-slot="dialog-footer"]').boundingBox();
+        assert.ok(remove && footer, 'footer and Delete are visible');
+        boxes[state] = { remove, footer };
+        if (state !== 'loading')
+          for (const element of ['remove', 'footer'])
+            for (const coordinate of ['x', 'y', 'width', 'height']) {
+              assert.ok(
+                Math.abs(boxes.loading[element][coordinate] - boxes[state][element][coordinate]) <= 0.5,
+                `${state}: stable ${element} ${coordinate}`,
+              );
+            }
+      };
       for (const before of [true, false]) {
+        mode = before ? 'success' : 'loading';
         await page.goto(`http://127.0.0.1:4398/fixture?locale=${locale}&before=${before ? 1 : 0}`);
         await page.getByRole('button', { name: deleteLabel, exact: true }).click({ timeout: 120_000 });
         const dialog = page.getByRole('dialog', { name: deleteLabel });
         await dialog.waitFor();
-        if (!before) await dialog.getByRole('link', { name: names[0], exact: true }).waitFor();
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(300); // Measure after the opening animation settles.
+        if (!before) {
+          await dialog.locator('[aria-busy="true"]').waitFor();
+          await record('loading');
+          await page.screenshot({ path: resolve(output, `loading-${locale}-${width}.png`) });
+          mode = 'success';
+          release();
+          await dialog.getByRole('link', { name: names[0], exact: true }).waitFor();
+          await record('result');
+        }
         const snapshot = await dialog.ariaSnapshot();
         assert.match(snapshot, /30/);
         if (!before) {
@@ -121,25 +160,37 @@ try {
         await page.screenshot({ path: resolve(output, `${before ? 'before' : 'after'}-${locale}-${width}.png`) });
         await writeFile(resolve(output, `${before ? 'before' : 'after'}-${locale}-${width}.aria.txt`), snapshot);
       }
-      // A second open really fetches again. Loading and failure stay dismissible
-      // and neither presents a stale count as the current result.
-      await page.getByRole('button', { name: cancelLabel, exact: true }).click();
-      mode = 'loading';
-      await page.getByRole('button', { name: deleteLabel, exact: true }).click();
+      // Refresh the SAME open dialog: a late result, failure, or empty response
+      // must never place Delete under a pointer previously aimed at a link.
       const dialog = page.getByRole('dialog', { name: deleteLabel });
-      await dialog.locator('[aria-busy="true"]').waitFor();
-      assert.equal(await dialog.getByRole('button', { name: deleteLabel, exact: true }).isEnabled(), true);
-      assert.equal(await dialog.getByRole('status').count(), 0);
-      await page.screenshot({ path: resolve(output, `loading-${locale}-${width}.png`) });
       mode = 'error';
-      release();
-      await dialog.locator('[aria-busy="true"]').waitFor({ state: 'hidden' });
+      await page.evaluate(() => window.refetchInboundLinks());
+      await dialog.getByRole('status').waitFor({ state: 'hidden' });
+      await record('error');
       assert.equal(await dialog.getByRole('status').count(), 0);
       assert.equal(await dialog.getByRole('button', { name: deleteLabel, exact: true }).isEnabled(), true);
       await page.screenshot({ path: resolve(output, `error-${locale}-${width}.png`) });
       await writeFile(resolve(output, `error-${locale}-${width}.aria.txt`), await dialog.ariaSnapshot());
+      mode = 'empty';
+      await page.evaluate(() => window.refetchInboundLinks());
+      await page.waitForFunction(() => document.querySelector('[data-slot="delete-page-advisory"]')?.textContent === '');
+      await record('empty');
+      await page.screenshot({ path: resolve(output, `empty-${locale}-${width}.png`) });
+      mode = 'long';
+      await page.evaluate(() => window.refetchInboundLinks());
+      await page.waitForFunction(() => {
+        const region = document.querySelector('[data-slot="delete-page-advisory"]');
+        return region && region.scrollHeight > region.clientHeight;
+      });
+      await record('long');
+      assert.equal(await dialog.locator('[data-slot="delete-page-advisory"]').evaluate((el) => getComputedStyle(el).overflowY), 'auto');
+      mode = 'success';
+      await page.evaluate(() => window.refetchInboundLinks());
+      await dialog.getByRole('link', { name: names[0], exact: true }).waitFor();
+      await record('restored');
+      await writeFile(resolve(output, `layout-${locale}-${width}.json`), `${JSON.stringify(boxes, null, 2)}\n`);
       await context.close();
-      console.log(`${locale} ${width}: warning, accessibility tree, loading, error, focus and target sizes passed`);
+      console.log(`${locale} ${width}: stable loading/result/error/empty/long-list boxes, accessibility, focus and target sizes passed`);
     }
   }
 } finally {

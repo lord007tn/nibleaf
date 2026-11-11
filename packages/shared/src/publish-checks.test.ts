@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { documentationComponentContractEntries } from './documentation-component-contract';
-import { findBrokenInternalLinks, findInboundPageLinks } from './publish-checks';
+import { buildInboundPageLinkMap, findBrokenInternalLinks, findInboundPageLinks, pageContentFacts } from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 
 let sequence = 0;
@@ -48,6 +48,63 @@ const broken = (content: string) =>
 describe('inbound draft page links', () => {
   const target = () => page({ id: 'target', path: 'guide', kind: 'GROUP' });
   const child = () => page({ id: 'child', parentId: 'target', path: 'guide/setup', content: '[self](/guide/setup)' });
+
+  it('counts absolute URLs only on trusted hosts and leaves publish checks unchanged', () => {
+    const snapshot = site([
+      target(),
+      child(),
+      ...[
+        'http://DOCS.example.test:80/guide#section',
+        'https://docs.example.test:443/guide/setup',
+        '//docs.example.test/guide',
+        '//CUSTOM.example.test:443/guide/setup?lang=en#section',
+        'https://foreign.example.test/guide',
+        'https://unverified.example.test/guide',
+        'https://docs.example.test:444/guide',
+      ].map((href, i) => page({ id: `absolute-${i}`, path: `absolute-${i}`, content: `[guide](${href})` })),
+    ]);
+    expect(findInboundPageLinks(snapshot, 'target', ['https://docs.example.test', 'https://custom.example.test']).pages.map((p) => p.id)).toEqual([
+      'absolute-0',
+      'absolute-1',
+      'absolute-2',
+      'absolute-3',
+    ]);
+    // Missing destinations on even the trusted host remain external to the
+    // publish gate. Its === false consumer and redirect boundary are unchanged.
+    snapshot.pages.push(
+      page({ path: 'absolute-missing', content: '[missing](https://docs.example.test/missing) [missing](//docs.example.test/missing)' }),
+    );
+    expect(findBrokenInternalLinks(snapshot)).toEqual([]);
+  });
+
+  it('does not sequentially evict content facts when scanning beyond the facts cache', () => {
+    const sentinel = pageContentFacts('Cache sentinel for a large inbound scan.');
+    const snapshot = site([
+      ...Array.from({ length: 2200 }, (_, i) => page({ path: `large-${i}`, content: `Unique large-scan page ${i}.` })),
+      target(),
+      child(),
+    ]);
+    expect(buildInboundPageLinkMap(snapshot).get('target')?.total).toBe(0);
+    expect(pageContentFacts('Cache sentinel for a large inbound scan.')).toBe(sentinel);
+  });
+
+  it("keeps a trusted absolute URL's own version and language instead of inheriting the source context", () => {
+    const snapshot = site([
+      target(),
+      child(),
+      page({ id: 'ar-child', path: 'guide/setup', languageCode: 'ar' }),
+      page({ id: 'ar-source', path: 'ar-source', languageCode: 'ar', content: '[Default](https://docs.example.test/guide/setup)' }),
+      page({ id: 'target-v2', path: 'setup', versionId: 'v2' }),
+      page({ id: 'source-v2', path: 'source', versionId: 'v2', content: '[Own version](https://docs.example.test/v2/setup)' }),
+      page({ id: 'default-from-v2', path: 'default-source', versionId: 'v2', content: '[Default](https://docs.example.test/guide/setup)' }),
+    ]);
+    snapshot.project.languages.push({ code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null });
+    snapshot.project.versions.push({ id: 'v2', name: 'v2', slug: 'v2', isDefault: false });
+    const map = buildInboundPageLinkMap(snapshot, ['https://docs.example.test']);
+    expect(map.get('target')?.pages.map((p) => p.id)).toEqual(['ar-source']);
+    expect(map.get('ar-child')?.total).toBe(0);
+    expect(map.get('target-v2')?.pages.map((p) => p.id)).toEqual(['source-v2']);
+  });
 
   it('finds rendered links into a page or descendant, following redirects and relative paths, once per source', () => {
     const snapshot = site([

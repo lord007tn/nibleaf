@@ -85,7 +85,7 @@ describe('delete dialog inbound-link advisory', () => {
     await act(async () => {
       await vi.waitFor(() => expect(dialog.querySelector('[role="status"]')?.textContent).toContain('9 pages link here'));
     });
-    expect(mocks.read).toHaveBeenCalledWith({ param: { projectId: 'project-1', id: 'target' } });
+    expect(mocks.read).toHaveBeenCalledWith({ param: { projectId: 'project-1', id: 'target' } }, { init: { signal: expect.any(AbortSignal) } });
     // Accessible dialog name and description still refer to the original
     // title/Trash copy, with the async warning in its own live region.
     expect(document.getElementById(dialog.getAttribute('aria-labelledby') ?? '')?.textContent).toBe('Delete page');
@@ -138,5 +138,71 @@ describe('delete dialog inbound-link advisory', () => {
     });
     expect(dialog.querySelector('[data-slot="callout"]')).toBeNull();
     expect(button('Delete page').disabled).toBe(false);
+  });
+
+  it('keeps the reserved region and footer in place across loading, results, error and empty states', async () => {
+    let release: (response: Response) => void = () => {
+      throw new Error('Request not started');
+    };
+    mocks.read.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const dialog = await open();
+    const region = dialog.querySelector('[data-slot="delete-page-advisory"]');
+    const footer = dialog.querySelector('[data-slot="dialog-footer"]');
+    const check = () => {
+      expect(dialog.querySelector('[data-slot="delete-page-advisory"]')).toBe(region);
+      expect(region?.classList.contains('h-72')).toBe(true);
+      expect(region?.classList.contains('min-h-72')).toBe(true);
+      expect(region?.classList.contains('overflow-y-auto')).toBe(true);
+      expect(region?.contains(footer)).toBe(false);
+      expect(footer?.previousElementSibling).toBe(region);
+      expect(button('Delete page').disabled).toBe(false);
+    };
+    check();
+    await act(async () => {
+      release(Response.json({ data: { total: 1, pages: [{ id: 'source', title: 'Source', path: 'source' }] } }));
+    });
+    await act(async () => {
+      await vi.waitFor(() => expect(dialog.querySelector('a')).not.toBeNull());
+    });
+    check();
+    mocks.read.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ['pages', 'project-1', 'target', 'inbound-links'] });
+    });
+    await act(async () => {
+      await vi.waitFor(() => expect(dialog.querySelector('[role="status"]')).toBeNull());
+    });
+    check();
+    expect(dialog.querySelector('[role="status"]')).toBeNull();
+    mocks.read.mockResolvedValueOnce(Response.json({ data: { total: 0, pages: [] } }));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ['pages', 'project-1', 'target', 'inbound-links'] });
+    });
+    await act(async () => {
+      await vi.waitFor(() => expect(region?.textContent).toBe(''));
+    });
+    check();
+    expect(region?.textContent).toBe('');
+  });
+
+  it('aborts an in-flight lookup when the dialog closes', async () => {
+    let requestSignal: AbortSignal | undefined;
+    mocks.read.mockImplementation(
+      (_args: unknown, { init: { signal } }: { init: { signal: AbortSignal } }) =>
+        new Promise((_resolve, reject) => {
+          requestSignal = signal;
+          signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+        }),
+    );
+    await open();
+    expect(requestSignal?.aborted).toBe(false);
+    await act(async () => button('Cancel').click());
+    expect(requestSignal?.aborted).toBe(true);
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
 });
