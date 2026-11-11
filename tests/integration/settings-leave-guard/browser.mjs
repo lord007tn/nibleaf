@@ -1,6 +1,7 @@
-// Real-browser check of the settings leave guard (operations/ui-overhaul.md §5.3, §8.3).
+// Real-browser check of the settings leave guard and shell (operations/ui-overhaul.md
+// §5.3, §5.7, §8.3), through the real router.
 //
-// Runs against a local dev stack (app on :4310, API on :4311) with a signed-in
+// Runs against a local dev stack (app on APP_URL, default :4310) with a signed-in
 // Playwright storage state:
 //   STATE=path/to/state.json PROJECT_ID=<site id> node tests/integration/settings-leave-guard/browser.mjs [videoDir]
 //
@@ -9,7 +10,12 @@
 // 2. after a successful save: the nav and a reload leave without any prompt;
 // 3. while a save is in flight (the request is held back), even with the text
 //    typed back to its saved value: the nav asks first and a reload triggers
-//    the browser's beforeunload prompt.
+//    the browser's beforeunload prompt;
+// 4. one scroll: the page scrolls, the content has no scrollbar of its own, and
+//    the nav stays below the site header;
+// 5. on a phone: /settings is the list of pages; "All settings" with unsaved
+//    edits asks first, "Keep editing" keeps them, "Discard" goes to the list
+//    and the page opens again with the saved value and no guard.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
 
@@ -39,7 +45,8 @@ const general = `${APP}/app/projects/${PROJECT_ID}/settings?section=general`;
 const name = () => page.getByLabel('Name', { exact: true });
 const saveBar = () => page.getByRole('region', { name: 'Unsaved changes' });
 const leaveDialog = () => page.getByRole('dialog').filter({ hasText: 'Leave without saving?' });
-const navToLanguages = () => page.getByRole('navigation').getByRole('button', { name: 'Languages' }).click();
+const settingsNav = () => page.getByRole('navigation', { name: 'Settings' });
+const navToLanguages = () => settingsNav().getByRole('link', { name: 'Languages' }).click();
 const pause = (ms) => page.waitForTimeout(ms);
 
 async function open() {
@@ -110,6 +117,61 @@ if ((await saveBar().count()) > 0) {
 }
 await pause(800);
 
+// 4. One scroll: the document scrolls; the content column doesn't; the nav sticks below the header.
+await open();
+const geometry = await page.evaluate(() => {
+  const nav = document.querySelector('nav[aria-label="Settings"]');
+  const content = document.querySelector('[data-slot="page-container"]')?.parentElement;
+  const before = nav?.getBoundingClientRect().top ?? -1;
+  window.scrollTo(0, document.scrollingElement.scrollHeight);
+  return {
+    pageScrolls: document.scrollingElement.scrollHeight > window.innerHeight,
+    contentOwnScroll: content ? content.scrollHeight > content.clientHeight + 1 : true,
+    navTopBefore: before,
+    navTopAfter: nav?.getBoundingClientRect().top ?? -1,
+    scrolled: window.scrollY,
+  };
+});
+assert.ok(geometry.pageScrolls, 'the page itself scrolls on a long settings page');
+assert.ok(!geometry.contentOwnScroll, 'the content has no scrollbar of its own');
+assert.ok(geometry.scrolled > 0, 'the window scrolled');
+assert.equal(Math.round(geometry.navTopAfter), 48, 'the nav sticks right below the 48px site header');
+
+// 5. Phone: the list, the Back link and the guard.
+await page.setViewportSize({ width: 390, height: 844 });
+await page.goto(`${APP}/app/projects/${PROJECT_ID}/settings`, { waitUntil: 'load' });
+await settingsNav().getByRole('link', { name: 'General' }).waitFor({ timeout: 60_000 });
+assert.equal(
+  await name()
+    .isVisible()
+    .catch(() => false),
+  false,
+  'the list page shows no form',
+);
+await settingsNav().getByRole('link', { name: 'General' }).click();
+await name().waitFor({ timeout: 60_000 });
+await pause(500);
+assert.equal(await page.evaluate(() => document.activeElement?.tagName), 'H1', 'opening a page focuses its heading');
+await name().fill(`${original} phone draft`);
+const back = () => page.getByRole('link', { name: 'All settings' });
+await back().click();
+await leaveDialog().waitFor({ timeout: 5000 });
+await page.getByRole('button', { name: 'Keep editing' }).click();
+assert.equal(await name().inputValue(), `${original} phone draft`, 'Keep editing keeps the edit');
+await back().click();
+await leaveDialog().waitFor({ timeout: 5000 });
+await page.getByRole('button', { name: 'Discard changes' }).click();
+await page.waitForURL((url) => !url.search.includes('section='), { timeout: 10_000 });
+await pause(500);
+assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Settings', 'the list heading takes focus on the way back');
+await settingsNav().getByRole('link', { name: 'General' }).click();
+await name().waitFor({ timeout: 60_000 });
+assert.equal(await name().inputValue(), original, 'the discarded draft is gone');
+dialogs.length = 0;
+await back().click();
+await page.waitForURL((url) => !url.search.includes('section='), { timeout: 10_000 });
+assert.equal(await leaveDialog().count(), 0, 'no guard once the draft is gone');
+
 await context.close();
 await browser.close();
-console.log('settings leave guard: all checks passed');
+console.log('settings leave guard and shell: all checks passed');
