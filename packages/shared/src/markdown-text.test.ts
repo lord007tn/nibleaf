@@ -54,19 +54,37 @@ describe('markdownToPlainText on adversarial input (ReDoS, CodeQL js/polynomial-
     ['reference-style link prefixes', '[a]['.repeat(50_000)],
     ['image reference prefixes', '![a]['.repeat(50_000)],
     // micromark's emphasis resolution is superlinear: about 750 ms for 16 KB of
-    // `*a` when parsed directly. The density guard sends it to the linear strip.
+    // `*a` when parsed directly. The marker guard sends it to the linear strip.
     ['dense emphasis (16 KB of *a)', '*a'.repeat(8192)],
-    ['emphasis just under the marker guard', '*aaaaaa'.repeat(2340)],
     ['dense underscores', '_a'.repeat(8192)],
   ];
+  // Every dense case above takes the linear strip: under 50 ms even on CI.
   it.each(cases)('stays fast on %s', (_, input) => {
     markdownToPlainText('<!-- warm up --> <b>x</b> [a](b) *y*');
     const started = performance.now();
     // A unique suffix bypasses the per-content cache, so this measures extraction.
     markdownToPlainText(`${input}${Math.random()}`);
-    // About 1–8 ms locally. The bound leaves headroom for slow CI while still
-    // catching a superlinear path, which takes hundreds of ms to seconds here.
     expect(performance.now() - started).toBeLessThan(50);
+  });
+
+  // Just under the 200-marker guard the parser still runs. Its cost there is
+  // bounded (tens of ms on CI) and paid once per content, thanks to the cache.
+  // The 250 ms bound proves no superlinear blow-up, which takes seconds on CI.
+  it.each([
+    ['emphasis just under the marker guard', '*aaaaaaa'.repeat(192)],
+    ['tags just under the marker guard', `<b>${'a'.repeat(13)}`.repeat(96)],
+  ])('stays bounded on %s', (_, input) => {
+    markdownToPlainText('<!-- warm up --> <b>x</b> [a](b) *y*');
+    const started = performance.now();
+    markdownToPlainText(`${input}${Math.random()}`);
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
+  it('the linear fallback still gives a clean description for a marker-heavy page', () => {
+    const page = `${'See [the guide](https://example.com/guide) and ![diagram](/d.png) for **details**. '.repeat(40)}`;
+    const text = markdownToPlainText(page);
+    expect(text.startsWith('See the guide and for details.')).toBe(true);
+    expect(text).not.toMatch(/https?:|\/d\.png|\*/);
   });
 
   it('still drops the constructs it guards against', () => {

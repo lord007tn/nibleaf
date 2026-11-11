@@ -13,8 +13,9 @@
  * MDX falls back to plain GFM, where JSX tags are HTML and are dropped.
  *
  * Cost bounds. Author content reaches this on public routes, so it must never block:
- * - frontmatter is removed with a linear scan, and only the first MAX_SOURCE chars
- *   are parsed (an excerpt needs about 160 visible characters);
+ * - frontmatter is removed with a linear scan, and only a short prefix is parsed
+ *   (1.5 KB, widened to 4 KB when it yields too little prose; an excerpt needs
+ *   about 160 visible characters);
  * - micromark is linear for normal Markdown but superlinear for long runs of
  *   emphasis/bracket/tag markers, and a synchronous parse can't be interrupted, so
  *   such input is detected beforehand (marker count) and goes to a linear
@@ -29,13 +30,18 @@ import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { explicitPageDescription, type SnapshotPage, type SnapshotPageConfig } from './site';
-import { truncateText } from './utils';
+import { stripMarkdownLinks, truncateText } from './utils';
 
-const MAX_SOURCE = 4 * 1024;
+/** Parse a short prefix first (enough visible text for an excerpt on typical
+ *  pages), and widen only when it yields too little prose. */
+const PREFIXES = [1536, 4096] as const;
+const ENOUGH_TEXT = 200;
 /** micromark's superlinear paths (emphasis, brackets, tags) grow with the NUMBER
- *  of markers: about 600 cost about 4 ms, while 8192 `*` cost about 750 ms. Above
- *  this count the parse is skipped for the linear strip. Normal prose stays well below. */
-const MAX_MARKERS = 600;
+ *  of markers. 8192 `*` cost about 750 ms locally, and a few hundred already cost
+ *  tens of ms on CI runners. Above this count the parse is skipped for the
+ *  linear strip, which keeps link text and drops URLs and images, so a
+ *  marker-heavy page still gets a clean description. */
+const MAX_MARKERS = 200;
 const MARKERS = new Set(['*', '_', '[', ']', '<', '>', '{', '}', '`', '!', '~', '|']);
 const CACHE_LIMIT = 2000;
 
@@ -82,7 +88,8 @@ const linearStrip = (source: string): string => {
     }
     if (!fence) prose.push(line);
   }
-  let text = stripSpans(stripSpans(prose.join('\n'), '<!--', '-->'), '{/*', '*/}');
+  // stripMarkdownLinks is a single forward pass: link text stays, URLs and images go.
+  let text = stripMarkdownLinks(stripSpans(stripSpans(prose.join('\n'), '<!--', '-->'), '{/*', '*/}'));
   let output = '';
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index] ?? '';
@@ -94,7 +101,14 @@ const linearStrip = (source: string): string => {
         continue;
       }
     }
-    output += MARKERS.has(char) || char === '#' || char === '\\' ? ' ' : char;
+    // Inline formatting markers vanish ("**details**." → "details."), `_` survives
+    // inside words ("api_key"), and structural markers become spaces.
+    if (char === '*' || char === '~' || char === '`' || char === '\\') continue;
+    if (char === '_' && /[\p{L}\p{N}]/u.test(text[index - 1] ?? '') && /[\p{L}\p{N}]/u.test(text[index + 1] ?? '')) {
+      output += char;
+      continue;
+    }
+    output += MARKERS.has(char) || char === '#' ? ' ' : char;
   }
   text = output;
   return text.replace(/\s+/gu, ' ').trim();
@@ -174,8 +188,7 @@ const markerCount = (source: string): number => {
 
 const cache = new Map<string, string>();
 
-const extract = (source: string): string => {
-  const prefix = stripFrontmatter(source).slice(0, MAX_SOURCE);
+const extractPrefix = (prefix: string): string => {
   if (markerCount(prefix) > MAX_MARKERS) return linearStrip(prefix);
   const walk: Walk = { parts: [], rawText: null };
   collect(parse(prefix), walk);
@@ -185,6 +198,16 @@ const extract = (source: string): string => {
     .map((line) => line.replace(/\s+/gu, ' ').trim())
     .filter(Boolean)
     .join(' ');
+};
+
+const extract = (source: string): string => {
+  const body = stripFrontmatter(source);
+  let text = '';
+  for (const size of PREFIXES) {
+    text = extractPrefix(body.slice(0, size));
+    if (text.length >= ENOUGH_TEXT || body.length <= size) break;
+  }
+  return text;
 };
 
 /** Visible prose of a Markdown/MDX document as one line of plain text. */
