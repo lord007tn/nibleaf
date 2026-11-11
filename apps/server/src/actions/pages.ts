@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { Prisma, prisma } from '@nibleaf/database';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
-import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
+import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
+import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { BulkReorderPagesBody, CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
