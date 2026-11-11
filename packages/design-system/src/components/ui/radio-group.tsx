@@ -102,11 +102,12 @@ function useRadioControl({
 }: RadioItemProps & { reasonVisible?: boolean }) {
   const { hasReason, reasonId, controlProps } = useDisabledReason(disabled, disabledReason, describedBy)
   useRegisterReason(reasonId, hasReason)
+  // The unchosen ring uses the muted text colour, not `--input`, for a 3:1 boundary (WCAG 1.4.11), as Checkbox does.
   const control = (
     <RadioPrimitive.Root
       data-slot="radio-group-item"
       className={cn(
-        "peer relative flex aspect-square size-4 shrink-0 items-center justify-center rounded-full border border-input bg-background shadow-xs transition-colors after:absolute after:-inset-2.5 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:border-primary dark:bg-input/30 data-disabled:cursor-not-allowed data-disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
+        "peer relative flex aspect-square size-4 shrink-0 items-center justify-center rounded-full border border-muted-foreground bg-background shadow-xs transition-colors after:absolute after:-inset-2.5 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:border-primary dark:bg-input/30 data-disabled:cursor-not-allowed data-disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
         CONTROL_FOCUS,
         className
       )}
