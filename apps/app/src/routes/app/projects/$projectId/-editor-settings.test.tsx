@@ -54,14 +54,11 @@ vi.mock('@/hooks/api', () => ({
   useUploadAsset: () => ({}),
   useDeleteAsset: () => ({}),
   useReorderPages: () => ({}),
-  usePageTrash: () => ({ data: [], isPending: false, isError: false }),
-  usePurgePageTrash: () => ({}),
 }));
 vi.mock('@/hooks/api/query-options', () => ({
   aiDraftCapabilityQueryOptions: (id: string) => ({ queryKey: ['workspace-ai', id, 'draft-capability'] }),
   commentsQueryOptions: vi.fn(),
   pageQueryOptions: vi.fn(),
-  pageTrashQueryOptions: (id: string) => ({ queryKey: ['page-trash', id, null] }),
   projectMembersQueryOptions: (id: string) => ({ queryKey: ['members', id] }),
 }));
 vi.mock('@/hooks/api/route-prefetch', () => ({ prefetchScopedPages: vi.fn() }));
@@ -69,7 +66,8 @@ vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-1' } }, isPending: mocks.sessionPending }) }));
 vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/components/editor/use-media-query', () => ({ useMediaQuery: () => true }));
-vi.mock('@/components/editor/use-delete-page', () => ({ useDeletePageFlow: () => vi.fn(), useRestoreFromTrash: () => ({ restore: vi.fn() }) }));
+vi.mock('@/components/editor/use-delete-page', () => ({ useDeletePageFlow: () => vi.fn() }));
+vi.mock('@/components/editor/page-trash-button', () => ({ PageTrashButton: () => null }));
 vi.mock('@/components/editor/use-ai-assist-session', () => ({ useAiAssistSession: () => ({}), aiAssistPageId: () => null }));
 vi.mock('@/components/editor/site-config-panel', () => ({
   ConfigSectionList: () => <nav data-testid="config-sections" />,
@@ -211,10 +209,11 @@ describe('editor site settings permissions', () => {
     expect(mocks.prefetch).toHaveBeenCalledWith({}, { queryKey: ['workspace-ai', 'project-1', 'draft-capability'] });
   });
 
-  it("prefetches the default branch's Trash for the page tree footer", () => {
+  it('never requests Trash when the editor opens', () => {
     const loader = Route.options.loader as (args: unknown) => void;
     loader({ context: { queryClient: {} }, params: { projectId: 'project-1' }, deps: {} });
-    expect(mocks.prefetch).toHaveBeenCalledWith({}, { queryKey: ['page-trash', 'project-1', null] });
+    const keys = mocks.prefetch.mock.calls.map(([, options]) => (options as { queryKey?: unknown[] } | undefined)?.queryKey?.[0]);
+    expect(keys).not.toContain('page-trash');
   });
 });
 

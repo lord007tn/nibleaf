@@ -1,6 +1,6 @@
 import { listPageTrashQuery, restorePageTrashBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { listPageTrash, purgePageTrashItem, restorePageTrashItem } from '@/actions/page-trash';
+import { countPageTrash, listPageTrash, purgePageTrashItem, restorePageTrashItem } from '@/actions/page-trash';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -17,6 +17,10 @@ const app = new Hono<HonoEnv>()
   .get('/', ...pageTrashRoutes.list, validator('query', listPageTrashQuery), async (ctx) => {
     const projectId = await projectScope(ctx);
     return ctx.json({ data: await listPageTrash(projectId, ctx.req.valid('query').branchId) }, 200);
+  })
+  .get('/count', ...pageTrashRoutes.count, validator('query', listPageTrashQuery), async (ctx) => {
+    const projectId = await projectScope(ctx);
+    return ctx.json({ data: await countPageTrash(projectId, ctx.req.valid('query').branchId) }, 200);
   })
   .post('/:id/restore', ...pageTrashRoutes.restore, validator('json', restorePageTrashBody), async (ctx) => {
     const projectId = await projectScope(ctx);

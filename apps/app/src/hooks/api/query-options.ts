@@ -20,7 +20,6 @@ import type {
   OpenApiConfiguration,
   Page,
   PageNode,
-  PageTrashItem,
   Project,
   ProjectAddon,
   WorkspaceSettings,
@@ -65,19 +64,6 @@ export const pagesQueryOptions = (projectId: string | undefined, languageId?: st
               query: { ...(languageId ? { languageId } : {}), ...(branchId ? { branchId } : {}) },
             }),
             'pages',
-          )
-      : skipToken,
-  });
-
-/** A branch's Trash (the default branch when none is given), newest first. */
-export const pageTrashQueryOptions = (projectId: string | undefined, branchId?: string) =>
-  queryOptions({
-    queryKey: queryKeys.pageTrash.list(projectId ?? '', branchId),
-    queryFn: projectId
-      ? async () =>
-          getData<PageTrashItem[]>(
-            await api.app.projects[':projectId']['page-trash'].$get({ param: { projectId }, query: branchId ? { branchId } : {} }),
-            'trash',
           )
       : skipToken,
   });

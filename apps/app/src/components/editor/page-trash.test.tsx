@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   restore: vi.fn(),
   purge: vi.fn(),
   trash: vi.fn(),
+  count: vi.fn(),
   toast: { success: vi.fn(() => 'toast-1'), error: vi.fn(), dismiss: vi.fn() },
 }));
 
@@ -20,12 +21,17 @@ vi.mock('sonner', () => ({ toast: mocks.toast }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useDeletePage: () => ({ mutate: mocks.deleteMutate }),
+}));
+vi.mock('@/hooks/api/errors', () => ({ friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key }));
+vi.mock('@/hooks/api/page-trash', () => ({
   useRestorePageTrash: () => ({ mutateAsync: mocks.restore, isPending: false }),
   usePurgePageTrash: () => ({ mutateAsync: mocks.purge }),
   usePageTrash: mocks.trash,
+  usePageTrashCount: mocks.count,
 }));
 
-import { daysLeft, PageTrashDialog } from './page-trash-dialog';
+import { PageTrashButton } from './page-trash-button';
+import PageTrashDialog, { daysLeft } from './page-trash-dialog';
 import { useDeletePageFlow } from './use-delete-page';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -57,6 +63,7 @@ beforeEach(() => {
     },
   );
   mocks.trash.mockReturnValue({ isPending: false, isError: false, isFetching: false, data: [item()], refetch: vi.fn() });
+  mocks.count.mockReturnValue({ data: { count: 2 } });
   mocks.restore.mockResolvedValue({ page: { id: 'page-1', path: 'setup' }, restoredPages: 3, slugChanged: false, movedToTopLevel: false });
   mocks.purge.mockResolvedValue({ id: 'trash-1' });
 });
@@ -95,7 +102,7 @@ describe('delete with Undo', () => {
     expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ description: 'editor.deletePageConfirm {"title":"Setup"}' }));
     expect(mocks.toast.success).toHaveBeenCalledWith(
       'editor.deleted {"title":"Setup"}',
-      expect.objectContaining({ action: expect.objectContaining({ label: 'editor.trash.undo' }) }),
+      expect.objectContaining({ action: expect.objectContaining({ label: 'editor.toolbar.undo' }) }),
     );
     const [, options] = mocks.toast.success.mock.calls[0] as unknown as [string, { action: { onClick: () => void } }];
     await act(async () => options.action.onClick());
@@ -112,7 +119,7 @@ describe('delete with Undo', () => {
     await act(async () => flow?.({ id: 'page-1', kind: 'PAGE', title: 'Setup' }));
     const [, options] = mocks.toast.success.mock.calls[0] as unknown as [string, { action: { onClick: () => void } }];
     await act(async () => options.action.onClick());
-    expect(mocks.toast.success).toHaveBeenLastCalledWith('editor.trash.restoredRenamed {"title":"Setup","path":"setup-2"}');
+    expect(mocks.toast.success).toHaveBeenLastCalledWith('editor.trash.restoredAt {"title":"Setup","path":"setup-2"}');
 
     mocks.restore.mockRejectedValueOnce(new Error('gone'));
     await act(async () => options.action.onClick());
@@ -151,6 +158,19 @@ describe('Trash dialog', () => {
     expect(restore.getAttribute('aria-disabled')).toBe('true');
     await act(async () => restore.click());
     expect(mocks.restore).not.toHaveBeenCalled();
+  });
+});
+
+describe('Trash button', () => {
+  it('shows the count from the read-only count query and loads the list only once opened', async () => {
+    await mount(<PageTrashButton canEdit languages={[]} projectId="project-1" />);
+    expect(mocks.count).toHaveBeenCalledWith('project-1', undefined);
+    expect(document.querySelector('[data-testid="page-trash-button"]')?.textContent).toContain('editor.trash.button {"count":"2"}');
+    // The dialog module (and its list query) is not loaded with the page tree.
+    expect(mocks.trash).not.toHaveBeenCalled();
+    await act(async () => (document.querySelector('[data-testid="page-trash-button"]') as HTMLElement).click());
+    await vi.waitFor(() => expect(document.querySelector('[data-testid="page-trash-item"]')).not.toBeNull());
+    expect(mocks.trash).toHaveBeenCalledWith('project-1', undefined, true);
   });
 });
 

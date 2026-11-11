@@ -1,8 +1,9 @@
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { useT } from '@nibleaf/i18n/react';
 import { toast } from 'sonner';
-import type { PageNode, RestoredPage } from '@/hooks/api';
-import { friendlyErrorMessage, useDeletePage, useRestorePageTrash } from '@/hooks/api';
+import type { PageNode } from '@/hooks/api';
+import { friendlyErrorMessage, useDeletePage } from '@/hooks/api';
+import { type RestoredPage, useRestorePageTrash } from '@/hooks/api/page-trash';
 import { countDescendants } from './page-tree-utils';
 
 /** How long the delete toast (and its Undo) stays up. */
@@ -12,11 +13,9 @@ type Translate = ReturnType<typeof useT>;
 
 /** What a restore says: plain, or why the page came back somewhere else. */
 const restoredMessage = (t: Translate, title: string, restored: Pick<RestoredPage, 'page' | 'slugChanged' | 'movedToTopLevel'>) =>
-  restored.movedToTopLevel
-    ? t('editor.trash.restoredTopLevel', { title })
-    : restored.slugChanged
-      ? t('editor.trash.restoredRenamed', { title, path: restored.page.path })
-      : t('editor.trash.restored', { title });
+  restored.movedToTopLevel || restored.slugChanged
+    ? t('editor.trash.restoredAt', { title, path: restored.page.path })
+    : t('editor.trash.restored', { title });
 
 /**
  * Restore a Trash item and say how it went. Undo on the delete toast and
@@ -76,7 +75,7 @@ export function useDeletePageFlow(projectId: string, pages: PageNode[] | undefin
         const toastId = toast.success(t('editor.deleted', { title }), {
           duration: UNDO_TOAST_MS,
           action: {
-            label: t('editor.trash.undo'),
+            label: t('editor.toolbar.undo'),
             onClick: () => {
               toast.dismiss(toastId);
               void restore(deleted.trashId, title);

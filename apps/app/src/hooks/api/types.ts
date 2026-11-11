@@ -150,23 +150,6 @@ export interface PageNode {
   updatedAt: string;
 }
 
-/** A deleted page or group kept in Trash for 30 days (never its content). */
-export interface PageTrashItem {
-  id: string;
-  rootPageId: string;
-  branchId: string;
-  languageId: string;
-  parentId: string | null;
-  title: string;
-  kind: PageKind;
-  /** Pages in the deleted subtree, the root included. */
-  pageCount: number;
-  deletedAt: string;
-  expiresAt: string;
-  /** Null when the person who deleted it no longer has an account. */
-  deletedBy: { id: string; name: string; email: string; image: string | null } | null;
-}
-
 export interface Page extends PageNode {
   content: string;
   projectId: string;

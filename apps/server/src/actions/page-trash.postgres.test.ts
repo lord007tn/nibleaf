@@ -339,6 +339,39 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
     expect(await db.prisma.pageTrash.count({ where: { id: { in: [c.trashId, d.trashId] } } })).toBe(0);
   });
 
+  it('counts without purging: the footer count is a plain read', async () => {
+    const f = await fixture();
+    const kept = await trash.deletePage(f.project.id, f.intro.id, f.author.id);
+    const expired = await trash.deletePage(f.project.id, f.last.id, f.author.id);
+    await db.prisma.pageTrash.update({ where: { id: expired.trashId }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    const deleteMany = vi.spyOn(db.prisma.pageTrash, 'deleteMany');
+    try {
+      expect(await trash.countPageTrash(f.project.id)).toEqual({ count: 1 });
+      expect(await trash.countPageTrash(f.project.id, f.branch.id)).toEqual({ count: 1 });
+      expect(deleteMany).not.toHaveBeenCalled();
+    } finally {
+      deleteMany.mockRestore();
+    }
+    // The expired row survives the count; only the list (opened dialog) purges it.
+    expect(await db.prisma.pageTrash.count({ where: { id: { in: [kept.trashId, expired.trashId] } } })).toBe(2);
+    expect((await trash.listPageTrash(f.project.id)).map((row) => row.id)).toEqual([kept.trashId]);
+    expect(await db.prisma.pageTrash.count({ where: { id: expired.trashId } })).toBe(0);
+  });
+
+  it('refuses a subtree whose payload is over the cap, deleting nothing', async () => {
+    const f = await fixture();
+    await expect(trash.deletePage(f.project.id, f.guide.id, f.author.id, { maxPayloadBytes: 512 })).rejects.toMatchObject({
+      code: 'page:trash_too_large',
+      status: 413,
+      details: { reason: 'page_trash_too_large', limit: 512 },
+    });
+    expect(await db.prisma.page.count({ where: { id: { in: [f.guide.id, f.setup.id, f.deep.id, f.usage.id] } } })).toBe(4);
+    expect(await db.prisma.pageTrash.count({ where: { projectId: f.project.id } })).toBe(0);
+    // Under the default cap the same delete goes through.
+    expect(trash.PAGE_TRASH_MAX_PAYLOAD_BYTES).toBe(25 * 1024 * 1024);
+    await expect(trash.deletePage(f.project.id, f.guide.id, f.author.id)).resolves.toMatchObject({ pageCount: 4 });
+  });
+
   it('deletes forever only inside its own site', async () => {
     const f = await fixture();
     const other = await fixture();

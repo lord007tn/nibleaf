@@ -281,15 +281,6 @@ export interface DeletedPage {
   expiresAt: string;
 }
 
-/** What restoring from Trash answers: the restored root page, and whether it
- *  needed a new address or lost its parent group. */
-export interface RestoredPage {
-  page: Page;
-  restoredPages: number;
-  slugChanged: boolean;
-  movedToTopLevel: boolean;
-}
-
 export const useDeletePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
@@ -304,38 +295,6 @@ export const useDeletePage = (projectId: string) => {
       void qc.invalidateQueries({ queryKey: queryKeys.pageTrash.all(projectId) });
       return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
     },
-  });
-};
-
-/** Put a trashed page (and the pages inside it) back in the tree. Undo on the
- *  delete toast and Restore in Trash both use it. */
-export const useRestorePageTrash = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (trashId: string) =>
-      mutateData<RestoredPage>(
-        await api.app.projects[':projectId']['page-trash'][':id'].restore.$post({ param: { projectId, id: trashId }, json: {} }),
-        'Could not restore the page.',
-      ),
-    onSuccess: (restored) => {
-      qc.setQueryData(queryKeys.pages.detail(projectId, restored.page.id), restored.page);
-      void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-      void qc.invalidateQueries({ queryKey: queryKeys.pageTrash.all(projectId) });
-      return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-    },
-  });
-};
-
-/** Delete forever. */
-export const usePurgePageTrash = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (trashId: string) =>
-      mutateData(
-        await api.app.projects[':projectId']['page-trash'][':id'].$delete({ param: { projectId, id: trashId } }),
-        'Could not delete the page forever.',
-      ),
-    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.pageTrash.all(projectId) }),
   });
 };
 

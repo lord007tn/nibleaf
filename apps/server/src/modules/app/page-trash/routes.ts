@@ -14,6 +14,12 @@ const pageTrashRoutes = {
     description: "List a branch's deleted pages kept in Trash for 30 days.",
     responses: ok,
   }),
+  count: createRouteConfig({
+    guard: [...member],
+    tags: ['pages'],
+    description: "Count a branch's deleted pages in Trash (read-only).",
+    responses: ok,
+  }),
   restore: createRouteConfig({
     guard: [...editor],
     tags: ['pages'],

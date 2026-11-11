@@ -29,6 +29,18 @@ const RETENTION_MS = PAGE_TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000;
  *  to this one; columns a newer version added get their defaults below. */
 export const PAGE_TRASH_SCHEMA_VERSION = 1;
 
+/** The largest serialized payload one Trash row may hold. A bigger subtree is
+ *  refused (never hard-deleted instead): one JSONB row must stay well inside
+ *  what a transaction and a restore can carry. */
+export const PAGE_TRASH_MAX_PAYLOAD_BYTES = 25 * 1024 * 1024;
+
+const trashTooLarge = (id: string, bytes: number, limit: number) =>
+  new AppError({
+    code: 'page:trash_too_large',
+    message: 'This section is too large to move to Trash. Delete smaller parts first, or contact support.',
+    details: { id, reason: 'page_trash_too_large', bytes, limit },
+  });
+
 const IN_CHUNK = 1000;
 const chunks = <T>(items: T[]) => Array.from({ length: Math.ceil(items.length / IN_CHUNK) }, (_, i) => items.slice(i * IN_CHUNK, (i + 1) * IN_CHUNK));
 
@@ -162,7 +174,12 @@ const subtreeIds = (rows: ReadonlyArray<{ id: string; parentId: string | null }>
  * Delete a page or group: its subtree moves to Trash in the same transaction
  * that removes it from the tree. Returns the trash row's id for Undo.
  */
-export const deletePage = async (projectId: string, id: string, deletedById?: string | null) =>
+interface DeletePageOptions {
+  /** Overrides {@link PAGE_TRASH_MAX_PAYLOAD_BYTES} (tests). */
+  maxPayloadBytes?: number;
+}
+
+export const deletePage = async (projectId: string, id: string, deletedById?: string | null, options: DeletePageOptions = {}) =>
   prisma.$transaction(
     async (tx) => {
       await lockProjectTree(tx, projectId);
@@ -229,6 +246,9 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
           updatedAt: iso(source.updatedAt),
         })),
       } satisfies z.input<typeof pageTrashPayloadSchema>;
+      const limit = options.maxPayloadBytes ?? PAGE_TRASH_MAX_PAYLOAD_BYTES;
+      const bytes = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+      if (bytes > limit) throw trashTooLarge(id, bytes, limit);
       const deletedAt = new Date();
       const trash = await tx.pageTrash.create({
         data: {
@@ -255,7 +275,16 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
     { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
   );
 
-/** A branch's Trash, newest first. Never includes the stored content. */
+/** How many items a branch's Trash holds, for the page tree's footer. A plain
+ *  read: it never purges (expired rows are only not counted). */
+export const countPageTrash = async (projectId: string, branchId?: string) => {
+  const branch = branchId ? await assertBranchInProject(projectId, branchId) : await getDefaultBranch(projectId);
+  const count = await prisma.pageTrash.count({ where: { projectId, branchId: branch.id, expiresAt: { gt: new Date() } } });
+  return { count };
+};
+
+/** A branch's Trash, newest first, read when the Trash dialog opens. Never
+ *  includes the stored content. */
 export const listPageTrash = async (projectId: string, branchId?: string) => {
   const branch = branchId ? await assertBranchInProject(projectId, branchId) : await getDefaultBranch(projectId);
   const now = new Date();

@@ -1,16 +1,16 @@
 import { ActionDialog } from '@nibleaf/design-system/components/ui/action-dialog';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { DataList, DataListEmpty, DataListItem, DataListSkeleton, RowActions, RowActionsItem } from '@nibleaf/design-system/components/ui/data-list';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
 import { useT } from '@nibleaf/i18n/react';
 import { FileText, Folder, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
-import type { Language, PageTrashItem } from '@/hooks/api';
-import { friendlyErrorMessage, usePageTrash, usePurgePageTrash } from '@/hooks/api';
+import type { Language } from '@/hooks/api';
+import { friendlyErrorMessage } from '@/hooks/api/errors';
+import { type PageTrashItem, usePageTrash, usePurgePageTrash } from '@/hooks/api/page-trash';
 import { useFormatters } from '@/lib/format';
 import { useRestoreFromTrash } from './use-delete-page';
 
@@ -21,7 +21,7 @@ const WARN_DAYS = 3;
 /** Whole days until an item is deleted forever (0 on its last day). */
 export const daysLeft = (expiresAt: string, now = Date.now()) => Math.max(0, Math.floor((new Date(expiresAt).getTime() - now) / DAY_MS));
 
-interface PageTrashProps {
+export interface PageTrashProps {
   projectId: string;
   /** The page tree's branch; Trash lists the default branch when omitted. */
   branchId?: string;
@@ -32,32 +32,11 @@ interface PageTrashProps {
 }
 
 /**
- * "Trash (n)" at the foot of the page tree. It opens a dialog listing what was
- * deleted on this branch in the last 30 days, with Restore and Delete forever.
+ * The Trash dialog: what was deleted on this branch in the last 30 days, with
+ * Restore and Delete forever. Loaded on demand by `PageTrashButton`, so its
+ * list, design-system pieces and mutations never ship with the page tree.
  */
-export function PageTrashButton({ projectId, branchId, languages, canEdit }: PageTrashProps) {
-  const t = useT();
-  const { number } = useFormatters();
-  const [open, setOpen] = useState(false);
-  const { data } = usePageTrash(projectId, branchId);
-  return (
-    <>
-      <Button
-        className="w-full cursor-pointer justify-start text-muted-foreground hover:text-foreground"
-        data-testid="page-trash-button"
-        onClick={() => setOpen(true)}
-        size="sm"
-        variant="ghost"
-      >
-        <Trash2 aria-hidden className="size-3.5" />
-        <span className="truncate">{data ? t('editor.trash.button', { count: number(data.length) }) : t('editor.trash.title')}</span>
-      </Button>
-      <PageTrashDialog branchId={branchId} canEdit={canEdit} languages={languages} onOpenChange={setOpen} open={open} projectId={projectId} />
-    </>
-  );
-}
-
-export function PageTrashDialog({
+export default function PageTrashDialog({
   projectId,
   branchId,
   languages,
@@ -67,7 +46,8 @@ export function PageTrashDialog({
 }: PageTrashProps & { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
   const fmt = useFormatters();
-  const trash = usePageTrash(projectId, branchId);
+  // Read (and purged of expired items) only while the dialog is open.
+  const trash = usePageTrash(projectId, branchId, open);
   const { restore } = useRestoreFromTrash(projectId);
   const purge = usePurgePageTrash(projectId);
   const [restoring, setRestoring] = useState<string | null>(null);
@@ -78,7 +58,7 @@ export function PageTrashDialog({
   const viewOnly = canEdit ? undefined : t('access.viewOnly.action');
 
   const body = trash.isPending ? (
-    <DataListSkeleton bordered loadingLabel={t('editor.trash.loading')} rows={3} />
+    <DataListSkeleton bordered loadingLabel={t('common.loading')} rows={3} />
   ) : trash.isError ? (
     <DataListEmpty bordered>
       <EmptyState
@@ -93,7 +73,7 @@ export function PageTrashDialog({
     </DataListEmpty>
   ) : trash.data.length === 0 ? (
     <DataListEmpty bordered>
-      <EmptyState description={t('editor.trash.emptyBody')} icon={<Trash2 />} title={t('editor.trash.emptyTitle')} />
+      <EmptyState icon={<Trash2 />} title={t('editor.trash.emptyTitle')} />
     </DataListEmpty>
   ) : (
     <DataList aria-label={t('editor.trash.title')} bordered className="max-h-[min(60vh,28rem)] overflow-y-auto">
@@ -119,11 +99,7 @@ export function PageTrashDialog({
             meta={
               <>
                 <span>{t('dashboard.pages', fmt.count(item.pageCount))}</span>
-                <span>
-                  {item.deletedBy
-                    ? t('editor.trash.deletedBy', { name: item.deletedBy.name || item.deletedBy.email, when })
-                    : t('editor.trash.deletedAt', { when })}
-                </span>
+                <span>{item.deletedBy ? t('editor.trash.deletedBy', { name: item.deletedBy.name || item.deletedBy.email, when }) : when}</span>
                 {language ? <span>{language}</span> : null}
               </>
             }
@@ -151,7 +127,7 @@ export function PageTrashDialog({
                   <RotateCcw aria-hidden className="size-3.5" />
                   {t('editor.trash.restore')}
                 </TooltipButton>
-                <RowActions label={t('editor.trash.more', { title })}>
+                <RowActions label={t('editor.pageActions', { title })}>
                   <RowActionsItem
                     destructive
                     disabledReason={viewOnly}
@@ -181,11 +157,6 @@ export function PageTrashDialog({
             <DialogDescription>{t('editor.trash.description')}</DialogDescription>
           </DialogHeader>
           {body}
-          <DialogFooter>
-            <Button onClick={() => onOpenChange(false)} variant="outline">
-              {t('editor.trash.close')}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       <ActionDialog
@@ -193,16 +164,13 @@ export function PageTrashDialog({
         confirmLabel={t('editor.trash.deleteForever')}
         description={purging ? t('editor.trash.deleteForeverBody', { pages: t('dashboard.pages', fmt.count(purging.pageCount)) }) : undefined}
         destructive
-        errorMessage={(error) => friendlyErrorMessage(t, error, 'editor.trash.deleteForeverFailed')}
-        fallbackErrorMessage={t('editor.trash.deleteForeverFailed')}
+        errorMessage={(error) => friendlyErrorMessage(t, error, 'editor.deleteFailed')}
+        fallbackErrorMessage={t('editor.deleteFailed')}
         onConfirm={async () => {
-          if (!purging) return;
-          await purge.mutateAsync(purging.id);
-          toast.success(t('editor.trash.deletedForever', { title: titleOf(purging) }));
+          if (purging) await purge.mutateAsync(purging.id);
         }}
         onOpenChange={setPurgeOpen}
         open={purgeOpen}
-        pendingLabel={t('editor.trash.deletingForever')}
         title={t('editor.trash.deleteForeverTitle', { title: purging ? titleOf(purging) : '' })}
       />
     </>
