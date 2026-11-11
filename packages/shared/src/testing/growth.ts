@@ -54,9 +54,10 @@ export const growthMsAsync = async <T>(
   { minMs = 4 }: { minMs?: number } = {},
 ): Promise<[number, number]> => {
   let repeat = 1;
+  let sink: unknown;
   const time = async (input: T) => {
     const started = performance.now();
-    for (let index = 0; index < repeat; index += 1) await run(input);
+    for (let index = 0; index < repeat; index += 1) sink = await run(input);
     return performance.now() - started;
   };
   await time(small);
@@ -73,6 +74,7 @@ export const growthMsAsync = async <T>(
       times[0].push(await time(small));
     }
   }
+  if (sink === UNREACHABLE) throw new Error('unreachable');
   const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
   return [median(times[0]), median(times[1])];
 };

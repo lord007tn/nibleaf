@@ -21,8 +21,16 @@ const chunk: SearchChunk = {
 
 describe('chat heading detection', () => {
   it.each([
-    ['refusal with 100k spaces', (n: number) => `I couldn't verify this from the docs.${' '.repeat(n * 1000)}Try another question. [S1]`, 'no_answer'],
-    ['100k spaces interleaved with partial refusal tokens', (n: number) => `I could${`n't v${' '.repeat(1000)}`.repeat(n)}erify this. [S1]`, 'answered'],
+    [
+      'refusal with 100k spaces',
+      (n: number) => `I couldn't verify this from the docs.${' '.repeat(n * 1000)}Try another question. [S1]`,
+      'no_answer',
+    ],
+    [
+      '100k spaces interleaved with partial refusal tokens',
+      (n: number) => `I could${`n't v${' '.repeat(1000)}`.repeat(n)}erify this. [S1]`,
+      'answered',
+    ],
   ] as const)('handles %s in linear time', (_name, build, status) => {
     expect(validateCitedAnswer(build(100), [chunk], '', 'chat').status).toBe(status);
     // 4x the whitespace costs about 4x (testing/growth).

@@ -1,8 +1,8 @@
-﻿import { fakeText } from '@tanstack/ai/testing';
+﻿import { growthMs, growthMsAsync, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
+import { fakeText } from '@tanstack/ai/testing';
 import { Tiktoken } from 'js-tiktoken/lite';
 import cl100k_base from 'js-tiktoken/ranks/cl100k_base';
 import o200k_base from 'js-tiktoken/ranks/o200k_base';
-import { growthMs, growthMsAsync, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
 import { answerUserPrompt } from './answer';
 import {
@@ -561,10 +561,11 @@ describe('follow-up suggestions', () => {
     expect(parseFollowUpQuestions(escapes(500_000), 'How?')).toEqual({ questions: [], unreadable: true });
     expect(parseFollowUpQuestions(repeats(100_000), 'How?').questions).toEqual(['Can I?']);
     const parse = (output: string) => parseFollowUpQuestions(output, 'How?');
-    for (const [smallInput, largeInput] of [
+    const pairs: Array<[string, string]> = [
       [escapes(125_000), escapes(500_000)],
       [repeats(25_000), repeats(100_000)],
-    ]) {
+    ];
+    for (const [smallInput, largeInput] of pairs) {
       const [small, large] = growthMs(parse, smallInput, largeInput);
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
     }

@@ -202,7 +202,9 @@ describe('Arabic morphology performance guards', () => {
 
   it('indexes and answers repeated morphology queries in linear time', async () => {
     const docs = (n: number) =>
-      Array.from({ length: n }, (_, index) => doc(`doc-${index}`, `إعدادات المستخدمين ${index}`, 'دليل للمطورين يشرح الصلاحيات والواجهات والحسابات.'));
+      Array.from({ length: n }, (_, index) =>
+        doc(`doc-${index}`, `إعدادات المستخدمين ${index}`, 'دليل للمطورين يشرح الصلاحيات والواجهات والحسابات.'),
+      );
     const indexAndSearch = async (input: SearchDoc[]) => {
       const index = await createDocIndex(input, 'arabic');
       for (let iteration = 0; iteration < 20; iteration += 1) await searchDocs(index, 'مستخدم', { tolerance: 1 });
