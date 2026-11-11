@@ -3,7 +3,9 @@ import { Prisma, prisma } from '@nibleaf/database';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
+import { pageDescription } from '@nibleaf/shared/markdown-text';
 import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
+import { interpolateVariablesWithin, variablesFromConfig } from '@nibleaf/shared/site';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { BulkReorderPagesBody, CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
@@ -49,6 +51,69 @@ export const getPage = async (projectId: string, id: string) => {
     throw notFound('page', { id });
   }
   return page;
+};
+
+/** How much of the body the generated description is built from, before and
+ *  after variables. `pageDescription` reads at most the first 4 KB after the
+ *  frontmatter, so 8 KB always covers it. */
+export const SEARCH_DESCRIPTION_SOURCE_LIMIT = 8192;
+const SEARCH_DESCRIPTION_CACHE_LIMIT = 500;
+/** Keyed by page, page revision and project revision, so a hit never reads the body. */
+const searchDescriptionCache = new Map<string, string>();
+
+/** The body after a leading `---` / `+++` frontmatter block (dropped from
+ *  descriptions anyway), so the bounded window starts at the prose. One
+ *  forward pass; an unclosed block is kept, as `markdown-text` keeps it. */
+const withoutFrontmatter = (content: string): string => {
+  const fence = content.startsWith('---') ? '---' : content.startsWith('+++') ? '+++' : null;
+  const firstBreak = content.indexOf('\n');
+  if (!fence || firstBreak === -1 || content.slice(0, firstBreak).trim() !== fence) return content;
+  for (let start = firstBreak + 1; start < content.length; ) {
+    const end = content.indexOf('\n', start);
+    const line = content.slice(start, end === -1 ? content.length : end);
+    if (line.trim() === fence) return end === -1 ? '' : content.slice(end + 1);
+    if (end === -1) break;
+    start = end + 1;
+  }
+  return content;
+};
+
+/** The description the published site generates from the page's saved content
+ *  when the author writes none (no SEO description, no summary), with the
+ *  project's `{{ variables }}` resolved as a publish resolves them.
+ *
+ *  Author content reaches this, so its cost is bounded: only the first
+ *  `SEARCH_DESCRIPTION_SOURCE_LIMIT` characters of the body are expanded, the
+ *  expansion stops at that length too, and the result is cached per revision.
+ *  `revision` is the page revision the text was generated from. */
+export const getPageSearchDescription = async (projectId: string, id: string) => {
+  const [revisionRow, project] = await Promise.all([
+    prisma.page.findFirst({ where: { id, projectId }, select: { updatedAt: true } }),
+    prisma.project.findUnique({ where: { id: projectId }, select: { config: true, updatedAt: true } }),
+  ]);
+  if (!revisionRow) {
+    throw notFound('page', { id });
+  }
+  const projectRevision = project?.updatedAt.toISOString() ?? '';
+  const cacheKey = (revision: string) => `${projectId}:${id}:${revision}:${projectRevision}`;
+  const known = searchDescriptionCache.get(cacheKey(revisionRow.updatedAt.toISOString()));
+  if (known !== undefined) {
+    return { description: known, revision: revisionRow.updatedAt.toISOString() };
+  }
+  // The body and its revision come from one read, so the text always matches the revision it's cached under.
+  const page = await prisma.page.findFirst({ where: { id, projectId }, select: { content: true, updatedAt: true } });
+  if (!page) {
+    throw notFound('page', { id });
+  }
+  const revision = page.updatedAt.toISOString();
+  const source = withoutFrontmatter(page.content).slice(0, SEARCH_DESCRIPTION_SOURCE_LIMIT);
+  const content = interpolateVariablesWithin(source, variablesFromConfig(project?.config), SEARCH_DESCRIPTION_SOURCE_LIMIT);
+  const description = pageDescription({ content, description: null });
+  searchDescriptionCache.set(cacheKey(revision), description);
+  if (searchDescriptionCache.size > SEARCH_DESCRIPTION_CACHE_LIMIT) {
+    searchDescriptionCache.delete(searchDescriptionCache.keys().next().value as string);
+  }
+  return { description, revision };
 };
 
 /** A unique slug among a parent's children within one language, deriving from the

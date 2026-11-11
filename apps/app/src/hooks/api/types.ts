@@ -1,3 +1,4 @@
+import type { ReaderText } from '@/lib/reader-text';
 // UI-facing shapes for API responses. Dates arrive as ISO strings over JSON.
 
 import type { AddonAvailabilityState, AddonGroup, AddonId } from '@nibleaf/shared/addons';
@@ -485,6 +486,8 @@ export interface SitePage {
   /** hreflang alternates: `path` is the page's URL in that language, or null
    *  when that language has no corresponding page (then it's omitted). */
   languages: Array<{ code: string; isDefault: boolean; path: string | null }>;
+  /** Reader-facing date and language names, formatted once on the server (see lib/reader-text.ts). */
+  readerText?: ReaderText;
   breadcrumbs: Array<{ title: string; path: string }>;
   prev: { title: string; path: string } | null;
   next: { title: string; path: string } | null;
