@@ -57,6 +57,7 @@ describe('reader chat messages', () => {
     await render(message(final));
     expect(container.textContent).toContain('Verified answer');
     expect(container.textContent).not.toContain('Unverified draft');
+    expect(container.querySelector('a')?.textContent).toContain('Getting started › Install');
     const chip = container.querySelector<HTMLButtonElement>('button[aria-label="Source 1"]');
     expect(chip).not.toBeNull();
     HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -71,12 +72,12 @@ describe('reader chat messages', () => {
     const arabic = {
       ...final,
       language: 'ar',
-      citations: [{ ...final.citations[0], anchor: 'انتهاء-صلاحية-الرمز' } as (typeof final.citations)[number]],
+      citations: [{ ...final.citations[0], language: 'en', anchor: 'انتهاء-صلاحية-الرمز' } as (typeof final.citations)[number]],
     };
     // The reader has since switched to English.
     await render(<ChatMessage text="" final={arabic} options={options} busy={false} consent="granted" close={vi.fn()} scope={{ version: 'v1' }} />);
     const href = document.getElementById('00000000-0000-4000-8000-000000000002-S1')?.getAttribute('href') ?? '';
-    expect(href).toContain('lang=ar');
+    expect(href).toContain('lang=en');
     expect(href).toContain('v1');
     expect(decodeURIComponent(href)).toContain('#انتهاء-صلاحية-الرمز');
     await unmount();
@@ -133,7 +134,7 @@ describe('reader chat messages', () => {
     await unmount();
   });
 
-  it('shows calm no-answer copy, suggested articles and the support link, with model HTML and links inert', async () => {
+  it('shows the localized refusal and support link without unrelated source cards', async () => {
     const { container, render, unmount } = mount();
     await render(
       <ChatMessage
@@ -141,7 +142,7 @@ describe('reader chat messages', () => {
         final={{
           ...final,
           status: 'no_answer',
-          answer: 'ignored',
+          answer: 'Try searching with different words.',
           citations: [],
           suggestions: final.citations,
           supportUrl: 'https://help.example.com',
@@ -152,9 +153,9 @@ describe('reader chat messages', () => {
         close={vi.fn()}
       />,
     );
-    expect(container.textContent).toContain("couldn't verify");
-    expect(container.textContent).toContain('These articles might help');
-    expect(container.querySelector('a')?.getAttribute('href')).toBe('/guide?lang=en#install');
+    expect(container.textContent).toContain('Try searching with different words.');
+    expect(container.textContent).not.toContain('These articles might help');
+    expect(container.querySelector('a[href*=guide]')).toBeNull();
     const support = [...container.querySelectorAll('a')].find((link) => link.textContent === 'Contact support');
     expect(support?.getAttribute('href')).toBe('https://help.example.com');
     expect(support?.getAttribute('rel')).toBe('noopener noreferrer');
@@ -162,14 +163,14 @@ describe('reader chat messages', () => {
     await render(
       <ChatMessage
         text=""
-        final={{ ...final, status: 'no_answer' }}
+        final={{ ...final, status: 'no_answer', language: 'ar', answer: 'لم أجد إجابة واضحة في الدليل.' }}
         options={{ ...options, lang: 'ar', direction: 'rtl' }}
         busy={false}
         consent="unknown"
         close={vi.fn()}
       />,
     );
-    expect(container.textContent).toContain('لم أجد في الوثائق ما يؤكد الإجابة');
+    expect(container.textContent).toContain('لم أجد إجابة واضحة في الدليل.');
     expect(container.textContent).not.toContain('تواصل مع الدعم');
     await render(
       <ChatMessage
