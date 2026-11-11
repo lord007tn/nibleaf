@@ -180,38 +180,42 @@ describe('projection robustness (#341)', () => {
     expect(output).not.toMatch(/^(?:> ){33}/);
   });
 
-  it.each([
-    ['unmatched backticks', 'a ` b '.repeat(40_000)],
-    ['unclosed tags', '<Note title="x" '.repeat(20_000)],
-    ['unclosed quotes', '<Card title="'.repeat(20_000)],
-    ['unbalanced braces', 'x { y '.repeat(40_000)],
-    ['deep quote markers', `${'> '.repeat(20_000)}x`],
-  ])('stays fast on %s', (_label, source) => {
-    const started = performance.now();
-    md(source);
-    portable(source);
-    // Linear work takes well under a second here; quadratic work took tens of seconds.
-    expect(performance.now() - started).toBeLessThan(5000);
-  });
-
-  it('scales linearly on deep nesting', () => {
-    // Like the shared script-mismatch performance tests, compare medians
-    // against work on this runner instead of a fixed wall-clock deadline.
-    const projectionMs = (depth: number): number => {
-      const source = `${'<Note>'.repeat(depth)}x${'</Note>'.repeat(depth)}`;
-      const project = () => {
-        expect(md(source)).toContain('x');
-        expect(portable(source)).toContain('x');
-      };
-      project();
-      const runs = Array.from({ length: 3 }, () => {
-        const started = performance.now();
-        project();
-        return performance.now() - started;
-      });
-      return runs.sort((a, b) => a - b)[1] ?? 0;
+  // Like the shared script-mismatch performance tests, compare work against work
+  // on this runner instead of a fixed wall-clock deadline: doubling the input may
+  // at most double the time, with room for noise (2.5x, plus 20 ms so a case that
+  // runs in a few milliseconds isn't judged on timer jitter). Quadratic work grows 4x.
+  /** Median of three timed projections of `source`, after one warmup. */
+  const projectionMs = (source: string, check: (output: string) => void): number => {
+    const project = () => {
+      check(md(source));
+      check(portable(source));
     };
-    const smaller = projectionMs(10_000);
-    expect(projectionMs(20_000)).toBeLessThanOrEqual(2.5 * smaller);
-  }, 60_000);
+    project();
+    const runs = Array.from({ length: 3 }, () => {
+      const started = performance.now();
+      project();
+      return performance.now() - started;
+    });
+    return runs.sort((a, b) => a - b)[1] ?? 0;
+  };
+
+  it.each([
+    ['unmatched backticks', (n: number) => 'a ` b '.repeat(n), 20_000],
+    ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 10_000],
+    ['unclosed quotes', (n: number) => '<Card title="'.repeat(n), 10_000],
+    ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 20_000],
+    ['deep quote markers', (n: number) => `${'> '.repeat(n)}x`, 10_000],
+    ['deep nesting', (n: number) => `${'<Note>'.repeat(n)}x${'</Note>'.repeat(n)}`, 10_000],
+  ] as const)(
+    'scales linearly on %s',
+    (label, build, n) => {
+      const check = (output: string) => {
+        expect(typeof output).toBe('string');
+        if (label === 'deep nesting' || label === 'deep quote markers') expect(output).toContain('x');
+      };
+      const smaller = projectionMs(build(n), check);
+      expect(projectionMs(build(2 * n), check)).toBeLessThanOrEqual(2.5 * smaller + 20);
+    },
+    60_000,
+  );
 });
