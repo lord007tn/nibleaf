@@ -108,4 +108,20 @@ describe('resolveSitePage lookups', () => {
     snapshot.pages.push(page('later'));
     expect(resolveSitePage(snapshot, 'later')?.page.path).toBe('later');
   });
+
+  it('applies the project languages of each lookup, though the pages array (and so its index) is shared', () => {
+    // The published API reuses the frozen pages array across requests while the
+    // live overlay changes each language's `enabled` flag; the index caches only
+    // per-language page lookups, never which language a request gets.
+    const pages = [page('setup'), at('setup', { id: 'ar-setup', languageCode: 'ar' })];
+    const arabic = { code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null } as SiteSnapshot['project']['languages'][number];
+    const withArabic = (enabled: boolean): SiteSnapshot => ({
+      ...site,
+      project: { ...site.project, languages: [...site.project.languages, { ...arabic, enabled }] },
+      pages,
+    });
+    expect(resolveSitePage(withArabic(true), 'setup', 'ar')?.page.id).toBe('ar-setup');
+    expect(resolveSitePage(withArabic(false), 'setup', 'ar')?.page.id).toBe('page-setup');
+    expect(resolveSitePage(withArabic(true), 'setup', 'ar')?.page.id).toBe('ar-setup');
+  });
 });
