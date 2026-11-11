@@ -172,6 +172,10 @@ export default defineConfig(({ mode }) => {
       nitro({
         routeRules: {
           '/**': { headers: SECURITY_HEADERS },
+          // Marks static build output for the custom-domain edge, which shares one
+          // cache entry per content-hashed `/assets/*` file across every hostname
+          // and requires this marker (apps/custom-domain-edge/src/index.ts).
+          '/assets/**': { headers: { 'x-nibleaf-static-build': '1' } },
           // Rewritten by every build under the same name (scripts/dashboard-preload-plugin.ts),
           // so it lives outside the immutable, content-hashed `/assets/` and is revalidated.
           '/dashboard-preloads.json': { headers: { 'cache-control': DASHBOARD_PRELOADS_CACHE_CONTROL } },
