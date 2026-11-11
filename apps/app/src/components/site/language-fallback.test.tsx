@@ -101,12 +101,15 @@ describe('language fallback notice', () => {
     const note = notes[0] as Element;
     expect(note.getAttribute('lang')).toBe('ar');
     expect(note.getAttribute('dir')).toBe('rtl');
-    expect(note.querySelector('p')?.textContent).toBe('هذه الصفحة غير متوفرة باللغة العربية بعد، لذا تقرأ نسختها باللغة English.');
+    // Languages are named in the reader's language inside the sentence.
+    expect(note.querySelector('p')?.textContent).toBe('هذه الصفحة غير متوفرة باللغة العربية بعد، لذا تقرأ نسختها باللغة الإنجليزية.');
     // Each language name keeps its own direction inside the sentence.
-    expect(isolatedNames(note.querySelector('p') as Element)).toEqual(['العربية', 'English']);
+    expect(isolatedNames(note.querySelector('p') as Element)).toEqual(['العربية', 'الإنجليزية']);
     // It offers the page with the whole site in English (the default language's clean URL).
     const link = note.querySelector('a');
-    expect(link?.textContent).toBe('تصفّح الموقع باللغة English');
+    // The link adds the language's own name, isolated, for a reader of that language.
+    expect(link?.textContent).toBe('تصفّح الموقع باللغة الإنجليزية (English)');
+    expect(link?.querySelector('bdi[lang="en"]')?.textContent).toBe('English');
     expect(link?.getAttribute('href')).toBe('/sites/docs/blog/add-new-reservation-2');
     expect(link?.getAttribute('hreflang')).toBe('en');
     // It sits at the top of the English article, which keeps its own language.
@@ -126,7 +129,8 @@ describe('language fallback notice', () => {
     const note = (await renderPage(data, shell('en'))).querySelector('[role="note"]');
     expect(note?.getAttribute('lang')).toBe('en');
     expect(note?.getAttribute('dir')).toBe('ltr');
-    expect(note?.querySelector('p')?.textContent).toBe("This page isn't available in English yet. You're reading the العربية version.");
+    expect(note?.querySelector('p')?.textContent).toBe("This page isn't available in English yet. You're reading the Arabic version.");
+    expect(note?.querySelector('a')?.textContent).toBe('View the site in Arabic (العربية)');
     expect(note?.querySelector('a')?.getAttribute('href')).toBe('/sites/docs/blog/add-new-reservation-2');
   });
 
