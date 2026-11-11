@@ -135,6 +135,15 @@ async function select(editor: Editor, text: string) {
       .run();
   });
   await waitFor(() => expect(textMenu()).not.toBeNull());
+  await editorFocused(editor);
+}
+
+/** TipTap focuses the page in an animation frame; a writer's next key comes after it. */
+async function editorFocused(editor: Editor) {
+  await waitFor(() => expect(editor.view.dom.contains(document.activeElement)).toBe(true));
+  await act(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+  });
 }
 
 async function key(target: Element, init: KeyboardEventInit) {
@@ -183,7 +192,7 @@ describe('Ctrl/⌘+K in the page adds a link (AUTH-10)', () => {
     expect(linkHref(editor)).toBe('https://example.com/guide');
     expect(getMarkdown(editor)).toContain('[guide](https://example.com/guide)');
     // Focus is back in the page.
-    expect(prose.contains(document.activeElement)).toBe(true);
+    await waitFor(() => expect(prose.contains(document.activeElement)).toBe(true));
   });
 
   it('with only a caret, links the word under it', async () => {
@@ -191,6 +200,7 @@ describe('Ctrl/⌘+K in the page adds a link (AUTH-10)', () => {
     await act(async () => {
       editor.chain().focus().setTextSelection(10).run();
     });
+    await editorFocused(editor);
 
     await key(prose, { key: 'k', metaKey: true });
     await waitFor(() => expect(document.activeElement).toBe(linkField()));
@@ -203,6 +213,7 @@ describe('Ctrl/⌘+K in the page adds a link (AUTH-10)', () => {
     await act(async () => {
       editor.chain().focus().setTextSelection(10).run();
     });
+    await editorFocused(editor);
 
     await key(prose, { key: 'k', ctrlKey: true });
     await waitFor(() => expect(document.activeElement).toBe(linkField()));
@@ -292,14 +303,14 @@ describe('Turn into (AUTH-37)', () => {
     expect(getMarkdown(editor).split('\n')[0]).toBe(markdown);
     expect(getMarkdown(editor)).toContain('Then sign in');
     expect(selectedText(editor)).toBe('the app');
-    expect(prose.contains(document.activeElement)).toBe(true);
+    await waitFor(() => expect(prose.contains(document.activeElement)).toBe(true));
     expect(turnIntoTrigger()?.textContent).toContain(label);
     expect(await checkedChoice()).toEqual([label]);
 
     await chooseTurnInto('Text');
     expect(getMarkdown(editor)).toBe('Install the app\n\nThen sign in');
     expect(selectedText(editor)).toBe('the app');
-    expect(prose.contains(document.activeElement)).toBe(true);
+    await waitFor(() => expect(prose.contains(document.activeElement)).toBe(true));
   });
 
   it('switches a bulleted list to a numbered one in place', async () => {
