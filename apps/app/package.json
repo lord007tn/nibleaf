@@ -18,7 +18,6 @@
     "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
-    "@nibleaf/search": "workspace:*",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -27,6 +26,7 @@
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/design-system": "workspace:*",
     "@nibleaf/i18n": "workspace:*",
+    "@nibleaf/search": "workspace:*",
     "@nibleaf/server": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@nibleaf/usage": "workspace:*",
@@ -100,6 +100,7 @@
     "@types/react-dom": "^19.3.0",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "6.2.1",
+    "dom-accessibility-api": "0.7.0",
     "hono": "^4.13.16",
     "jsdom": "^31.0.0",
     "nitro": "3.0.260903-beta",

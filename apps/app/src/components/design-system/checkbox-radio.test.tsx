@@ -3,6 +3,7 @@
 import { Checkbox, CheckboxField } from '@nibleaf/design-system/components/ui/checkbox';
 import { DirectionProvider } from '@nibleaf/design-system/components/ui/direction';
 import { RadioField, RadioGroup, RadioGroupItem } from '@nibleaf/design-system/components/ui/radio-group';
+import { computeAccessibleDescription, computeAccessibleName } from 'dom-accessibility-api';
 import { act, type ReactElement, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -25,17 +26,12 @@ async function render(element: ReactElement) {
   return container;
 }
 
-const describedText = (el: Element) =>
-  (el.getAttribute('aria-describedby') ?? '')
-    .split(' ')
-    .filter(Boolean)
-    .map((id) => document.getElementById(id)?.textContent);
-const labelText = (el: Element) =>
-  (el.getAttribute('aria-labelledby') ?? '')
-    .split(' ')
-    .filter(Boolean)
-    .map((id) => document.getElementById(id)?.textContent)
-    .join(' ');
+// What assistive tech computes (accname / description), not the nearby text.
+const nameOf = (el: Element) => computeAccessibleName(el);
+const descriptionOf = (el: Element) => computeAccessibleDescription(el);
+/** Text a sighted person can read: not inside a `hidden` element. */
+const visibleText = (container: Element) =>
+  [...container.querySelectorAll('[data-slot="disabled-reason"]')].filter((el) => !el.closest('[hidden]')).map((el) => el.textContent);
 const click = (el: Element) => act(async () => (el as HTMLElement).click());
 const key = (el: Element, k: string) =>
   act(async () => {
@@ -66,8 +62,9 @@ describe('Checkbox', () => {
     const container = await render(<ControlledCheckbox />);
     const box = container.querySelector('[role="checkbox"]') as HTMLElement;
     expect(box.getAttribute('aria-checked')).toBe('false');
-    expect(box.closest('label')?.textContent).toContain('Access requests');
-    expect(describedText(box)).toEqual(['Readers on this site can request access.']);
+    // The name is the label alone: the description isn't announced twice.
+    expect(nameOf(box)).toBe('Access requests');
+    expect(descriptionOf(box)).toBe('Readers on this site can request access.');
     await click(container.querySelector('label span') as HTMLElement);
     expect(box.getAttribute('aria-checked')).toBe('true');
     expect(box.querySelector('[data-slot="checkbox-indicator"] svg')).not.toBeNull();
@@ -85,6 +82,7 @@ describe('Checkbox', () => {
     const container = await render(<Checkbox aria-label="All websites" checked={false} indeterminate />);
     const box = container.querySelector('[role="checkbox"]') as HTMLElement;
     expect(box.getAttribute('aria-checked')).toBe('mixed');
+    expect(nameOf(box)).toBe('All websites');
     expect(box.hasAttribute('data-indeterminate')).toBe(true);
     expect(box.querySelector('[data-slot="checkbox-indicator"] svg')).not.toBeNull();
   });
@@ -97,6 +95,7 @@ describe('Checkbox', () => {
         <label htmlFor="site-docs">Docs</label>
       </>,
     );
+    expect(nameOf(container.querySelector('[role="checkbox"]') as HTMLElement)).toBe('Docs');
     await click(container.querySelector('label') as HTMLElement);
     expect(onChange).toHaveBeenCalledWith(true, expect.anything());
   });
@@ -108,7 +107,10 @@ describe('Checkbox', () => {
     expect(box.getAttribute('aria-disabled')).toBe('true');
     expect(box.hasAttribute('data-disabled')).toBe(false);
     expect(box.tabIndex).toBe(0);
-    expect(describedText(box)).toEqual(['Readers on this site can request access.', 'Only Admins can change this.']);
+    expect(nameOf(box)).toBe('Access requests');
+    expect(descriptionOf(box)).toBe('Readers on this site can request access. Only Admins can change this.');
+    // Shown under the label, not only announced.
+    expect(visibleText(container)).toEqual(['Only Admins can change this.']);
     await click(box);
     await act(async () => box.focus());
     await key(box, ' ');
@@ -146,20 +148,45 @@ describe('RadioGroup', () => {
   it('is a labelled, described group of named radios', async () => {
     const container = await render(<Roles />);
     const group = container.querySelector('[role="radiogroup"]') as HTMLElement;
-    expect(labelText(group)).toBe('Role');
-    expect(describedText(group)).toEqual(['What they can do on this website.']);
-    expect(radios(container).map((radio) => radio.closest('label')?.querySelector('.font-medium')?.textContent)).toEqual([
-      'Viewer',
-      'Member',
-      'Admin',
-    ]);
-    expect(describedText(radios(container)[0] as HTMLElement)).toEqual(['Reads everything.']);
+    expect(nameOf(group)).toBe('Role');
+    expect(radios(container).map(nameOf)).toEqual(['Viewer', 'Member', 'Admin']);
+    expect(descriptionOf(radios(container)[0] as HTMLElement)).toBe('Reads everything.');
     expect(checked(container)).toEqual(['false', 'true', 'false']);
+  });
+
+  // Arrow keys pass over an unavailable item, so its reason must be reachable another way.
+  it("makes an unavailable choice's reason discoverable: shown under it, and read with the group", async () => {
+    const container = await render(<Roles />);
+    const group = container.querySelector('[role="radiogroup"]') as HTMLElement;
+    expect(visibleText(container)).toEqual(['Only an Owner can make someone an Admin.']);
+    expect(descriptionOf(group)).toBe('What they can do on this website. Only an Owner can make someone an Admin.');
+  });
+
+  it('drops a reason from the group once the choice is available again', async () => {
+    function Toggle() {
+      const [locked, setLocked] = useState(true);
+      return (
+        <>
+          <button onClick={() => setLocked(false)} type="button">
+            unlock
+          </button>
+          <RadioGroup defaultValue="viewer" label="Role">
+            <RadioField label="Viewer" value="viewer" />
+            <RadioField disabledReason={locked ? 'Only an Owner can.' : undefined} label="Admin" value="admin" />
+          </RadioGroup>
+        </>
+      );
+    }
+    const container = await render(<Toggle />);
+    const group = container.querySelector('[role="radiogroup"]') as HTMLElement;
+    expect(descriptionOf(group)).toBe('Only an Owner can.');
+    await click(container.querySelector('button') as HTMLElement);
+    expect(descriptionOf(group)).toBe('');
   });
 
   it('chooses an item by clicking its row', async () => {
     const container = await render(<Roles />);
-    await click(radios(container)[0]?.closest('label')?.querySelector('.font-medium') as HTMLElement);
+    await click(radios(container)[0]?.closest('label')?.querySelector('[id]') as HTMLElement);
     expect(checked(container)).toEqual(['true', 'false', 'false']);
   });
 
@@ -208,9 +235,9 @@ describe('RadioGroup', () => {
     const container = await render(<Roles />);
     const admin = radios(container)[2] as HTMLElement;
     expect(admin.getAttribute('aria-disabled')).toBe('true');
-    expect(describedText(admin)).toEqual(['Only an Owner can make someone an Admin.']);
+    expect(descriptionOf(admin)).toBe('Only an Owner can make someone an Admin.');
     await click(admin);
-    await click(admin.closest('label')?.querySelector('.font-medium') as HTMLElement);
+    await click(admin.closest('label')?.querySelector('[id]') as HTMLElement);
     expect(checked(container)).toEqual(['false', 'true', 'false']);
     // Arrow keys pass over an unavailable choice, as they do over a disabled one.
     const member = radios(container)[1] as HTMLElement;

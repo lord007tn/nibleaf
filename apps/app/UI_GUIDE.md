@@ -87,8 +87,10 @@ Use the design system's `Checkbox` / `CheckboxField` and `RadioGroup` / `RadioFi
 - `RadioGroup` takes `label` and `description` for the group (or `aria-labelledby`). It is one tab stop, and arrow
   keys move and choose, following the reading direction in RTL.
 - A parent of some ticked items is `indeterminate` (read as "mixed").
-- `disabledReason` keeps a checkbox focusable and announced as unavailable, with the reason read out. A radio with a
-  reason is announced the same way; arrow keys pass over it, as over any unavailable choice.
+- `disabledReason` announces the control as unavailable and reads the reason as its description; the field
+  components also show it under the label. A checkbox stays focusable. Arrow keys pass over an unavailable radio, so its
+  reason is also part of the group's description.
+- The name of a field is its label alone; the description and the reason are read as its description.
 
 ## Permissions
 
