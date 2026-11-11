@@ -16,10 +16,10 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
 }));
-vi.mock('@/components/app/site-switcher', () => ({ SiteSwitcher: () => null }));
+vi.mock('@/components/app/sidebar-brand', () => ({ SidebarBrand: () => null }));
 vi.mock('@/components/app/sidebar-account-footer', () => ({ SidebarAccountFooter: () => null }));
 
-import { AppSidebar } from './app-sidebar';
+import { OrgSidebar } from './org-sidebar';
 import { ProjectSidebar } from './project-sidebar';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -51,7 +51,11 @@ it.each(['en', 'ar', 'de'])('labels both mobile dialogs with app-supplied %s tex
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  for (const sidebar of [<AppSidebar key="workspace" />, <ProjectSidebar key="project" projectId="fixture" />]) {
+  const sidebars = [
+    { element: <OrgSidebar isAdmin key="organization" orgSlug="acme" />, description: 'nav.organizationSidebarDescription' },
+    { element: <ProjectSidebar key="project" projectId="fixture" />, description: 'nav.sidebarDescription' },
+  ];
+  for (const { element: sidebar, description: descriptionKey } of sidebars) {
     await act(async () =>
       root.render(
         <SidebarProvider key={sidebar.key}>
@@ -66,6 +70,6 @@ it.each(['en', 'ar', 'de'])('labels both mobile dialogs with app-supplied %s tex
     const title = document.getElementById(dialog?.getAttribute('aria-labelledby') ?? '');
     const description = document.getElementById(dialog?.getAttribute('aria-describedby') ?? '');
     expect(title?.textContent).toBe(`${locale}:nav.sidebarTitle`);
-    expect(description?.textContent).toBe(`${locale}:nav.sidebarDescription`);
+    expect(description?.textContent).toBe(`${locale}:${descriptionKey}`);
   }
 });

@@ -7,6 +7,7 @@ import { getCurrentSnapshot, getPendingChanges, listDeployments, type PendingCha
 import { findLiveDomain } from '@/actions/live-domain';
 import { env } from '@/env';
 import { AppError } from '@/errors';
+import { normalizeBaseDomain } from '@/lib/site-host';
 import { canonicalHash } from './idempotency';
 
 const PREVIEW_TOKEN_VERSION = 'v1';
@@ -120,8 +121,6 @@ export const readPublishState = async (
   const settings = changedSiteSettings(snapshot.project, (published?.snapshot as unknown as SiteSnapshot | null)?.project);
   return { pending, settings, digest: publishStateDigest(snapshot, pending.lastVersion, newestVersion), snapshot };
 };
-
-const normalizeBaseDomain = (value: string | undefined) => value?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
 
 /** Where readers see the site, resolved like the dashboard overview: a live
  *  custom domain (DNS and HTTPS working, primary first), else the free

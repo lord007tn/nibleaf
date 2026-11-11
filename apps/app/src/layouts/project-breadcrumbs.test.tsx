@@ -10,7 +10,14 @@ vi.mock('@/components/app/project-sidebar', () => ({ ProjectSidebar: () => null 
 vi.mock('@/components/app/notifications-popover', () => ({ NotificationsPopover: () => null }));
 vi.mock('@/components/project/deploy-pipeline', () => ({ DeployPipeline: () => null }));
 vi.mock('@/components/project/publish-modal', () => ({ PublishModal: () => null }));
-vi.mock('@/hooks/api', () => ({ useProject: () => ({ data: { id: 'fixture', name: 'Acme API Reference' } }) }));
+vi.mock('@/hooks/api', () => ({
+  useProject: () => ({ data: { id: 'fixture', name: 'Acme API Reference', organizationId: 'org-1' } }),
+  useOrganizationOfProject: () => ({ organization: { id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: 'owner' } }),
+}));
+vi.mock('@/hooks/use-record-visit', () => ({ useRecordVisitEffect: () => undefined }));
+// The switchers are covered by their own tests; here they only need to occupy their breadcrumb slots.
+vi.mock('@/components/app/org-switcher/organization-switcher', () => ({ OrganizationSwitcher: () => <button type="button">Acme Docs</button> }));
+vi.mock('@/components/app/org-switcher/website-switcher', () => ({ WebsiteSwitcher: () => <button type="button">Acme API Reference</button> }));
 vi.mock('@/hooks/use-project-admin-status', () => ({ useProjectAdminStatus: () => ({ edit: 'edit' }) }));
 
 import { ProjectLayout } from './project';
@@ -45,7 +52,8 @@ it('marks only the leaf current when the real router matches analytics ancestors
     const breadcrumb = host.querySelector('[data-slot="breadcrumb"]');
     expect(breadcrumb?.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
     expect(breadcrumb?.querySelector('[aria-current="page"]')?.textContent).toBe('analytics.tab.search');
-    expect(breadcrumb?.querySelector('a[href="/app/projects/fixture"]')?.hasAttribute('aria-current')).toBe(false);
+    // Org and website are switchers, never "current page" links.
+    expect([...(breadcrumb?.querySelectorAll('button') ?? [])].map((button) => button.textContent)).toEqual(['Acme Docs', 'Acme API Reference']);
     expect(breadcrumb?.querySelector('a[href="/app/projects/fixture/analytics"]')?.hasAttribute('aria-current')).toBe(false);
   } finally {
     await act(async () => root.unmount());

@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ pathname: '/app', locale: 'en' }));
+const mocks = vi.hoisted(() => ({ pathname: '/app', locale: 'en', recordVisit: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => `${mocks.locale}:${key}` }));
 vi.mock('@tanstack/react-router', () => ({
   useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => unknown }) =>
@@ -27,15 +27,39 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 vi.mock('@nibleaf/design-system/hooks/use-mobile', () => ({ useIsMobile: () => false }));
-vi.mock('@/components/app/app-sidebar', () => ({ AppSidebar: () => null }));
+vi.mock('@/components/app/org-sidebar', () => ({
+  OrgSidebar: () => null,
+  ORG_NAV: [
+    { section: 'websites', labelKey: 'nav.websites' },
+    { section: 'settings', labelKey: 'nav.settings' },
+  ],
+}));
 vi.mock('@/components/app/project-sidebar', () => ({ ProjectSidebar: () => null }));
 vi.mock('@/components/app/notifications-popover', () => ({ NotificationsPopover: () => null }));
+vi.mock('@/components/app/org-switcher/organization-switcher', () => ({
+  OrganizationSwitcher: ({ organization }: { organization?: { name: string } }) => (
+    <button data-testid="org-switcher" type="button">
+      {organization?.name ?? 'loading'}
+    </button>
+  ),
+}));
+vi.mock('@/components/app/org-switcher/website-switcher', () => ({
+  WebsiteSwitcher: ({ project }: { project?: { name: string } }) => (
+    <button data-testid="website-switcher" type="button">
+      {project?.name ?? 'loading'}
+    </button>
+  ),
+}));
 vi.mock('@/components/project/deploy-pipeline', () => ({ DeployPipeline: () => null }));
 vi.mock('@/components/project/publish-modal', () => ({ PublishModal: () => null }));
-vi.mock('@/hooks/api', () => ({ useProject: () => ({ data: { id: 'fixture', name: 'Long site name / دليل المنتج' } }) }));
+vi.mock('@/hooks/api', () => ({
+  useProject: () => ({ data: { id: 'fixture', name: 'Long site name / دليل المنتج', organizationId: 'org-1' } }),
+  useOrganizationOfProject: () => ({ organization: { id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: 'owner' } }),
+}));
+vi.mock('@/hooks/use-record-visit', () => ({ useRecordVisitEffect: mocks.recordVisit }));
 vi.mock('@/hooks/use-project-admin-status', () => ({ useProjectAdminStatus: () => ({ edit: 'edit' }) }));
 
-import { DashboardLayout } from './dashboard';
+import { OrganizationLayout } from './organization';
 import { ProjectLayout } from './project';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -44,18 +68,27 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   document.body.replaceChildren();
 });
+const organization = { id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: 'owner' as const, canCreateWebsite: true };
 async function render(path: string, project = true) {
   mocks.pathname = path;
   const host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
   await act(async () =>
-    root.render(project ? <ProjectLayout projectId="fixture">Content</ProjectLayout> : <DashboardLayout>Content</DashboardLayout>),
+    root.render(
+      project ? (
+        <ProjectLayout projectId="fixture">Content</ProjectLayout>
+      ) : (
+        <OrganizationLayout organization={organization} orgSlug="acme">
+          Content
+        </OrganizationLayout>
+      ),
+    ),
   );
 }
 
 it.each([
-  ['', 'Long site name / دليل المنتج'],
+  ['', null],
   ['/analytics', 'en:project.analytics'],
   ['/analytics/', 'en:project.analytics'],
   ['/analytics/pages', 'en:analytics.tab.pages'],
@@ -66,30 +99,50 @@ it.each([
   ['/ai', 'en:dashboard.ai.title'],
   ['/settings', 'en:project.settings'],
   ['/preview', 'en:project.preview'],
-])('identifies the current project route %s and links its ancestors', async (path, label) => {
+])('reads [Org ▾] / [Website ▾] / section for the project route %s', async (path, label) => {
   mocks.locale = 'en';
   await render(`/app/projects/fixture${path}`);
   const nav = document.querySelector('[data-slot="breadcrumb"]');
-  expect(nav?.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
-  expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe(label);
-  if (path) expect(nav?.querySelector('a[href="/app/projects/fixture"]')?.textContent).toBe('Long site name / دليل المنتج');
+  // Org and website are switchers, in that order, then the current section.
+  const switchers = [...(nav?.querySelectorAll('[data-testid]') ?? [])].map((node) => node.getAttribute('data-testid'));
+  expect(switchers).toEqual(['org-switcher', 'website-switcher']);
+  expect(nav?.querySelector('[data-testid="org-switcher"]')?.textContent).toBe('Acme Docs');
+  expect(nav?.querySelector('[data-testid="website-switcher"]')?.textContent).toBe('Long site name / دليل المنتج');
+  const current = nav?.querySelectorAll('[aria-current="page"]');
+  expect(current).toHaveLength(label ? 1 : 0);
+  if (label) expect(current?.[0]?.textContent).toBe(label);
   if (path.startsWith('/analytics/') && path !== '/analytics/')
     expect(nav?.querySelector('a[href="/app/projects/fixture/analytics"]')?.textContent).toBe('en:project.analytics');
   expect(nav?.querySelector('li li')).toBeNull();
 });
 
+it('records the website (and so its org) as the last opened', async () => {
+  mocks.recordVisit.mockClear();
+  await render('/app/projects/fixture');
+  expect(mocks.recordVisit).toHaveBeenCalledWith({ projectId: 'fixture' });
+});
+
+it('shows [Org ▾] then the page title at org level', async () => {
+  mocks.locale = 'en';
+  await render('/app/o/acme/settings', false);
+  const nav = document.querySelector('[data-slot="breadcrumb"]');
+  expect(nav?.querySelector('[data-testid="org-switcher"]')?.textContent).toBe('Acme Docs');
+  expect(nav?.querySelector('[data-testid="website-switcher"]')).toBeNull();
+  expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe('en:nav.settings');
+});
+
 it.each(['en', 'ar', 'de'])('passes the localized breadcrumb name in both shells (%s)', async (locale) => {
   mocks.locale = locale;
-  await render('/app/sites', false);
+  await render('/app/o/acme/websites', false);
   const header = document.querySelector('header');
-  const workspaceClass = header?.className;
+  const orgClass = header?.className;
   const searchClass = header?.querySelector(`button[aria-label="${locale}:dashboard.search.placeholder"]`)?.className;
   const search = header?.querySelector(`button[aria-label="${locale}:dashboard.search.placeholder"]`);
   expect(search).not.toBeNull();
   expect(search?.getAttribute('aria-label')).toBe(search?.querySelector('span')?.textContent);
   expect(document.querySelector('[data-slot="breadcrumb"]')?.getAttribute('aria-label')).toBe(`${locale}:nav.breadcrumb`);
   await act(async () => root.render(<ProjectLayout projectId="fixture">Content</ProjectLayout>));
-  expect(document.querySelector('header')?.className).toBe(workspaceClass);
+  expect(document.querySelector('header')?.className).toBe(orgClass);
   expect(document.querySelector(`button[aria-label="${locale}:dashboard.search.placeholder"]`)?.className).toBe(searchClass);
   expect(document.querySelector('[data-slot="breadcrumb"]')?.getAttribute('aria-label')).toBe(`${locale}:nav.breadcrumb`);
 });
