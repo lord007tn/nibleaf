@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 
 type DashboardPreloads = Record<string, readonly string[]>;
 
-const PRELOADS_URL = '/assets/dashboard-preloads.json';
+const PRELOADS_URL = '/dashboard-preloads.json';
 
 // Module state: the shell can remount (sign-out and back), but the manifest and
 // the links already in <head> outlive it.
@@ -13,9 +13,11 @@ const injected = new Set<string>();
 const handledPaths = new Set<string>();
 
 function loadManifest() {
-  // The file's name has no hash, and `/assets/` is cached as immutable: always revalidate
-  // (a 304 when unchanged). A per-build query string would instead rename reader chunks on
-  // every build, since the shell chunk that carries it is listed in the router's eager chunk.
+  // The file's name has no hash, so it is served outside `/assets/` with a short,
+  // revalidated cache (vite.config.ts); asking for revalidation here as well keeps a
+  // stale copy out even within that minute (a 304 when unchanged). A per-build query
+  // string would instead rename reader chunks on every build, since the shell chunk
+  // that carries it is listed in the router's eager chunk.
   manifestRequest ??= fetch(PRELOADS_URL, { cache: 'no-cache' })
     .then((response) => (response.ok ? response.json() : null))
     .then((data: unknown) => {
@@ -59,7 +61,7 @@ function dashboardPath(target: EventTarget | null): string | null {
  * chunk (it ships to published docs too; scripts/dashboard-preload-plugin.ts),
  * so the router's intent preload alone would fetch a route chunk's imports one
  * level at a time. The build writes each dashboard route's full chunk list to
- * `/assets/dashboard-preloads.json`; this reads it once, when the browser is
+ * `/dashboard-preloads.json`; this reads it once, when the browser is
  * idle, and adds `<link rel="modulepreload">` for the routes a link matches.
  * Production only: in development there is no such file. Use it once, in the
  * signed-in shell; published docs pages never import this module.
