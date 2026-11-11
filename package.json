@@ -53,6 +53,7 @@
     }
   },
   "scripts": {
+    "test:growth": "turbo run test:growth --concurrency=1",
     "test:upload:integration": "node --env-file=tests/integration/maxio-upload/fixture.env --import tsx tests/integration/maxio-upload/integration.ts",
     "test:upload:browser": "node tests/integration/maxio-upload/browser.mjs",
     "test:reader-search:browser": "node tests/integration/reader-search-keystrokes/browser.mjs",
