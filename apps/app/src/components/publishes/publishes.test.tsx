@@ -87,6 +87,11 @@ const render = async (node: ReactNode) => {
   await act(async () => root.render(node));
   return host;
 };
+/** Opens the version page at /publishes/<deploymentId>. */
+const showVersion = (deploymentId: string) => {
+  mocks.params = { projectId: 'site-1', deploymentId };
+  return render(<PublishVersionPage />);
+};
 const rowOf = (version: number) => host.querySelector<HTMLElement>(`[data-version="${version}"]`);
 const actionsTrigger = (version: number) =>
   [...(rowOf(version)?.querySelectorAll('button') ?? [])].find((button) =>
@@ -222,7 +227,7 @@ const detail = (deployment: ReturnType<typeof item> & Record<string, unknown>, l
 describe('Publish version page', () => {
   it('shows what the version added, edited and removed against the previous one, and offers Restore', async () => {
     mocks.detail.mockReturnValue(detail(item(2, 'READY'), { id: 'dep-3', version: 3 }, summary({ settingsChanged: true })));
-    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-2' }), (<PublishVersionPage />)));
+    await showVersion('dep-2');
     expect(host.querySelector('h1')?.textContent).toBe('editor.history.version(2)');
     expect(host.querySelector('h2')?.textContent).toBe('publishes.changesSince(1)');
     const changes = [...host.querySelectorAll('[data-change]')].map((row) => [row.getAttribute('data-change'), row.textContent]);
@@ -252,7 +257,7 @@ describe('Publish version page', () => {
     mocks.detail.mockReturnValue(
       detail(item(2, 'READY'), { id: 'dep-2', version: 2 }, summary({ changes, totals: { added: 260, modified: 0, removed: 12 }, truncated: true })),
     );
-    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-2' }), (<PublishVersionPage />)));
+    await showVersion('dep-2');
     expect(host.querySelectorAll('[data-change]')).toHaveLength(200);
     expect(host.querySelector('[data-testid="publish-changes-truncated"]')?.textContent).toBe('publishes.truncated(200|272)');
     expect(host.querySelector('[data-total="removed"]')?.textContent).toContain('12');
@@ -260,7 +265,7 @@ describe('Publish version page', () => {
 
   it('never offers Restore on the live version', async () => {
     mocks.detail.mockReturnValue(detail(item(3, 'READY'), { id: 'dep-3', version: 3 }, summary()));
-    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-3' }), (<PublishVersionPage />)));
+    await showVersion('dep-3');
     expect(host.querySelector('[data-slot="status-badge"][data-state="live"]')).not.toBeNull();
     expect([...host.querySelectorAll('button')].some((button) => button.textContent === 'publishes.restore')).toBe(false);
   });
@@ -275,7 +280,7 @@ describe('Publish version page', () => {
         null,
       ),
     );
-    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-4' }), (<PublishVersionPage />)));
+    await showVersion('dep-4');
     expect(host.textContent).toContain('deploy.failedDetails');
     expect(host.textContent).toContain('Guide — Links to a missing page');
     expect(host.querySelector('[data-testid="publish-changes"]')).toBeNull();
@@ -285,7 +290,7 @@ describe('Publish version page', () => {
   it('disables Restore with the reason for someone without publish rights', async () => {
     mocks.edit.value = 'viewOnly';
     mocks.detail.mockReturnValue(detail(item(2, 'READY'), { id: 'dep-3', version: 3 }, summary()));
-    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-2' }), (<PublishVersionPage />)));
+    await showVersion('dep-2');
     const restore = [...host.querySelectorAll('button')].find((button) => button.textContent === 'publishes.restore');
     expect(restore?.getAttribute('aria-disabled')).toBe('true');
     await act(async () => restore?.click());
@@ -296,7 +301,7 @@ describe('Publish version page', () => {
     mocks.detail.mockReturnValue(
       detail(item(1, 'READY'), { id: 'dep-1', version: 1 }, summary({ previous: null, totals: { added: 3, modified: 0, removed: 0 } })),
     );
-    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-1' }), (<PublishVersionPage />)));
+    await showVersion('dep-1');
     expect(host.querySelector('h2')?.textContent).toBe('publish.firstPublish');
   });
 });
