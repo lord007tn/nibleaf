@@ -14,6 +14,7 @@
         "changelogithub.config.mjs",
         "scripts/docker-context-smoke.mjs",
         "scripts/graceful-web-service.mjs",
+        "scripts/migration-safety.mjs",
         "scripts/runtime-image-audit.mjs",
         "scripts/site-preview-mock.mjs",
         "scripts/site-preview-shots.mjs",
