@@ -21,6 +21,7 @@ import join from './join/handlers';
 import joinLinks from './join-links/handlers';
 import languages from './languages/handlers';
 import mcpOAuth from './mcp-oauth/handlers';
+import me from './me/handlers';
 import members from './members/handlers';
 import notifications from './notifications/handlers';
 import openapi from './openapi/handlers';
@@ -40,6 +41,7 @@ const app = new Hono<HonoEnv>()
       'x-nibleaf-revision': revision,
     });
   })
+  .route('/me', me)
   .route('/organizations', organizations)
   .route('/invitations', invitations)
   .route('/activation-events', activationEvents)

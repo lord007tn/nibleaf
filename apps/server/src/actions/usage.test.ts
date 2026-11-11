@@ -179,6 +179,37 @@ describe('usage authorization and entitlement policy', () => {
     expect(JSON.stringify(unavailable)).not.toContain('private clickhouse');
   });
 
+  it('names why every missing number is missing (audit WORKSPACE-19)', async () => {
+    const reason = (summary: Awaited<ReturnType<typeof getProjectUsageSummary>>, key: string) =>
+      summary.meters.find((meter) => meter.key === key)?.unavailableReason;
+    mocks.analyticsMode = 'postgres';
+    const disabled = await getProjectUsageSummary(sessionContext(), 'project-a');
+    expect(reason(disabled, 'public_page_view')).toBe('metering_disabled');
+    expect(disabled.meters.filter((meter) => meter.quantity === null).every((meter) => meter.unavailableReason)).toBe(true);
+    expect(disabled.meters.filter((meter) => meter.quantity !== null).every((meter) => meter.unavailableReason === null)).toBe(true);
+
+    mocks.analyticsMode = 'clickhouse';
+    setSnapshots();
+    mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows.filter((row) => !row.meterKey.includes('token')));
+    const tokens = await getProjectUsageSummary(sessionContext(), 'project-a');
+    expect(reason(tokens, 'ai_input_token')).toBe('tokens_incomplete');
+    expect(reason(tokens, 'public_page_view')).toBeNull();
+
+    setSnapshots({ members: null, assets: null, domains: null, pages: null });
+    mocks.queryUsageMeterTotals.mockRejectedValue(new Error('private clickhouse endpoint and credentials'));
+    const failed = await getProjectUsageSummary(sessionContext(), 'project-a');
+    expect(reason(failed, 'search_query')).toBe('query_failed');
+    expect(reason(failed, 'published_page')).toBe('not_measured');
+
+    setSnapshots();
+    mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows);
+    mocks.pendingFindFirst.mockResolvedValueOnce({ enqueuedAt: new Date() });
+    expect(reason(await getProjectUsageSummary(sessionContext(), 'project-a'), 'search_query')).toBe('catching_up');
+    setSnapshots();
+    mocks.pendingFindFirst.mockResolvedValueOnce({ enqueuedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) });
+    expect(reason(await getProjectUsageSummary(sessionContext(), 'project-a'), 'search_query')).toBe('delayed');
+  });
+
   it('reports overlapping durable ingestion as partial and stale pending work as unavailable', async () => {
     mocks.analyticsMode = 'clickhouse';
     mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows);
@@ -319,5 +350,8 @@ describe('usage authorization and entitlement policy', () => {
     const incomplete = await getOrganizationUsageSummary('user-a', 'org-a');
     expect(incomplete.incomplete).toBe(true);
     expect(incomplete.meters.find((meter) => meter.key === 'public_page_view')?.quantity).toBeNull();
+    // The org total names the website's reason instead of a bare "Unknown".
+    expect(incomplete.meters.find((meter) => meter.key === 'public_page_view')?.unavailableReason).toBe('catching_up');
+    expect(complete.meters.every((meter) => meter.unavailableReason === null)).toBe(true);
   });
 });

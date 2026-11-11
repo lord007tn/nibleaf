@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   blocker: vi.fn(),
   confirm: vi.fn(),
   dirty: false,
+  orgRole: 'member' as 'owner' | 'admin' | 'member',
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
@@ -55,6 +56,7 @@ vi.mock('@/components/editor/site-config-panel', async () => {
 vi.mock('@/hooks/api', () => ({
   useProject: mocks.project,
   useProjectMembers: mocks.members,
+  useOrganizationOfProject: () => ({ organization: { id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: mocks.orgRole } }),
 }));
 vi.mock('@/hooks/api/query-options', () =>
   Object.fromEntries(
@@ -100,15 +102,17 @@ vi.mock('@/components/project-settings/general-section', async () => {
 vi.mock('@/components/project-settings/languages-section', () => ({ LanguagesSection: () => <div data-testid="language-settings" /> }));
 vi.mock('@/components/project-settings/members-section', () => ({ MembersSection: () => null }));
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
-vi.mock('@/components/project-settings/plan-section', () => ({ PlanSection: () => null }));
 vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
 vi.mock('@/components/project-settings/smart-ai-section', () => ({ SmartAiSection: () => <div data-testid="smart-ai-settings" /> }));
 vi.mock('@/components/settings/api-keys-tab', () => ({ ApiKeysTab: () => null }));
 vi.mock('@/components/settings/git-tab', () => ({ GitTab: () => null }));
 vi.mock('@/components/settings/import-tab', () => ({ ImportTab: () => null }));
 vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => null }));
-vi.mock('@/components/settings/notifications-tab', () => ({ NotificationsTab: () => null }));
-vi.mock('@/components/settings/usage-tab', () => ({ UsageTab: () => null }));
+vi.mock('@/components/settings/usage-tab', () => ({
+  UsageTab: ({ organization }: { organization?: { canManage: boolean } }) => (
+    <div data-can-manage={String(organization?.canManage)} data-testid="usage-settings" />
+  ),
+}));
 
 import { Route } from './settings';
 
@@ -124,6 +128,7 @@ describe('site settings permissions', () => {
     mocks.section = 'general';
     mocks.appearanceSection = undefined;
     mocks.dirty = false;
+    mocks.orgRole = 'member';
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'member' }] }, isPending: false });
     container = document.createElement('div');
     document.body.append(container);
@@ -299,7 +304,53 @@ describe('site settings permissions', () => {
     await act(async () => root.render(<SettingsPage />));
 
     expect(container.querySelector(`[data-testid="${testId}"]`)).not.toBeNull();
+    // Deleting the website is for the organization's Owner/Admin only (§4.2), not a site Admin.
+    expect(container.querySelector('nav')?.textContent).not.toContain('settings.danger');
+  });
+
+  it.each(['owner', 'admin'] as const)('offers the Danger zone to an organization %s', async (orgRole) => {
+    mocks.orgRole = orgRole;
+    mocks.section = 'danger';
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: orgRole }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
     expect(container.querySelector('nav')?.textContent).toContain('settings.danger');
+    expect(container.querySelector('[data-testid="danger-settings"]')).not.toBeNull();
+  });
+
+  it('groups sections as Website, Publishing, Team & access, Usage and Advanced', async () => {
+    mocks.orgRole = 'owner';
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'owner' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    const nav = container.querySelector('nav')?.textContent ?? '';
+    const order = [
+      'settings.group.website',
+      'settings.group.publishing',
+      'settings.group.team',
+      'settings.group.usage',
+      'settings.group.advanced',
+    ].map((key) => nav.indexOf(key));
+    expect(order.every((index) => index >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // Plan and Notifications moved to the organization and Account.
+    expect(nav).not.toContain('settings.plan');
+    expect(nav).not.toContain('settings.notifications');
+  });
+
+  it.each(['plan', 'notifications'])('turns an old ?section=%s link into a pointer above Usage', async (section) => {
+    mocks.section = section;
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector(`[data-moved-section="${section}"]`)).not.toBeNull();
+    expect(container.querySelector('[data-testid="usage-settings"]')).not.toBeNull();
+  });
+
+  it.each([
+    ['member', 'false'],
+    ['admin', 'true'],
+  ] as const)('links billing from website usage only for org Owner/Admin (%s)', async (orgRole, canManage) => {
+    mocks.orgRole = orgRole;
+    mocks.section = 'usage';
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('[data-testid="usage-settings"]')?.getAttribute('data-can-manage')).toBe(canManage);
   });
 
   it('blocks dirty navigation when editing is kept and permits explicit discard', async () => {
