@@ -114,6 +114,14 @@ import { encryptIntegrationSecret } from './integrations/crypto';
 import { getWorkspaceAi, saveWorkspaceAiConnection, selectWorkspaceAi } from './workspace-ai';
 
 const ctx = { get: (key: string) => (key === 'user' ? { id: 'admin-user' } : undefined) } as unknown as Context<HonoEnv>;
+
+/**
+ * The body of every fake API key here, assembled at runtime so no key-shaped
+ * literal reaches the repository (secret scanners read test files too).
+ */
+const FAKE_KEY = ['sk', 'test', 'x'.repeat(24)].join('-');
+/** A fake key that ends in `last4`, long enough to get a hint. */
+const fakeKey = (last4: string) => `${FAKE_KEY}${last4}`;
 const created = new Date('2026-11-10T09:00:00.000Z');
 const storedKey = (providerId: 'openai' | 'openrouter', overrides: Record<string, unknown> = {}) => ({
   id: `key-${providerId}`,
@@ -124,9 +132,7 @@ const storedKey = (providerId: 'openai' | 'openrouter', overrides: Record<string
   lastVerificationCode: null,
   lastVerifiedAt: created,
   config: { answerModel: 'gpt-6-luna', embeddingModel: 'openai/text-embedding-3-large' },
-  credentialEncrypted: encryptIntegrationSecret(
-    JSON.stringify({ kind: 'workspace-ai', projectId: 'site', providerId, apiKey: `sk-site-${providerId}-secret-4f2a` }),
-  ),
+  credentialEncrypted: encryptIntegrationSecret(JSON.stringify({ kind: 'workspace-ai', projectId: 'site', providerId, apiKey: fakeKey('4f2a') })),
   credentialHint: '4f2a',
   revision: 1,
   createdById: 'admin-user',
@@ -302,19 +308,13 @@ describe('secrets', () => {
     state.config = { search: { aiProvider: 'openrouter', aiAnswers: true } };
     state.connections = [storedKey('openai'), storedKey('openrouter')];
     const body = JSON.stringify(await getWorkspaceAi(ctx, 'site'));
-    for (const secret of [
-      'sk-site-openai-secret',
-      'sk-site-openrouter-secret',
-      'sk-',
-      'operator-secret-key',
-      storedKey('openai').credentialEncrypted,
-    ]) {
+    for (const secret of [fakeKey('4f2a'), FAKE_KEY, 'sk-', 'operator-secret-key', storedKey('openai').credentialEncrypted]) {
       expect(body).not.toContain(secret);
     }
   });
 
   it('stores only the last four characters of a newly saved key, and keeps the hint when the key is kept', async () => {
-    const apiKey = 'sk-proj-new-site-key-9z8y';
+    const apiKey = fakeKey('9z8y');
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => Response.json({ data: [{ id: 'gpt-6-luna' }, { id: 'text-embedding-3-large' }] })),
@@ -322,7 +322,7 @@ describe('secrets', () => {
 
     await saveWorkspaceAiConnection(ctx, 'site', { providerId: 'openai', apiKey, answerModel: 'gpt-6-luna', expectedRevision: 0 });
     expect(state.created[0]).toMatchObject({ credentialHint: '9z8y' });
-    expect(JSON.stringify(state.created[0])).not.toContain('sk-proj');
+    expect(JSON.stringify(state.created[0])).not.toContain(FAKE_KEY);
 
     state.connections = [storedKey('openai')];
     await saveWorkspaceAiConnection(ctx, 'site', { providerId: 'openai', answerModel: 'gpt-6-luna', expectedRevision: 1 });
@@ -443,7 +443,7 @@ describe('a key whose last check failed', () => {
     { code: 'integration:credentials_invalid', keyState: 'rejected', reason: 'keyRefused' },
     { code: 'integration:provider_unavailable', keyState: 'unreachable', reason: 'providerUnreachable' },
     { code: 'integration:model_unavailable', keyState: 'modelWithdrawn', reason: 'modelWithdrawn' },
-    { code: 'provider said: invalid key sk-live-leaked-1234', keyState: 'rejected', reason: 'checkFailed' },
+    { code: `provider said: invalid key ${FAKE_KEY}leaked`, keyState: 'rejected', reason: 'checkFailed' },
   ])('$code → $keyState ($reason), as a code with its time', async ({ code, keyState, reason }) => {
     state.config = { search: { aiProvider: 'openai', aiAnswers: true } };
     state.connections = [storedKey('openai', { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: code })];
@@ -475,7 +475,7 @@ describe('the date a key was added', () => {
     models();
     await saveWorkspaceAiConnection(ctx, 'site', {
       providerId: 'openai',
-      apiKey: 'sk-proj-first-site-key-0001',
+      apiKey: fakeKey('0001'),
       answerModel: 'gpt-6-luna',
       expectedRevision: 0,
     });
@@ -484,7 +484,7 @@ describe('the date a key was added', () => {
     state.connections = [storedKey('openai')];
     await saveWorkspaceAiConnection(ctx, 'site', {
       providerId: 'openai',
-      apiKey: 'sk-proj-replacement-key-0002',
+      apiKey: fakeKey('0002'),
       replaceCredential: true,
       answerModel: 'gpt-6-luna',
       expectedRevision: 1,
@@ -519,7 +519,7 @@ describe('who may read and who may change', () => {
     await expect(
       saveWorkspaceAiConnection(ctx, 'site', {
         providerId: 'openai',
-        apiKey: 'sk-proj-some-key-000001',
+        apiKey: fakeKey('0003'),
         answerModel: 'gpt-6-luna',
         expectedRevision: 0,
       }),
