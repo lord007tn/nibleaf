@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act } from 'react';
+import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
@@ -67,6 +67,34 @@ async function render() {
     ),
   );
   return close;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
+}
+async function renderDismissible() {
+  const node = document.createElement('div'); document.body.append(node);
+  const root = createRoot(node); roots.push(root);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } }); clients.push(client);
+  const close = vi.fn();
+  function Harness() {
+    const [open, setOpen] = useState(true);
+    return <><button type="button" onClick={() => setOpen(true)}>Reopen</button><NewProjectDialog open={open} organizationId="org-a" onOpenChange={(next) => { close(next); setOpen(next); }} /></>;
+  }
+  await act(async () => root.render(<QueryClientProvider client={client}><Harness /></QueryClientProvider>));
+  return close;
+}
+async function escapeDialog() {
+  await act(async () => (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+}
+async function backdropClick() {
+  const backdrop = element<HTMLElement>('[data-slot="dialog-overlay"]');
+  await act(async () => {
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) backdrop.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0 }));
+  });
 }
 function accessibleName(element: Element): string {
   return [...element.childNodes]
@@ -319,4 +347,40 @@ describe('create site dialog', () => {
     await click(button('newSite.create'));
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ slug: 'help-center' }));
   });
+  it.each(['escape', 'backdrop'])('preserves the draft across %s dismissal while an availability response is deferred', async (dismissal) => {
+    const check = deferred<Response>(); mocks.availability.mockReturnValueOnce(check.promise);
+    const close = await renderDismissible(); await type(nameField(), 'Draft preserved'); await settle();
+    expect(mocks.availability).toHaveBeenCalledTimes(1);
+    if (dismissal === 'escape') await escapeDialog(); else await backdropClick();
+    expect(close).toHaveBeenCalledWith(false);
+    await click(button('Reopen'));
+    expect(nameField().value).toBe('Draft preserved');
+    await act(async () => check.resolve(Response.json({ data: { available: true } })));
+    expect(nameField().value).toBe('Draft preserved');
+  });
+
+  it('keeps edits made during a deferred check and ignores an older slug response', async () => {
+    const old = deferred<Response>(); const latest = deferred<Response>();
+    mocks.availability.mockReturnValueOnce(old.promise).mockReturnValueOnce(latest.promise);
+    await render(); await type(nameField(), 'Acme Docs'); await settle();
+    await click(button('newSite.editAddress')); await type(element<HTMLInputElement>('input[dir="ltr"]'), 'new-address'); await settle();
+    await act(async () => latest.resolve(Response.json({ data: { available: true, slug: 'new-address', suggestedSlug: 'new-address', nameTaken: false } })));
+    await settle();
+    await act(async () => old.resolve(Response.json({ data: { available: false, slug: 'stale-address', suggestedSlug: 'stale-suggestion', suggestion: 'stale-suggestion', nameTaken: false } })));
+    expect(element<HTMLInputElement>('input[dir="ltr"]').value).toBe('new-address');
+    expect(document.querySelector('output')?.textContent).toBe('new-address.nibleaf.com');
+    expect(document.body.textContent).not.toContain('stale-suggestion');
+    expect(isDisabled(button('newSite.continue'))).toBe(false);
+  });
+
+  it('guards Escape/backdrop during creation and retains the failed draft after dismissal and reopen', async () => {
+    const create = deferred<{ id: string; firstPageId: string }>(); mocks.create.mockReturnValueOnce(create.promise);
+    const close = await renderDismissible(); await nameSite(); await click(button('newSite.continue')); await click(button('newSite.create'));
+    await escapeDialog(); await backdropClick(); expect(close).not.toHaveBeenCalled();
+    await act(async () => create.reject(new Error('injected create failure')));
+    await escapeDialog(); expect(close).toHaveBeenCalledWith(false); await click(button('Reopen'));
+    expect(document.body.textContent).toContain('newSite.startingPoint');
+    await click(button('common.back')); expect(nameField().value).toBe('Acme Docs');
+  });
+
 });
