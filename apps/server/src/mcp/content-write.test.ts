@@ -1,12 +1,14 @@
 import { InMemoryTransport, type JSONRPCMessage, LATEST_PROTOCOL_VERSION, McpServer } from '@modelcontextprotocol/server';
 import type { MemberRole } from '@nibleaf/shared/constants';
 import { MCP_SCOPES, type McpScope } from '@nibleaf/shared/mcp';
+import { MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { registerContentSurface } from './content';
 import { nearIdenticalTitles, registerContentWriteSurface } from './content-write';
+import { MAX_MCP_MARKDOWN_BYTES } from './markdown';
 import type { McpPrincipal } from './types';
 
 type PageRow = {
@@ -945,6 +947,45 @@ describe('update_page', () => {
     });
     expect(unchanged.structuredContent.data).toMatchObject({ changed: false });
     expect(mocks.updatePage).toHaveBeenCalledOnce();
+    await client.close();
+  });
+});
+
+describe('page content size cap through MCP', () => {
+  const tooLarge = () =>
+    new AppError({
+      code: 'page:too_large',
+      message: 'This page is too large (2 MB maximum). Split it into smaller pages.',
+      details: { bytes: MAX_PAGE_CONTENT_BYTES + 1, limit: MAX_PAGE_CONTENT_BYTES },
+    });
+
+  it('never sends a body over the page cap: its own Markdown limit is far below it', () => {
+    expect(MAX_MCP_MARKDOWN_BYTES).toBeLessThan(MAX_PAGE_CONTENT_BYTES);
+  });
+
+  it('writes a draft as a create and an edit as an update, so the cap rules apply to each', async () => {
+    const client = await connect(makePrincipal());
+    await client.call('create_page_draft', { title: 'New', markdown: 'Body' });
+    expect(mocks.createPage).toHaveBeenCalledWith('project-1', expect.objectContaining({ content: 'Body' }), 'user-1');
+    // A page stored over the cap (before the cap existed) can be shrunk through MCP:
+    // the update is measured against the stored body, not refused for its size.
+    (state.pages[0] as PageRow).content = 'x'.repeat(3 * 1024 * 1024);
+    const shrink = await client.call('update_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', markdown: 'Short' });
+    expect(shrink.isError).not.toBe(true);
+    expect(mocks.updatePage).toHaveBeenCalledWith('project-1', 'page-1', { content: 'Short' }, 'user-1', expect.anything());
+    expect(mocks.createPage).toHaveBeenCalledOnce();
+    await client.close();
+  });
+
+  it('reports a refused write as page:too_large, not retryable', async () => {
+    const client = await connect(makePrincipal());
+    mocks.createPage.mockRejectedValueOnce(tooLarge());
+    const created = await client.call('create_page_draft', { title: 'New', markdown: 'Body' });
+    expect(created.structuredContent.error).toMatchObject({ code: 'page:too_large', retryable: false, message: expect.stringContaining('2 MB') });
+    mocks.updatePage.mockRejectedValueOnce(tooLarge());
+    const updated = await client.call('update_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', markdown: 'More' });
+    expect(updated.structuredContent.error).toMatchObject({ code: 'page:too_large', retryable: false });
+    expect(lastAudit()).toMatchObject({ outcome: 'failed', errorCode: 'page:too_large' });
     await client.close();
   });
 });

@@ -1,4 +1,3 @@
-import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { createDocIndex, lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText, type SearchDoc, searchDocs } from './index';
 
@@ -182,34 +181,29 @@ describe('Arabic morphological search corpus', () => {
   });
 });
 
-describe('Arabic morphology performance guards', () => {
-  it('analyzes a large documentation sample within a bounded linear-time budget', () => {
-    const sample = 'والمستخدمين إعداداتهم API-v2 `المكتبات` واجهات المطورين. '.repeat(4000);
-    const started = performance.now();
-    const analyzed = normalizeArabicMorphologyText(sample);
-    const elapsed = performance.now() - started;
-
-    expect(analyzed.length).toBeLessThanOrEqual(sample.length);
-    expect(elapsed).toBeLessThan(1500);
+// Their cost is bounded in arabic.growth.test.ts (pnpm test:growth).
+describe('Arabic morphology at size', () => {
+  it('analyzes a large documentation sample in linear time', () => {
+    const sample = (n: number) => 'والمستخدمين إعداداتهم API-v2 `المكتبات` واجهات المطورين. '.repeat(n);
+    const analyzed = normalizeArabicMorphologyText(sample(4000));
+    expect(analyzed.length).toBeLessThanOrEqual(sample(4000).length);
   });
 
-  it('handles many malformed unmatched code delimiters within the same budget', () => {
-    const sample = Array.from({ length: 4000 }, () => '` مستخدم دون اغلاق').join('\n');
-    const started = performance.now();
-    const analyzed = normalizeArabicMorphologyText(sample);
-    expect(analyzed).toContain('مستخدم');
-    expect(performance.now() - started).toBeLessThan(1500);
+  it('handles many malformed unmatched code delimiters in linear time', () => {
+    const sample = (n: number) => Array.from({ length: n }, () => '` مستخدم دون اغلاق').join('\n');
+    expect(normalizeArabicMorphologyText(sample(4000))).toContain('مستخدم');
   });
 
-  it('keeps indexing and repeated morphology queries below the regression ceiling', async () => {
-    const docs = Array.from({ length: 300 }, (_, index) =>
-      doc(`doc-${index}`, `إعدادات المستخدمين ${index}`, 'دليل للمطورين يشرح الصلاحيات والواجهات والحسابات.'),
-    );
-    const started = performance.now();
-    const index = await createDocIndex(docs, 'arabic');
-    for (let iteration = 0; iteration < 20; iteration += 1) {
-      await searchDocs(index, 'مستخدم', { tolerance: 1 });
-    }
-    expect(performance.now() - started).toBeLessThan(5000);
+  it('indexes and answers repeated morphology queries in linear time', async () => {
+    const docs = (n: number) =>
+      Array.from({ length: n }, (_, index) =>
+        doc(`doc-${index}`, `إعدادات المستخدمين ${index}`, 'دليل للمطورين يشرح الصلاحيات والواجهات والحسابات.'),
+      );
+    const indexAndSearch = async (input: SearchDoc[]) => {
+      const index = await createDocIndex(input, 'arabic');
+      for (let iteration = 0; iteration < 20; iteration += 1) await searchDocs(index, 'مستخدم', { tolerance: 1 });
+      return index;
+    };
+    expect(await searchDocs(await indexAndSearch(docs(300)), 'مستخدم', { tolerance: 1 })).not.toHaveLength(0);
   });
 });

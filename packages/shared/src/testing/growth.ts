@@ -106,6 +106,62 @@ export const growthMs = <T>(
   }
 };
 
+/** `growthMs` for async work (index building, a model call through a fake adapter):
+ *  the same measurement and guarantees, awaiting each run. */
+export const growthMsAsync = async <T>(
+  run: (input: T) => Promise<unknown>,
+  small: T,
+  large: T,
+  { minMs = 4, budgetMs = 2000, vary }: GrowthOptions<T> = {},
+): Promise<[number, number]> => {
+  const deadline = performance.now() + budgetMs;
+  let repeat = 4;
+  let rep = 0;
+  let sink: unknown;
+  const time = async (input: T, count: number) => {
+    const started = performance.now();
+    for (let index = 0; index < count; index += 1) {
+      rep += 1;
+      sink = await run(vary ? vary(input, rep) : input);
+    }
+    return performance.now() - started;
+  };
+  const timeSmall = () => time(small, repeat);
+  // A quarter as many runs, scaled back up: see the note at the top.
+  const timeLarge = async () => {
+    const count = Math.max(1, Math.round(repeat / 4));
+    return ((await time(large, count)) * repeat) / count;
+  };
+  const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
+  await timeSmall();
+  await timeLarge();
+  for (let first = await timeSmall(); first < minMs && repeat < MAX_REPEAT && performance.now() < deadline; first = await timeSmall()) {
+    repeat = nextRepeat(repeat, first, minMs);
+  }
+  for (;;) {
+    await timeLarge();
+    const times: [number[], number[]] = [[], []];
+    for (let round = 0; round < 3; round += 1) {
+      if (round % 2 === 0) {
+        times[0].push(await timeSmall());
+        times[1].push(await timeLarge());
+      } else {
+        times[1].push(await timeLarge());
+        times[0].push(await timeSmall());
+      }
+    }
+    if (sink === UNREACHABLE) throw new Error('unreachable');
+    const result: [number, number] = [median(times[0]), median(times[1])];
+    if (result[0] >= minMs) return result;
+    if (performance.now() >= deadline || repeat >= MAX_REPEAT) {
+      throw new Error(
+        `growthMsAsync calibration failed: the small input stayed under ${minMs} ms (${result[0].toFixed(2)} ms at ${repeat} repeats) within ${budgetMs} ms`,
+      );
+    }
+    repeat = nextRepeat(repeat, result[0], minMs);
+  }
+};
+
 /** The most a 4x larger input may cost when the work is linear: 8x, plus 20 ms
  *  of timer and scheduling noise. Quadratic work (16x) fails it. */
 export const linearGrowthLimit = (smallMs: number): number => 8 * smallMs + 20;

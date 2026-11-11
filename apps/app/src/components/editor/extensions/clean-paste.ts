@@ -226,22 +226,71 @@ export function cleanPasteDOM(root: HTMLElement, fallbackDir: 'ltr' | 'rtl' = 'l
       const paragraph = doc.createElement('p');
       paragraph.append(...element.childNodes);
       element.replaceWith(paragraph);
-    } else if (!semanticTags.has(element.localName) || normalBold || (insideLink && element.localName === 'u'))
+    } else if (
+      !semanticTags.has(element.localName) ||
+      normalBold ||
+      (insideLink && element.localName === 'u') ||
+      (element.localName === 'a' && !element.childNodes.length)
+    )
       element.replaceWith(...element.childNodes);
   }
   for (const paragraph of root.querySelectorAll('p')) {
     if (!paragraph.textContent?.replace(/[\s\u00a0]/g, '') && !paragraph.querySelector('img,hr')) paragraph.remove();
   }
   for (const item of root.querySelectorAll('li')) {
+    removeBreaksBeforeChildLists(item);
     const paragraph = item.firstElementChild;
     if (
-      item.children.length === 1 &&
       paragraph?.localName === 'p' &&
-      Array.from(item.childNodes).every((node) => node === paragraph || (node.nodeType === 3 && !node.textContent?.trim()))
-    )
+      Array.from(item.childNodes).every(
+        (node) =>
+          node === paragraph ||
+          (node.nodeType === 1 && ['ul', 'ol'].includes((node as Element).localName)) ||
+          (node.nodeType === 3 && !node.textContent?.trim()),
+      )
+    ) {
       paragraph.replaceWith(...paragraph.childNodes);
+      // Unwrapping can leave the paragraph's trailing break right before the
+      // child list (`<p>Parent<br></p><ul>`); one more linear pass removes it.
+      removeBreaksBeforeChildLists(item);
+    }
   }
   return root;
+}
+
+const isBreakOrSpace = (node: ChildNode) => node.nodeName === 'BR' || (node.nodeType === 3 && !node.textContent?.trim());
+const isElement = (node: ChildNode | null, names: readonly string[]): boolean => node?.nodeType === 1 && names.includes((node as Element).localName);
+
+/**
+ * Filler breaks around an item's child list become their own empty paragraph
+ * in ProseMirror: the gap under a list item. Remove a run of breaks only when
+ * - its next content is a child list (`Parent<br><ul>…`, `<p>…</p><br><ul>…`), or
+ * - it ends the item right after a block (`<p>…</p><br></li>`), which is how
+ *   Google Docs closes an item whose nested list follows as a sibling.
+ * A break followed by more of the item's prose, or trailing after bare prose,
+ * is a real soft break and stays. One pass over the item's children: each run
+ * of breaks and whitespace is classified once, by the content around it.
+ */
+function removeBreaksBeforeChildLists(item: Element) {
+  let before: ChildNode | null = null;
+  let run: ChildNode[] = [];
+  const settle = (after: ChildNode | null) => {
+    const beforeList = isElement(after, ['ul', 'ol']);
+    const endsAfterBlock = after === null && isElement(before, ['p', 'ul', 'ol']);
+    if (run.length > 0 && (beforeList || endsAfterBlock)) {
+      for (const node of run) if (node.nodeName === 'BR') node.remove();
+    }
+    run = [];
+  };
+  for (const node of Array.from(item.childNodes)) {
+    if (isBreakOrSpace(node)) {
+      run.push(node);
+      continue;
+    }
+    settle(node);
+    before = node;
+  }
+  settle(null);
 }
 
 export function cleanPastedHTML(html: string): string {

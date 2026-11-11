@@ -111,6 +111,10 @@ export function shouldAutosave(state: DraftState, page: Pick<ServerSnapshot, 'id
 export const isEditorRevisionConflict = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:revision_conflict';
 
+/** The server refused the draft for its size: saving the same text again fails the same way. */
+export const isPageTooLarge = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:too_large';
+
 /** A pending older write can make a currently clean draft dirty on the server. */
 export function shouldFlushDraft(
   state: DraftState,
