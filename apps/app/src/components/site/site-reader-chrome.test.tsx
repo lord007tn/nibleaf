@@ -8,6 +8,7 @@ import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
+import { setReaderSiteAccess } from '@/lib/reader-site-access';
 
 const mocks = vi.hoisted(() => ({ getSite: vi.fn(), getSitePage: vi.fn() }));
 vi.mock('@/functions/site', () => ({ getSiteFn: mocks.getSite, getSitePageFn: mocks.getSitePage }));
@@ -187,13 +188,30 @@ describe('published page loader', () => {
       vi.useRealTimers();
     });
     mocks.getSitePage.mockResolvedValue(page);
+    // A public site (the layout registers it from its shell).
+    setReaderSiteAccess('docs', true);
+    onTestFinished(() => setReaderSiteAccess('docs', false));
     // The app's client: a page read moments ago is still fresh.
     const queryClient = createQueryClient();
     await expect(load(queryClient)).resolves.toMatchObject({ page });
     expect(queryClient.getQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'))).toBe(page);
     await load(queryClient);
     expect(mocks.getSitePage).toHaveBeenCalledOnce();
-    expect(mocks.getSitePage).toHaveBeenCalledWith({ data: { projectId: 'docs', path: 'start', language: 'ar', version: 'start' } });
+    expect(mocks.getSitePage).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { projectId: 'docs', path: 'start', language: 'ar', version: 'start' } }),
+    );
+  });
+
+  it('loads a page of a site not known to be public again on every read, so access is checked each time', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    mocks.getSitePage.mockResolvedValue(page);
+    const queryClient = createQueryClient();
+    await load(queryClient);
+    await load(queryClient);
+    expect(mocks.getSitePage).toHaveBeenCalledTimes(2);
   });
 
   it('waits for the published page again once the cached copy is stale', async () => {

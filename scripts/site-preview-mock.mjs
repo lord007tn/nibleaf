@@ -10,6 +10,7 @@
  *   preview-manuscript  theme preset "manuscript"
  *   preview-signal      theme preset "signal"
  *   preview-legacy      no `theme` config (legacy palette branch)
+ *   preview-private     "harbor", private, read by a signed-in reader
  *
  * Endpoints (mirroring apps/server/src/modules/public/sites/handlers.ts):
  *   GET  /api/public/sites/:id?lang=&version=            -> { data: SiteShell }
@@ -18,6 +19,10 @@
  *   GET  /api/public/sites/:id/changelog                 -> { data: [] }
  *   GET  /api/public/assets/*                            -> a generated SVG (the sample image)
  *   ANY  /api/**                                         -> 204 (events, analytics, anything else)
+ *
+ * Test control (not under /api, so the app never proxies it):
+ *   POST /__mock/control {"revoked": true}   -> preview-private answers 403 from now on
+ *   POST /__mock/control {}                  -> reset
  *
  * Usage: node scripts/site-preview-mock.mjs [--port 4311]
  * Then:  cd apps/app && pnpm dev   # proxies /api/** to http://localhost:4311
@@ -956,10 +961,15 @@ const PROJECTS = {
   'preview-manuscript': { preset: 'manuscript' },
   'preview-signal': { preset: 'signal' },
   'preview-legacy': { preset: null },
+  // A private site whose reader is signed in; access can be revoked mid-session.
+  'preview-private': { preset: 'harbor', visibility: 'private' },
 };
 
-const projectConfig = (preset) => {
-  const config = baseConfig();
+/** Mutable test state, set through POST /__mock/control. */
+const control = { revoked: false };
+
+const projectConfig = (preset, visibility = 'public') => {
+  const config = { ...baseConfig(), visibility };
   if (preset) {
     config.theme = { version: 1, preset, metadata: THEME_META[preset] };
   } else {
@@ -1119,7 +1129,7 @@ const findPage = (path) => {
 
 const projectPayload = (id, preset, language) => {
   const languageConfig = LANGUAGE_CONFIG[language.code];
-  const config = projectConfig(preset);
+  const config = projectConfig(preset, PROJECTS[id]?.visibility);
   return {
     id,
     name: SITE_NAME.en,
@@ -1144,6 +1154,7 @@ const siteShell = (id, preset, query) => {
     version: 1,
     generatedAt: GENERATED_AT,
     openapi: null,
+    ...(PROJECTS[id]?.visibility === 'private' ? { signedIn: true } : {}),
   };
 };
 
@@ -1205,12 +1216,35 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (pathname === '/__mock/control' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      let next = {};
+      try {
+        next = JSON.parse(body || '{}');
+      } catch {
+        json(res, 400, { error: { code: 'bad_request', message: 'Expected JSON.' } });
+        return;
+      }
+      control.revoked = next.revoked === true;
+      json(res, 200, { data: control });
+    });
+    return;
+  }
+
   const match = SITE_ROUTE.exec(pathname);
   if (match && req.method === 'GET') {
     const [, id, rest = ''] = match;
     const project = PROJECTS[id];
     if (!project) {
       json(res, 404, { error: { code: 'not_found', message: 'Site not found.' } });
+      return;
+    }
+    if (project.visibility === 'private' && control.revoked) {
+      json(res, 403, { error: { code: 'forbidden', message: 'You no longer have access to this site.' } });
       return;
     }
     if (rest === '') {

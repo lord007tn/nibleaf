@@ -45,7 +45,7 @@ import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { readerQuestionStorage } from '@/lib/ai-search/conversation-archive';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
-import { answerPublishedSearch, answerSearchAvailable, runPublishedSearch } from '@/lib/ai-search/runtime';
+import { answerPublishedSearch, answerSearchAvailable, publishedSearchAnswerHint, runPublishedSearch } from '@/lib/ai-search/runtime';
 import { AssetReferenceAccess } from '@/lib/asset-reference-access';
 import { buildChangelogRss } from '@/lib/changelog-rss';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -774,7 +774,7 @@ export const searchSite = async (
             versionPages,
             viewer.allowedPageIds,
           );
-          return searchDocs(index, query, { limit: resultLimit });
+          return searchDocs(index, query, { limit: resultLimit, relevance: 'reader' });
         },
         getContext<HonoEnv>().req.raw.signal,
       );
@@ -831,7 +831,7 @@ export const searchSite = async (
     hits,
     searchId,
     runtime,
-    capabilities: { answer: request.configuration.aiAnswers && (await answerSearchAvailable(snapshot.project.id, deploymentId)) },
+    capabilities: { answer: request.configuration.aiAnswers && publishedSearchAnswerHint(snapshot.project.id, deploymentId) },
   };
 };
 
