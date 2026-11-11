@@ -11,7 +11,7 @@ const UNDO_TOAST_MS = 10_000;
 type Translate = ReturnType<typeof useT>;
 
 /** What a restore says: plain, or why the page came back somewhere else. */
-export const restoredMessage = (t: Translate, title: string, restored: Pick<RestoredPage, 'page' | 'slugChanged' | 'movedToTopLevel'>) =>
+const restoredMessage = (t: Translate, title: string, restored: Pick<RestoredPage, 'page' | 'slugChanged' | 'movedToTopLevel'>) =>
   restored.movedToTopLevel
     ? t('editor.trash.restoredTopLevel', { title })
     : restored.slugChanged

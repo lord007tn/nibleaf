@@ -128,6 +128,8 @@ export function PageTrashDialog({
               </>
             }
             title={<bdi>{title}</bdi>}
+            // Restore and the menu move under the details on a phone.
+            trailingLayout="stack"
             trailing={
               <>
                 <TooltipButton

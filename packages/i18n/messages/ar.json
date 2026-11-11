@@ -548,7 +548,7 @@
   "editor_trash_expires": "تُحذف نهائيًا {when}",
   "editor_trash_restore": "استعادة",
   "editor_trash_restoring": "جارٍ الاستعادة…",
-  "editor_trash_more": "إجراءات أخرى لـ«{title}»",
+  "editor_trash_more": "إجراءات إضافية لـ«{title}»",
   "editor_trash_deleteforever": "حذف نهائي",
   "editor_trash_deleteforevertitle": "حذف «{title}» نهائيًا؟",
   "editor_trash_deleteforeverbody": "سيؤدي هذا إلى حذف {pages} وتعليقاتها نهائيًا. لا يمكن التراجع عن ذلك.",
