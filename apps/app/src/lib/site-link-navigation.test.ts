@@ -3,7 +3,12 @@ import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const router = vi.hoisted(() => ({ subscribe: vi.fn(), navigate: vi.fn() }));
+const router = vi.hoisted(() => ({
+  subscribe: vi.fn(),
+  navigate: vi.fn(),
+  preloadRoute: vi.fn(async () => []),
+  state: { matches: [] as Array<{ status: string }> },
+}));
 vi.mock('@tanstack/react-router', () => ({ useRouter: () => router }));
 
 const custom = vi.hoisted(() => ({ domain: false }));
@@ -81,10 +86,16 @@ it('leaves malformed URLs to the browser', () => {
 
 it('announces dialog navigation, focuses fragments, and restores temporary tabindex', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  const listeners: Record<string, (event?: unknown) => void> = {};
+  const subscribed: Record<string, Array<(event?: unknown) => void>> = {};
   router.subscribe.mockImplementation((name, callback) => {
-    listeners[name] = callback;
+    subscribed[name] = [...(subscribed[name] ?? []), callback];
     return vi.fn();
+  });
+  // Every subscriber to an event hears it, as with the real router.
+  const listeners = new Proxy({} as Record<string, (event?: unknown) => void>, {
+    get: (_, name: string) => (event?: unknown) => {
+      for (const callback of subscribed[name] ?? []) callback(event);
+    },
   });
   vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
     callback();

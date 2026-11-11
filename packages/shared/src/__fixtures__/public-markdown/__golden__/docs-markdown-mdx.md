@@ -12,8 +12,8 @@ Nibleaf supports standard Markdown and the GitHub extensions: headings, bold,
 italics, links, images, quotes, lists, task lists, tables, strikethrough, inline
 code, and code blocks.
 
-- Set the page title in the editor&#39;s title field, not with a `#` heading. Start
-  sections at `##` and don&#39;t skip levels.
+- Set the page title in the editor's title field, not with a `#` heading. Start
+  sections at `##` and don't skip levels.
 - Add a language to each code block so it is highlighted correctly. You can also
   add a title:
 
@@ -50,11 +50,11 @@ danger), and `IMPORTANT` (shown as info). You can also write `<Note>`, `<Tip>`,
 | `Frame` | An image or video with a caption | `caption` |
 | `Banner` | A highlighted message | `type` |
 | `Update` | A changelog entry | `label`, `description` |
-| `CodeGroup` | Several code blocks shown as tabs | each code block&#39;s language becomes its tab label |
+| `CodeGroup` | Several code blocks shown as tabs | each code block's language becomes its tab label |
 | `ParamField`, `ResponseField` | API parameters and response fields | `name`, `type`, `required`, `default`, `deprecated`; `ParamField` also accepts `path`, `query`, `header`, `body` |
 | `ApiExample`, `RequestExample`, `ResponseExample` | A request and its response | `title`; response `status` |
 | `FileTree`, `Folder`, `File` | A drawing of a folder structure | `name`; folder `defaultOpen`; file `icon` |
-| `RelatedContent`, `RelatedCard` | &quot;Read next&quot; links at the end of a page | `title`; card `description`, `href`, `icon` |
+| `RelatedContent`, `RelatedCard` | "Read next" links at the end of a page | `title`; card `description`, `href`, `icon` |
 
 Put each component tag on its own line, and leave a blank line around Markdown
 inside it:
@@ -69,7 +69,7 @@ inside it:
 </Steps>
 ```
 
-A file tree only shows the names you type. It doesn&#39;t read real files. API
+A file tree only shows the names you type. It doesn't read real files. API
 examples and related cards also show only what you write.
 
 Tabs, code groups, accordions, and file trees work with a keyboard. In tabs, the
@@ -81,12 +81,12 @@ arrow keys move between labels, and they follow the reading direction in Arabic.
 | --- | --- | --- |
 | `Tooltip` | A short definition shown on hover or focus | `tip` |
 | `Icon` | A small icon from the built-in set | `icon` or `name`, `color`, `size` |
-| `Badge` | A small label, such as &quot;Beta&quot; | `color` |
+| `Badge` | A small label, such as "Beta" | `color` |
 | `Button` | A link styled as a button | `href`, `variant` (`outline` for an outlined button) |
 
 Example: `<Tooltip tip="A plain-language definition">term</Tooltip>`.
 
-Don&#39;t put required instructions in a tooltip, and don&#39;t rely on an icon alone to
+Don't put required instructions in a tooltip, and don't rely on an icon alone to
 carry meaning.
 
 ## Math and diagrams
@@ -95,13 +95,13 @@ carry meaning.
   double dollar signs.
 - **Diagrams:** write a Mermaid diagram in a code block marked `mermaid`.
 
-Always explain a diagram&#39;s main point in the text too. Some readers can&#39;t see
-diagrams, and search can&#39;t read them.
+Always explain a diagram's main point in the text too. Some readers can't see
+diagrams, and search can't read them.
 
 ## Unsupported or custom code
 
 Nibleaf removes scripts, event handlers, and unknown attributes when it shows a
-page. If a page uses a component that isn&#39;t in this reference, the visual editor
+page. If a page uses a component that isn't in this reference, the visual editor
 keeps it exactly as written and lets you edit the content around it. Nibleaf
-can&#39;t promise to display custom components, so check the published page and
+can't promise to display custom components, so check the published page and
 prefer the components listed here.

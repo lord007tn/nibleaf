@@ -1,15 +1,16 @@
-import { createPageBody, listPagesQuery, reorderPagesBody, updatePageBody } from '@nibleaf/validators';
-import { Hono } from 'hono';
 import {
-  createPage,
-  deletePage,
-  getPage,
-  getPageSearchDescription,
-  listPages,
-  pageStructureRevision,
-  reorderPages,
-  updatePage,
-} from '@/actions/pages';
+  createPageBody,
+  listPagesQuery,
+  pageHistoryQuery,
+  pageHistorySelection,
+  reorderPagesBody,
+  restorePageHistoryBody,
+  updatePageBody,
+} from '@nibleaf/validators';
+import { Hono } from 'hono';
+import { comparePageHistory, listPageHistory, restorePageHistory } from '@/actions/page-history';
+import { deletePage } from '@/actions/page-trash';
+import { createPage, getPage, getPageSearchDescription, listPages, pageStructureRevision, reorderPages, updatePage } from '@/actions/pages';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -47,6 +48,18 @@ const app = new Hono<HonoEnv>()
     const projectId = await projectScope(ctx);
     return ctx.json({ data: await getPageSearchDescription(projectId, ctx.req.param('id')) }, 200);
   })
+  .get('/:id/history', ...pagesRoutes.get, validator('query', pageHistoryQuery), async (ctx) => {
+    const projectId = await projectScope(ctx);
+    return ctx.json({ data: await listPageHistory(projectId, ctx.req.param('id'), ctx.req.valid('query')) }, 200);
+  })
+  .get('/:id/history/compare', ...pagesRoutes.get, validator('query', pageHistorySelection), async (ctx) => {
+    const projectId = await projectScope(ctx);
+    return ctx.json({ data: await comparePageHistory(projectId, ctx.req.param('id'), ctx.req.valid('query')) }, 200);
+  })
+  .post('/:id/history/restore', ...pagesRoutes.update, validator('json', restorePageHistoryBody), async (ctx) => {
+    const projectId = await projectScope(ctx);
+    return ctx.json({ data: await restorePageHistory(projectId, ctx.req.param('id'), ctx.req.valid('json'), getContextUserOrThrow().id) }, 200);
+  })
   .patch('/:id', ...pagesRoutes.update, validator('json', updatePageBody), async (ctx) => {
     const projectId = await projectScope(ctx);
     const page = await updatePage(projectId, ctx.req.param('id'), ctx.req.valid('json'), getContextUserOrThrow().id);
@@ -54,7 +67,7 @@ const app = new Hono<HonoEnv>()
   })
   .delete('/:id', ...pagesRoutes.remove, async (ctx) => {
     const projectId = await projectScope(ctx);
-    return ctx.json({ data: await deletePage(projectId, ctx.req.param('id')) }, 200);
+    return ctx.json({ data: await deletePage(projectId, ctx.req.param('id'), getContextUserOrThrow().id) }, 200);
   });
 
 export default app;

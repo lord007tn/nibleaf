@@ -29,6 +29,16 @@ describe('friendlyErrorMessage', () => {
     expect(consoleError).toHaveBeenCalledWith(error);
   });
 
+  it('says a section too large for Trash was not deleted, not the generic 413', () => {
+    const error = new ApiResponseError('Too large', 413, 'page:trash_too_large', undefined, undefined, undefined, undefined, {
+      reason: 'page_trash_too_large',
+    });
+    expect(friendlyErrorMessage(t, error, 'editor.deleteFailed')).toBe('t:editor.trash.tooLarge');
+    expect(friendlyErrorMessage(t, new ApiResponseError('Bad payload', 422, 'page:trash_unrestorable'), 'editor.trash.restoreFailed')).toBe(
+      't:editor.trash.unrestorable',
+    );
+  });
+
   it('explains common HTTP failures in plain words', () => {
     expect(friendlyErrorMessage(t, new ApiResponseError('Forbidden', 403), 'editor.deleteFailed')).toBe('t:error.noPermission');
     expect(friendlyErrorMessage(t, new ApiResponseError('Unauthorized', 401), 'editor.deleteFailed')).toBe('t:error.signedOut');

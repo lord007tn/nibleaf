@@ -7,6 +7,7 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useLocale } from '@nibleaf/i18n/react';
+import { randomUUID } from '@nibleaf/shared/uuid';
 import type { GitOperationBody } from '@nibleaf/validators';
 import {
   AlertTriangle,
@@ -510,7 +511,7 @@ export function GitWorkflow({
             className="mt-4"
             disabled={activeConflicts.length > 0}
             loading={operation.isPending}
-            onClick={() => queueOperation({ idempotencyKey: crypto.randomUUID(), kind: 'PULL', sourceRef: connection.baseBranch })}
+            onClick={() => queueOperation({ idempotencyKey: randomUUID(), kind: 'PULL', sourceRef: connection.baseBranch })}
           >
             <RefreshCw className="size-4" />{' '}
             {connection.lastSyncedAt ? t('settings.git.workflow.syncLatest') : t('settings.git.workflow.importExisting')}
@@ -550,7 +551,7 @@ export function GitWorkflow({
               loading={operation.isPending}
               onClick={() =>
                 queueOperation({
-                  idempotencyKey: crypto.randomUUID(),
+                  idempotencyKey: randomUUID(),
                   kind: 'PUSH',
                   commitMessage: message,
                   authorName,
