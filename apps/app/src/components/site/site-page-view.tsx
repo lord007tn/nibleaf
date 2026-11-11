@@ -2,17 +2,57 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { lazy, Suspense, startTransition, useEffect, useState } from 'react';
+import { type ComponentProps, Suspense, startTransition, useEffect, useState } from 'react';
 import { SiteChatPageAction } from '@/components/site/ai-chat/provider';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
+import { ArticleBodySkeleton } from '@/components/site/site-article-skeleton';
 import { MobileTableOfContents, TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
+import { HydrationIsland } from '@/lib/hydration-modules';
+import { articleMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
-const Markdown = lazy(() => import('@/components/markdown').then((module) => ({ default: module.Markdown })));
+const ARTICLE_MODULES = [articleMarkdownModule];
+
+/** The article body. The router loads its renderer before hydrating a page
+ *  whose server HTML has an article, and the reader's loaders before navigating
+ *  to one. A body that suspended while hydrating lost its server HTML to the
+ *  fallback (READER-03). If the renderer can't load, hydrating keeps the
+ *  server's body and a client navigation says so here; neither shows the
+ *  route's error page. */
+function ArticleBody({ language, ...props }: ComponentProps<typeof import('@/components/markdown').Markdown> & { language?: string }) {
+  const t = siteT(language);
+  return (
+    // Only the server render can suspend here: it waits for the renderer.
+    <Suspense fallback={<ArticleBodySkeleton className="mt-8" />}>
+      <HydrationIsland
+        className="mt-8"
+        {...articleMarkdownModule.marker}
+        modules={ARTICLE_MODULES}
+        pending={<ArticleBodySkeleton />}
+        failed={(retry) => (
+          <div role="alert">
+            <button
+              className="min-h-11 w-full cursor-pointer rounded-xl border border-border p-5 text-start text-sm transition-colors hover:text-primary"
+              onClick={retry}
+              type="button"
+            >
+              {t('articleLoadFailed')}
+            </button>
+          </div>
+        )}
+      >
+        {() => {
+          const Markdown = articleMarkdownModule.read();
+          return <Markdown {...props} />;
+        }}
+      </HydrationIsland>
+    </Suspense>
+  );
+}
 
 const applyUrlTemplate = (template: string | undefined, path: string, fallbackUrl: string): string | null => {
   const trimmed = template?.trim();
@@ -247,11 +287,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           <MobileTableOfContents headings={page.headings} label={tArticle('onThisPage')} />
         </div>
       ) : null}
-      <div className="mt-8">
-        <Suspense fallback={null}>
-          <Markdown content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
-        </Suspense>
-      </div>
+      <ArticleBody content={page.content} language={language} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
 
       <SiteChatPageAction title={page.title} path={page.path} lang={language} />
       {readerActionsAfterNavigation ? null : (

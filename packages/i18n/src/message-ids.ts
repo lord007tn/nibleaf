@@ -2575,6 +2575,7 @@ export const MESSAGE_IDS = {
   'site.searchPrompt': 'site_searchprompt',
   'site.results': 'site_results',
   'site.loading': 'site_loading',
+  'site.articleLoadFailed': 'site_articleloadfailed',
   'site.previous': 'site_previous',
   'site.next': 'site_next',
   'site.onThisPage': 'site_onthispage',
