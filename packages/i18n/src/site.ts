@@ -37,6 +37,8 @@ import { site_importblog } from './paraglide/messages/site_importblog.js';
 import { site_importpages } from './paraglide/messages/site_importpages.js';
 import { site_language } from './paraglide/messages/site_language.js';
 import { site_languagecurrent } from './paraglide/messages/site_languagecurrent.js';
+import { site_languagefallbacknotice } from './paraglide/messages/site_languagefallbacknotice.js';
+import { site_languagefallbackview } from './paraglide/messages/site_languagefallbackview.js';
 import { site_loading } from './paraglide/messages/site_loading.js';
 import { site_loadingapireference } from './paraglide/messages/site_loadingapireference.js';
 import { site_logo } from './paraglide/messages/site_logo.js';
@@ -88,6 +90,8 @@ import type { SiteSearchMessageKey } from './site-search';
  * that forgets a variable fails to compile instead of rendering "{query}". */
 const siteVariableMessages = {
   languageCurrent: site_languagecurrent,
+  languageFallbackNotice: site_languagefallbacknotice,
+  languageFallbackView: site_languagefallbackview,
   versionCurrent: site_versioncurrent,
 };
 

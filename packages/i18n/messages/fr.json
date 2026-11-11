@@ -2261,6 +2261,8 @@
   "site_breadcrumb": "Fil d'Ariane",
   "site_togglesubpages": "Afficher ou masquer les sous-pages",
   "site_articledetails": "Détails de l'article",
+  "site_languagefallbacknotice": "Cette page n’est pas encore disponible en {requested}. Vous lisez la version en {shown}.",
+  "site_languagefallbackview": "Afficher le site en {language}",
   "site_copycode": "Copier le code",
   "site_copied": "Copié",
   "site_viewfullsizeof": "Afficher en taille réelle : {alt}",

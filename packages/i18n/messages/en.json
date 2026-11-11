@@ -2301,6 +2301,8 @@
   "site_breadcrumb": "Breadcrumb",
   "site_togglesubpages": "Toggle subpages",
   "site_articledetails": "Article details",
+  "site_languagefallbacknotice": "This page isn't available in {requested} yet. You're reading the {shown} version.",
+  "site_languagefallbackview": "View the site in {language}",
   "site_copycode": "Copy code",
   "site_copied": "Copied",
   "site_viewfullsizeof": "View full size: {alt}",

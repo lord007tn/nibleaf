@@ -1,10 +1,21 @@
 import { isRtlLanguage, type TextDirection } from '@nibleaf/shared/script-direction';
-import { type SiteReaderContextValue, useSiteReader } from '@/components/site/site-reader-context';
+import type { SiteReaderContextValue } from '@/components/site/site-reader-context';
 
 export interface ContentLanguageAttributes {
   lang?: string;
   dir?: TextDirection;
 }
+
+type ReaderShell = Pick<SiteReaderContextValue, 'lang' | 'languages'> | null | undefined;
+
+/** A language's direction: the site's configured one, else a known-RTL guess. */
+const languageDirection = (code: string, languages: SiteReaderContextValue['languages']): TextDirection => {
+  const configured = languages?.find((language) => language.code === code)?.direction;
+  return (configured ? configured === 'RTL' : isRtlLanguage(code)) ? 'rtl' : 'ltr';
+};
+
+const isFallback = (contentLanguage: string | undefined, shell: ReaderShell): shell is { lang: string } & NonNullable<ReaderShell> =>
+  Boolean(contentLanguage && shell?.lang && contentLanguage !== shell.lang);
 
 /**
  * `lang`/`dir` for content shown in a language other than the reader chrome's,
@@ -13,17 +24,31 @@ export interface ContentLanguageAttributes {
  * Nothing is returned when the content is in the shell's language, so it keeps
  * inheriting from the document.
  */
-export function contentLanguageAttributes(
-  contentLanguage: string | undefined,
-  shell: Pick<SiteReaderContextValue, 'lang' | 'languages'> | null | undefined,
-): ContentLanguageAttributes {
-  if (!contentLanguage || !shell?.lang || contentLanguage === shell.lang) return {};
-  const configured = shell.languages?.find((language) => language.code === contentLanguage)?.direction;
-  const rtl = configured ? configured === 'RTL' : isRtlLanguage(contentLanguage);
-  return { lang: contentLanguage, dir: rtl ? 'rtl' : 'ltr' };
+export function contentLanguageAttributes(contentLanguage: string | undefined, shell: ReaderShell): ContentLanguageAttributes {
+  if (!isFallback(contentLanguage, shell) || !contentLanguage) return {};
+  return { lang: contentLanguage, dir: languageDirection(contentLanguage, shell.languages) };
 }
 
-/** contentLanguageAttributes against the surrounding reader chrome. */
-export function useContentLanguageAttributes(contentLanguage: string | undefined): ContentLanguageAttributes {
-  return contentLanguageAttributes(contentLanguage, useSiteReader());
+/**
+ * The reader chrome's own `lang`/`dir`, for chrome placed inside fallback
+ * content (the fallback notice, the article's meta line): it reads in the
+ * reader's language and direction while the article around it keeps its own.
+ * Nothing is returned when the content is in the shell's language.
+ */
+export function chromeLanguageAttributes(contentLanguage: string | undefined, shell: ReaderShell): ContentLanguageAttributes {
+  if (!isFallback(contentLanguage, shell)) return {};
+  return { lang: shell.lang, dir: languageDirection(shell.lang, shell.languages) };
+}
+
+/** A language's name in that language ("العربية", "English"), as a reader
+ *  looking for their own language recognizes it; the site's label, then the
+ *  code, where the runtime has no name for it. */
+export function languageEndonym(code: string, label?: string): string {
+  try {
+    const name = new Intl.DisplayNames([code], { type: 'language' }).of(code);
+    if (name && name !== code) return name;
+  } catch {
+    // An invalid or unknown tag: fall through to the configured label.
+  }
+  return label || code;
 }

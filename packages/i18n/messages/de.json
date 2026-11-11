@@ -2261,6 +2261,8 @@
   "site_breadcrumb": "Brotkrümelnavigation",
   "site_togglesubpages": "Unterseiten ein- oder ausblenden",
   "site_articledetails": "Artikeldetails",
+  "site_languagefallbacknotice": "Diese Seite ist noch nicht auf {requested} verfügbar. Angezeigt wird die Version auf {shown}.",
+  "site_languagefallbackview": "Website auf {language} anzeigen",
   "site_copycode": "Code kopieren",
   "site_copied": "Kopiert",
   "site_viewfullsizeof": "In voller Größe anzeigen: {alt}",

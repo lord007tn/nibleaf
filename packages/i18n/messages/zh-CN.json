@@ -2196,6 +2196,8 @@
   "site_breadcrumb": "面包屑导航",
   "site_togglesubpages": "展开或收起子页面",
   "site_articledetails": "文章详情",
+  "site_languagefallbacknotice": "此页面暂无{requested}版本。您正在阅读{shown}版本。",
+  "site_languagefallbackview": "以{language}浏览网站",
   "site_copycode": "复制代码",
   "site_copied": "已复制",
   "site_viewfullsizeof": "查看原图：{alt}",

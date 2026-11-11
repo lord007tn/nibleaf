@@ -2336,6 +2336,8 @@
   "site_breadcrumb": "مسار التنقّل",
   "site_togglesubpages": "تبديل الصفحات الفرعية",
   "site_articledetails": "تفاصيل المقالة",
+  "site_languagefallbacknotice": "هذه الصفحة غير متوفرة باللغة {requested} بعد، لذا تقرأ نسختها باللغة {shown}.",
+  "site_languagefallbackview": "تصفّح الموقع باللغة {language}",
   "site_copycode": "نسخ الشيفرة",
   "site_copied": "تم النسخ",
   "site_viewfullsizeof": "عرض بالحجم الكامل: {alt}",

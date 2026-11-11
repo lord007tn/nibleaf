@@ -2619,6 +2619,8 @@ export const MESSAGE_IDS = {
   'site.breadcrumb': 'site_breadcrumb',
   'site.toggleSubpages': 'site_togglesubpages',
   'site.articleDetails': 'site_articledetails',
+  'site.languageFallbackNotice': 'site_languagefallbacknotice',
+  'site.languageFallbackView': 'site_languagefallbackview',
   'site.copyCode': 'site_copycode',
   'site.copied': 'site_copied',
   'site.viewFullSizeOf': 'site_viewfullsizeof',

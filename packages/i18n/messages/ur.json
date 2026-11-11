@@ -2252,6 +2252,8 @@
   "site_breadcrumb": "بریڈ کرمب",
   "site_togglesubpages": "ذیلی صفحات ٹوگل کریں",
   "site_articledetails": "مضمون کی تفصیلات",
+  "site_languagefallbacknotice": "یہ صفحہ ابھی {requested} میں دستیاب نہیں ہے، اس لیے آپ اس کا {shown} ورژن پڑھ رہے ہیں۔",
+  "site_languagefallbackview": "سائٹ {language} میں دیکھیں",
   "site_copycode": "کوڈ کاپی کریں۔",
   "site_copied": "کاپی",
   "site_viewfullsizeof": "پورے سائز میں دیکھیں: {alt}",
