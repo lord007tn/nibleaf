@@ -29,6 +29,11 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   // full-screen loader.
   pendingComponent: SiteArticleSkeleton,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
+  // A page shown in the last 30 s (the page query's stale time) is still fresh:
+  // Back and Forward reuse it instead of running the loader again. That matters
+  // most for the first page, whose data came with the server HTML and is not in
+  // the browser's query cache.
+  staleTime: 30_000,
   // Server-fetch the page so its content + per-page SEO tags are in the HTML.
   loader: async ({ params, deps, location, context: { queryClient } }) => {
     const path = params._splat ?? '';

@@ -56,6 +56,7 @@
     "test:upload:integration": "node --env-file=tests/integration/maxio-upload/fixture.env --import tsx tests/integration/maxio-upload/integration.ts",
     "test:upload:browser": "node tests/integration/maxio-upload/browser.mjs",
     "test:reader-search:browser": "node tests/integration/reader-search-keystrokes/browser.mjs",
+    "test:reader-navigation:browser": "node tests/integration/reader-navigation/browser.mjs",
     "test:reader-deferred-controls:browser": "node tests/integration/reader-deferred-controls/browser.mjs",
     "test:settings:browser": "node tests/integration/settings-leave-guard/browser.mjs",
     "build": "turbo run build",
