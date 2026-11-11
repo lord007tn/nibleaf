@@ -77,6 +77,19 @@ A toggle or select that saves on its own needs no save bar. Its mutation:
 - is optimistic only when the outcome is predictable and touches nothing else (`operations/ui-overhaul.md` §8.2);
 - rolls back on failure and toasts a plain-language message.
 
+## Choices
+
+Use the design system's `Checkbox` / `CheckboxField` and `RadioGroup` / `RadioField`, never a native
+`<input type="checkbox|radio">`:
+
+- `CheckboxField` and `RadioField` render the label and an optional description and wire them up; the whole row is
+  the click target. A bare `Checkbox` needs a wrapping `<label>`, `aria-label`, or `id` with `<label htmlFor>`.
+- `RadioGroup` takes `label` and `description` for the group (or `aria-labelledby`). It is one tab stop, and arrow
+  keys move and choose, following the reading direction in RTL.
+- A parent of some ticked items is `indeterminate` (read as "mixed").
+- `disabledReason` keeps a checkbox focusable and announced as unavailable, with the reason read out. A radio with a
+  reason is announced the same way; arrow keys pass over it, as over any unavailable choice.
+
 ## Permissions
 
 Read `useSiteAccess(projectId)` from `features/site-access/api/use-site-access` and use the pure model's
@@ -94,8 +107,8 @@ the server still authorizes every write.
 
 ## Disabled, unavailable, empty
 
-- **Disabled controls say why.** Use `disabledReason` on `SettingsRow`, `Button`, `TooltipButton` and
-  `RowActionsItem`. The reason comes from the model.
+- **Disabled controls say why.** Use `disabledReason` on `SettingsRow`, `Button`, `TooltipButton`,
+  `RowActionsItem`, `Checkbox` and `RadioGroupItem`. The reason comes from the model.
 - **A feature that can't be used here** (not configured, not on the plan) renders one `FeatureUnavailable` instead of
   its body. Never a dead form under a notice, and no operator wording on Cloud.
 - **Lists:** `DataList` with `RowActions`, whose trigger is named after the row. `EmptyState` when there's nothing to
