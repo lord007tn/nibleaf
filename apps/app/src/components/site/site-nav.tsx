@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import { ChevronRight } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';
@@ -75,7 +76,9 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
           )}
         >
           <PageIcon name={node.icon} className={cn('size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/80')} />
-          <span className="truncate">{node.title}</span>
+          <span className="truncate" dir={blockDirection(node.title)}>
+            {node.title}
+          </span>
           {node.tag ? (
             <span className="ms-auto shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase tracking-wide">
               {node.tag}
@@ -135,7 +138,9 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
         aria-expanded={open}
         className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm pointer-coarse:min-h-11"
       >
-        <span className="truncate">{node.title}</span>
+        <span className="truncate" dir={blockDirection(node.title)}>
+          {node.title}
+        </span>
         {/* Resting state hides the chevron on fine pointers only; keyboard focus,
             touch devices, and the collapsed state always show it. */}
         <ChevronRight
@@ -183,7 +188,9 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
       >
         <ChevronRight className={cn('size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
         {node.icon ? <PageIcon name={node.icon} className="size-3.5 shrink-0 text-muted-foreground/80" /> : null}
-        <span className="truncate">{node.title}</span>
+        <span className="truncate" dir={blockDirection(node.title)}>
+          {node.title}
+        </span>
       </button>
       {open && node.children.length > 0 ? (
         <NavItems

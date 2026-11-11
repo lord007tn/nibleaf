@@ -13,13 +13,15 @@ const CALLOUT: Record<CalloutType, { icon: LucideIcon; token: string }> = {
   danger: { icon: OctagonAlert, token: 'var(--theme-danger,var(--destructive))' },
 };
 
-export function Callout({ type, children }: { type?: string; children?: ReactNode }) {
+/** `dir` (from rehypeBlockDirection) puts the icon on the side the callout's own text starts. */
+export function Callout({ type, dir, children }: { type?: string; dir?: string; children?: ReactNode }) {
   const meta = CALLOUT[normalizeType(type)];
   const Icon = meta.icon;
   return (
     <div
       className="my-5 flex gap-3 rounded-xl border p-4 text-foreground"
       data-theme-component="callout"
+      dir={dir}
       role="note"
       style={
         {

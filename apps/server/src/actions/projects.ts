@@ -89,9 +89,16 @@ export const listOrganizationProjects = async (userId: string, organizationId: s
 };
 
 /** The switcher's compact website rows for one organization (design §5.4.1):
- *  only websites the caller can open, by name. */
-export const listOrganizationSwitcherProjects = async (userId: string, organizationId: string) =>
-  (await describeSwitcherProjects(await accessibleProjectIds(userId, organizationId))).map(({ organizationId: _org, ...row }) => row);
+ *  only websites the caller can open, by name, each with the caller's effective
+ *  role there (the command palette offers only the settings that role may open). */
+export const listOrganizationSwitcherProjects = async (userId: string, organizationId: string) => {
+  const access = await accessibleProjectRoles(userId, organizationId);
+  const roles = new Map(access.map(({ id, role }) => [id, role]));
+  return (await describeSwitcherProjects([...roles.keys()])).map(({ organizationId: _org, ...row }) => ({
+    ...row,
+    role: roles.get(row.id) ?? 'viewer',
+  }));
+};
 
 /** Compact rows (icon, host, live) for the given website ids, sorted by name. */
 export const describeSwitcherProjects = async (ids: string[]) => {

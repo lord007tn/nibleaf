@@ -23,6 +23,26 @@ const scope = (projectId: string, pages: string[] | null = null): SearchScope =>
 });
 
 describe('hybrid multilingual retrieval primitives', () => {
+  it('normalizes Arabic spellings and affixes symmetrically for sparse retrieval', () => {
+    expect(hybridTokens('أ إ آ ى ي')).toEqual(hybridTokens('ا ا ا ي ي'));
+    expect(hybridTokens('وَالْمُسْتَخْدِمِينَ إضـافة')).toEqual(hybridTokens('مستخدم اضافة'));
+    expect(hybridTokens('مكتبة')).toEqual(hybridTokens('مكتبات'));
+  });
+
+  it('removes callouts, escaped list markers, images, rules and link markup from snippets', () => {
+    const [chunk] = chunkSearchDocument(scope('tenant-a'), {
+      id: 'users',
+      title: 'Users',
+      path: 'users',
+      description: '',
+      headings: [],
+      language: 'en',
+      visible: true,
+      content: '> [!IMPORTANT]\n\\-1- Open [Users](/users).\n---\n![Screenshot](/image.png)\nChoose **Add user**.',
+    });
+    if (!chunk) throw new Error('missing fixture');
+    expect(searchChunkSnippet(chunk, '', 260)).toBe('Open Users. Choose Add user.');
+  });
   it('ranks an upgrade title matching a partial version above unrelated dense candidates', () => {
     const make = (id: string, title: string, score: number) => {
       const [chunk] = chunkSearchDocument(scope('tenant-a'), {
