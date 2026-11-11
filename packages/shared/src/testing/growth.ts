@@ -7,6 +7,12 @@
  * same shape: medians of three, in alternating order after a warmup, so GC and
  * JIT state are shared. Linear work grows about 4x; quadratic work 16x.
  *
+ * The large input runs a quarter as many times per sample and its time is scaled
+ * back up, so both samples last about as long. On a busy or single-core runner
+ * the scheduler takes the CPU away every few tens of milliseconds; a long sample
+ * catches more of those pauses than a short one, which reads as growth that
+ * isn't there. Samples of equal length catch about the same share.
+ *
  * Each measurement repeats the function enough times that the small input's
  * median takes at least `minMs`, which is checked on the samples actually used:
  * with the 20 ms of slack below, quadratic growth only shows once the small
@@ -50,35 +56,42 @@ export const growthMs = <T>(
   { minMs = 4, budgetMs = 2000, vary }: GrowthOptions<T> = {},
 ): [number, number] => {
   const deadline = performance.now() + budgetMs;
-  let repeat = 1;
+  // At least 4, so the large input can run a quarter as often (see timeLarge).
+  let repeat = 4;
   let rep = 0;
   // Every result is kept and read below, so the engine can never drop a timed call as unused.
   let sink: unknown;
-  const time = (input: T) => {
+  const time = (input: T, count: number) => {
     const started = performance.now();
-    for (let index = 0; index < repeat; index += 1) {
+    for (let index = 0; index < count; index += 1) {
       rep += 1;
       sink = run(vary ? vary(input, rep) : input);
     }
     return performance.now() - started;
   };
+  const timeSmall = () => time(small, repeat);
+  // A quarter as many runs, scaled back up: see the note at the top.
+  const timeLarge = () => {
+    const count = Math.max(1, Math.round(repeat / 4));
+    return (time(large, count) * repeat) / count;
+  };
   const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
   // Warm both inputs first, so the repeat count is sized on warm (JIT-compiled) runs.
-  time(small);
-  time(large);
-  for (let first = time(small); first < minMs && repeat < MAX_REPEAT && performance.now() < deadline; first = time(small)) {
+  timeSmall();
+  timeLarge();
+  for (let first = timeSmall(); first < minMs && repeat < MAX_REPEAT && performance.now() < deadline; first = timeSmall()) {
     repeat = nextRepeat(repeat, first, minMs);
   }
   for (;;) {
-    time(large);
+    timeLarge();
     const times: [number[], number[]] = [[], []];
     for (let round = 0; round < 3; round += 1) {
       if (round % 2 === 0) {
-        times[0].push(time(small));
-        times[1].push(time(large));
+        times[0].push(timeSmall());
+        times[1].push(timeLarge());
       } else {
-        times[1].push(time(large));
-        times[0].push(time(small));
+        times[1].push(timeLarge());
+        times[0].push(timeSmall());
       }
     }
     if (sink === UNREACHABLE) throw new Error('unreachable');
