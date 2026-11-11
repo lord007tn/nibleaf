@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ session: vi.fn(), update: vi.fn(), navigate: vi.fn(), signOut: vi.fn(), prefetch: vi.fn() }));
+const hoisted = vi.hoisted(() => ({ lazyPages: [] as Promise<void>[] }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: (id: string) => (options: Record<string, unknown>) => ({
@@ -13,6 +14,16 @@ vi.mock('@tanstack/react-router', () => ({
   }),
   redirect: (options: unknown) => ({ redirect: options }),
   useRouter: () => ({ navigate: mocks.navigate }),
+  // The page is code-split out of the route file; load it once, then render it.
+  lazyRouteComponent: (load: () => Promise<{ default: ComponentType<Record<string, unknown>> }>) => {
+    const holder: { Component?: ComponentType<Record<string, unknown>>; ready?: Promise<void> } = {};
+    holder.ready = load().then((module) => {
+      holder.Component = module.default;
+    });
+    const Lazy = (props: Record<string, unknown>) => (holder.Component ? <holder.Component {...props} /> : null);
+    hoisted.lazyPages.push(holder.ready);
+    return Lazy;
+  },
 }));
 vi.mock('@/components/auth-providers', () => ({ AuthProviders: ({ children }: { children: ReactNode }) => children }));
 vi.mock('@/layouts/auth', () => ({
@@ -39,6 +50,9 @@ import { Route } from './welcome.name';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const Page = Route.options.component as unknown as ComponentType;
+beforeAll(async () => {
+  await Promise.all(hoisted.lazyPages);
+});
 const beforeLoad = Route.options.beforeLoad as (ctx: { search: { redirect?: string } }) => Promise<unknown>;
 let root: ReturnType<typeof createRoot>;
 let host: HTMLDivElement;
