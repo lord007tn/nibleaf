@@ -457,6 +457,10 @@ jobs:
 
       - name: Upload public bundle report
         if: always()
+        # The report is informational: a stalled artifact upload must not hold the
+        # job until its timeout and cancel an otherwise green run.
+        timeout-minutes: 3
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: public-bundle-report-${{ github.run_id }}

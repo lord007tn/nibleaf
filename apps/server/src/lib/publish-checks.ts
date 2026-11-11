@@ -1,7 +1,7 @@
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
-import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, pageContentFacts } from '@nibleaf/shared/publish-checks';
+import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, snapshotContentFacts } from '@nibleaf/shared/publish-checks';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
 /**
@@ -109,6 +109,8 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
   // Hidden pages and disabled languages are not published, so nothing on them can mislead a reader.
   const published = snapshot.pages.filter((page) => !page.hidden && served.has(page.languageCode));
   const linkSeverity = brokenLinkCheckEnabledForSnapshot(snapshot) ? 'error' : 'warning';
+  // Shared with findBrokenInternalLinks below, so each page is parsed once per snapshot.
+  const factsOf = snapshotContentFacts(snapshot);
   const brokenLinks = new Map<string, string[]>();
   const tooLong = new Set<string>();
   for (const { page, href, reason } of findBrokenInternalLinks(snapshot)) {
@@ -149,7 +151,7 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
     // No shortcut for an empty page: every finding is still reported, so the
     // dialog can never hide a link the worker would block on.
     if (!hasBody(page.content)) add(page, 'empty-page');
-    const facts = pageContentFacts(page.content);
+    const facts = factsOf(page.content);
     addEach(page, 'broken-internal-link', brokenLinks.get(page.id) ?? [], linkSeverity);
     addEach(page, 'missing-alt', facts.imagesWithoutAlt);
     addEach(page, 'stray-characters', facts.strayText);
