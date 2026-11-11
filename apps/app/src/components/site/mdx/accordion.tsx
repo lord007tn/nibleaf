@@ -1,5 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteContentT } from '@nibleaf/i18n/site-content';
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import { ChevronDown } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
 import { truthyAttr } from './utils';
@@ -34,7 +35,9 @@ export function Accordion({
         aria-controls={`${accordionId}-panel`}
         className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-start font-medium"
       >
-        {title ?? t('details')}
+        <span className="min-w-0" dir={title ? blockDirection(title) : undefined}>
+          {title ?? t('details')}
+        </span>
         <ChevronDown className={cn('size-4 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       <section

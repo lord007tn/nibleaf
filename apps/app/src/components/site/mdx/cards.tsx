@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import type { ReactNode } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 
@@ -22,7 +23,11 @@ export function Card({ title, href, icon, children }: { title?: string; href?: s
           )}
         </span>
       ) : null}
-      {title ? <div className="font-semibold">{title}</div> : null}
+      {title ? (
+        <div className="font-semibold" dir={blockDirection(title)}>
+          {title}
+        </div>
+      ) : null}
       {children ? <div className="mt-1.5 text-muted-foreground text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
     </>
   );

@@ -292,6 +292,7 @@ function SiteChrome() {
   // React Compiler memoizes this value; a manual useMemo here blocks compilation.
   const readerContext: SiteReaderContextValue = {
     lang: readerLanguage,
+    languages,
     homeHref: readerHomeHref,
     openSearch: showSearch ? () => setSearchOpen(true) : undefined,
   };
