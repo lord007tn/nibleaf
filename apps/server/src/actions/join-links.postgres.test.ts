@@ -32,10 +32,13 @@ describe.skipIf(process.env.JOIN_LINKS_INTEGRATION !== '1')('website join-link c
     expect(stored.role).toBe('viewer');
     expect(stored.orgRole).toBe('member');
     expect(await links.getJoinLinkPreview(token)).toEqual({
+      organizationId: id,
       organizationName: 'Synthetic organization',
+      organizationLogo: null,
+      inviterName: 'Synthetic',
       siteName: 'Synthetic website',
       role: 'viewer',
-      grants: [{ name: 'Synthetic website', role: 'viewer' }],
+      grants: [{ projectId, name: 'Synthetic website', role: 'viewer' }],
       allowedDomain: 'nibleaf.test',
     });
   });
@@ -49,6 +52,22 @@ describe.skipIf(process.env.JOIN_LINKS_INTEGRATION !== '1')('website join-link c
     await expect(links.getJoinLinkPreview(second.token)).rejects.toMatchObject({ code: 'join:invalid' });
     await expect(links.regenerateJoinLink(id, first.link.id, { id, role: 'owner' }, projectId)).rejects.toMatchObject({ status: 409 });
     await expect(links.getJoinLinkPreview('missing')).rejects.toMatchObject({ code: 'join:invalid' });
+  });
+  it('deletes only links that no longer admit anyone', async () => {
+    const { link } = await links.createJoinLink(id, { id, role: 'owner' }, { role: 'viewer' }, projectId);
+    await expect(links.deleteJoinLink(id, link.id, { id, role: 'owner' }, projectId)).rejects.toMatchObject({
+      status: 409,
+      details: { reason: 'join_link_active' },
+    });
+    await links.revokeJoinLink(id, link.id, { id, role: 'owner' }, projectId);
+    await expect(links.deleteJoinLink(id, link.id, { id, role: 'owner' }, projectId)).resolves.toEqual({ id: link.id });
+    // A tombstone: hidden from the list, kept with who deleted it and from where.
+    expect(await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).toMatchObject({
+      deletedById: id,
+      deletedScope: `website:${projectId}`,
+    });
+    expect((await links.listJoinLinks(id, projectId)).some((listed) => listed.id === link.id)).toBe(false);
+    await expect(links.deleteJoinLink(id, link.id, { id, role: 'owner' }, projectId)).rejects.toMatchObject({ status: 404 });
   });
   it('uses the shared admission and returns its exact landing', async () => {
     const userId = `${id}-joiner`;

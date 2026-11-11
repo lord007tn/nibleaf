@@ -56,17 +56,18 @@ vi.mock('@/components/app/start-here', () => ({
   useStartHereActivity: () => new Map(),
 }));
 vi.mock('@/hooks/api', () => ({
+  useOrganizationMembers: () => ({ data: undefined }),
   useOrganizationProjects: (id: string) => {
     mocks.projectsFor(id);
     return mocks.projectsPending ? { isPending: true } : { data: mocks.projects, isPending: false, isSuccess: true };
   },
   useOrganizationAnalytics: () => ({ isSuccess: false }),
-  useProjectMembers: () => ({ data: undefined }),
 }));
 vi.mock('@/hooks/api/organization-query-options', () => ({
   organizationProjectsQueryOptions: (id: string) => ({ queryKey: ['organizations', id, 'projects', 'list'] }),
   organizationAnalyticsQueryOptions: (id: string) => ({ queryKey: ['organizations', id, 'analytics'] }),
 }));
+vi.mock('@/features/people/api/hooks', () => ({ useOrgInvitations: () => ({ data: undefined }) }));
 vi.mock('@/hooks/api/analytics/query-options', () => ({ analyticsTimezone: () => 'UTC' }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-1' } } }) }));

@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, QueueNames: { PUBLISH: 'publish' } }));
 vi.mock('@nibleaf/database', () => ({
+  // The canonical free plan as seeded in production: no entitlement rows.
+  deliveryPlanSelect: {},
+  loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
   Prisma: { PrismaClientKnownRequestError: class extends Error {} },
   prisma: {
     project: { findFirst: mocks.projectFindFirst, findUnique: mocks.projectFindUnique },
