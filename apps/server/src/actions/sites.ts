@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AnalyticsPayload, ConsentState, PublicAnalyticsEvent } from '@nibleaf/clickhouse';
 import { deliveryPlanSelect, loadDefaultDeliveryPlan, prisma } from '@nibleaf/database';
+import { logger } from '@nibleaf/logger';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
 import {
@@ -156,9 +157,16 @@ export const invalidatePublishedSiteConfig = (projectId: string): void => {
  *  After writing one, drop each website's cached live config, so the next reader
  *  request re-resolves add-ons and consent through the shared resolver (#447). */
 export const invalidateOrganizationPublishedConfig = async (organizationId: string): Promise<number> => {
-  const projects = await prisma.project.findMany({ where: { organizationId }, select: { id: true } });
-  for (const { id } of projects) invalidatePublishedSiteConfig(id);
-  return projects.length;
+  // Cache invalidation must never fail the write that triggered it: on error,
+  // log it and let the 15 s live-chrome TTL bound the staleness.
+  try {
+    const projects = await prisma.project.findMany({ where: { organizationId }, select: { id: true } });
+    for (const { id } of projects) invalidatePublishedSiteConfig(id);
+    return projects.length;
+  } catch (error) {
+    logger.warn({ err: error, organizationId }, 'Could not invalidate published site config for the organization; live chrome expires within 15 s');
+    return 0;
+  }
 };
 
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {

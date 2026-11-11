@@ -175,4 +175,9 @@ describe('reader add-on parity', () => {
     expect(mocks.orgProjects).toHaveBeenCalledWith({ where: { organizationId: live.organizationId }, select: { id: true } });
     expect((await getSite(live.id)).project.config).toMatchObject({ addons: { feedback: false } });
   });
+
+  it('never fails the write that triggered it when invalidation itself fails', async () => {
+    mocks.orgProjects.mockRejectedValue(new Error('database unavailable'));
+    await expect(invalidateOrganizationPublishedConfig(live.organizationId)).resolves.toBe(0);
+  });
 });
