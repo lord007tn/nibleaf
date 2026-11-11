@@ -115,33 +115,39 @@ export const growthMsAsync = async <T>(
   { minMs = 4, budgetMs = 2000, vary }: GrowthOptions<T> = {},
 ): Promise<[number, number]> => {
   const deadline = performance.now() + budgetMs;
-  let repeat = 1;
+  let repeat = 4;
   let rep = 0;
   let sink: unknown;
-  const time = async (input: T) => {
+  const time = async (input: T, count: number) => {
     const started = performance.now();
-    for (let index = 0; index < repeat; index += 1) {
+    for (let index = 0; index < count; index += 1) {
       rep += 1;
       sink = await run(vary ? vary(input, rep) : input);
     }
     return performance.now() - started;
   };
+  const timeSmall = () => time(small, repeat);
+  // A quarter as many runs, scaled back up: see the note at the top.
+  const timeLarge = async () => {
+    const count = Math.max(1, Math.round(repeat / 4));
+    return ((await time(large, count)) * repeat) / count;
+  };
   const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
-  await time(small);
-  await time(large);
-  for (let first = await time(small); first < minMs && repeat < MAX_REPEAT && performance.now() < deadline; first = await time(small)) {
+  await timeSmall();
+  await timeLarge();
+  for (let first = await timeSmall(); first < minMs && repeat < MAX_REPEAT && performance.now() < deadline; first = await timeSmall()) {
     repeat = nextRepeat(repeat, first, minMs);
   }
   for (;;) {
-    await time(large);
+    await timeLarge();
     const times: [number[], number[]] = [[], []];
     for (let round = 0; round < 3; round += 1) {
       if (round % 2 === 0) {
-        times[0].push(await time(small));
-        times[1].push(await time(large));
+        times[0].push(await timeSmall());
+        times[1].push(await timeLarge());
       } else {
-        times[1].push(await time(large));
-        times[0].push(await time(small));
+        times[1].push(await timeLarge());
+        times[0].push(await timeSmall());
       }
     }
     if (sink === UNREACHABLE) throw new Error('unreachable');
