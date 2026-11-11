@@ -41,15 +41,15 @@ const STEM_EXCLUSIONS = new Set([
   'شياطين',
 ]);
 
-/** Conservative Arabic spelling normalization shared by exact and
- * morphological indexing/query paths. Ta marbuta deliberately remains
- * distinct from ha in the exact channel. */
+/** Matching-only spelling normalization, aligned with the reader highlighter.
+ * Source titles and snippets always retain their original spelling. */
 export const normalizeArabicSearchText = (value: string): string =>
   value
     .replace(ARABIC_DIACRITICS, '')
     .replace(/\u0640/g, '')
     .replace(ARABIC_ALEF_VARIANTS, '\u0627')
-    .replace(/\u0649/g, '\u064a');
+    .replace(/\u0649/g, '\u064a')
+    .replace(/\u0629/g, '\u0647');
 
 function stripPrefix(word: string): string {
   for (const prefix of LUCENE_PREFIXES) {
@@ -92,9 +92,9 @@ function normalizeFeminineDual(word: string): string {
 }
 
 /** Apply the Light10 suffix categories with one precision adjustment. Lucene's
- * in-place ordered pass can remove both ـات and the resulting final ه; because
- * our exact normalizer intentionally preserves ة, we stop after a sound-plural
- * removal except for the productive ـيات -> ـي -> base sequence. */
+ * in-place ordered pass can remove both ـات and the resulting final ه. Stop
+ * after a sound-plural removal except for the productive
+ * ـيات -> ـي -> base sequence. */
 function stripLuceneSuffixes(word: string): string {
   if (word.endsWith('ات') && word.length >= 4) {
     const stem = word.slice(0, -2);

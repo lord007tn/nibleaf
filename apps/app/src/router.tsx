@@ -1,3 +1,5 @@
+// First, before anything that uses zod: turns off its eval probe in the browser (READER-23).
+import '@/lib/zod-csp';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type AnyRouter, createRouter as createTanStackRouter } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
