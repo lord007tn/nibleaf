@@ -4,7 +4,7 @@ import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ publicMeta: vi.fn(), refetch: vi.fn(), navigate: vi.fn(), send: vi.fn(), social: vi.fn() }));
+const mocks = vi.hoisted(() => ({ publicMeta: vi.fn(), refetch: vi.fn(), navigate: vi.fn(), send: vi.fn(), social: vi.fn(), verify: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}) }),
@@ -16,12 +16,18 @@ vi.mock('@/hooks/api/public', () => ({ useGetPublicMeta: mocks.publicMeta }));
 vi.mock('@/hooks/api/query-options', () => ({ getPublicMetaQueryOptions: () => ({ queryKey: ['public', 'meta'] }) }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/layouts/auth', () => ({ AuthLayout: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
-vi.mock('@/services/auth-client', () => ({ authClient: { emailOtp: { sendVerificationOtp: mocks.send } }, signIn: { social: mocks.social } }));
+vi.mock('@/services/auth-client', () => ({
+  authClient: { signIn: { emailOtp: mocks.verify }, emailOtp: { sendVerificationOtp: mocks.send } },
+  signIn: { social: mocks.social },
+}));
 vi.mock('@/lib/invitations', () => ({ afterAuthDestination: () => null }));
 
+import { Route as SignInRoute } from './sign-in';
 import { Route } from './sign-up';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+// input-otp uses hit testing when its real input receives focus; jsdom has no layout.
+Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => null });
 const SignUpPage = Route.options.component as unknown as ComponentType;
 
 describe('sign-up availability', () => {
@@ -75,21 +81,54 @@ describe('sign-up availability', () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('explains the unticked terms instead of silently disabling the buttons', async () => {
+  it.each([
+    ['sign-up', Route.options.component],
+    ['sign-in', SignInRoute.options.component],
+  ])('shows the same notice at Google and email actions on %s, with no checkbox', async (_name, component) => {
     mocks.publicMeta.mockReturnValue({ isPending: false, data: { signupDisabled: false, providers: { google: true } } });
-    await act(async () => root.render(<SignUpPage />));
-    const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
-    const google = [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.includes('auth.google.signUp'));
-    expect(submit?.disabled).toBe(false);
-    expect(google?.disabled).toBe(false);
-
+    mocks.social.mockResolvedValue({});
+    const Page = component as unknown as ComponentType;
+    await act(async () => root.render(<Page />));
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+    const notices = [...container.querySelectorAll('p')].filter((p) => p.textContent?.includes('auth.legal.continuePrefix'));
+    expect(notices).toHaveLength(2);
+    for (const notice of notices) {
+      expect(notice.querySelector('a[href="/terms"]')).not.toBeNull();
+      expect(notice.querySelector('a[href="/privacy"]')).not.toBeNull();
+    }
+    const google = container.querySelector<HTMLButtonElement>('button');
     await act(async () => google?.click());
-    expect(mocks.social).not.toHaveBeenCalled();
-    expect(container.querySelector('#agree-terms-error')?.textContent).toBe('auth.legal.agreeFirst');
-    expect(container.querySelector('#agree-terms')?.getAttribute('aria-describedby')).toBe('agree-terms-error');
-    expect(document.activeElement?.id).toBe('agree-terms');
+    expect(mocks.social).toHaveBeenCalledWith(expect.objectContaining({ provider: 'google', additionalData: { acceptTerms: true } }));
+  });
 
-    await act(async () => container.querySelector<HTMLInputElement>('#agree-terms')?.click());
-    expect(container.querySelector('#agree-terms-error')).toBeNull();
+  it.each([
+    ['sign-up', Route.options.component],
+    ['sign-in', SignInRoute.options.component],
+  ])('sends explicit consent at OTP verification on %s while showing the notice', async (_name, component) => {
+    mocks.publicMeta.mockReturnValue({ isPending: false, data: { signupDisabled: false, providers: { google: false } } });
+    mocks.send.mockResolvedValue({});
+    mocks.verify.mockResolvedValue({ data: {} });
+    const Page = component as unknown as ComponentType;
+    await act(async () => root.render(<Page />));
+    const setInput = async (selector: string, value: string) =>
+      act(async () => {
+        const input = container.querySelector<HTMLInputElement>(selector);
+        if (!input) return;
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    await setInput('#email', 'ada@example.test');
+    await setInput('#name', 'Ada');
+    const submit = () =>
+      act(async () => {
+        container.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      });
+    await submit();
+    expect(mocks.send).toHaveBeenCalledWith({ email: 'ada@example.test', type: 'sign-in' });
+    expect(container.querySelector('form')?.textContent).toContain('auth.legal.continuePrefix');
+    await setInput('#otp', '123456');
+    // InputOTP may auto-submit on completion; form submission uses the same path.
+    if (!mocks.verify.mock.calls.length) await submit();
+    expect(mocks.verify).toHaveBeenCalledWith(expect.objectContaining({ email: 'ada@example.test', otp: '123456', acceptTerms: true }));
   });
 });

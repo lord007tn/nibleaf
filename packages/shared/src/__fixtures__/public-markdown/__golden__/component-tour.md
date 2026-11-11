@@ -77,7 +77,7 @@ Faster search.
 
 Inline: **Beta**, [Start](/start), API (Application programming interface), , 10<sup>-3</sup>, H<sub>2</sub>O, <u>underlined</u>.
 
-Expression  and a stray } brace. &lt;Unknown onclick=&quot;run()&quot;&gt;Unknown stays text&lt;/Unknown&gt;.
+Expression  and a stray } brace. &lt;Unknown onclick="run()"&gt;Unknown stays text&lt;/Unknown&gt;.
 
 
 

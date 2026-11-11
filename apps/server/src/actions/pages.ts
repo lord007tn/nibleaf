@@ -1,10 +1,16 @@
+import { createHash } from 'node:crypto';
 import { Prisma, prisma } from '@nibleaf/database';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
-import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
+import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
+import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
+import { pageDescriptionText } from '@nibleaf/shared/markdown-text';
+import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
+import { interpolateVariablesWithin, variablesFromConfig } from '@nibleaf/shared/site';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
-import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
+import type { BulkReorderPagesBody, CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
 import { assertAddressLinkRevisions, type PagePathChange, prepareAddressLinks, preservePageAddresses } from '@/lib/page-address-changes';
+import { snapshotPage } from '@/lib/page-history';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { logFirstContentEdit } from './platform-events';
@@ -48,10 +54,74 @@ export const getPage = async (projectId: string, id: string) => {
   return page;
 };
 
+/** How much of the body the generated description is built from, before and
+ *  after variables. `pageDescriptionText` reads at most the first 4 KB after the
+ *  frontmatter, so 8 KB always covers it. */
+export const SEARCH_DESCRIPTION_SOURCE_LIMIT = 8192;
+const SEARCH_DESCRIPTION_CACHE_LIMIT = 500;
+/** Keyed by page, page revision and project revision, so a hit never reads the body. */
+const searchDescriptionCache = new Map<string, string>();
+
+/** The body after a leading `---` / `+++` frontmatter block (dropped from
+ *  descriptions anyway), so the bounded window starts at the prose. One
+ *  forward pass; an unclosed block is kept, as `markdown-text` keeps it. */
+const withoutFrontmatter = (content: string): string => {
+  const fence = content.startsWith('---') ? '---' : content.startsWith('+++') ? '+++' : null;
+  const firstBreak = content.indexOf('\n');
+  if (!fence || firstBreak === -1 || content.slice(0, firstBreak).trim() !== fence) return content;
+  for (let start = firstBreak + 1; start < content.length; ) {
+    const end = content.indexOf('\n', start);
+    const line = content.slice(start, end === -1 ? content.length : end);
+    if (line.trim() === fence) return end === -1 ? '' : content.slice(end + 1);
+    if (end === -1) break;
+    start = end + 1;
+  }
+  return content;
+};
+
+/** The description the published site generates from the page's saved content
+ *  when the author writes none (no SEO description, no summary), with the
+ *  project's `{{ variables }}` resolved as a publish resolves them.
+ *
+ *  Author content reaches this, so its cost is bounded: only the first
+ *  `SEARCH_DESCRIPTION_SOURCE_LIMIT` characters of the body are expanded, the
+ *  expansion stops at that length too, and the result is cached per revision.
+ *  `revision` is the page revision the text was generated from. */
+export const getPageSearchDescription = async (projectId: string, id: string) => {
+  const [revisionRow, project] = await Promise.all([
+    prisma.page.findFirst({ where: { id, projectId }, select: { updatedAt: true } }),
+    prisma.project.findUnique({ where: { id: projectId }, select: { config: true, updatedAt: true } }),
+  ]);
+  if (!revisionRow) {
+    throw notFound('page', { id });
+  }
+  const projectRevision = project?.updatedAt.toISOString() ?? '';
+  const cacheKey = (revision: string) => `${projectId}:${id}:${revision}:${projectRevision}`;
+  const known = searchDescriptionCache.get(cacheKey(revisionRow.updatedAt.toISOString()));
+  if (known !== undefined) {
+    return { description: known, revision: revisionRow.updatedAt.toISOString() };
+  }
+  // The body and its revision come from one read, so the text always matches the revision it's cached under.
+  const page = await prisma.page.findFirst({ where: { id, projectId }, select: { content: true, updatedAt: true } });
+  if (!page) {
+    throw notFound('page', { id });
+  }
+  const revision = page.updatedAt.toISOString();
+  const source = withoutFrontmatter(page.content).slice(0, SEARCH_DESCRIPTION_SOURCE_LIMIT);
+  const content = interpolateVariablesWithin(source, variablesFromConfig(project?.config), SEARCH_DESCRIPTION_SOURCE_LIMIT);
+  // In full: the editor shows the search-length cut itself, and "Write your own" starts from the whole text.
+  const description = pageDescriptionText({ content, description: null });
+  searchDescriptionCache.set(cacheKey(revision), description);
+  if (searchDescriptionCache.size > SEARCH_DESCRIPTION_CACHE_LIMIT) {
+    searchDescriptionCache.delete(searchDescriptionCache.keys().next().value as string);
+  }
+  return { description, revision };
+};
+
 /** A unique slug among a parent's children within one language, deriving from the
  *  title when absent. Scoped to (projectId, languageId, parentId) so two languages
  *  can each have e.g. `/introduction`. */
-const uniqueSiblingSlug = async (
+export const uniqueSiblingSlug = async (
   db: Prisma.TransactionClient,
   projectId: string,
   languageId: string,
@@ -148,7 +218,7 @@ export const recomputeProjectPaths = async (projectId: string, tx: Prisma.Transa
 };
 
 /** A move or slug change rewrites the paths of the page and its subtree. */
-const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
+export const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
 
 export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
   const page = await prisma.$transaction(
@@ -218,6 +288,8 @@ const isRecordNotFound = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2025';
 
 interface UpdatePageOptions {
+  /** Restore exact recoverable values while retaining the current address. */
+  restore?: boolean;
   /** Optimistic-concurrency precondition: apply the update only while the page's
    *  `updatedAt` still equals this value. The final write is conditional on it,
    *  so an edit that lands between the read and the write is never overwritten. */
@@ -260,7 +332,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         if (lockStructure) await assertAddressLinkRevisions(projectId, prepared, tx);
         const page = await tx.page.findFirst({ where: { id, projectId } });
         if (!page) throw notFound('page', { id });
-        const route = pageRouteEdit(page, body);
+        const route = pageRouteEdit(page, options?.restore ? {} : body);
         if (!lockStructure && route.structural) throw new StructuralPageEdit();
         const expectedUpdatedAt = options?.expectedUpdatedAt ?? (body.expectedUpdatedAt ? new Date(body.expectedUpdatedAt) : undefined);
         if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
@@ -283,7 +355,21 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         const nextSlug = structural
           ? await uniqueSiblingSlug(tx, projectId, page.languageId, page.branchId, nextParentId, route.desiredSlug, id)
           : page.slug;
-        const nextConfig = mergePageConfig(page.config, body.config);
+        const nextConfig = options?.restore ? body.config : mergePageConfig(page.config, body.config);
+        const historySnapshot = await snapshotPage(
+          tx,
+          page,
+          {
+            title: body.title ?? page.title,
+            content: body.content ?? page.content,
+            description: body.description === undefined ? page.description : body.description,
+            icon: body.icon === undefined ? page.icon : body.icon,
+            hidden: body.hidden ?? page.hidden,
+            config: nextConfig === undefined ? page.config : nextConfig,
+          },
+          userId,
+          options?.restore ?? false,
+        );
         const updated = await tx.page
           .update({
             // With a precondition the write matches only the revision that was read;
@@ -313,7 +399,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         const saved = structural ? await tx.page.findFirstOrThrow({ where: { id, projectId } }) : updated;
         return {
           page,
-          updated: { ...saved, ...addressChanges, addressChanged: saved.path !== page.path },
+          updated: { ...saved, ...addressChanges, historySnapshot, addressChanged: saved.path !== page.path },
         };
       },
       { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
@@ -321,7 +407,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
   };
   let result: Awaited<ReturnType<typeof save>>;
   try {
-    result = await save(pageRouteEdit(initial, body).structural);
+    result = await save(pageRouteEdit(initial, options?.restore ? {} : body).structural);
   } catch (error) {
     if (!(error instanceof StructuralPageEdit)) throw error;
     result = await save(true);
@@ -333,20 +419,28 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
   return updated;
 };
 
-export const deletePage = async (projectId: string, id: string) =>
-  prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
-    await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
-    const page = await tx.page.findFirst({ where: { id, projectId }, select: { id: true } });
-    if (!page) throw notFound('page', { id });
-    await tx.page.delete({ where: { id } });
-    return { id };
-  });
+type ReorderRow = {
+  id: string;
+  parentId: string | null;
+  branchId: string;
+  languageId: string;
+  position: number;
+  slug: string;
+  translationKey: string | null;
+};
 
-type ReorderRow = { id: string; parentId: string | null; branchId: string; languageId: string; slug: string; translationKey: string | null };
+/** Returned on unfiltered branch-list reads; ignores content-only edits. */
+export const pageStructureRevision = (rows: readonly PageStructureRow[]) =>
+  createHash('sha256')
+    .update(
+      JSON.stringify(
+        [...rows].sort((a, b) => a.id.localeCompare(b.id)).map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]),
+      ),
+    )
+    .digest('hex');
 
 /** The languages a reorder moves pages into must belong to this site. */
-const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: string, body: ReorderPagesBody) => {
+const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: string, body: BulkReorderPagesBody) => {
   // Every given id is checked, including an empty one from a caller that skipped
   // the request schema: it must fail here as "not found", not reach the database.
   const ids = [...new Set(body.items.flatMap((item) => (item.languageId === undefined ? [] : [item.languageId])))];
@@ -380,8 +474,10 @@ const settleLanguageMoves = (tree: Map<string, ReorderRow>, before: Map<string, 
   }
 };
 
-export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
-  const prepared = await prepareAddressLinks(projectId, undefined, body.items);
+const reorderPagesAttempt = async (projectId: string, request: ReorderPagesBody) => {
+  // Narrow intents can acquire a different current parent after preparation.
+  // Parse all documents outside the lock, then verify their revisions inside it.
+  const prepared = await prepareAddressLinks(projectId, undefined, 'pageId' in request ? undefined : request.items);
   const branchId = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
@@ -389,10 +485,44 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
       await assertAddressLinkRevisions(projectId, prepared, tx);
       const pages: ReorderRow[] = await tx.page.findMany({
         where: { projectId },
-        select: { id: true, parentId: true, branchId: true, languageId: true, slug: true, translationKey: true },
+        select: { id: true, parentId: true, branchId: true, languageId: true, position: true, slug: true, translationKey: true },
       });
       const byPage = new Map(pages.map((page) => [page.id, page]));
-      const proposed = new Map<string, ReorderPagesBody['items'][number]>();
+      let body: BulkReorderPagesBody;
+      let moveBranchId: string | undefined;
+      if ('pageId' in request) {
+        const active = byPage.get(request.pageId);
+        if (!active) throw notFound('page', { id: request.pageId });
+        moveBranchId = active.branchId;
+        if (
+          request.expectedStructureRevision &&
+          request.expectedStructureRevision !== pageStructureRevision(pages.filter((page) => page.branchId === active.branchId))
+        ) {
+          throw conflict('The page structure changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+        }
+        if (request.parentId && !byPage.has(request.parentId)) throw notFound('page', { id: request.parentId });
+        assertNoParentCycle(byPage, active.id, request.parentId);
+        const parent = request.parentId ? byPage.get(request.parentId) : undefined;
+        if (parent && (parent.branchId !== active.branchId || parent.languageId !== (request.languageId ?? active.languageId))) {
+          throw badRequest('Pages can only be moved within one branch and under a parent in the destination language.');
+        }
+        if (request.languageId)
+          await assertTargetLanguages(tx, projectId, {
+            items: [{ id: active.id, parentId: request.parentId, position: 0, languageId: request.languageId }],
+          });
+        const items = resolvePageMove(pages, request);
+        if (!items) throw conflict('The destination sibling changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+        body = { items };
+      } else {
+        body = request;
+        if (request.expectedStructureRevision) {
+          const branch = request.items[0] ? byPage.get(request.items[0].id)?.branchId : undefined;
+          if (request.expectedStructureRevision !== pageStructureRevision(pages.filter((page) => page.branchId === branch))) {
+            throw conflict('The page structure changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+          }
+        }
+      }
+      const proposed = new Map<string, BulkReorderPagesBody['items'][number]>();
       for (const item of body.items) {
         if (proposed.has(item.id)) {
           throw badRequest('Each page can only appear once in a reorder request.', { id: item.id });
@@ -482,7 +612,7 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
         tx,
         prepared,
       );
-      return body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined;
+      return moveBranchId ?? (body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined);
     },
     { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
   );
@@ -490,4 +620,23 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
   // a branch â€” they were validated against their parents above). Empty items keep
   // the default-branch behavior.
   return listPages(projectId, undefined, branchId);
+};
+
+export const reorderPages = async (projectId: string, request: ReorderPagesBody) => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await reorderPagesAttempt(projectId, request);
+    } catch (error) {
+      // A collaborator may commit while Markdown is being parsed. Retry the
+      // narrow intent against fresh content, never an old structural snapshot.
+      if (
+        !('pageId' in request) ||
+        attempt >= 2 ||
+        !(error instanceof AppError) ||
+        error.code !== 'page:address_conflict' ||
+        error.details?.reason !== 'address_raced'
+      )
+        throw error;
+    }
+  }
 };

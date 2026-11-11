@@ -803,7 +803,9 @@ export function TiptapEditor({
       },
       editorProps: {
         attributes: {
-          class: 'focus:outline-none',
+          // nibleaf-content: tables, code blocks and task lists styled like the
+          // published page (content-blocks.css).
+          class: 'nibleaf-content focus:outline-none',
           dir,
         },
         handleTextInput: () => commentModeRef.current,

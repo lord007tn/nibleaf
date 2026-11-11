@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   quota: vi.fn(),
   recordTurn: vi.fn(),
   recordFeedback: vi.fn(),
+  // Whether this instance can archive question text (see readerChatPolicy below).
+  storageReady: true,
   track: vi.fn(),
   condense: vi.fn(),
   stream: vi.fn(),
@@ -44,6 +46,17 @@ vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({
   recordAiChatTurn: mocks.recordTurn,
   recordAiChatFeedback: mocks.recordFeedback,
+  // The real derivation is covered in conversation-archive.test.ts; here the
+  // revision only has to follow the capture state and the consent config.
+  readerChatPolicy: (config: unknown, captureSetting: boolean) => {
+    const storesQuestions = captureSetting && mocks.storageReady;
+    return {
+      storesQuestions,
+      questionRetentionDays: storesQuestions ? 90 : null,
+      consent: 'not_required',
+      revision: `rev:${storesQuestions}:${JSON.stringify(config)}`,
+    };
+  },
 }));
 vi.mock('./site-chat-events', () => ({ recordAiChatEvents: mocks.recordEvents }));
 vi.mock('@nibleaf/search/workspace', async (importOriginal) => ({
@@ -95,7 +108,7 @@ import {
 } from '@nibleaf/search';
 import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
 import { chatFeedbackToken } from '@/lib/ai-search/feedback-token';
-import { chatSite, chatTurnShape, recordChatRateLimited, submitSiteChatFeedback } from './site-chat';
+import { chatSite, chatTurnShape, getSiteChatPolicy, recordChatRateLimited, submitSiteChatFeedback } from './site-chat';
 
 const chunk = {
   id: 'c1',
@@ -191,6 +204,78 @@ describe('reader AI chat stream', () => {
     mocks.release.mockResolvedValue(undefined);
     mocks.recordTurn.mockResolvedValue(undefined);
     mocks.track.mockResolvedValue(undefined);
+    mocks.storageReady = true;
+  });
+
+  describe('for a reader whose page stayed open while the capture policy changed', () => {
+    const answers = () =>
+      mocks.stream.mockReturnValue({
+        deltas: (async function* () {
+          yield 'Run the installer. [S1]';
+        })(),
+        result: Promise.resolve({
+          status: 'answered',
+          answer: 'Run the installer. [S1]',
+          citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install', heading: 'With npm' }],
+          droppedParagraphs: 0,
+          usage: { inputTokens: 100, outputTokens: 20 },
+          model: 'openai/test-answer-model',
+          latencyMs: 10,
+          firstTokenMs: 4,
+        }),
+      });
+    const capture = (on: boolean) => context({ request: { configuration: { aiConversationCapture: on } } });
+    const refused = async (revision: string) => {
+      const events = await readEvents(await chatSite('project-1', body({ policyRevision: revision })));
+      expect(events.find((event) => event.name === AI_CHAT_EVENT.error)?.value).toEqual({ code: 'policy_changed' });
+      expect(events.at(-1)).toMatchObject({ type: 'RUN_ERROR', code: 'policy_changed' });
+      // Nothing is spent, asked or kept for a turn sent under the old terms.
+      for (const call of [mocks.reserve, mocks.quota, mocks.stream, mocks.recordTurn]) expect(call).not.toHaveBeenCalled();
+    };
+
+    it('refuses a turn shown "not kept" after capture was turned on, then answers it under the new revision', async () => {
+      mocks.context.mockResolvedValue(capture(false));
+      const shown = await getSiteChatPolicy('project-1');
+      expect(shown).toMatchObject({ storesQuestions: false, questionRetentionDays: null });
+
+      mocks.context.mockResolvedValue(capture(true));
+      await refused(shown.revision);
+
+      const current = await getSiteChatPolicy('project-1');
+      expect(current).toMatchObject({ storesQuestions: true, questionRetentionDays: 90 });
+      expect(current.revision).not.toBe(shown.revision);
+      answers();
+      const events = await readEvents(await chatSite('project-1', body({ policyRevision: current.revision })));
+      expect(events.some((event) => event.name === AI_CHAT_EVENT.final)).toBe(true);
+      await vi.waitFor(() => expect(mocks.recordTurn).toHaveBeenCalledWith(expect.objectContaining({ captureSetting: true })));
+    });
+
+    it('refuses a turn shown "kept for 90 days" after capture was turned off', async () => {
+      const shown = await getSiteChatPolicy('project-1');
+      expect(shown).toMatchObject({ storesQuestions: true, questionRetentionDays: 90 });
+
+      mocks.context.mockResolvedValue(capture(false));
+      await refused(shown.revision);
+      expect((await getSiteChatPolicy('project-1')).storesQuestions).toBe(false);
+    });
+
+    it('refuses a turn when the instance stopped being able to keep questions', async () => {
+      const shown = await getSiteChatPolicy('project-1');
+      mocks.storageReady = false;
+      await refused(shown.revision);
+    });
+
+    it('refuses a turn when the site started asking for consent', async () => {
+      const shown = await getSiteChatPolicy('project-1');
+      mocks.context.mockResolvedValue(context({ snapshot: { project: { config: { analytics: { cookieConsent: true } }, languages: [] } } }));
+      await refused(shown.revision);
+    });
+
+    it('answers a turn from a page that sends no revision (loaded before policies existed)', async () => {
+      answers();
+      const events = await readEvents(await chatSite('project-1', body()));
+      expect(events.some((event) => event.name === AI_CHAT_EVENT.final)).toBe(true);
+    });
   });
 
   it('streams text, then a validated final payload that replaces it, then finishes', async () => {

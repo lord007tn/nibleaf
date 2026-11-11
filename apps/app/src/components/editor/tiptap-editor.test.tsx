@@ -89,6 +89,34 @@ describe('seedMarkdown', () => {
 });
 
 describe('TiptapEditor', () => {
+  // content-blocks.css styles these blocks for the editor and the published
+  // page alike (AUTH-26); src/content-blocks.test.tsx pins the reader's half.
+  it('renders tables, code blocks and task lists with the markup the shared content stylesheet styles', async () => {
+    const fence = '```';
+    const value = [
+      '| Step | Owner |',
+      '| --- | --- |',
+      '| Create a key | Admin |',
+      '',
+      `${fence}bash`,
+      'npx tidewater verify',
+      fence,
+      '',
+      '- [x] Booked',
+      '- [ ] Rotated',
+    ].join('\n');
+    // Read-only: the floating menus need layout APIs jsdom lacks.
+    const { prose } = await mount(<TiptapEditor editable={false} value={value} onChange={vi.fn()} />);
+    await act(async () => {
+      await vi.waitFor(() => expect(prose()?.querySelector('table'), prose()?.innerHTML).not.toBeNull());
+    });
+    const root = prose();
+    expect(root?.classList.contains('nibleaf-content')).toBe(true);
+    expect(root?.querySelector('.tableWrapper > table th')?.textContent).toBe('Step');
+    expect(root?.querySelector('pre[data-language="bash"] > code')?.textContent).toBe('npx tidewater verify');
+    expect(root?.querySelectorAll('ul[data-type="taskList"] > li > label > input[type="checkbox"]')).toHaveLength(2);
+  });
+
   it.each(['ltr', 'rtl'] as const)('hides the count pill while a table bubble is open at 390px in %s, then restores it', async (dir) => {
     const style = document.createElement('style');
     style.textContent = readFileSync(resolve('src/components/editor/tiptap.css'), 'utf8');
