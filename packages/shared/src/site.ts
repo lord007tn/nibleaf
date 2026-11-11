@@ -367,7 +367,7 @@ export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number
 
 /** Build a navigation tree from snapshot pages, hiding pages flagged `hidden`.
  *  When `languageCode` is given, only that language's pages are included. */
-export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavNode[] => {
+export const buildNavTree = (pages: readonly SnapshotPage[], languageCode?: string): NavNode[] => {
   const visible = pages.filter((p) => !p.hidden && (!languageCode || p.languageCode === languageCode));
   const byParent = new Map<string | null, SnapshotPage[]>();
   for (const page of visible) {

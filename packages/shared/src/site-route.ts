@@ -56,7 +56,7 @@ export const activeLanguageCode = (snapshot: SiteSnapshot, lang?: string): strin
   return defaultLanguage(snapshot.project).code;
 };
 
-export const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => p.languageCode === lang);
+export const pagesForLanguage = (pages: readonly SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => p.languageCode === lang);
 
 export const defaultVersion = (snapshot: SiteSnapshot): SnapshotVersion => {
   const defaults = snapshot.project.versions.filter((version) => version.isDefault);
@@ -90,12 +90,12 @@ export const pageBelongsToVersion = (page: SnapshotPage, version: SnapshotVersio
 export const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): SnapshotPage[] =>
   snapshot.pages.filter((page) => pageBelongsToVersion(page, version));
 
-export const firstPage = (pages: SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
+export const firstPage = (pages: readonly SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
   const first = flattenNav(buildNavTree(pages, languageCode))[0];
   return first ? pages.find((p) => p.path === first.path) : undefined;
 };
 
-export const firstPageUnder = (pages: SnapshotPage[], languageCode: string | undefined, prefix: string): SnapshotPage | undefined => {
+export const firstPageUnder = (pages: readonly SnapshotPage[], languageCode: string | undefined, prefix: string): SnapshotPage | undefined => {
   if (!prefix) {
     return undefined;
   }
@@ -105,8 +105,9 @@ export const firstPageUnder = (pages: SnapshotPage[], languageCode: string | und
 
 export interface ResolvedSitePage {
   page: SnapshotPage;
-  /** The resolved language's pages in the resolved docs version. */
-  pages: SnapshotPage[];
+  /** The resolved language's pages in the resolved docs version. Shared with the
+   *  page index (cached per snapshot), so it is read-only. */
+  pages: readonly SnapshotPage[];
   docsVersion: SnapshotVersion;
   /** The requested path with the version prefix removed. */
   normalized: string;
@@ -132,7 +133,7 @@ export const sitePathWithinVersion = (snapshot: SiteSnapshot, path: string, vers
 /** One version and language's pages, with the lookups `resolveSitePage` makes,
  *  built once: each is what the matching linear scan over `pages` returns. */
 interface LanguagePageIndex {
-  pages: SnapshotPage[];
+  pages: readonly SnapshotPage[];
   /** The first visible PAGE at each path, in snapshot order. */
   servedByPath: Map<string, SnapshotPage>;
   /** The first page of any kind at each path, in snapshot order. */
