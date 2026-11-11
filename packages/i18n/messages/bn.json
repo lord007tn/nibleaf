@@ -1357,6 +1357,8 @@
   "auth_google_submitting": "খোলা হচ্ছে Google…",
   "auth_divider_or": "বা",
   "auth_legal_continueprefix": "এগিয়ে গেলে আপনি সম্মত হচ্ছেন:",
+  "auth_legal_signupclosed": "এই ইনস্ট্যান্সে নতুন অ্যাকাউন্ট নিবন্ধন বন্ধ আছে। প্রবেশাধিকারের জন্য প্রশাসকের সঙ্গে যোগাযোগ করুন।",
+  "auth_legal_termsrequired": "শর্তাবলীতে সম্মতি দিন, তারপর একটি নতুন কোড চান।",
   "auth_name_title": "আপনাকে কী নামে ডাকব?",
   "auth_name_description": "আপনার কর্মক্ষেত্রে যেতে আপনার নাম যোগ করুন।",
   "auth_name_required": "আপনার নাম লিখুন।",

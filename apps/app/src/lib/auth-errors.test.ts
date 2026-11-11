@@ -4,6 +4,10 @@ import { friendlyAuthError, friendlyEmailChangeError, isAccountSuspendedError, i
 const t = (key: string) => `t:${key}`;
 
 describe('friendlyAuthError', () => {
+  it('gives consumed-code recovery instructions and closed-instance copy', () => {
+    expect(friendlyAuthError({ code: 'TERMS_REQUIRED' }, t, 'Invalid code')).toBe('t:auth.legal.termsRequired');
+    expect(friendlyAuthError({ code: 'SIGNUP_CLOSED' }, t, 'Invalid code')).toBe('t:auth.legal.signupClosed');
+  });
   it('tells a suspended or banned account to contact support instead of blaming the code', () => {
     const suspended = { status: 403, message: 'This account has been suspended. Contact support@nibleaf.com if you believe this is a mistake.' };
     expect(friendlyAuthError(suspended, t, 'Invalid code')).toBe('t:auth.error.suspended');

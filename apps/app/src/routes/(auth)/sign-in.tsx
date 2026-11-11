@@ -103,6 +103,11 @@ function SignInPage() {
       const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), acceptTerms: true, ...oauthBody });
       if (result.error) {
         setError(friendlyAuthError(result.error, t, t('auth.otp.invalid')));
+        if (result.error.code === 'TERMS_REQUIRED') {
+          setCodeSent(false);
+          setOtp('');
+          resetCountdown();
+        }
         return;
       }
       await finishSignIn(result.data);
@@ -117,7 +122,7 @@ function SignInPage() {
     setError(null);
     setIsGoogleSubmitting(true);
     // With an OAuth request, Google's callback resumes it instead of opening callbackURL.
-    const result = await signIn.social({ provider: 'google', callbackURL: afterAuthPath, ...oauthBody });
+    const result = await signIn.social({ provider: 'google', callbackURL: afterAuthPath, additionalData: { acceptTerms: true }, ...oauthBody });
     if (result.error) {
       setError(friendlyAuthError(result.error, t, t('auth.signIn.error')));
       setIsGoogleSubmitting(false);

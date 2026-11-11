@@ -1,4 +1,5 @@
-import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, createHmac, generateKeyPairSync, randomBytes, randomUUID, sign } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import { diffSchema, getExpectedSchema } from '@better-auth/core/db/internal';
 import { prisma } from '@nibleaf/database';
 import { TERMS_VERSION } from '@nibleaf/shared/legal';
@@ -25,12 +26,23 @@ const { ADMIN_ORIGIN, APP_ORIGIN, AUTH_SECRET, GOOGLE_CLIENT_ID, mocks } = vi.ho
     APP_ORIGIN,
     AUTH_SECRET,
     GOOGLE_CLIENT_ID,
-    mocks: { codes: new Map<string, string>(), emailsTo: [] as string[], googleIdToken: '' },
+    mocks: {
+      codes: new Map<string, string>(),
+      emailsTo: [] as string[],
+      googleIdToken: '',
+      googleJwk: null as object | null,
+      providerDelay: 0,
+      providerFails: false,
+      queueFails: false,
+      queued: [] as Array<{ to?: string; auth?: { existingUserOnly?: boolean }; text?: string }>,
+    },
   };
 });
 
 vi.mock('@nibleaf/bullmq', () => {
-  const createJob = vi.fn(async (_queue: string, job: { data?: { auth?: unknown; text?: string; to?: string } }) => {
+  const createJob = vi.fn(async (_queue: string, job: { data?: { auth?: { existingUserOnly?: boolean }; text?: string; to?: string } }) => {
+    if (mocks.queueFails) throw new Error('Synthetic queue outage');
+    if (job.data?.auth) mocks.queued.push(job.data);
     if (job.data?.to) {
       mocks.emailsTo.push(job.data.to);
     }
@@ -40,7 +52,11 @@ vi.mock('@nibleaf/bullmq', () => {
   });
   return {
     createJob,
-    sendRequiredEmail: (data: { auth?: unknown; text?: string; to?: string }) => createJob('email', { data }),
+    sendRequiredEmail: async (data: { auth?: { existingUserOnly?: boolean }; text?: string; to?: string }) => {
+      if (mocks.providerDelay) await new Promise((resolve) => setTimeout(resolve, mocks.providerDelay));
+      if (mocks.providerFails) throw new Error('Synthetic provider outage');
+      return createJob('email', { data });
+    },
     QueueNames: { EMAIL: 'email', PUBLISH: 'publish', SEARCH: 'search' },
   };
 });
@@ -125,8 +141,10 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
   };
 
   /** Runs the real social sign-in and callback; only Google's token endpoint is stubbed. */
-  const signInWithGoogle = async (sub: string, email: string) => {
-    const started = await send('/sign-in/social', { body: { callbackURL: '/app', provider: 'google' } });
+  const signInWithGoogle = async (sub: string, email: string, acceptTerms: boolean | null = true) => {
+    const started = await send('/sign-in/social', {
+      body: { callbackURL: '/app', provider: 'google', additionalData: acceptTerms === null ? {} : { acceptTerms } },
+    });
     expect(started.status).toBe(200);
     const { url } = (await started.json()) as { url: string };
     const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -180,6 +198,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     const realFetch = globalThis.fetch;
     vi.stubGlobal('fetch', (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
+      if (url === 'https://www.googleapis.com/oauth2/v3/certs' && mocks.googleJwk) return Promise.resolve(Response.json({ keys: [mocks.googleJwk] }));
       if (url !== 'https://oauth2.googleapis.com/token') {
         return realFetch(input, init);
       }
@@ -273,27 +292,88 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(await prisma.user.count({ where: { email: fresh } })).toBe(0);
   });
 
-  it('enforces DISABLE_SIGNUP after verification even with acceptance, with equal send-code behavior', async () => {
+  it('acknowledges queued sign-in codes without waiting for delayed or failed delivery', async () => {
+    mocks.providerDelay = 700;
+    mocks.providerFails = true;
+    try {
+      for (const existing of [true, false]) {
+        const email = addressFor(`async-${existing}`);
+        if (existing) await prisma.user.create({ data: { email, name: 'Existing', emailVerified: true } });
+        const start = performance.now();
+        const response = await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } });
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ success: true });
+        expect(performance.now() - start).toBeLessThan(350);
+        expect(mocks.queued.some((job) => job.to === email)).toBe(true);
+      }
+    } finally {
+      mocks.providerDelay = 0;
+      mocks.providerFails = false;
+    }
+  });
+
+  it('returns the same infrastructure error for every address when queue acknowledgement fails', async () => {
+    const email = addressFor('queue-existing');
+    await prisma.user.create({ data: { email, name: 'Existing' } });
+    mocks.queueFails = true;
+    try {
+      for (const address of [email, addressFor('queue-new')]) {
+        const response = await send('/email-otp/send-verification-otp', { body: { email: address, type: 'sign-in' } });
+        expect(response.status).toBe(503);
+        expect(await response.json()).toMatchObject({ code: 'AUTH_EMAIL_UNAVAILABLE' });
+      }
+    } finally {
+      mocks.queueFails = false;
+    }
+  });
+
+  it('has equal and bounded send-code timing distributions independent of delayed provider delivery', async () => {
+    const durations: number[][] = [[], []];
+    mocks.providerDelay = 450;
+    try {
+      for (let i = 0; i < 4; i++) {
+        const existing = addressFor(`timing-existing-${i}`);
+        await prisma.user.create({ data: { email: existing, name: 'Existing' } });
+        const addresses = [existing, addressFor(`timing-new-${i}`)];
+        for (const index of i % 2 ? [1, 0] : [0, 1]) {
+          const start = performance.now();
+          const response = await send('/email-otp/send-verification-otp', { body: { email: addresses[index], type: 'sign-in' } });
+          expect(response.status).toBe(200);
+          durations[index]?.push(performance.now() - start);
+        }
+      }
+      const medians = durations.map((sample) => sample.sort((a, b) => a - b)[2] as number);
+      expect(Math.max(...medians)).toBeLessThan(250);
+      expect(Math.abs((medians[0] as number) - (medians[1] as number))).toBeLessThan(150);
+    } finally {
+      mocks.providerDelay = 0;
+    }
+  });
+
+  it('closes creation only after a valid outstanding OTP and preserves invalid-code parity', async () => {
     const existing = addressFor('closed-otp-existing');
     const fresh = addressFor('closed-otp-new');
     await prisma.user.create({ data: { email: existing, name: 'Existing', emailVerified: true } });
+    await send('/email-otp/send-verification-otp', { body: { email: fresh, type: 'sign-in' } });
+    const outstanding = mocks.codes.get(fresh);
     const openAuth = auth;
     vi.resetModules();
     vi.stubEnv('DISABLE_SIGNUP', 'true');
     ({ auth } = await import('./server'));
     try {
-      const responses: Array<{ status: number; body: unknown; type?: string | null }> = [];
       for (const email of [existing, fresh]) {
-        const response = await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } });
-        responses.push({ status: response.status, body: await response.json() });
-        expect(mocks.codes.get(email)).toMatch(/^\d{6}$/);
+        const invalid = await send('/sign-in/email-otp', { body: { email, otp: 'invalid' } });
+        expect(invalid.status).toBe(400);
+        expect(await invalid.json()).toMatchObject({ code: 'INVALID_OTP' });
       }
-      expect(responses[0]).toEqual(responses[1]);
-      for (const acceptTerms of [undefined, true]) {
-        await send('/email-otp/send-verification-otp', { body: { email: fresh, type: 'sign-in' } });
-        const response = await send('/sign-in/email-otp', { body: { email: fresh, otp: mocks.codes.get(fresh), acceptTerms } });
-        expect(response.status).toBe(400);
-        expect(await response.json()).toMatchObject({ code: 'INVALID_OTP' });
+      const refused = await send('/sign-in/email-otp', { body: { email: fresh, otp: outstanding, acceptTerms: true } });
+      expect(refused.status).toBe(400);
+      expect(await refused.json()).toMatchObject({ code: 'SIGNUP_CLOSED' });
+      for (const email of [existing, addressFor('closed-new-job')]) {
+        const response = await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } });
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ success: true });
+        expect(mocks.queued.findLast((job) => job.to === email)?.auth).toMatchObject({ existingUserOnly: true });
       }
       expect(await prisma.user.count({ where: { email: fresh } })).toBe(0);
       const returning = await send('/sign-in/email-otp', { body: { email: existing, otp: mocks.codes.get(existing) } });
@@ -302,6 +382,70 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
       auth = openAuth;
       vi.unstubAllEnvs();
       vi.resetModules();
+    }
+  });
+
+  it.each([undefined, false])('does not create a Google account without explicit acceptance (%s)', async (acceptTerms) => {
+    const email = addressFor(`google-no-consent-${acceptTerms}`);
+    const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+    mocks.googleIdToken = `${encode({ alg: 'RS256' })}.${encode({ sub: email, email, email_verified: true, name: 'Synthetic', aud: GOOGLE_CLIENT_ID, iss: 'https://accounts.google.com', exp: Math.floor(Date.now() / 1000) + 3600 })}.signature`;
+    const started = await send('/sign-in/social', {
+      body: { provider: 'google', callbackURL: '/app', additionalData: { acceptTerms, serverContext: { termsVersion: TERMS_VERSION } } },
+    });
+    if (started.status === 200) {
+      const { url } = (await started.json()) as { url: string };
+      const response = await send(`/callback/google?code=synthetic&state=${encodeURIComponent(new URL(url).searchParams.get('state') ?? '')}`, {
+        cookie: setCookiePairs(started).join('; '),
+      });
+      expect(response.headers.get('location')).not.toBe('/app');
+    } else {
+      expect(started.status).toBe(400);
+      expect(await started.json()).toMatchObject({ code: 'TERMS_REQUIRED' });
+    }
+    expect(await prisma.user.count({ where: { email } })).toBe(0);
+  });
+
+  it('persists consent only in protected OAuth state and rejects tampering and replay', async () => {
+    const started = await send('/sign-in/social', {
+      body: { provider: 'google', callbackURL: '/app', additionalData: { acceptTerms: true, termsVersion: 'forged' } },
+    });
+    const { url } = (await started.json()) as { url: string };
+    const state = new URL(url).searchParams.get('state') as string;
+    const stored = await prisma.verification.findFirstOrThrow({ where: { identifier: `auth-state:${state}` } });
+    expect(JSON.parse(stored.value).serverContext).toMatchObject({ termsVersion: TERMS_VERSION });
+    const cookie = setCookiePairs(started).join('; ');
+    const tampered = await send(`/callback/google?code=synthetic&state=${state}tampered`, { cookie });
+    expect(tampered.headers.get('location')).not.toBe('/app');
+    const callback = `/callback/google?code=synthetic&state=${state}`;
+    await send(callback, { cookie });
+    const replay = await send(callback, { cookie });
+    expect(replay.headers.get('location')).toContain('state_mismatch');
+  });
+
+  it('allows an existing Google account to log in without the acceptance flag', async () => {
+    const existing = await createGoogleUser('google-returning-no-consent');
+    expectSignedInRedirect(await signInWithGoogle(existing.sub, existing.email, null));
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: existing.userId } })).toMatchObject({ termsAcceptedAt: null, termsVersion: null });
+  });
+
+  it('requires explicit consent for new Google ID-token accounts after provider verification', async () => {
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    mocks.googleJwk = { ...publicKey.export({ format: 'jwk' }), alg: 'RS256', use: 'sig', kid: 'synthetic' };
+    try {
+      const email = addressFor('google-id-token');
+      const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+      const signingInput = `${encode({ alg: 'RS256', kid: 'synthetic' })}.${encode({ sub: email, email, email_verified: true, name: 'Synthetic', aud: GOOGLE_CLIENT_ID, iss: 'https://accounts.google.com', iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600 })}`;
+      const token = `${signingInput}.${sign('RSA-SHA256', Buffer.from(signingInput), privateKey).toString('base64url')}`;
+      const response = await send('/sign-in/social', { body: { provider: 'google', idToken: { token } } });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ code: 'TERMS_REQUIRED' });
+      expect(await prisma.user.count({ where: { email } })).toBe(0);
+      const accepted = await send('/sign-in/social', { body: { provider: 'google', idToken: { token }, additionalData: { acceptTerms: true } } });
+      expect(accepted.status).toBe(200);
+      expect(await prisma.user.findUniqueOrThrow({ where: { email } })).toMatchObject({ termsVersion: TERMS_VERSION });
+      expect((await send('/sign-in/social', { body: { provider: 'google', idToken: { token } } })).status).toBe(200);
+    } finally {
+      mocks.googleJwk = null;
     }
   });
 

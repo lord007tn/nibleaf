@@ -1432,6 +1432,8 @@
   "auth_google_submitting": "Opening Google…",
   "auth_divider_or": "or",
   "auth_legal_continueprefix": "By continuing, you agree to the",
+  "auth_legal_signupclosed": "New account registration is closed on this instance. Contact your administrator for access.",
+  "auth_legal_termsrequired": "Accept the terms, then request a new code.",
   "auth_name_title": "What should we call you?",
   "auth_name_description": "Add your name to continue to your workspace.",
   "auth_name_required": "Enter your name.",

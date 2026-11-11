@@ -1655,6 +1655,8 @@ export const MESSAGE_IDS = {
   'auth.google.submitting': 'auth_google_submitting',
   'auth.divider.or': 'auth_divider_or',
   'auth.legal.continuePrefix': 'auth_legal_continueprefix',
+  'auth.legal.signupClosed': 'auth_legal_signupclosed',
+  'auth.legal.termsRequired': 'auth_legal_termsrequired',
   'auth.name.title': 'auth_name_title',
   'auth.name.description': 'auth_name_description',
   'auth.name.required': 'auth_name_required',

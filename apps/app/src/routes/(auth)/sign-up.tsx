@@ -95,6 +95,11 @@ function SignUpPage() {
       const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), acceptTerms: true, name: name.trim() });
       if (result.error) {
         setError(friendlyAuthError(result.error, t, t('auth.otp.invalid')));
+        if (result.error.code === 'TERMS_REQUIRED') {
+          setCodeSent(false);
+          setOtp('');
+          resetCountdown();
+        }
         return;
       }
       await finishSignUp();
@@ -108,7 +113,7 @@ function SignUpPage() {
   const signUpWithGoogle = async () => {
     setError(null);
     setIsGoogleSubmitting(true);
-    const result = await signIn.social({ provider: 'google', callbackURL: afterAuthPath });
+    const result = await signIn.social({ provider: 'google', callbackURL: afterAuthPath, additionalData: { acceptTerms: true } });
     if (result.error) {
       setError(friendlyAuthError(result.error, t, t('auth.signUp.error')));
       setIsGoogleSubmitting(false);

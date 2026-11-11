@@ -1357,6 +1357,8 @@
   "auth_google_submitting": "खुल रहा है Google…",
   "auth_divider_or": "या",
   "auth_legal_continueprefix": "जारी रखकर, आप सहमत होते हैं:",
+  "auth_legal_signupclosed": "इस इंस्टेंस पर नए खातों का पंजीकरण बंद है। पहुँच के लिए अपने व्यवस्थापक से संपर्क करें।",
+  "auth_legal_termsrequired": "शर्तें स्वीकार करें, फिर नया कोड माँगें।",
   "auth_name_title": "हम आपको किस नाम से बुलाएँ?",
   "auth_name_description": "अपने कार्यक्षेत्र पर जाने के लिए अपना नाम जोड़ें।",
   "auth_name_required": "अपना नाम दर्ज करें।",

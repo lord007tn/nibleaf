@@ -1411,6 +1411,8 @@
   "auth_google_submitting": "Ouverture de Google…",
   "auth_divider_or": "ou",
   "auth_legal_continueprefix": "En continuant, vous acceptez les",
+  "auth_legal_signupclosed": "La création de nouveaux comptes est fermée sur cette instance. Contactez votre administrateur pour obtenir un accès.",
+  "auth_legal_termsrequired": "Acceptez les conditions, puis demandez un nouveau code.",
   "auth_name_title": "Comment vous appelez-vous ?",
   "auth_name_description": "Ajoutez votre nom pour accéder à votre espace de travail.",
   "auth_name_required": "Saisissez votre nom.",

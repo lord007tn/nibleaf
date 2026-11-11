@@ -1411,6 +1411,8 @@
   "auth_google_submitting": "Abriendo Google…",
   "auth_divider_or": "o",
   "auth_legal_continueprefix": "Al continuar, aceptas los",
+  "auth_legal_signupclosed": "El registro de nuevas cuentas está cerrado en esta instancia. Contacta con tu administrador para obtener acceso.",
+  "auth_legal_termsrequired": "Acepta los términos y luego solicita un código nuevo.",
   "auth_name_title": "¿Cómo te llamas?",
   "auth_name_description": "Añade tu nombre para continuar a tu espacio de trabajo.",
   "auth_name_required": "Introduce tu nombre.",

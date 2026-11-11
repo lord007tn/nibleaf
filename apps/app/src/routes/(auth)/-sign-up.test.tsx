@@ -98,7 +98,7 @@ describe('sign-up availability', () => {
     }
     const google = container.querySelector<HTMLButtonElement>('button');
     await act(async () => google?.click());
-    expect(mocks.social).toHaveBeenCalledWith(expect.objectContaining({ provider: 'google' }));
+    expect(mocks.social).toHaveBeenCalledWith(expect.objectContaining({ provider: 'google', additionalData: { acceptTerms: true } }));
   });
 
   it.each([

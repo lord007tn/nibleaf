@@ -1456,6 +1456,8 @@
   "auth_google_submitting": "جارٍ فتح Google…",
   "auth_divider_or": "أو",
   "auth_legal_continueprefix": "بالمتابعة، فإنك توافق على",
+  "auth_legal_signupclosed": "إنشاء حسابات جديدة مغلق في هذه النسخة. تواصل مع المسؤول للحصول على صلاحية الوصول.",
+  "auth_legal_termsrequired": "وافق على الشروط، ثم اطلب رمزًا جديدًا.",
   "auth_name_title": "بماذا نناديك؟",
   "auth_name_description": "أضف اسمك للمتابعة إلى مساحة عملك.",
   "auth_name_required": "أدخل اسمك.",

@@ -1402,6 +1402,8 @@
   "auth_google_submitting": "کھل رہا ہے Google…",
   "auth_divider_or": "یا",
   "auth_legal_continueprefix": "جاری رکھ کر، آپ ان سے اتفاق کرتے ہیں:",
+  "auth_legal_signupclosed": "اس انسٹینس پر نئے اکاؤنٹس کی رجسٹریشن بند ہے۔ رسائی کے لیے اپنے منتظم سے رابطہ کریں۔",
+  "auth_legal_termsrequired": "شرائط قبول کریں، پھر نیا کوڈ طلب کریں۔",
   "auth_name_title": "ہم آپ کو کس نام سے پکاریں؟",
   "auth_name_description": "اپنی ورک اسپیس پر جانے کے لیے اپنا نام شامل کریں۔",
   "auth_name_required": "اپنا نام درج کریں۔",
