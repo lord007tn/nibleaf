@@ -341,6 +341,29 @@ describe('rollback progress', () => {
       expect(mocks.success).toHaveBeenCalledOnce();
       expect(mocks.success).toHaveBeenCalledWith('deploy.published', expect.objectContaining({ action: expect.anything() }));
     });
+
+    it('toasts a publish that fails while the dialog is closed, exactly once', async () => {
+      mocks.deployments.data = [deployment('first-1', 1, 'BUILDING')];
+      await renderFirst(false);
+      // A terminal failure (a FAILED row without completedAt is still retrying).
+      mocks.deployments.data = [{ ...deployment('first-1', 1, 'FAILED'), completedAt: '2026-11-07T00:05:00Z' }];
+      await renderFirst(false);
+      await renderFirst(false);
+      expect(mocks.error).toHaveBeenCalledOnce();
+      expect(mocks.error).toHaveBeenCalledWith('deploy.failed');
+      expect(mocks.success).not.toHaveBeenCalled();
+    });
+
+    it('says a failed publish in the open dialog only, and does not replay it on close', async () => {
+      mocks.deployments.data = [deployment('first-1', 1, 'BUILDING')];
+      await renderFirst();
+      // A terminal failure (a FAILED row without completedAt is still retrying).
+      mocks.deployments.data = [{ ...deployment('first-1', 1, 'FAILED'), completedAt: '2026-11-07T00:05:00Z' }];
+      await renderFirst();
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('deploy.failed');
+      await renderFirst(false);
+      expect(mocks.error).not.toHaveBeenCalled();
+    });
   });
 
   it('keeps an untracked legacy failure with no completion time visible as failed', async () => {

@@ -350,13 +350,14 @@ describe('publish draft barrier', () => {
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
     const publish = [...document.querySelectorAll('button')].find((button) => button.textContent === 'publish.now');
     if (!publish) throw new Error('Publish action was not rendered');
-    expect(publish.disabled).toBe(true);
-    expect(document.body.textContent).toContain('publish.checking');
+    // Unavailable, and says why (it stays focusable, so it is aria-disabled).
+    expect(isUnavailable(publish)).toBe(true);
+    expect(reasonOf(publish)).toBe('publish.checking');
     await act(async () => publish.click());
     expect(mutate).not.toHaveBeenCalled();
     preflight.isFetching = false;
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
-    expect(publish.disabled).toBe(false);
+    expect(isUnavailable(publish)).toBe(false);
   });
 
   it('uses the post-save preflight result before starting a deployment', async () => {
@@ -530,17 +531,21 @@ describe('publish draft barrier', () => {
       expect(label?.className).not.toMatch(/uppercase/);
     });
 
-    it('holds focus on the dialog while the first check runs, then hands it to the primary action', async () => {
+    it('opens on the primary action while the first check runs, explained, never on the note', async () => {
       preflight.isFetching = true;
       await renderModal();
       await settle();
-      const dialog = document.querySelector('[role="dialog"]');
-      expect(document.activeElement).toBe(dialog);
+      const publish = buttonNamed('publish.now');
+      expect(document.activeElement).toBe(publish);
+      expect(publish.getAttribute('aria-disabled')).toBe('true');
       expect(document.activeElement).not.toBe(document.getElementById('publish-message'));
       preflight.isFetching = false;
       await renderModal();
       await settle();
-      expect(document.activeElement).toBe(buttonNamed('publish.now'));
+      // The same button, now ready, keeps focus.
+      expect(buttonNamed('publish.now')).toBe(publish);
+      expect(document.activeElement).toBe(publish);
+      expect(publish.getAttribute('aria-disabled')).toBeNull();
     });
 
     it('opens on the explained, still-focusable action when there is nothing to publish', async () => {
@@ -551,6 +556,35 @@ describe('publish draft barrier', () => {
       const publish = buttonNamed('publish.now');
       expect(document.activeElement).toBe(publish);
       expect(publish.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('keeps focus on the same action through a background re-check and back', async () => {
+      preflight.changes = [];
+      preflight.upToDate = true;
+      await renderModal();
+      await settle();
+      const publish = buttonNamed('publish.now');
+      expect(document.activeElement).toBe(publish);
+      // A background re-read: the reason goes away while it runs, then comes back.
+      preflight.isFetching = true;
+      await renderModal();
+      await settle();
+      expect(buttonNamed('publish.now')).toBe(publish);
+      expect(document.activeElement).toBe(publish);
+      preflight.isFetching = false;
+      await renderModal();
+      await settle();
+      expect(buttonNamed('publish.now')).toBe(publish);
+      expect(document.activeElement).toBe(publish);
+      expect(publish.getAttribute('aria-disabled')).toBe('true');
+      // And when changes arrive, the same button becomes the ready action.
+      preflight.upToDate = false;
+      preflight.changes = undefined;
+      await renderModal();
+      await settle();
+      expect(buttonNamed('publish.now')).toBe(publish);
+      expect(document.activeElement).toBe(publish);
+      expect(publish.getAttribute('aria-disabled')).toBeNull();
     });
   });
 });

@@ -222,11 +222,11 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
   // needs at least one page to put online.
   const hasPages = sorted.some((change) => change.kind === 'PAGE');
   const nothingToPublish = !checkingChanges && !preflightFailed && (neverPublished ? !hasPages : pending?.upToDate === true);
-  // Every settled blocked state says why, which also keeps the action focusable.
-  // A check in progress is brief and announced on its own; giving it a reason
-  // would re-create the button (and drop focus) when the check ends.
+  // Every blocked state says why, which also keeps the action focusable: a check
+  // in progress included, so a background re-check never takes focus away from
+  // it (a natively disabled button would drop focus to the page).
   const publishBlockedReason = checkingChanges
-    ? undefined
+    ? t('publish.checking')
     : preflightFailed
       ? t('publish.preflightFailed')
       : redirectIssues.length > 0

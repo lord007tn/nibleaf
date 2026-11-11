@@ -22,11 +22,14 @@ function TooltipButton({
   const reason = loading ? undefined : disabledReason
   const content = reason != null && reason !== false && reason !== "" ? reason : tooltip
   const button = <Button disabledReason={disabledReason} loading={loading} {...props} />
-  if (content == null || content === false || content === "") return button
+  const hasContent = content != null && content !== false && content !== ""
+  // Always the same tree, with the tooltip's popup only when there is something
+  // to say: a reason or tooltip that comes and goes must not remount the button
+  // (a focused button would lose focus to the page).
   return (
     <Tooltip>
       <TooltipTrigger render={button} />
-      <TooltipContent>{content}</TooltipContent>
+      {hasContent ? <TooltipContent>{content}</TooltipContent> : null}
     </Tooltip>
   )
 }

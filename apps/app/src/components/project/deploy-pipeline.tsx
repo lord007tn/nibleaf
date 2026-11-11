@@ -195,6 +195,11 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     if (failed && restoration && deployment?.id === restoration.id && !announced.current.has(`${deployment.id}:failed`)) {
       announced.current.add(`${deployment.id}:failed`);
       toast.error(t('deploy.rollback.error'));
+    } else if (failed && deployment && (open || deployment.id === observedDeploymentId) && !announced.current.has(`${deployment.id}:failed`)) {
+      // A publish that fails is announced once too: in the open dialog (its title
+      // and status line), or as a toast when it fails after the dialog closed.
+      announced.current.add(`${deployment.id}:failed`);
+      if (!open) toast.error(t('deploy.failed'));
     }
   }, [open, done, failed, deployment, siteUrl, t, observedDeploymentId, restoration, superseded]);
 
