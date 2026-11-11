@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   project: vi.fn(),
   prefetch: vi.fn(),
   section: 'general' as string | undefined,
-  appearanceSection: undefined as 'branding' | 'redirects' | undefined,
+  appearanceSection: undefined as string | undefined,
   navigate: vi.fn(),
   refetch: vi.fn(),
   blocker: vi.fn(),
@@ -27,8 +27,26 @@ vi.mock('@tanstack/react-router', () => ({
   }),
   useNavigate: () => mocks.navigate,
   useBlocker: mocks.blocker,
-  Link: ({ children, to, search }: { children: ReactNode; to: string; search?: { section?: string } }) => (
-    <a href={`${to.replace('$projectId', 'project-1')}${search?.section ? `?section=${search.section}` : ''}`}>{children}</a>
+  Link: ({
+    children,
+    to,
+    search,
+    className,
+    'aria-current': current,
+  }: {
+    children: ReactNode;
+    to: string;
+    search?: { section?: string };
+    className?: string;
+    'aria-current'?: 'page';
+  }) => (
+    <a
+      aria-current={current}
+      className={className}
+      href={`${to.replace('$projectId', 'project-1')}${search?.section ? `?section=${search.section}` : ''}`}
+    >
+      {children}
+    </a>
   ),
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
@@ -99,7 +117,13 @@ vi.mock('@/components/project-settings/general-section', async () => {
     ),
   };
 });
-vi.mock('@/components/project-settings/languages-section', () => ({ LanguagesSection: () => <div data-testid="language-settings" /> }));
+vi.mock('@/components/project-settings/languages-section', () => ({
+  LanguagesSection: () => (
+    <div data-testid="language-settings">
+      <h1>Languages</h1>
+    </div>
+  ),
+}));
 vi.mock('@/components/project-settings/members-section', () => ({ MembersSection: () => null }));
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
 vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
@@ -149,26 +173,37 @@ describe('site settings permissions', () => {
     expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(3);
   });
 
-  it('validates the redirects deep link and ignores unsupported subsections', () => {
+  it('sends an old Appearance → Redirects link to the Redirects page and ignores unsupported subsections', () => {
     const validate = Route.options.validateSearch as (search: Record<string, unknown>) => Record<string, unknown>;
-    expect(validate({ section: 'appearance', appearanceSection: 'redirects' })).toEqual({ section: 'appearance', appearanceSection: 'redirects' });
+    expect(validate({ section: 'appearance', appearanceSection: 'redirects' })).toEqual({ section: 'redirects' });
+    expect(validate({ section: 'appearance', appearanceSection: 'navbar' })).toEqual({ section: 'appearance', appearanceSection: 'navbar' });
     expect(validate({ section: 'appearance', appearanceSection: 'arbitrary' })).toEqual({ section: 'appearance' });
     expect(validate({ section: 'general', appearanceSection: 'redirects' })).toEqual({ section: 'general' });
   });
 
-  it('opens Redirects for an Admin, including a deep link after Appearance is mounted', async () => {
+  it('opens an Appearance subsection for an Admin, including a deep link after Appearance is mounted', async () => {
     mocks.section = 'appearance';
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
     expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('branding');
-    mocks.appearanceSection = 'redirects';
+    mocks.appearanceSection = 'navbar';
     await act(async () => root.render(<SettingsPage />));
-    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('redirects');
+    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('navbar');
+  });
+
+  it.each(['seo', 'redirects', 'variables'])('gives %s a page of its own for an Admin', async (section) => {
+    mocks.section = section;
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe(section);
+    // A page, not a subsection: no Appearance list above it.
+    expect(container.textContent).not.toContain('Choose Branding');
+    expect(container.querySelector(`nav a[href$="?section=${section}"]`)?.getAttribute('aria-current')).toBe('page');
   });
 
   it('keeps the subsection URL current and preserves the unsaved-change guard', async () => {
     mocks.section = 'appearance';
-    mocks.appearanceSection = 'redirects';
+    mocks.appearanceSection = 'navbar';
     mocks.dirty = true;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
@@ -178,7 +213,7 @@ describe('site settings permissions', () => {
     expect(blocker.enableBeforeUnload()).toBe(true);
     mocks.confirm.mockResolvedValueOnce(false);
     await expect(blocker.shouldBlockFn()).resolves.toBe(true);
-    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('redirects');
+    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('navbar');
     mocks.confirm.mockResolvedValueOnce(true);
     await expect(blocker.shouldBlockFn()).resolves.toBe(false);
     mocks.appearanceSection = 'branding';
@@ -188,7 +223,7 @@ describe('site settings permissions', () => {
 
   it('keeps Appearance restricted to Admins when an Editor follows a subsection deep link', async () => {
     mocks.section = 'appearance';
-    mocks.appearanceSection = 'redirects';
+    mocks.appearanceSection = 'navbar';
     await act(async () => root.render(<SettingsPage />));
     expect(container.querySelector('[data-testid="appearance-subsection"]')).toBeNull();
     expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.permissions.title');
@@ -218,11 +253,12 @@ describe('site settings permissions', () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('uses cached editor permissions to redirect the default entry even after a background member failure', async () => {
+  it("uses cached editor permissions to open the editor's first page on the default entry, even after a background member failure", async () => {
     mocks.section = undefined;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'member' }] }, isPending: false, isError: true });
     await act(async () => root.render(<SettingsPage />));
-    expect(mocks.navigate).toHaveBeenCalledWith({ search: { section: 'languages' }, replace: true });
+    expect(container.querySelector('[data-testid="language-settings"]')).not.toBeNull();
+    expect(mocks.navigate).not.toHaveBeenCalled();
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 
@@ -237,11 +273,55 @@ describe('site settings permissions', () => {
     ]);
   });
 
-  it("redirects the default entry to the editor's first permitted section", async () => {
+  it("opens the editor's first permitted page on the default entry, without a redirect", async () => {
     mocks.section = undefined;
     await act(async () => root.render(<SettingsPage />));
-    expect(mocks.navigate).toHaveBeenCalledWith({ search: { section: 'languages' }, replace: true });
+    expect(container.querySelector('[data-testid="language-settings"]')).not.toBeNull();
+    expect(container.querySelector('nav a[href$="?section=languages"]')?.getAttribute('aria-current')).toBe('page');
+    expect(mocks.navigate).not.toHaveBeenCalled();
     expect(container.textContent).not.toContain('settings.permissions.title');
+  });
+
+  it('shows the list of pages on a phone when no page is chosen, and each page links back to it', async () => {
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    mocks.section = undefined;
+    await act(async () => root.render(<SettingsPage />));
+    const nav = container.querySelector('nav');
+    const content = container.querySelector('[data-testid="general-settings"]')?.closest('[tabindex="-1"]');
+    // Below md the list is the page and the content waits; from md both show.
+    expect(nav?.classList.contains('hidden')).toBe(false);
+    expect(content?.className).toContain('hidden md:block');
+
+    mocks.section = 'general';
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('nav')?.className).toContain('hidden md:block');
+    const back = [...container.querySelectorAll('a')].find((link) => link.textContent === 'settings.backToAll');
+    expect(back?.getAttribute('href')).toBe('/app/projects/project-1/settings');
+    expect(back?.className).toContain('md:hidden');
+  });
+
+  it('labels the nav, and makes every item a link to its page', async () => {
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    const nav = container.querySelector('nav');
+    expect(nav?.getAttribute('aria-label')).toBe('settings.heading');
+    expect(nav?.querySelectorAll('button')).toHaveLength(0);
+    expect(nav?.querySelector('a[href$="?section=general"]')?.getAttribute('aria-current')).toBe('page');
+    expect(nav?.querySelector('a[href$="?section=domain"]')?.hasAttribute('aria-current')).toBe(false);
+    // One scroll: the page scrolls, and the nav stays put below the site header.
+    expect(container.innerHTML).not.toContain('h-[calc(100vh');
+    expect(nav?.className).toContain('md:sticky');
+  });
+
+  it("moves focus to the new page's heading when the page changes", async () => {
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    expect(document.activeElement).toBe(document.body);
+    mocks.section = 'languages';
+    await act(async () => root.render(<SettingsPage />));
+    const heading = container.querySelector('[data-testid="language-settings"] h1');
+    expect(document.activeElement).toBe(heading);
+    expect(heading?.getAttribute('tabindex')).toBe('-1');
   });
 
   it.each(['general', 'danger', 'smartAi'])('explains an explicit restricted %s link without redirecting', async (section) => {
@@ -317,20 +397,23 @@ describe('site settings permissions', () => {
     expect(container.querySelector('[data-testid="danger-settings"]')).not.toBeNull();
   });
 
-  it('groups sections as Website, Publishing, Team & access, Usage and Advanced', async () => {
+  it('groups pages as Website, Content, Publishing, AI, Team and Usage, with the Danger zone last', async () => {
     mocks.orgRole = 'owner';
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'owner' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
     const nav = container.querySelector('nav')?.textContent ?? '';
     const order = [
       'settings.group.website',
+      'settings.group.content',
       'settings.group.publishing',
+      'settings.group.ai',
       'settings.group.team',
       'settings.group.usage',
-      'settings.group.advanced',
+      'settings.danger',
     ].map((key) => nav.indexOf(key));
     expect(order.every((index) => index >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(nav).not.toContain('settings.group.advanced');
     // Plan and Notifications moved to the organization and Account.
     expect(nav).not.toContain('settings.plan');
     expect(nav).not.toContain('settings.notifications');

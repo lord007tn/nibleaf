@@ -203,7 +203,6 @@
   "settings_group_site": "الموقع",
   "settings_group_deployment": "الاستيراد والمزامنة",
   "settings_group_workspace": "مساحة العمل",
-  "settings_group_advanced": "متقدّم",
   "settings_general": "عام",
   "settings_branding": "العلامة التجارية",
   "settings_styling": "التنسيق",
@@ -4273,6 +4272,8 @@
   "settings_group_publishing": "النشر",
   "settings_group_team": "الفريق والوصول",
   "settings_group_usage": "الاستخدام",
+  "settings_group_content": "المحتوى",
+  "settings_group_ai": "الذكاء الاصطناعي",
   "settings_moved_plan": "تُدار الخطة والفوترة على مستوى المؤسسة:",
   "settings_moved_notifications": "إشعارات البريد الإلكتروني أصبحت شخصية الآن.",
   "settings_moved_notificationslink": "إعدادات الحساب ← إشعارات البريد الإلكتروني",
@@ -4322,5 +4323,6 @@
   "settings_usage_reason_catchingUp": "ما زال الاستخدام الأخير قيد الاحتساب. سيُحدَّث هذا المجموع خلال دقائق.",
   "settings_usage_reason_tokensIncomplete": "لم تُبلغ بعض إجابات الذكاء الاصطناعي عن عدد رموزها بعد، لذا سيكون هذا المجموع أقل من الحقيقي.",
   "settings_usage_reason_notMeasured": "لم يُقَس هذا بعد. يُحدَّث بعد الاحتساب اليومي التالي.",
-  "settings_usage_reason_seatsUnavailable": "تعذّر احتساب مقاعد المحررين الآن. أعد التحميل للمحاولة مجددًا."
+  "settings_usage_reason_seatsUnavailable": "تعذّر احتساب مقاعد المحررين الآن. أعد التحميل للمحاولة مجددًا.",
+  "settings_backtoall": "كل الإعدادات"
 }

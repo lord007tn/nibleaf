@@ -535,7 +535,8 @@ export const MESSAGE_IDS = {
   'settings.group.site': 'settings_group_site',
   'settings.group.deployment': 'settings_group_deployment',
   'settings.group.workspace': 'settings_group_workspace',
-  'settings.group.advanced': 'settings_group_advanced',
+  'settings.group.content': 'settings_group_content',
+  'settings.group.ai': 'settings_group_ai',
   'settings.general': 'settings_general',
   'settings.branding': 'settings_branding',
   'settings.styling': 'settings_styling',
@@ -4166,6 +4167,7 @@ export const MESSAGE_IDS = {
   'dashboard.ai.sessionExpired': 'dashboard_ai_sessionexpired',
   'dashboard.ai.signInAgain': 'dashboard_ai_signinagain',
   'settings.appearance.theme.system': 'settings_appearance_theme_system',
+  'settings.backToAll': 'settings_backtoall',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

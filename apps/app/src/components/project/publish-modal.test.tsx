@@ -145,9 +145,7 @@ describe('publish draft barrier', () => {
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
     expect(document.body.textContent).toContain('publish.redirectIssue.cycle');
     expect(document.body.textContent).not.toContain('RAW developer');
-    const link = document.querySelector<HTMLAnchorElement>(
-      'a[href="/app/projects/project-a/settings?section=appearance&appearanceSection=redirects"]',
-    );
+    const link = document.querySelector<HTMLAnchorElement>('a[href="/app/projects/project-a/settings?section=redirects"]');
     expect(link?.textContent).toBe('publish.editRedirects');
     const publish = [...document.querySelectorAll('button')].find((button) => button.textContent === 'publish.now');
     expect(publish?.disabled).toBe(true);
@@ -197,7 +195,7 @@ describe('publish draft barrier', () => {
     preflight.membersError = false;
     preflight.membersMissing = false;
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
-    expect(document.querySelector('a[href*="appearanceSection=redirects"]')).not.toBeNull();
+    expect(document.querySelector('a[href*="section=redirects"]')).not.toBeNull();
   });
 
   it.each(['admin', 'owner', 'member'])('retains the cached %s role after a failed background refetch', async (role) => {
@@ -212,7 +210,7 @@ describe('publish draft barrier', () => {
     if (role === 'member') {
       expect(document.body.textContent).toContain('publish.redirectsAskAdmin');
     } else {
-      expect(document.querySelector('a[href*="appearanceSection=redirects"]')).not.toBeNull();
+      expect(document.querySelector('a[href*="section=redirects"]')).not.toBeNull();
       expect(document.body.textContent).not.toContain('publish.redirectsAskAdmin');
     }
   });

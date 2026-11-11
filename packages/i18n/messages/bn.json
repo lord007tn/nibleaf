@@ -156,7 +156,6 @@
   "settings_group_site": "সাইট",
   "settings_group_deployment": "ইমপোর্ট ও সিঙ্ক",
   "settings_group_workspace": "কর্মক্ষেত্র",
-  "settings_group_advanced": "উন্নত",
   "settings_general": "সাধারণ",
   "settings_branding": "ব্র্যান্ডিং",
   "settings_styling": "স্টাইলিং",
@@ -4169,6 +4168,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "কনটেন্ট",
+  "settings_group_ai": "এআই",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4218,5 +4219,6 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "সব সেটিংস"
 }

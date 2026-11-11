@@ -165,7 +165,6 @@
   "settings_group_site": "سائٹ",
   "settings_group_deployment": "درآمد اور ہم آہنگی",
   "settings_group_workspace": "کام کی جگہ",
-  "settings_group_advanced": "اعلی درجے کی",
   "settings_general": "جنرل",
   "settings_branding": "برانڈنگ",
   "settings_styling": "اسٹائلنگ",
@@ -4225,6 +4224,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "مواد",
+  "settings_group_ai": "اے آئی",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4274,5 +4275,6 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "تمام ترتیبات"
 }
