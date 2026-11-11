@@ -279,6 +279,18 @@ describe('CommandPalette', () => {
       expect(setting).toBeGreaterThan(site);
     });
 
+    it('moves the group with the best match to the top, even when its heading has spaces', async () => {
+      mocks.t.mockImplementation((key: string) => (key === 'command.group.settings' ? 'Site settings' : key));
+      await render(true);
+      await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'domain');
+      const visibleGroups = () =>
+        [...document.querySelectorAll<HTMLElement>('[cmdk-group]')].filter((node) => !node.hidden).map((node) => node.getAttribute('data-value'));
+      expect(visibleGroups()[0]).toBe('settings');
+      // A site-name search still leads with the site.
+      await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'Nibleaf');
+      expect(visibleGroups()[0]).toBe('projects');
+    });
+
     it('finds Invite outside a website and opens the organization members', async () => {
       await render(true);
       await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'invite');

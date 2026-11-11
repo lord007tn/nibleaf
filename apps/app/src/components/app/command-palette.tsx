@@ -33,7 +33,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react';
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, Fragment, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useOrganizationSwitcherProjects, usePages, useSwitcher } from '@/hooks/api';
@@ -154,6 +154,107 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     navigate({ to, params, search } as never);
   };
 
+  // Every group has a URL-safe `value`: cmdk finds groups to reorder by
+  // `encodeURIComponent(value)`, so a heading with a space ("Site settings",
+  // any Arabic heading) never moved and the best match could sit below a
+  // weaker one in another group.
+  const pagesGroup =
+    projectId && pageItems.length > 0 ? (
+      <CommandGroup heading={t('command.group.pages')} value="pages">
+        {pageItems.map((page) => {
+          const title = page.config?.sidebarTitle?.trim() || page.title;
+          return (
+            <CommandItem
+              key={page.id}
+              keywords={[title, page.slug]}
+              onSelect={() => go('/app/projects/$projectId/editor', { projectId }, { page: page.id })}
+              value={`page ${page.id}`}
+            >
+              <FileText className="size-4" />
+              <span className="truncate" dir="auto">
+                {title}
+              </span>
+            </CommandItem>
+          );
+        })}
+      </CommandGroup>
+    ) : null;
+  const projectsGroup = (
+    <CommandGroup heading={t('command.group.projects')} value="projects">
+      {(projects ?? []).map((project) => (
+        <CommandItem
+          key={project.id}
+          keywords={[project.name, project.domain ?? '']}
+          value={`project ${project.id}`}
+          onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
+        >
+          <BookText className="size-4" />
+          <span className="truncate" dir="auto">
+            {project.name}
+          </span>
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  );
+  const settingsGroup =
+    settingsSites.length > 0 ? (
+      <CommandGroup heading={t('command.group.settings')} value="settings">
+        {settingsSites.flatMap((site) =>
+          SETTINGS_DESTINATIONS.map((destination) => {
+            const label = t(destination.labelKey);
+            return (
+              <CommandItem
+                key={`${site.id}-${destination.section}`}
+                keywords={[label, site.name, t('command.group.settings')]}
+                onSelect={() => go('/app/projects/$projectId/settings', { projectId: site.id }, { section: destination.section })}
+                value={`settings ${site.id} ${destination.aliases}`}
+              >
+                <destination.icon className="size-4" />
+                <span className="flex-1 truncate">{label}</span>
+                {projectId ? null : (
+                  <span className="max-w-[45%] truncate text-muted-foreground text-xs" dir="auto">
+                    {site.name}
+                  </span>
+                )}
+              </CommandItem>
+            );
+          }),
+        )}
+      </CommandGroup>
+    ) : null;
+  // cmdk does not reliably reorder whole groups, so the result groups are ordered
+  // here by their best match, with the same scorer cmdk uses for items
+  // (production audit WORKSPACE-16: "domain" must find Custom domain before a
+  // site whose name merely contains those letters). Stable: ties keep this order.
+  const bestMatch = (entries: ReadonlyArray<readonly [string, readonly string[]]>) =>
+    searching ? Math.max(0, ...entries.map(([value, keywords]) => contiguousFirstFilter(value, query, [...keywords]))) : 0;
+  const orderedResultGroups = [
+    {
+      key: 'pages',
+      node: pagesGroup,
+      score: bestMatch(pageItems.map((page) => [`page ${page.id}`, [page.config?.sidebarTitle?.trim() || page.title, page.slug]] as const)),
+    },
+    {
+      key: 'projects',
+      node: projectsGroup,
+      score: bestMatch((projects ?? []).map((project) => [`project ${project.id}`, [project.name, project.domain ?? '']] as const)),
+    },
+    {
+      key: 'settings',
+      node: settingsGroup,
+      score: bestMatch(
+        settingsSites.flatMap((site) =>
+          SETTINGS_DESTINATIONS.map(
+            (destination) =>
+              [`settings ${site.id} ${destination.aliases}`, [t(destination.labelKey), site.name, t('command.group.settings')]] as const,
+          ),
+        ),
+      ),
+    },
+  ]
+    .sort((a, b) => b.score - a.score)
+    .map((group) => <Fragment key={group.key}>{group.node}</Fragment>);
+
   return (
     <>
       <CommandDialog
@@ -186,67 +287,8 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           )}
           {pagesPending ? <PaletteLoadingRows heading={t('command.group.pages')} /> : null}
           {projectsPending ? <PaletteLoadingRows heading={t('command.group.projects')} /> : null}
-          {projectId && pageItems.length > 0 ? (
-            <CommandGroup heading={t('command.group.pages')}>
-              {pageItems.map((page) => {
-                const title = page.config?.sidebarTitle?.trim() || page.title;
-                return (
-                  <CommandItem
-                    key={page.id}
-                    keywords={[title, page.slug]}
-                    onSelect={() => go('/app/projects/$projectId/editor', { projectId }, { page: page.id })}
-                    value={`page ${page.id}`}
-                  >
-                    <FileText className="size-4" />
-                    <span className="truncate" dir="auto">
-                      {title}
-                    </span>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          ) : null}
-          <CommandGroup heading={t('command.group.projects')}>
-            {(projects ?? []).map((project) => (
-              <CommandItem
-                key={project.id}
-                keywords={[project.name, project.domain ?? '']}
-                value={`project ${project.id}`}
-                onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
-              >
-                <BookText className="size-4" />
-                <span className="truncate" dir="auto">
-                  {project.name}
-                </span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          {settingsSites.length > 0 ? (
-            <CommandGroup heading={t('command.group.settings')}>
-              {settingsSites.flatMap((site) =>
-                SETTINGS_DESTINATIONS.map((destination) => {
-                  const label = t(destination.labelKey);
-                  return (
-                    <CommandItem
-                      key={`${site.id}-${destination.section}`}
-                      keywords={[label, site.name, t('command.group.settings')]}
-                      onSelect={() => go('/app/projects/$projectId/settings', { projectId: site.id }, { section: destination.section })}
-                      value={`settings ${site.id} ${destination.aliases}`}
-                    >
-                      <destination.icon className="size-4" />
-                      <span className="flex-1 truncate">{label}</span>
-                      {projectId ? null : (
-                        <span className="max-w-[45%] truncate text-muted-foreground text-xs" dir="auto">
-                          {site.name}
-                        </span>
-                      )}
-                    </CommandItem>
-                  );
-                }),
-              )}
-            </CommandGroup>
-          ) : null}
-          <CommandGroup heading={t('command.group.actions')}>
+          {orderedResultGroups}
+          <CommandGroup heading={t('command.group.actions')} value="actions">
             {projectId ? (
               <>
                 <CommandItem
@@ -326,7 +368,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               {t(resolvedTheme === 'dark' ? 'account.lightMode' : 'account.darkMode')}
             </CommandItem>
           </CommandGroup>
-          <CommandGroup heading={t('command.group.goTo')}>
+          <CommandGroup heading={t('command.group.goTo')} value="go-to">
             {/* cmdk matches the query against `value`/`keywords`, never the rendered
                 label, so the localized label must be a keyword to be searchable. */}
             {organization ? (
@@ -377,7 +419,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             </CommandItem>
           </CommandGroup>
           {organizations.length > 1 ? (
-            <CommandGroup heading={t('command.group.switchOrganization')}>
+            <CommandGroup heading={t('command.group.switchOrganization')} value="switch-organization">
               {organizations.map((org) => (
                 <CommandItem
                   key={org.id}
