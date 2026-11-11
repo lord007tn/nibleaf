@@ -152,11 +152,9 @@
   "preview_privatebody": "只有此站点的成员才能打开它的拉取请求预览。使用你的团队账户登录后，你会回到这里。",
   "editor_previewsaveerror": "打开预览之前无法保存最新草稿。",
   "editor_previewpopupblocked": "允许弹出窗口在新选项卡中打开草稿预览。",
-  "settings_heading": "站点配置",
   "settings_group_site": "网站",
   "settings_group_deployment": "导入与同步",
   "settings_group_workspace": "工作空间",
-  "settings_group_advanced": "高级",
   "settings_general": "一般",
   "settings_branding": "品牌推广",
   "settings_styling": "造型",
@@ -2117,6 +2115,7 @@
   "site_results": "结果",
   "site_loading": "加载中...",
   "site_articleloadfailed": "无法加载此页面。重试",
+  "site_controlloadfailed": "无法打开。请再次选择以重试。",
   "site_previous": "上一页",
   "site_next": "下一页",
   "site_onthispage": "在此页面上",
@@ -3744,7 +3743,7 @@
   "dashboard_ai_answerrate": "{rate} answer rate",
   "dashboard_ai_votes": "{up} helpful / {down} not helpful",
   "site_ai_title": "Ask AI",
-  "site_ai_subtitle": "Answers come from these docs",
+  "site_ai_subtitle": "Answers use these docs and link to their sources.",
   "site_ai_new": "New chat",
   "site_ai_close": "Close",
   "site_ai_intro": "What would you like to know? Ask a question about these docs.",
@@ -3767,7 +3766,16 @@
   "site_ai_stopped": "You stopped this answer before it was finished.",
   "site_ai_suggestions_added": "Suggested next questions added.",
   "site_ai_caution": "AI can make mistakes — check the sources.",
-  "site_ai_privacy": "Questions are saved to help improve these docs. Please don't include personal details.",
+  "site_ai_saved": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "Questions are kept for {count} day to help improve these docs. Please don't include personal details.",
+        "form=*": "Questions are kept for {count} days to help improve these docs. Please don't include personal details."
+      }
+    }
+  ],
   "site_ai_searching": "Looking through the docs…",
   "site_ai_writing": "Writing an answer…",
   "site_ai_checking": "Checking the sources…",
@@ -3791,6 +3799,7 @@
   "site_ai_unavailable": "The assistant isn't available right now.",
   "site_ai_invalid": "Please ask a question between 2 and 500 characters.",
   "site_ai_failed": "Something went wrong. Please try again.",
+  "site_ai_policy_changed": "How this chat handles questions changed while this page was open. Check the notes below, then send your question again.",
   "site_ai_offline": "You're offline. Check your connection and try again.",
   "site_ai_incorrect": "Incorrect",
   "site_ai_incomplete": "Incomplete",
@@ -3932,6 +3941,7 @@
   "editor_viewonly_grouphint": "分组会把相关页面集中在侧边栏中。打开此分组中的页面即可阅读。",
   "editor_comments_viewonly": "您可以阅读评论。查看者无法添加或解决评论。",
   "settings_permissions_viewerbody": "请联系站点所有者或管理员更新这些设置。作为查看者，您可以阅读站点以及当前角色可访问的部分。",
+  "settings_permissions_dangerbody": "只有组织的所有者和管理员可以删除此网站。如有需要，请联系其中一位。",
   "overview_viewpages": "查看页面",
   "join_title": "加入 {site}",
   "join_subtitle": "加入 Nibleaf 上的文档站点。",
@@ -4213,6 +4223,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "内容",
+  "settings_group_ai": "AI",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4263,6 +4275,7 @@
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
   "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "全部设置",
   "people_orgrole_owner": "Owner",
   "people_orgrole_admin": "Admin",
   "people_orgrole_member": "Member",
@@ -4598,5 +4611,49 @@
   "newsite_starter_faq_title": "常见问题",
   "newsite_starter_faq_content": "## 常见疑问\n\n用几句话回答一个真实的问题。\n\n- 说明在哪里找到账户设置。\n- 告诉读者如何联系您的团队。\n",
   "newsite_addresslatinhint": "网站地址使用拉丁字母。请选择易于阅读的地址，例如 help-center。",
-  "newsite_addressunavailable": "此地址已保留或不可用。请选择其他地址。"
+  "newsite_addressunavailable": "此地址已保留或不可用。请选择其他地址。",
+  "publish_checks_title": "检查",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 个错误"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 个警告"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "仍可发布",
+  "publish_checks_mustfix": "请先修复错误再发布",
+  "publish_checks_allclear": "所有检查均已通过",
+  "publish_checks_allclearhint": "没有损坏的链接、缺少替代文本的图片、无标题页面或残留字符。",
+  "publish_checks_fix": "修复",
+  "publish_checks_fixlabel": "在编辑器中修复“{title}”",
+  "publish_checks_blockedreason": "发布前请先修复“检查”中列出的错误。",
+  "publish_checks_error": "错误",
+  "publish_checks_warning": "警告",
+  "publish_checks_duplicateof": "与 {path} 标题相同",
+  "publish_checks_pathtoolong": "链接地址过长（超过 2048 个字符）",
+  "publish_checks_brokenlink": "损坏的链接",
+  "publish_checks_brokenlinkhint": "这些链接指向的页面在已发布的网站上将不存在。",
+  "publish_checks_missingalt": "缺少替代文本的图片",
+  "publish_checks_missingalthint": "屏幕阅读器无法描述这些图片。请为每张图片添加替代文本。",
+  "publish_checks_untitledpage": "无标题页面",
+  "publish_checks_untitledpagehint": "请为这些页面设置真正的标题，方便读者找到它们。",
+  "publish_checks_straycharacters": "残留字符",
+  "publish_checks_straycharactershint": "单独的 / 或字面上的 --- 会以文本形式显示在页面上。",
+  "publish_checks_unreadableslug": "难以阅读的网址",
+  "publish_checks_unreadableslughint": "请使用由单词组成的简短网址，让链接易于阅读和分享。",
+  "publish_checks_emptypage": "空白页面",
+  "publish_checks_emptypagehint": "这些页面还没有内容，读者会看到空白页面。",
+  "publish_checks_duplicatetitle": "重复的标题",
+  "publish_checks_duplicatetitlehint": "同一部分中的多个页面标题相同，读者无法区分它们。"
 }

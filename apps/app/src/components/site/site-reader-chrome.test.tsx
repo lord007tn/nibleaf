@@ -117,7 +117,8 @@ describe('published reader chrome', () => {
     expect(header?.className).toContain('flex-nowrap');
     expect(header?.className).not.toContain('flex-wrap ');
     // The header switchers are hidden below `sm`; the drawer carries them there.
-    const switchers = container.querySelector('[aria-label="اللغة: العربية"]')?.parentElement;
+    // The group holding the switchers (each sits in its own trigger wrapper).
+    const switchers = container.querySelector('[aria-label="اللغة: العربية"]')?.closest('div');
     expect(switchers?.className).toMatch(/(^| )hidden( |$)/);
     expect(switchers?.className).toContain('sm:flex');
     expect(container.querySelector('[aria-label="الإصدار: main"]')).not.toBeNull();

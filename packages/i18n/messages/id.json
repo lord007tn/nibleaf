@@ -152,11 +152,9 @@
   "preview_privatebody": "Hanya anggota situs ini yang dapat membuka pratinjau pull request-nya. Masuk dengan akun tim Anda dan Anda akan kembali ke sini.",
   "editor_previewsaveerror": "Tidak dapat menyimpan draf terbaru sebelum membuka pratinjau.",
   "editor_previewpopupblocked": "Izinkan pop-up untuk membuka pratinjau draf di tab baru.",
-  "settings_heading": "Konfigurasi situs",
   "settings_group_site": "Situs",
   "settings_group_deployment": "Impor & sinkronisasi",
   "settings_group_workspace": "Ruang kerja",
-  "settings_group_advanced": "Lanjutan",
   "settings_general": "Umum",
   "settings_branding": "merek",
   "settings_styling": "Penataan gaya",
@@ -2117,6 +2115,7 @@
   "site_results": "Hasil",
   "site_loading": "Memuat…",
   "site_articleloadfailed": "Halaman ini tidak dapat dimuat. Coba lagi",
+  "site_controlloadfailed": "Tidak dapat dibuka. Pilih lagi untuk mencoba lagi.",
   "site_previous": "Sebelumnya",
   "site_next": "Selanjutnya",
   "site_onthispage": "Di halaman ini",
@@ -3744,7 +3743,7 @@
   "dashboard_ai_answerrate": "{rate} answer rate",
   "dashboard_ai_votes": "{up} helpful / {down} not helpful",
   "site_ai_title": "Ask AI",
-  "site_ai_subtitle": "Answers come from these docs",
+  "site_ai_subtitle": "Answers use these docs and link to their sources.",
   "site_ai_new": "New chat",
   "site_ai_close": "Close",
   "site_ai_intro": "What would you like to know? Ask a question about these docs.",
@@ -3767,7 +3766,16 @@
   "site_ai_stopped": "You stopped this answer before it was finished.",
   "site_ai_suggestions_added": "Suggested next questions added.",
   "site_ai_caution": "AI can make mistakes — check the sources.",
-  "site_ai_privacy": "Questions are saved to help improve these docs. Please don't include personal details.",
+  "site_ai_saved": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "Questions are kept for {count} day to help improve these docs. Please don't include personal details.",
+        "form=*": "Questions are kept for {count} days to help improve these docs. Please don't include personal details."
+      }
+    }
+  ],
   "site_ai_searching": "Looking through the docs…",
   "site_ai_writing": "Writing an answer…",
   "site_ai_checking": "Checking the sources…",
@@ -3791,6 +3799,7 @@
   "site_ai_unavailable": "The assistant isn't available right now.",
   "site_ai_invalid": "Please ask a question between 2 and 500 characters.",
   "site_ai_failed": "Something went wrong. Please try again.",
+  "site_ai_policy_changed": "How this chat handles questions changed while this page was open. Check the notes below, then send your question again.",
   "site_ai_offline": "You're offline. Check your connection and try again.",
   "site_ai_incorrect": "Incorrect",
   "site_ai_incomplete": "Incomplete",
@@ -3932,6 +3941,7 @@
   "editor_viewonly_grouphint": "Grup menyatukan halaman terkait di bilah samping. Buka halaman dalam grup ini untuk membacanya.",
   "editor_comments_viewonly": "Anda dapat membaca komentar. Pembaca tidak dapat menambahkan atau menyelesaikannya.",
   "settings_permissions_viewerbody": "Minta pemilik situs atau admin memperbarui pengaturan ini. Sebagai pembaca, Anda dapat membaca situs dan bagian yang tersedia untuk peran Anda.",
+  "settings_permissions_dangerbody": "Hanya pemilik dan admin organisasi yang bisa menghapus situs web ini. Minta salah satu dari mereka jika perlu.",
   "overview_viewpages": "Lihat halaman",
   "join_title": "Bergabung ke {site}",
   "join_subtitle": "Bergabung ke situs dokumentasi di Nibleaf.",
@@ -4213,6 +4223,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "Konten",
+  "settings_group_ai": "AI",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4263,6 +4275,7 @@
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
   "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "Semua pengaturan",
   "people_orgrole_owner": "Owner",
   "people_orgrole_admin": "Admin",
   "people_orgrole_member": "Member",
@@ -4598,5 +4611,49 @@
   "newsite_starter_faq_title": "Pertanyaan umum",
   "newsite_starter_faq_content": "## Pertanyaan yang sering diajukan\n\nJawab pertanyaan nyata dalam beberapa kalimat.\n\n- Jelaskan lokasi pengaturan akun.\n- Beri tahu cara menghubungi tim Anda.\n",
   "newsite_addresslatinhint": "Alamat situs menggunakan huruf Latin. Pilih alamat yang mudah dibaca, misalnya help-center.",
-  "newsite_addressunavailable": "Alamat ini dicadangkan atau tidak tersedia. Pilih alamat lain."
+  "newsite_addressunavailable": "Alamat ini dicadangkan atau tidak tersedia. Pilih alamat lain.",
+  "publish_checks_title": "Pemeriksaan",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} kesalahan"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} peringatan"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "penerbitan tetap bisa dilakukan",
+  "publish_checks_mustfix": "perbaiki kesalahan untuk menerbitkan",
+  "publish_checks_allclear": "Semua pemeriksaan lolos",
+  "publish_checks_allclearhint": "Tidak ada tautan rusak, gambar tanpa teks alternatif, halaman tanpa judul, atau karakter sisa.",
+  "publish_checks_fix": "Perbaiki",
+  "publish_checks_fixlabel": "Perbaiki {title} di editor",
+  "publish_checks_blockedreason": "Perbaiki kesalahan di Pemeriksaan sebelum menerbitkan.",
+  "publish_checks_error": "Kesalahan",
+  "publish_checks_warning": "Peringatan",
+  "publish_checks_duplicateof": "Judulnya sama dengan {path}",
+  "publish_checks_pathtoolong": "Alamat tautan terlalu panjang (lebih dari 2048 karakter)",
+  "publish_checks_brokenlink": "Tautan rusak",
+  "publish_checks_brokenlinkhint": "Tautan ini mengarah ke halaman yang tidak akan ada di situs yang diterbitkan.",
+  "publish_checks_missingalt": "Gambar tanpa teks alternatif",
+  "publish_checks_missingalthint": "Pembaca layar tidak bisa menjelaskan gambar ini. Tambahkan teks alternatif ke setiap gambar.",
+  "publish_checks_untitledpage": "Halaman tanpa judul",
+  "publish_checks_untitledpagehint": "Beri halaman ini judul yang sebenarnya agar pembaca dapat menemukannya.",
+  "publish_checks_straycharacters": "Karakter sisa",
+  "publish_checks_straycharactershint": "Tanda / tunggal atau --- harfiah akan tampil sebagai teks di halaman.",
+  "publish_checks_unreadableslug": "Alamat web yang sulit dibaca",
+  "publish_checks_unreadableslughint": "Gunakan alamat pendek berupa kata agar tautan mudah dibaca dan dibagikan.",
+  "publish_checks_emptypage": "Halaman kosong",
+  "publish_checks_emptypagehint": "Halaman ini belum memiliki konten, jadi pembaca akan melihat halaman kosong.",
+  "publish_checks_duplicatetitle": "Judul ganda",
+  "publish_checks_duplicatetitlehint": "Beberapa halaman di bagian yang sama memiliki judul yang sama, jadi pembaca tidak bisa membedakannya."
 }

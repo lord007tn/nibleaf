@@ -161,11 +161,9 @@
   "preview_privatebody": "Solo los miembros de este sitio pueden abrir las vistas previas de sus pull requests. Inicia sesión con tu cuenta del equipo y volverás aquí.",
   "editor_previewsaveerror": "No se pudo guardar el último borrador antes de abrir la vista previa.",
   "editor_previewpopupblocked": "Permitir que las ventanas emergentes abran la vista previa del borrador en una nueva pestaña.",
-  "settings_heading": "Configuraciones del sitio",
   "settings_group_site": "Sitio",
   "settings_group_deployment": "Importación y sincronización",
   "settings_group_workspace": "Espacio de trabajo",
-  "settings_group_advanced": "Avanzado",
   "settings_general": "generales",
   "settings_branding": "Marca",
   "settings_styling": "Estilo",
@@ -2180,6 +2178,7 @@
   "site_results": "Resultados",
   "site_loading": "Cargando…",
   "site_articleloadfailed": "No se pudo cargar esta página. Reintentar",
+  "site_controlloadfailed": "No se pudo abrir. Selecciónalo de nuevo para reintentar.",
   "site_previous": "Anterior",
   "site_next": "Siguiente",
   "site_onthispage": "En esta página",
@@ -3809,7 +3808,7 @@
   "dashboard_ai_answerrate": "{rate} answer rate",
   "dashboard_ai_votes": "{up} helpful / {down} not helpful",
   "site_ai_title": "Ask AI",
-  "site_ai_subtitle": "Answers come from these docs",
+  "site_ai_subtitle": "Answers use these docs and link to their sources.",
   "site_ai_new": "New chat",
   "site_ai_close": "Close",
   "site_ai_intro": "What would you like to know? Ask a question about these docs.",
@@ -3832,7 +3831,16 @@
   "site_ai_stopped": "You stopped this answer before it was finished.",
   "site_ai_suggestions_added": "Suggested next questions added.",
   "site_ai_caution": "AI can make mistakes — check the sources.",
-  "site_ai_privacy": "Questions are saved to help improve these docs. Please don't include personal details.",
+  "site_ai_saved": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "Questions are kept for {count} day to help improve these docs. Please don't include personal details.",
+        "form=*": "Questions are kept for {count} days to help improve these docs. Please don't include personal details."
+      }
+    }
+  ],
   "site_ai_searching": "Looking through the docs…",
   "site_ai_writing": "Writing an answer…",
   "site_ai_checking": "Checking the sources…",
@@ -3856,6 +3864,7 @@
   "site_ai_unavailable": "The assistant isn't available right now.",
   "site_ai_invalid": "Please ask a question between 2 and 500 characters.",
   "site_ai_failed": "Something went wrong. Please try again.",
+  "site_ai_policy_changed": "How this chat handles questions changed while this page was open. Check the notes below, then send your question again.",
   "site_ai_offline": "You're offline. Check your connection and try again.",
   "site_ai_incorrect": "Incorrect",
   "site_ai_incomplete": "Incomplete",
@@ -3997,6 +4006,7 @@
   "editor_viewonly_grouphint": "Los grupos reúnen páginas relacionadas en la barra lateral. Abre una página de este grupo para leerla.",
   "editor_comments_viewonly": "Puedes leer los comentarios. Los lectores no pueden añadirlos ni resolverlos.",
   "settings_permissions_viewerbody": "Pide al propietario del sitio o a un administrador que actualice estos ajustes. Como lector, puedes leer el sitio y las secciones disponibles para tu rol.",
+  "settings_permissions_dangerbody": "Solo el propietario y los administradores de la organización pueden eliminar este sitio web. Pídeselo a uno de ellos si hace falta.",
   "overview_viewpages": "Ver páginas",
   "join_title": "Únete a {site}",
   "join_subtitle": "Únete a un sitio de documentación en Nibleaf.",
@@ -4278,6 +4288,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "Contenido",
+  "settings_group_ai": "IA",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4328,6 +4340,7 @@
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
   "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "Todos los ajustes",
   "people_orgrole_owner": "Owner",
   "people_orgrole_admin": "Admin",
   "people_orgrole_member": "Member",
@@ -4663,5 +4676,51 @@
   "newsite_starter_faq_title": "Preguntas frecuentes",
   "newsite_starter_faq_content": "## Dudas habituales\n\nResponde una pregunta real en pocas frases.\n\n- Explica dónde encontrar los ajustes de la cuenta.\n- Indica cómo contactar con tu equipo.\n",
   "newsite_addresslatinhint": "Las direcciones de los sitios usan letras latinas. Elige una que sea fácil de leer, por ejemplo, help-center.",
-  "newsite_addressunavailable": "Esta dirección está reservada o no está disponible. Elige otra dirección."
+  "newsite_addressunavailable": "Esta dirección está reservada o no está disponible. Elige otra dirección.",
+  "publish_checks_title": "Comprobaciones",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} error",
+        "form=*": "{count} errores"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} advertencia",
+        "form=*": "{count} advertencias"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "aún puedes publicar",
+  "publish_checks_mustfix": "corrige los errores para publicar",
+  "publish_checks_allclear": "Todas las comprobaciones superadas",
+  "publish_checks_allclearhint": "No hay enlaces rotos, imágenes sin texto alternativo, páginas sin título ni caracteres sobrantes.",
+  "publish_checks_fix": "Corregir",
+  "publish_checks_fixlabel": "Corregir {title} en el editor",
+  "publish_checks_blockedreason": "Corrige los errores de Comprobaciones antes de publicar.",
+  "publish_checks_error": "Error",
+  "publish_checks_warning": "Advertencia",
+  "publish_checks_duplicateof": "Mismo título que {path}",
+  "publish_checks_pathtoolong": "Dirección del enlace demasiado larga (más de 2048 caracteres)",
+  "publish_checks_brokenlink": "Enlaces rotos",
+  "publish_checks_brokenlinkhint": "Estos enlaces llevan a una página que no existirá en el sitio publicado.",
+  "publish_checks_missingalt": "Imágenes sin texto alternativo",
+  "publish_checks_missingalthint": "Los lectores de pantalla no pueden describir estas imágenes. Añade texto alternativo a cada una.",
+  "publish_checks_untitledpage": "Páginas sin título",
+  "publish_checks_untitledpagehint": "Pon a estas páginas un título real para que los lectores las encuentren.",
+  "publish_checks_straycharacters": "Caracteres sobrantes",
+  "publish_checks_straycharactershint": "Una / suelta o un --- literal se muestra en la página como texto.",
+  "publish_checks_unreadableslug": "Direcciones web difíciles de leer",
+  "publish_checks_unreadableslughint": "Usa una dirección corta hecha de palabras para que el enlace sea fácil de leer y compartir.",
+  "publish_checks_emptypage": "Páginas vacías",
+  "publish_checks_emptypagehint": "Estas páginas aún no tienen contenido, así que los lectores verían una página en blanco.",
+  "publish_checks_duplicatetitle": "Títulos duplicados",
+  "publish_checks_duplicatetitlehint": "Varias páginas de la misma sección comparten título, así que los lectores no pueden distinguirlas."
 }

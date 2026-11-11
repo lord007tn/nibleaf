@@ -161,11 +161,9 @@
   "preview_privatebody": "اس سائٹ کے پُل ریکویسٹ پیش منظر صرف اس کے ممبر کھول سکتے ہیں۔ اپنے ٹیم اکاؤنٹ سے لاگ اِن کریں، پھر آپ یہیں واپس آئیں گے۔",
   "editor_previewsaveerror": "پیش منظر کھولنے سے پہلے تازہ ترین مسودہ محفوظ نہیں کیا جا سکا۔",
   "editor_previewpopupblocked": "ایک نئے ٹیب میں ڈرافٹ کا پیش منظر کھولنے کے لیے پاپ اپس کو اجازت دیں۔",
-  "settings_heading": "سائٹ کی تشکیلات",
   "settings_group_site": "سائٹ",
   "settings_group_deployment": "درآمد اور ہم آہنگی",
   "settings_group_workspace": "کام کی جگہ",
-  "settings_group_advanced": "اعلی درجے کی",
   "settings_general": "جنرل",
   "settings_branding": "برانڈنگ",
   "settings_styling": "اسٹائلنگ",
@@ -2171,6 +2169,7 @@
   "site_results": "نتائج",
   "site_loading": "لوڈ ہو رہا ہے…",
   "site_articleloadfailed": "یہ صفحہ لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں",
+  "site_controlloadfailed": "کھل نہیں سکا۔ دوبارہ کوشش کرنے کے لیے اسے پھر سے منتخب کریں۔",
   "site_previous": "پچھلا",
   "site_next": "اگلا",
   "site_onthispage": "اس صفحہ پر",
@@ -3800,7 +3799,7 @@
   "dashboard_ai_answerrate": "{rate} answer rate",
   "dashboard_ai_votes": "{up} helpful / {down} not helpful",
   "site_ai_title": "Ask AI",
-  "site_ai_subtitle": "Answers come from these docs",
+  "site_ai_subtitle": "Answers use these docs and link to their sources.",
   "site_ai_new": "New chat",
   "site_ai_close": "Close",
   "site_ai_intro": "What would you like to know? Ask a question about these docs.",
@@ -3823,7 +3822,16 @@
   "site_ai_stopped": "You stopped this answer before it was finished.",
   "site_ai_suggestions_added": "Suggested next questions added.",
   "site_ai_caution": "AI can make mistakes — check the sources.",
-  "site_ai_privacy": "Questions are saved to help improve these docs. Please don't include personal details.",
+  "site_ai_saved": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "Questions are kept for {count} day to help improve these docs. Please don't include personal details.",
+        "form=*": "Questions are kept for {count} days to help improve these docs. Please don't include personal details."
+      }
+    }
+  ],
   "site_ai_searching": "Looking through the docs…",
   "site_ai_writing": "Writing an answer…",
   "site_ai_checking": "Checking the sources…",
@@ -3847,6 +3855,7 @@
   "site_ai_unavailable": "The assistant isn't available right now.",
   "site_ai_invalid": "Please ask a question between 2 and 500 characters.",
   "site_ai_failed": "Something went wrong. Please try again.",
+  "site_ai_policy_changed": "How this chat handles questions changed while this page was open. Check the notes below, then send your question again.",
   "site_ai_offline": "You're offline. Check your connection and try again.",
   "site_ai_incorrect": "Incorrect",
   "site_ai_incomplete": "Incomplete",
@@ -3988,6 +3997,7 @@
   "editor_viewonly_grouphint": "گروپ متعلقہ صفحات کو سائیڈبار میں ایک ساتھ رکھتے ہیں۔ پڑھنے کے لیے اس گروپ کا کوئی صفحہ کھولیں۔",
   "editor_comments_viewonly": "آپ تبصرے پڑھ سکتے ہیں۔ ناظرین تبصرے شامل یا حل نہیں کر سکتے۔",
   "settings_permissions_viewerbody": "ان ترتیبات کو اپ ڈیٹ کرنے کے لیے سائٹ کے مالک یا منتظم سے کہیں۔ بطور ناظر آپ سائٹ اور اپنے کردار کے لیے دستیاب حصے پڑھ سکتے ہیں۔",
+  "settings_permissions_dangerbody": "اس ویب سائٹ کو صرف تنظیم کے مالک اور ایڈمن حذف کر سکتے ہیں۔ ضرورت ہو تو ان میں سے کسی سے کہیں۔",
   "overview_viewpages": "صفحات دیکھیں",
   "join_title": "{site} میں شامل ہوں",
   "join_subtitle": "Nibleaf پر کسی دستاویزی سائٹ میں شامل ہوں۔",
@@ -4269,6 +4279,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "مواد",
+  "settings_group_ai": "اے آئی",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4319,6 +4331,7 @@
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
   "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "تمام ترتیبات",
   "people_orgrole_owner": "Owner",
   "people_orgrole_admin": "Admin",
   "people_orgrole_member": "Member",
@@ -4654,5 +4667,51 @@
   "newsite_starter_faq_title": "اکثر پوچھے جانے والے سوالات",
   "newsite_starter_faq_content": "## عام سوالات\n\nکسی حقیقی سوال کا جواب چند جملوں میں دیں۔\n\n- بتائیں کہ اکاؤنٹ کی ترتیبات کہاں ملتی ہیں۔\n- قارئین کو اپنی ٹیم سے رابطے کا طریقہ بتائیں۔\n",
   "newsite_addresslatinhint": "سائٹ کے پتوں میں لاطینی حروف استعمال ہوتے ہیں۔ آسانی سے پڑھا جانے والا پتہ منتخب کریں، مثلاً help-center۔",
-  "newsite_addressunavailable": "یہ پتہ محفوظ ہے یا دستیاب نہیں ہے۔ کوئی دوسرا پتہ منتخب کریں۔"
+  "newsite_addressunavailable": "یہ پتہ محفوظ ہے یا دستیاب نہیں ہے۔ کوئی دوسرا پتہ منتخب کریں۔",
+  "publish_checks_title": "جانچ",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} خرابی",
+        "form=*": "{count} خرابیاں"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} انتباہ",
+        "form=*": "{count} انتباہات"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "شائع کرنا اب بھی ممکن ہے",
+  "publish_checks_mustfix": "شائع کرنے کے لیے خرابیاں ٹھیک کریں",
+  "publish_checks_allclear": "تمام جانچ کامیاب رہی",
+  "publish_checks_allclearhint": "کوئی ٹوٹا ہوا لنک، متبادل متن کے بغیر تصویر، بغیر عنوان کا صفحہ یا فالتو حروف نہیں ہیں۔",
+  "publish_checks_fix": "ٹھیک کریں",
+  "publish_checks_fixlabel": "ایڈیٹر میں {title} ٹھیک کریں",
+  "publish_checks_blockedreason": "شائع کرنے سے پہلے جانچ میں دی گئی خرابیاں ٹھیک کریں۔",
+  "publish_checks_error": "خرابی",
+  "publish_checks_warning": "انتباہ",
+  "publish_checks_duplicateof": "{path} جیسا ہی عنوان",
+  "publish_checks_pathtoolong": "لنک کا پتہ بہت لمبا ہے (2048 حروف سے زیادہ)",
+  "publish_checks_brokenlink": "ٹوٹے ہوئے لنکس",
+  "publish_checks_brokenlinkhint": "یہ لنکس ایسے صفحے پر لے جاتے ہیں جو شائع شدہ سائٹ پر موجود نہیں ہوگا۔",
+  "publish_checks_missingalt": "متبادل متن کے بغیر تصاویر",
+  "publish_checks_missingalthint": "اسکرین ریڈر ان تصاویر کو بیان نہیں کر سکتے۔ ہر تصویر میں متبادل متن شامل کریں۔",
+  "publish_checks_untitledpage": "بغیر عنوان کے صفحات",
+  "publish_checks_untitledpagehint": "ان صفحات کو اصل عنوان دیں تاکہ قارئین انہیں تلاش کر سکیں۔",
+  "publish_checks_straycharacters": "فالتو حروف",
+  "publish_checks_straycharactershint": "اکیلا / یا لفظی --- صفحے پر متن کے طور پر نظر آتا ہے۔",
+  "publish_checks_unreadableslug": "پڑھنے میں مشکل ویب پتے",
+  "publish_checks_unreadableslughint": "الفاظ پر مشتمل مختصر پتہ استعمال کریں تاکہ لنک پڑھنا اور شیئر کرنا آسان ہو۔",
+  "publish_checks_emptypage": "خالی صفحات",
+  "publish_checks_emptypagehint": "ان صفحات میں ابھی کوئی مواد نہیں، اس لیے قارئین کو خالی صفحہ نظر آئے گا۔",
+  "publish_checks_duplicatetitle": "دہرائے گئے عنوانات",
+  "publish_checks_duplicatetitlehint": "ایک ہی حصے کے صفحات کا عنوان ایک جیسا ہے، اس لیے قارئین ان میں فرق نہیں کر سکتے۔"
 }

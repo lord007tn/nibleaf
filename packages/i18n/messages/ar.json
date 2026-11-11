@@ -199,11 +199,9 @@
   "preview_privatebody": "لا يفتح معاينات طلبات الدمج لهذا الموقع إلا أعضاؤه. سجّل الدخول بحساب فريقك وستعود إلى هنا.",
   "editor_previewsaveerror": "تعذّر حفظ أحدث مسودة قبل فتح المعاينة.",
   "editor_previewpopupblocked": "اسمح بالنوافذ المنبثقة لفتح معاينة المسودة في علامة تبويب جديدة.",
-  "settings_heading": "إعدادات الموقع",
   "settings_group_site": "الموقع",
   "settings_group_deployment": "الاستيراد والمزامنة",
   "settings_group_workspace": "مساحة العمل",
-  "settings_group_advanced": "متقدّم",
   "settings_general": "عام",
   "settings_branding": "العلامة التجارية",
   "settings_styling": "التنسيق",
@@ -2248,6 +2246,7 @@
   "site_results": "النتائج",
   "site_loading": "جارٍ التحميل…",
   "site_articleloadfailed": "تعذّر تحميل هذه الصفحة. حاول مرة أخرى",
+  "site_controlloadfailed": "تعذّر الفتح. اختره مرة أخرى للمحاولة من جديد.",
   "site_previous": "السابق",
   "site_next": "التالي",
   "site_onthispage": "في هذه الصفحة",
@@ -3844,7 +3843,7 @@
   "dashboard_ai_answerrate": "نسبة الإجابة {rate}",
   "dashboard_ai_votes": "{up} مفيد · {down} غير مفيد",
   "site_ai_title": "اسأل المساعد",
-  "site_ai_subtitle": "إجابات مستمدة من هذه الوثائق",
+  "site_ai_subtitle": "تعتمد الإجابات على هذه الوثائق وتذكر مصادرها.",
   "site_ai_new": "محادثة جديدة",
   "site_ai_close": "إغلاق",
   "site_ai_intro": "ما الذي تود معرفته؟ اطرح سؤالًا عن هذه الوثائق.",
@@ -3867,7 +3866,19 @@
   "site_ai_stopped": "أوقفت هذه الإجابة قبل اكتمالها.",
   "site_ai_suggestions_added": "أُضيفت أسئلة متابعة مقترحة.",
   "site_ai_caution": "قد يخطئ المساعد، لذا راجع المصادر.",
-  "site_ai_privacy": "تُحفظ الأسئلة للمساعدة في تحسين الوثائق. يُرجى عدم ذكر معلومات شخصية.",
+  "site_ai_saved": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "تُحفظ الأسئلة لمدة يوم واحد للمساعدة في تحسين الوثائق. يُرجى عدم ذكر معلومات شخصية.",
+        "form=two": "تُحفظ الأسئلة لمدة يومين للمساعدة في تحسين الوثائق. يُرجى عدم ذكر معلومات شخصية.",
+        "form=few": "تُحفظ الأسئلة لمدة {count} أيام للمساعدة في تحسين الوثائق. يُرجى عدم ذكر معلومات شخصية.",
+        "form=many": "تُحفظ الأسئلة لمدة {count} يومًا للمساعدة في تحسين الوثائق. يُرجى عدم ذكر معلومات شخصية.",
+        "form=*": "تُحفظ الأسئلة لمدة {count} يوم للمساعدة في تحسين الوثائق. يُرجى عدم ذكر معلومات شخصية."
+      }
+    }
+  ],
   "site_ai_searching": "جارٍ البحث في الوثائق…",
   "site_ai_writing": "جارٍ إعداد الإجابة…",
   "site_ai_checking": "جارٍ التحقق من المصادر…",
@@ -3891,6 +3902,7 @@
   "site_ai_unavailable": "المساعد غير متاح حاليًا.",
   "site_ai_invalid": "يُرجى كتابة سؤال يتراوح طوله بين حرفين و٥٠٠ حرف.",
   "site_ai_failed": "تعذّر إكمال الطلب. حاول مرة أخرى.",
+  "site_ai_policy_changed": "تغيّرت طريقة تعامل هذه المحادثة مع الأسئلة أثناء فتح الصفحة. راجع الملاحظات أدناه، ثم أرسل سؤالك مرة أخرى.",
   "site_ai_offline": "أنت غير متصل بالإنترنت. تحقّق من الاتصال ثم حاول مرة أخرى.",
   "site_ai_incorrect": "غير صحيحة",
   "site_ai_incomplete": "غير مكتملة",
@@ -4032,6 +4044,7 @@
   "editor_viewonly_grouphint": "تجمع المجموعات الصفحات المترابطة معًا في الشريط الجانبي. افتح صفحة في هذه المجموعة لقراءتها.",
   "editor_comments_viewonly": "يمكنك قراءة التعليقات، لكن لا يمكن للمشاهدين إضافتها أو حلّها.",
   "settings_permissions_viewerbody": "اطلب من مالك الموقع أو أحد المشرفين تحديث هذه الإعدادات. بصفتك مشاهدًا يمكنك قراءة الموقع والأقسام المتاحة لدورك.",
+  "settings_permissions_dangerbody": "لا يمكن حذف هذا الموقع إلا لمالك المؤسسة ومسؤوليها. اطلب من أحدهم ذلك إن لزم.",
   "overview_viewpages": "عرض الصفحات",
   "join_title": "انضم إلى {site}",
   "join_subtitle": "انضم إلى موقع توثيق على Nibleaf.",
@@ -4317,6 +4330,8 @@
   "settings_group_publishing": "النشر",
   "settings_group_team": "الفريق والوصول",
   "settings_group_usage": "الاستخدام",
+  "settings_group_content": "المحتوى",
+  "settings_group_ai": "الذكاء الاصطناعي",
   "settings_moved_plan": "تُدار الخطة والفوترة على مستوى المؤسسة:",
   "settings_moved_notifications": "إشعارات البريد الإلكتروني أصبحت شخصية الآن.",
   "settings_moved_notificationslink": "إعدادات الحساب ← إشعارات البريد الإلكتروني",
@@ -4367,6 +4382,7 @@
   "settings_usage_reason_tokensIncomplete": "لم تُبلغ بعض إجابات الذكاء الاصطناعي عن عدد رموزها بعد، لذا سيكون هذا المجموع أقل من الحقيقي.",
   "settings_usage_reason_notMeasured": "لم يُقَس هذا بعد. يُحدَّث بعد الاحتساب اليومي التالي.",
   "settings_usage_reason_seatsUnavailable": "تعذّر احتساب مقاعد المحررين الآن. أعد التحميل للمحاولة مجددًا.",
+  "settings_backtoall": "كل الإعدادات",
   "people_orgrole_owner": "المالك",
   "people_orgrole_admin": "مشرف",
   "people_orgrole_member": "عضو",
@@ -4702,5 +4718,59 @@
   "newsite_starter_faq_title": "الأسئلة الشائعة",
   "newsite_starter_faq_content": "## أسئلة متكررة\n\nأجب عن سؤال حقيقي في بضع جمل.\n\n- اشرح أين توجد إعدادات الحساب.\n- أخبر القراء بكيفية التواصل مع فريقك.\n",
   "newsite_addresslatinhint": "تستخدم عناوين المواقع الحروف اللاتينية. اختر عنواناً واضحاً وسهل القراءة، مثل help-center.",
-  "newsite_addressunavailable": "هذا العنوان محجوز أو غير متاح. اختر عنواناً آخر."
+  "newsite_addressunavailable": "هذا العنوان محجوز أو غير متاح. اختر عنواناً آخر.",
+  "publish_checks_title": "الفحوصات",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا أخطاء",
+        "form=one": "خطأ واحد",
+        "form=two": "خطآن",
+        "form=few": "{count} أخطاء",
+        "form=many": "{count} خطأً",
+        "form=*": "{count} خطأ"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا تحذيرات",
+        "form=one": "تحذير واحد",
+        "form=two": "تحذيران",
+        "form=few": "{count} تحذيرات",
+        "form=many": "{count} تحذيرًا",
+        "form=*": "{count} تحذير"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "ما زال النشر متاحًا",
+  "publish_checks_mustfix": "أصلح الأخطاء لتتمكن من النشر",
+  "publish_checks_allclear": "نجحت كل الفحوصات",
+  "publish_checks_allclearhint": "لا توجد روابط معطلة أو صور بلا نص بديل أو صفحات بلا عنوان أو رموز زائدة.",
+  "publish_checks_fix": "إصلاح",
+  "publish_checks_fixlabel": "إصلاح {title} في المحرر",
+  "publish_checks_blockedreason": "أصلح الأخطاء الظاهرة في الفحوصات قبل النشر.",
+  "publish_checks_error": "خطأ",
+  "publish_checks_warning": "تحذير",
+  "publish_checks_duplicateof": "العنوان نفسه مستخدم في {path}",
+  "publish_checks_pathtoolong": "عنوان الرابط طويل جدًا (أكثر من 2048 حرفًا)",
+  "publish_checks_brokenlink": "روابط معطلة",
+  "publish_checks_brokenlinkhint": "تؤدي هذه الروابط إلى صفحة لن تكون موجودة في الموقع المنشور.",
+  "publish_checks_missingalt": "صور بلا نص بديل",
+  "publish_checks_missingalthint": "لا تستطيع قارئات الشاشة وصف هذه الصور. أضف نصًا بديلًا لكل صورة.",
+  "publish_checks_untitledpage": "صفحات بلا عنوان",
+  "publish_checks_untitledpagehint": "اختر لهذه الصفحات عناوين حقيقية ليتمكن القرّاء من العثور عليها.",
+  "publish_checks_straycharacters": "رموز زائدة",
+  "publish_checks_straycharactershint": "تظهر الشرطة المائلة / وحدها أو --- الحرفية كنص في الصفحة.",
+  "publish_checks_unreadableslug": "عناوين ويب يصعب قراءتها",
+  "publish_checks_unreadableslughint": "استخدم عنوان ويب قصيرًا مكوّنًا من كلمات ليسهل قراءة الرابط ومشاركته.",
+  "publish_checks_emptypage": "صفحات فارغة",
+  "publish_checks_emptypagehint": "لا تحتوي هذه الصفحات على أي محتوى بعد، لذا سيرى القرّاء صفحة فارغة.",
+  "publish_checks_duplicatetitle": "عناوين مكررة",
+  "publish_checks_duplicatetitlehint": "تحمل صفحات في القسم نفسه العنوان نفسه، فلا يستطيع القرّاء التمييز بينها."
 }

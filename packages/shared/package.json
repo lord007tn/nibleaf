@@ -25,11 +25,13 @@
     "./markdown-code": "./src/markdown-code.ts",
     "./public-markdown": "./src/public-markdown.ts",
     "./public-markdown-content": "./src/public-markdown-content.ts",
+    "./publish-checks": "./src/publish-checks.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./domains": "./src/domains.ts",
     "./email-providers": "./src/email-providers.ts",
     "./site": "./src/site.ts",
+    "./site-route": "./src/site-route.ts",
     "./documentation-component-contract": "./src/documentation-component-contract.ts",
     "./documentation-components": "./src/documentation-components.ts",
     "./themes": "./src/themes.ts",
@@ -42,7 +44,8 @@
     "./script-mismatch": "./src/script-mismatch.ts",
     "./utils": "./src/utils.ts",
     "./organization-handles": "./src/organization-handles.ts",
-    "./markdown-text": "./src/markdown-text.ts"
+    "./markdown-text": "./src/markdown-text.ts",
+    "./markdown-code-usage": "./src/markdown-code-usage.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",

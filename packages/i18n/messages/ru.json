@@ -163,11 +163,9 @@
   "preview_privatebody": "Превью пул-реквестов этого сайта могут открывать только его участники. Войдите в аккаунт команды, и вы вернётесь сюда.",
   "editor_previewsaveerror": "Не удалось сохранить последний черновик перед открытием предварительного просмотра.",
   "editor_previewpopupblocked": "Разрешить всплывающие окна для открытия предварительного просмотра черновика на новой вкладке.",
-  "settings_heading": "Конфигурации сайта",
   "settings_group_site": "Сайт",
   "settings_group_deployment": "Импорт и синхронизация",
   "settings_group_workspace": "Рабочая область",
-  "settings_group_advanced": "Расширенный",
   "settings_general": "Общий",
   "settings_branding": "Брендинг",
   "settings_styling": "Стиль",
@@ -2194,6 +2192,7 @@
   "site_results": "Результаты",
   "site_loading": "Загрузка…",
   "site_articleloadfailed": "Не удалось загрузить страницу. Повторить",
+  "site_controlloadfailed": "Не удалось открыть. Выберите ещё раз, чтобы повторить.",
   "site_previous": "Предыдущий",
   "site_next": "Далее",
   "site_onthispage": "На этой странице",
@@ -3830,7 +3829,7 @@
   "dashboard_ai_answerrate": "{rate} answer rate",
   "dashboard_ai_votes": "{up} helpful / {down} not helpful",
   "site_ai_title": "Ask AI",
-  "site_ai_subtitle": "Answers come from these docs",
+  "site_ai_subtitle": "Answers use these docs and link to their sources.",
   "site_ai_new": "New chat",
   "site_ai_close": "Close",
   "site_ai_intro": "What would you like to know? Ask a question about these docs.",
@@ -3853,7 +3852,16 @@
   "site_ai_stopped": "You stopped this answer before it was finished.",
   "site_ai_suggestions_added": "Suggested next questions added.",
   "site_ai_caution": "AI can make mistakes — check the sources.",
-  "site_ai_privacy": "Questions are saved to help improve these docs. Please don't include personal details.",
+  "site_ai_saved": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "Questions are kept for {count} day to help improve these docs. Please don't include personal details.",
+        "form=*": "Questions are kept for {count} days to help improve these docs. Please don't include personal details."
+      }
+    }
+  ],
   "site_ai_searching": "Looking through the docs…",
   "site_ai_writing": "Writing an answer…",
   "site_ai_checking": "Checking the sources…",
@@ -3877,6 +3885,7 @@
   "site_ai_unavailable": "The assistant isn't available right now.",
   "site_ai_invalid": "Please ask a question between 2 and 500 characters.",
   "site_ai_failed": "Something went wrong. Please try again.",
+  "site_ai_policy_changed": "How this chat handles questions changed while this page was open. Check the notes below, then send your question again.",
   "site_ai_offline": "You're offline. Check your connection and try again.",
   "site_ai_incorrect": "Incorrect",
   "site_ai_incomplete": "Incomplete",
@@ -4018,6 +4027,7 @@
   "editor_viewonly_grouphint": "Группы объединяют связанные страницы в боковой панели. Откройте страницу из этой группы, чтобы прочитать её.",
   "editor_comments_viewonly": "Вы можете читать комментарии. Читатели не могут добавлять или закрывать их.",
   "settings_permissions_viewerbody": "Попросите владельца сайта или администратора изменить эти настройки. Как читатель вы можете просматривать сайт и разделы, доступные вашей роли.",
+  "settings_permissions_dangerbody": "Удалить этот сайт могут только владелец и администраторы организации. При необходимости обратитесь к одному из них.",
   "overview_viewpages": "Открыть страницы",
   "join_title": "Присоединиться к {site}",
   "join_subtitle": "Присоединяйтесь к сайту документации на Nibleaf.",
@@ -4299,6 +4309,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "Контент",
+  "settings_group_ai": "ИИ",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4349,6 +4361,7 @@
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
   "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "Все настройки",
   "people_orgrole_owner": "Owner",
   "people_orgrole_admin": "Admin",
   "people_orgrole_member": "Member",
@@ -4684,5 +4697,55 @@
   "newsite_starter_faq_title": "Частые вопросы",
   "newsite_starter_faq_content": "## Распространённые вопросы\n\nОтветьте на реальный вопрос в нескольких предложениях.\n\n- Объясните, где найти настройки аккаунта.\n- Расскажите, как связаться с вашей командой.\n",
   "newsite_addresslatinhint": "В адресах сайтов используются латинские буквы. Выберите удобный для чтения адрес, например help-center.",
-  "newsite_addressunavailable": "Этот адрес зарезервирован или недоступен. Выберите другой адрес."
+  "newsite_addressunavailable": "Этот адрес зарезервирован или недоступен. Выберите другой адрес.",
+  "publish_checks_title": "Проверки",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} ошибка",
+        "form=few": "{count} ошибки",
+        "form=many": "{count} ошибок",
+        "form=*": "{count} ошибки"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} предупреждение",
+        "form=few": "{count} предупреждения",
+        "form=many": "{count} предупреждений",
+        "form=*": "{count} предупреждения"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "публикация по-прежнему доступна",
+  "publish_checks_mustfix": "исправьте ошибки, чтобы опубликовать",
+  "publish_checks_allclear": "Все проверки пройдены",
+  "publish_checks_allclearhint": "Нет битых ссылок, изображений без альтернативного текста, страниц без названия и лишних символов.",
+  "publish_checks_fix": "Исправить",
+  "publish_checks_fixlabel": "Исправить «{title}» в редакторе",
+  "publish_checks_blockedreason": "Перед публикацией исправьте ошибки из раздела «Проверки».",
+  "publish_checks_error": "Ошибка",
+  "publish_checks_warning": "Предупреждение",
+  "publish_checks_duplicateof": "То же название, что у {path}",
+  "publish_checks_pathtoolong": "Слишком длинный адрес ссылки (более 2048 символов)",
+  "publish_checks_brokenlink": "Битые ссылки",
+  "publish_checks_brokenlinkhint": "Эти ссылки ведут на страницу, которой не будет на опубликованном сайте.",
+  "publish_checks_missingalt": "Изображения без альтернативного текста",
+  "publish_checks_missingalthint": "Программы чтения с экрана не смогут описать эти изображения. Добавьте альтернативный текст к каждому.",
+  "publish_checks_untitledpage": "Страницы без названия",
+  "publish_checks_untitledpagehint": "Дайте этим страницам настоящие названия, чтобы читатели могли их найти.",
+  "publish_checks_straycharacters": "Лишние символы",
+  "publish_checks_straycharactershint": "Одиночный / или буквальный --- отображается на странице как текст.",
+  "publish_checks_unreadableslug": "Неудобочитаемые веб-адреса",
+  "publish_checks_unreadableslughint": "Используйте короткий адрес из слов, чтобы ссылку было легко прочитать и отправить.",
+  "publish_checks_emptypage": "Пустые страницы",
+  "publish_checks_emptypagehint": "На этих страницах ещё нет содержимого, поэтому читатели увидят пустую страницу.",
+  "publish_checks_duplicatetitle": "Повторяющиеся названия",
+  "publish_checks_duplicatetitlehint": "У страниц в одном разделе одинаковое название, и читатели не могут их различить."
 }
