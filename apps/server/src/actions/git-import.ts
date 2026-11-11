@@ -1,15 +1,16 @@
 import { execFile } from 'node:child_process';
 import { lookup } from 'node:dns/promises';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { prisma } from '@nibleaf/database';
+import { exceedsUtf8Bytes, MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
 import { slugify, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { GitConfig } from '@nibleaf/validators';
 import got from 'got';
 import { z } from 'zod';
-import { badRequest } from '@/errors';
+import { AppError, badRequest } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './importers/cleanup-locks';
@@ -33,7 +34,18 @@ export interface GitImportSummary {
   imported: number;
   updated: number;
   skipped: number;
+  /** Repository paths skipped (and counted in `skipped`) because the file, or
+   *  the page it would write, is over the page size cap. */
+  tooLarge: string[];
 }
+
+/** Repository files are read up to this size. It is above the page cap so a
+ *  page already over the cap can still be shrunk by a re-import; the page body
+ *  itself is held to the shared page rule after decoding. */
+const MAX_GIT_SOURCE_READ_BYTES = 4 * MAX_PAGE_CONTENT_BYTES;
+
+/** A repository file larger than MAX_GIT_SOURCE_READ_BYTES: skipped, not read. */
+class GitSourceTooLarge extends Error {}
 
 const normalizeRemoteUrl = (value: string, label: string): URL => {
   let url: URL;
@@ -80,6 +92,40 @@ const fetchGitLab = async (url: URL | string) => {
   } catch {
     throw badRequest('Could not reach the public GitLab instance without following a redirect. Check its URL and availability.');
   }
+};
+
+/** A GitLab raw file, or null when it is missing. The download is cancelled as
+ *  soon as it passes MAX_GIT_SOURCE_READ_BYTES. */
+const readGitLabFile = async (url: URL | string): Promise<string | null> => {
+  const abort = new AbortController();
+  let tooLarge = false;
+  const request = got(url, {
+    headers: { 'User-Agent': 'nibleaf' },
+    followRedirect: false,
+    retry: { limit: 0 },
+    throwHttpErrors: false,
+    responseType: 'buffer',
+    signal: abort.signal,
+  });
+  request.on('downloadProgress', (progress) => {
+    if (progress.transferred > MAX_GIT_SOURCE_READ_BYTES && !tooLarge) {
+      tooLarge = true;
+      abort.abort();
+    }
+  });
+  let response: Awaited<typeof request>;
+  try {
+    response = await request;
+  } catch {
+    if (tooLarge) throw new GitSourceTooLarge();
+    throw badRequest('Could not reach the public GitLab instance without following a redirect. Check its URL and availability.');
+  }
+  if (response.statusCode >= 300 && response.statusCode < 400) {
+    throw badRequest('Could not reach the public GitLab instance without following a redirect. Check its URL and availability.');
+  }
+  if (!response.ok) return null;
+  if (response.body.byteLength > MAX_GIT_SOURCE_READ_BYTES) throw new GitSourceTooLarge();
+  return new TextDecoder().decode(response.body);
 };
 
 const normalizeInstanceUrl = (value?: string): string => {
@@ -205,12 +251,19 @@ const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: s
     }
     const files = await walkMarkdownFiles(contentRoot);
     const loaded = await Promise.all(
-      files.map(async (file) => ({
-        path: basePath ? `${basePath}/${file}` : file,
-        content: await readFile(path.join(contentRoot, file), 'utf8'),
-      })),
+      files.map(async (file) => {
+        const filePath = path.join(contentRoot, file);
+        const tooLarge = (await stat(filePath)).size > MAX_GIT_SOURCE_READ_BYTES;
+        return { path: basePath ? `${basePath}/${file}` : file, tooLarge, content: tooLarge ? '' : await readFile(filePath, 'utf8') };
+      }),
     );
-    return loaded.map((file) => ({ path: file.path, read: async () => file.content }));
+    return loaded.map((file) => ({
+      path: file.path,
+      read: async () => {
+        if (file.tooLarge) throw new GitSourceTooLarge();
+        return file.content;
+      },
+    }));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       throw badRequest('Git is not installed in this Nibleaf runtime.');
@@ -326,10 +379,14 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         read: async () => {
           if (provider === 'github') {
             const [owner, name] = repo.split('/');
-            return getGitHubTextFile(owner as string, name as string, branch, file.path);
+            try {
+              return await getGitHubTextFile(owner as string, name as string, branch, file.path, MAX_GIT_SOURCE_READ_BYTES);
+            } catch (error) {
+              if (error instanceof AppError && error.code === 'import:limit') throw new GitSourceTooLarge();
+              throw error;
+            }
           }
-          const response = await fetchGitLab(gitLabRawFileUrl(repo, branch, file.path, safeGitLabInstance));
-          return response.ok ? response.body : null;
+          return readGitLabFile(gitLabRawFileUrl(repo, branch, file.path, safeGitLabInstance));
         },
       }));
   }
@@ -364,13 +421,21 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     return parentId;
   };
 
-  const summary: GitImportSummary = { files: mdFiles.length, imported: 0, updated: 0, skipped: 0 };
+  const summary: GitImportSummary = { files: mdFiles.length, imported: 0, updated: 0, skipped: 0, tooLarge: [] };
 
   // Download every file before writing anything, so a fetch failure part-way
   // through cannot leave a half-imported draft behind.
   const loaded: Array<{ source: string; rel: string; text: string }> = [];
   for (const file of [...mdFiles].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))) {
-    const text = await file.read();
+    let text: string | null;
+    try {
+      text = await file.read();
+    } catch (error) {
+      if (!(error instanceof GitSourceTooLarge)) throw error;
+      summary.skipped++;
+      summary.tooLarge.push(file.path);
+      continue;
+    }
     if (text === null) {
       summary.skipped++;
       continue;
@@ -478,8 +543,28 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
           continue;
         }
       }
+      const pageId = plan.pageId;
+      if (exceedsUtf8Bytes(plan.fields.content, MAX_PAGE_CONTENT_BYTES)) {
+        // Over the cap: the shared page rule against the locked stored body,
+        // compared and written in one transaction. A file that would grow the
+        // page is skipped and reported; one that keeps or shrinks it applies.
+        const outcome = await prisma.$transaction(async (tx) => {
+          const [stored] = await tx.$queryRaw<Array<{ content: string }>>`SELECT content FROM "page" WHERE id = ${pageId} FOR NO KEY UPDATE`;
+          if (!stored) return 'missing' as const;
+          if (oversizedPageContent(plan.fields.content, stored.content) !== null) return 'too-large' as const;
+          await tx.page.update({ where: { id: pageId }, data: plan.fields });
+          return 'updated' as const;
+        });
+        if (outcome !== 'updated') {
+          summary.skipped++;
+          if (outcome === 'too-large') summary.tooLarge.push(plan.file.source);
+          continue;
+        }
+        summary.updated++;
+        continue;
+      }
       try {
-        await prisma.page.update({ where: { id: plan.pageId }, data: plan.fields });
+        await prisma.page.update({ where: { id: pageId }, data: plan.fields });
       } catch (error) {
         // The page was deleted after it was read: nothing left to update.
         if (!hasPrismaCode(error, 'P2025')) throw error;
@@ -487,6 +572,12 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         continue;
       }
       summary.updated++;
+      continue;
+    }
+    // A new page has no stored body: over the cap it is skipped and reported.
+    if (exceedsUtf8Bytes(plan.fields.content, MAX_PAGE_CONTENT_BYTES)) {
+      summary.skipped++;
+      summary.tooLarge.push(plan.file.source);
       continue;
     }
     // A new file always gets a new page; createPage picks a slug no sibling

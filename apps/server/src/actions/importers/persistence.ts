@@ -188,27 +188,30 @@ export const upsertPage = async (target: ImportTarget, page: ImportedPage): Prom
     select: { id: true, config: true },
   });
   if (found) {
-    // Re-imports follow the editor's rule: a page over the cap may not grow.
-    // The stored body is only read when the new one is over the cap.
-    if (exceedsUtf8Bytes(page.content, MAX_PAGE_CONTENT_BYTES)) {
-      const stored = await prisma.page.findUniqueOrThrow({ where: { id: found.id }, select: { content: true } });
-      assertPageContentFits(page.content, stored.content);
-    }
     const parsedConfig = pageConfigSchema.safeParse(found.config);
     const existingConfig: PageConfig = parsedConfig.success ? parsedConfig.data : {};
-    await prisma.page.update({
-      where: { id: found.id },
-      data: {
-        title: page.title,
-        content: page.content,
-        ...(page.description !== undefined ? { description: page.description } : {}),
-        ...(page.icon !== undefined ? { icon: page.icon } : {}),
-        ...(page.config !== undefined ? { config: { ...existingConfig, ...page.config } } : {}),
-        ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
-        ...(page.position !== undefined ? { position: page.position } : {}),
-        ...(page.hidden !== undefined ? { hidden: page.hidden } : {}),
-      },
-    });
+    const data = {
+      title: page.title,
+      content: page.content,
+      ...(page.description !== undefined ? { description: page.description } : {}),
+      ...(page.icon !== undefined ? { icon: page.icon } : {}),
+      ...(page.config !== undefined ? { config: { ...existingConfig, ...page.config } } : {}),
+      ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
+      ...(page.position !== undefined ? { position: page.position } : {}),
+      ...(page.hidden !== undefined ? { hidden: page.hidden } : {}),
+    };
+    if (!exceedsUtf8Bytes(page.content, MAX_PAGE_CONTENT_BYTES)) {
+      await prisma.page.update({ where: { id: found.id }, data });
+    } else {
+      // Over the cap: re-imports follow the editor's rule (a page over the cap
+      // may not grow), compared with the stored body under the row lock and
+      // written in the same transaction.
+      await prisma.$transaction(async (tx) => {
+        const [stored] = await tx.$queryRaw<Array<{ content: string }>>`SELECT content FROM "page" WHERE id = ${found.id} FOR NO KEY UPDATE`;
+        assertPageContentFits(page.content, stored?.content);
+        await tx.page.update({ where: { id: found.id }, data });
+      });
+    }
     return { outcome: 'updated', id: found.id };
   }
   const created = await createPage(projectId, {

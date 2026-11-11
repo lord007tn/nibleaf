@@ -353,14 +353,16 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         if (lockStructure) await assertAddressLinkRevisions(projectId, prepared, tx);
         const page = await tx.page.findFirst({ where: { id, projectId } });
         if (!page) throw notFound('page', { id });
-        // Measured against the locked row, so a concurrent save cannot move the baseline.
-        assertPageContentFits(body.content, page.content);
         const route = pageRouteEdit(page, options?.restore ? {} : body);
         if (!lockStructure && route.structural) throw new StructuralPageEdit();
         const expectedUpdatedAt = options?.expectedUpdatedAt ?? (body.expectedUpdatedAt ? new Date(body.expectedUpdatedAt) : undefined);
         if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
           throw pageRevisionConflict(id);
         }
+        // After the revision check, so a stale draft gets the conflict review
+        // first. Measured against the locked row, so a concurrent save cannot
+        // move the baseline.
+        assertPageContentFits(body.content, page.content);
         // The slug/URL is decoupled from the title (Mintlify-style): it only changes
         // when the slug is set explicitly or the page is re-parented (which needs a
         // uniqueness re-check among the new siblings). A title-only edit â€” e.g. every

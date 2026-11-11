@@ -584,4 +584,20 @@ describe('page content size cap', () => {
     await updatePage('project-1', 'page-1', { hidden: true }, 'author-1');
     expect(database.update).toHaveBeenCalledTimes(3);
   });
+
+  it('reports a stale revision as a conflict before measuring an oversize body', async () => {
+    seed(row());
+    await expect(
+      updatePage('project-1', 'page-1', { content: 'x'.repeat(limit + 1) }, 'author-1', {
+        expectedUpdatedAt: new Date('2026-11-01T00:00:00.000Z'),
+      }),
+    ).rejects.toMatchObject({ code: 'page:revision_conflict' });
+    // With the current revision, the same body is refused for its size.
+    await expect(
+      updatePage('project-1', 'page-1', { content: 'x'.repeat(limit + 1) }, 'author-1', {
+        expectedUpdatedAt: new Date('2026-11-02T00:00:00.000Z'),
+      }),
+    ).rejects.toMatchObject({ code: 'page:too_large' });
+    expect(database.update).not.toHaveBeenCalled();
+  });
 });

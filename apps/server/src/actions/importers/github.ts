@@ -81,7 +81,7 @@ export const getGitHubDefaultBranch = async (owner: string, repo: string) => {
  * a bilingual documentation import can legitimately exceed that by itself.
  * The repository tree is still obtained through GitHub's API first, so callers
  * only request paths that GitHub reported for the selected public revision. */
-export const getGitHubTextFile = async (owner: string, repo: string, branch: string, filePath: string) => {
+export const getGitHubTextFile = async (owner: string, repo: string, branch: string, filePath: string, maxBytes = MAX_PAGE_CONTENT_BYTES) => {
   let response: Response;
   try {
     response = await fetch(githubRawUrl(owner, repo, branch, filePath), {
@@ -108,8 +108,8 @@ export const getGitHubTextFile = async (owner: string, repo: string, branch: str
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > MAX_PAGE_CONTENT_BYTES)
-        throw new ImportError({ code: 'import:limit', message: 'Repository text file exceeds 2 MiB; import stopped.' });
+      if (total > maxBytes)
+        throw new ImportError({ code: 'import:limit', message: `Repository text file exceeds ${maxBytes / (1024 * 1024)} MiB; import stopped.` });
       chunks.push(value);
     }
     return Buffer.concat(chunks).toString('utf8');
