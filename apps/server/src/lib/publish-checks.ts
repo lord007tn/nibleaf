@@ -34,7 +34,12 @@ export interface PublishCheck {
    *  path of the other page with the same title. Empty for an untitled or
    *  empty page, where the page itself is the evidence. */
   detail: string;
+  /** Why a link is broken, when it isn't a missing page: too long to serve. */
+  reason?: 'path-too-long';
 }
+
+/** An over-long link is shown by its start, never in full. */
+const TOO_LONG_PREVIEW = 80;
 
 /** A huge site with a systematic problem (every image without alt text) must
  *  not ship a multi-MB preflight. Errors sort first, so they are never cut. */
@@ -104,14 +109,26 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
   const published = snapshot.pages.filter((page) => !page.hidden && served.has(page.languageCode));
   const linkSeverity = brokenLinkCheckEnabledForSnapshot(snapshot) ? 'error' : 'warning';
   const brokenLinks = new Map<string, string[]>();
-  for (const { page, href } of findBrokenInternalLinks(snapshot)) {
+  const tooLong = new Set<string>();
+  for (const { page, href, reason } of findBrokenInternalLinks(snapshot)) {
     const hrefs = brokenLinks.get(page.id) ?? [];
-    hrefs.push(href);
+    const detail = reason === 'path-too-long' ? `${href.slice(0, TOO_LONG_PREVIEW)}…` : href;
+    if (reason === 'path-too-long') tooLong.add(detail);
+    hrefs.push(detail);
     brokenLinks.set(page.id, hrefs);
   }
   const checks: PublishCheck[] = [];
   const add = (page: SnapshotPage, code: PublishCheckCode, detail = '', severity: PublishCheck['severity'] = 'warning') =>
-    checks.push({ code, severity, pageId: page.id, languageCode: page.languageCode, title: page.title, path: page.path, detail });
+    checks.push({
+      code,
+      severity,
+      pageId: page.id,
+      languageCode: page.languageCode,
+      title: page.title,
+      path: page.path,
+      detail,
+      ...(code === 'broken-internal-link' && tooLong.has(detail) ? { reason: 'path-too-long' as const } : {}),
+    });
   const addEach = (page: SnapshotPage, code: PublishCheckCode, details: readonly string[], severity?: PublishCheck['severity']) => {
     for (const detail of [...new Set(details)].slice(0, MAX_PER_PAGE_AND_CODE)) add(page, code, detail, severity);
   };

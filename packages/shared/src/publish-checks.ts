@@ -23,7 +23,7 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
-import { resolveSiteRoute } from './site-route';
+import { resolveSiteRoute, sitePathTooLong } from './site-route';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 /** Served by their own routes, not the page route: the changelog and generated files. */
@@ -337,6 +337,8 @@ interface BrokenInternalLink {
   page: SnapshotPage;
   /** The link as authored, e.g. `/configuration#options`. */
   href: string;
+  /** Set when the link is broken because it is longer than the reader serves. */
+  reason?: 'path-too-long';
 }
 
 /**
@@ -352,7 +354,9 @@ export function findBrokenInternalLinks(snapshot: SiteSnapshot): BrokenInternalL
   for (const page of snapshot.pages) {
     if (page.kind !== 'PAGE' || page.hidden || !served.has(page.languageCode)) continue;
     for (const href of new Set(pageContentFacts(page.content).links)) {
-      if (resolveLink(href, page) === false) broken.push({ page, href });
+      // Over-long links are rejected before any resolution work (the reader 404s them).
+      if (sitePathTooLong(href)) broken.push({ page, href, reason: 'path-too-long' });
+      else if (resolveLink(href, page) === false) broken.push({ page, href });
     }
   }
   return broken;

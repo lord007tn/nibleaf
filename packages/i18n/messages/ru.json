@@ -4675,6 +4675,7 @@
   "publish_checks_error": "Ошибка",
   "publish_checks_warning": "Предупреждение",
   "publish_checks_duplicateof": "То же название, что у {path}",
+  "publish_checks_pathtoolong": "Слишком длинный адрес ссылки (более 2048 символов)",
   "publish_checks_brokenlink": "Битые ссылки",
   "publish_checks_brokenlinkhint": "Эти ссылки ведут на страницу, которой не будет на опубликованном сайте.",
   "publish_checks_missingalt": "Изображения без альтернативного текста",

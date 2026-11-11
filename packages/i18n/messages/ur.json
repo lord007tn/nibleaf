@@ -4641,6 +4641,7 @@
   "publish_checks_error": "خرابی",
   "publish_checks_warning": "انتباہ",
   "publish_checks_duplicateof": "{path} جیسا ہی عنوان",
+  "publish_checks_pathtoolong": "لنک کا پتہ بہت لمبا ہے (2048 حروف سے زیادہ)",
   "publish_checks_brokenlink": "ٹوٹے ہوئے لنکس",
   "publish_checks_brokenlinkhint": "یہ لنکس ایسے صفحے پر لے جاتے ہیں جو شائع شدہ سائٹ پر موجود نہیں ہوگا۔",
   "publish_checks_missingalt": "متبادل متن کے بغیر تصاویر",

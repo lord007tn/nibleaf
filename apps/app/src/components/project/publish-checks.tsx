@@ -32,6 +32,8 @@ interface CheckRow {
   path: string;
   languageCode: string;
   details: string[];
+  /** Details that are links too long to serve. */
+  tooLong: string[];
 }
 
 interface CheckGroup {
@@ -49,6 +51,7 @@ const groupChecks = (checks: readonly PublishCheck[]): CheckGroup[] => {
     const row = group.rows.find((candidate) => candidate.pageId === check.pageId);
     if (row) {
       if (check.detail && !row.details.includes(check.detail)) row.details.push(check.detail);
+      if (check.reason === 'path-too-long' && !row.tooLong.includes(check.detail)) row.tooLong.push(check.detail);
     } else {
       group.rows.push({
         pageId: check.pageId,
@@ -56,6 +59,7 @@ const groupChecks = (checks: readonly PublishCheck[]): CheckGroup[] => {
         path: check.path,
         languageCode: check.languageCode,
         details: check.detail ? [check.detail] : [],
+        tooLong: check.reason === 'path-too-long' ? [check.detail] : [],
       });
     }
   }
@@ -142,7 +146,7 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
                                 </span>
                               ) : null
                             }
-                            description={<CheckDetails code={group.code} details={row.details} />}
+                            description={<CheckDetails code={group.code} details={row.details} tooLong={row.tooLong} />}
                             key={row.pageId}
                             meta={
                               <span className="break-all font-mono" dir="ltr">
@@ -181,7 +185,7 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
 
 /** The evidence under a row: the broken links, image sources or stray text,
  *  read left to right as code; or, for a duplicate, the other page. */
-function CheckDetails({ code, details }: { code: CheckCode; details: string[] }) {
+function CheckDetails({ code, details, tooLong = [] }: { code: CheckCode; details: string[]; tooLong?: string[] }) {
   const t = useT();
   if (details.length === 0 || code === 'unreadable-slug') return null;
   if (code === 'duplicate-title') {
@@ -190,9 +194,12 @@ function CheckDetails({ code, details }: { code: CheckCode; details: string[] })
   return (
     <span className="flex flex-wrap gap-1.5">
       {details.map((detail) => (
-        <code className="break-all rounded bg-muted px-1 py-0.5 text-[11.5px] text-foreground" dir="ltr" key={detail}>
-          {detail}
-        </code>
+        <span className="inline-flex flex-wrap items-center gap-1" key={detail}>
+          <code className="break-all rounded bg-muted px-1 py-0.5 text-[11.5px] text-foreground" dir="ltr">
+            {detail}
+          </code>
+          {tooLong.includes(detail) ? <span className="text-muted-foreground">{t('publish.checks.pathTooLong')}</span> : null}
+        </span>
       ))}
     </span>
   );

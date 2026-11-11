@@ -4650,6 +4650,7 @@
   "publish_checks_error": "Fehler",
   "publish_checks_warning": "Warnung",
   "publish_checks_duplicateof": "Gleicher Titel wie {path}",
+  "publish_checks_pathtoolong": "Linkadresse zu lang (über 2.048 Zeichen)",
   "publish_checks_brokenlink": "Defekte Links",
   "publish_checks_brokenlinkhint": "Diese Links führen zu einer Seite, die es auf der veröffentlichten Website nicht geben wird.",
   "publish_checks_missingalt": "Bilder ohne Alternativtext",

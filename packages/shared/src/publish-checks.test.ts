@@ -94,3 +94,13 @@ describe('reference links resolve through definitions that are used', () => {
     expect(broken('See [Guide] and [nothing][none].\n\n[GUIDE]: /missing')).toEqual(['/missing']);
   });
 });
+
+describe('over-long links', () => {
+  it('reports a link longer than the reader serves as broken, with its reason', () => {
+    const href = `/${'x'.repeat(3000)}`;
+    const snapshot = site([page({ path: 'exists' }), page({ path: 'home', content: `See [it](${href}).` })]);
+    expect(findBrokenInternalLinks(snapshot).map(({ href: link, reason }) => ({ length: link.length, reason }))).toEqual([
+      { length: href.length, reason: 'path-too-long' },
+    ]);
+  });
+});

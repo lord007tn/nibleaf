@@ -20,6 +20,14 @@ import { buildNavTree, defaultLanguage, type NavNode, publicLanguages, type Site
 
 const SLASH = 47;
 
+/** The longest site path the reader serves (a common URL length limit). Longer
+ *  paths are rejected before any work: the reader answers 404, and the
+ *  pre-publish checks report the link as too long. This bounds every lookup on
+ *  author content and on reader requests. */
+export const MAX_SITE_PATH_LENGTH = 2048;
+
+export const sitePathTooLong = (path: string): boolean => path.length > MAX_SITE_PATH_LENGTH;
+
 /** `value` without leading and trailing `/`, in one linear pass. A regex such
  *  as `^\/+|\/+$` backtracks polynomially on long runs of slashes, and this
  *  runs on every reader request and on authored links at publish time. */
@@ -112,6 +120,7 @@ export interface ResolvedSitePage {
 /** The path without slashes at either end, and without the version's slug when
  *  `version` names a published version and the path starts with it. */
 export const sitePathWithinVersion = (snapshot: SiteSnapshot, path: string, version?: string): string => {
+  if (sitePathTooLong(path)) return path.slice(0, MAX_SITE_PATH_LENGTH);
   const explicitVersion = matchingVersion(snapshot, version);
   const normalized = trimSlashes(path);
   if (explicitVersion && (normalized === explicitVersion.slug || normalized.startsWith(`${explicitVersion.slug}/`))) {
@@ -121,6 +130,7 @@ export const sitePathWithinVersion = (snapshot: SiteSnapshot, path: string, vers
 };
 
 export const resolveSitePage = (snapshot: SiteSnapshot, path: string, lang?: string, version?: string): ResolvedSitePage | null => {
+  if (sitePathTooLong(path)) return null;
   const explicitVersion = matchingVersion(snapshot, version);
   const normalized = sitePathWithinVersion(snapshot, path, version);
   const activeLanguage = activeLanguageCode(snapshot, lang);
@@ -198,6 +208,9 @@ export interface LanguagePathTargetInput {
  * existing `?lang=` is overridden by the language named in the path.
  */
 export function languagePathTarget(input: LanguagePathTargetInput): string | null {
+  if (sitePathTooLong(input.splat)) {
+    return null;
+  }
   const [first, ...rest] = input.splat.split('/').filter(Boolean);
   if (!first) {
     return null;
@@ -242,7 +255,7 @@ export type SiteRoute =
   | { kind: 'page'; page: SnapshotPage; resolved: ResolvedSitePage }
   | { kind: 'openapi' }
   | { kind: 'redirect'; to: string; reason: 'configured' | 'language-prefix' }
-  | { kind: 'not-found' };
+  | { kind: 'not-found'; reason?: 'path-too-long' };
 
 const storedRedirects = (snapshot: SiteSnapshot): RedirectPair[] => {
   const raw = (snapshot.project.config as { redirects?: unknown } | null)?.redirects;
@@ -254,6 +267,9 @@ const storedRedirects = (snapshot: SiteSnapshot): RedirectPair[] => {
  * included) with `?lang=` set to `lang`, in the page route's order.
  */
 export function resolveSiteRoute(snapshot: SiteSnapshot, path: string, options: { lang?: string } = {}): SiteRoute {
+  if (sitePathTooLong(path)) {
+    return { kind: 'not-found', reason: 'path-too-long' };
+  }
   const splat = trimSlashes(path);
   // The page route passes the first segment as the version; the lookup only
   // treats it as one when a published version has that slug.

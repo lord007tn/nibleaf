@@ -4512,6 +4512,7 @@ export const MESSAGE_IDS = {
   'publish.checks.error': 'publish_checks_error',
   'publish.checks.warning': 'publish_checks_warning',
   'publish.checks.duplicateOf': 'publish_checks_duplicateof',
+  'publish.checks.pathTooLong': 'publish_checks_pathtoolong',
   'publish.checks.brokenLink': 'publish_checks_brokenlink',
   'publish.checks.brokenLinkHint': 'publish_checks_brokenlinkhint',
   'publish.checks.missingAlt': 'publish_checks_missingalt',

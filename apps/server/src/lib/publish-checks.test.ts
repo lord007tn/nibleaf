@@ -413,3 +413,13 @@ describe('broken-link severity follows the delivered add-on state (as the worker
     ]);
   });
 });
+
+describe('over-long links in the dialog', () => {
+  it('shows only the start of a link too long to serve, with its reason', () => {
+    const href = `/${'x'.repeat(3000)}`;
+    const [check] = codes(snapshot([page({ path: 'home', content: `See [it](${href}).` })]), 'broken-internal-link');
+    expect(check).toMatchObject({ reason: 'path-too-long' });
+    expect(check?.detail.length).toBeLessThanOrEqual(81);
+    expect(check?.detail.endsWith('…')).toBe(true);
+  });
+});

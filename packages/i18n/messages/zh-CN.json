@@ -4583,6 +4583,7 @@
   "publish_checks_error": "错误",
   "publish_checks_warning": "警告",
   "publish_checks_duplicateof": "与 {path} 标题相同",
+  "publish_checks_pathtoolong": "链接地址过长（超过 2048 个字符）",
   "publish_checks_brokenlink": "损坏的链接",
   "publish_checks_brokenlinkhint": "这些链接指向的页面在已发布的网站上将不存在。",
   "publish_checks_missingalt": "缺少替代文本的图片",

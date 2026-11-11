@@ -4585,6 +4585,7 @@
   "publish_checks_error": "ত্রুটি",
   "publish_checks_warning": "সতর্কতা",
   "publish_checks_duplicateof": "{path}-এর মতো একই শিরোনাম",
+  "publish_checks_pathtoolong": "লিংকের ঠিকানা খুব দীর্ঘ (২০৪৮ অক্ষরের বেশি)",
   "publish_checks_brokenlink": "ভাঙা লিংক",
   "publish_checks_brokenlinkhint": "এই লিংকগুলো এমন একটি পৃষ্ঠায় নিয়ে যায় যা প্রকাশিত সাইটে থাকবে না।",
   "publish_checks_missingalt": "বিকল্প টেক্সট ছাড়া ছবি",

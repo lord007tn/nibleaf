@@ -4650,6 +4650,7 @@
   "publish_checks_error": "Erreur",
   "publish_checks_warning": "Avertissement",
   "publish_checks_duplicateof": "Même titre que {path}",
+  "publish_checks_pathtoolong": "Adresse du lien trop longue (plus de 2 048 caractères)",
   "publish_checks_brokenlink": "Liens cassés",
   "publish_checks_brokenlinkhint": "Ces liens mènent à une page qui n’existera pas sur le site publié.",
   "publish_checks_missingalt": "Images sans texte alternatif",

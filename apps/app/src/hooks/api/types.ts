@@ -256,6 +256,8 @@ export interface PublishCheck {
   path: string;
   /** The link, image source, stray text, slug or other page's path. */
   detail: string;
+  /** Why a link is broken when it isn't a missing page: too long to serve. */
+  reason?: 'path-too-long';
 }
 
 interface DeploymentDiffLine {

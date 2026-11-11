@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SiteSnapshot, SnapshotPage } from './site';
-import { resolveSitePage, resolveSiteRoute, sitePathWithinVersion, trimSlashes } from './site-route';
+import { MAX_SITE_PATH_LENGTH, resolveSitePage, resolveSiteRoute, sitePathWithinVersion, trimSlashes } from './site-route';
 
 const page = (path: string): SnapshotPage => ({
   id: `page-${path}`,
@@ -58,30 +58,33 @@ describe('trimSlashes', () => {
 });
 
 describe('site routes on adversarial paths', () => {
-  // 100k slashes around and inside the path: each lookup must stay within 10× a
-  // plain linear pass over the same input, plus 20 ms of fixed overhead.
+  // Paths longer than the reader serves are rejected before any work, so a
+  // 100k-slash path costs a constant amount of time, not a multiple of a scan.
   const runs = '/'.repeat(100_000);
   const inputs = [`${runs}guide${runs}`, `${runs}x${runs}y`, runs, `latest${runs}guide`];
-  const linearPass = (value: string) => {
-    let slashes = 0;
-    for (let index = 0; index < value.length; index++) if (value.charCodeAt(index) === 47) slashes++;
-    return slashes;
-  };
 
-  it.each(inputs.map((input, index) => [index, input] as const))('resolves adversarial path %i in linear time', (_index, input) => {
-    const baseline = time(() => linearPass(input));
+  it.each(inputs.map((input, index) => [index, input] as const))('rejects over-long path %i immediately', (_index, input) => {
     const elapsed = time(() => {
-      trimSlashes(input);
-      sitePathWithinVersion(site, input, 'latest');
-      resolveSitePage(site, input, undefined, 'latest');
-      resolveSiteRoute(site, input);
+      expect(resolveSiteRoute(site, input)).toEqual({ kind: 'not-found', reason: 'path-too-long' });
+      expect(resolveSitePage(site, input, undefined, 'latest')).toBeNull();
+      expect(sitePathWithinVersion(site, input, 'latest').length).toBeLessThanOrEqual(MAX_SITE_PATH_LENGTH);
     });
-    expect(elapsed).toBeLessThanOrEqual(10 * baseline + 20);
+    expect(elapsed).toBeLessThan(20);
   });
 
-  it('still resolves the page and the API reference behind long slash runs', () => {
-    expect(resolveSiteRoute(site, `${runs}guide${runs}`)).toMatchObject({ kind: 'page', page: { path: 'guide' } });
-    expect(resolveSiteRoute(site, `${runs}api-reference${runs}`)).toEqual({ kind: 'openapi' });
-    expect(resolveSiteRoute(site, runs)).toMatchObject({ kind: 'page', page: { path: 'guide' } });
+  it('still resolves a legitimate 2,000-character path', () => {
+    const slug = 'a'.repeat(1990);
+    const long = { ...site, pages: [...site.pages, page(slug)] } as SiteSnapshot;
+    const path = `/${slug}/`;
+    expect(path.length).toBeLessThanOrEqual(MAX_SITE_PATH_LENGTH);
+    expect(resolveSiteRoute(long, path)).toMatchObject({ kind: 'page', page: { path: slug } });
+    // One character over the limit is rejected.
+    expect(resolveSiteRoute(long, `/${'a'.repeat(MAX_SITE_PATH_LENGTH)}`)).toEqual({ kind: 'not-found', reason: 'path-too-long' });
+  });
+
+  it('still trims slashes around a path the reader serves', () => {
+    const slashes = '/'.repeat(500);
+    expect(resolveSiteRoute(site, `${slashes}guide${slashes}`)).toMatchObject({ kind: 'page', page: { path: 'guide' } });
+    expect(resolveSiteRoute(site, `${slashes}api-reference${slashes}`)).toEqual({ kind: 'openapi' });
   });
 });

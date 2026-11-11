@@ -4651,6 +4651,7 @@
   "publish_checks_error": "Erro",
   "publish_checks_warning": "Aviso",
   "publish_checks_duplicateof": "Mesmo título de {path}",
+  "publish_checks_pathtoolong": "Endereço do link longo demais (mais de 2.048 caracteres)",
   "publish_checks_brokenlink": "Links quebrados",
   "publish_checks_brokenlinkhint": "Estes links levam a uma página que não existirá no site publicado.",
   "publish_checks_missingalt": "Imagens sem texto alternativo",

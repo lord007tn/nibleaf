@@ -4585,6 +4585,7 @@
   "publish_checks_error": "त्रुटि",
   "publish_checks_warning": "चेतावनी",
   "publish_checks_duplicateof": "{path} जैसा ही शीर्षक",
+  "publish_checks_pathtoolong": "लिंक का पता बहुत लंबा है (2048 से अधिक वर्ण)",
   "publish_checks_brokenlink": "टूटे लिंक",
   "publish_checks_brokenlinkhint": "ये लिंक ऐसे पेज पर ले जाते हैं जो प्रकाशित साइट पर मौजूद नहीं होगा।",
   "publish_checks_missingalt": "बिना वैकल्पिक टेक्स्ट वाली इमेज",

@@ -4583,6 +4583,7 @@
   "publish_checks_error": "Kesalahan",
   "publish_checks_warning": "Peringatan",
   "publish_checks_duplicateof": "Judulnya sama dengan {path}",
+  "publish_checks_pathtoolong": "Alamat tautan terlalu panjang (lebih dari 2048 karakter)",
   "publish_checks_brokenlink": "Tautan rusak",
   "publish_checks_brokenlinkhint": "Tautan ini mengarah ke halaman yang tidak akan ada di situs yang diterbitkan.",
   "publish_checks_missingalt": "Gambar tanpa teks alternatif",

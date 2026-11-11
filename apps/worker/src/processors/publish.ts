@@ -153,12 +153,15 @@ export function collectPublishIssues(snapshot: SiteSnapshot, options: { skipGram
   const issues: PublishIssue[] = [];
 
   if (brokenLinkCheckEnabledForSnapshot(snapshot)) {
-    for (const { page, href } of findBrokenInternalLinks(snapshot)) {
+    for (const { page, href, reason } of findBrokenInternalLinks(snapshot)) {
       issues.push({
         type: 'broken-link',
         pageTitle: page.title,
         pagePath: normalizedPagePath(page.path) || '/',
-        detail: `Link to "${href}" does not match any page.`,
+        detail:
+          reason === 'path-too-long'
+            ? `Link to "${href.slice(0, 80)}…" is longer than the 2048 characters the site serves.`
+            : `Link to "${href}" does not match any page.`,
       });
     }
   }

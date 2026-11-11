@@ -4697,6 +4697,7 @@
   "publish_checks_error": "خطأ",
   "publish_checks_warning": "تحذير",
   "publish_checks_duplicateof": "العنوان نفسه مستخدم في {path}",
+  "publish_checks_pathtoolong": "عنوان الرابط طويل جدًا (أكثر من 2048 حرفًا)",
   "publish_checks_brokenlink": "روابط معطلة",
   "publish_checks_brokenlinkhint": "تؤدي هذه الروابط إلى صفحة لن تكون موجودة في الموقع المنشور.",
   "publish_checks_missingalt": "صور بلا نص بديل",
