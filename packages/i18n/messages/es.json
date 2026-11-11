@@ -4623,5 +4623,17 @@
   "shortcuts_switchOrganization": "Switch organization",
   "shortcuts_switchWebsite": "Switch website",
   "shortcuts_close": "Close a menu or dialog",
-  "shortcuts_then": "then"
+  "shortcuts_then": "then",
+  "editor_tree_search": "Filtrar páginas por título o dirección",
+  "editor_tree_noresults": "No hay páginas coincidentes",
+  "editor_tree_filterreason": "Borra el filtro para mover páginas.",
+  "editor_tree_instructions": "Usa las flechas para navegar, Enter para abrir, F2 para renombrar, Mayús+F10 para las acciones y Alt+Shift+D para el asa de arrastre. En el asa, pulsa Espacio para mover, las flechas para elegir el destino, Espacio para soltar o Escape para cancelar.",
+  "editor_tree_movedinside": "{title} se movió dentro de {parent}, posición {position} de {total}.",
+  "editor_tree_movedroot": "{title} se movió a {language}, posición {position} de {total}.",
+  "editor_tree_previewinside": "{title} se moverá dentro de {parent}, posición {position} de {total}.",
+  "editor_tree_previewroot": "{title} se moverá a {language}, posición {position} de {total}.",
+  "editor_tree_moving": "Moviendo {title}…",
+  "editor_tree_movefailed": "No se pudo mover {title}. Se ha restaurado su posición.",
+  "editor_tree_movebusy": "Espera a que termine el movimiento actual antes de mover otra página.",
+  "editor_tree_structurechanged": "El árbol de páginas cambió en otro lugar y se ha actualizado. Intenta mover la página de nuevo."
 }

@@ -1,10 +1,12 @@
+import { createHash } from 'node:crypto';
 import { Prisma, prisma } from '@nibleaf/database';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
 import { pageDescription } from '@nibleaf/shared/markdown-text';
+import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
 import { interpolateVariables, variablesFromConfig } from '@nibleaf/shared/site';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
-import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
+import type { BulkReorderPagesBody, CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
 import { assertAddressLinkRevisions, type PagePathChange, prepareAddressLinks, preservePageAddresses } from '@/lib/page-address-changes';
 import { assertBranchInProject, getDefaultBranch } from './branches';
@@ -360,10 +362,28 @@ export const deletePage = async (projectId: string, id: string) =>
     return { id };
   });
 
-type ReorderRow = { id: string; parentId: string | null; branchId: string; languageId: string; slug: string; translationKey: string | null };
+type ReorderRow = {
+  id: string;
+  parentId: string | null;
+  branchId: string;
+  languageId: string;
+  position: number;
+  slug: string;
+  translationKey: string | null;
+};
+
+/** Returned on unfiltered branch-list reads; ignores content-only edits. */
+export const pageStructureRevision = (rows: readonly PageStructureRow[]) =>
+  createHash('sha256')
+    .update(
+      JSON.stringify(
+        [...rows].sort((a, b) => a.id.localeCompare(b.id)).map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]),
+      ),
+    )
+    .digest('hex');
 
 /** The languages a reorder moves pages into must belong to this site. */
-const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: string, body: ReorderPagesBody) => {
+const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: string, body: BulkReorderPagesBody) => {
   // Every given id is checked, including an empty one from a caller that skipped
   // the request schema: it must fail here as "not found", not reach the database.
   const ids = [...new Set(body.items.flatMap((item) => (item.languageId === undefined ? [] : [item.languageId])))];
@@ -397,8 +417,10 @@ const settleLanguageMoves = (tree: Map<string, ReorderRow>, before: Map<string, 
   }
 };
 
-export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
-  const prepared = await prepareAddressLinks(projectId, undefined, body.items);
+const reorderPagesAttempt = async (projectId: string, request: ReorderPagesBody) => {
+  // Narrow intents can acquire a different current parent after preparation.
+  // Parse all documents outside the lock, then verify their revisions inside it.
+  const prepared = await prepareAddressLinks(projectId, undefined, 'pageId' in request ? undefined : request.items);
   const branchId = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
@@ -406,10 +428,44 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
       await assertAddressLinkRevisions(projectId, prepared, tx);
       const pages: ReorderRow[] = await tx.page.findMany({
         where: { projectId },
-        select: { id: true, parentId: true, branchId: true, languageId: true, slug: true, translationKey: true },
+        select: { id: true, parentId: true, branchId: true, languageId: true, position: true, slug: true, translationKey: true },
       });
       const byPage = new Map(pages.map((page) => [page.id, page]));
-      const proposed = new Map<string, ReorderPagesBody['items'][number]>();
+      let body: BulkReorderPagesBody;
+      let moveBranchId: string | undefined;
+      if ('pageId' in request) {
+        const active = byPage.get(request.pageId);
+        if (!active) throw notFound('page', { id: request.pageId });
+        moveBranchId = active.branchId;
+        if (
+          request.expectedStructureRevision &&
+          request.expectedStructureRevision !== pageStructureRevision(pages.filter((page) => page.branchId === active.branchId))
+        ) {
+          throw conflict('The page structure changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+        }
+        if (request.parentId && !byPage.has(request.parentId)) throw notFound('page', { id: request.parentId });
+        assertNoParentCycle(byPage, active.id, request.parentId);
+        const parent = request.parentId ? byPage.get(request.parentId) : undefined;
+        if (parent && (parent.branchId !== active.branchId || parent.languageId !== (request.languageId ?? active.languageId))) {
+          throw badRequest('Pages can only be moved within one branch and under a parent in the destination language.');
+        }
+        if (request.languageId)
+          await assertTargetLanguages(tx, projectId, {
+            items: [{ id: active.id, parentId: request.parentId, position: 0, languageId: request.languageId }],
+          });
+        const items = resolvePageMove(pages, request);
+        if (!items) throw conflict('The destination sibling changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+        body = { items };
+      } else {
+        body = request;
+        if (request.expectedStructureRevision) {
+          const branch = request.items[0] ? byPage.get(request.items[0].id)?.branchId : undefined;
+          if (request.expectedStructureRevision !== pageStructureRevision(pages.filter((page) => page.branchId === branch))) {
+            throw conflict('The page structure changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+          }
+        }
+      }
+      const proposed = new Map<string, BulkReorderPagesBody['items'][number]>();
       for (const item of body.items) {
         if (proposed.has(item.id)) {
           throw badRequest('Each page can only appear once in a reorder request.', { id: item.id });
@@ -499,7 +555,7 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
         tx,
         prepared,
       );
-      return body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined;
+      return moveBranchId ?? (body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined);
     },
     { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
   );
@@ -507,4 +563,23 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
   // a branch â€” they were validated against their parents above). Empty items keep
   // the default-branch behavior.
   return listPages(projectId, undefined, branchId);
+};
+
+export const reorderPages = async (projectId: string, request: ReorderPagesBody) => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await reorderPagesAttempt(projectId, request);
+    } catch (error) {
+      // A collaborator may commit while Markdown is being parsed. Retry the
+      // narrow intent against fresh content, never an old structural snapshot.
+      if (
+        !('pageId' in request) ||
+        attempt >= 2 ||
+        !(error instanceof AppError) ||
+        error.code !== 'page:address_conflict' ||
+        error.details?.reason !== 'address_raced'
+      )
+        throw error;
+    }
+  }
 };
