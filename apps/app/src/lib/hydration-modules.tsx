@@ -1,4 +1,15 @@
-import { type ComponentProps, type ReactNode, type SyntheticEvent, use, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  type ComponentProps,
+  type FocusEvent,
+  type ReactNode,
+  type SyntheticEvent,
+  use,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 
 /*
  * Code-split modules that server-rendered markup depends on.
@@ -255,7 +266,10 @@ export function HydrationIsland({
     const at = (path: number[] | undefined) =>
       path ? path.reduce<Element | undefined>((node, index) => node?.children[index], live.current ?? undefined) : undefined;
     const focus = at(intent.focus);
-    if (focus instanceof HTMLElement) focus.focus();
+    // Only while the island still owns focus: the server element it was on is
+    // gone (focus fell back to the body), not moved somewhere else by the reader.
+    const owner = document.activeElement;
+    if (focus instanceof HTMLElement && (!owner || owner === document.body || live.current.contains(owner))) focus.focus();
     const click = at(intent.click);
     if (click instanceof HTMLElement) click.click();
   }, [status, intent]);
@@ -270,12 +284,26 @@ export function HydrationIsland({
   }
   if (serverHtml !== null && (status !== 'failed' || keepServerHtmlOnFailure)) {
     // The exact markup React would hydrate, set as HTML: React leaves it as is.
+    // Paths are read inside each handler: React clears `currentTarget` once the
+    // handler returns, before a state updater would run.
     const reach = loadOnIntent
       ? {
           onPointerOver: () => setIntent((current) => current ?? {}),
           onTouchStart: () => setIntent((current) => current ?? {}),
-          onFocus: (event: SyntheticEvent) => setIntent((current) => ({ ...current, focus: pathWithin(event) })),
-          onClick: (event: SyntheticEvent) => setIntent((current) => ({ ...current, click: pathWithin(event) })),
+          onFocus: (event: SyntheticEvent) => {
+            const focus = pathWithin(event);
+            setIntent((current) => ({ ...current, focus }));
+          },
+          // Focus that leaves the island is no longer the reader's intent.
+          onBlur: (event: FocusEvent<HTMLDivElement>) => {
+            const next = event.relatedTarget;
+            if (next instanceof Node && event.currentTarget.contains(next)) return;
+            setIntent((current) => (current ? { ...current, focus: undefined } : current));
+          },
+          onClick: (event: SyntheticEvent) => {
+            const click = pathWithin(event);
+            setIntent((current) => ({ ...current, click }));
+          },
         }
       : undefined;
     // biome-ignore lint/security/noDangerouslySetInnerHtml: the server's own rendered (sanitized) markup, read back from this element unchanged.

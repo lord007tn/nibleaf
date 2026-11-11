@@ -2180,6 +2180,7 @@
   "site_results": "Résultats",
   "site_loading": "Chargement…",
   "site_articleloadfailed": "Impossible de charger cette page. Réessayer",
+  "site_controlloadfailed": "Impossible d'ouvrir. Sélectionnez-le à nouveau pour réessayer.",
   "site_previous": "Précédent",
   "site_next": "Suivant",
   "site_onthispage": "Sur cette page",

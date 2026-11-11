@@ -3,6 +3,7 @@ import { ChevronDown, Languages } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { headerMenusModule } from '@/components/site/header-menus-module';
 import { useIntentModule } from '@/lib/intent-module';
+import { IntentTrigger } from './intent-trigger';
 
 export interface SiteLanguage {
   code: string;
@@ -51,7 +52,7 @@ export function LanguageSwitcher({
   activeCode: string;
   onChange: (code: string) => void;
 }) {
-  const { loaded, start, trigger } = useIntentModule(headerMenusModule);
+  const { loaded, start, trigger, failed } = useIntentModule(headerMenusModule);
   if (languages.length < 2) {
     return null;
   }
@@ -59,12 +60,14 @@ export function LanguageSwitcher({
     return <loaded.LanguageMenu languages={languages} activeCode={activeCode} onChange={onChange} start={start} />;
   }
   return (
-    <button
-      {...languageTriggerProps(languages, activeCode)}
-      data-slot="dropdown-menu-trigger"
-      aria-haspopup="menu"
-      aria-expanded={false}
-      {...trigger}
-    />
+    <IntentTrigger failed={failed} lang={activeCode}>
+      <button
+        {...languageTriggerProps(languages, activeCode)}
+        data-slot="dropdown-menu-trigger"
+        aria-haspopup="menu"
+        aria-expanded={false}
+        {...trigger}
+      />
+    </IntentTrigger>
   );
 }

@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { markdownCodeUsage } from '@nibleaf/shared/markdown-code-usage';
 import type { LanguageFn } from 'highlight.js';
 import { type ComponentProps, Suspense, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
@@ -21,7 +22,7 @@ import { MermaidBlock } from '@/components/site/mermaid-block';
 import { Pre } from '@/components/site/reader-code-block';
 import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
 import { CORE_HIGHLIGHT_GRAMMARS, rehypeReaderHighlight } from '@/components/site/reader-highlight';
-import { lazyHighlightLanguages } from '@/lib/highlight-languages';
+import { lazyHighlightLanguages, lazyHighlightLanguagesNamed } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
 import { highlightLanguageModule, needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
@@ -128,25 +129,31 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
  *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting.
  *  Pass `site` on a published site so internal links resolve to the site base. */
 export function Markdown(props: MarkdownProps) {
-  const languages = lazyHighlightLanguages(props.content);
-  if (languages.length === 0) return <MarkdownBody {...props} />;
+  // Read with the renderer's own Markdown semantics (nested fences, container
+  // ends, `r&#117;st`), the same on the server and in the browser, so the
+  // modules the server marked are the ones hydration expects. Past the parser's
+  // safety bounds, the line-based checks decide, erring towards loading.
+  const usage = markdownCodeUsage(normalizeMdxBlocks(props.content));
+  const rich = usage ? usage.rich : needsRichMarkdown(props.content);
+  const languages = usage ? lazyHighlightLanguagesNamed(usage.languages, props.content) : lazyHighlightLanguages(props.content);
+  if (languages.length === 0) return <MarkdownBody {...props} rich={rich} />;
   // Code in a language outside the core grammars: its grammars load like the
   // rich renderer (before hydrating, and in the reader's loaders), and until
   // they have, the plain body keeps those blocks readable, unhighlighted.
   const modules = languages.map(highlightLanguageModule);
-  const plain = <MarkdownBody {...props} />;
+  const plain = <MarkdownBody {...props} rich={rich} />;
   const marker = { [HYDRATION_MODULE_ATTRIBUTE]: modules.map((module) => module.key).join(' ') };
   return (
     <Suspense fallback={plain}>
       <HydrationIsland className="contents" {...marker} modules={modules} pending={plain} failed={() => plain}>
-        {() => <MarkdownBody {...props} highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))} />}
+        {() => <MarkdownBody {...props} rich={rich} highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))} />}
       </HydrationIsland>
     </Suspense>
   );
 }
 
-function MarkdownBody({ content, className, site, highlightGrammars }: MarkdownProps) {
-  if (needsRichMarkdown(content)) {
+function MarkdownBody({ content, className, site, highlightGrammars, rich }: MarkdownProps & { rich: boolean }) {
+  if (rich) {
     // The router loads the rich chunk before hydrating markup it rendered, and
     // the reader's loaders before navigating. Until it loads, hydrating keeps
     // the server's markup and a client render shows the plain renderer, which

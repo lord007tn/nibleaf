@@ -2117,6 +2117,7 @@
   "site_results": "Hasil",
   "site_loading": "Memuat…",
   "site_articleloadfailed": "Halaman ini tidak dapat dimuat. Coba lagi",
+  "site_controlloadfailed": "Tidak dapat dibuka. Pilih lagi untuk mencoba lagi.",
   "site_previous": "Sebelumnya",
   "site_next": "Selanjutnya",
   "site_onthispage": "Di halaman ini",

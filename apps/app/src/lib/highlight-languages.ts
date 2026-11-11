@@ -58,17 +58,23 @@ const CLASS_LANGUAGE = /\blang(?:uage)?-([^\s"'`>]+)/g;
  */
 export function lazyHighlightLanguages(content: string): LazyHighlightLanguage[] {
   if (typeof content !== 'string') return [];
+  const names = [...content.matchAll(FENCE_LANGUAGE), ...content.matchAll(CLASS_LANGUAGE)].map(([, language]) => language ?? '');
+  return lazyHighlightLanguagesNamed(names, content);
+}
+
+/**
+ * The lazily loaded grammars for code languages already read from the
+ * document (the article renderer reads them with its Markdown parser, which
+ * also finds fences in nested containers and decodes `r&#117;st`).
+ */
+export function lazyHighlightLanguagesNamed(names: Iterable<string>, content: string): LazyHighlightLanguage[] {
   const found = new Set<LazyHighlightLanguage>();
-  const add = (candidate: string | undefined) => {
-    const name = candidate && LAZY_BY_NAME.get(candidate.toLowerCase());
-    if (name) found.add(name);
-  };
   let usesYaml = false;
-  for (const [, language] of content.matchAll(FENCE_LANGUAGE)) {
-    add(language);
-    if (language && /^ya?ml$/i.test(language)) usesYaml = true;
+  for (const candidate of names) {
+    const name = LAZY_BY_NAME.get(candidate.toLowerCase());
+    if (name) found.add(name);
+    if (/^ya?ml$/i.test(candidate)) usesYaml = true;
   }
-  for (const [, language] of content.matchAll(CLASS_LANGUAGE)) add(language);
   // The core YAML grammar highlights ERB tags (`<%= … %>`) as Ruby.
   if (usesYaml && content.includes('<%')) found.add('ruby');
   return [...found].sort();

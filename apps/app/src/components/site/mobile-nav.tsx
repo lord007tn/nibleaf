@@ -2,6 +2,7 @@ import { Menu } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import type { NavNode } from '@/hooks/api';
 import { intentModule, useIntentModule } from '@/lib/intent-module';
+import { IntentTrigger } from './intent-trigger';
 
 interface MobileNavLink {
   label: string;
@@ -63,15 +64,17 @@ export const mobileNavTriggerProps = (label: string, triggerLabel?: string): Com
  * switchers move in here as labelled settings.
  */
 export function MobileNav(props: MobileNavProps) {
-  const { loaded, start, trigger } = useIntentModule(drawerModule);
+  const { loaded, start, trigger, failed } = useIntentModule(drawerModule);
   if (loaded) return <loaded.MobileNavDrawer {...props} start={start} />;
   return (
-    <button
-      {...mobileNavTriggerProps(props.label, props.triggerLabel)}
-      data-slot="sheet-trigger"
-      aria-haspopup="dialog"
-      aria-expanded={false}
-      {...trigger}
-    />
+    <IntentTrigger failed={failed} lang={props.lang}>
+      <button
+        {...mobileNavTriggerProps(props.label, props.triggerLabel)}
+        data-slot="sheet-trigger"
+        aria-haspopup="dialog"
+        aria-expanded={false}
+        {...trigger}
+      />
+    </IntentTrigger>
   );
 }

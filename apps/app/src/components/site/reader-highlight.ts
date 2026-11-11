@@ -61,6 +61,9 @@ function codeLanguage(node: Element): string | false | undefined {
  * language that isn't registered stays plain, as rehype-highlight leaves it.
  * rehype-highlight itself imports every `common` grammar.
  */
+/** Characters per code block above which it renders as plain text. */
+export const MAX_HIGHLIGHT_LENGTH = 50_000;
+
 export function rehypeReaderHighlight({ grammars }: { grammars: Readonly<Record<string, LanguageFn>> }) {
   const lowlight = createLowlight(grammars);
   // Every `code` element directly inside a `pre`, in document order.
@@ -77,7 +80,11 @@ export function rehypeReaderHighlight({ grammars }: { grammars: Readonly<Record<
     if (!Array.isArray(node.properties.className)) node.properties.className = [];
     if (!node.properties.className.includes('hljs')) node.properties.className.unshift('hljs');
     if (!lowlight.registered(language)) return;
-    const result = lowlight.highlight(language, toText(node, { whitespace: 'pre' }));
+    const text = toText(node, { whitespace: 'pre' });
+    // A huge block (a pasted log or bundle) stays plain text: highlighting it
+    // costs the render far more than the colours are worth.
+    if (text.length > MAX_HIGHLIGHT_LENGTH) return;
+    const result = lowlight.highlight(language, text);
     if (result.children.length > 0) node.children = result.children as ElementContent[];
   };
   return (tree: Root) => {

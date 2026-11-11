@@ -27,6 +27,10 @@ export const needsRichMarkdown = (content: string): boolean => {
 const withoutCode = (content: string): string => {
   if (typeof content !== 'string') return '';
   if (!content.includes('`') && !content.includes('~~~')) return content;
+  // A fence inside a blockquote or list ends where its container does, which a
+  // line scan can't see: blanking from there could hide math or HTML after it.
+  // When unsure, keep everything, so the check errs towards the rich renderer.
+  if (CONTAINER_FENCE.test(content)) return content;
   const lines = content.split('\n');
   const fenced = fencedMarkdownLines(lines);
   return lines.map((line, index) => (fenced[index] ? '' : line.replace(INLINE_CODE, ''))).join('\n');
@@ -35,6 +39,8 @@ const withoutCode = (content: string): string => {
 /** A backtick run that isn't escaped, its text on the same line, and a closing
  *  run of the same length. */
 const INLINE_CODE = /(?<![\\`])(`+)[^`\n]+?\1(?!`)/g;
+/** A fence opened inside a blockquote or list item. */
+const CONTAINER_FENCE = /^[ \t]*(?:>|[-*+][ \t]|\d{1,9}[.)][ \t])[ \t>]*(?:`{3,}|~{3,})/m;
 
 /** The article renderer (Markdown, GFM, code highlighting): pages with an
  *  article, not the API reference or a not-found page. */

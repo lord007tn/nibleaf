@@ -3,6 +3,7 @@ import { ChevronDown, Layers } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { headerMenusModule } from '@/components/site/header-menus-module';
 import { useIntentModule } from '@/lib/intent-module';
+import { IntentTrigger } from './intent-trigger';
 
 export interface SiteVersion {
   id: string;
@@ -52,7 +53,7 @@ export function VersionSwitcher({
   onChange: (slug: string) => void;
   lang?: string;
 }) {
-  const { loaded, start, trigger } = useIntentModule(headerMenusModule);
+  const { loaded, start, trigger, failed } = useIntentModule(headerMenusModule);
   if (versions.length < 2) {
     return null;
   }
@@ -60,12 +61,14 @@ export function VersionSwitcher({
     return <loaded.VersionMenu versions={versions} activeSlug={activeSlug} onChange={onChange} lang={lang} start={start} />;
   }
   return (
-    <button
-      {...versionTriggerProps(versions, activeSlug, lang)}
-      data-slot="dropdown-menu-trigger"
-      aria-haspopup="menu"
-      aria-expanded={false}
-      {...trigger}
-    />
+    <IntentTrigger failed={failed} lang={lang}>
+      <button
+        {...versionTriggerProps(versions, activeSlug, lang)}
+        data-slot="dropdown-menu-trigger"
+        aria-haspopup="menu"
+        aria-expanded={false}
+        {...trigger}
+      />
+    </IntentTrigger>
   );
 }

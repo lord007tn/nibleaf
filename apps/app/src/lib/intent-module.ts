@@ -12,37 +12,50 @@ import { useState, useSyncExternalStore } from 'react';
  * Hydrating always renders the static trigger, as the server did.
  */
 
+type IntentModuleStatus = 'idle' | 'loading' | 'failed' | 'loaded';
+
 export interface IntentModule<T> {
   /** Starts the download (or reuses the one in flight). Never rejects: a
-   *  failed download resolves `undefined`, and the next intent tries again. */
+   *  failed download resolves `undefined`, reports `failed`, and the next
+   *  intent tries again. */
   load: () => Promise<T | undefined>;
   current: () => T | undefined;
+  status: () => IntentModuleStatus;
   subscribe: (listener: () => void) => () => void;
 }
 
 export function intentModule<T>(importer: () => Promise<T>): IntentModule<T> {
   let value: T | undefined;
   let pending: Promise<T | undefined> | undefined;
+  let status: IntentModuleStatus = 'idle';
   const listeners = new Set<() => void>();
+  const set = (next: IntentModuleStatus) => {
+    status = next;
+    for (const listener of listeners) listener();
+  };
   return {
     load: () => {
-      const download: Promise<T | undefined> =
-        pending ??
-        importer().then(
-          (loaded): T | undefined => {
-            value = loaded;
-            for (const listener of listeners) listener();
-            return loaded;
-          },
-          (): T | undefined => {
-            pending = undefined;
-            return value;
-          },
-        );
-      pending ??= download;
+      if (pending) return pending;
+      const download: Promise<T | undefined> = importer().then(
+        (loaded): T | undefined => {
+          value = loaded;
+          set('loaded');
+          return loaded;
+        },
+        (): T | undefined => {
+          pending = undefined;
+          // Said, not swallowed: the static trigger tells the reader and the
+          // next intent tries again.
+          set('failed');
+          return value;
+        },
+      );
+      pending = download;
+      set('loading');
       return download;
     },
     current: () => value,
+    status: () => status,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -51,6 +64,7 @@ export function intentModule<T>(importer: () => Promise<T>): IntentModule<T> {
 }
 
 const notLoaded = () => undefined;
+const notStarted = (): IntentModuleStatus => 'idle';
 
 /** How the implementation starts once it replaces the static trigger. */
 export interface IntentStart {
@@ -66,6 +80,7 @@ export interface IntentStart {
  */
 export function useIntentModule<T>(module: IntentModule<T>) {
   const loaded = useSyncExternalStore(module.subscribe, module.current, notLoaded);
+  const status = useSyncExternalStore(module.subscribe, module.status, notStarted);
   const [defaultOpen, setDefaultOpen] = useState(false);
   const [focusTrigger, setFocusTrigger] = useState(false);
   const preload = () => {
@@ -75,7 +90,12 @@ export function useIntentModule<T>(module: IntentModule<T>) {
   return {
     loaded,
     start,
+    /** The reader opened the control and its code didn't arrive: say so
+     *  (`controlLoadFailed`); selecting the trigger again retries. */
+    failed: defaultOpen && status === 'failed',
     trigger: {
+      // Busy only once the reader asked for it, not while it preloads on hover.
+      'aria-busy': defaultOpen && status === 'loading' ? true : undefined,
       onPointerEnter: preload,
       onTouchStart: preload,
       onFocus: () => {
