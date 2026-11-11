@@ -10,7 +10,7 @@ import { CellSelection } from '@tiptap/pm/tables';
  *   caret. With a bare caret, the word around it becomes the selection.
  * - Alt-F10 moves focus into the menu's toolbar (the common rich-text binding).
  */
-export const SELECTION_MENU_META = 'nibleafSelectionMenu';
+const SELECTION_MENU_META = 'nibleafSelectionMenu';
 
 export type SelectionMenuRequest = 'link' | 'toolbar';
 
@@ -33,7 +33,7 @@ export function selectionMenuApplies(state: EditorState): boolean {
 const WORD_CHARACTER = /[\p{L}\p{M}\p{N}_]/u;
 
 /** The word the caret touches, as document positions, or null between words. */
-export function wordAround($pos: ResolvedPos): { from: number; to: number } | null {
+function wordAround($pos: ResolvedPos): { from: number; to: number } | null {
   const parent = $pos.parent;
   if (!parent.isTextblock) return null;
   // One character per inline leaf (images, hard breaks), so string offsets stay
