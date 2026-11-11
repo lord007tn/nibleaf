@@ -253,11 +253,17 @@ export const useUpdatePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ pageId, body }: { pageId: string; body: UpdatePageBody }) =>
-      mutateData<Page>(
+      mutateData<Page & { addressChanged: boolean; redirectsAdded: number; linksUpdated: number; documentsSkipped: number }>(
         await api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }),
         'Could not save the page.',
       ),
-    onSuccess: (_data, { pageId }) => {
+    onError: (_error, { pageId }) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
+    },
+    onSuccess: (data, { pageId }) => {
+      if (data.addressChanged) {
+        qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+      }
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
@@ -309,6 +315,7 @@ export const useReorderPages = (projectId: string) => {
       for (const [key, pages] of context?.previous ?? []) qc.setQueryData(key, pages);
     },
     onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
       void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
       return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
     },
