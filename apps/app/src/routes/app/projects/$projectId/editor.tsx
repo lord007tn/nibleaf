@@ -1433,7 +1433,7 @@ function EditorPage() {
                               onMoveTo={setMoveForId}
                               onToggleHidden={toggleHidden}
                               pageHref={pageHref}
-                              creating={createPage.isPending || duplicatePage.isPending || switching}
+                              creating={createPage.isPending || duplicatePage.isPending}
                             />
                           )}
                         </div>
