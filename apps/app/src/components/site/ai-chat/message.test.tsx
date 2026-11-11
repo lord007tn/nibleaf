@@ -57,12 +57,13 @@ describe('reader chat messages', () => {
     await render(message(final));
     expect(container.textContent).toContain('Verified answer');
     expect(container.textContent).not.toContain('Unverified draft');
-    expect(container.querySelector('a')?.textContent).toContain('Getting started › Install');
+    expect(container.querySelector('a')?.closest('li[dir]')?.textContent).toContain('Getting started');
+    expect(container.querySelector('a')?.textContent).toContain('Install');
     const chip = container.querySelector<HTMLButtonElement>('button[aria-label="Source 1"]');
     expect(chip).not.toBeNull();
     HTMLElement.prototype.scrollIntoView = vi.fn();
     chip?.click();
-    expect(document.activeElement?.textContent).toContain('Getting started');
+    expect(document.activeElement?.textContent).toContain('Install');
     await unmount();
   });
 
@@ -76,7 +77,7 @@ describe('reader chat messages', () => {
     };
     // The reader has since switched to English.
     await render(<ChatMessage text="" final={arabic} options={options} busy={false} consent="granted" close={vi.fn()} scope={{ version: 'v1' }} />);
-    const href = document.getElementById('00000000-0000-4000-8000-000000000002-S1')?.getAttribute('href') ?? '';
+    const href = document.getElementById('00000000-0000-4000-8000-000000000002-source-1')?.getAttribute('href') ?? '';
     expect(href).toContain('lang=en');
     expect(href).toContain('v1');
     expect(decodeURIComponent(href)).toContain('#انتهاء-صلاحية-الرمز');
@@ -92,15 +93,57 @@ describe('reader chat messages', () => {
       answer: 'Install it [S3]. Then sign in [S2].',
       citations: [
         { ...first, id: 'S3', title: 'Install' },
-        { ...first, id: 'S2', title: 'Sign in', anchor: 'sign-in' },
+        { ...first, id: 'S2', pageId: 'other', title: 'Sign in', anchor: 'sign-in' },
       ],
     };
     await render(<ChatMessage text="" final={cited} options={options} busy={false} consent="granted" close={vi.fn()} />);
     const chips = [...container.querySelectorAll<HTMLButtonElement>('button[aria-label^="Source "]')].map((chip) => chip.textContent);
     expect(chips).toEqual(['1', '2']);
     expect(container.querySelector('button[aria-label="Source 3"]')).toBeNull();
-    const cards = [...container.querySelectorAll('a')].map((card) => card.querySelector('span')?.textContent);
-    expect(cards).toEqual(['1. Install', '2. Sign in']);
+    const cards = [...container.querySelectorAll('a')].map((card) => card.textContent);
+    expect(cards).toEqual(['1InstallUseful steps', '2InstallUseful steps']);
+    expect([...container.querySelectorAll('li[dir] > p')].map((page) => page.textContent)).toEqual(['Install', 'Sign in']);
+    await unmount();
+  });
+
+  it('lists a page once with its cited sections, and copies clean text with numbered sources', async () => {
+    const { container, render, unmount } = mount();
+    const [first] = final.citations;
+    if (!first) throw new Error('fixture');
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const cited: AiChatFinalEvent = {
+      ...final,
+      answer: 'Install **it**. [S1]\n\nThen sign in. [S2]\n\nIt updates itself. [S4]',
+      citations: [
+        first,
+        { ...first, id: 'S2', heading: 'Sign in', anchor: 'sign-in' },
+        { ...first, id: 'S4', snippet: 'Another chunk of the install section' },
+      ],
+    };
+    await render(<ChatMessage text="" final={cited} options={options} busy={false} consent="granted" close={vi.fn()} />);
+    expect([...container.querySelectorAll('li[dir] > p')].map((page) => page.textContent)).toEqual(['Getting started']);
+    expect([...container.querySelectorAll('li[dir] a')].map((section) => section.getAttribute('href'))).toEqual([
+      '/guide?lang=en#install',
+      '/guide?lang=en#sign-in',
+    ]);
+    expect([...container.querySelectorAll('button[data-citation]')].map((chip) => chip.textContent)).toEqual(['1', '2', '1']);
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Copy answer"]')?.click());
+    expect(writeText).toHaveBeenCalledWith(
+      [
+        'Install it. [1]',
+        '',
+        'Then sign in. [2]',
+        '',
+        'It updates itself. [1]',
+        '',
+        'Sources',
+        '[1] Getting started › Install',
+        `${window.location.origin}/guide?lang=en#install`,
+        '[2] Getting started › Sign in',
+        `${window.location.origin}/guide?lang=en#sign-in`,
+      ].join('\n'),
+    );
     await unmount();
   });
 
@@ -122,7 +165,7 @@ describe('reader chat messages', () => {
         onSourceOpen={onSourceOpen}
       />,
     );
-    const card = document.getElementById('00000000-0000-4000-8000-000000000002-S1');
+    const card = document.getElementById('00000000-0000-4000-8000-000000000002-source-1');
     expect(card?.getAttribute('href')).toBe('/guide?lang=en#install');
     card?.addEventListener('click', (event) => event.preventDefault(), { once: true });
     card?.click();

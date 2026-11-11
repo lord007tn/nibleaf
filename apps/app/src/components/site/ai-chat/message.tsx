@@ -2,13 +2,15 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
 import type { AiChatConsent, AiChatFinalEvent, AiChatSource } from '@nibleaf/validators';
 import { Copy, LifeBuoy } from 'lucide-react';
-import { Children, cloneElement, isValidElement, type ReactNode } from 'react';
+import { Children, cloneElement, isValidElement, type ReactNode, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
 import { siteHref } from '@/lib/site-paths';
+import { htmlCopy, plainCopy, writeCopy } from './copy';
 import { Feedback } from './feedback';
 import { answerText, citationParts } from './helpers';
 import type { ChatOptions } from './provider';
+import { answerSources } from './sources';
 
 /** Where a turn was answered: its sources and their section anchors belong to it. */
 export interface TurnScope {
@@ -56,35 +58,37 @@ export function ChatMessage({
   // A captured scope keeps its version even when that is the default one
   // (undefined); only a turn without one links in the version on screen.
   const href = (source: AiChatSource) => sourceHref(options, source, { lang: final?.language, version: options.version, ...scope });
-  const sources = final?.status === 'no_answer' ? [] : (final?.citations ?? []);
-  // Sources are numbered in the order they are listed, so the answer's markers
-  // and the cards read 1, 2, 3 whatever ids the model cited.
-  const sourceNumber = (id: string) => {
-    const index = sources.findIndex((source) => source.id === id);
-    return index >= 0 ? String(index + 1) : id.replace(/^[SP]/, '');
-  };
+  // Sections are numbered in the order the answer first cites them, so the
+  // markers and the list read 1, 2, 3 whatever ids the model used; two citations
+  // of one section share its number, and each page's title is listed once.
+  const cited = answerSources(final?.status === 'no_answer' ? [] : (final?.citations ?? []));
+  const sourceId = (number: number) => `${prefix}-source-${number}`;
+  const answer = useRef<HTMLDivElement>(null);
   const cite = (children: ReactNode): ReactNode =>
     Children.map(children, (child) => {
       if (typeof child === 'string')
-        return citationParts(child).map((part) =>
-          part.source && final?.citations.some((source) => source.id === part.source) ? (
+        return citationParts(child).map((part) => {
+          if (!part.source) return part.text;
+          const number = cited.numberOf(part.source);
+          // A marker the checked answer does not list is not drawn.
+          if (number === undefined) return null;
+          return (
             <button
               type="button"
+              data-citation={number}
               className="mx-0.5 inline-flex rounded border px-1.5 text-primary text-xs focus-visible:ring-2"
               key={part.key}
-              aria-label={`${t('aiSource')} ${sourceNumber(part.source)}`}
+              aria-label={`${t('aiSource')} ${number}`}
               onClick={() => {
-                const card = document.getElementById(`${prefix}-${part.source}`);
-                card?.scrollIntoView({ block: 'nearest' });
-                card?.focus();
+                const item = document.getElementById(sourceId(number));
+                item?.scrollIntoView({ block: 'nearest' });
+                item?.focus();
               }}
             >
-              {sourceNumber(part.source)}
+              {number}
             </button>
-          ) : (
-            part.text
-          ),
-        );
+          );
+        });
       if (isValidElement<{ children?: ReactNode }>(child)) return cloneElement(child, {}, cite(child.props.children));
       return child;
     });
@@ -97,7 +101,12 @@ export function ChatMessage({
         // (an Arabic question on an English site), so each lays itself out by its content.
         <p dir="auto">{final.answer}</p>
       ) : (
-        <div dir="auto" className="min-w-0 break-words text-sm leading-7 [&_li]:ms-5 [&_ul]:list-disc [&_ol]:list-decimal">
+        <div
+          ref={answer}
+          dir="auto"
+          // A small gap between blocks, so the answer's paragraphs and steps read as written.
+          className="min-w-0 break-words text-sm leading-7 [&>*+*]:mt-2 [&_li]:ms-5 [&_ol]:list-decimal [&_ul]:list-disc"
+        >
           <ReactMarkdown
             allowedElements={['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
             skipHtml
@@ -124,33 +133,40 @@ export function ChatMessage({
           </ReactMarkdown>
         </div>
       )}
-      {sources.length > 0 && (
+      {cited.groups.length > 0 && (
         <div className="space-y-2">
-          {final?.status === 'no_answer' ? null : <p className="font-medium text-xs">{t('aiSources')}</p>}
-          {sources.map((source, index) => (
-            <a
-              key={source.id}
-              id={`${prefix}-${source.id}`}
-              dir={source.direction}
-              href={href(source)}
-              className="block rounded-lg border p-3 text-start focus-visible:ring-2"
-              onClick={() => {
-                onSourceOpen?.(source, index + 1);
-                if (window.matchMedia('(max-width: 767px)').matches) close();
-              }}
-            >
-              <span className="font-medium">
-                {index + 1}. {source.title}
-              </span>
-              {source.heading && (
-                <span className="text-muted-foreground">
-                  {' › '}
-                  {source.heading}
-                </span>
-              )}
-              <span className="mt-1 line-clamp-2 block text-muted-foreground text-xs">{source.snippet}</span>
-            </a>
-          ))}
+          <p className="font-medium text-xs">{t('aiSources')}</p>
+          <ul className="space-y-2">
+            {cited.groups.map((group) => (
+              // A page's title is shown once, with the sections the answer cites from it.
+              <li key={group.key} dir={group.direction} className="rounded-lg border p-3 text-start">
+                <p className="font-medium text-sm">{group.title}</p>
+                <ul className="mt-1 space-y-1">
+                  {group.sections.map(({ number, source }) => (
+                    <li key={number}>
+                      <a
+                        id={sourceId(number)}
+                        href={href(source)}
+                        className="-mx-1.5 flex gap-2 rounded-md px-1.5 py-1 hover:bg-primary/5 focus-visible:ring-2"
+                        onClick={() => {
+                          onSourceOpen?.(source, number);
+                          if (window.matchMedia('(max-width: 767px)').matches) close();
+                        }}
+                      >
+                        <span className="mt-0.5 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded border px-1 text-primary text-xs">
+                          {number}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-primary text-sm">{source.heading ?? t('aiSourceTop')}</span>
+                          <span className="line-clamp-2 block text-muted-foreground text-xs">{source.snippet}</span>
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {supportUrl && (
@@ -176,9 +192,12 @@ export function ChatMessage({
               aria-label={t('aiCopy')}
               title={t('aiCopy')}
               onClick={async () => {
+                const link = (source: AiChatSource) => new URL(href(source), window.location.origin).href;
+                const labels = { sources: t('aiSources'), top: t('aiSourceTop') };
                 try {
-                  await navigator.clipboard.writeText(
-                    `${final.answer}\n\n${t('aiSources')}\n${final.citations.map((source) => `${source.title}: ${new URL(href(source), window.location.origin).href}`).join('\n')}`,
+                  await writeCopy(
+                    plainCopy(final.answer, cited.sections, cited.numberOf, link, labels),
+                    answer.current ? htmlCopy(answer.current, cited.sections, link, labels) : undefined,
                   );
                   onCopy?.();
                   toast.success(t('aiCopied'));
