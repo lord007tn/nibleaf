@@ -317,10 +317,10 @@ describe('CommandPalette', () => {
       mocks.useProjects.mockReturnValue({ data: [{ id: 'project-3', name: 'JoodBooking Documentation', role: 'owner' }] });
       await render(true);
       await typeInto(input(), 'domain');
-      const items = () => [...document.querySelectorAll<HTMLElement>('[cmdk-item]')].filter((node) => !node.hidden && node.offsetParent !== undefined);
+      const items = () =>
+        [...document.querySelectorAll<HTMLElement>('[cmdk-item]')].filter((node) => !node.hidden && node.offsetParent !== undefined);
       const selected = () => document.querySelector<HTMLElement>('[cmdk-item][aria-selected="true"]');
-      // DEBUG
-      console.log('SEL', [...document.querySelectorAll('[cmdk-item][aria-selected="true"]')].map((n) => `${n.id}:${n.textContent}`), 'AD', input().getAttribute('aria-activedescendant'), 'ITEMS', [...document.querySelectorAll('[cmdk-item]')].filter((n) => !(n as HTMLElement).hidden).map((n) => `${n.id}:${n.textContent}`));
+      // Right after typing, not only after an arrow key (cmdk 1.1.1 lags here; CommandInput corrects it).
       expect(selected()?.textContent).toContain('settings.domain');
       expect(input().getAttribute('aria-activedescendant')).toBe(selected()?.id);
       await press('ArrowDown');

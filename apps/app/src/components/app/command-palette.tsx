@@ -162,10 +162,10 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     navigate({ to, params, search } as never);
   };
 
-  // Every group has a URL-safe `value`: cmdk finds groups to reorder by
-  // `encodeURIComponent(value)`, so a heading with a space ("Site settings",
-  // any Arabic heading) never moved and the best match could sit below a
-  // weaker one in another group.
+  // Every group and item has a URL-safe `value` (words live in `keywords`):
+  // cmdk looks elements up by `encodeURIComponent(value)`, so a value with a
+  // space never matched. Items: `aria-activedescendant` kept pointing at a
+  // stale option. Groups: never reordered (they are ordered below anyway).
   const pagesGroup =
     projectId && pageItems.length > 0 ? (
       <CommandGroup heading={t('command.group.pages')} value="pages">
@@ -176,7 +176,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               key={page.id}
               keywords={[title, page.slug]}
               onSelect={() => go('/app/projects/$projectId/editor', { projectId }, { page: page.id })}
-              value={`page ${page.id}`}
+              value={`page-${page.id}`}
             >
               <FileText className="size-4" />
               <span className="truncate" dir="auto">
@@ -193,7 +193,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         <CommandItem
           key={project.id}
           keywords={[project.name, project.domain ?? '']}
-          value={`project ${project.id}`}
+          value={`project-${project.id}`}
           onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
         >
           <BookText className="size-4" />
@@ -213,9 +213,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             return (
               <CommandItem
                 key={`${site.id}-${destination.section}`}
-                keywords={[label, site.name, t('command.group.settings')]}
+                keywords={[label, site.name, t('command.group.settings'), destination.aliases]}
                 onSelect={() => go('/app/projects/$projectId/settings', { projectId: site.id }, { section: destination.section })}
-                value={`settings ${site.id} ${destination.aliases}`}
+                value={`settings-${site.id}-${destination.section}`}
               >
                 <destination.icon className="size-4" />
                 <span className="flex-1 truncate">{label}</span>
@@ -240,12 +240,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     {
       key: 'pages',
       node: pagesGroup,
-      score: bestMatch(pageItems.map((page) => [`page ${page.id}`, [page.config?.sidebarTitle?.trim() || page.title, page.slug]] as const)),
+      score: bestMatch(pageItems.map((page) => [`page-${page.id}`, [page.config?.sidebarTitle?.trim() || page.title, page.slug]] as const)),
     },
     {
       key: 'projects',
       node: projectsGroup,
-      score: bestMatch((projects ?? []).map((project) => [`project ${project.id}`, [project.name, project.domain ?? '']] as const)),
+      score: bestMatch((projects ?? []).map((project) => [`project-${project.id}`, [project.name, project.domain ?? '']] as const)),
     },
     {
       key: 'settings',
@@ -254,7 +254,10 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         settingsSites.flatMap((site) =>
           settingsDestinationsFor(site.role).map(
             (destination) =>
-              [`settings ${site.id} ${destination.aliases}`, [t(destination.labelKey), site.name, t('command.group.settings')]] as const,
+              [
+                `settings-${site.id}-${destination.section}`,
+                [t(destination.labelKey), site.name, t('command.group.settings'), destination.aliases],
+              ] as const,
           ),
         ),
       ),
@@ -296,16 +299,16 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             {projectId ? (
               <>
                 <CommandItem
-                  keywords={[t('overview.openEditor')]}
+                  keywords={[t('overview.openEditor'), 'open editor write']}
                   onSelect={() => go('/app/projects/$projectId/editor', { projectId })}
-                  value="open editor write"
+                  value="open-editor-write"
                 >
                   <PenLine className="size-4" /> {t('overview.openEditor')}
                 </CommandItem>
                 <CommandItem
-                  keywords={[t('command.invite')]}
+                  keywords={[t('command.invite'), 'invite people teammate']}
                   onSelect={() => go('/app/projects/$projectId/settings', { projectId }, { section: 'members' })}
-                  value="invite people teammate"
+                  value="invite-people-teammate"
                 >
                   <UserPlus className="size-4" /> {t('command.invite')}
                 </CommandItem>
@@ -314,59 +317,59 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             {!projectId && organization && orgAdmin ? (
               // Outside a website, inviting is an organization action (its Members page).
               <CommandItem
-                keywords={[t('command.invite')]}
+                keywords={[t('command.invite'), 'invite people teammate members']}
                 onSelect={() => go('/app/o/$orgSlug/members', { orgSlug: organization.slug })}
-                value="invite people teammate members"
+                value="invite-people-teammate-members"
               >
                 <UserPlus className="size-4" /> {t('command.invite')}
               </CommandItem>
             ) : null}
             <CommandItem
-              keywords={[t('command.switchOrganizationOrWebsite')]}
+              keywords={[t('command.switchOrganizationOrWebsite'), 'switch organization website']}
               onSelect={() => {
                 changeOpen(false);
                 controls?.openSwitcher('organization');
               }}
-              value="switch organization website"
+              value="switch-organization-website"
             >
               <ArrowLeftRight className="size-4" /> {t('command.switchOrganizationOrWebsite')}
             </CommandItem>
             {organization?.canCreateWebsite ? (
               <CommandItem
-                keywords={[t('dashboard.newProject')]}
+                keywords={[t('dashboard.newProject'), 'new site website create']}
                 onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: organization.slug }, { newSite: true })}
-                value="new site website create"
+                value="new-site-website-create"
               >
                 <Plus className="size-4" /> {t('dashboard.newProject')}
               </CommandItem>
             ) : null}
             <CommandItem
-              keywords={[t('command.createOrganization')]}
+              keywords={[t('command.createOrganization'), 'create new organization']}
               onSelect={() => {
                 changeOpen(false);
                 controls?.openCreateOrganization();
               }}
-              value="create new organization"
+              value="create-new-organization"
             >
               <Building2 className="size-4" /> {t('command.createOrganization')}
             </CommandItem>
             <CommandItem
-              keywords={[t('account.language')]}
+              keywords={[t('account.language'), 'switch interface language']}
               onSelect={() => {
                 changeOpen(false);
                 setLanguageOpen(true);
               }}
-              value="switch interface language"
+              value="switch-interface-language"
             >
               <Languages className="size-4" /> {t('account.language')}
             </CommandItem>
             <CommandItem
-              keywords={[t(resolvedTheme === 'dark' ? 'account.lightMode' : 'account.darkMode')]}
+              keywords={[t(resolvedTheme === 'dark' ? 'account.lightMode' : 'account.darkMode'), 'toggle dark light mode theme']}
               onSelect={() => {
                 changeOpen(false);
                 setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
               }}
-              value="toggle dark light mode theme"
+              value="toggle-dark-light-mode-theme"
             >
               {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
               {t(resolvedTheme === 'dark' ? 'account.lightMode' : 'account.darkMode')}
@@ -378,9 +381,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             {organization ? (
               <>
                 <CommandItem
-                  keywords={[t('nav.websites')]}
+                  keywords={[t('nav.websites'), 'websites sites']}
                   onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: organization.slug })}
-                  value="websites sites"
+                  value="websites-sites"
                 >
                   <BookOpen className="size-4" /> {t('nav.websites')}
                 </CommandItem>
@@ -394,31 +397,35 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                 {orgAdmin ? (
                   <>
                     <CommandItem
-                      keywords={[t('nav.members'), 'people team invite roles']}
+                      keywords={[t('nav.members'), 'people team invite roles', 'members people']}
                       onSelect={() => go('/app/o/$orgSlug/members', { orgSlug: organization.slug })}
-                      value="members people"
+                      value="members-people"
                     >
                       <Users className="size-4" /> {t('nav.members')}
                     </CommandItem>
                     <CommandItem
-                      keywords={[t('nav.billing'), 'plan usage seats']}
+                      keywords={[t('nav.billing'), 'plan usage seats', 'billing usage plan']}
                       onSelect={() => go('/app/o/$orgSlug/billing', { orgSlug: organization.slug })}
-                      value="billing usage plan"
+                      value="billing-usage-plan"
                     >
                       <ReceiptText className="size-4" /> {t('nav.billing')}
                     </CommandItem>
                   </>
                 ) : null}
                 <CommandItem
-                  keywords={[t('command.organizationSettings')]}
+                  keywords={[t('command.organizationSettings'), 'organization settings']}
                   onSelect={() => go('/app/o/$orgSlug/settings', { orgSlug: organization.slug })}
-                  value="organization settings"
+                  value="organization-settings"
                 >
                   <Settings className="size-4" /> {t('command.organizationSettings')}
                 </CommandItem>
               </>
             ) : null}
-            <CommandItem keywords={[t('command.accountSettings')]} onSelect={() => go('/app/settings')} value="account settings profile">
+            <CommandItem
+              keywords={[t('command.accountSettings'), 'account settings profile']}
+              onSelect={() => go('/app/settings')}
+              value="account-settings-profile"
+            >
               <UserRound className="size-4" /> {t('command.accountSettings')}
             </CommandItem>
           </CommandGroup>
@@ -429,7 +436,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                   key={org.id}
                   keywords={[org.name, t('command.group.switchOrganization')]}
                   onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: org.slug })}
-                  value={`organization ${org.id}`}
+                  value={`organization-${org.id}`}
                 >
                   <OrgAvatar className="size-4 text-[8px]" logo={org.logo} name={org.name} />
                   <span className="flex-1 truncate">
