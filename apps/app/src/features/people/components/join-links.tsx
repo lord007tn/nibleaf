@@ -299,7 +299,8 @@ export function CreateJoinLinkDialog({
               <RoleOptionList
                 legend={t('people.links.role')}
                 onChange={(role) => update({ grants: { [site]: role } })}
-                options={SITE_ROLE_OPTIONS.filter((option) => !allowedRoles || allowedRoles.includes(option.role))}
+                options={SITE_ROLE_OPTIONS}
+                unavailableReason={(option) => (!allowedRoles || allowedRoles.includes(option) ? undefined : t('people.reason.roleAboveYours'))}
                 value={draft.grants[site] ?? DEFAULT_JOIN_LINK_SITE_ROLE}
               />
             ) : (
