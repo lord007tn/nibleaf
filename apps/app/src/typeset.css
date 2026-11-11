@@ -431,6 +431,11 @@
     &:where(th:first-child, td:first-child) {
       padding-inline-start: 0;
     }
+    /* A cell lays its text out by its own script (dir from the renderer) but
+       keeps its column's alignment, set by the table's direction. */
+    &:where(th[dir], td[dir]) {
+      text-align: match-parent;
+    }
     &:where(th[align="center"], td[align="center"]) {
       text-align: center;
     }

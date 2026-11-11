@@ -11,6 +11,7 @@ import { type DocumentationComponents, str } from '@/components/site/mdx/props';
 import {
   normalizeMdxBlocks,
   rehypeAuthoredComponentProps,
+  rehypeBlockDirection,
   rehypeMermaid,
   remarkCallouts,
   remarkCodeMeta,
@@ -111,7 +112,11 @@ function anchorRenderer(site: SiteLinkContext | undefined) {
  *  (rehypeMermaid). Every authored component tag needs raw HTML, so its renderer
  *  ships with the lazy rich renderer (see site/mdx/component-map.tsx). */
 export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'mermaid'> = {
-  callout: ({ type, children }) => <Callout type={str(type)}>{children}</Callout>,
+  callout: ({ type, dir, children }) => (
+    <Callout type={str(type)} dir={str(dir)}>
+      {children}
+    </Callout>
+  ),
   mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
 
@@ -192,6 +197,8 @@ export function MarkdownRenderer({
           [rehypeSanitize, sanitizeSchema],
           ...afterSanitizePlugins,
           rehypeMermaid,
+          // Each block lays out by its own script; code stays left to right.
+          rehypeBlockDirection,
           rehypeSlug,
           // `heading-anchor` class lets the anchor renderer keep heading styling
           // (not link color/underline); tabIndex -1 keeps it out of the tab order.
