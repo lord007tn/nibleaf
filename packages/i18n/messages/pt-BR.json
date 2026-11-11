@@ -502,6 +502,16 @@
   "editor_deletegroup": "Excluir grupo",
   "editor_deletegroupconfirm": "Mover o grupo “{title}” para a lixeira? Ele fica lá por 30 dias, então você pode restaurá-lo.",
   "editor_deletegroupwithchildrenconfirm": "Mover o grupo “{title}” e as páginas dentro dele ({count}) para a lixeira? Para manter essas páginas na árvore, arraste-as para fora do grupo primeiro. Tudo fica 30 dias na lixeira.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} página aponta para cá",
+        "form=*": "{count} páginas apontam para cá"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” movida para a lixeira",
   "editor_deletefailed": "Não foi possível excluir a página. Tente novamente.",
   "editor_trash_button": "Lixeira ({count})",

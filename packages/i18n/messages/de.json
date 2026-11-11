@@ -502,6 +502,16 @@
   "editor_deletegroup": "Gruppe löschen",
   "editor_deletegroupconfirm": "Die Gruppe „{title}“ in den Papierkorb verschieben? Sie bleibt dort 30 Tage, sodass Sie sie wiederherstellen können.",
   "editor_deletegroupwithchildrenconfirm": "Die Gruppe „{title}“ und die Seiten darin ({count}) in den Papierkorb verschieben? Um diese Seiten im Baum zu behalten, ziehen Sie sie zuerst aus der Gruppe. Alles bleibt 30 Tage im Papierkorb.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Seite verlinkt hierher",
+        "form=*": "{count} Seiten verlinken hierher"
+      }
+    }
+  ],
   "editor_deleted": "„{title}“ in den Papierkorb verschoben",
   "editor_deletefailed": "Die Seite konnte nicht gelöscht werden. Versuchen Sie es erneut.",
   "editor_trash_button": "Papierkorb ({count})",

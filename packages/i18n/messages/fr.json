@@ -502,6 +502,16 @@
   "editor_deletegroup": "Supprimer le groupe",
   "editor_deletegroupconfirm": "Mettre le groupe « {title} » à la corbeille ? Il y reste 30 jours, vous pourrez donc le restaurer.",
   "editor_deletegroupwithchildrenconfirm": "Mettre le groupe « {title} » et les pages qu’il contient ({count}) à la corbeille ? Pour garder ces pages dans l’arborescence, faites-les d’abord glisser hors du groupe. Tout reste 30 jours dans la corbeille.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page pointe ici",
+        "form=*": "{count} pages pointent ici"
+      }
+    }
+  ],
   "editor_deleted": "« {title} » mis à la corbeille",
   "editor_deletefailed": "Impossible de supprimer la page. Réessayez.",
   "editor_trash_button": "Corbeille ({count})",

@@ -502,6 +502,16 @@
   "editor_deletegroup": "Eliminar grupo",
   "editor_deletegroupconfirm": "¿Mover el grupo «{title}» a la papelera? Se queda ahí 30 días, así que puedes restaurarlo.",
   "editor_deletegroupwithchildrenconfirm": "¿Mover el grupo «{title}» y las páginas que contiene ({count}) a la papelera? Para mantener esas páginas en el árbol, sácalas primero del grupo. Todo se queda 30 días en la papelera.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} página enlaza aquí",
+        "form=*": "{count} páginas enlazan aquí"
+      }
+    }
+  ],
   "editor_deleted": "«{title}» movida a la papelera",
   "editor_deletefailed": "No se pudo eliminar la página. Inténtalo de nuevo.",
   "editor_trash_button": "Papelera ({count})",
