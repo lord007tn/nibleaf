@@ -12,8 +12,11 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
   ['mcp:preview_stale', 'publish.reviewChanged'],
   ['page:revision_conflict', 'editor.conflict.body'],
+  ['page:trash_unrestorable', 'editor.trash.unrestorable'],
+  ['page:trash_too_large', 'editor.trash.tooLarge'],
   ['address_raced', 'editor.pageSettings.addressRaced'],
   ['slug_taken', 'editor.reorderSlugTaken'],
+  ['structure_changed', 'editor.tree.structureChanged'],
   ['branch:main_changed', 'error.branchMainChanged'],
   ['branch:baseline_missing', 'error.branchBaselineMissing'],
   ['promote_raced', 'error.promoteRaced'],

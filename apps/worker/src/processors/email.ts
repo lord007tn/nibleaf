@@ -40,6 +40,10 @@ export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sen
     log.info({ jobId: job.id, reason: skipReason }, 'auth email skipped before delivery');
     return { sent: false };
   }
+  if (job.data.auth?.existingUserOnly) {
+    const user = await prisma.user.findUnique({ where: { email: job.data.to.toLowerCase() }, select: { id: true } });
+    if (!user) return { sent: false };
+  }
   const { to, subject, html, text } = job.data;
   const delivery = resolveEmailDelivery({
     postmarkApiKey: env.POSTMARK_API_KEY,

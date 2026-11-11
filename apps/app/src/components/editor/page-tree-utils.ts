@@ -2,6 +2,59 @@ import { type MessageKey, resolveLocale, translateFn } from '@nibleaf/i18n';
 import { slugifyUnicode } from '@nibleaf/shared/utils';
 import type { PageNode } from '@/hooks/api';
 
+/** Search uses the same folding for the query, titles and page addresses. */
+export function normalizePageSearch(value: string): string {
+  return value
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/\p{M}|ـ/gu, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه');
+}
+
+/** Original-string offsets keep highlighted Arabic and accented text intact. */
+export function pageMatchRanges(text: string, query: string): Array<[number, number]> {
+  const needle = normalizePageSearch(query.trim());
+  if (!needle) return [];
+  let folded = '';
+  const offsets: Array<[number, number]> = [];
+  let offset = 0;
+  for (const char of text) {
+    const normalized = normalizePageSearch(char);
+    folded += normalized;
+    for (let unit = 0; unit < normalized.length; unit++) {
+      offsets.push([offset, offset + char.length]);
+    }
+    const previous = offsets[offsets.length - 1];
+    if (!normalized && previous) previous[1] = offset + char.length;
+    offset += char.length;
+  }
+  const ranges: Array<[number, number]> = [];
+  for (let index = folded.indexOf(needle); index !== -1; index = folded.indexOf(needle, index + needle.length)) {
+    const start = offsets[index];
+    const end = offsets[index + needle.length - 1];
+    if (start && end) ranges.push([start[0], end[1]]);
+  }
+  return ranges;
+}
+
+/** Include matching pages and their ancestor chain, even inside folded groups. */
+export function filterPageIds(pages: readonly PageNode[], query: string): Set<string> {
+  const needle = normalizePageSearch(query.trim());
+  const byId = new Map(pages.map((page) => [page.id, page]));
+  const included = new Set<string>();
+  for (const page of pages) {
+    if (needle && ![page.title, page.config?.sidebarTitle ?? '', page.path, page.slug].some((value) => normalizePageSearch(value).includes(needle)))
+      continue;
+    let current: PageNode | undefined = page;
+    while (current && !included.has(current.id)) {
+      included.add(current.id);
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+  }
+  return included;
+}
+
 /** `id` plus every page below it (children, grandchildren, …). */
 export function subtreeIds(pages: ReadonlyArray<Pick<PageNode, 'id' | 'parentId'>>, id: string): Set<string> {
   const children = new Map<string, string[]>();

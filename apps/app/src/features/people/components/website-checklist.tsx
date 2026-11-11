@@ -1,3 +1,4 @@
+import { CheckboxField } from '@nibleaf/design-system/components/ui/checkbox';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -75,19 +76,16 @@ export function WebsiteChecklist({
         <ul className="mt-2 max-h-72 divide-y divide-border overflow-y-auto rounded-lg border border-border">
           {shown.map((website) => {
             const role = value[website.id];
-            const checkboxId = `${id}-${website.id}`;
             return (
               <li className="flex min-h-11 min-w-0 items-center gap-3 px-3 py-1.5" key={website.id}>
-                <input
+                {/* `disabled` is passed on: a fieldset disables native inputs, not this control. */}
+                <CheckboxField
                   checked={Boolean(role)}
-                  className="size-4 shrink-0 accent-primary"
-                  id={checkboxId}
-                  onChange={(event) => toggle(website.id, event.target.checked)}
-                  type="checkbox"
+                  className="min-w-0 flex-1 break-words"
+                  disabled={disabled}
+                  label={<bdi>{website.name}</bdi>}
+                  onCheckedChange={(checked) => toggle(website.id, checked)}
                 />
-                <label className="min-w-0 flex-1 cursor-pointer break-words text-sm" htmlFor={checkboxId}>
-                  <bdi>{website.name}</bdi>
-                </label>
                 {role ? (
                   <SiteRoleSelect
                     disabled={disabled}
