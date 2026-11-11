@@ -89,7 +89,8 @@ export const useCreateProject = () => {
   const qc = useQueryClient();
   return useMutation({
     // Websites are always created inside an organization (`organizationId`).
-    mutationFn: async (body: CreateProjectBody) => mutateData<Project>(await api.app.projects.$post({ json: body }), 'Could not create the site.'),
+    mutationFn: async (body: CreateProjectBody) =>
+      mutateData<Project & { firstPageId: string | null }>(await api.app.projects.$post({ json: body }), 'Could not create the site.'),
     onSuccess: () =>
       Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
