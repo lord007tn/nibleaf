@@ -155,13 +155,16 @@
   margin: 0.2em 0;
 }
 
-/* Lists */
-.pl-editor .ProseMirror ul,
+/* Lists (task lists: content-blocks.css) */
+.pl-editor .ProseMirror ul:not([data-type="taskList"]),
 .pl-editor .ProseMirror ol {
   padding-inline-start: 1.4em;
+}
+.pl-editor .ProseMirror ul,
+.pl-editor .ProseMirror ol {
   margin: 0.4em 0;
 }
-.pl-editor .ProseMirror ul {
+.pl-editor .ProseMirror ul:not([data-type="taskList"]) {
   list-style: disc;
 }
 .pl-editor .ProseMirror ol {
@@ -174,18 +177,21 @@
   color: var(--color-primary);
 }
 
-/* Task lists */
-.pl-editor .ProseMirror ul[data-type="taskList"] {
-  list-style: none;
-  padding-inline-start: 0.2em;
-}
+/* Task lists: the node view's label + content layout. The checkbox itself
+   is drawn by content-blocks.css, like the published page's. */
 .pl-editor .ProseMirror ul[data-type="taskList"] li {
   display: flex;
   align-items: flex-start;
   gap: 0.6em;
 }
 .pl-editor .ProseMirror ul[data-type="taskList"] li > label {
-  margin-top: 0.32em;
+  /* One line tall, the checkbox centred in it (where content-blocks.css draws
+     the tick), level with the item's paragraph and its 0.2em top margin. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  block-size: 1lh;
+  margin-top: 0.2em;
   user-select: none;
 }
 .pl-editor .ProseMirror ul[data-type="taskList"] li > div {
@@ -193,9 +199,6 @@
   min-width: 0;
 }
 .pl-editor .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--color-primary);
   cursor: pointer;
 }
 
@@ -220,7 +223,7 @@
 }
 
 /* Inline code */
-.pl-editor .ProseMirror code {
+.pl-editor .ProseMirror :not(pre) > code {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.85em;
   direction: ltr;
@@ -255,79 +258,19 @@
   cursor: pointer;
 }
 
-/* Code block — dark chrome with a language label bar.
-   The label is driven by the node's data-language attribute via ::before. */
+/* Code block: the panel, the label and the highlighting are shared with the
+   published page (content-blocks.css, highlight.js's theme). The label is the
+   node's data-language attribute; a block without a language shows none. */
 .pl-editor .ProseMirror pre {
-  position: relative;
-  direction: ltr;
-  background: #0f0f14;
-  border-radius: 12px;
   margin: 0.8em 0;
-  padding: 42px 16px 16px;
-  overflow-x: auto;
-  color: #d6d6e2;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 13px;
-  line-height: 1.7;
 }
 .pl-editor .ProseMirror pre::before {
   content: attr(data-language);
-  position: absolute;
-  top: 0;
-  inset-inline: 0;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  border-bottom: 1px solid #232330;
-  color: #8a8a98;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  text-transform: lowercase;
 }
 .pl-editor .ProseMirror pre:not([data-language])::before,
+.pl-editor .ProseMirror pre[data-language="code"]::before,
 .pl-editor .ProseMirror pre[data-language="null"]::before {
-  content: "code";
-}
-.pl-editor .ProseMirror pre code {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: inherit;
-  color: inherit;
-}
-
-/* lowlight / highlight.js token colors (dark theme) */
-.pl-editor .ProseMirror pre .hljs-comment,
-.pl-editor .ProseMirror pre .hljs-quote {
-  color: #6a6a78;
-  font-style: italic;
-}
-.pl-editor .ProseMirror pre .hljs-keyword,
-.pl-editor .ProseMirror pre .hljs-selector-tag,
-.pl-editor .ProseMirror pre .hljs-literal,
-.pl-editor .ProseMirror pre .hljs-type {
-  color: #c792ea;
-}
-.pl-editor .ProseMirror pre .hljs-string,
-.pl-editor .ProseMirror pre .hljs-title,
-.pl-editor .ProseMirror pre .hljs-name,
-.pl-editor .ProseMirror pre .hljs-attr {
-  color: #c3e88d;
-}
-.pl-editor .ProseMirror pre .hljs-number,
-.pl-editor .ProseMirror pre .hljs-symbol,
-.pl-editor .ProseMirror pre .hljs-bullet {
-  color: #f78c6c;
-}
-.pl-editor .ProseMirror pre .hljs-function,
-.pl-editor .ProseMirror pre .hljs-built_in,
-.pl-editor .ProseMirror pre .hljs-attribute {
-  color: #82aaff;
-}
-.pl-editor .ProseMirror pre .hljs-tag,
-.pl-editor .ProseMirror pre .hljs-meta {
-  color: #89ddff;
+  content: none;
 }
 
 /* Callout — colored wrapper with an icon column. */
@@ -381,27 +324,20 @@
   background: color-mix(in oklch, #78716c 10%, var(--color-card));
 }
 
-/* Tables */
+/* Tables: frame, rules and header are shared with the published page
+   (content-blocks.css). prosemirror-tables writes an inline min-width, so the
+   editor's table fills the measure with a width instead. */
 .pl-editor .ProseMirror table {
-  border-collapse: collapse;
   width: 100%;
-  margin: 0.8em 0;
-  overflow: hidden;
-  border-radius: 8px;
 }
 .pl-editor .ProseMirror th,
 .pl-editor .ProseMirror td {
   /* position:relative anchors the .selectedCell overlay and the column resize
      handle (both are absolutely positioned inside the cell). */
   position: relative;
-  border: 1px solid var(--color-border);
-  padding: 8px 10px;
-  text-align: start;
-  vertical-align: top;
 }
-.pl-editor .ProseMirror th {
-  background: var(--color-muted);
-  font-weight: 600;
+.pl-editor .ProseMirror :is(th, td) > p {
+  margin: 0;
 }
 .pl-editor .ProseMirror .selectedCell::after {
   content: "";
@@ -710,7 +646,14 @@
 /* First strong character chooses mixed prose direction; blank blocks inherit the page. */
 .pl-editor .ProseMirror [data-auto-direction] {
   unicode-bidi: isolate;
+}
+.pl-editor .ProseMirror [data-auto-direction]:not(td, th) {
   text-align: start;
+}
+/* Table cells keep their column's alignment (content-blocks.css: the table's
+   direction, or the column's align attribute); a cell's paragraphs follow it. */
+.pl-editor .ProseMirror :is(td, th) > [data-auto-direction] {
+  text-align: inherit;
 }
 .pl-editor .ProseMirror li {
   unicode-bidi: isolate;
@@ -782,13 +725,4 @@
    space, but hide its pill so floating controls cannot cover it on phones. */
 .pl-editor:has([data-editor-bubble-menu]) .pl-editor-word-count {
   visibility: hidden;
-}
-.pl-editor .ProseMirror :is(td, th)[align="left"] {
-  text-align: left;
-}
-.pl-editor .ProseMirror :is(td, th)[align="center"] {
-  text-align: center;
-}
-.pl-editor .ProseMirror :is(td, th)[align="right"] {
-  text-align: right;
 }

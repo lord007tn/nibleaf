@@ -4,7 +4,7 @@ import { searchAnswerBody, searchQuery, siteChatBody, siteChatEventsBody, siteCh
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { z } from 'zod';
-import { chatSite, readerDimensions, submitSiteChatFeedback } from '@/actions/site-chat';
+import { chatSite, getSiteChatPolicy, readerDimensions, submitSiteChatFeedback } from '@/actions/site-chat';
 import { recordSiteChatEvents } from '@/actions/site-chat-events';
 import {
   answerSite,
@@ -26,6 +26,7 @@ import { deliveryCacheHeaders } from '@/lib/delivery-cache';
 import type { HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import { crawlerBatchSchema, enqueueCrawlerHit, hasInternalAnalyticsProof } from './crawler-hits';
+import og from './og';
 import sitesRoutes from './routes';
 
 const siteQuery = z.object({ lang: z.string().optional(), version: z.string().optional() });
@@ -63,6 +64,7 @@ const textDocument = (ctx: Context<HonoEnv>, doc: SiteTextDocument, contentType:
   });
 
 const app = new Hono<HonoEnv>()
+  .route('/', og)
   .post(
     '/_crawler-hits',
     async (ctx, next) => {
@@ -149,6 +151,14 @@ const app = new Hono<HonoEnv>()
     ctx.header('Cache-Control', 'private, no-store');
     ctx.header('Vary', 'Cookie, Authorization');
     return ctx.json({ data: await answerSite(ctx.req.param('id'), q, lang, version) }, 200);
+  })
+  .get('/:id/chat/policy', ...sitesRoutes.chatPolicy, validator('query', siteQuery), async (ctx) => {
+    const { lang, version } = ctx.req.valid('query');
+    // Never cached anywhere: the chat shows it as the current policy, and each
+    // turn is refused unless it carries this revision.
+    ctx.header('Cache-Control', 'private, no-store');
+    ctx.header('Vary', 'Cookie, Authorization');
+    return ctx.json({ data: await getSiteChatPolicy(ctx.req.param('id'), lang, version) }, 200);
   })
   .post('/:id/chat', ...sitesRoutes.chat, validator('json', siteChatBody), async (ctx) => chatSite(ctx.req.param('id'), ctx.req.valid('json')))
   .put('/:id/chat/feedback', ...sitesRoutes.chatFeedback, validator('json', siteChatFeedbackBody), async (ctx) => {

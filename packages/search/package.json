@@ -8,7 +8,7 @@
     "./arabic": "./src/arabic.ts",
     ".": {
       "types": "./dist/index.d.mts",
-      "default": "./dist/index.mjs"
+      "node": "./dist/index.mjs"
     },
     "./keys": {
       "types": "./dist/keys.d.mts",
@@ -23,6 +23,7 @@
     "build": "tsdown",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "bench": "vitest bench --run src/arabic.bench.ts",
+    "bench:reader": "tsx scripts/benchmark-reader-search.ts --reader",
     "eval:rag": "tsx scripts/evaluate-openrouter.ts",
     "eval:embeddings": "tsx scripts/evaluate-embeddings.ts",
     "typecheck": "tsc --noEmit",
@@ -37,6 +38,7 @@
     "@t3-oss/env-core": "^0.13.11",
     "@tanstack/ai": "1.0.0",
     "@tanstack/ai-openai": "1.0.0",
+    "eld": "2.1.0",
     "openai": "7.53.0",
     "zod": "^4.6.7"
   },

@@ -141,17 +141,53 @@ describe('ActionDialog', () => {
     );
     const input = document.querySelector('input') as HTMLInputElement;
     expect(document.activeElement).toBe(input);
-    await typeInto(input, 'Docs');
     const confirm = button('Delete site');
-    // Never disabled for a mismatch.
-    expect(confirm.hasAttribute('disabled')).toBe(false);
-    expect(confirm.getAttribute('aria-disabled')).not.toBe('true');
-    await act(async () => confirm.click());
-    expect(onConfirm).not.toHaveBeenCalled();
-    expect(document.activeElement).toBe(input);
+    // Council #479: Confirm stays disabled (focusable, with the field's label as its reason) until the name matches.
+    expect(confirm.getAttribute('aria-disabled')).toBe('true');
+    const reasonIds = (confirm.getAttribute('aria-describedby') ?? '').split(' ');
+    expect(reasonIds.map((id) => document.getElementById(id)?.textContent)).toContain('Type docs to confirm');
+    await typeInto(input, 'Docs');
+    expect(confirm.getAttribute('aria-disabled')).toBe('true');
+    // A non-empty mismatch says so as it is typed.
     expect(input.getAttribute('aria-invalid')).toBe('true');
     const errorId = input.getAttribute('aria-describedby');
     expect(errorId && document.getElementById(errorId)?.textContent).toBe('Type docs exactly as shown');
+    await act(async () => confirm.click());
+    // Enter in the field with a mismatch keeps focus there.
+    await act(async () => input.form?.requestSubmit());
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(input);
+    await typeInto(input, 'docs');
+    expect(confirm.getAttribute('aria-disabled')).not.toBe('true');
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
+    await act(async () => confirm.click());
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
+  // Council #479: a stored name can carry invisible direction marks the person can't see or type.
+  it.each([
+    ['a stored RLM', 'وثائق‏', 'وثائق', true],
+    ['typed LRM and isolates', 'وثائق', '⁧وثائق‎⁩', true],
+    ['an Arabic letter mark and embeddings', '‫دليل؜ المنتج‬', 'دليل المنتج', true],
+    ['a different harakat (a real difference)', 'وثائق', 'وَثائق', false],
+    ['a different case', 'docs', 'Docs', false],
+    ['composed against decomposed', 'Café', 'Café', true],
+  ])('matches the typed name across %s: %s', async (_name, confirmText, typed, matches) => {
+    const onConfirm = vi.fn(() => Promise.resolve());
+    await render(
+      <Harness
+        {...baseProps}
+        destructive
+        confirmLabel="Delete site"
+        confirmText={confirmText}
+        confirmTextLabel="Type the name to confirm"
+        confirmTextMismatch="Type the name exactly as shown"
+        onConfirm={onConfirm}
+      />,
+    );
+    await typeInto(document.querySelector('input') as HTMLInputElement, typed);
+    await act(async () => button('Delete site').click());
+    expect(onConfirm).toHaveBeenCalledTimes(matches ? 1 : 0);
   });
 
   it('accepts the text after trimming and NFC normalization', async () => {

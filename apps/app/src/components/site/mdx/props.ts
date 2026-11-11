@@ -30,6 +30,8 @@ export interface MdxProps {
   deprecated?: unknown;
   variant?: unknown;
   status?: unknown;
+  /** Set on containers by rehypeBlockDirection. */
+  dir?: unknown;
 }
 
 export type ButtonMdxProps = ComponentProps<'button'> & { href?: unknown; variant?: unknown };

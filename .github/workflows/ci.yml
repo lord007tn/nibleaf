@@ -169,6 +169,18 @@ jobs:
           BRANCH_PROMOTE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/branches.postgres.test.ts
 
+      - name: Verify page history bounds, restore conflicts and erasure
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PAGE_HISTORY_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/page-history.postgres.test.ts
+
+      - name: Verify page address atomicity and parsing outside locks
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PAGE_ADDRESS_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/pages.address-changes.postgres.test.ts --maxWorkers=1
+
       - name: Verify the Viewer role cannot change a site
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
@@ -190,11 +202,23 @@ jobs:
           ORG_SHELL_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/organization-shell.postgres.test.ts src/actions/organization-deletion.postgres.test.ts --maxWorkers=1
 
+      - name: Verify Git webhook secrets and publish attribution
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          GIT_WEBHOOK_SECRET_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/git-webhook-secret.postgres.test.ts src/actions/git-webhook-author.postgres.test.ts --maxWorkers=1
+
       - name: Verify immutable website data partitions
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           DATA_PARTITION_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-partition.postgres.test.ts
+
+      - name: Verify site slug races and starter rollback
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          CREATE_SITE_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/projects.postgres.test.ts --maxWorkers=1
 
       - name: Verify transactional organization admissions
         env:
@@ -248,6 +272,18 @@ jobs:
           pnpm --filter @nibleaf/server exec vitest run src/actions/reader-access.postgres.test.ts
           pnpm --filter @nibleaf/server exec vitest run src/actions/site-sign-in.postgres.test.ts
           pnpm --filter @nibleaf/server exec vitest run src/actions/reader-access-requests.postgres.test.ts
+
+      - name: Verify concurrent page move integrity on PostgreSQL
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          DATA_INTEGRITY_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-integrity.postgres.test.ts --maxWorkers=1
+
+      - name: Verify page Trash (restore races, schema drift, erasure)
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PAGE_TRASH_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/page-trash.postgres.test.ts --maxWorkers=1
 
       - name: Exercise ClickHouse analytics migrations
         env:
@@ -360,6 +396,7 @@ jobs:
           grep --fixed-strings --quiet "Nibleaf’s August 2026 source release" /tmp/nibleaf-release-en.html
           grep --fixed-strings --quiet "إصدار مصدر Nibleaf في أغسطس 2026" /tmp/nibleaf-release-ar.html
           node apps/app/scripts/check-marketing-csp.mjs http://127.0.0.1:3000
+          node apps/app/scripts/check-asset-cache.mjs http://127.0.0.1:3000
           test "$(curl --connect-timeout 2 --max-time 10 --silent --output /dev/null --write-out '%{http_code}' --header 'Host: nibleaf.com' 'http://127.0.0.1:3000/%E0%A4%A')" = 400
 
       - name: Build production admin

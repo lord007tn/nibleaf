@@ -6,6 +6,19 @@ import { friendlyErrorMessage } from './errors';
 const t = (key: string) => `t:${key}`;
 
 describe('friendlyErrorMessage', () => {
+  it.each([
+    ['page:redirect_invalid', { issues: [{ code: 'too-many-rules' }] }, 'editor.pageSettings.addressRedirectLimit'],
+    ['page:redirect_invalid', { issues: [{ code: 'destination-not-found' }] }, 'editor.pageSettings.addressRedirectInvalid'],
+    ['page:address_conflict', { reason: 'locale_redirect_conflict', from: '/old' }, 'editor.pageSettings.addressLocaleConflict'],
+    [
+      'page:address_conflict',
+      { reason: 'user_redirect_conflict', from: '/old', to: 'https://example.com' },
+      'editor.pageSettings.addressUserRuleConflict',
+    ],
+  ])('council: exposes the localized address remedy for %s %s', (code, details, key) => {
+    const error = new ApiResponseError('Technical failure', 422, code, undefined, undefined, undefined, undefined, details);
+    expect(friendlyErrorMessage(t, error, 'editor.pageSettings.saveError')).toBe(`t:${key}`);
+  });
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
   afterEach(() => consoleError.mockClear());
 
@@ -14,6 +27,16 @@ describe('friendlyErrorMessage', () => {
     expect(friendlyErrorMessage(t, error, 'editor.reorderFailed')).toBe('t:editor.reorderFailed');
     // The details stay available for debugging.
     expect(consoleError).toHaveBeenCalledWith(error);
+  });
+
+  it('says a section too large for Trash was not deleted, not the generic 413', () => {
+    const error = new ApiResponseError('Too large', 413, 'page:trash_too_large', undefined, undefined, undefined, undefined, {
+      reason: 'page_trash_too_large',
+    });
+    expect(friendlyErrorMessage(t, error, 'editor.deleteFailed')).toBe('t:editor.trash.tooLarge');
+    expect(friendlyErrorMessage(t, new ApiResponseError('Bad payload', 422, 'page:trash_unrestorable'), 'editor.trash.restoreFailed')).toBe(
+      't:editor.trash.unrestorable',
+    );
   });
 
   it('explains common HTTP failures in plain words', () => {

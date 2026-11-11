@@ -908,6 +908,18 @@ describe('update_page', () => {
     await client.close();
   });
 
+  it('council: REST page conflicts retain the MCP revision-conflict contract', async () => {
+    const client = await connect(makePrincipal());
+    mocks.updatePage.mockImplementationOnce(async () => {
+      const row = state.pages[0] as PageRow;
+      row.updatedAt = new Date('2026-11-03T00:00:00.000Z');
+      throw new AppError({ code: 'page:revision_conflict', message: 'changed', details: { id: 'page-1', reason: 'revision_conflict' } });
+    });
+    const response = await client.call('update_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', markdown: 'New' });
+    expect(response.structuredContent.error).toMatchObject({ code: 'mcp:revision_conflict', data: { currentRevision: '2026-11-03T00:00:00.000Z' } });
+    await client.close();
+  });
+
   it('applies only changed fields through the conditional write', async () => {
     const client = await connect(makePrincipal());
     const response = await client.call('update_page', {

@@ -36,6 +36,14 @@ vi.mock('@/integrations/tanstack-query/session-cache', () => ({ syncDashboardSes
 vi.mock('@/stores/active-project', () => ({ rememberActiveProject: vi.fn() }));
 vi.mock('@/services/auth-client', () => ({ useSession: mocks.session }));
 vi.mock('@/services/dashboard-session', () => ({ signOutDashboard: vi.fn() }));
+vi.mock('@/functions/session', () => ({ getSessionFn: async () => mocks.session().data }));
+vi.mock('@/components/app/command-palette', () => ({ CommandPaletteProvider: () => null }));
+vi.mock('@/components/app/org-switcher/switcher-provider', () => ({ SwitcherProvider: () => null }));
+vi.mock('@/components/app/skip-to-content', () => ({ SkipToContent: () => null }));
+vi.mock('@/components/app/support-access-banner', () => ({ SupportAccessBanner: () => null }));
+vi.mock('@/components/app-providers', () => ({ AppProviders: () => null }));
+vi.mock('@/lib/dashboard-intent-preload', () => ({ useDashboardIntentPreload: vi.fn() }));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/layouts/auth', () => ({
   AuthLayout: ({ children, subtitle }: { children: ReactNode; subtitle?: string }) => (
@@ -46,6 +54,10 @@ vi.mock('@/layouts/auth', () => ({
   ),
 }));
 vi.mock('@tanstack/react-router', () => ({
+  createFileRoute: () => (options: Record<string, unknown>) => ({ options }),
+  Navigate: () => null,
+  Outlet: () => null,
+  redirect: (options: unknown) => ({ redirect: options }),
   useNavigate: () => mocks.navigate,
   Link: ({ to, children, onClick, search: _search, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { to: string; search?: unknown }) => (
     <a
@@ -61,6 +73,7 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
+import { Route as DashboardRoute } from '@/routes/app/route';
 import { AcceptInvitationView, JoinLinkView } from './admission';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -198,5 +211,56 @@ describe('join link page', () => {
     await render(<JoinLinkView token={TOKEN} />);
     expect(heading()).toBe('people.admission.invalidLink');
     expect(buttons()).toContain('people.admission.goToApp');
+  });
+});
+
+describe('nameless admission journeys', () => {
+  it.each(['invitation', 'join-link'])('finishes %s admission before the next dashboard name gate', async (flow) => {
+    mocks.session.mockReturnValue({ data: { user: { id: 'u-1', email: 'lina@example.test', name: '' } }, isPending: false });
+    const events: string[] = [];
+    mocks.navigate.mockImplementation(async () => {
+      events.push('dashboard');
+    });
+    const landing = { organizationId: 'org-1', landing: { projectId: 'p-1' } };
+    if (flow === 'invitation') {
+      mocks.invitation.mockResolvedValue(invitation);
+      mocks.accept.mockImplementation(async () => {
+        events.push('accepted');
+        return landing;
+      });
+      await render(<AcceptInvitationView invitationId="inv-1" />);
+    } else {
+      mocks.preview.mockResolvedValue({
+        organizationId: 'org-1',
+        organizationName: 'Acme',
+        organizationLogo: null,
+        inviterName: 'Sara',
+        siteName: 'Docs',
+        role: 'viewer',
+        grants: invitation.grants,
+        allowedDomain: null,
+      });
+      mocks.join.mockImplementation((_token: string, callbacks: { onSuccess: (value: unknown) => Promise<void> }) => {
+        events.push('accepted');
+        void callbacks.onSuccess(landing);
+      });
+      await render(<JoinLinkView token={TOKEN} />);
+    }
+    expect(events).toEqual([]);
+    const action = [...host.querySelectorAll('button')].find((button) =>
+      button.textContent?.startsWith(flow === 'invitation' ? 'people.admission.accept' : 'people.admission.joinButton'),
+    );
+    expect(action).toBeTruthy();
+    await act(async () => action?.click());
+    await flush();
+    expect(events).toEqual(['accepted', 'dashboard']);
+    const beforeLoad = DashboardRoute.options.beforeLoad as (ctx: {
+      context: { queryClient: unknown };
+      location: { href: string };
+    }) => Promise<unknown>;
+    await expect(beforeLoad({ context: { queryClient: {} }, location: { href: '/app/projects/p-1' } })).rejects.toEqual({
+      redirect: { to: '/welcome/name', search: { redirect: '/app/projects/p-1' } },
+    });
+    mocks.navigate.mockReset();
   });
 });

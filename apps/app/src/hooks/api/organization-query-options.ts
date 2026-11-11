@@ -34,6 +34,11 @@ export interface SwitcherWebsite {
   live: boolean;
 }
 
+/** A row of one organization's switcher list, with the caller's effective role there. */
+export interface OrganizationSwitcherWebsite extends SwitcherWebsite {
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+}
+
 export interface RecentWebsite extends SwitcherWebsite {
   organization: { id: string; slug: string; name: string };
 }
@@ -117,7 +122,7 @@ export const organizationSwitcherProjectsQueryOptions = (organizationId: string 
     queryKey: organizationKeys.organizations.projects(organizationId ?? '', 'switcher'),
     queryFn: organizationId
       ? async () =>
-          getData<SwitcherWebsite[]>(
+          getData<OrganizationSwitcherWebsite[]>(
             await api.app.organizations[':organizationId'].projects.$get({ param: { organizationId }, query: { view: 'switcher' } }),
             'websites',
           )

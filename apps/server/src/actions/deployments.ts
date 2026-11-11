@@ -1,12 +1,13 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
-import { type Deployment, Prisma, prisma } from '@nibleaf/database';
+import { type Deployment, deliveryPlanSelect, loadDefaultDeliveryPlan, Prisma, prisma } from '@nibleaf/database';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { type RedirectValidationIssue, summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
 import { AppError, badRequest, notFound } from '@/errors';
+import { collectPublishChecks, type PublishCheck } from '@/lib/publish-checks';
 import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
 import { logPlatformEvent } from './platform-events';
 import { assertProjectInOrg } from './projects';
@@ -59,11 +60,17 @@ export interface PendingChanges {
   reviewedStateHash: string;
   /** false = never published, so everything counts as new. */
   hasBaseline: boolean;
+  /** true = a publish now would put out exactly what is live: no page, settings,
+   *  navigation, redirect or API reference change. Only with a baseline. */
+  upToDate: boolean;
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
   /** Blocking redirect issues for the exact draft snapshot being previewed. */
   redirectIssues: RedirectValidationIssue[];
+  /** Quality checks for the same snapshot. Warnings leave publishing allowed;
+   *  an `error` is something the publish worker would reject. */
+  checks: PublishCheck[];
 }
 
 interface DeploymentDiffLine {
@@ -105,13 +112,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
               status: true,
               effectiveAt: true,
               expiresAt: true,
-              plan: {
-                select: {
-                  key: true,
-                  active: true,
-                  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
-                },
-              },
+              plan: { select: deliveryPlanSelect },
             },
           },
         },
@@ -134,7 +135,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
     updatedAt: updatedAt.toISOString(),
   }));
   return buildSnapshot(
-    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan) },
+    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan, await loadDefaultDeliveryPlan()) },
     pageRows,
     new Date().toISOString(),
   );
@@ -382,10 +383,12 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
     return {
       reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
       hasBaseline: false,
+      upToDate: false,
       lastVersion: null,
       lastPublishedAt: null,
       changes: [...current.map((p) => pageSummary(p, 'added')), ...(firstSpecChange ? [firstSpecChange] : [])],
       redirectIssues: validation.issues,
+      checks: collectPublishChecks(currentSnapshot),
     };
   }
 
@@ -410,13 +413,19 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const specChange = openApiSummary(currentSnapshot.openapi, snap.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
   if (specChange) changes.push(specChange);
 
+  const reviewedStateHash = reviewedSnapshotDigest(currentSnapshot);
   return {
-    reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
+    reviewedStateHash,
     hasBaseline: true,
+    // The page list only compares pages; settings, redirects and languages also
+    // ship with a publish. The live snapshot is the reviewed input the worker
+    // stored, so equal output digests mean nothing at all would change.
+    upToDate: changes.length === 0 && reviewedSnapshotDigest(snap) === reviewedStateHash,
     lastVersion: latest.version,
     lastPublishedAt: latest.completedAt?.toISOString() ?? null,
     changes,
     redirectIssues: validation.issues,
+    checks: collectPublishChecks(currentSnapshot),
   };
 };
 

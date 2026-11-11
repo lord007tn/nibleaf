@@ -6,6 +6,12 @@ import {
   type GroundedAnswer,
   generateGroundedAnswer,
   type HybridChunkHit,
+  oramaLanguageForCode,
+  questionLanguage,
+  readerRelevanceFloor,
+  readerRelevanceScore,
+  readerSearchFields,
+  readerSearchTerms,
   rerankHybridChunks,
   retrievalConfidence,
   type SearchChunk,
@@ -16,14 +22,33 @@ import {
   sparseVectorForQuery,
 } from '@nibleaf/search';
 import { resolveWorkspaceAi, type WorkspaceAiRuntime, workspaceAnswerProvider, workspaceEmbeddingProvider } from '@nibleaf/search/workspace';
+import { isPageTranslation, type SnapshotPage } from '@nibleaf/shared/site';
 import { z } from 'zod';
 import { env } from '@/env';
-import { TtlCache } from '@/lib/lru';
+import { LruCache, TtlCache } from '@/lib/lru';
 
 const log = createLogger({ component: 'ai-search' });
 const retrievalCache = new TtlCache<string, HybridChunkHit[]>(500, env.SEARCH_CACHE_TTL_MS);
 const answerCache = new TtlCache<string, GroundedAnswer>(250, env.SEARCH_CACHE_TTL_MS);
 const qdrant = getQdrantClient();
+const keywordAnswerHints = new LruCache<string, { available: boolean; at: number; refreshing: boolean }>(500);
+
+/** A UI hint only. Cold/expired hints are false until a background readiness
+ * check completes; the answer/chat endpoints still check live state themselves. */
+export const publishedSearchAnswerHint = (projectId: string, deploymentId: string): boolean => {
+  const key = JSON.stringify([projectId, deploymentId]);
+  let hint = keywordAnswerHints.get(key);
+  if (!hint) {
+    hint = { available: false, at: 0, refreshing: false };
+    keywordAnswerHints.set(key, hint);
+  }
+  if (Date.now() - hint.at > 5000 && !hint.refreshing) {
+    hint.available = false;
+    hint.refreshing = true;
+    void answerSearchAvailable(projectId, deploymentId);
+  }
+  return hint.available;
+};
 
 /** How long one reading of the alias's target is trusted. */
 const INDEX_CHECK_MS = 30_000;
@@ -95,14 +120,18 @@ const indexedChunkPayloadSchema = z.object({
 });
 
 export const answerSearchAvailable = async (projectId?: string, deploymentId?: string): Promise<boolean> => {
+  let available = false;
   try {
-    return await readAnswerAvailability(projectId, deploymentId);
+    available = await readAnswerAvailability(projectId, deploymentId);
   } catch (error) {
     // The site shell and keyword search must keep working; only the AI
     // capability is reported unavailable.
     log.warn({ projectId, errorName: error instanceof Error ? error.name : 'UnknownError' }, 'AI answer readiness check failed');
-    return false;
   }
+  // Shell/answer readiness checks also warm the keyword response's hint.
+  // Actual answer requests always read live state; only the UI hint is cached.
+  if (projectId && deploymentId) keywordAnswerHints.set(JSON.stringify([projectId, deploymentId]), { available, at: Date.now(), refreshing: false });
+  return available;
 };
 
 const readAnswerAvailability = async (projectId?: string, deploymentId?: string) => {
@@ -185,12 +214,18 @@ interface RetrievalResult {
   confidence: number;
 }
 
+interface QuestionEmbedding {
+  query: string;
+  vector: () => Promise<number[]>;
+}
+
 const retrieveHybrid = async (
   scope: SearchScope,
   query: string,
   limit: number,
   signal?: AbortSignal,
   runtime?: WorkspaceAiRuntime,
+  embedding?: QuestionEmbedding,
 ): Promise<RetrievalResult> => {
   const filter = filterForSearchScope(scope);
   if (!filter || !query.trim()) return { cacheHit: false, chunks: [], confidence: 0 };
@@ -202,14 +237,15 @@ const retrieveHybrid = async (
   const key = searchCacheKey(
     scope,
     query,
-    `chunks-v4-${resolved?.revision}-${env.QDRANT_COLLECTION_VERSION}-${provider.model}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}`,
+    `chunks-v5-${resolved?.revision}-${env.QDRANT_COLLECTION_VERSION}-${provider.model}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}-${embedding?.query ?? query}`,
   );
   const cached = retrievalCache.get(key);
   if (cached) return { cacheHit: true, chunks: cached, confidence: retrievalConfidence(cached) };
-  const embedded = await provider.embed([query], signal);
+  const dense = embedding ? await embedding.vector() : ((await provider.embed([query], signal)).vectors[0] ?? []);
+  signal?.throwIfAborted();
   const points = await client.queryHybrid(
     {
-      dense: embedded.vectors[0] ?? [],
+      dense,
       sparse: sparseVectorForQuery(query, scope.language),
       filter,
       // Security takes precedence over a broader statistical population: an
@@ -247,37 +283,59 @@ export const runPublishedSearch = async (
   signal?: AbortSignal,
 ): Promise<SearchRuntimeResult> => {
   if (env.SEARCH_RUNTIME === 'legacy') return { hits: await legacy(), runtime: 'legacy' };
+  if (env.SEARCH_RUNTIME === 'shadow') {
+    const legacyHits = await legacy();
+    // Even alias/provider readiness belongs to the comparison, not to the
+    // reader's keyword response. A slow Qdrant cannot hold shadow search open.
+    void (async () => {
+      if (!qdrant || !(await configuredIndexServing())) return;
+      const provider = await resolveWorkspaceAi(scope.projectId);
+      if (!provider) return;
+      const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider);
+      const hybridIds = new Set(collapseChunkHits(result.chunks, limit, query).map((hit) => hit.id));
+      const overlap = legacyHits.filter((hit) => hybridIds.has(hit.id)).length;
+      log.info(
+        {
+          projectId: scope.projectId,
+          deploymentId: scope.deploymentId,
+          language: scope.language,
+          legacyCount: legacyHits.length,
+          hybridCount: hybridIds.size,
+          overlap,
+        },
+        'hybrid search shadow comparison',
+      );
+    })().catch(() => log.warn({ projectId: scope.projectId }, 'hybrid search shadow request failed'));
+    return { hits: legacyHits, runtime: 'shadow' };
+  }
   // Keyword results, without paying to embed a query the serving index cannot answer.
   if (!qdrant || !(await configuredIndexServing())) return { hits: await legacy(), runtime: 'legacy-fallback' };
   const provider = await resolveWorkspaceAi(scope.projectId).catch(() => null);
   if (!provider) return { hits: await legacy(), runtime: 'legacy-fallback' };
-  if (env.SEARCH_RUNTIME === 'shadow') {
-    const legacyHits = await legacy();
-    void retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider)
-      .then((result) => {
-        const hybridIds = new Set(collapseChunkHits(result.chunks, limit, query).map((hit) => hit.id));
-        const overlap = legacyHits.filter((hit) => hybridIds.has(hit.id)).length;
-        log.info(
-          {
-            projectId: scope.projectId,
-            deploymentId: scope.deploymentId,
-            language: scope.language,
-            legacyCount: legacyHits.length,
-            hybridCount: hybridIds.size,
-            overlap,
-          },
-          'hybrid search shadow comparison',
-        );
-      })
-      .catch(() => log.warn({ projectId: scope.projectId }, 'hybrid search shadow request failed'));
-    return { hits: legacyHits, runtime: 'shadow' };
-  }
   try {
     const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider);
     // A newly published deployment can be served before its async index job
     // finishes. Keep ordinary search working during that window and recovery.
     if (result.chunks.length === 0) return { hits: await legacy(), runtime: 'legacy-fallback' };
-    return { hits: collapseChunkHits(result.chunks, limit, query), runtime: 'hybrid' };
+    // Normalized like the keyword index for this language (accent folding included).
+    const language = oramaLanguageForCode(scope.language);
+    const terms = readerSearchTerms(query, language);
+    const scored = result.chunks.map((hit) => ({
+      ...hit,
+      score: readerRelevanceScore(
+        terms,
+        readerSearchFields({ ...hit.chunk, headings: [...hit.chunk.headingPath, hit.chunk.heading].join(' ') }, language),
+      ),
+    }));
+    const floor = readerRelevanceFloor(Math.max(0, ...scored.map((hit) => hit.score)));
+    return {
+      hits: collapseChunkHits(
+        scored.filter((hit) => hit.score >= floor),
+        limit,
+        query,
+      ),
+      runtime: 'hybrid',
+    };
   } catch {
     log.error({ projectId: scope.projectId }, 'hybrid search failed; using rollback runtime');
     return { hits: await legacy(), runtime: 'legacy-fallback' };
@@ -295,6 +353,8 @@ export interface ChatRetrieval {
   chunks: SearchChunk[];
   hits: HybridChunkHit[];
   confidence: number;
+  /** Main-query confidence before the reader's current page receives a boost. */
+  searchConfidence?: number;
   /** The main retrieval lane was served from the in-process cache. */
   cacheHit: boolean;
 }
@@ -352,7 +412,140 @@ type HybridSearch = (
   limit: number,
   signal?: AbortSignal,
   runtime?: WorkspaceAiRuntime,
+  embedding?: QuestionEmbedding,
 ) => Promise<RetrievalResult>;
+
+export interface ChatLanguageContext {
+  /** Enabled languages from the server-resolved publication, never the body. */
+  languages: string[];
+  defaultLanguage?: string;
+  /** Version pages already restricted to the reader's grants. */
+  pages: Pick<SnapshotPage, 'id' | 'title' | 'path' | 'translationKey' | 'languageCode' | 'kind' | 'hidden'>[];
+}
+
+const CHAT_RETRIEVAL_LIMITS = { fallbackLanguages: 2, translations: 2, concurrency: 2, calls: 8, deadlineMs: 8000 };
+const emptyRetrieval = (): RetrievalResult => ({ chunks: [], confidence: 0, cacheHit: false });
+
+/** Bound even a provider that ignores cancellation; its pending promise still
+ * has rejection handlers, and cooperative providers receive the same signal. */
+const untilAborted = <T>(work: Promise<T>, signal: AbortSignal): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  });
+
+/** Search the question's language before trying other published languages.
+ * Every lane retains the same tenant, deployment, version and page grants. */
+export const retrieveChatLanguages = async (
+  scope: SearchScope,
+  query: string,
+  runtime: WorkspaceAiRuntime,
+  context: ChatLanguageContext,
+  options: { language: string; page?: { id: string; title: string }; signal?: AbortSignal },
+  search: HybridSearch = retrieveHybrid,
+): Promise<ChatRetrieval> => {
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(new DOMException('Retrieval deadline exceeded', 'TimeoutError')), CHAT_RETRIEVAL_LIMITS.deadlineMs);
+  const signal = options.signal ? AbortSignal.any([options.signal, deadline.signal]) : deadline.signal;
+  let vector: Promise<number[]> | undefined;
+  const embedding: QuestionEmbedding = {
+    query,
+    vector: () => {
+      vector ??= workspaceEmbeddingProvider(runtime)
+        .embed([query], signal)
+        .then((result) => result.vectors[0] ?? []);
+      return vector;
+    },
+  };
+  let calls = 0;
+  const active = new Set<Promise<RetrievalResult>>();
+  const boundedSearch: HybridSearch = async (target, text, limit) => {
+    while (active.size >= CHAT_RETRIEVAL_LIMITS.concurrency) await Promise.race(active);
+    options.signal?.throwIfAborted();
+    if (signal.aborted || calls >= CHAT_RETRIEVAL_LIMITS.calls) return emptyRetrieval();
+    calls++;
+    const work = untilAborted(search(target, text, limit, signal, runtime, embedding), signal).catch((error: unknown) => {
+      options.signal?.throwIfAborted();
+      if (deadline.signal.aborted) return emptyRetrieval();
+      throw error;
+    });
+    active.add(work);
+    try {
+      return await work;
+    } finally {
+      active.delete(work);
+    }
+  };
+  try {
+    const preferred =
+      context.languages.find((language) => language === options.language) ??
+      context.languages.find((language) => language.split('-')[0] === options.language.split('-')[0]);
+    const primaryLanguage =
+      preferred ??
+      context.languages.find((language) => language === scope.language) ??
+      context.languages.find((language) => language === context.defaultLanguage) ??
+      context.languages[0];
+    if (!primaryLanguage) return { chunks: [], hits: [], confidence: 0, cacheHit: false };
+    const primaryScope = { ...scope, language: primaryLanguage };
+    const readable = context.pages.filter(
+      (page) => page.kind === 'PAGE' && !page.hidden && (scope.allowedPageIds === null || scope.allowedPageIds.has(page.id)),
+    );
+    const currentPage = readable.find((page) => page.id === options.page?.id);
+    const translatedPage = currentPage && readable.find((page) => page.languageCode === primaryLanguage && isPageTranslation(currentPage, page));
+    const primary = await retrieveChatContext(
+      primaryScope,
+      query,
+      runtime,
+      {
+        signal,
+        page: translatedPage ? { id: translatedPage.id, title: translatedPage.title } : undefined,
+      },
+      boundedSearch,
+    );
+    if (primary.chunks.length && (primary.searchConfidence ?? primary.confidence) >= env.SEARCH_ANSWER_MIN_CONFIDENCE) return primary;
+
+    const counts = new Map<string, number>();
+    for (const page of readable) counts.set(page.languageCode, (counts.get(page.languageCode) ?? 0) + 1);
+    const fallbackLanguages = [...new Set(context.languages)]
+      .filter((language) => language !== primaryLanguage)
+      .sort(
+        (left, right) =>
+          Number(right === context.defaultLanguage) - Number(left === context.defaultLanguage) ||
+          (counts.get(right) ?? 0) - (counts.get(left) ?? 0) ||
+          left.localeCompare(right),
+      )
+      .slice(0, CHAT_RETRIEVAL_LIMITS.fallbackLanguages);
+    const fallbacks = await Promise.all(
+      fallbackLanguages.map((language) => retrieveChatContext({ ...scope, language }, query, runtime, { signal, widen: false }, boundedSearch)),
+    );
+    const best =
+      [primary, ...fallbacks].sort((left, right) => (right.searchConfidence ?? right.confidence) - (left.searchConfidence ?? left.confidence))[0] ??
+      primary;
+    if (best === primary || best.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE) return best;
+
+    // A cross-language hit may identify a translated guide that the original
+    // wording missed. Read that actual translation, rather than relabeling a hit.
+    const translations = new Map<string, { id: string; title: string }>();
+    for (const { chunk } of best.hits.slice(0, WIDEN_FROM_TOP)) {
+      const source = readable.find((page) => page.id === chunk.pageId);
+      const translated = source && readable.find((page) => page.languageCode === preferred && isPageTranslation(source, page));
+      if (translated) translations.set(source.id, { id: translated.id, title: translated.title });
+      if (translations.size >= CHAT_RETRIEVAL_LIMITS.translations) break;
+    }
+    const translatedHits = new Map<string, HybridChunkHit[]>();
+    for (const [sourceId, page] of translations) {
+      const lane = await boundedSearch({ ...primaryScope, allowedPageIds: new Set([page.id]) }, `${page.title} ${query}`, 6);
+      if (lane.chunks.length) translatedHits.set(sourceId, lane.chunks);
+    }
+    const hits = best.hits.flatMap((hit) => translatedHits.get(hit.chunk.pageId) ?? [hit]);
+    return { ...best, hits, chunks: selectAnswerChunks(hits), cacheHit: false };
+  } finally {
+    clearTimeout(timer);
+    deadline.abort();
+  }
+};
 
 /** Retrieval for one chat turn. The optional page lane narrows the same
  * server-derived scope to a single page — it can never widen the reader's
@@ -363,7 +556,7 @@ export const retrieveChatContext = async (
   scope: SearchScope,
   query: string,
   runtime: WorkspaceAiRuntime,
-  options: { page?: { id: string; title: string }; signal?: AbortSignal } = {},
+  options: { page?: { id: string; title: string }; signal?: AbortSignal; widen?: boolean } = {},
   search: HybridSearch = retrieveHybrid,
 ): Promise<ChatRetrieval> => {
   const page = options.page && (scope.allowedPageIds === null || scope.allowedPageIds.has(options.page.id)) ? options.page : undefined;
@@ -371,10 +564,16 @@ export const retrieveChatContext = async (
     search({ ...scope, allowedPageIds: new Set([target.id]) }, `${target.title} ${query}`, 6, options.signal, runtime);
   const [main, asked] = await Promise.all([search(scope, query, 12, options.signal, runtime), page ? pageSearch(page) : Promise.resolve(null)]);
   // A turn the main search is not confident about is refused: it reads nothing more.
-  const widen = page || main.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE ? [] : pagesToWiden(main.chunks);
+  const widen = options.widen === false || page || main.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE ? [] : pagesToWiden(main.chunks);
   const widened = await Promise.all(widen.map(async (target) => ({ target, lane: await pageSearch(target) })));
   if (!asked?.chunks.length && !widened.some(({ lane }) => lane.chunks.length)) {
-    return { chunks: selectAnswerChunks(main.chunks), hits: main.chunks, confidence: main.confidence, cacheHit: main.cacheHit };
+    return {
+      chunks: selectAnswerChunks(main.chunks),
+      hits: main.chunks,
+      confidence: main.confidence,
+      searchConfidence: main.confidence,
+      cacheHit: main.cacheHit,
+    };
   }
   const merged = new Map<string, HybridChunkHit>();
   const add = (hit: HybridChunkHit) => {
@@ -403,6 +602,7 @@ export const retrieveChatContext = async (
     // Asked from the page, its passages are relevant by the reader's choice; a
     // widened page keeps the confidence of the search that found it.
     confidence: page ? Math.max(retrievalConfidence(hits), PAGE_CONTEXT_MIN_CONFIDENCE) : main.confidence,
+    searchConfidence: main.confidence,
     cacheHit: main.cacheHit,
   };
 };
@@ -418,24 +618,28 @@ export const answerPublishedSearch = async (
   scope: SearchScope,
   query: string,
   signal?: AbortSignal,
+  context?: ChatLanguageContext,
 ): Promise<GroundedAnswer & { cacheHit: boolean }> => {
   const runtime = await resolveWorkspaceAi(scope.projectId);
   if (!qdrant || !runtime?.answersEnabled || !(await configuredIndexServing())) throw new Error('AI answers are not configured.');
   const cacheKey = searchCacheKey(
     scope,
     query,
-    `answer-v3-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}`,
+    `answer-v4-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}-${context?.languages.join(',')}`,
   );
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
-  const retrieval = await retrieveHybrid(scope, query, 12, signal, runtime);
+  const language = questionLanguage(query, scope.language, context?.languages);
+  const retrieval = context
+    ? await retrieveChatLanguages(scope, query, runtime, context, { language, signal })
+    : await retrieveChatContext(scope, query, runtime, { signal });
   const provider = workspaceAnswerProvider(runtime);
   const answer = await generateGroundedAnswer(
     provider,
     query,
-    selectAnswerChunks(retrieval.chunks),
+    retrieval.chunks,
     retrieval.confidence,
-    scope.language,
+    language,
     signal,
     env.SEARCH_ANSWER_MIN_CONFIDENCE,
   );

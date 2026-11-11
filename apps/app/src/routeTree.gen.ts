@@ -34,6 +34,7 @@ import { Route as OauthProjectRouteImport } from './routes/oauth.project'
 import { Route as SitesProjectIdRouteRouteImport } from './routes/sites/$projectId/route'
 import { Route as ToolsSlugRouteImport } from './routes/tools/$slug'
 import { Route as UseCasesSlugRouteImport } from './routes/use-cases/$slug'
+import { Route as WelcomeNameRouteImport } from './routes/welcome.name'
 import { Route as AppdashboardSettingsRouteImport } from './routes/app/(dashboard)/settings'
 import { Route as AppOOrgSlugRouteRouteImport } from './routes/app/o/$orgSlug/route'
 import { Route as AppProjectsProjectIdRouteRouteImport } from './routes/app/projects/$projectId/route'
@@ -181,6 +182,11 @@ const ToolsSlugRoute = ToolsSlugRouteImport.update({
 const UseCasesSlugRoute = UseCasesSlugRouteImport.update({
   id: '/use-cases/$slug',
   path: '/use-cases/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeNameRoute = WelcomeNameRouteImport.update({
+  id: '/welcome/name',
+  path: '/welcome/name',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppdashboardSettingsRoute = AppdashboardSettingsRouteImport.update({
@@ -339,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/oauth/project': typeof OauthProjectRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
+  '/welcome/name': typeof WelcomeNameRoute
   '/app/': typeof AppIndexRoute
   '/app/o/$orgSlug': typeof AppOOrgSlugRouteRouteWithChildren
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
@@ -387,6 +394,7 @@ export interface FileRoutesByTo {
   '/oauth/project': typeof OauthProjectRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
+  '/welcome/name': typeof WelcomeNameRoute
   '/app/o/$orgSlug': typeof AppOOrgSlugRouteRouteWithChildren
   '/app/settings': typeof AppdashboardSettingsRoute
   '/ar/use-cases/$slug': typeof ArUseCasesSlugRoute
@@ -436,6 +444,7 @@ export interface FileRoutesById {
   '/oauth/project': typeof OauthProjectRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
+  '/welcome/name': typeof WelcomeNameRoute
   '/app/': typeof AppIndexRoute
   '/app/o/$orgSlug': typeof AppOOrgSlugRouteRouteWithChildren
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
@@ -487,6 +496,7 @@ export interface FileRouteTypes {
     | '/oauth/project'
     | '/tools/$slug'
     | '/use-cases/$slug'
+    | '/welcome/name'
     | '/app/'
     | '/app/o/$orgSlug'
     | '/app/projects/$projectId'
@@ -535,6 +545,7 @@ export interface FileRouteTypes {
     | '/oauth/project'
     | '/tools/$slug'
     | '/use-cases/$slug'
+    | '/welcome/name'
     | '/app/o/$orgSlug'
     | '/app/settings'
     | '/ar/use-cases/$slug'
@@ -583,6 +594,7 @@ export interface FileRouteTypes {
     | '/oauth/project'
     | '/tools/$slug'
     | '/use-cases/$slug'
+    | '/welcome/name'
     | '/app/'
     | '/app/o/$orgSlug'
     | '/app/projects/$projectId'
@@ -627,6 +639,7 @@ export interface RootRouteChildren {
   OauthProjectRoute: typeof OauthProjectRoute
   ToolsSlugRoute: typeof ToolsSlugRoute
   UseCasesSlugRoute: typeof UseCasesSlugRoute
+  WelcomeNameRoute: typeof WelcomeNameRoute
   ArUseCasesSlugRoute: typeof ArUseCasesSlugRoute
 }
 
@@ -805,6 +818,13 @@ declare module '@tanstack/react-router' {
       path: '/use-cases/$slug'
       fullPath: '/use-cases/$slug'
       preLoaderRoute: typeof UseCasesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome/name': {
+      id: '/welcome/name'
+      path: '/welcome/name'
+      fullPath: '/welcome/name'
+      preLoaderRoute: typeof WelcomeNameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/(dashboard)/settings': {
@@ -1136,6 +1156,7 @@ const rootRouteChildren: RootRouteChildren = {
   OauthProjectRoute: OauthProjectRoute,
   ToolsSlugRoute: ToolsSlugRoute,
   UseCasesSlugRoute: UseCasesSlugRoute,
+  WelcomeNameRoute: WelcomeNameRoute,
   ArUseCasesSlugRoute: ArUseCasesSlugRoute,
 }
 export const routeTree = rootRouteImport
@@ -1143,10 +1164,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

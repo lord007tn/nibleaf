@@ -1,10 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { AnalyticsPayload, ConsentState, PublicAnalyticsEvent } from '@nibleaf/clickhouse';
-import { prisma } from '@nibleaf/database';
+import { deliveryPlanSelect, loadDefaultDeliveryPlan, prisma } from '@nibleaf/database';
+import { logger } from '@nibleaf/logger';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
-import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import {
+  type AddonDeliveryPlan,
+  type AddonDeliveryPlanAssignment,
+  projectAddonRowsForDelivery,
+  projectConfigWithAddons,
+} from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
+import { pageDescription, pageExcerpt } from '@nibleaf/shared/markdown-text';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -14,7 +21,6 @@ import {
   isPageTranslation,
   mergeLanguageChrome,
   type NavNode,
-  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
@@ -23,14 +29,23 @@ import {
   type SnapshotLanguageConfig,
   type SnapshotPage,
   type SnapshotProject,
-  type SnapshotVersion,
   withOpenApiNav,
 } from '@nibleaf/shared/site';
+import {
+  activeLanguageCode,
+  activeVersion,
+  flattenNav,
+  pageBelongsToVersion,
+  pagesForVersion,
+  resolveSitePage,
+  sitePathWithinVersion,
+} from '@nibleaf/shared/site-route';
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
+import { readerQuestionStorage } from '@/lib/ai-search/conversation-archive';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
-import { answerPublishedSearch, answerSearchAvailable, runPublishedSearch } from '@/lib/ai-search/runtime';
+import { answerPublishedSearch, answerSearchAvailable, publishedSearchAnswerHint, runPublishedSearch } from '@/lib/ai-search/runtime';
 import { AssetReferenceAccess } from '@/lib/asset-reference-access';
 import { buildChangelogRss } from '@/lib/changelog-rss';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -96,6 +111,8 @@ interface LiveChromeRow {
   }[];
   addons: { key: string; enabled: boolean; config: unknown }[];
   organization: { usagePlan: AddonDeliveryPlanAssignment | null };
+  /** The canonical default plan, for an org without an active assignment. */
+  defaultPlan: AddonDeliveryPlan | null;
 }
 
 /** A snapshot project enriched with the fields the published-site edge needs
@@ -145,6 +162,22 @@ export const invalidatePublishedSiteConfig = (projectId: string): void => {
   deploymentMissCache.delete(projectId);
 };
 
+/** A plan assignment or entitlement applies to every website of the organization.
+ *  After writing one, drop each website's cached live config, so the next reader
+ *  request re-resolves add-ons and consent through the shared resolver (#447). */
+export const invalidateOrganizationPublishedConfig = async (organizationId: string): Promise<number> => {
+  // Cache invalidation must never fail the write that triggered it: on error,
+  // log it and let the 15 s live-chrome TTL bound the staleness.
+  try {
+    const projects = await prisma.project.findMany({ where: { organizationId }, select: { id: true } });
+    for (const { id } of projects) invalidatePublishedSiteConfig(id);
+    return projects.length;
+  } catch (error) {
+    logger.warn({ err: error, organizationId }, 'Could not invalidate published site config for the organization; live chrome expires within 15 s');
+    return 0;
+  }
+};
+
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
   const cached = liveChromeCache.get(projectId);
   if (cached !== undefined) {
@@ -168,13 +201,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
               status: true,
               effectiveAt: true,
               expiresAt: true,
-              plan: {
-                select: {
-                  key: true,
-                  active: true,
-                  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
-                },
-              },
+              plan: { select: deliveryPlanSelect },
             },
           },
         },
@@ -200,7 +227,9 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       },
     },
   });
-  const stamped = live ? { ...live, stamp: await assetReferences.stamp(projectId, live) } : null;
+  // The canonical default plan rides with the cached row; the plan itself is
+  // evaluated per request (expiry is time-based), see overlayLiveChrome.
+  const stamped = live ? { ...live, defaultPlan: await loadDefaultDeliveryPlan(), stamp: await assetReferences.stamp(projectId, live) } : null;
   if (!stamped || stamped.stamp !== null) liveChromeCache.set(projectId, stamped);
   return stamped;
 };
@@ -222,7 +251,7 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
   // so they never appear publicly until the next publish, and the frozen
   // label/direction/isDefault keep the exactly-one-default invariant intact.
   const liveByCode = new Map(live.languages.map((language) => [language.code, language]));
-  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan));
+  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan, live.defaultPlan));
   return {
     ...project,
     name: live.name,
@@ -475,47 +504,6 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
  *  snapshot AND is enabled, otherwise the project's default language. A request
  *  for a disabled language therefore falls back to the default instead of
  *  serving hidden content. */
-const activeLanguageCode = (snapshot: SiteSnapshot, lang?: string): string => {
-  if (lang && publicLanguages(snapshot.project.languages).some((l) => l.code === lang)) {
-    return lang;
-  }
-  return defaultLanguage(snapshot.project).code;
-};
-
-/** Only the pages belonging to a given language. */
-const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => p.languageCode === lang);
-
-const defaultVersion = (snapshot: SiteSnapshot): SnapshotVersion => {
-  const defaults = snapshot.project.versions.filter((version) => version.isDefault);
-  if (defaults.length !== 1 || !defaults[0]) {
-    throw new Error(`Snapshot project ${snapshot.project.id} must have exactly one default version.`);
-  }
-  return defaults[0];
-};
-
-const activeVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVersion => {
-  const requested = version?.trim();
-  if (requested) {
-    const match = snapshot.project.versions.find((candidate) => candidate.slug === requested);
-    if (match) {
-      return match;
-    }
-  }
-  return defaultVersion(snapshot);
-};
-
-const matchingVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVersion | undefined => {
-  const requested = version?.trim();
-  if (!requested) {
-    return undefined;
-  }
-  return snapshot.project.versions.find((candidate) => candidate.slug === requested);
-};
-
-const pageBelongsToVersion = (page: SnapshotPage, version: SnapshotVersion): boolean => page.versionId === version.id;
-
-const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): SnapshotPage[] =>
-  snapshot.pages.filter((page) => pageBelongsToVersion(page, version));
 
 /** The published site shell: project branding + navigation tree (per language). */
 export const getSite = async (identifier: string, lang?: string, version?: string) => {
@@ -540,6 +528,7 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
     config: shellLanguage?.isDefault ? snapshot.project.config : mergeLanguageChrome(snapshot.project.config, shellLanguage?.config),
     languages: servedLanguages,
   };
+  const search = resolvePublishedSearchRequest(snapshot.project.config, {}).configuration;
   return {
     project,
     languages: servedLanguages,
@@ -561,9 +550,10 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
     // Signed in on the site itself (never on a public site, whose shell is shared-cacheable).
     signedIn: viewer.siteSession === true,
     capabilities: {
-      answer:
-        resolvePublishedSearchRequest(snapshot.project.config, {}).configuration.aiAnswers &&
-        (await answerSearchAvailable(snapshot.project.id, deploymentId)),
+      answer: search.aiAnswers && (await answerSearchAvailable(snapshot.project.id, deploymentId)),
+      // Whether the chat keeps question text, from the real capture configuration,
+      // so the reader is never told questions are saved when they are not.
+      ...readerQuestionStorage(search.aiConversationCapture),
     },
   };
 };
@@ -588,42 +578,43 @@ export const getSiteOpenApi = async (identifier: string) => {
   };
 };
 
-/** Depth-first order of renderable pages — for prev/next links. */
-const flattenNav = (nav: NavNode[]): NavNode[] =>
-  nav.flatMap((node) => (node.kind === 'PAGE' ? [node, ...flattenNav(node.children)] : flattenNav(node.children)));
-
 /** A single published page with TOC, breadcrumbs, and prev/next neighbours.
  *  Scoped to the active language, falling back to the default language. */
-export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) => {
-  const { snapshot } = await getPublished(identifier);
-  const explicitVersion = matchingVersion(snapshot, version);
-  let normalized = path.replace(/^\/+|\/+$/g, '');
-  if (explicitVersion && (normalized === explicitVersion.slug || normalized.startsWith(`${explicitVersion.slug}/`))) {
-    normalized = normalized.slice(explicitVersion.slug.length).replace(/^\/+/, '');
-  }
-  const activeLanguage = activeLanguageCode(snapshot, lang);
-  const docsVersion = explicitVersion ?? activeVersion(snapshot, version);
-  const versionPages = pagesForVersion(snapshot, docsVersion);
+export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) =>
+  publishedPage(await getPublished(identifier), path, lang, version);
 
-  const findIn = (langCode: string) => {
-    const langPages = pagesForLanguage(versionPages, langCode);
-    const found =
-      langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
-      (normalized === '' ? firstPage(langPages, langCode) : undefined) ??
-      // A group/section prefix (e.g. a navbar tab pointing at `/guides`)
-      // resolves to its first page in nav order, Mintlify-style. Paths with no
-      // pages beneath them still 404.
-      firstPageUnder(langPages, langCode, normalized);
-    return found ? { page: found, pages: langPages } : undefined;
+/** Public cards use the same viewer gate and frozen page resolution as HTML,
+ * but never accept an authenticated view of WORKSPACE/READERS content. */
+export const getSiteOgData = async (identifier: string, path: string, lang?: string, version?: string) => {
+  const published = await getPublished(identifier);
+  if ((published.snapshot.project as PublicSnapshotProject).accessMode !== 'PUBLIC' || published.viewer.kind !== 'public') {
+    throw notFound('site');
+  }
+  const data = publishedPage(published, path, lang, version);
+  const config = data.project.config as {
+    seo?: { metaTitle?: string };
+    styling?: { primaryColor?: string };
+    branding?: { logoLight?: string };
+  } | null;
+  return {
+    projectId: data.project.id,
+    deploymentId: published.deploymentId,
+    title: data.page.config?.seo?.metaTitle?.trim() || data.page.title,
+    siteName: data.languageConfig?.seo?.metaTitle || config?.seo?.metaTitle || data.languageConfig?.name || data.project.name,
+    brandColor: config?.styling?.primaryColor || '#2563eb',
+    logo: config?.branding?.logoLight || null,
+    rtl: data.project.languages.find((language) => language.code === data.activeLanguage)?.direction === 'RTL',
   };
+};
 
-  // Try the active language; fall back to the default language's pages before 404.
-  const defaultCode = defaultLanguage(snapshot.project).code;
-  const match = findIn(activeLanguage) ?? (activeLanguage === defaultCode ? undefined : findIn(defaultCode));
+const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string, version?: string) => {
+  // The page lookup is shared with the pre-publish link checks (`resolveSitePage`).
+  const match = resolveSitePage(snapshot, path, lang, version);
   if (!match) {
-    throw notFound('page', { path: normalized });
+    throw notFound('page', { path: sitePathWithinVersion(snapshot, path, version) });
   }
-  const { page, pages } = match;
+  const { page, pages, docsVersion } = match;
+  const versionPages = pagesForVersion(snapshot, docsVersion);
   const navLanguage = page.languageCode;
 
   const order = flattenNav(buildNavTree(pages, navLanguage));
@@ -681,6 +672,8 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
       // the page's own first paragraph twice.
       description: explicitPageDescription(page),
       excerpt: pageExcerpt(page),
+      // Cleaned once here; the reader only truncates (never re-parses) it.
+      seoDescription: pageDescription(page),
       icon: page.icon,
       path: page.path,
       content: page.content,
@@ -721,20 +714,6 @@ export const getSitePageMarkdown = async (identifier: string, path: string, lang
     throw notFound('page', { path, reason: 'not_public_markdown' });
   }
   return { body: buildPublishedPageMarkdown(data), isPrivate: false };
-};
-
-const firstPage = (pages: SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
-  const first = flattenNav(buildNavTree(pages, languageCode))[0];
-  return first ? pages.find((p) => p.path === first.path) : undefined;
-};
-
-/** First renderable page whose path sits under `prefix/` — resolves group URLs. */
-const firstPageUnder = (pages: SnapshotPage[], languageCode: string | undefined, prefix: string): SnapshotPage | undefined => {
-  if (!prefix) {
-    return undefined;
-  }
-  const first = flattenNav(buildNavTree(pages, languageCode)).find((node) => node.path.startsWith(`${prefix}/`));
-  return first ? pages.find((p) => p.path === first.path) : undefined;
 };
 
 const neighbour = (node?: NavNode) => (node ? { title: node.title, path: node.path } : null);
@@ -795,7 +774,7 @@ export const searchSite = async (
             versionPages,
             viewer.allowedPageIds,
           );
-          return searchDocs(index, query, { limit: resultLimit });
+          return searchDocs(index, query, { limit: resultLimit, relevance: 'reader' });
         },
         getContext<HonoEnv>().req.raw.signal,
       );
@@ -852,7 +831,7 @@ export const searchSite = async (
     hits,
     searchId,
     runtime,
-    capabilities: { answer: request.configuration.aiAnswers && (await answerSearchAvailable(snapshot.project.id, deploymentId)) },
+    capabilities: { answer: request.configuration.aiAnswers && publishedSearchAnswerHint(snapshot.project.id, deploymentId) },
   };
 };
 
@@ -879,7 +858,7 @@ export const resolvePublishedAnswerContext = async (identifier: string, lang?: s
 /** Grounded answer mode uses the exact same server-derived publication and
  * reader scope as results mode. The client cannot submit any tenant/page filter. */
 export const answerSite = async (identifier: string, query: string, lang?: string, version?: string) => {
-  const { snapshot, scope, available } = await resolvePublishedAnswerContext(identifier, lang, version);
+  const { snapshot, scope, available, versionPages } = await resolvePublishedAnswerContext(identifier, lang, version);
   if (!available) {
     throw new AppError({ code: 'search:unavailable', message: 'AI answers are not ready for this workspace.' });
   }
@@ -889,7 +868,11 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
   if (!quota.allowed) {
     throw new AppError({ code: 'http:rate_limited', message: 'This site has reached its daily AI answer quota.' });
   }
-  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal).catch((cause) => {
+  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal, {
+    languages: resolvePublishedSearchLanguages(snapshot),
+    defaultLanguage: defaultLanguage(snapshot.project).code,
+    pages: versionPages,
+  }).catch((cause) => {
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
   });

@@ -2,7 +2,9 @@ import { aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MAX_ASSET_UPLOAD_BYTES } from '@nibleaf/shared/constants';
 import { isPublicEmailProvider } from '@nibleaf/shared/email-providers';
 import { normalizeEmailDomain } from '@nibleaf/shared/join-links';
+import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
 import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
+import { isProjectHostnameAllowed } from '@nibleaf/shared/project-hostname';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
 import { supportActionUrlSchema, webActionUrlSchema } from './action-urls';
@@ -90,7 +92,7 @@ const navLink = z.object({ label: z.string().max(80), href: url, external: z.boo
 const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
 
 const redirectsSchema = z
-  .array(z.object({ from: z.string().max(300), to: z.string().max(300) }).strict())
+  .array(z.object({ from: z.string().max(300), to: z.string().max(300), generated: z.boolean().optional() }).strict())
   .max(MAX_REDIRECT_RULES)
   .superRefine((redirects, ctx) => {
     for (const graphIssue of validateRedirectGraph(redirects).issues) {
@@ -520,9 +522,25 @@ export type PageConfig = z.infer<typeof pageConfigSchema>;
 
 // ─── Project ──────────────────────────────────────────────────────────────—
 
+export const projectSlug = z
+  .string()
+  .min(1)
+  .max(63)
+  .refine(
+    (slug) => isProjectHostnameAllowed(slug),
+    'Use an available address with lowercase letters, numbers, and hyphens. System hostnames and xn-- labels are reserved.',
+  );
+
+export const projectAvailabilityQuery = z
+  .object({ organizationId: z.string().min(1).optional(), name: z.string().trim().min(1).max(120), slug: projectSlug.optional() })
+  .strict();
+
 export const createProjectBody = z
   .object({
-    name: z.string().min(1).max(120),
+    name: z.string().trim().min(1).max(120),
+    language: z.enum(LANGUAGE_CATALOG.map((language) => language.code)).optional(),
+    slug: projectSlug.optional(),
+    starter: z.enum(['blank', 'product-docs', 'help-center']).optional(),
     description: z.string().max(500).optional(),
     icon: z.string().max(64).optional(),
     /** The organization the website belongs to. Required by current dashboards;
@@ -535,12 +553,7 @@ export type CreateProjectBody = z.infer<typeof createProjectBody>;
 export const updateProjectBody = z
   .object({
     name: z.string().min(1).max(120).optional(),
-    slug: z
-      .string()
-      .min(1)
-      .max(63)
-      .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.')
-      .optional(),
+    slug: projectSlug.optional(),
     description: z.string().max(500).nullable().optional(),
     icon: z.string().max(64).nullable().optional(),
     config: projectConfigUpdateSchema.optional(),
@@ -684,6 +697,7 @@ export const mergeBranchBody = z.object({
 export type MergeBranchBody = z.infer<typeof mergeBranchBody>;
 
 export const updatePageBody = z.object({
+  expectedUpdatedAt: z.iso.datetime({ offset: true }).optional(),
   parentId: z.string().nullable().optional(),
   title: z.string().min(1).max(200).optional(),
   slug: z.string().max(200).optional(),
@@ -699,10 +713,43 @@ export type UpdatePageBody = z.infer<typeof updatePageBody>;
 /** Reorder / re-parent pages. An item's `languageId` moves that page, with its
  *  whole subtree, into another language of the same site; omitted, the page
  *  keeps its language. */
-export const reorderPagesBody = z.object({
+export const bulkReorderPagesBody = z.object({
   items: z.array(z.object({ id: z.string(), parentId: z.string().nullable(), position: z.number().int(), languageId: z.string().min(1).optional() })),
+  expectedStructureRevision: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
 });
+export type BulkReorderPagesBody = z.infer<typeof bulkReorderPagesBody>;
+export const movePageBody = z.object({
+  pageId: z.string().min(1),
+  parentId: z.string().min(1).nullable(),
+  position: z.union([z.object({ before: z.string().min(1) }), z.object({ after: z.string().min(1) }), z.object({ at: z.enum(['start', 'end']) })]),
+  languageId: z.string().min(1).optional(),
+  expectedStructureRevision: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+});
+export type MovePageBody = z.infer<typeof movePageBody>;
+// Prefer the narrow intent when a caller also supplies legacy snapshot fields.
+// Existing bulk callers (MCP, imports, page settings) retain their contract.
+export const reorderPagesBody = z.union([movePageBody, bulkReorderPagesBody]);
 export type ReorderPagesBody = z.infer<typeof reorderPagesBody>;
+
+/** Trash (AUTH-12): the branch whose trashed pages to list (the default branch
+ *  when omitted). */
+export const listPageTrashQuery = z.object({ branchId: z.string().min(1).optional() });
+export type ListPageTrashQuery = z.infer<typeof listPageTrashQuery>;
+/** Restore a trashed subtree. With `expectedStructureRevision` (the page tree's
+ *  `x-page-structure-revision`) the restore refuses if the tree changed since. */
+export const restorePageTrashBody = z.object({
+  expectedStructureRevision: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+});
+export type RestorePageTrashBody = z.infer<typeof restorePageTrashBody>;
 
 // ─── Deployment (publish) ────────────────────────────────────────────────────
 
@@ -1449,3 +1496,16 @@ export type GitConflictResolutionBody = z.infer<typeof gitConflictResolutionBody
 
 export * from './ai';
 export * from './ai-chat';
+
+export const pageHistorySelection = z.object({
+  source: z.enum(['revision', 'published']),
+  entryId: z.string().min(1).max(200),
+});
+export type PageHistorySelection = z.infer<typeof pageHistorySelection>;
+export const pageHistoryQuery = z.object({
+  source: z.enum(['revision', 'published']).default('revision'),
+  before: z.iso.datetime({ offset: true }).optional(),
+  beforeId: z.string().min(1).max(200).optional(),
+});
+export type PageHistoryQuery = z.infer<typeof pageHistoryQuery>;
+export const restorePageHistoryBody = pageHistorySelection.extend({ expectedUpdatedAt: z.iso.datetime({ offset: true }) });

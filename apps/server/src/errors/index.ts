@@ -30,6 +30,11 @@ export type ErrorCode =
   | 'mcp:publish_blocked'
   | 'mcp:publish_in_progress'
   | 'validation:failed'
+  | 'page:revision_conflict'
+  | 'page:address_conflict'
+  | 'page:redirect_invalid'
+  | 'page:trash_unrestorable'
+  | 'page:trash_too_large'
   | 'database:not_found'
   | 'database:conflict'
   | 'join:invalid'
@@ -118,6 +123,11 @@ const ERROR_STATUS = {
   'mcp:publish_blocked': 409,
   'mcp:publish_in_progress': 409,
   'validation:failed': 422,
+  'page:revision_conflict': 409,
+  'page:address_conflict': 409,
+  'page:redirect_invalid': 422,
+  'page:trash_unrestorable': 422,
+  'page:trash_too_large': 413,
   'database:not_found': 404,
   'database:conflict': 409,
   // One answer for a bad, revoked, expired or used-up join link: no enumeration.

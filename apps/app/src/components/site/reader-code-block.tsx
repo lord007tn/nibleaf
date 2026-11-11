@@ -49,14 +49,12 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
     </button>
   );
   return (
-    // data-not-typeset: this block owns its own chrome (dark panel, header bar,
-    // copy button) — typeset must not restyle the <pre> inside. The wrapper's
-    // flow margin tracks the configured rhythm.
-    <div
-      className="group relative mt-(--typeset-flow) overflow-hidden rounded-xl border border-black/20 bg-[#0d1117] shadow-xs dark:border-white/10"
-      data-theme-component="code"
-      data-not-typeset
-    >
+    // data-not-typeset: this block owns its own chrome (header bar, copy
+    // button) — typeset must not restyle the <pre> inside. The dark panel, the
+    // <pre> and the language badge are styled in content-blocks.css, shared with
+    // the editor's code blocks. The wrapper's flow margin tracks the configured
+    // rhythm.
+    <div className="group mt-(--typeset-flow)" data-theme-component="code" data-not-typeset>
       {title ? (
         <div className="flex items-center justify-between gap-3 border-white/[0.08] border-b bg-white/[0.04] px-4 py-2 [direction:ltr]">
           <span className="truncate font-mono text-[12px] text-white/60">{title}</span>
@@ -67,22 +65,13 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
         </div>
       ) : (
         <>
-          {lang ? (
-            <span className="absolute start-3.5 top-2.5 z-10 font-mono text-[11px] text-white/60 uppercase tracking-wide [direction:ltr]">
-              {lang}
-            </span>
-          ) : null}
+          {lang ? <span className="content-code-language">{lang}</span> : null}
           {copyButton}
         </>
       )}
       {/* Announced through the shared live region; the visible hint helps sighted readers copy by hand. */}
       {failed ? <p className="reader-code-copy-failed px-4 py-2 text-sm text-white">{t('copyFailed')}</p> : null}
-      <pre
-        dir="ltr"
-        ref={ref}
-        className={cn('overflow-x-auto p-4 text-[13px] leading-relaxed [direction:ltr]', !title && 'reader-code-untitled', !title && lang && 'pt-9')}
-        {...props}
-      />
+      <pre dir="ltr" ref={ref} className={title ? undefined : 'reader-code-untitled'} {...props} />
     </div>
   );
 }

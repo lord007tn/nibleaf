@@ -147,7 +147,8 @@ function Button({
       {content}
     </ButtonPrimitive>
   )
-  if (!hasReason) return button
+  // One tree with or without a reason: a reason that comes and goes (a check
+  // that settles) must not remount the button, or a focused button loses focus.
   return (
     <>
       {button}

@@ -1,3 +1,5 @@
+// First, before anything that uses zod: turns off its eval probe in the browser (READER-23).
+import '@/lib/zod-csp';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type AnyRouter, createRouter as createTanStackRouter } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
@@ -59,6 +61,15 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
+    // Runs in the browser before React hydrates. A page whose server HTML marks
+    // code-split reader content (`data-hydration-module`, written by the
+    // islands in lib/reader-hydration-modules.ts) loads it first, so hydrating
+    // keeps that HTML instead of swapping it for a fallback. Other pages, the
+    // dashboard and marketing, load nothing.
+    hydrate: () =>
+      document.querySelector('[data-hydration-module]')
+        ? import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined)
+        : undefined,
     rewrite: customDomainProjectId
       ? {
           input: ({ url }) => rewriteCustomDomainInput(url, customDomainProjectId),

@@ -69,3 +69,57 @@ export function applyPageReorderToList<T extends CachedPage>(
 /** Page-list queries are keyed `['pages', projectId, languageId, branchId]`;
  *  page details are `['pages', projectId, pageId]`. */
 export const isPageListKey = (queryKey: readonly unknown[]) => queryKey.length === 4;
+
+/** Undo only structural fields still owned by this optimistic write. A cache
+ * edit to a title, or a later structural value, belongs to its newer writer. */
+export function rollbackPageReorder<T extends CachedPage>(current: T[], before: T[], optimistic: T[]): T[] {
+  const oldById = new Map(before.map((page) => [page.id, page]));
+  const optimisticById = new Map(optimistic.map((page) => [page.id, page]));
+  const next = current.flatMap((page) => {
+    const old = oldById.get(page.id);
+    const written = optimisticById.get(page.id);
+    if (!written) return [page];
+    if (!old) return page === written ? [] : [page];
+    const restored = { ...page };
+    for (const field of ['parentId', 'position', 'languageId'] as const) {
+      if (old[field] !== written[field] && page[field] === written[field]) Object.assign(restored, { [field]: old[field] });
+    }
+    return [restored];
+  });
+  // Restore removed language-list members only while the list is still ours;
+  // never resurrect a page a later cache write removed. Refetch settles gaps.
+  if (current === optimistic) for (const page of before) if (!optimisticById.has(page.id)) next.push(page);
+  return next;
+}
+
+/** A page revision's time, from the server's `updatedAt` (oldest when missing). */
+const revisionTime = (page: { updatedAt?: string } | undefined): number => {
+  const time = page?.updatedAt ? Date.parse(page.updatedAt) : Number.NaN;
+  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+};
+
+/** Whether `cached` holds a strictly newer revision of the page than `incoming`. */
+export const isNewerRevision = (cached: { updatedAt?: string } | undefined, incoming: { updatedAt?: string }): boolean =>
+  revisionTime(cached) > revisionTime(incoming);
+
+/** The newer of two copies of one page: a response or fetch that resolves late
+ *  never replaces a revision the cache already has. */
+export const newerRevision = <T extends { updatedAt?: string }>(cached: T | undefined, incoming: T): T =>
+  cached && isNewerRevision(cached, incoming) ? cached : incoming;
+
+/** A fetched page list, keeping any row the cache already holds at a newer
+ *  revision (a save response that landed while the list request was in flight). */
+export function keepNewerPageRows<T extends { id: string; updatedAt?: string }>(cached: readonly T[] | undefined, incoming: T[]): T[] {
+  if (!cached?.length) return incoming;
+  const byId = new Map(cached.map((page) => [page.id, page]));
+  let kept = false;
+  const merged = incoming.map((row) => {
+    const current = byId.get(row.id);
+    if (current && isNewerRevision(current, row)) {
+      kept = true;
+      return current;
+    }
+    return row;
+  });
+  return kept ? merged : incoming;
+}
