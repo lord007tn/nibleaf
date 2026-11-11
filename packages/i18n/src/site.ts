@@ -8,6 +8,7 @@ import { site_analyticsconsentmanage } from './paraglide/messages/site_analytics
 import { site_analyticsconsentprivacy } from './paraglide/messages/site_analyticsconsentprivacy.js';
 import { site_analyticsconsenttitle } from './paraglide/messages/site_analyticsconsenttitle.js';
 import { site_articledetails } from './paraglide/messages/site_articledetails.js';
+import { site_articleloadfailed } from './paraglide/messages/site_articleloadfailed.js';
 import { site_blog } from './paraglide/messages/site_blog.js';
 import { site_breadcrumb } from './paraglide/messages/site_breadcrumb.js';
 import { site_changelanguage } from './paraglide/messages/site_changelanguage.js';
@@ -109,6 +110,7 @@ const siteMessages = {
   searchPlaceholder: site_searchplaceholder,
   searchEmpty: site_searchempty,
   loading: site_loading,
+  articleLoadFailed: site_articleloadfailed,
   previous: site_previous,
   next: site_next,
   onThisPage: site_onthispage,
