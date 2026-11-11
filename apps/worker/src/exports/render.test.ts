@@ -278,9 +278,9 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     const full = text(required(files['llms-full.txt']));
 
     expect(full).toContain('Before  after.');
-    expect(full).toContain('&lt;custom onclick=&quot;run()&quot;&gt;Readable&lt;/custom&gt;');
-    expect(full).toContain('&lt;svg onload=&quot;run()&quot;&gt;');
-    expect(full).toContain('&lt;math href=&quot;javascript:run()&quot;&gt;math link&lt;/math&gt;');
+    expect(full).toContain('&lt;custom onclick="run()"&gt;Readable&lt;/custom&gt;');
+    expect(full).toContain('&lt;svg onload="run()"&gt;');
+    expect(full).toContain('&lt;math href="javascript:run()"&gt;math link&lt;/math&gt;');
     // The crafted `&lt;scr<script>ipt&gt;` loses its active tag; the reference
     // already written stays a reference (text, never markup) rather than being
     // escaped again into `&amp;lt;` (#338).

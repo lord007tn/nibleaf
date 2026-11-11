@@ -26,7 +26,7 @@ import Example from './example'
     // A callout is a real Markdown blockquote: its marker isn't escaped (#341).
     expect(normalized).toContain('> **Portable guidance**');
     expect(normalized).not.toContain('&gt; **Portable guidance**');
-    expect(normalized).toContain('&lt;Unknown onclick=&quot;run()&quot;&gt;Readable&lt;/Unknown&gt;');
+    expect(normalized).toContain('&lt;Unknown onclick="run()"&gt;Readable&lt;/Unknown&gt;');
     expect(normalized).toContain("```mdx\nimport Example from './example'\n<Callout>Code sample</Callout>\n```");
     expect(normalized).not.toContain('Exploit');
     expect(normalized).not.toContain('globalThis.stolen');
@@ -46,6 +46,28 @@ import Example from './example'
     expect(normalized).toContain('`{"mode":"safe"}`');
     expect(normalized).toContain('``literal `tick`, <tag>, and {value}``');
     expect(normalized).not.toContain('globalThis.stolen');
+  });
+
+  // READER-24: the `.md` export showed "you&#39;re". Quotes are inert once `<` and `>`
+  // are escaped, so prose keeps them as written, in text and in projected components.
+  it('keeps apostrophes and quotes as written while markup stays inert', () => {
+    const source = [
+      `Plain prose: you're "here".`,
+      `<Note>Expand the environment you're using.</Note>`,
+      `<Accordion title="If you're on Docker">Steps you're following.</Accordion>`,
+      'Already a reference: you&#39;re, and an ampersand: R&D.',
+      `<img src=x onerror="alert('x')"> and <a href='javascript:alert(1)'>link</a>`,
+    ].join('\n\n');
+
+    const normalized = normalizePublicMarkdownContent(source);
+
+    expect(normalized).toContain(`Plain prose: you're "here".`);
+    expect(normalized).toContain(`> Expand the environment you're using.`);
+    expect(normalized).toContain(`### If you're on Docker\n\nSteps you're following.`);
+    expect(normalized).toContain('Already a reference: you&#39;re, and an ampersand: R&amp;D.');
+    expect(normalized).not.toContain('&#39;re using');
+    expect(normalized).not.toMatch(/<img|<a\s/);
+    expect(normalized).toContain('&lt;img');
   });
 });
 
