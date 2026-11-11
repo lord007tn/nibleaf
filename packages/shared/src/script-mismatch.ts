@@ -178,8 +178,16 @@ function proseRuns(markdown: string): string[] {
 
 /** First window plus middle and end windows, each cut at a line boundary. */
 const SAMPLE_WINDOWS = [8192, 4096, 4096] as const;
-/** A whitespace-free token this long is a URL, email, hash or junk, never a prose word. */
+/** An ASCII-only, whitespace-free token this long is a URL, email, hash or junk,
+ *  never a prose word. Non-ASCII runs are kept: CJK and Thai prose has no spaces. */
 const MAX_TOKEN = 64;
+
+const isAscii = (value: string): boolean => {
+  for (let index = 0; index < value.length; index += 1) {
+    if (value.charCodeAt(index) > 0x7f) return false;
+  }
+  return true;
+};
 /** Above this many Markdown markers in the sample, micromark can go superlinear
  *  (as #453 found), so prose is extracted with a linear scan instead. */
 const MAX_MARKERS = 400;
@@ -202,7 +210,11 @@ const dropLongTokens = (value: string): string => {
     const char = value[index];
     if (char === undefined || WHITESPACE.has(char)) {
       const token = value.slice(tokenStart, index);
-      output += token.length > MAX_TOKEN ? ' ' : token;
+      // Only long ASCII runs (URLs, emails, hashes, junk) are dropped. Chinese,
+      // Japanese and Thai write whole sentences without spaces, so a long
+      // non-ASCII run is prose and must be kept. The sample is already capped at
+      // 16 KB, so keeping it stays cheap.
+      output += token.length > MAX_TOKEN && isAscii(token) ? ' ' : token;
       if (char !== undefined) output += char;
       tokenStart = index + 1;
     }

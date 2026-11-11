@@ -292,7 +292,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
               href={siteHref(projectId, prev.path, { lang: navigationLanguage, version: versionPrefix })}
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              <ChevronLeft className="size-4 shrink-0 rtl:-scale-x-100" />
+              <ChevronLeft className="size-4 shrink-0 [&:dir(rtl)]:-scale-x-100" />
               <span className="min-w-0">
                 <span className="mb-1 block text-muted-foreground text-xs">{tArticle('previous')}</span>
                 <span className="line-clamp-2 break-words" dir={blockDirection(prev.title)}>
@@ -314,7 +314,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
                   {next.title}
                 </span>
               </span>
-              <ChevronRight className="size-4 shrink-0 rtl:-scale-x-100" />
+              <ChevronRight className="size-4 shrink-0 [&:dir(rtl)]:-scale-x-100" />
             </a>
           ) : (
             <span />

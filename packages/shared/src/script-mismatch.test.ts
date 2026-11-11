@@ -45,6 +45,36 @@ describe('detectScriptMismatch', () => {
     expect(detectScriptMismatch(text, 'en').mismatch).toBe(false);
   });
 
+  // Chinese, Japanese and Thai write whole paragraphs without spaces, so each one is a
+  // single whitespace-free token far longer than the 64-character URL/hash cut-off.
+  // That cut-off only applies to ASCII runs; letters are never dropped.
+  describe('unspaced scripts longer than one token', () => {
+    const CHINESE =
+      '要添加新的预订，请打开前台日历，选择房间和日期，然后确认客人的详细信息并保存预订。退款时请先在预订列表中找到对应的订单，再点击退款按钮完成操作。';
+    const JAPANESE =
+      '新しい予約を追加するには、フロントデスクのカレンダーを開き、部屋と日付を選んでから、ゲストの詳細を確認して予約を保存してください。返金する場合は予約一覧から対象の予約を探してください。';
+    const THAI =
+      'หากต้องการเพิ่มการจองใหม่ให้เปิดปฏิทินของแผนกต้อนรับเลือกห้องและวันที่จากนั้นยืนยันรายละเอียดของแขกและบันทึกการจองเพื่อคืนเงินให้ค้นหาการจองในรายการแล้วกดปุ่มคืนเงิน';
+
+    it.each([
+      ['Chinese', CHINESE, 'zh', 'han'],
+      ['Japanese', JAPANESE, 'ja', undefined],
+      ['Thai', THAI, 'th', 'thai'],
+    ] as const)('detects an unspaced %s paragraph on English and accepts it on its own locale', (_, text, locale, script) => {
+      expect(text.split(/\s/u).some((token) => token.length > 64)).toBe(true);
+      expect(sampleForScript(text)).toBe(text);
+      const onEnglish = detectScriptMismatch(text, 'en');
+      expect(onEnglish.mismatch).toBe(true);
+      if (script) expect(onEnglish.dominantScript).toBe(script);
+      expect(detectScriptMismatch(text, locale).mismatch).toBe(false);
+    });
+
+    it('still drops long ASCII runs such as URLs and hashes', () => {
+      const hash = 'a1b2c3d4'.repeat(10);
+      expect(sampleForScript(`See ${hash} now`)).toBe('See   now');
+    });
+  });
+
   describe('ignores code', () => {
     const cases: Array<[string, string]> = [
       [
@@ -116,6 +146,12 @@ describe('detectScriptMismatch', () => {
     ['a backtick flood', '`'.repeat(20_000)],
     ['emphasis markers', '*a '.repeat(30_000)],
     ['brackets', '[a]('.repeat(20_000)],
+    // Non-ASCII runs are kept whole (they may be CJK or Thai prose), so these lean on
+    // the 16 KB sample and the marker guard instead of the long-token drop.
+    ['one 80k-character Han run', '字'.repeat(80_000)],
+    ['one 80k-character Thai run', 'กข'.repeat(40_000)],
+    ['Han emphasis markers', '*字'.repeat(40_000)],
+    ['Han brackets', '[字]('.repeat(20_000)],
   ])('stays fast on %s', (_, input) => {
     detectScriptMismatch('Warm up with a short English sentence here.', 'en');
     const started = performance.now();
