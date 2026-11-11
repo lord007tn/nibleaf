@@ -5,7 +5,7 @@ import { isJoinLinkToken, joinLinkStatus } from '@nibleaf/shared/join-links';
 import type { CreateJoinLinkBody } from '@nibleaf/validators';
 import { notFound } from '@/errors';
 import { admit, invalidJoinLink } from './admissions';
-import { changeOrganizationJoinLink, createOrganizationJoinLink, listOrganizationJoinLinks } from './organizations';
+import { changeOrganizationJoinLink, createOrganizationJoinLink, deleteOrganizationJoinLink, listOrganizationJoinLinks } from './organizations';
 
 const soleProject = async (organizationId: string, projectId?: string) => {
   const projects = await prisma.project.findMany({
@@ -31,12 +31,14 @@ export const getJoinLinkPreview = async (token: string) => {
   const link = await prisma.joinLink.findUnique({
     where: { tokenHash: hashJoinLinkToken(token) },
     include: {
-      organization: { select: { name: true, needsRepair: true, deletionStartedAt: true } },
-      grants: { select: { role: true, project: { select: { name: true } } } },
+      organization: { select: { name: true, logo: true, needsRepair: true, deletionStartedAt: true } },
+      createdBy: { select: { name: true } },
+      grants: { select: { role: true, project: { select: { id: true, name: true } } } },
     },
   });
   if (
     !link ||
+    link.deletedAt ||
     link.organization.needsRepair ||
     link.organization.deletionStartedAt ||
     joinLinkStatus(link) !== 'active' ||
@@ -44,11 +46,16 @@ export const getJoinLinkPreview = async (token: string) => {
   )
     throw invalidJoinLink();
   return {
+    organizationId: link.organizationId,
     organizationName: link.organization.name,
+    organizationLogo: link.organization.logo,
+    inviterName: link.createdBy?.name || null,
     siteName: link.grants.length === 1 ? (link.grants[0]?.project.name ?? link.organization.name) : link.organization.name,
     role: link.grants[0]?.role ?? 'viewer',
-    grants: link.grants.map((g) => ({ name: g.project.name, role: g.role })),
+    grants: link.grants.map((g) => ({ projectId: g.project.id, name: g.project.name, role: g.role })),
     allowedDomain: link.allowedDomain,
   };
 };
 export const joinWithLink = (token: string, userId: string) => admit(userId, { token });
+export const deleteJoinLink = async (organizationId: string, id: string, actor: { id: string; role: string }, siteId?: string) =>
+  deleteOrganizationJoinLink(organizationId, actor.id, id, await soleProject(organizationId, siteId));
