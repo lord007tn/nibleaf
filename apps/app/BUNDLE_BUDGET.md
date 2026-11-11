@@ -159,12 +159,12 @@ include that chunk. So:
 
 ### 345,100 bytes, unchanged: reader first load trimmed (READER-05)
 
-Measured on production builds with `BUNDLE_ANALYZE=true` (gzip level 9), main@03c84760:
+Measured on production builds with `BUNDLE_ANALYZE=true` (gzip level 9), main@d2f24ee4:
 
 | Build | public-docs | public-docs-index | JS files (all modulepreloads) | article renderer before hydrating |
 | --- | --- | --- | --- | --- |
-| main@03c84760 | 334.32 KiB | 333.14 KiB | 107, 42 of them single icons | +12 files, 115.11 KiB |
-| this change | 264.92 KiB | 264.16 KiB | 51, 2 icon chunks | +13 files, 88.16 KiB |
+| main@d2f24ee4 | 335.44 KiB | 334.27 KiB | 108, 42 of them single icons | +12 files, 115.88 KiB |
+| this change | 265.92 KiB | 265.16 KiB | 52, 2 icon chunks | +13 files, 88.91 KiB |
 
 - **Header menus and the phone drawer, about 60 KiB.** Base UI's menu, dialog
   and scroll area with floating-ui load on intent behind static triggers.
@@ -175,7 +175,7 @@ Measured on production builds with `BUNDLE_ANALYZE=true` (gzip level 9), main@03
   intent), the chat UI (now on intent), parse5 and KaTeX on pages whose only
   HTML or `$` is in code, and mermaid until a diagram is near the viewport.
 
-The budget stays at 345,100 bytes, leaving about 72 KiB of headroom.
+The budget stays at 345,100 bytes, leaving about 71 KiB of headroom.
 
 ### 348,200 → 345,100 bytes: dashboard preload lists out of the eager chunk (#393)
 
