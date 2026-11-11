@@ -1,44 +1,13 @@
-import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { cleanSearchText, createDocIndex, foldSearchText, normalizeArabicSearchText, readerSearchTerms, type SearchDoc, searchDocs } from './index';
 
 const doc = (id: string, title: string, content = ''): SearchDoc => ({ id, title, path: id, content, headings: '', description: '' });
 const reader = { relevance: 'reader' as const };
 
-/**
- * Calibrated timing for the ReDoS cases: the same work at n and at 4n, on the
- * same runner, measured in alternating order after a warmup so GC and JIT state
- * are shared (median of 3). Linear work grows about 4x; quadratic grows 16x. The
- * bound is 8x plus 20 ms, so a case that runs in a few milliseconds isn't judged
- * on timer jitter. Each row's n is large enough that its small run takes about
- * 4 ms here, above the 2.5 ms where 16x would still fit under 8x + 20 ms.
- */
-const growthMs = (small: string, large: string): [number, number] => {
-  const time = (input: string) => {
-    const started = performance.now();
-    readerSearchTerms(input);
-    cleanSearchText(input);
-    return performance.now() - started;
-  };
-  time(small);
-  time(large);
-  const times: [number[], number[]] = [[], []];
-  for (let round = 0; round < 3; round += 1) {
-    if (round % 2 === 0) {
-      times[0].push(time(small));
-      times[1].push(time(large));
-    } else {
-      times[1].push(time(large));
-      times[0].push(time(small));
-    }
-  }
-  const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
-  return [median(times[0]), median(times[1])];
-};
-
 describe('published reader relevance', () => {
   // ReDoS bounds (CodeQL js/polynomial-redos): untrusted queries and page bodies
   // must stay linear. Steady-state latency lives in `pnpm bench:reader`.
+  // Their cost is bounded in reader-relevance.growth.test.ts (pnpm test:growth).
   it.each([
     ['spaces, then one letter', (n: number) => `${' '.repeat(n - 1)}x`, 240_000],
     ['letter-space pairs', (n: number) => 'a '.repeat(n / 2), 100_000],
@@ -48,14 +17,11 @@ describe('published reader relevance', () => {
     ['unbalanced code spans', (n: number) => '`a``'.repeat(n / 4), 64_000],
     ['unclosed fences', (n: number) => '```\n'.repeat(n / 4), 64_000],
     ['unclosed tags, then one letter', (n: number) => `${'<T>'.repeat(n / 3)}x`, 78_000],
-  ] as const)('stays linear on adversarial input: %s', (_label, build, n) => {
-    const small = build(n);
+  ] as const)('reads adversarial input: %s', (_label, build, n) => {
     const large = build(4 * n);
     expect(large.length).toBeGreaterThanOrEqual(4 * n - 3);
     expect(readerSearchTerms(large).size).toBeLessThanOrEqual(2);
     expect(cleanSearchText(large).length).toBeLessThanOrEqual(large.length + 2);
-    const [smaller, larger] = growthMs(small, large);
-    expect(larger).toBeLessThanOrEqual(8 * smaller + 20);
   });
 
   it('rejects oversized reader queries before retrieval', async () => {

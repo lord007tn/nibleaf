@@ -354,6 +354,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Timing bounds (n against 4n, testing/growth) measure two sides of the same
+      # work; other files in parallel workers on this 2-core runner slow one side.
+      # They run here instead, one package and one file at a time.
+      - name: Growth tests, serial
+        run: pnpm test:growth
+
       - name: Verify indexed multilingual search and chat fixtures
         env:
           QDRANT_INTEGRATION_URL: http://127.0.0.1:6333
@@ -451,6 +457,10 @@ jobs:
 
       - name: Upload public bundle report
         if: always()
+        # The report is informational: a stalled artifact upload must not hold the
+        # job until its timeout and cancel an otherwise green run.
+        timeout-minutes: 3
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: public-bundle-report-${{ github.run_id }}
