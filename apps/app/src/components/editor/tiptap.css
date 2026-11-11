@@ -185,7 +185,12 @@
   gap: 0.6em;
 }
 .pl-editor .ProseMirror ul[data-type="taskList"] li > label {
-  /* Level with the item's paragraph, which keeps its 0.2em top margin. */
+  /* One line tall, the checkbox centred in it (where content-blocks.css draws
+     the tick), level with the item's paragraph and its 0.2em top margin. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  block-size: 1lh;
   margin-top: 0.2em;
   user-select: none;
 }
@@ -641,7 +646,14 @@
 /* First strong character chooses mixed prose direction; blank blocks inherit the page. */
 .pl-editor .ProseMirror [data-auto-direction] {
   unicode-bidi: isolate;
+}
+.pl-editor .ProseMirror [data-auto-direction]:not(td, th) {
   text-align: start;
+}
+/* Table cells keep their column's alignment (content-blocks.css: the table's
+   direction, or the column's align attribute); a cell's paragraphs follow it. */
+.pl-editor .ProseMirror :is(td, th) > [data-auto-direction] {
+  text-align: inherit;
 }
 .pl-editor .ProseMirror li {
   unicode-bidi: isolate;
@@ -713,13 +725,4 @@
    space, but hide its pill so floating controls cannot cover it on phones. */
 .pl-editor:has([data-editor-bubble-menu]) .pl-editor-word-count {
   visibility: hidden;
-}
-.pl-editor .ProseMirror :is(td, th)[align="left"] {
-  text-align: left;
-}
-.pl-editor .ProseMirror :is(td, th)[align="center"] {
-  text-align: center;
-}
-.pl-editor .ProseMirror :is(td, th)[align="right"] {
-  text-align: right;
 }

@@ -57,6 +57,28 @@
       text-align: start;
       vertical-align: top;
     }
+    /* A cell lays its text out by its own script (dir from the renderer) but
+       keeps its column's alignment, set by the table's direction: an English
+       value in an Arabic table lines up under its heading. Must follow the
+       default above. An authored column alignment (GFM `:---:`) wins: the
+       reader writes it as an inline style, the editor as an align attribute. */
+    /* Chromium knows only the prefixed keyword (CSS.supports('text-align',
+       'match-parent') is false there), so typeset's unprefixed rule never
+       applied in Chrome. Each engine keeps the declaration it parses. */
+    &:where(th[dir], td[dir]) {
+      text-align: match-parent;
+      /* biome-ignore lint/suspicious/noDuplicateProperties: the prefixed fallback for Chromium, see above. */
+      text-align: -webkit-match-parent;
+    }
+    &:where(th[align="left"], td[align="left"]) {
+      text-align: left;
+    }
+    &:where(th[align="center"], td[align="center"]) {
+      text-align: center;
+    }
+    &:where(th[align="right"], td[align="right"]) {
+      text-align: right;
+    }
     &:where(th) {
       background-color: var(--muted);
       font-weight: 600;
@@ -65,14 +87,21 @@
     /* Task lists: no bullets, and a checkbox that reads at body size in both
        themes. The reader's checkboxes are disabled (GFM), which browsers draw
        faint, so both surfaces draw their own: an outlined box, filled with the
-       primary colour once checked, the tick cut out of it so it shows the page
-       behind in light and dark alike. */
+       primary colour once checked, with a tick in the primary foreground.
+       The tick is a separate box laid over the checkbox (a pseudo-element of
+       the reader's item and of the editor's label), so the input itself is
+       never masked and its focus ring shows. Both sit in the first line, at
+       its start edge, centred on the line: (1lh - 1em) / 2 from its top. */
     &:where(ul.contains-task-list, ul[data-type="taskList"]) {
       list-style: none;
       padding-inline-start: 0.25em;
     }
-    &:where(li.task-list-item, ul[data-type="taskList"] > li) {
+    &:where(ul[data-type="taskList"] > li) {
       padding-inline-start: 0;
+    }
+    &:where(li.task-list-item:has(> input[type="checkbox"])) {
+      position: relative;
+      padding-inline-start: 1.6em;
     }
     &:where(
         li.task-list-item > input[type="checkbox"],
@@ -84,14 +113,16 @@
       inline-size: 1em;
       block-size: 1em;
       margin: 0;
-      vertical-align: -0.15em;
       border: 1.5px solid var(--muted-foreground);
       border-radius: 0.25em;
       background-color: transparent;
+      font: inherit;
       opacity: 1;
     }
     &:where(li.task-list-item > input[type="checkbox"]) {
-      margin-inline-end: 0.6em;
+      position: absolute;
+      inset-inline-start: 0;
+      top: calc((1lh - 1em) / 2);
     }
     &:where(
         li.task-list-item > input[type="checkbox"]:checked,
@@ -99,11 +130,47 @@
       ) {
       border-color: var(--primary);
       background-color: var(--primary);
+    }
+    &:where(li.task-list-item):has(> input[type="checkbox"]:checked)::before,
+    &:where(ul[data-type="taskList"] > li > label):has(
+        > input[type="checkbox"]:checked
+      )::after {
+      content: "";
+      position: absolute;
+      inset-inline-start: 0;
+      top: calc((1lh - 1em) / 2);
+      inline-size: 1em;
+      block-size: 1em;
+      background-color: var(--primary-foreground);
       mask:
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.25 6.75 11 12 5.25' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-        center / 100% 100% no-repeat,
-        linear-gradient(#000 0 0);
-      mask-composite: exclude;
+        center / 100% 100% no-repeat;
+      /* Above the input: the reader's ::before comes first in paint order. */
+      z-index: 1;
+      pointer-events: none;
+    }
+    &:where(
+        li.task-list-item > input[type="checkbox"],
+        ul[data-type="taskList"] > li > label > input[type="checkbox"]
+      ):focus-visible {
+      outline: 2px solid var(--ring, currentColor);
+      outline-offset: 2px;
+    }
+    /* Forced colours repaint the fill and the tick in the same system colour,
+       so checked would read as unchecked: draw the native checkbox instead. */
+    @media (forced-colors: active) {
+      &:where(
+          li.task-list-item > input[type="checkbox"],
+          ul[data-type="taskList"] > li > label > input[type="checkbox"]
+        ) {
+        appearance: auto;
+      }
+      &:where(li.task-list-item):has(> input[type="checkbox"]:checked)::before,
+      &:where(ul[data-type="taskList"] > li > label):has(
+          > input[type="checkbox"]:checked
+        )::after {
+        content: none;
+      }
     }
   }
 
