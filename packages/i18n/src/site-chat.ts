@@ -27,6 +27,7 @@ import { site_ai_outdated } from './paraglide/messages/site_ai_outdated.js';
 import { site_ai_page } from './paraglide/messages/site_ai_page.js';
 import { site_ai_page_body } from './paraglide/messages/site_ai_page_body.js';
 import { site_ai_page_title } from './paraglide/messages/site_ai_page_title.js';
+import { site_ai_policy_changed } from './paraglide/messages/site_ai_policy_changed.js';
 import { site_ai_question } from './paraglide/messages/site_ai_question.js';
 import { site_ai_quota } from './paraglide/messages/site_ai_quota.js';
 import { site_ai_rate } from './paraglide/messages/site_ai_rate.js';
@@ -112,6 +113,7 @@ const chatMessages = {
   aiUnavailable: site_ai_unavailable,
   aiInvalid: site_ai_invalid,
   aiFailed: site_ai_failed,
+  aiPolicyChanged: site_ai_policy_changed,
   aiOffline: site_ai_offline,
   aiIncorrect: site_ai_incorrect,
   aiIncomplete: site_ai_incomplete,

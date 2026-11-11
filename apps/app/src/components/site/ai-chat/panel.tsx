@@ -7,6 +7,7 @@ import {
   type AiChatClientEvent,
   type AiChatErrorCode,
   type AiChatFinalEvent,
+  type AiChatPolicy,
   aiChatErrorEventSchema,
   aiChatFinalEventSchema,
   aiChatFollowUpsEventSchema,
@@ -14,14 +15,15 @@ import {
   siteChatBody,
 } from '@nibleaf/validators';
 import { useChat } from '@tanstack/ai-react';
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { chatSiteFn } from '@/functions/site-chat';
-import { readSiteConsent } from '@/lib/site-consent';
+import { readSiteConsent, subscribeSiteConsent } from '@/lib/site-consent';
 import { api } from '@/services/api';
 import { Composer } from './composer';
 import { createChatEventQueue } from './events';
 import { buildHistory, deriveConsent, errorKey, questionRetention } from './helpers';
 import { ChatMessage, type TurnScope } from './message';
+import { fetchChatPolicy } from './policy';
 import type { ChatOpenRequest, ChatOptions, PageContext } from './provider';
 import { readerSession } from './session';
 import { useChatViewport } from './use-chat-viewport';
@@ -71,10 +73,51 @@ export default function Panel(
   const pendingQuestion = useRef('');
   const lastRequest = useRef<number | undefined>(undefined);
   const end = useRef<HTMLDivElement>(null);
-  const consent = () =>
-    analyticsConsentPolicy(options.config) === 'blocked'
-      ? ('denied' as const)
-      : deriveConsent(options.requiresConsent, readSiteConsent(options.projectId));
+  // The live capture policy (see fetchChatPolicy). Until it arrives the panel
+  // shows what the site shell said, and the first question waits for it.
+  const [policy, setPolicy] = useState<AiChatPolicy>();
+  const policyRef = useRef<AiChatPolicy | undefined>(undefined);
+  const policyRequest = useRef<Promise<AiChatPolicy | undefined> | undefined>(undefined);
+  const refreshPolicy = () => {
+    const request = fetchChatPolicy(options.projectId, options.lang, options.version).then(
+      (current) => {
+        policyRef.current = current;
+        setPolicy(current);
+        return current;
+      },
+      () => undefined,
+    );
+    policyRequest.current = request;
+    void request.finally(() => {
+      if (policyRequest.current === request) policyRequest.current = undefined;
+    });
+    return request;
+  };
+  const refreshOnOpen = useEffectEvent(() => void refreshPolicy());
+  // Fetched again each time the panel opens (a page left open for a while may
+  // show terms that changed since), and for another site, language or version.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refetch when the panel opens or its site, language or version changes.
+  useEffect(() => {
+    if (options.open) refreshOnOpen();
+  }, [options.open, options.projectId, options.lang, options.version]);
+  // The reader's consent choice, kept current when they change it in the banner
+  // or in another tab, so what the panel says about keeping questions follows it.
+  const storedConsent = useSyncExternalStore(
+    useCallback((onChange: () => void) => subscribeSiteConsent(options.projectId, onChange), [options.projectId]),
+    () => readSiteConsent(options.projectId),
+    () => 'pending' as const,
+  );
+  /** The reader's consent under a capture policy (the shell's config before the
+   * live policy arrives), by the server's own rule. */
+  const consentUnder = (current: AiChatPolicy | undefined, stored = readSiteConsent(options.projectId)) => {
+    const rule = current?.consent;
+    if (rule ? rule === 'blocked' : analyticsConsentPolicy(options.config) === 'blocked') return 'denied' as const;
+    return deriveConsent(rule ? rule !== 'not_required' : options.requiresConsent, stored);
+  };
+  const consent = () => consentUnder(policyRef.current);
+  /** The days the panel tells this reader their questions are kept, or null. */
+  const retentionUnder = (current: AiChatPolicy | undefined, stored?: ReturnType<typeof readSiteConsent>) =>
+    questionRetention(current ? current.questionRetentionDays : (options.questionRetentionDays ?? null), consentUnder(current, stored));
   // Content-free interaction events, batched and flushed when the reader leaves.
   const events = useMemo(
     () =>
@@ -105,6 +148,9 @@ export default function Panel(
         if (result.success) {
           setCode(result.data.code);
           setAnnouncement(t(errorKey(result.data.code)));
+          // The terms changed since this panel loaded them: show the new ones.
+          // The reader decides whether to send again; nothing is resent for them.
+          if (result.data.code === 'policy_changed') void refreshPolicy();
         }
       }
       if (name === AI_CHAT_EVENT.final) {
@@ -133,17 +179,34 @@ export default function Panel(
   // Follow new content only while the reader is at the bottom: someone who
   // scrolled up to read is never pulled away by later text or suggestions.
   const pinned = useRef(true);
-  const send = (question: string, context: PageContext | null = page ?? null) => {
-    if (answering) return;
+  // A question waiting for the live policy, so a second click doesn't send twice.
+  const preparing = useRef(false);
+  const refuse = (reason: 'offline' | 'unavailable' | 'policy_changed') => {
+    setCode(reason);
+    setAnnouncement(t(errorKey(reason)));
+    return false;
+  };
+  /** Sends a question; resolves false when it was not sent (offline, or the
+   * terms on screen were out of date), so the composer keeps the reader's text. */
+  const send = async (question: string, context: PageContext | null = page ?? null): Promise<boolean> => {
+    if (answering || preparing.current) return false;
     pinned.current = true;
     setLastQuestion(question);
     setCode(undefined);
     setAnnouncement('');
     setPhase('searching');
-    if (!navigator.onLine) {
-      setCode('offline');
-      setAnnouncement(t('aiOffline'));
-      return;
+    if (!navigator.onLine) return refuse('offline');
+    let terms = policyRef.current;
+    if (!terms) {
+      // Still showing the site shell's (possibly cached) terms: check them
+      // against the live policy before the first question goes anywhere.
+      const shown = retentionUnder(undefined);
+      preparing.current = true;
+      terms = await (policyRequest.current ?? refreshPolicy()).finally(() => {
+        preparing.current = false;
+      });
+      if (!terms) return refuse('unavailable');
+      if (retentionUnder(terms) !== shown) return refuse('policy_changed');
     }
     pendingQuestion.current = question;
     askedVersion.current = options.version;
@@ -159,10 +222,13 @@ export default function Panel(
         pagePath: context?.path,
         consent: consentState,
         sessionId,
+        // The terms this reader was shown; the server refuses the turn if they changed.
+        policyRevision: terms.revision,
       },
       // Suggestions still loading for the last answer give way to the new question.
       ...(chat.isLoading ? { whenBusy: 'interrupt' as const } : {}),
     });
+    return true;
   };
   const sendRequest = useEffectEvent(send);
   const trackOpen = useEffectEvent((source: ChatOpenRequest['source']) => track({ name: 'chat_opened', source, conversationId }));
@@ -182,7 +248,7 @@ export default function Panel(
       // question and sends it themselves, so a crafted link (or a crawler)
       // can neither speak for them nor spend the site's AI budget.
       if (request.source === 'deep_link') prefillRequest(request.question);
-      else sendRequest(request.question, request.page ?? null);
+      else void sendRequest(request.question, request.page ?? null);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [options.request, answering]);
@@ -219,7 +285,7 @@ export default function Panel(
     const asked = chat.messages[lastUser];
     const reply = chat.messages[lastUser + 1];
     if (asked && textOf(asked) === question && !(reply && finals[reply.id])) chat.setMessages(chat.messages.slice(0, lastUser));
-    send(question);
+    void send(question);
   };
   const reset = () => {
     if (chat.messages.length) track({ name: 'new_chat', conversationId });
@@ -266,7 +332,7 @@ export default function Panel(
       .join('');
   const last = chat.messages.at(-1);
   const streaming = Boolean(last && last.role !== 'user' && textOf(last));
-  const retainedDays = questionRetention(options.questionRetentionDays ?? null, consent());
+  const retainedDays = retentionUnder(policy, storedConsent);
   const latestAnswer = [...chat.messages].reverse().find((message) => message.role !== 'user' && finals[message.id]?.status === 'answered');
   return (
     <Sheet open={options.open} onOpenChange={options.onOpenChange}>
@@ -321,7 +387,7 @@ export default function Panel(
             <div className="space-y-3 py-6">
               <p>{t('aiIntro')}</p>
               {starters.map((question) => (
-                <Button key={question} variant="outline" className="w-full justify-start text-start" onClick={() => send(question)}>
+                <Button key={question} variant="outline" className="w-full justify-start text-start" onClick={() => void send(question)}>
                   {question}
                 </Button>
               ))}
@@ -379,7 +445,7 @@ export default function Panel(
                 followUps={!answering && message.id === latestAnswer?.id ? followUps[message.id] : undefined}
                 onFollowUp={(question, position) => {
                   track({ name: 'follow_up_clicked', conversationId, turnId: message.id, position });
-                  send(question);
+                  void send(question);
                 }}
                 onSourceOpen={(source, position) => {
                   track({ name: 'citation_clicked', conversationId, turnId: message.id, citationId: source.id, position });

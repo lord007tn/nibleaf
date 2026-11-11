@@ -3,14 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   env: { AI_CONVERSATION_ENCRYPTION_KEY: Buffer.alloc(32, 5).toString('base64'), AI_CONVERSATION_RETENTION_DAYS: 90 },
   mode: 'clickhouse',
+  salt: 'test-only-salt' as string | undefined,
   createJob: vi.fn(),
+  markPending: vi.fn(async () => ({ accepted: true })),
 }));
-vi.mock('@nibleaf/database', () => ({ markAnalyticsStoragePending: async () => ({ accepted: true }) }));
+vi.mock('@nibleaf/database', () => ({ markAnalyticsStoragePending: mocks.markPending }));
 vi.mock('@/env', () => ({ env: mocks.env }));
 vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, QueueNames: { ANALYTICS: 'analytics' } }));
 vi.mock('@nibleaf/clickhouse', async (original) => ({
   ...(await original<object>()),
-  keys: () => ({ ANALYTICS_MODE: mocks.mode, ANALYTICS_HASH_SALT: 'test-only-salt' }),
+  keys: () => ({ ANALYTICS_MODE: mocks.mode, ANALYTICS_HASH_SALT: mocks.salt }),
 }));
 
 import {
@@ -19,7 +21,9 @@ import {
   buildAiFeedbackRow,
   buildAiTurnRow,
   type ChatTurnCapture,
+  readerChatPolicy,
   readerQuestionStorage,
+  recordAiChatFeedback,
   recordAiChatTurn,
 } from './conversation-archive';
 
@@ -46,6 +50,7 @@ const capture: ChatTurnCapture = {
 };
 beforeEach(() => {
   mocks.mode = 'clickhouse';
+  mocks.salt = 'test-only-salt';
   mocks.env.AI_CONVERSATION_ENCRYPTION_KEY = Buffer.alloc(32, 5).toString('base64');
   vi.clearAllMocks();
 });
@@ -70,6 +75,77 @@ describe('capture policy', () => {
     mocks.env.AI_CONVERSATION_ENCRYPTION_KEY = Buffer.alloc(32, 5).toString('base64');
     mocks.mode = 'disabled';
     expect(readerQuestionStorage(true)).toEqual({ storesQuestions: false, questionRetentionDays: null });
+  });
+  // Each piece of configuration the archive cannot write without. When one is
+  // missing, readers are never told questions are kept, and nothing is queued.
+  it.each([
+    [
+      'the hash salt',
+      () => {
+        mocks.salt = undefined;
+      },
+    ],
+    [
+      'an empty hash salt',
+      () => {
+        mocks.salt = '';
+      },
+    ],
+    [
+      'analytics writes',
+      () => {
+        mocks.mode = 'disabled';
+      },
+    ],
+    [
+      'an encryption key',
+      () => {
+        mocks.env.AI_CONVERSATION_ENCRYPTION_KEY = '';
+      },
+    ],
+    [
+      'a valid encryption key',
+      () => {
+        mocks.env.AI_CONVERSATION_ENCRYPTION_KEY = 'not-a-key';
+      },
+    ],
+  ])('without %s, says nothing is kept and keeps nothing', async (_missing, unset) => {
+    await recordAiChatTurn(capture);
+    expect(mocks.createJob).toHaveBeenCalledTimes(1);
+    expect(readerQuestionStorage(true).storesQuestions).toBe(true);
+    mocks.createJob.mockClear();
+    mocks.markPending.mockClear();
+
+    unset();
+    expect(aiConversationCaptureReady()).toBe(false);
+    expect(readerQuestionStorage(true)).toEqual({ storesQuestions: false, questionRetentionDays: null });
+    expect(readerChatPolicy({}, true)).toMatchObject({ storesQuestions: false, questionRetentionDays: null });
+    await recordAiChatTurn(capture);
+    // Text the reader was not told about is never queued. Without the salt or
+    // analytics writes no row is queued at all.
+    if (!mocks.salt || mocks.mode === 'disabled') {
+      expect(mocks.createJob).not.toHaveBeenCalled();
+      await recordAiChatFeedback({ ...capture, rating: 'up', visibility: 'private' });
+      expect(mocks.createJob).not.toHaveBeenCalled();
+      expect(mocks.markPending).not.toHaveBeenCalled();
+    } else {
+      expect(buildAiTurnRow(capture)).toMatchObject({ content_captured: 0, question: '' });
+    }
+  });
+  it('gives each disclosed policy its own revision', () => {
+    const revisions = new Set([
+      readerChatPolicy({}, true).revision,
+      readerChatPolicy({}, false).revision,
+      readerChatPolicy({ analytics: { cookieConsent: true } }, true).revision,
+      readerChatPolicy({ analytics: { cookieConsent: true }, addons: { consentBanner: { enabled: false } } }, true).revision,
+    ]);
+    expect(revisions.size).toBe(4);
+    expect(readerChatPolicy({}, true)).toEqual({ ...readerChatPolicy({}, true) });
+    expect(readerChatPolicy({}, true).revision).toMatch(/^[0-9a-f]{16}$/u);
+    mocks.env.AI_CONVERSATION_RETENTION_DAYS = 30;
+    expect(readerChatPolicy({}, true)).toMatchObject({ questionRetentionDays: 30 });
+    expect(revisions.has(readerChatPolicy({}, true).revision)).toBe(false);
+    mocks.env.AI_CONVERSATION_RETENTION_DAYS = 90;
   });
   it('redacts row text and keeps unknown cost explicit', () => {
     const row = buildAiTurnRow(capture);

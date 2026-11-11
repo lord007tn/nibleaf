@@ -3,11 +3,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Message = { id: string; role: 'user' | 'assistant'; parts: Array<{ type: 'text'; content: string }> };
 const mocks = vi.hoisted(() => ({
   postEvents: vi.fn(async () => undefined),
+  // The live capture policy (GET …/chat/policy); by default the same as the shell's.
+  fetchPolicy: vi.fn(),
   // The options the panel gave useChat, to deliver its custom events.
   options: undefined as undefined | { onCustomEvent: (name: string, value: unknown) => void },
   chat: {
@@ -28,6 +30,7 @@ vi.mock('@tanstack/ai-react', () => ({
 }));
 vi.mock('@/services/api', () => ({ api: { public: { sites: { ':id': { chat: { events: { $post: mocks.postEvents } } } } } } }));
 vi.mock('@/functions/site-chat', () => ({ chatSiteFn: vi.fn(), trackChatEventsFn: vi.fn(async () => undefined) }));
+vi.mock('./policy', () => ({ fetchChatPolicy: mocks.fetchPolicy }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 Element.prototype.scrollIntoView = vi.fn();
 const desktop = () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as MediaQueryList;
@@ -43,6 +46,7 @@ const phone = () =>
       }) as unknown as MediaQueryList,
   );
 
+import { writeSiteConsent } from '@/lib/site-consent';
 import Panel from './panel';
 
 const text = (id: string, role: Message['role'], content: string): Message => ({ id, role, parts: [{ type: 'text', content }] });
@@ -53,6 +57,17 @@ let requiresConsent = false;
 let projectId = 'docs';
 // Days the server keeps question text for the site; null when it keeps none.
 let questionRetentionDays: number | null = null;
+/** A live policy, with a revision of its own. */
+const policyOf = (days: number | null, consent: 'required' | 'not_required' = requiresConsent ? 'required' : 'not_required') => ({
+  storesQuestions: days !== null,
+  questionRetentionDays: days,
+  consent,
+  revision: `rev-${days}-${consent}`,
+});
+const shellPolicy = async () => policyOf(questionRetentionDays);
+beforeEach(() => {
+  mocks.fetchPolicy.mockImplementation(shellPolicy);
+});
 afterEach(async () => {
   for (const unmount of roots.splice(0)) await unmount();
   document.body.replaceChildren();
@@ -412,9 +427,149 @@ describe('what the panel says about saving questions', () => {
     expect(saved()?.textContent).toContain('kept for 90 days');
   });
 
+  it('follows a consent choice made in another tab, without a rerender', async () => {
+    mocks.chat.messages = [];
+    questionRetentionDays = 90;
+    requiresConsent = true;
+    await mount();
+    expect(saved()).toBeUndefined();
+    await act(async () => {
+      window.localStorage.setItem('nibleaf.analytics.consent.docs', 'accepted');
+      window.dispatchEvent(new StorageEvent('storage', { key: 'nibleaf.analytics.consent.docs', newValue: 'accepted' }));
+    });
+    expect(saved()?.textContent).toContain('kept for 90 days');
+    // Another site's choice changes nothing here.
+    await act(async () => {
+      window.localStorage.setItem('nibleaf.analytics.consent.docs', 'declined');
+      window.dispatchEvent(new StorageEvent('storage', { key: 'nibleaf.analytics.consent.other', newValue: 'declined' }));
+    });
+    expect(saved()?.textContent).toContain('kept for 90 days');
+    await act(async () => window.dispatchEvent(new StorageEvent('storage', { key: 'nibleaf.analytics.consent.docs', newValue: 'declined' })));
+    expect(saved()).toBeUndefined();
+  });
+
+  it("follows the consent banner's choice in this tab, without a rerender", async () => {
+    mocks.chat.messages = [];
+    questionRetentionDays = 90;
+    requiresConsent = true;
+    await mount();
+    expect(saved()).toBeUndefined();
+    await act(async () => writeSiteConsent('docs', 'accepted'));
+    expect(saved()?.textContent).toContain('kept for 90 days');
+  });
+
   it('describes the panel plainly in its header', async () => {
     mocks.chat.messages = [];
     await mount();
     expect(document.querySelector('header')?.textContent).toContain('Answers use these docs and link to their sources.');
+  });
+});
+
+describe('a reader whose page stayed open while the capture policy changed', () => {
+  const saved = () => [...document.querySelectorAll('footer p')].find((line) => line.textContent?.startsWith('Questions are'));
+  const notice = 'How this chat handles questions changed while this page was open. Check the notes below, then send your question again.';
+  const sentRevision = () =>
+    (mocks.chat.sendMessage.mock.calls.at(-1) as unknown as [string, { body: { policyRevision?: string } }])[1].body.policyRevision;
+  /** A policy request that answers when the test says so. */
+  const pending = () => {
+    let answer: (policy: ReturnType<typeof policyOf>) => void = () => undefined;
+    mocks.fetchPolicy.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+    );
+    return (policy: ReturnType<typeof policyOf>) => act(async () => answer(policy));
+  };
+
+  it('fetches the live policy when the panel opens, never from a cache', async () => {
+    mocks.chat.messages = [];
+    await mount();
+    expect(mocks.fetchPolicy).toHaveBeenCalledWith('docs', 'en', undefined);
+  });
+
+  it.each([
+    ['turned on', null, 90],
+    ['turned off', 90, null],
+  ] as const)('shows the live terms when capture was %s after the page loaded', async (_change, shell, live) => {
+    mocks.chat.messages = [];
+    questionRetentionDays = shell;
+    mocks.fetchPolicy.mockImplementation(async () => policyOf(live));
+    await mount();
+    if (live === null) expect(saved()).toBeUndefined();
+    else expect(saved()?.textContent).toContain(`kept for ${live} days`);
+    await askStarter();
+    expect(sentRevision()).toBe(policyOf(live).revision);
+  });
+
+  it.each([
+    ['turned on', null, 90],
+    ['turned off', 90, null],
+  ] as const)('holds a first question sent before the live terms arrived, when capture was %s', async (_change, shell, live) => {
+    mocks.chat.messages = [];
+    questionRetentionDays = shell;
+    const arrive = pending();
+    await mount();
+    await act(async () => button('How do I get started?')[0]?.click());
+    expect(mocks.chat.sendMessage).not.toHaveBeenCalled();
+    await arrive(policyOf(live));
+    // Not sent under terms the reader wasn't shown: the new terms are on screen.
+    expect(mocks.chat.sendMessage).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain(notice);
+    if (live === null) expect(saved()).toBeUndefined();
+    else expect(saved()?.textContent).toContain(`kept for ${live} days`);
+    // The reader sends it again themselves, under the terms now shown.
+    await act(async () => button('Retry')[0]?.click());
+    expect(mocks.chat.sendMessage).toHaveBeenCalledOnce();
+    expect(sentRevision()).toBe(policyOf(live).revision);
+  });
+
+  it('sends a first question at once when the live terms say what the panel already showed', async () => {
+    mocks.chat.messages = [];
+    questionRetentionDays = 90;
+    const arrive = pending();
+    await mount();
+    await act(async () => button('How do I get started?')[0]?.click());
+    await arrive(policyOf(90));
+    expect(mocks.chat.sendMessage).toHaveBeenCalledOnce();
+    expect(sentRevision()).toBe(policyOf(90).revision);
+  });
+
+  it.each([
+    ['turned on', null, 90],
+    ['turned off', 90, null],
+  ] as const)('shows the new terms and waits for the reader when the server refuses a turn after capture was %s', async (_change, before, after) => {
+    mocks.chat.messages = [];
+    questionRetentionDays = before;
+    const render = await mount();
+    const { question } = await askStarter();
+    expect(sentRevision()).toBe(policyOf(before).revision);
+    // Changed on the server while the panel was open.
+    mocks.fetchPolicy.mockImplementation(async () => policyOf(after));
+    mocks.chat.messages = [text('u1', 'user', question), text('a1', 'assistant', '')];
+    await deliver('nibleaf.chat.error', { code: 'policy_changed' });
+    await render();
+    expect(document.body.textContent).toContain(notice);
+    if (after === null) expect(saved()).toBeUndefined();
+    else expect(saved()?.textContent).toContain(`kept for ${after} days`);
+    // Nothing is sent again on the reader's behalf.
+    expect(mocks.chat.sendMessage).toHaveBeenCalledOnce();
+    await act(async () => button('Retry')[0]?.click());
+    expect(mocks.chat.sendMessage).toHaveBeenCalledTimes(2);
+    expect(sentRevision()).toBe(policyOf(after).revision);
+  });
+
+  it('keeps the question when the live terms cannot be fetched', async () => {
+    mocks.chat.messages = [];
+    mocks.fetchPolicy.mockRejectedValue(new Error('offline'));
+    await mount();
+    const field = () => document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your question"]');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(field(), 'How do I export?');
+      field()?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => button('Send')[0]?.click());
+    expect(mocks.chat.sendMessage).not.toHaveBeenCalled();
+    expect(field()?.value).toBe('How do I export?');
   });
 });

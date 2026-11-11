@@ -361,6 +361,7 @@ export const MESSAGE_IDS = {
   'site.aiUnavailable': 'site_ai_unavailable',
   'site.aiInvalid': 'site_ai_invalid',
   'site.aiFailed': 'site_ai_failed',
+  'site.aiPolicyChanged': 'site_ai_policy_changed',
   'site.aiOffline': 'site_ai_offline',
   'site.aiIncorrect': 'site_ai_incorrect',
   'site.aiIncomplete': 'site_ai_incomplete',

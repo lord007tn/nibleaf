@@ -55,6 +55,7 @@ export const errorKey = (code: AiChatErrorCode | 'offline') =>
       unavailable: 'aiUnavailable',
       invalid_request: 'aiInvalid',
       failed: 'aiFailed',
+      policy_changed: 'aiPolicyChanged',
       offline: 'aiOffline',
     }) as const
   )[code];
