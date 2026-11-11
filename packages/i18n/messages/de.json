@@ -3522,6 +3522,7 @@
   "site_searchkeysopen": "zum Öffnen",
   "site_searchkeysclose": "zum Schließen",
   "site_searchversionlabel": "Version",
+  "site_searchalllanguages": "Alle Sprachen",
   "settings_permissions_title": "Administratorzugriff erforderlich",
   "settings_permissions_body": "Bitten Sie einen Website-Inhaber oder Administrator, diese Einstellungen zu aktualisieren. Sie können weiterhin die Dokumentation bearbeiten und die für Ihre Rolle verfügbaren Bereiche nutzen.",
   "settings_members_removeconfirm": "{name} von dieser Website entfernen? Der Zugriff auf Dokumentation und Einstellungen geht verloren.",

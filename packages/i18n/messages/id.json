@@ -3457,6 +3457,7 @@
   "site_searchkeysopen": "untuk membuka",
   "site_searchkeysclose": "untuk menutup",
   "site_searchversionlabel": "Versi",
+  "site_searchalllanguages": "Semua bahasa",
   "settings_permissions_title": "Akses administrator diperlukan",
   "settings_permissions_body": "Minta pemilik situs atau administrator memperbarui pengaturan ini. Anda tetap dapat mengedit dokumentasi dan menggunakan bagian yang tersedia untuk peran Anda.",
   "settings_members_removeconfirm": "Hapus {name} dari situs ini? Akses ke dokumentasi dan pengaturan akan hilang.",

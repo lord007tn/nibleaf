@@ -3543,6 +3543,7 @@
   "site_searchkeysopen": "чтобы открыть",
   "site_searchkeysclose": "чтобы закрыть",
   "site_searchversionlabel": "Версия",
+  "site_searchalllanguages": "Все языки",
   "settings_permissions_title": "Требуется доступ администратора",
   "settings_permissions_body": "Попросите владельца сайта или администратора изменить эти настройки. Вы по-прежнему можете редактировать документацию и пользоваться разделами, доступными вашей роли.",
   "settings_members_removeconfirm": "Удалить {name} с этого сайта? Доступ к документации и настройкам будет потерян.",

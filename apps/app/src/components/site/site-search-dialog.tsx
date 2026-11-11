@@ -5,12 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteSearchT } from '@nibleaf/i18n/site-search';
-import { lightStemArabicToken } from '@nibleaf/search/arabic';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
-import { AlertCircle, Clock, CornerDownLeft, FileText, Hash, Loader2, RotateCcw, Search, Sparkles } from 'lucide-react';
-import { Fragment, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { AlertCircle, Clock, CornerDownLeft, FileText, Hash, Languages, Loader2, RotateCcw, Search, SearchX, Sparkles } from 'lucide-react';
+import { Fragment, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
+import { Highlight } from '@/components/site/site-search-highlight';
+import { takeSearchKeystrokes } from '@/components/site/site-search-keystrokes';
 import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
@@ -41,93 +42,6 @@ export interface SiteSearchSuggestion {
   icon?: string | null;
   /** API-reference pages belong to no docs version, so their link carries none. */
   versionIndependent?: boolean;
-}
-
-// Mirrors normalizeArabicSearchText in @nibleaf/search: diacritics and tatweel
-// drop out, alef forms and alef maqsura fold, so the words search matched on the
-// server are the words highlighted here (e.g. "الغاء" marks "إلغاء").
-const ARABIC_MARKS = /[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]/;
-const ARABIC_LETTER = /[\u0621-\u064a\u0671-\u06d3]/;
-const foldChar = (char: string): string =>
-  ARABIC_MARKS.test(char)
-    ? ''
-    : char
-        .replace(/[\u0622\u0623\u0625\u0671]/, '\u0627')
-        .replace('\u0649', '\u064a')
-        .toLowerCase();
-
-/** Wrap occurrences of the query's words in <mark> so matches stand out. */
-function Highlight({ text, query }: { text: string; query: string }) {
-  const tokens = [
-    ...new Set(
-      query
-        .trim()
-        .split(/\s+/)
-        .map((token) => [...token].map(foldChar).join('')),
-    ),
-  ].filter((token) => token.length >= 2);
-  if (tokens.length === 0) {
-    return <>{text}</>;
-  }
-  // Fold the text while remembering which original character each folded one came from.
-  let folded = '';
-  const origin: number[] = [];
-  for (let index = 0; index < text.length; index += 1) {
-    for (const char of foldChar(text[index] ?? '')) {
-      folded += char;
-      origin.push(index);
-    }
-  }
-  const ranges: Array<[number, number]> = [];
-  // Match whole prose words through the same conservative stemmer used by
-  // retrieval, retaining their original UTF-16 offsets and diacritics.
-  const stems = new Set(tokens.map(lightStemArabicToken));
-  for (const word of text.matchAll(/[\p{L}\p{M}\p{N}_+.#@:/\\-]+/gu)) {
-    if (!/^[\u0621-\u063a\u0641-\u064a\u0671\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]+$/u.test(word[0])) continue;
-    if (stems.has(lightStemArabicToken(word[0]))) ranges.push([word.index, word.index + word[0].length]);
-  }
-  for (const token of tokens) {
-    for (let at = folded.indexOf(token); at !== -1; at = folded.indexOf(token, at + token.length)) {
-      let start = origin[at] ?? 0;
-      let end = (origin[at + token.length - 1] ?? text.length - 1) + 1;
-      // Keep trailing diacritics with their letter.
-      while (end < text.length && ARABIC_MARKS.test(text[end] ?? '')) end += 1;
-      // Arabic letters join: a mark inside a word (اشتراك in الاشتراك) would break the
-      // lam-alef ligature and letter joining, so Arabic matches cover the whole word.
-      if (ARABIC_LETTER.test(text[start] ?? '')) {
-        while (start > 0 && (ARABIC_LETTER.test(text[start - 1] ?? '') || ARABIC_MARKS.test(text[start - 1] ?? ''))) start -= 1;
-        while (end < text.length && (ARABIC_LETTER.test(text[end] ?? '') || ARABIC_MARKS.test(text[end] ?? ''))) end += 1;
-      }
-      ranges.push([start, end]);
-    }
-  }
-  if (ranges.length === 0) {
-    return <>{text}</>;
-  }
-  ranges.sort((left, right) => left[0] - right[0]);
-  const parts: Array<{ start: number; value: string; marked: boolean }> = [];
-  let cursor = 0;
-  for (const [rangeStart, rangeEnd] of ranges) {
-    if (rangeEnd <= cursor) continue;
-    const from = Math.max(rangeStart, cursor);
-    if (from > cursor) parts.push({ start: cursor, value: text.slice(cursor, from), marked: false });
-    parts.push({ start: from, value: text.slice(from, rangeEnd), marked: true });
-    cursor = rangeEnd;
-  }
-  if (cursor < text.length) parts.push({ start: cursor, value: text.slice(cursor), marked: false });
-  return (
-    <>
-      {parts.map(({ start: offset, value, marked }) =>
-        marked ? (
-          <mark key={offset} className="rounded-[3px] bg-primary/15 px-px font-semibold text-inherit">
-            {value}
-          </mark>
-        ) : (
-          <span key={offset}>{value}</span>
-        ),
-      )}
-    </>
-  );
 }
 
 /** A sentence around the reader's query, with the query bidi-isolated: an
@@ -211,9 +125,10 @@ export default function SiteSearchDialog({
   maxResults,
   versions = [],
   versionFilterEnabled = true,
+  languages = [],
+  filtersEnabled = true,
   onAskAi,
   suggestions = [],
-  initialQuery = '',
   returnFocus,
 }: {
   projectId: string;
@@ -233,14 +148,17 @@ export default function SiteSearchDialog({
   maxResults?: number;
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   versionFilterEnabled?: boolean;
+  /** The site's published languages, for the result-language filter. */
+  languages?: Array<{ code: string; label: string }>;
+  /** config.search.filtersEnabled: offer the result-language filter when the
+   * site publishes more than one language. Search covers every language by default. */
+  filtersEnabled?: boolean;
   /** Hands the reader's question to the AI assistant (the chat panel). When
    * provided, the "Ask AI about …" row closes search and calls this; without
    * it, search offers no AI row. */
   onAskAi?: (question: string) => void;
   /** Pages offered before the reader types and when nothing matches. */
   suggestions?: SiteSearchSuggestion[];
-  /** Text typed into the lightweight input shown while this dialog's code loaded. */
-  initialQuery?: string;
   /** Where focus goes when search closes (the element focused before it opened). */
   returnFocus?: RefObject<HTMLElement | null>;
 }) {
@@ -259,7 +177,7 @@ export default function SiteSearchDialog({
       readerMovedRef.current = false;
     });
   };
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState('');
   // Results from before the field was emptied don't stand in for a new search:
   // until fresh results arrive, a new search after clearing shows skeletons.
   const [keepPrevious, setKeepPrevious] = useState(true);
@@ -270,17 +188,74 @@ export default function SiteSearchDialog({
     setPendingEnter(false);
     if (!value.trim()) setKeepPrevious(false);
   };
-  // Text typed before the dialog loaded keeps its caret at the end; a reopened
-  // dialog selects its old query so typing starts a new search.
-  const keepCaretRef = useRef(initialQuery !== '');
+  // Every key typed since search was asked for (while the code loaded and the
+  // field mounted) becomes the query, caret at the end. With nothing typed, a
+  // reopened dialog selects its old query so typing starts a new search. This
+  // runs when the field attaches (React attaches refs before Base UI's focus
+  // manager looks for focus), so no keystroke falls between two fields.
+  const placedRef = useRef(false);
+  const cancelPlacementRef = useRef<(() => void) | null>(null);
+  const placeInput = useCallback((input: HTMLInputElement) => {
+    if (placedRef.current) return;
+    placedRef.current = true;
+    let settled = false;
+    const cancel = takeSearchKeystrokes((typed) => {
+      settled = true;
+      cancelPlacementRef.current = null;
+      if (!input.isConnected) return;
+      input.focus({ preventScroll: true });
+      if (typed) {
+        const seeded = typed.slice(0, 300);
+        // Set the field now so the caret lands after the text; the controlled
+        // value then renders the same string and leaves the caret in place.
+        input.value = seeded;
+        input.setSelectionRange(seeded.length, seeded.length);
+        setQuery(seeded);
+        setPendingEnter(false);
+      } else {
+        input.select();
+      }
+    });
+    // Still waiting for an IME composition to be committed in the held field.
+    if (!settled) cancelPlacementRef.current = cancel;
+  }, []);
+  const attachInput = useCallback(
+    (node: HTMLInputElement | null) => {
+      inputRef.current = node;
+      if (node) placeInput(node);
+    },
+    [placeInput],
+  );
+  useLayoutEffect(() => {
+    if (!open) {
+      placedRef.current = false;
+      return;
+    }
+    if (inputRef.current) placeInput(inputRef.current);
+    return () => {
+      // A hand-over still waiting for an IME composition is dropped with the dialog.
+      if (!cancelPlacementRef.current) return;
+      cancelPlacementRef.current();
+      cancelPlacementRef.current = null;
+      placedRef.current = false;
+    };
+  }, [open, placeInput]);
   const askAiAvailable = Boolean(onAskAi);
   const [selectedVersion, setSelectedVersion] = useState(version);
+  // undefined: every published language (the reader's own ranked first).
+  const [selectedLanguage, setSelectedLanguage] = useState<string | undefined>(undefined);
+  const languageOptions = [
+    { value: '__all', label: t('searchAllLanguages') },
+    ...languages.map((language) => ({ value: language.code, label: language.label })),
+  ];
+  const showLanguageFilter = filtersEnabled && languages.length > 1;
   const [recent, setRecent] = useState<string[]>([]);
   const [activeItem, setActiveItem] = useState('');
   const baseLanguage = lang?.toLowerCase().split(/[-_]/)[0];
   const rtl = resolveReaderDirection(direction, lang) === 'rtl';
   const versionOptions = versions.map((item) => ({ value: item.isDefault ? '__default' : item.slug, label: item.name }));
   const showVersionFilter = versionFilterEnabled && versions.length > 1;
+  const showFilters = showVersionFilter || showLanguageFilter;
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
@@ -289,7 +264,14 @@ export default function SiteSearchDialog({
   // asks the public endpoint to search every enabled language in the published
   // snapshot; each hit carries its own language for correct localized routing.
   // `prefer` ranks the reader's language first, so it survives the result limit.
-  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), { prefer: lang, version: selectedVersion, limit: maxResults, enabled: open });
+  // The language filter, when the reader picks one, narrows the search to it.
+  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), {
+    ...(selectedLanguage ? { language: selectedLanguage } : {}),
+    prefer: lang,
+    version: selectedVersion,
+    limit: maxResults,
+    enabled: open,
+  });
   // Pending: what's on screen doesn't answer the typed text yet. While the next
   // query loads, the last results stay in place, dimmed and inert (the query
   // keeps previous data), so the list doesn't flash empty on every keystroke.
@@ -358,18 +340,6 @@ export default function SiteSearchDialog({
     if (!open) return;
     setSelectedVersion(version);
     setRecent(readRecent(projectId));
-    const frame = requestAnimationFrame(() => {
-      const input = inputRef.current;
-      if (!input) return;
-      if (keepCaretRef.current) {
-        keepCaretRef.current = false;
-        input.focus();
-        input.setSelectionRange(input.value.length, input.value.length);
-      } else {
-        input.select();
-      }
-    });
-    return () => cancelAnimationFrame(frame);
   }, [open, version, projectId]);
 
   // Ordered values of every selectable row, matching render order. For a
@@ -399,13 +369,16 @@ export default function SiteSearchDialog({
       if (hit.section) itemValues.push(`section-${index}`);
     }
   } else if (noResults) {
-    if (canAsk) itemValues.push(askValue);
+    // "Ask AI" is the empty state's own button here; the list keeps the suggestions.
     itemValues.push(...suggestionValues);
   }
+  // With nothing found and an assistant available, Enter asks it (see the input's
+  // Enter handler) unless the reader moves onto a suggested page first.
+  const askFromEmpty = noResults && canAsk;
   const preferred =
     canAsk && QUESTION.test(trimmed) && itemValues.includes(askValue)
       ? askValue
-      : staleHits
+      : staleHits || askFromEmpty
         ? NO_SELECTION
         : itemValues.includes('page-0')
           ? 'page-0'
@@ -521,6 +494,10 @@ export default function SiteSearchDialog({
         data-theme-surface="search"
         dir={rtl ? 'rtl' : 'ltr'}
         showCloseButton={false}
+        // The field takes focus itself when it mounts (with everything typed so
+        // far). While an IME composition is still open in the held field, nothing
+        // may move focus, or the half-composed text would be cut.
+        initialFocus={() => cancelPlacementRef.current === null}
         finalFocus={returnFocus ?? true}
       >
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
@@ -559,7 +536,7 @@ export default function SiteSearchDialog({
               <Search aria-hidden className="size-5 shrink-0 text-muted-foreground" />
             )}
             <CommandInput
-              ref={inputRef}
+              ref={attachInput}
               placeholder={placeholder?.trim() || t('searchPlaceholder')}
               value={query}
               onValueChange={changeQuery}
@@ -568,6 +545,11 @@ export default function SiteSearchDialog({
               className="h-14 px-2 text-base placeholder:text-muted-foreground/80 sm:text-[15px]"
               onKeyDown={(event) => {
                 if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+                if (askFromEmpty && !itemValues.includes(activeItem)) {
+                  event.preventDefault();
+                  askAi();
+                  return;
+                }
                 if (queryPending && !itemValues.includes(selectedValue)) {
                   // Nothing to choose yet: open the best match when it arrives.
                   setPendingEnter(true);
@@ -624,9 +606,29 @@ export default function SiteSearchDialog({
               </div>
             ) : null}
             {noResults ? (
-              <div className="px-6 pt-8 pb-4 text-center">
-                <p className="font-medium text-sm">{withIsolatedQuery((query) => t('searchNoResultsFor', { query }), trimmed)}</p>
-                <p className="mt-1 text-muted-foreground text-sm">{t('searchNoResultsHint')}</p>
+              <div className="flex flex-col items-center px-6 pt-8 pb-4 text-center" data-search-empty="">
+                <span aria-hidden className="mb-3 grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
+                  <SearchX className="size-5" />
+                </span>
+                <p className="max-w-full break-words font-medium text-sm">
+                  {withIsolatedQuery((query) => t('searchNoResultsFor', { query }), trimmed)}
+                </p>
+                {canAsk ? (
+                  <>
+                    <p className="mt-1 text-muted-foreground text-sm">{t('searchAskAiHint')}</p>
+                    <Button variant="outline" onClick={askAi} className="mt-4 max-w-full pointer-coarse:min-h-11" data-search-empty-ask="">
+                      <Sparkles aria-hidden className="size-3.5 text-primary" />
+                      <span className="truncate">{withIsolatedQuery((query) => t('searchAskAiAbout', { query }), trimmed)}</span>
+                      <span aria-hidden className="ms-1 hidden pointer-coarse:hidden! sm:inline-flex">
+                        <Key>
+                          <CornerDownLeft className="size-3" />
+                        </Key>
+                      </span>
+                    </Button>
+                  </>
+                ) : (
+                  <p className="mt-1 text-muted-foreground text-sm">{t('searchNoResultsHint')}</p>
+                )}
               </div>
             ) : null}
             <CommandList ref={listRef} label={t('results')} className="max-h-none overflow-visible" onPointerMoveCapture={markReaderMove}>
@@ -697,7 +699,9 @@ export default function SiteSearchDialog({
                               </div>
                               {hit.section ? (
                                 hit.description ? (
-                                  <div className="truncate text-muted-foreground text-xs">{hit.description}</div>
+                                  <div className="truncate text-muted-foreground text-xs">
+                                    <Highlight text={hit.description} query={debouncedQuery} />
+                                  </div>
                                 ) : null
                               ) : (
                                 <div className="line-clamp-2 text-muted-foreground text-xs leading-5">
@@ -734,10 +738,7 @@ export default function SiteSearchDialog({
                   </CommandGroup>
                 </>
               ) : noResults ? (
-                <>
-                  {askRow}
-                  {suggestionGroup}
-                </>
+                suggestionGroup
               ) : questionLoading ? (
                 askRow
               ) : null}
@@ -755,8 +756,8 @@ export default function SiteSearchDialog({
           <div
             className={cn(
               'shrink-0 items-center gap-4 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
-              // Key hints mean nothing on touch screens; keep the bar only for the version filter there.
-              showVersionFilter ? 'flex' : 'hidden sm:flex pointer-coarse:hidden!',
+              // Key hints mean nothing on touch screens; keep the bar only for the filters there.
+              showFilters ? 'flex' : 'hidden sm:flex pointer-coarse:hidden!',
             )}
           >
             <div className="hidden items-center gap-4 sm:flex pointer-coarse:hidden!">
@@ -776,29 +777,55 @@ export default function SiteSearchDialog({
                 {t('searchKeysClose')}
               </span>
             </div>
-            {showVersionFilter ? (
-              <div className="ms-auto flex items-center gap-2">
-                <span aria-hidden>{t('searchVersionLabel')}</span>
-                <Select
-                  items={versionOptions}
-                  onValueChange={(value) => {
-                    // The reader's last action was choosing a version, not confirming a result.
-                    setPendingEnter(false);
-                    setSelectedVersion(!value || value === '__default' ? undefined : value);
-                  }}
-                  value={selectedVersion ?? '__default'}
-                >
-                  <SelectTrigger aria-label={t('searchFilterVersion')} size="sm" className="h-8 min-w-24 text-xs pointer-coarse:h-11">
-                    <SelectValue placeholder={t('searchFilterVersion')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {versionOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {showFilters ? (
+              <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+                {showLanguageFilter ? (
+                  <Select
+                    items={languageOptions}
+                    onValueChange={(value) => {
+                      setPendingEnter(false);
+                      setSelectedLanguage(!value || value === '__all' ? undefined : value);
+                    }}
+                    value={selectedLanguage ?? '__all'}
+                  >
+                    <SelectTrigger aria-label={t('searchFilterLanguage')} size="sm" className="h-8 min-w-24 text-xs pointer-coarse:h-11">
+                      <Languages aria-hidden className="size-3.5" />
+                      <SelectValue placeholder={t('searchFilterLanguage')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languageOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+                {showVersionFilter ? (
+                  <>
+                    <span aria-hidden>{t('searchVersionLabel')}</span>
+                    <Select
+                      items={versionOptions}
+                      onValueChange={(value) => {
+                        // The reader's last action was choosing a version, not confirming a result.
+                        setPendingEnter(false);
+                        setSelectedVersion(!value || value === '__default' ? undefined : value);
+                      }}
+                      value={selectedVersion ?? '__default'}
+                    >
+                      <SelectTrigger aria-label={t('searchFilterVersion')} size="sm" className="h-8 min-w-24 text-xs pointer-coarse:h-11">
+                        <SelectValue placeholder={t('searchFilterVersion')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {versionOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>

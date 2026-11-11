@@ -68,13 +68,20 @@ it('closes the loading shell and returns focus to where the reader was', async (
   await act(async () => root.unmount());
 });
 
-it('hands text typed into the loading shell to the dialog, with focus and the caret at the end', async () => {
+it('hands every key typed after ⌘K, through the loading shell, to the dialog with the caret at the end', async () => {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
+  await act(async () => root.render(<SiteSearch projectId="docs" open={false} onOpenChange={vi.fn()} lang="en" />));
+  // ⌘K: keys typed before the shell renders go into a hidden field focused at once.
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }));
+  });
+  await act(async () => setValue(document.activeElement as HTMLInputElement, 'r'));
   await act(async () => root.render(<SiteSearch projectId="docs" open onOpenChange={vi.fn()} lang="en" />));
   const shellInput = document.querySelector<HTMLInputElement>('[data-search-shell] input');
   expect(document.activeElement).toBe(shellInput);
+  expect(shellInput?.value).toBe('r');
   await act(async () => setValue(shellInput, 'ref'));
   gate.release();
   // The gated chunk resolves asynchronously (its module graph can take a few
@@ -88,5 +95,6 @@ it('hands text typed into the loading shell to the dialog, with focus and the ca
   expect(input?.value).toBe('ref');
   expect(document.activeElement).toBe(input);
   expect(input?.selectionStart).toBe(3);
+  expect(document.querySelector('[data-search-keystrokes]')).toBeNull();
   await act(async () => root.unmount());
 }, 15_000);

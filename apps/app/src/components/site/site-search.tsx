@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { Search } from 'lucide-react';
-import { type ComponentProps, type KeyboardEvent, lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { type ComponentProps, type KeyboardEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { beginSearchKeystrokes, cancelSearchKeystrokes, holdSearchKeystrokes } from '@/components/site/site-search-keystrokes';
 import { isShortcutKey } from '@/lib/site-keyboard';
 import { resolveReaderDirection } from '@/lib/text-direction';
 
@@ -30,28 +31,38 @@ const containFocus = (event: KeyboardEvent<HTMLDivElement>) => {
 };
 
 /**
+ * Opens search from a trigger's click (or any other reader action): starts
+ * keeping keystrokes inside the click itself, so text typed before the dialog's
+ * field is ready is kept and a phone raises its keyboard at once.
+ */
+export const openSiteSearch = (open: () => void, label?: string): void => {
+  preloadSiteSearch();
+  beginSearchKeystrokes({ label });
+  open();
+};
+
+/**
  * Stand-in shown only while the dialog's code is still downloading. It is a
  * small modal of its own (named, Esc / Cancel / outside tap to close, focus kept
- * inside) that keeps whatever the reader types, which the dialog then picks up,
- * so the first letters after ⌘K are never lost.
+ * inside) whose field holds whatever the reader types (see
+ * site-search-keystrokes.ts); the dialog then takes all of it, so the letters
+ * typed after ⌘K are never lost.
  */
 export function SearchShell({
-  value,
-  onChange,
   onClose,
   placeholder,
   label,
   cancelLabel,
   rtl,
 }: {
-  value: string;
-  onChange: (value: string) => void;
   onClose: () => void;
   placeholder: string;
   label: string;
   cancelLabel: string;
   rtl: boolean;
 }) {
+  // Stable, so the field keeps holding the text across re-renders.
+  const holdKeystrokes = useCallback((field: HTMLInputElement | null) => (field ? holdSearchKeystrokes(field, label) : undefined), [label]);
   return (
     <div className="fixed inset-0 z-50" data-search-shell="">
       {/* Tap outside closes; Esc and Cancel close it from the keyboard. */}
@@ -71,12 +82,15 @@ export function SearchShell({
         <div className="flex h-14 items-center gap-1 border-border/70 border-b ps-4 pe-2 pt-[env(safe-area-inset-top)]">
           <Search aria-hidden className="size-5 shrink-0 text-muted-foreground" />
           <input
+            ref={holdKeystrokes}
             autoFocus
             aria-label={label}
-            value={value}
+            dir="auto"
             placeholder={placeholder}
             maxLength={300}
-            onChange={(event) => onChange(event.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            enterKeyHint="search"
             className="h-14 min-w-0 flex-1 bg-transparent px-2 text-base outline-none placeholder:text-muted-foreground/80 sm:text-[15px]"
           />
           <button
@@ -92,23 +106,29 @@ export function SearchShell({
   );
 }
 
-export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 'initialQuery' | 'returnFocus'>) {
+export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 'returnFocus'>) {
   const { open, onOpenChange, hotkey, lang, direction, placeholder } = props;
   const [activated, setActivated] = useState(open);
-  const [pendingQuery, setPendingQuery] = useState('');
   // Where focus returns when search closes: the last element focused outside it.
   const returnFocus = useRef<HTMLElement | null>(null);
   // Preserve the dialog's selected mode and query after its first opening.
   useEffect(() => {
     if (open) setActivated(true);
+    // Closed: stop keeping keystrokes (the dialog takes them when it opens).
+    else cancelSearchKeystrokes();
   }, [open]);
+  useEffect(() => () => cancelSearchKeystrokes(), []);
 
   useEffect(() => {
     if (open) return;
     const remember = (event: FocusEvent) => {
       const target = event.target;
       // Search's own field can take focus before this listener is removed on open.
-      if (!(target instanceof HTMLElement) || target === document.body || target.closest('[data-search-shell], [data-theme-surface="search"]')) {
+      if (
+        !(target instanceof HTMLElement) ||
+        target === document.body ||
+        target.closest('[data-search-shell], [data-theme-surface="search"], [data-search-keystrokes]')
+      ) {
         return;
       }
       returnFocus.current = target;
@@ -132,29 +152,39 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
       const tag = node.tagName;
       return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || node.isContentEditable;
     };
+    // Keys typed right after the shortcut go into a hidden field focused within
+    // this same key press, until search's own field takes them over.
+    const startSearch = () => {
+      preloadSiteSearch();
+      beginSearchKeystrokes({
+        label: siteT(lang)('searchDocumentation'),
+        onCancel: () => {
+          onOpenChange(false);
+          returnFocus.current?.focus();
+        },
+      });
+      onOpenChange(true);
+    };
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (hotkey === 'slash' && isShortcutKey(event, '/', 'Slash') && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
         event.preventDefault();
-        preloadSiteSearch();
-        onOpenChange(true);
+        if (!open) startSearch();
         return;
       }
       // AltGr arrives as Ctrl+Alt on Windows: that is typing, not Ctrl+K.
       if (isShortcutKey(event, 'k', 'KeyK') && (event.metaKey || event.ctrlKey) && !event.altKey) {
         event.preventDefault();
-        preloadSiteSearch();
-        onOpenChange(!open);
+        if (open) onOpenChange(false);
+        else startSearch();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onOpenChange, hotkey]);
+  }, [open, onOpenChange, hotkey, lang]);
 
   const t = siteT(lang);
   const shell = open ? (
     <SearchShell
-      value={pendingQuery}
-      onChange={setPendingQuery}
       onClose={() => {
         onOpenChange(false);
         returnFocus.current?.focus();
@@ -166,9 +196,5 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
     />
   ) : null;
 
-  return (
-    <Suspense fallback={shell}>
-      {open || activated ? <SiteSearchDialog {...props} initialQuery={pendingQuery} returnFocus={returnFocus} /> : null}
-    </Suspense>
-  );
+  return <Suspense fallback={shell}>{open || activated ? <SiteSearchDialog {...props} returnFocus={returnFocus} /> : null}</Suspense>;
 }

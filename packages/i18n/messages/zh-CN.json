@@ -3457,6 +3457,7 @@
   "site_searchkeysopen": "打开",
   "site_searchkeysclose": "关闭",
   "site_searchversionlabel": "版本",
+  "site_searchalllanguages": "所有语言",
   "settings_permissions_title": "需要管理员权限",
   "settings_permissions_body": "请联系站点所有者或管理员更新这些设置。您仍可编辑文档并使用当前角色可访问的功能。",
   "settings_members_removeconfirm": "要从此站点移除 {name} 吗？该成员将无法访问站点文档和设置。",
