@@ -2174,6 +2174,7 @@
   "site_searchprompt": "تلاش کرنے کے لیے ٹائپ کریں…",
   "site_results": "نتائج",
   "site_loading": "لوڈ ہو رہا ہے…",
+  "site_articleloadfailed": "یہ صفحہ لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں",
   "site_previous": "پچھلا",
   "site_next": "اگلا",
   "site_onthispage": "اس صفحہ پر",

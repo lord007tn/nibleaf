@@ -2251,6 +2251,7 @@
   "site_searchprompt": "اكتب للبحث…",
   "site_results": "النتائج",
   "site_loading": "جارٍ التحميل…",
+  "site_articleloadfailed": "تعذّر تحميل هذه الصفحة. حاول مرة أخرى",
   "site_previous": "السابق",
   "site_next": "التالي",
   "site_onthispage": "في هذه الصفحة",

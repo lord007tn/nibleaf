@@ -2183,6 +2183,7 @@
   "site_searchprompt": "Escribe para buscar…",
   "site_results": "Resultados",
   "site_loading": "Cargando…",
+  "site_articleloadfailed": "No se pudo cargar esta página. Reintentar",
   "site_previous": "Anterior",
   "site_next": "Siguiente",
   "site_onthispage": "En esta página",
