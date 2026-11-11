@@ -267,6 +267,12 @@ jobs:
           pnpm --filter @nibleaf/server exec vitest run src/actions/site-sign-in.postgres.test.ts
           pnpm --filter @nibleaf/server exec vitest run src/actions/reader-access-requests.postgres.test.ts
 
+      - name: Verify concurrent page move integrity on PostgreSQL
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          DATA_INTEGRITY_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-integrity.postgres.test.ts --maxWorkers=1
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt

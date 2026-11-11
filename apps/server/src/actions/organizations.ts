@@ -14,6 +14,7 @@ import { assertUsableAccount } from '@/lib/access';
 import { applyAdmission, lockOrganization } from './admissions';
 import { syncLegacyMembership } from './legacy-membership';
 import { notificationEnabled } from './notifications';
+import { invalidateOrganizationPublishedConfig } from './sites';
 
 type Tx = Prisma.TransactionClient;
 const userSelect = { id: true, name: true, email: true, image: true } as const;
@@ -107,7 +108,7 @@ const MAX_HANDLE_ATTEMPTS = 1000;
 export const createOrganization = async (userId: string, name: string) => {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await prisma.$transaction(async (tx) => {
+      const created = await prisma.$transaction(async (tx) => {
         await assertUsableAccount(userId, tx);
         const org = await tx.organization.create({ data: { name }, select: { id: true } });
         let slug: string | undefined;
@@ -127,6 +128,9 @@ export const createOrganization = async (userId: string, name: string) => {
         await tx.userPreference.upsert({ where: { userId }, create: { userId, lastOrganizationId: org.id }, update: { lastOrganizationId: org.id } });
         return orgDto(created, 'owner');
       });
+      // The transaction assigned the organization's plan: no website may keep stale add-ons.
+      await invalidateOrganizationPublishedConfig(created.id);
+      return created;
     } catch (error) {
       if (attempt < 2 && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') continue;
       throw error;
