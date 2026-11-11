@@ -14,6 +14,7 @@ import { resolveRequestLocale } from '@nibleaf/i18n/locales';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { TERMS_VERSION } from '@nibleaf/shared/legal';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
@@ -792,6 +793,10 @@ const authInstance = betterAuth({
     sendOnSignUp: false,
   },
   user: {
+    additionalFields: {
+      termsAcceptedAt: { type: 'date', required: false, input: false },
+      termsVersion: { type: 'string', required: false, input: false },
+    },
     changeEmail: {
       // Email changes use the email-OTP plugin below, not verification links.
       enabled: false,
@@ -815,7 +820,10 @@ const authInstance = betterAuth({
     emailOTP({
       // Customer sign-in doubles as passwordless sign-up. The API gateway adds
       // an admin-origin guard so this can never create an admin account.
-      disableSignUp: env.DISABLE_SIGNUP,
+      // Always send sign-in codes through the same delivery path for new and
+      // existing addresses, including closed instances. The creation hook below
+      // enforces DISABLE_SIGNUP only after the OTP proves inbox ownership.
+      disableSignUp: false,
       overrideDefaultEmailVerification: true,
       changeEmail: {
         enabled: true,
@@ -854,6 +862,31 @@ const authInstance = betterAuth({
   databaseHooks: {
     user: {
       create: {
+        before: async (user, context) => {
+          if (context?.path === '/sign-in/email-otp') {
+            // Better Auth verifies and consumes the OTP before invoking this
+            // hook. Never move this check to the send-code or before-verify path.
+            if (env.DISABLE_SIGNUP) {
+              throw new APIError('BAD_REQUEST', { code: 'INVALID_OTP', message: 'Invalid OTP' });
+            }
+            if (context.body?.acceptTerms !== true) {
+              throw new APIError('BAD_REQUEST', { code: 'TERMS_REQUIRED', message: 'Accept the Terms and Privacy Policy to continue.' });
+            }
+            return { data: { ...user, termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION } };
+          }
+          // Google's callback runs after provider verification. Both entry pages
+          // display the same clickwrap beside the Google action. The social
+          // endpoint also supports Google's verified ID-token sign-in.
+          const googleCallback = context?.path?.startsWith('/callback/') && context.params?.id === 'google';
+          const googleToken = context?.path === '/sign-in/social' && context.body?.provider === 'google';
+          if (googleCallback || googleToken) {
+            return { data: { ...user, termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION } };
+          }
+          // Exempt: operator-created accounts (/admin/create-user), requestless
+          // demo seeding, and synthetic fixtures have no end-user consent event.
+          // Invitations/join links and MCP use the OTP/Google paths above.
+          return { data: user };
+        },
         after: (user, context) => provisionWorkspace(user, resolveRequestLocale(context?.headers), context?.headers ?? undefined),
       },
     },

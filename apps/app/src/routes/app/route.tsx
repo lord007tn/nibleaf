@@ -27,6 +27,12 @@ export const Route = createFileRoute('/app')({
       const { signInReturnSearch } = await import('@/lib/invitations');
       throw redirect({ to: '/sign-in', search: signInReturnSearch(location.href) });
     }
+    // UI-only: invitations, join links, sign-out and machine APIs live outside
+    // /app. Let admission finish before asking for a dashboard display name.
+    if (!routeSession.user.name?.trim()) {
+      const { nameReturnPath } = await import('@/lib/name-onboarding');
+      throw redirect({ to: '/welcome/name', search: { redirect: nameReturnPath(location.href) } });
+    }
     return { routeSession };
   },
   // Organizations feed every signed-in screen (switcher, palette, landing), so

@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { diffSchema, getExpectedSchema } from '@better-auth/core/db/internal';
 import { prisma } from '@nibleaf/database';
+import { TERMS_VERSION } from '@nibleaf/shared/legal';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const { ADMIN_ORIGIN, APP_ORIGIN, AUTH_SECRET, GOOGLE_CLIENT_ID, mocks } = vi.hoisted(() => {
@@ -117,7 +118,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
 
   const signInWithCode = async (email: string, origin?: string) => {
     expect((await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' }, origin })).status).toBe(200);
-    const response = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email) }, origin });
+    const response = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email), acceptTerms: true }, origin });
     expect(response.status).toBe(200);
     return response;
   };
@@ -197,6 +198,110 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     vi.unstubAllGlobals();
     await clearSigningKeys();
     await prisma.$disconnect();
+  });
+
+  it('requires explicit acceptance only after a valid OTP, without creating a user', async () => {
+    const email = addressFor('terms-missing');
+    await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } });
+    const invalid = await send('/sign-in/email-otp', { body: { email, otp: 'invalid' } });
+    expect(invalid.status).toBe(400);
+    expect(await invalid.json()).toMatchObject({ code: 'INVALID_OTP' });
+    const refused = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email) } });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toMatchObject({ code: 'TERMS_REQUIRED' });
+    expect(await prisma.user.count({ where: { email } })).toBe(0);
+    // The verified OTP is consumed even when consent was absent.
+    const replay = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email), acceptTerms: true } });
+    expect(await replay.json()).toMatchObject({ code: 'INVALID_OTP' });
+  });
+
+  it.each([false, 'true', 1])('requires the boolean flag rather than %s', async (acceptTerms) => {
+    const email = addressFor(`terms-flag-${acceptTerms}`);
+    await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } });
+    const refused = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email), acceptTerms } });
+    expect(await refused.json()).toMatchObject({ code: 'TERMS_REQUIRED' });
+    expect(await prisma.user.count({ where: { email } })).toBe(0);
+  });
+
+  it('records acceptance in the initial user insert and does not let clients overwrite it', async () => {
+    const email = addressFor('terms-recorded');
+    const before = Date.now();
+    const cookie = sessionCookie(await signInWithCode(email));
+    const accepted = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(accepted.termsAcceptedAt?.getTime()).toBeGreaterThanOrEqual(before);
+    expect(accepted.termsAcceptedAt?.getTime()).toBeLessThanOrEqual(Date.now());
+    expect(accepted.termsVersion).toBe(TERMS_VERSION);
+    for (const fields of [{ termsAcceptedAt: '2000-01-01T00:00:00.000Z' }, { termsVersion: 'forged' }]) {
+      const response = await send('/update-user', { cookie, body: fields });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ code: 'FIELD_NOT_ALLOWED' });
+    }
+    await send('/update-user', { cookie, body: { termsAcceptedAt: null, termsVersion: null, name: 'Ada' } });
+    expect(await prisma.user.findUniqueOrThrow({ where: { email } })).toMatchObject({
+      name: 'Ada',
+      termsAcceptedAt: accepted.termsAcceptedAt,
+      termsVersion: TERMS_VERSION,
+    });
+  });
+
+  it('keeps legacy consent null when an existing user signs in without the flag', async () => {
+    const email = addressFor('terms-existing');
+    await prisma.user.create({ data: { email, name: 'Existing', emailVerified: true } });
+    await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } });
+    const response = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email) } });
+    expect(response.status).toBe(200);
+    expect(await prisma.user.findUniqueOrThrow({ where: { email } })).toMatchObject({ termsAcceptedAt: null, termsVersion: null });
+    const forged = await send('/update-user', { cookie: sessionCookie(response), body: { termsVersion: 'forged' } });
+    expect(forged.status).toBe(400);
+    expect((await prisma.user.findUniqueOrThrow({ where: { email } })).termsVersion).toBeNull();
+  });
+
+  it('returns identical send-code responses and delivers codes for both existing and new addresses', async () => {
+    const existing = addressFor('send-existing');
+    const fresh = addressFor('send-new');
+    await prisma.user.create({ data: { email: existing, name: 'Existing' } });
+    const responses: Array<{ status: number; body: unknown; type?: string | null }> = [];
+    for (const email of [existing, fresh]) {
+      const response = await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } });
+      responses.push({ status: response.status, body: await response.json(), type: response.headers.get('content-type') });
+      expect(mocks.codes.get(email)).toMatch(/^\d{6}$/);
+      expect(mocks.emailsTo).toContain(email);
+    }
+    expect(responses[0]).toEqual(responses[1]);
+    expect(responses[0]).toMatchObject({ status: 200, body: { success: true } });
+    expect(await prisma.user.count({ where: { email: fresh } })).toBe(0);
+  });
+
+  it('enforces DISABLE_SIGNUP after verification even with acceptance, with equal send-code behavior', async () => {
+    const existing = addressFor('closed-otp-existing');
+    const fresh = addressFor('closed-otp-new');
+    await prisma.user.create({ data: { email: existing, name: 'Existing', emailVerified: true } });
+    const openAuth = auth;
+    vi.resetModules();
+    vi.stubEnv('DISABLE_SIGNUP', 'true');
+    ({ auth } = await import('./server'));
+    try {
+      const responses: Array<{ status: number; body: unknown; type?: string | null }> = [];
+      for (const email of [existing, fresh]) {
+        const response = await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } });
+        responses.push({ status: response.status, body: await response.json() });
+        expect(mocks.codes.get(email)).toMatch(/^\d{6}$/);
+      }
+      expect(responses[0]).toEqual(responses[1]);
+      for (const acceptTerms of [undefined, true]) {
+        await send('/email-otp/send-verification-otp', { body: { email: fresh, type: 'sign-in' } });
+        const response = await send('/sign-in/email-otp', { body: { email: fresh, otp: mocks.codes.get(fresh), acceptTerms } });
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ code: 'INVALID_OTP' });
+      }
+      expect(await prisma.user.count({ where: { email: fresh } })).toBe(0);
+      const returning = await send('/sign-in/email-otp', { body: { email: existing, otp: mocks.codes.get(existing) } });
+      expect(returning.status).toBe(200);
+    } finally {
+      auth = openAuth;
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   it('passes Better Auth schema validation on the generated client and the migrated database', async () => {
@@ -342,7 +447,15 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(account?.userId).toBe(user?.user.id);
     expect(await prisma.member.count({ where: { role: 'owner', userId: user?.user.id } })).toBe(1);
 
+    const acceptance = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(acceptance.termsAcceptedAt).toBeInstanceOf(Date);
+    expect(acceptance.termsVersion).toBe(TERMS_VERSION);
+
     const second = await signInWithGoogle(sub, email);
+    expect(await prisma.user.findUniqueOrThrow({ where: { email } })).toMatchObject({
+      termsAcceptedAt: acceptance.termsAcceptedAt,
+      termsVersion: TERMS_VERSION,
+    });
     expectSignedInRedirect(second);
     expect((await readSession(sessionCookie(second)))?.user.id).toBe(user?.user.id);
     expect(await prisma.account.count({ where: { accountId: sub, providerId: 'google' } })).toBe(1);
@@ -415,6 +528,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expectSignedInRedirect(response);
     expect((await readSession(sessionCookie(response)))?.user.id).toBe(user.id);
     expect(await prisma.user.count({ where: { email } })).toBe(1);
+    expect(await prisma.user.findUniqueOrThrow({ where: { email } })).toMatchObject({ termsAcceptedAt: null, termsVersion: null });
     expect(await prisma.member.count({ where: { userId: user.id } })).toBe(0);
     const rows = await prisma.account.findMany({ where: { userId: user.id } });
     expect(rows.map(({ id }) => id)).toEqual([account.id]);
@@ -557,7 +671,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     // 2. Email-code sign-in carrying that request resumes it at the project step.
     const email = addressFor('mcp-oauth');
     expect((await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } })).status).toBe(200);
-    const signedIn = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email), oauth_query: loginQuery } });
+    const signedIn = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email), acceptTerms: true, oauth_query: loginQuery } });
     expect(signedIn.status).toBe(200);
     const cookie = sessionCookie(signedIn);
     const projectStep = (await signedIn.json()) as { redirect: boolean; url: string };

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { GoogleIcon } from '@/components/icons/brand';
 import { QueryErrorState } from '@/components/query-error-state';
+import { TermsNotice } from '@/components/terms-notice';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
@@ -48,9 +49,6 @@ function SignUpPage() {
   const [email, setEmail] = useState(search.email ?? '');
   const [otp, setOtp] = useState('');
   const [codeSent, setCodeSent] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  // Buttons stay enabled; pressing one without the terms ticked says why instead.
-  const [termsError, setTermsError] = useState(false);
   // Which request is running, so only the button that started it shows a spinner.
   const [busy, setBusy] = useState<'send' | 'resend' | 'verify' | null>(null);
   const isSubmitting = busy !== null;
@@ -94,7 +92,7 @@ function SignUpPage() {
     setBusy('verify');
     setError(null);
     try {
-      const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), name: name.trim() });
+      const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), acceptTerms: true, name: name.trim() });
       if (result.error) {
         setError(friendlyAuthError(result.error, t, t('auth.otp.invalid')));
         return;
@@ -117,18 +115,11 @@ function SignUpPage() {
     }
   };
 
-  const requireTerms = () => {
-    if (agreedToTerms) return true;
-    setTermsError(true);
-    document.getElementById('agree-terms')?.focus();
-    return false;
-  };
-
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (codeSent) {
       await verifyCode();
-    } else if (requireTerms()) {
+    } else {
       await requestCode();
     }
   };
@@ -148,7 +139,6 @@ function SignUpPage() {
             </div>
           ))}
           <div aria-hidden className="flex items-start gap-2.5">
-            <Skeleton className="mt-0.5 size-4 shrink-0 rounded-sm" />
             <Skeleton className="h-4 flex-1" />
           </div>
           <Skeleton aria-hidden className="mt-1 h-9 w-full" />
@@ -186,13 +176,14 @@ function SignUpPage() {
       {/* An invitation is tied to one address, so Google (which may pick another) is hidden. */}
       {!codeSent && googleEnabled && !lockedEmail ? (
         <>
+          <div className="mb-2">
+            <TermsNotice />
+          </div>
           <Button
             className="mb-4 w-full gap-2"
             loading={isGoogleSubmitting}
             loadingText={t('auth.google.submitting')}
-            onClick={() => {
-              if (requireTerms()) void signUpWithGoogle();
-            }}
+            onClick={signUpWithGoogle}
             type="button"
             variant="outline"
           >
@@ -235,36 +226,6 @@ function SignUpPage() {
               />
               {lockedEmail ? <p className="text-muted-foreground text-xs">{t('auth.invite.invitedAs', { email: search.email ?? '' })}</p> : null}
             </div>
-            <label className="flex items-start gap-2.5 text-muted-foreground text-sm" htmlFor="agree-terms">
-              <input
-                aria-describedby={termsError ? 'agree-terms-error' : undefined}
-                aria-invalid={termsError || undefined}
-                checked={agreedToTerms}
-                className="mt-0.5 size-4 shrink-0 accent-primary"
-                id="agree-terms"
-                onChange={(event) => {
-                  setAgreedToTerms(event.target.checked);
-                  if (event.target.checked) setTermsError(false);
-                }}
-                type="checkbox"
-              />
-              <span>
-                {t('auth.legal.agreePrefix')}
-                <a className="text-primary hover:underline" href="/terms" rel="noreferrer" target="_blank">
-                  {t('auth.legal.terms')}
-                </a>
-                {t('auth.legal.and')}
-                <a className="text-primary hover:underline" href="/privacy" rel="noreferrer" target="_blank">
-                  {t('auth.legal.privacy')}
-                </a>
-                {t('auth.legal.agreeSuffix')}
-              </span>
-            </label>
-            {termsError ? (
-              <p className="-mt-2 text-destructive text-sm" id="agree-terms-error" role="alert">
-                {t('auth.legal.agreeFirst')}
-              </p>
-            ) : null}
           </>
         ) : (
           <div className="flex flex-col items-center gap-2" dir="ltr">
@@ -299,6 +260,7 @@ function SignUpPage() {
             {error}
           </p>
         ) : null}
+        <TermsNotice />
         <Button
           className="mt-1 w-full"
           disabled={isSubmitting || (codeSent && otp.length !== 6)}

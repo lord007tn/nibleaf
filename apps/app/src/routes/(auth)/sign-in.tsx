@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { GoogleIcon } from '@/components/icons/brand';
+import { TermsNotice } from '@/components/terms-notice';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
@@ -99,7 +100,7 @@ function SignInPage() {
     setBusy('verify');
     setError(null);
     try {
-      const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), ...oauthBody });
+      const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), acceptTerms: true, ...oauthBody });
       if (result.error) {
         setError(friendlyAuthError(result.error, t, t('auth.otp.invalid')));
         return;
@@ -134,6 +135,9 @@ function SignInPage() {
       {connectingApp && !codeSent ? <p className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-sm">{t('auth.oauth.signInNotice')}</p> : null}
       {!codeSent && googleEnabled ? (
         <>
+          <div className="mb-2">
+            <TermsNotice />
+          </div>
           <Button
             className="mb-4 w-full gap-2"
             loading={isGoogleSubmitting}
@@ -200,6 +204,7 @@ function SignInPage() {
             {error}
           </p>
         ) : null}
+        <TermsNotice />
         <Button
           className="mt-1 w-full"
           disabled={isSubmitting || (codeSent ? otp.length !== 6 : !normalizedEmail)}
@@ -238,25 +243,12 @@ function SignInPage() {
         ) : null}
       </form>
       {!codeSent ? (
-        <>
-          <p className="mt-4 text-center text-muted-foreground text-xs leading-relaxed">
-            {t('auth.legal.socialNoticePrefix')}
-            <Link className="underline hover:text-primary" to="/$page" params={{ page: 'terms' }}>
-              {t('auth.legal.terms')}
-            </Link>
-            {t('auth.legal.and')}
-            <Link className="underline hover:text-primary" to="/$page" params={{ page: 'privacy' }}>
-              {t('auth.legal.privacy')}
-            </Link>
-            {t('auth.legal.agreeSuffix')}
-          </p>
-          <p className="mt-5 text-center text-muted-foreground text-sm" hidden={connectingApp}>
-            {t('auth.signIn.noAccount')}{' '}
-            <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-up">
-              {t('auth.signIn.createOne')}
-            </Link>
-          </p>
-        </>
+        <p className="mt-5 text-center text-muted-foreground text-sm" hidden={connectingApp}>
+          {t('auth.signIn.noAccount')}{' '}
+          <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-up">
+            {t('auth.signIn.createOne')}
+          </Link>
+        </p>
       ) : null}
     </AuthLayout>
   );
