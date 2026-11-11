@@ -86,4 +86,5 @@ export const publishHistoryDetailQueryOptions = (projectId: string, deploymentId
 
 export const usePublishHistory = (projectId: string) => useInfiniteQuery(publishHistoryQueryOptions(projectId));
 
-export const usePublishHistoryDetail = (projectId: string, deploymentId: string) => useQuery(publishHistoryDetailQueryOptions(projectId, deploymentId));
+export const usePublishHistoryDetail = (projectId: string, deploymentId: string) =>
+  useQuery(publishHistoryDetailQueryOptions(projectId, deploymentId));
