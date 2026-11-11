@@ -1,4 +1,5 @@
 import type { AiChatSource } from '@nibleaf/validators';
+import { fromMarkdown } from 'mdast-util-from-markdown';
 import type { CitedSection } from './sources';
 
 /*
@@ -8,16 +9,14 @@ import type { CitedSection } from './sources';
  * ([S3]), and they end in a numbered list of the sources with their links.
  *
  * - text/plain keeps what chat tools render (list numbers, `code`, fenced code)
- *   and drops what they show as clutter (**bold** markers, # heading marks).
+ *   and drops what they show as clutter (**bold** and *emphasis* markers, #
+ *   heading marks). Code is never changed.
  * - text/html is the answer as rendered, for editors that paste rich text.
  */
 
 /** A run of citation markers (`[S1]`, `[S1, S2][S3]`), with one optional space
  * before it. Every repetition starts at a literal bracket, so matching is linear. */
 const MARKER_RUN = / ?(?:\[S\d+(?:[ \t]*[,;،؛][ \t]*S\d+)*\])+/g;
-const FENCE = /^\s{0,3}(`{3,}|~{3,})/;
-const HEADING = /^\s{0,3}#{1,6}[ \t]+/;
-const CLOSING_HASHES = /[ \t]+#+[ \t]*$/;
 
 /** `[1][2]` for the sections a run cites, in order and without repeats; nothing
  * when it cites none the answer lists. */
@@ -30,33 +29,51 @@ const numbers = (run: string, numberOf: (id: string) => number | undefined) => {
   return seen.size ? ` ${[...seen].map((number) => `[${number}]`).join('')}` : '';
 };
 
-/** Removes `**` emphasis outside inline code, scanning once. */
-const withoutBold = (line: string) =>
-  line
-    .split('`')
-    .map((part, index) => (index % 2 === 0 ? part.replaceAll('**', '') : part))
-    .join('`');
+/** The parts of a Markdown (mdast) node this module reads. */
+interface MarkdownNode {
+  type: string;
+  children?: MarkdownNode[];
+  position?: { start: { offset?: number }; end: { offset?: number } };
+}
+/** Nodes whose text is shown exactly as written: inline, indented and fenced code, and raw HTML. */
+const VERBATIM = new Set(['inlineCode', 'code', 'html']);
+/** Nodes whose delimiters (`**`, `*`, `#`, a setext underline) are dropped, keeping what they hold. */
+const DELIMITED = new Set(['strong', 'emphasis', 'heading']);
+const offsets = (node: MarkdownNode | undefined) => {
+  const start = node?.position?.start.offset;
+  const end = node?.position?.end.offset;
+  return start === undefined || end === undefined ? undefined : { start, end };
+};
 
-/** The checked answer as clean text: numbered citations, no bold or heading
- * marks. Fenced code is kept exactly as written. */
+/** The checked answer as clean text: numbered citations, no emphasis or heading
+ * marks. It reads the answer with the same CommonMark parse the panel renders, and
+ * edits only the source of the nodes it changes, so code (inline, indented, or
+ * fenced, at any depth) and everything else keep their exact text. */
 export function plainAnswer(answer: string, numberOf: (id: string) => number | undefined): string {
-  let fence = '';
-  return answer
-    .split('\n')
-    .map((line) => {
-      const marker = FENCE.exec(line)?.[1];
-      if (marker) {
-        if (!fence) fence = marker;
-        else if (marker[0] === fence[0] && marker.length >= fence.length) fence = '';
-        return line;
-      }
-      if (fence) return line;
-      let text = line.replace(MARKER_RUN, (run) => numbers(run, numberOf));
-      if (HEADING.test(text)) text = text.replace(HEADING, '').replace(CLOSING_HASHES, '');
-      return withoutBold(text);
-    })
-    .join('\n')
-    .trim();
+  const edits: { start: number; end: number; text: string }[] = [];
+  const visit = (node: MarkdownNode) => {
+    if (VERBATIM.has(node.type)) return;
+    const own = offsets(node);
+    if (node.type === 'text' && own) {
+      const source = answer.slice(own.start, own.end);
+      for (const run of source.matchAll(MARKER_RUN))
+        edits.push({ start: own.start + run.index, end: own.start + run.index + run[0].length, text: numbers(run[0], numberOf) });
+      return;
+    }
+    const children = node.children ?? [];
+    const first = offsets(children[0]);
+    const last = offsets(children.at(-1));
+    if (DELIMITED.has(node.type) && own && first && last) {
+      edits.push({ start: own.start, end: first.start, text: '' }, { start: last.end, end: own.end, text: '' });
+    }
+    for (const child of children) visit(child);
+  };
+  visit(fromMarkdown(answer) as MarkdownNode);
+  // The edited ranges never overlap: a node's delimiters lie outside its children.
+  let text = answer;
+  for (const { start, end, text: replacement } of edits.sort((a, b) => b.start - a.start))
+    text = text.slice(0, start) + replacement + text.slice(end);
+  return text.trim();
 }
 
 export interface CopyLabels {
@@ -83,9 +100,14 @@ export function plainCopy(
   return `${body}\n\n${labels.sources}\n${list.join('\n')}`;
 }
 
+/** Attributes kept in copied HTML: text direction, and where a numbered list starts. */
+const keptAttribute = (element: Element, name: string, value: string) =>
+  name === 'dir' || (name === 'start' && element.tagName === 'OL' && /^\d{1,9}$/.test(value));
+
 /** The rendered answer as HTML: each citation becomes its `[n]`, attributes are
- * dropped (only `dir` is kept, for right-to-left answers), and the sources follow
- * as linked lines. Built with DOM nodes, never from strings. */
+ * dropped (except `dir`, for right-to-left answers, and a list's numeric `start`,
+ * so a list that starts at 3 still does), and the sources follow as linked lines.
+ * Built with DOM nodes, never from strings. */
 export function htmlCopy(answer: HTMLElement, sections: readonly CitedSection[], link: (source: AiChatSource) => string, labels: CopyLabels): string {
   const root = document.createElement('div');
   const direction = answer.closest('[dir]')?.getAttribute('dir');
@@ -102,7 +124,7 @@ export function htmlCopy(answer: HTMLElement, sections: readonly CitedSection[],
     citation.replaceWith(number);
   }
   for (const element of [body, ...body.querySelectorAll('*')]) {
-    for (const { name } of [...element.attributes]) if (name !== 'dir') element.removeAttribute(name);
+    for (const { name, value } of [...element.attributes]) if (!keptAttribute(element, name, value)) element.removeAttribute(name);
   }
   root.append(...body.childNodes);
   if (sections.length) {
@@ -123,17 +145,70 @@ export function htmlCopy(answer: HTMLElement, sections: readonly CitedSection[],
   return root.outerHTML;
 }
 
-/** Writes both flavors where the browser can, and plain text otherwise. */
+/** Copies through the browser's copy command, for pages without the async
+ * clipboard (sites served over plain http, older browsers). The text is selected in
+ * a hidden field next to the control that has focus (inside the chat dialog, whose
+ * focus trap would otherwise take focus back), and the copy event also sets the
+ * HTML. Focus and the reader's own selection are put back afterwards. */
+function copyWithCommand(plain: string, html?: string): boolean {
+  if (typeof document.execCommand !== 'function') return false;
+  const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const selection = document.getSelection();
+  const ranges = selection ? Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index).cloneRange()) : [];
+  const field = document.createElement('textarea');
+  field.value = plain;
+  field.readOnly = true;
+  field.setAttribute('aria-hidden', 'true');
+  field.tabIndex = -1;
+  field.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0;pointer-events:none';
+  const onCopy = (event: ClipboardEvent) => {
+    if (!event.clipboardData) return;
+    event.clipboardData.setData('text/plain', plain);
+    if (html) event.clipboardData.setData('text/html', html);
+    event.preventDefault();
+  };
+  (active?.closest('[role="dialog"]') ?? document.body).append(field);
+  document.addEventListener('copy', onCopy, true);
+  try {
+    field.focus({ preventScroll: true });
+    field.select();
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    document.removeEventListener('copy', onCopy, true);
+    field.remove();
+    // Focus first: moving focus can reset the selection.
+    active?.focus({ preventScroll: true });
+    if (selection) {
+      selection.removeAllRanges();
+      for (const range of ranges) selection.addRange(range);
+    }
+  }
+}
+
+/** Writes both flavors where the browser can, plain text where only that works,
+ * and falls back to the copy command where there is no async clipboard (plain
+ * http) or it refuses. Rejects only when nothing could be copied. */
 export async function writeCopy(plain: string, html?: string): Promise<void> {
-  if (html && typeof ClipboardItem !== 'undefined' && typeof navigator.clipboard.write === 'function') {
+  const clipboard: Partial<Clipboard> | undefined = typeof navigator === 'undefined' ? undefined : navigator.clipboard;
+  if (html && typeof ClipboardItem !== 'undefined' && typeof clipboard?.write === 'function') {
     try {
-      await navigator.clipboard.write([
+      await clipboard.write([
         new ClipboardItem({ 'text/plain': new Blob([plain], { type: 'text/plain' }), 'text/html': new Blob([html], { type: 'text/html' }) }),
       ]);
       return;
     } catch {
-      // Some browsers refuse rich clipboard writes; plain text still works.
+      // Some browsers refuse rich clipboard writes; plain text may still work.
     }
   }
-  await navigator.clipboard.writeText(plain);
+  if (typeof clipboard?.writeText === 'function') {
+    try {
+      await clipboard.writeText(plain);
+      return;
+    } catch {
+      // Refused (no permission, or the page lost focus): try the copy command.
+    }
+  }
+  if (!copyWithCommand(plain, html)) throw new Error('Copy unavailable');
 }

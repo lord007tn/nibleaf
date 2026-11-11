@@ -257,7 +257,7 @@ describe('chat panel', () => {
     vi.mocked(Element.prototype.scrollIntoView).mockClear();
     await deliver('nibleaf.chat.followups', { turnId: ANSWER_ID, questions: ['Can I install it offline?'] });
     await render();
-    expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('Suggested next questions added.');
+    expect(document.querySelector('.sr-only[aria-live="polite"]')?.textContent).toBe('Suggested next questions added.');
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
     // Back at the bottom, new content is followed again.
     log.scrollTop = 1600;

@@ -52,6 +52,42 @@ describe('copying an answer', () => {
     );
   });
 
+  it('never changes code: inline (any backtick count), indented, or fenced inside a list', () => {
+    const answer = [
+      'Type `[S1]` or ``a**b`` literally, then *save*. [S1]',
+      '',
+      '    indented **code** [S1]',
+      '',
+      '1. Run this: [S2]',
+      '',
+      '   ```sh',
+      '   echo "**x** [S1]"',
+      '   ```',
+      '',
+      '2. **Check** it. [S2]',
+      '',
+      'Setext title',
+      '============',
+    ].join('\n');
+    expect(plainAnswer(answer, (id) => (id === 'S1' ? 1 : 2))).toBe(
+      [
+        'Type `[S1]` or ``a**b`` literally, then save. [1]',
+        '',
+        '    indented **code** [S1]',
+        '',
+        '1. Run this: [2]',
+        '',
+        '   ```sh',
+        '   echo "**x** [S1]"',
+        '   ```',
+        '',
+        '2. Check it. [2]',
+        '',
+        'Setext title',
+      ].join('\n'),
+    );
+  });
+
   it('ends with the numbered sources and their links', () => {
     const { sections, numberOf } = answerSources([source('S2', 'Add your domain'), source('S1')]);
     expect(plainCopy('Add it. [S2] More. [S1]', sections, numberOf, link, labels)).toBe(
@@ -82,6 +118,13 @@ describe('copying an answer', () => {
 });
 
 describe('citations in copied HTML', () => {
+  it('keeps where a numbered list starts, and only a numeric start on an ordered list', () => {
+    const answer = document.createElement('div');
+    answer.innerHTML = '<ol start="3"><li>Third</li></ol><ol start="3x"><li>Bad</li></ol><ul start="2"><li>Bullet</li></ul>';
+    const html = htmlCopy(answer, [], link, labels);
+    expect(html).toBe('<div><ol start="3"><li>Third</li></ol><ol><li>Bad</li></ol><ul><li>Bullet</li></ul></div>');
+  });
+
   it('puts one space before a run of citations, as in plain text', () => {
     const { sections } = answerSources([source('S1', 'Add your domain'), source('S2', 'Wait')]);
     const answer = document.createElement('div');
@@ -129,5 +172,64 @@ describe('writing to the clipboard', () => {
     vi.stubGlobal('ClipboardItem', undefined);
     await writeCopy('plain again', '<p>html</p>');
     expect(writeText).toHaveBeenLastCalledWith('plain again');
+  });
+
+  it('copies with the copy command where there is no async clipboard (plain http), and puts focus and selection back', async () => {
+    vi.stubGlobal('navigator', {});
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    const button = document.createElement('button');
+    const text = document.createElement('p');
+    text.textContent = 'Selected by the reader';
+    dialog.append(text, button);
+    document.body.append(dialog);
+    button.focus();
+    const selection = document.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    expect(selection?.toString()).toBe('Selected by the reader');
+    const copied: Record<string, string> = {};
+    const execCommand = vi.fn((command: string) => {
+      // The hidden field is in the dialog (its focus trap keeps focus there) and selected.
+      const field = dialog.querySelector('textarea');
+      expect(document.activeElement).toBe(field);
+      expect(field?.value).toBe('plain');
+      const event = new Event('copy', { cancelable: true }) as ClipboardEvent;
+      Object.defineProperty(event, 'clipboardData', {
+        value: {
+          setData: (type: string, value: string) => {
+            copied[type] = value;
+          },
+        },
+      });
+      document.dispatchEvent(event);
+      return command === 'copy';
+    });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+    await writeCopy('plain', '<p>html</p>');
+    expect(execCommand).toHaveBeenCalledWith('copy');
+    expect(copied).toEqual({ 'text/plain': 'plain', 'text/html': '<p>html</p>' });
+    expect(dialog.querySelector('textarea')).toBeNull();
+    expect(document.activeElement).toBe(button);
+    expect(document.getSelection()?.toString()).toBe('Selected by the reader');
+    dialog.remove();
+  });
+
+  it('falls back to the copy command when writing text is refused, and rejects when nothing could copy', async () => {
+    const writeText = vi.fn(async () => {
+      throw new Error('NotAllowedError');
+    });
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+    await writeCopy('plain');
+    expect(execCommand).toHaveBeenCalledWith('copy');
+    execCommand.mockReturnValue(false);
+    await expect(writeCopy('plain')).rejects.toThrow();
+    vi.stubGlobal('navigator', {});
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: undefined });
+    await expect(writeCopy('plain')).rejects.toThrow();
   });
 });

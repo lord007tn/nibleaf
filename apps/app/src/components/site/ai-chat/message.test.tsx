@@ -147,6 +147,27 @@ describe('reader chat messages', () => {
     await unmount();
   });
 
+  it('says in the panel whether copying worked, in a polite live region, without a toast region', async () => {
+    const { container, render, unmount } = mount();
+    const status = () => container.querySelector('[aria-live="polite"]');
+    const copyButton = () => container.querySelector<HTMLButtonElement>('button[aria-label="Copy answer"]');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(async () => undefined) } });
+    await render(<ChatMessage text="" final={final} options={options} busy={false} consent="granted" close={vi.fn()} />);
+    // Mounted empty before any copy, so screen readers announce what it says next.
+    expect(status()?.textContent).toBe('');
+    await act(async () => copyButton()?.click());
+    expect(status()?.textContent).toBe('Answer copied');
+    expect(copyButton()?.querySelector('.lucide-check')).not.toBeNull();
+    // Plain http: no async clipboard, and the copy command is refused.
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) });
+    await act(async () => copyButton()?.click());
+    expect(status()?.textContent).toBe('Could not copy the answer. Please try again.');
+    expect(status()?.className).toContain('text-destructive');
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: undefined });
+    await unmount();
+  });
+
   it('links each source to its exact section and reports opens, copies and follow-ups', async () => {
     const { container, render, unmount } = mount();
     const onSourceOpen = vi.fn();

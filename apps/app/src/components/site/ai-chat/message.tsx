@@ -1,10 +1,9 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
 import type { AiChatConsent, AiChatFinalEvent, AiChatSource } from '@nibleaf/validators';
-import { Copy, LifeBuoy } from 'lucide-react';
-import { Children, cloneElement, isValidElement, type ReactNode, useRef } from 'react';
+import { Check, Copy, LifeBuoy } from 'lucide-react';
+import { Children, cloneElement, isValidElement, type ReactNode, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { toast } from 'sonner';
 import { siteHref } from '@/lib/site-paths';
 import { htmlCopy, plainCopy, writeCopy } from './copy';
 import { Feedback } from './feedback';
@@ -64,6 +63,15 @@ export function ChatMessage({
   const cited = answerSources(final?.status === 'no_answer' ? [] : (final?.citations ?? []));
   const sourceId = (number: number) => `${prefix}-source-${number}`;
   const answer = useRef<HTMLDivElement>(null);
+  // What the last copy did, shown beside the rating buttons in a polite live
+  // region that stays mounted, so screen readers announce each change (the
+  // published reader mounts no toast region). `at` restarts the timer on a repeat.
+  const [copied, setCopied] = useState<{ result: 'copied' | 'failed'; at: number }>();
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(undefined), copied.result === 'copied' ? 2500 : 6000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
   const cite = (children: ReactNode): ReactNode =>
     Children.map(children, (child) => {
       if (typeof child === 'string')
@@ -200,14 +208,23 @@ export function ChatMessage({
                     answer.current ? htmlCopy(answer.current, cited.sections, link, labels) : undefined,
                   );
                   onCopy?.();
-                  toast.success(t('aiCopied'));
+                  setCopied({ result: 'copied', at: Date.now() });
                 } catch {
-                  toast.error(t('aiCopyFailed'));
+                  setCopied({ result: 'failed', at: Date.now() });
                 }
               }}
             >
-              <Copy aria-hidden className="size-4" />
+              {copied?.result === 'copied' ? <Check aria-hidden className="size-4 text-primary" /> : <Copy aria-hidden className="size-4" />}
             </Button>
+          }
+          trailing={
+            <span
+              aria-live="polite"
+              aria-atomic="true"
+              className={copied?.result === 'failed' ? 'ms-1 text-destructive text-xs' : 'ms-1 text-muted-foreground text-xs'}
+            >
+              {copied ? t(copied.result === 'copied' ? 'aiCopied' : 'aiCopyFailed') : ''}
+            </span>
           }
         />
       )}
