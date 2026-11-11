@@ -24,7 +24,7 @@ export const proxySiteOg = async (
     const result = new Headers({
       'content-type': 'image/png',
       'cache-control': // Revalidate every use (see apps/server/src/modules/public/sites/og.ts).
-      publicImage ? 'public, no-cache, must-revalidate' : 'private, no-store',
+        publicImage ? 'public, no-cache, must-revalidate' : 'private, no-store',
       'x-content-type-options': 'nosniff',
     });
     for (const name of ['etag', 'retry-after']) {

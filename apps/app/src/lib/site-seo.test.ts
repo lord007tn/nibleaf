@@ -64,13 +64,26 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
 });
 
 describe('pageHead SEO cascade', () => {
-  it('cleans descriptions consistently across metadata and JSON-LD, preferring the author SEO override', () => {
+  it('uses the API-cleaned description consistently across metadata and JSON-LD', () => {
+    // The API cleans once (SEO override, then summary, then body) into `seoDescription`.
     const head = pageHead(
-      base({ page: { ...base().page, config: { seo: { metaDescription: '> [!NOTE]\n**Clean** [summary](/docs) `here`' } } } }),
+      base({
+        page: {
+          ...base().page,
+          seoDescription: 'Clean summary here',
+          config: { seo: { metaDescription: '> [!NOTE]\n**Clean** [summary](/docs) `here`' } },
+        },
+      }),
       'p1',
     );
     for (const tag of ['description', 'og:description', 'twitter:description']) expect(meta(head, tag)).toBe('Clean summary here');
     expect(JSON.parse(head.scripts?.[0]?.children ?? '{}').description).toBe('Clean summary here');
+  });
+
+  it('never cleans the API description a second time (literal markup text survives)', () => {
+    const head = pageHead(base({ page: { ...base().page, seoDescription: 'Use <Token> with care.' } }), 'p1');
+    for (const tag of ['description', 'og:description', 'twitter:description']) expect(meta(head, tag)).toBe('Use <Token> with care.');
+    expect(JSON.parse(head.scripts?.[0]?.children ?? '{}').description).toBe('Use <Token> with care.');
   });
 
   it('emits a per-page image with dimensions, alt and the custom-domain, language and version URL', () => {

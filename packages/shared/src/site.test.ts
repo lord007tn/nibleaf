@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { pageDescription, pageExcerpt } from './markdown-text';
 import {
   buildNavTree,
   buildSnapshot,
@@ -18,7 +19,6 @@ import {
   type SnapshotProject,
   withOpenApiNav,
 } from './site';
-import { pageDescription, pageExcerpt } from './markdown-text';
 
 describe('isPageTranslation', () => {
   it('uses an explicit translation key when localized paths differ', () => {

@@ -1,5 +1,3 @@
-import { fencedMarkdownLines } from './markdown-code';
-
 /** Longest slug we emit. Page titles are capped at 200 characters, so anything
  *  longer can only come from pathological input (import paths joined with '-'). */
 const MAX_SLUG_LENGTH = 200;
