@@ -209,6 +209,12 @@
     border-inline-end-color: transparent;
   }
 
+  /* Dashboard only: menus and dialogs lock page scroll, and without a reserved
+   * gutter the whole page shifted sideways when one opened (audit WORKSPACE-18). */
+  html:has([data-dashboard-shell]) {
+    scrollbar-gutter: stable;
+  }
+
   /* Reader sidebars scroll natively so the bar always tracks the nav's height
    * as sections expand; a thin, theme-tinted bar keeps it visible but quiet. */
   .documentation-sidebar-scroll {
