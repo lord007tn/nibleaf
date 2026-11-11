@@ -1,10 +1,16 @@
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { claimDocumentRecovery, setNavigationPending } from '@/lib/document-recovery';
+import { navigationRecoveryDelay } from '@/lib/page-load-error';
+import { setReaderSiteAccess } from '@/lib/reader-site-access';
 import { isAppOwnedPath, isDocumentPath } from '@/lib/request-negotiation';
-import { claimNavigationFallback, createLinkPreloader, HOVER_DWELL_MS } from '@/lib/site-link-prefetch';
+import { createLinkPreloader, HOVER_DWELL_MS, TAP_SLOP_PX } from '@/lib/site-link-prefetch';
 import { isCustomDomainSite } from '@/lib/site-paths';
 
 type ReaderLocation = Pick<Location, 'href' | 'origin' | 'pathname' | 'search'>;
+
+/** How long a navigation recovery for one URL blocks another for it. */
+const NAVIGATION_RECOVERY_TTL_MS = 60_000;
 
 /**
  * The router href for a click on a link to another page of this published
@@ -46,8 +52,11 @@ function siteLinkTarget(element: Element | null, projectId: string, location: Re
 
 /** Route clicks on links between pages of a published site through the client
  * router instead of a full document load. Links stay plain `<a href>` so they
- * work without JavaScript and in server-rendered HTML. */
-export function useSiteLinkNavigation(projectId: string): string {
+ * work without JavaScript and in server-rendered HTML.
+ *
+ * `publicSite` (a public site with no reader session) also enables prefetching
+ * and the 30 s page cache; anything else fails closed (lib/reader-site-access.ts). */
+export function useSiteLinkNavigation(projectId: string, { publicSite = false }: { publicSite?: boolean } = {}): string {
   const router = useRouter();
   const [announcement, setAnnouncement] = useState('');
   useEffect(() => {
@@ -129,9 +138,46 @@ export function useSiteLinkNavigation(projectId: string): string {
     };
   }, [router, projectId]);
 
-  // Prefetch on intent, the pager's next page when idle, and a server-rendered
-  // fallback when a client navigation fails.
+  // Which loads are the reader's own (lib/document-recovery.ts), and a
+  // server-rendered fallback when a client navigation couldn't load its page.
   useEffect(() => {
+    let recovery = 0;
+    const beforeNavigate = router.subscribe('onBeforeNavigate', ({ fromLocation, toLocation }) => {
+      if (fromLocation?.href === toLocation.href) return;
+      window.clearTimeout(recovery);
+      setNavigationPending(true);
+    });
+    // Only a transport failure (the network, or a gateway's bare 502/503/504)
+    // loads the destination as a document, after any short Retry-After: the
+    // server-rendered page may get through where the data request didn't. A
+    // refusal (any 4xx), a 500 or a chunk failure (lib/chunk-reload.ts owns
+    // those) keeps the error page. The recovery budget is shared with
+    // chunk-reload, so one failure never recovers twice and nothing loops.
+    const resolved = router.subscribe('onResolved', ({ fromLocation, toLocation }) => {
+      setNavigationPending(false);
+      if (!fromLocation || fromLocation.href === toLocation.href) return;
+      const failed = router.state.matches.find((match) => match.status === 'error');
+      if (!failed) return;
+      const delay = navigationRecoveryDelay(failed.error);
+      if (delay === null) return;
+      const href = window.location.href;
+      recovery = window.setTimeout(() => {
+        if (window.location.href !== href) return;
+        if (claimDocumentRecovery(`nav:${href}`, { ttlMs: NAVIGATION_RECOVERY_TTL_MS })) window.location.assign(href);
+      }, delay);
+    });
+    return () => {
+      beforeNavigate();
+      resolved();
+      window.clearTimeout(recovery);
+      setNavigationPending(false);
+    };
+  }, [router]);
+
+  // Prefetch on intent, and the pager's next page when idle: public sites only.
+  useEffect(() => {
+    setReaderSiteAccess(projectId, publicSite);
+    if (!publicSite) return;
     // preloadRoute resolves `href` exactly like navigate does (both build the
     // location from it, custom-domain rewrite included); its type just doesn't say so.
     const preload = createLinkPreloader({ preload: (href) => router.preloadRoute({ href } as Parameters<typeof router.navigate>[0]) });
@@ -143,7 +189,7 @@ export function useSiteLinkNavigation(projectId: string): string {
     };
     let dwell = 0;
     const onPointerOver = (event: PointerEvent) => {
-      // Touch has its own, earlier signal (touchstart).
+      // Touch has its own signal: a tap (touchend without movement).
       if (event.pointerType === 'touch') return;
       window.clearTimeout(dwell);
       const href = targetOf(event.target);
@@ -157,14 +203,33 @@ export function useSiteLinkNavigation(projectId: string): string {
       const href = targetOf(event.target);
       if (href) preload(href, 'focus');
     };
+    // A finger that lands on a link and lifts without scrolling is a tap: the
+    // click follows, and preloading now gets the request out first. A touch
+    // that moves is a scroll across the links, which is not intent.
+    let touch: { x: number; y: number; href: string } | null = null;
     const onTouchStart = (event: TouchEvent) => {
-      const href = targetOf(event.target);
-      if (href) preload(href, 'touch');
+      const point = event.touches[0];
+      const href = event.touches.length === 1 && point ? targetOf(event.target) : null;
+      touch = href && point ? { x: point.clientX, y: point.clientY, href } : null;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      const point = event.touches[0];
+      if (touch && (!point || Math.hypot(point.clientX - touch.x, point.clientY - touch.y) > TAP_SLOP_PX)) touch = null;
+    };
+    const onTouchEnd = () => {
+      if (touch) preload(touch.href, 'touch');
+      touch = null;
+    };
+    const onTouchCancel = () => {
+      touch = null;
     };
     document.addEventListener('pointerover', onPointerOver, { passive: true });
     document.addEventListener('pointerout', onPointerOut, { passive: true });
     document.addEventListener('focusin', onFocusIn);
     document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: true });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', onTouchCancel, { passive: true });
 
     // Sequential reading: once the browser is idle after a page shows, load the
     // pager's next page, and only that one.
@@ -186,34 +251,37 @@ export function useSiteLinkNavigation(projectId: string): string {
     const onLoad = () => preloadNextPage();
     if (document.readyState === 'complete') preloadNextPage();
     else window.addEventListener('load', onLoad, { once: true });
+    // While the reader's own navigation loads, nothing speculative starts or waits to.
+    const beforeNavigate = router.subscribe('onBeforeNavigate', ({ fromLocation, toLocation }) => {
+      if (fromLocation?.href === toLocation.href) return;
+      window.clearTimeout(dwell);
+      touch = null;
+      cancelNextPage();
+      preload.cancel();
+    });
+    const resolved = router.subscribe('onResolved', () => preload.resume());
     const rendered = router.subscribe('onRendered', ({ fromLocation, toLocation }) => {
       if (!fromLocation || fromLocation.href === toLocation.href) return;
       cancelNextPage();
       preloadNextPage();
     });
 
-    // A client navigation whose loader failed (a network or server error; a
-    // missing page is a not-found, not an error) reloads that URL once, so the
-    // reader gets the server-rendered page instead of an error screen. Recorded
-    // in session storage: if that page fails too, the error page stays.
-    const resolved = router.subscribe('onResolved', ({ fromLocation, toLocation }) => {
-      if (!fromLocation || fromLocation.href === toLocation.href) return;
-      if (!router.state.matches.some((match) => match.status === 'error')) return;
-      const href = window.location.href;
-      if (claimNavigationFallback(href)) window.location.assign(href);
-    });
-
     return () => {
+      preload.cancel();
       document.removeEventListener('pointerover', onPointerOver);
       document.removeEventListener('pointerout', onPointerOut);
       document.removeEventListener('focusin', onFocusIn);
       document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchCancel);
       window.removeEventListener('load', onLoad);
       window.clearTimeout(dwell);
       cancelNextPage();
-      rendered();
+      beforeNavigate();
       resolved();
+      rendered();
     };
-  }, [router, projectId]);
+  }, [router, projectId, publicSite]);
   return announcement;
 }
