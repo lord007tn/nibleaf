@@ -3,6 +3,19 @@ import { siteT } from '@nibleaf/i18n/site';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSiteReader } from '@/components/site/site-reader-context';
 
+/** An article body's paragraphs, a heading and a code block. */
+export function ArticleBodySkeleton({ className }: { className?: string }) {
+  return (
+    <div aria-hidden className={className}>
+      <SkeletonText lines={4} />
+      <Skeleton className="mt-10 h-6 w-2/5" />
+      <SkeletonText className="mt-4" lines={3} />
+      <Skeleton className="mt-6 h-28 w-full rounded-lg" />
+      <SkeletonText className="mt-6" lines={3} />
+    </div>
+  );
+}
+
 /**
  * Shown while the reader opens another page (the router's pending state). It
  * sits inside the reader chrome and the active theme's page layout, shaped like
@@ -25,11 +38,7 @@ export function SiteArticleSkeleton() {
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-3 w-28" />
         </div>
-        <SkeletonText className="mt-10" lines={4} />
-        <Skeleton className="mt-10 h-6 w-2/5" />
-        <SkeletonText className="mt-4" lines={3} />
-        <Skeleton className="mt-6 h-28 w-full rounded-lg" />
-        <SkeletonText className="mt-6" lines={3} />
+        <ArticleBodySkeleton className="mt-10" />
       </div>
     </div>
   );

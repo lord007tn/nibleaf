@@ -63,8 +63,13 @@
   "dashboard_empty_body": "Créez un site, rédigez votre premier article et publiez-le : cela prend environ cinq minutes.",
   "dashboard_pages": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} page",
         "form=*": "{count} pages"
@@ -752,8 +757,13 @@
   "settings_languages_direction_rtl": "RTL",
   "settings_languages_coverage_sourcepages": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} page source",
         "form=*": "{count} pages sources"
@@ -765,8 +775,13 @@
   "settings_languages_coverage_percent": "Couverture de {percent} %",
   "settings_languages_coverage_missing": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} manquante",
         "form=*": "{count} manquantes"
@@ -775,8 +790,13 @@
   ],
   "settings_languages_coverage_extra": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} propre à cette langue",
         "form=*": "{count} propres à cette langue"
@@ -1044,8 +1064,13 @@
   "settings_authentication_reader_entiresite": "Site entier",
   "settings_authentication_reader_pagecount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} page",
         "form=*": "{count} pages"
@@ -1309,8 +1334,13 @@
   "settings_apikeys_expiry": "Expiration",
   "settings_apikeys_expirydays": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} jour",
         "form=*": "{count} jours"
@@ -1852,8 +1882,13 @@
   "settings_exports_workflow_publishedversion": "Publié v{version}",
   "settings_exports_workflow_pagecount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} page",
         "form=*": "{count} pages"
@@ -2179,13 +2214,19 @@
   "site_searchprompt": "Tapez pour rechercher…",
   "site_results": "Résultats",
   "site_loading": "Chargement…",
+  "site_articleloadfailed": "Impossible de charger cette page. Réessayer",
   "site_previous": "Précédent",
   "site_next": "Suivant",
   "site_onthispage": "Sur cette page",
   "site_minreadcount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=*": "{count} min de lecture"
       }
@@ -2193,8 +2234,13 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} capture d'écran",
         "form=*": "{count} captures d'écran"
@@ -2238,8 +2284,13 @@
   "site_changelogrelease": "Version",
   "site_changelogpagecount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} page",
         "form=*": "{count} pages"
@@ -4219,8 +4270,13 @@
   "organization_members_nowebsites": "No websites",
   "organization_members_websites": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} website",
         "form=*": "{count} websites"
@@ -4607,6 +4663,17 @@
   "people_invite_recipients": "Invited people",
   "people_invitations_resendnotqueued": "The invitation to {email} works for 7 more days, but its email couldn’t be queued. Copy the link instead.",
   "people_site_invitedfailed": "The invitation for {email} exists, but its email couldn’t be queued. Copy the link or retry.",
+  "account_menu_help": "Help and documentation",
+  "account_menu_whatsNew": "What's new",
+  "account_menu_shortcuts": "Keyboard shortcuts",
+  "account_menu_reportProblem": "Report a problem",
+  "shortcuts_title": "Keyboard shortcuts",
+  "shortcuts_description": "Work faster in the dashboard. Letter shortcuts work when you are not typing in a field.",
+  "shortcuts_commandPalette": "Search and run commands",
+  "shortcuts_switchOrganization": "Switch organization",
+  "shortcuts_switchWebsite": "Switch website",
+  "shortcuts_close": "Close a menu or dialog",
+  "shortcuts_then": "then",
   "newsite_address": "Adresse du site",
   "newsite_editaddress": "Modifier l’adresse",
   "newsite_language": "Langue principale",

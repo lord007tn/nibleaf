@@ -63,8 +63,13 @@
   "dashboard_empty_body": "ایک سائٹ بنائیں، اپنا پہلا مضمون لکھیں اور اسے شائع کریں — اس میں تقریباً پانچ منٹ لگتے ہیں۔",
   "dashboard_pages": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} صفحہ",
         "form=*": "{count} صفحات"
@@ -752,8 +757,13 @@
   "settings_languages_direction_rtl": "RTL",
   "settings_languages_coverage_sourcepages": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} ماخذ صفحہ",
         "form=*": "{count} ماخذ صفحات"
@@ -765,8 +775,13 @@
   "settings_languages_coverage_percent": "{percent}% کوریج",
   "settings_languages_coverage_missing": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} صفحہ موجود نہیں",
         "form=*": "{count} صفحات موجود نہیں"
@@ -775,8 +790,13 @@
   ],
   "settings_languages_coverage_extra": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} صفحہ صرف اس زبان میں",
         "form=*": "{count} صفحات صرف اس زبان میں"
@@ -1044,8 +1064,13 @@
   "settings_authentication_reader_entiresite": "پوری سائٹ",
   "settings_authentication_reader_pagecount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} صفحہ",
         "form=*": "{count} صفحات"
@@ -1843,8 +1868,13 @@
   "settings_exports_workflow_publishedversion": "شائع شدہ v{version}",
   "settings_exports_workflow_pagecount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} صفحہ",
         "form=*": "{count} صفحات"
@@ -2170,13 +2200,19 @@
   "site_searchprompt": "تلاش کرنے کے لیے ٹائپ کریں…",
   "site_results": "نتائج",
   "site_loading": "لوڈ ہو رہا ہے…",
+  "site_articleloadfailed": "یہ صفحہ لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں",
   "site_previous": "پچھلا",
   "site_next": "اگلا",
   "site_onthispage": "اس صفحہ پر",
   "site_minreadcount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=*": "{count} منٹ کا مطالعہ"
       }
@@ -2184,8 +2220,13 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} اسکرین شاٹ",
         "form=*": "{count} اسکرین شاٹس"
@@ -2229,8 +2270,13 @@
   "site_changelogrelease": "ریلیز",
   "site_changelogpagecount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} صفحہ",
         "form=*": "{count} صفحات"
@@ -4210,8 +4256,13 @@
   "organization_members_nowebsites": "No websites",
   "organization_members_websites": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} website",
         "form=*": "{count} websites"
@@ -4598,6 +4649,17 @@
   "people_invite_recipients": "Invited people",
   "people_invitations_resendnotqueued": "The invitation to {email} works for 7 more days, but its email couldn’t be queued. Copy the link instead.",
   "people_site_invitedfailed": "The invitation for {email} exists, but its email couldn’t be queued. Copy the link or retry.",
+  "account_menu_help": "Help and documentation",
+  "account_menu_whatsNew": "What's new",
+  "account_menu_shortcuts": "Keyboard shortcuts",
+  "account_menu_reportProblem": "Report a problem",
+  "shortcuts_title": "Keyboard shortcuts",
+  "shortcuts_description": "Work faster in the dashboard. Letter shortcuts work when you are not typing in a field.",
+  "shortcuts_commandPalette": "Search and run commands",
+  "shortcuts_switchOrganization": "Switch organization",
+  "shortcuts_switchWebsite": "Switch website",
+  "shortcuts_close": "Close a menu or dialog",
+  "shortcuts_then": "then",
   "newsite_address": "سائٹ کا پتہ",
   "newsite_editaddress": "پتہ تبدیل کریں",
   "newsite_language": "مرکزی زبان",

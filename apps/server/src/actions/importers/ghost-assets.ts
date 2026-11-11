@@ -72,7 +72,11 @@ const sniffImageType = (bytes: Uint8Array): string => {
   return '';
 };
 
-const fetchPublicImage = async (source: string, maxBytes: number): Promise<{ bytes: Uint8Array; contentType: string; filename: string }> => {
+export const fetchPublicImage = async (
+  source: string,
+  maxBytes: number,
+  timeoutMs = 20_000,
+): Promise<{ bytes: Uint8Array; contentType: string; filename: string }> => {
   let url = publicHttpUrl(source);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
     const request = got.stream(url, {
@@ -80,7 +84,7 @@ const fetchPublicImage = async (source: string, maxBytes: number): Promise<{ byt
       followRedirect: false,
       retry: { limit: 0 },
       throwHttpErrors: false,
-      timeout: { request: 20_000 },
+      timeout: { request: timeoutMs },
       dnsLookup: publicDnsLookup,
       agent: DOWNLOAD_AGENTS,
     });

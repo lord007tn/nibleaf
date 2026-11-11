@@ -1,4 +1,12 @@
-import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  contiguousFirstFilter,
+} from '@nibleaf/design-system/components/ui/command';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useTheme } from '@nibleaf/design-system/theme';
 import type { MessageKey } from '@nibleaf/i18n';
@@ -25,21 +33,29 @@ import {
   UserRound,
   Users,
 } from 'lucide-react';
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, Fragment, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useOrganizationSwitcherProjects, usePages, useSwitcher } from '@/hooks/api';
+import { resolveProjectSettingsAccess } from '@/lib/project-settings-access';
 import { OrgAvatar } from './org-switcher/org-avatar';
 import { useSwitcherControls } from './org-switcher/switcher-context';
 
 /** Site-settings destinations people look for most, with English aliases so
  *  "domain", "team" or "language" find them whatever the label says. */
+// `adminOnly`: offered only where the shared site-access policy lets the
+// person manage the website's settings (resolveProjectSettingsAccess). The Team
+// page has a read-only view, so every member may open it.
 const SETTINGS_DESTINATIONS = [
-  { section: 'general', labelKey: 'settings.general', icon: SlidersHorizontal, aliases: 'general name logo seo' },
-  { section: 'domain', labelKey: 'settings.domain', icon: Globe2, aliases: 'domain address url web dns' },
-  { section: 'languages', labelKey: 'settings.languages', icon: Languages, aliases: 'languages translation arabic rtl' },
-  { section: 'members', labelKey: 'settings.members', icon: Users, aliases: 'members team people invite roles' },
-] as const satisfies ReadonlyArray<{ section: string; labelKey: MessageKey; icon: LucideIcon; aliases: string }>;
+  { section: 'general', labelKey: 'settings.general', icon: SlidersHorizontal, aliases: 'general name logo seo', adminOnly: true },
+  { section: 'domain', labelKey: 'settings.domain', icon: Globe2, aliases: 'domain address url web dns', adminOnly: true },
+  { section: 'languages', labelKey: 'settings.languages', icon: Languages, aliases: 'languages translation arabic rtl', adminOnly: true },
+  { section: 'members', labelKey: 'settings.members', icon: Users, aliases: 'members team people invite roles', adminOnly: false },
+] as const satisfies ReadonlyArray<{ section: string; labelKey: MessageKey; icon: LucideIcon; aliases: string; adminOnly: boolean }>;
+
+/** The settings shortcuts this person may open on a website, by their effective role there. */
+const settingsDestinationsFor = (role: string | undefined) =>
+  SETTINGS_DESTINATIONS.filter((destination) => !destination.adminOnly || resolveProjectSettingsAccess(role, false) === 'admin');
 
 /** Pages listed before the user types (most recently edited first). */
 const RECENT_PAGE_LIMIT = 6;
@@ -128,8 +144,14 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     if (searching) return list;
     return [...list].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, RECENT_PAGE_LIMIT);
   }, [pages, searching]);
-  // Inside a site, its settings; elsewhere, this organization's websites' settings once the user searches.
-  const settingsSites = projectId ? (currentSite ? [currentSite] : []) : searching ? (projects ?? []) : [];
+  // Inside a site, its settings. Elsewhere, once the user searches, each settings
+  // page appears ONCE, for the website opened most recently in this organization
+  // (or its first): one "Custom domain", not one per website (audit WORKSPACE-16).
+  const recentInOrg = switcher.data?.recent?.find(
+    (website) => website.organization.id === organization?.id && projects?.some((p) => p.id === website.id),
+  );
+  const settingsSite = projectId ? currentSite : searching ? (projects?.find((p) => p.id === recentInOrg?.id) ?? projects?.[0]) : undefined;
+  const settingsSites = settingsSite ? [settingsSite] : [];
 
   const changeOpen = (next: boolean) => {
     if (!next) setQuery('');
@@ -140,9 +162,120 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     navigate({ to, params, search } as never);
   };
 
+  // Every group and item has a URL-safe `value` (words live in `keywords`):
+  // cmdk looks elements up by `encodeURIComponent(value)`, so a value with a
+  // space never matched. Items: `aria-activedescendant` kept pointing at a
+  // stale option. Groups: never reordered (they are ordered below anyway).
+  const pagesGroup =
+    projectId && pageItems.length > 0 ? (
+      <CommandGroup heading={t('command.group.pages')} value="pages">
+        {pageItems.map((page) => {
+          const title = page.config?.sidebarTitle?.trim() || page.title;
+          return (
+            <CommandItem
+              key={page.id}
+              keywords={[title, page.slug]}
+              onSelect={() => go('/app/projects/$projectId/editor', { projectId }, { page: page.id })}
+              value={`page-${page.id}`}
+            >
+              <FileText className="size-4" />
+              <span className="truncate" dir="auto">
+                {title}
+              </span>
+            </CommandItem>
+          );
+        })}
+      </CommandGroup>
+    ) : null;
+  const projectsGroup = (
+    <CommandGroup heading={t('command.group.projects')} value="projects">
+      {(projects ?? []).map((project) => (
+        <CommandItem
+          key={project.id}
+          keywords={[project.name, project.domain ?? '']}
+          value={`project-${project.id}`}
+          onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
+        >
+          <BookText className="size-4" />
+          <span className="truncate" dir="auto">
+            {project.name}
+          </span>
+        </CommandItem>
+      ))}
+    </CommandGroup>
+  );
+  const settingsGroup =
+    settingsSites.length > 0 ? (
+      <CommandGroup heading={t('command.group.settings')} value="settings">
+        {settingsSites.flatMap((site) =>
+          settingsDestinationsFor(site.role).map((destination) => {
+            const label = t(destination.labelKey);
+            return (
+              <CommandItem
+                key={`${site.id}-${destination.section}`}
+                keywords={[label, site.name, t('command.group.settings'), destination.aliases]}
+                onSelect={() => go('/app/projects/$projectId/settings', { projectId: site.id }, { section: destination.section })}
+                value={`settings-${site.id}-${destination.section}`}
+              >
+                <destination.icon className="size-4" />
+                <span className="flex-1 truncate">{label}</span>
+                {projectId ? null : (
+                  <span className="max-w-[45%] truncate text-muted-foreground text-xs" dir="auto">
+                    {site.name}
+                  </span>
+                )}
+              </CommandItem>
+            );
+          }),
+        )}
+      </CommandGroup>
+    ) : null;
+  // cmdk does not reliably reorder whole groups, so the result groups are ordered
+  // here by their best match, with the same scorer cmdk uses for items
+  // (production audit WORKSPACE-16: "domain" must find Custom domain before a
+  // site whose name merely contains those letters). Stable: ties keep this order.
+  const bestMatch = (entries: ReadonlyArray<readonly [string, readonly string[]]>) =>
+    searching ? Math.max(0, ...entries.map(([value, keywords]) => contiguousFirstFilter(value, query, [...keywords]))) : 0;
+  const orderedResultGroups = [
+    {
+      key: 'pages',
+      node: pagesGroup,
+      score: bestMatch(pageItems.map((page) => [`page-${page.id}`, [page.config?.sidebarTitle?.trim() || page.title, page.slug]] as const)),
+    },
+    {
+      key: 'projects',
+      node: projectsGroup,
+      score: bestMatch((projects ?? []).map((project) => [`project-${project.id}`, [project.name, project.domain ?? '']] as const)),
+    },
+    {
+      key: 'settings',
+      node: settingsGroup,
+      score: bestMatch(
+        settingsSites.flatMap((site) =>
+          settingsDestinationsFor(site.role).map(
+            (destination) =>
+              [
+                `settings-${site.id}-${destination.section}`,
+                [t(destination.labelKey), site.name, t('command.group.settings'), destination.aliases],
+              ] as const,
+          ),
+        ),
+      ),
+    },
+  ]
+    .sort((a, b) => b.score - a.score)
+    .map((group) => <Fragment key={group.key}>{group.node}</Fragment>);
+
   return (
     <>
-      <CommandDialog description={t('command.dialog.description')} onOpenChange={changeOpen} open={open} title={t('command.dialog.title')}>
+      <CommandDialog
+        description={t('command.dialog.description')}
+        filter={contiguousFirstFilter}
+        label={t('command.searchPlaceholder')}
+        onOpenChange={changeOpen}
+        open={open}
+        title={t('command.dialog.title')}
+      >
         <CommandInput onValueChange={setQuery} placeholder={t('command.searchPlaceholder')} value={query} />
         {projectsQuery.isError ? (
           <div className="p-2">
@@ -161,145 +294,96 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           )}
           {pagesPending ? <PaletteLoadingRows heading={t('command.group.pages')} /> : null}
           {projectsPending ? <PaletteLoadingRows heading={t('command.group.projects')} /> : null}
-          {projectId && pageItems.length > 0 ? (
-            <CommandGroup heading={t('command.group.pages')}>
-              {pageItems.map((page) => {
-                const title = page.config?.sidebarTitle?.trim() || page.title;
-                return (
-                  <CommandItem
-                    key={page.id}
-                    keywords={[title, page.slug]}
-                    onSelect={() => go('/app/projects/$projectId/editor', { projectId }, { page: page.id })}
-                    value={`page ${page.id}`}
-                  >
-                    <FileText className="size-4" />
-                    <span className="truncate" dir="auto">
-                      {title}
-                    </span>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          ) : null}
-          <CommandGroup heading={t('command.group.projects')}>
-            {(projects ?? []).map((project) => (
-              <CommandItem
-                key={project.id}
-                keywords={[project.name, project.domain ?? '']}
-                value={`project ${project.id}`}
-                onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
-              >
-                <BookText className="size-4" />
-                <span className="truncate" dir="auto">
-                  {project.name}
-                </span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          {settingsSites.length > 0 ? (
-            <CommandGroup heading={t('command.group.settings')}>
-              {settingsSites.flatMap((site) =>
-                SETTINGS_DESTINATIONS.map((destination) => {
-                  const label = t(destination.labelKey);
-                  return (
-                    <CommandItem
-                      key={`${site.id}-${destination.section}`}
-                      keywords={[label, site.name, t('command.group.settings')]}
-                      onSelect={() => go('/app/projects/$projectId/settings', { projectId: site.id }, { section: destination.section })}
-                      value={`settings ${site.id} ${destination.aliases}`}
-                    >
-                      <destination.icon className="size-4" />
-                      <span className="flex-1 truncate">{label}</span>
-                      {projectId ? null : (
-                        <span className="max-w-[45%] truncate text-muted-foreground text-xs" dir="auto">
-                          {site.name}
-                        </span>
-                      )}
-                    </CommandItem>
-                  );
-                }),
-              )}
-            </CommandGroup>
-          ) : null}
-          <CommandGroup heading={t('command.group.actions')}>
+          {orderedResultGroups}
+          <CommandGroup heading={t('command.group.actions')} value="actions">
             {projectId ? (
               <>
                 <CommandItem
-                  keywords={[t('overview.openEditor')]}
+                  keywords={[t('overview.openEditor'), 'open editor write']}
                   onSelect={() => go('/app/projects/$projectId/editor', { projectId })}
-                  value="open editor write"
+                  value="open-editor-write"
                 >
                   <PenLine className="size-4" /> {t('overview.openEditor')}
                 </CommandItem>
                 <CommandItem
-                  keywords={[t('command.invite')]}
+                  keywords={[t('command.invite'), 'invite people teammate']}
                   onSelect={() => go('/app/projects/$projectId/settings', { projectId }, { section: 'members' })}
-                  value="invite people teammate"
+                  value="invite-people-teammate"
                 >
                   <UserPlus className="size-4" /> {t('command.invite')}
                 </CommandItem>
               </>
             ) : null}
+            {!projectId && organization && orgAdmin ? (
+              // Outside a website, inviting is an organization action (its Members page).
+              <CommandItem
+                keywords={[t('command.invite'), 'invite people teammate members']}
+                onSelect={() => go('/app/o/$orgSlug/members', { orgSlug: organization.slug })}
+                value="invite-people-teammate-members"
+              >
+                <UserPlus className="size-4" /> {t('command.invite')}
+              </CommandItem>
+            ) : null}
             <CommandItem
-              keywords={[t('command.switchOrganizationOrWebsite')]}
+              keywords={[t('command.switchOrganizationOrWebsite'), 'switch organization website']}
               onSelect={() => {
                 changeOpen(false);
                 controls?.openSwitcher('organization');
               }}
-              value="switch organization website"
+              value="switch-organization-website"
             >
               <ArrowLeftRight className="size-4" /> {t('command.switchOrganizationOrWebsite')}
             </CommandItem>
             {organization?.canCreateWebsite ? (
               <CommandItem
-                keywords={[t('dashboard.newProject')]}
+                keywords={[t('dashboard.newProject'), 'new site website create']}
                 onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: organization.slug }, { newSite: true })}
-                value="new site website create"
+                value="new-site-website-create"
               >
                 <Plus className="size-4" /> {t('dashboard.newProject')}
               </CommandItem>
             ) : null}
             <CommandItem
-              keywords={[t('command.createOrganization')]}
+              keywords={[t('command.createOrganization'), 'create new organization']}
               onSelect={() => {
                 changeOpen(false);
                 controls?.openCreateOrganization();
               }}
-              value="create new organization"
+              value="create-new-organization"
             >
               <Building2 className="size-4" /> {t('command.createOrganization')}
             </CommandItem>
             <CommandItem
-              keywords={[t('account.language')]}
+              keywords={[t('account.language'), 'switch interface language']}
               onSelect={() => {
                 changeOpen(false);
                 setLanguageOpen(true);
               }}
-              value="switch interface language"
+              value="switch-interface-language"
             >
               <Languages className="size-4" /> {t('account.language')}
             </CommandItem>
             <CommandItem
-              keywords={[t(resolvedTheme === 'dark' ? 'account.lightMode' : 'account.darkMode')]}
+              keywords={[t(resolvedTheme === 'dark' ? 'account.lightMode' : 'account.darkMode'), 'toggle dark light mode theme']}
               onSelect={() => {
                 changeOpen(false);
                 setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
               }}
-              value="toggle dark light mode theme"
+              value="toggle-dark-light-mode-theme"
             >
               {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
               {t(resolvedTheme === 'dark' ? 'account.lightMode' : 'account.darkMode')}
             </CommandItem>
           </CommandGroup>
-          <CommandGroup heading={t('command.group.goTo')}>
+          <CommandGroup heading={t('command.group.goTo')} value="go-to">
             {/* cmdk matches the query against `value`/`keywords`, never the rendered
                 label, so the localized label must be a keyword to be searchable. */}
             {organization ? (
               <>
                 <CommandItem
-                  keywords={[t('nav.websites')]}
+                  keywords={[t('nav.websites'), 'websites sites']}
                   onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: organization.slug })}
-                  value="websites sites"
+                  value="websites-sites"
                 >
                   <BookOpen className="size-4" /> {t('nav.websites')}
                 </CommandItem>
@@ -313,42 +397,46 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                 {orgAdmin ? (
                   <>
                     <CommandItem
-                      keywords={[t('nav.members'), 'people team invite roles']}
+                      keywords={[t('nav.members'), 'people team invite roles', 'members people']}
                       onSelect={() => go('/app/o/$orgSlug/members', { orgSlug: organization.slug })}
-                      value="members people"
+                      value="members-people"
                     >
                       <Users className="size-4" /> {t('nav.members')}
                     </CommandItem>
                     <CommandItem
-                      keywords={[t('nav.billing'), 'plan usage seats']}
+                      keywords={[t('nav.billing'), 'plan usage seats', 'billing usage plan']}
                       onSelect={() => go('/app/o/$orgSlug/billing', { orgSlug: organization.slug })}
-                      value="billing usage plan"
+                      value="billing-usage-plan"
                     >
                       <ReceiptText className="size-4" /> {t('nav.billing')}
                     </CommandItem>
                   </>
                 ) : null}
                 <CommandItem
-                  keywords={[t('command.organizationSettings')]}
+                  keywords={[t('command.organizationSettings'), 'organization settings']}
                   onSelect={() => go('/app/o/$orgSlug/settings', { orgSlug: organization.slug })}
-                  value="organization settings"
+                  value="organization-settings"
                 >
                   <Settings className="size-4" /> {t('command.organizationSettings')}
                 </CommandItem>
               </>
             ) : null}
-            <CommandItem keywords={[t('command.accountSettings')]} onSelect={() => go('/app/settings')} value="account settings profile">
+            <CommandItem
+              keywords={[t('command.accountSettings'), 'account settings profile']}
+              onSelect={() => go('/app/settings')}
+              value="account-settings-profile"
+            >
               <UserRound className="size-4" /> {t('command.accountSettings')}
             </CommandItem>
           </CommandGroup>
           {organizations.length > 1 ? (
-            <CommandGroup heading={t('command.group.switchOrganization')}>
+            <CommandGroup heading={t('command.group.switchOrganization')} value="switch-organization">
               {organizations.map((org) => (
                 <CommandItem
                   key={org.id}
                   keywords={[org.name, t('command.group.switchOrganization')]}
                   onSelect={() => go('/app/o/$orgSlug/websites', { orgSlug: org.slug })}
-                  value={`organization ${org.id}`}
+                  value={`organization-${org.id}`}
                 >
                   <OrgAvatar className="size-4 text-[8px]" logo={org.logo} name={org.name} />
                   <span className="flex-1 truncate">

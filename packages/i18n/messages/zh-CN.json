@@ -2116,13 +2116,19 @@
   "site_searchprompt": "输入搜索...",
   "site_results": "结果",
   "site_loading": "加载中...",
+  "site_articleloadfailed": "无法加载此页面。重试",
   "site_previous": "上一页",
   "site_next": "下一页",
   "site_onthispage": "在此页面上",
   "site_minreadcount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=*": "{count} 分钟阅读"
       }
@@ -2130,8 +2136,13 @@
   ],
   "site_screenshotcount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=*": "{count} 张截图"
       }
@@ -2174,8 +2185,13 @@
   "site_changelogrelease": "发布",
   "site_changelogpagecount": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=*": "{count} 个页面"
       }
@@ -4154,8 +4170,13 @@
   "organization_members_nowebsites": "No websites",
   "organization_members_websites": [
     {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
+      "declarations": [
+        "input count",
+        "input form"
+      ],
+      "selectors": [
+        "form"
+      ],
       "match": {
         "form=one": "{count} website",
         "form=*": "{count} websites"
@@ -4542,6 +4563,17 @@
   "people_invite_recipients": "Invited people",
   "people_invitations_resendnotqueued": "The invitation to {email} works for 7 more days, but its email couldn’t be queued. Copy the link instead.",
   "people_site_invitedfailed": "The invitation for {email} exists, but its email couldn’t be queued. Copy the link or retry.",
+  "account_menu_help": "Help and documentation",
+  "account_menu_whatsNew": "What's new",
+  "account_menu_shortcuts": "Keyboard shortcuts",
+  "account_menu_reportProblem": "Report a problem",
+  "shortcuts_title": "Keyboard shortcuts",
+  "shortcuts_description": "Work faster in the dashboard. Letter shortcuts work when you are not typing in a field.",
+  "shortcuts_commandPalette": "Search and run commands",
+  "shortcuts_switchOrganization": "Switch organization",
+  "shortcuts_switchWebsite": "Switch website",
+  "shortcuts_close": "Close a menu or dialog",
+  "shortcuts_then": "then",
   "newsite_address": "网站地址",
   "newsite_editaddress": "编辑地址",
   "newsite_language": "主要语言",
