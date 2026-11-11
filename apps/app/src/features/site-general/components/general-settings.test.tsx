@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigDirtyProvider } from '@/components/project-settings/shared';
 import type { Project } from '@/hooks/api';
+import { isolate } from '@/lib/bidi';
 import { GeneralSettings } from './general-settings';
 
 const mocks = vi.hoisted(() => ({ updateProject: vi.fn(), updateLanguage: vi.fn(), languages: [] as unknown[] }));
@@ -245,7 +246,8 @@ describe('GeneralSettings', () => {
     const arabicName = [...container.querySelectorAll('input')].find((el) => el.lang === 'ar');
     if (!arabicName) throw new Error('No Arabic name field');
     expect(arabicName.dir).toBe('rtl');
-    expect(arabicName.placeholder).toBe('Original');
+    // Isolated, so the default-language text keeps its punctuation inside an RTL field.
+    expect(arabicName.placeholder).toBe(isolate('Original'));
     mocks.updateLanguage.mockResolvedValueOnce(undefined);
     await type(arabicName, 'التوثيق');
     await save();

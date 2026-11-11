@@ -19,6 +19,7 @@
     "./integrations": "./src/integrations.ts",
     "./join-links": "./src/join-links.ts",
     "./mcp": "./src/mcp.ts",
+    "./plan-policy": "./src/plan-policy.ts",
     "./markdown-discovery": "./src/markdown-discovery.ts",
     "./markdown-code": "./src/markdown-code.ts",
     "./public-markdown": "./src/public-markdown.ts",
