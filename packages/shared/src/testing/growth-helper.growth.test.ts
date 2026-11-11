@@ -69,6 +69,22 @@ describe.runIf(growthTestsEnabled)('growth calibration', () => {
     expect(() => growthMs(vanishes, 'a', 'aaaa', { minMs: 4, budgetMs: 30 })).toThrow(/calibration failed/);
   });
 
+  it('runs the large input a quarter as often and scales its time back up, so both samples last about as long', () => {
+    const calls = { small: 0, large: 0 };
+    const [small, large] = growthMs(
+      (input: string) => {
+        calls[input.length === 1 ? 'small' : 'large'] += 1;
+        return spin(0.05 * input.length);
+      },
+      'a',
+      'aaaa',
+    );
+    expect(calls.large).toBeLessThan(calls.small / 2);
+    // Four times the work per call still reads as about four times the time.
+    expect(large / small).toBeGreaterThan(3);
+    expect(large / small).toBeLessThan(5.5);
+  });
+
   it('gives every call a fresh input when asked, with a counter unique across the measurement', () => {
     const seen = new Set<string>();
     growthMs<string>(

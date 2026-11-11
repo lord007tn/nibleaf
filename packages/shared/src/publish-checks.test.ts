@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { documentationComponentContractEntries } from './documentation-component-contract';
-import { buildInboundPageLinkMap, findBrokenInternalLinks, findInboundPageLinks, pageContentFacts } from './publish-checks';
+import { buildInboundPageLinkMap, findBrokenInternalLinks, findInboundPageLinks, pageContentFacts, snapshotContentFacts } from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 
 let sequence = 0;
@@ -85,7 +85,23 @@ describe('inbound draft page links', () => {
       child(),
     ]);
     expect(buildInboundPageLinkMap(snapshot).get('target')?.total).toBe(0);
+    expect(findBrokenInternalLinks(snapshot)).toEqual([]);
     expect(pageContentFacts('Cache sentinel for a large inbound scan.')).toBe(sentinel);
+  });
+
+  it('parses each content once per snapshot, and again for a new snapshot only from the shared cache', () => {
+    const content = `Per-snapshot facts ${Math.random()}.`;
+    const first = site([page({ path: 'a', content }), page({ path: 'b', content })]);
+    const facts = snapshotContentFacts(first)(content);
+    expect(snapshotContentFacts(first)(content)).toBe(facts);
+    // A small site's facts also go to the shared cache, so another snapshot reuses them.
+    expect(snapshotContentFacts(site([page({ path: 'c', content })]))(content)).toBe(facts);
+    // A large one keeps its own, without adding to the shared cache.
+    const large = `Large per-snapshot facts ${Math.random()}.`;
+    const big = site(Array.from({ length: 2001 }, (_, i) => page({ path: `big-${i}`, content: i === 0 ? large : `Big ${i}.` })));
+    const bigFacts = snapshotContentFacts(big)(large);
+    expect(snapshotContentFacts(big)(large)).toBe(bigFacts);
+    expect(pageContentFacts(large)).not.toBe(bigFacts);
   });
 
   it("keeps a trusted absolute URL's own version and language instead of inheriting the source context", () => {
