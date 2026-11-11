@@ -162,10 +162,12 @@ const escapedAt = (source: string, index: number): boolean => {
 /** Tokenize one stretch of prose that holds no fence. `components` holds the lowercase names read
  *  as components; like HTML, tag names match whatever their case. */
 const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: MdxToken[]): void => {
-  let text = '';
-  const flush = () => {
-    if (text) tokens.push({ kind: 'text', value: text });
-    text = '';
+  // Text between tokens is always one contiguous stretch of the source, so it is
+  // taken as a single slice when a token (or the end) closes it. Building it one
+  // character at a time is quadratic in V8 on long prose (hundreds of KB).
+  let textStart = 0;
+  const flush = (end: number) => {
+    if (end > textStart) tokens.push({ kind: 'text', value: source.slice(textStart, end) });
   };
   const runs = backtickRuns(source);
   const blankLines = paragraphEnds(source);
@@ -177,33 +179,35 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
       const lineEnd = source.indexOf('\n', index);
       const line = source.slice(index, lineEnd < 0 ? source.length : lineEnd);
       if (ESM_LINE.test(line)) {
-        flush();
+        flush(index);
         tokens.push({ kind: 'esm', value: line });
         index += line.length;
+        textStart = index;
         continue;
       }
     }
     lineStart = character === '\n';
     if (character === '`' && !escapedAt(source, index)) {
       const { length: run, next: close } = runs.get(index) ?? { length: 1, next: -1 };
-      const fence = '`'.repeat(run);
       // An inline code span stays within its paragraph: it never crosses a blank line.
       if (close >= 0 && close < firstAfter(blankLines, index, source.length)) {
-        flush();
+        flush(index);
         tokens.push({ kind: 'code', value: source.slice(index, close + run), block: false });
         index = close + run;
+        textStart = index;
         continue;
       }
-      text += fence;
+      // An unmatched run stays text.
       index += run;
       continue;
     }
     if (character === '<' && !escapedAt(source, index)) {
       if (ACTIVE_OPEN.test(source.slice(index, index + 8))) {
         const end = activeEnd(source, index, source.length);
-        flush();
+        flush(index);
         tokens.push({ kind: 'active', value: source.slice(index, end) });
         index = end;
+        textStart = index;
         continue;
       }
       const tag = /^<(\/?)([A-Za-z][\w.-]*)/.exec(source.slice(index, index + 64));
@@ -214,13 +218,14 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
         const end = isFormatting ? index + tag[0].length + 1 : tagEnd(source, index + tag[0].length);
         if (end > 0) {
           const raw = source.slice(index, end);
-          flush();
+          flush(index);
           if (tag[1]) tokens.push({ kind: 'close', name, raw });
           else {
             const selfClosing = /\/\s*>$/.test(raw);
             tokens.push({ kind: 'open', name, raw, selfClosing, attributes: raw.slice(tag[0].length, selfClosing ? raw.lastIndexOf('/') : -1) });
           }
           index = end;
+          textStart = index;
           continue;
         }
       }
@@ -228,16 +233,16 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
     if (character === '{' && !escapedAt(source, index)) {
       const end = expressionEnd(source, index);
       if (end > 0) {
-        flush();
+        flush(index);
         tokens.push({ kind: 'expression', value: source.slice(index, end) });
         index = end;
+        textStart = index;
         continue;
       }
     }
-    text += character;
     index += 1;
   }
-  flush();
+  flush(source.length);
 };
 
 /** Read authored MDX into tokens. Fences (backtick or tilde, any length, inside containers too)

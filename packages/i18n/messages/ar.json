@@ -540,6 +540,20 @@
   "editor_deletegroup": "حذف المجموعة",
   "editor_deletegroupconfirm": "نقل المجموعة «{title}» إلى سلة المحذوفات؟ ستبقى هناك 30 يومًا، ويمكنك استعادتها خلالها.",
   "editor_deletegroupwithchildrenconfirm": "نقل المجموعة «{title}» والصفحات الموجودة داخلها ({count}) إلى سلة المحذوفات؟ للإبقاء على هذه الصفحات في الشجرة، اسحبها خارج المجموعة أولًا. يبقى كل شيء في السلة 30 يومًا.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا توجد صفحات ترتبط هنا",
+        "form=one": "صفحة واحدة ترتبط هنا",
+        "form=two": "صفحتان ترتبطان هنا",
+        "form=few": "{count} صفحات ترتبط هنا",
+        "form=many": "{count} صفحة ترتبط هنا",
+        "form=*": "{count} صفحة ترتبط هنا"
+      }
+    }
+  ],
   "editor_deleted": "نُقلت «{title}» إلى سلة المحذوفات",
   "editor_deletefailed": "تعذّر حذف الصفحة. حاول مجددًا.",
   "editor_trash_button": "سلة المحذوفات ({count})",
@@ -4839,5 +4853,14 @@
   "editor_history_snapshottoolarge": "المسودة الحالية أو المحتوى المختار أكبر من أن يُستعاد بأمان.",
   "editor_history_restored": "تمت استعادة الصفحة",
   "editor_history_added": "مضاف",
-  "editor_history_removed": "محذوف"
+  "editor_history_removed": "محذوف",
+  "publishes_title": "سجل النشر",
+  "publishes_superseded": "سابقة",
+  "publishes_restore": "استعادة هذه النسخة",
+  "publishes_changessince": "التغييرات منذ النسخة {version}",
+  "publishes_settingschanged": "غيّرت هذه النسخة إعدادات الموقع أيضًا.",
+  "publishes_truncated": "تُعرض أول {shown} من أصل {total} صفحة تغيّرت.",
+  "overview_activity_viewall": "عرض الكل",
+  "publishes_toolarge": "هذه النسخة أكبر من أن تُقارَن هنا.",
+  "publishes_nosnapshot": "لم تعد هذه النسخة المنشورة محفوظة، لذا لا يمكن مقارنتها ولا استعادتها."
 }

@@ -151,6 +151,7 @@ function sectionKeysFromPathname(pathname: string): MessageKey[] {
   if (section === 'ai') return ['dashboard.ai.title'];
   if (section === 'settings') return ['project.settings'];
   if (section === 'preview') return ['project.preview'];
+  if (section === 'publishes') return ['publishes.title'];
   return [];
 }
 

@@ -18,12 +18,16 @@
         "scripts/runtime-image-audit.mjs",
         "scripts/site-preview-mock.mjs",
         "scripts/site-preview-shots.mjs",
-        "scripts/split-ghost-by-language.mjs"
+        "scripts/split-ghost-by-language.mjs",
+        "tests/integration/delete-inbound-links/browser.mjs"
       ]
     },
     "apps/server": {
       "entry": ["src/scripts/grant-admin.ts"],
       "ignoreDependencies": ["quansync"]
+    },
+    "apps/app": {
+      "entry": ["scripts/delete-inbound-links.fixture.tsx"]
     },
     "packages/database": {
       "ignoreDependencies": ["@prisma/client"]

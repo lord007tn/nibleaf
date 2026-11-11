@@ -536,6 +536,16 @@
   "editor_deletegroup": "Delete group",
   "editor_deletegroupconfirm": "Move the group “{title}” to Trash? It stays there for 30 days, so you can restore it.",
   "editor_deletegroupwithchildrenconfirm": "Move the group “{title}” and the pages inside it ({count}) to Trash? To keep those pages in the tree, drag them out of the group first. Everything stays in Trash for 30 days.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page links here",
+        "form=*": "{count} pages link here"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” moved to Trash",
   "editor_deletefailed": "Couldn't delete the page. Try again.",
   "editor_trash_button": "Trash ({count})",
@@ -4789,5 +4799,14 @@
   "editor_history_snapshottoolarge": "The current draft or selected entry is too large to restore safely.",
   "editor_history_restored": "Page restored",
   "editor_history_added": "Added",
-  "editor_history_removed": "Removed"
+  "editor_history_removed": "Removed",
+  "publishes_title": "Publishes",
+  "publishes_superseded": "Replaced",
+  "publishes_restore": "Restore this version",
+  "publishes_changessince": "Changes since version {version}",
+  "publishes_settingschanged": "This version also changed site settings.",
+  "publishes_truncated": "Showing the first {shown} of {total} changed pages.",
+  "overview_activity_viewall": "View all",
+  "publishes_toolarge": "This version is too large to compare here.",
+  "publishes_nosnapshot": "This version’s published copy is no longer stored, so it can’t be compared or restored."
 }

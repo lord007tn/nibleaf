@@ -216,7 +216,7 @@ describe('projection robustness (#341)', () => {
     ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 400],
     ['unclosed quotes', (n: number) => '<Card title="'.repeat(n), 1200],
     ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 6000],
-    ['deep quote markers', (n: number) => `${'> '.repeat(n)}x`, 80_000],
+    ['deep quote markers', (n: number) => `${'> '.repeat(n)}x`, 200_000],
     ['deep nesting', (n: number) => `${'<Note>'.repeat(n)}x${'</Note>'.repeat(n)}`, 1500],
   ] as const)(
     'scales linearly on %s',

@@ -493,6 +493,15 @@
   "editor_deletegroup": "Hapus grup",
   "editor_deletegroupconfirm": "Pindahkan grup “{title}” ke Sampah? Grup ini disimpan di sana selama 30 hari, jadi Anda bisa memulihkannya.",
   "editor_deletegroupwithchildrenconfirm": "Pindahkan grup “{title}” dan halaman di dalamnya ({count}) ke Sampah? Untuk mempertahankan halaman tersebut di pohon, seret keluar dari grup terlebih dahulu. Semuanya disimpan di Sampah selama 30 hari.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} halaman menautkan ke sini"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” dipindahkan ke Sampah",
   "editor_deletefailed": "Tidak dapat menghapus halaman. Coba lagi.",
   "editor_trash_button": "Sampah ({count})",
@@ -4722,5 +4731,14 @@
   "editor_history_snapshottoolarge": "Draf saat ini atau entri terpilih terlalu besar untuk dipulihkan dengan aman.",
   "editor_history_restored": "Halaman dipulihkan",
   "editor_history_added": "Ditambahkan",
-  "editor_history_removed": "Dihapus"
+  "editor_history_removed": "Dihapus",
+  "publishes_title": "Publikasi",
+  "publishes_superseded": "Digantikan",
+  "publishes_restore": "Pulihkan versi ini",
+  "publishes_changessince": "Perubahan sejak versi {version}",
+  "publishes_settingschanged": "Versi ini juga mengubah pengaturan situs.",
+  "publishes_truncated": "Menampilkan {shown} pertama dari {total} halaman yang berubah.",
+  "overview_activity_viewall": "Lihat semua",
+  "publishes_toolarge": "Versi ini terlalu besar untuk dibandingkan di sini.",
+  "publishes_nosnapshot": "Salinan terbit versi ini tidak lagi disimpan, jadi tidak dapat dibandingkan atau dipulihkan."
 }

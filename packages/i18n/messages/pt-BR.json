@@ -502,6 +502,16 @@
   "editor_deletegroup": "Excluir grupo",
   "editor_deletegroupconfirm": "Mover o grupo “{title}” para a lixeira? Ele fica lá por 30 dias, então você pode restaurá-lo.",
   "editor_deletegroupwithchildrenconfirm": "Mover o grupo “{title}” e as páginas dentro dele ({count}) para a lixeira? Para manter essas páginas na árvore, arraste-as para fora do grupo primeiro. Tudo fica 30 dias na lixeira.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} página aponta para cá",
+        "form=*": "{count} páginas apontam para cá"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” movida para a lixeira",
   "editor_deletefailed": "Não foi possível excluir a página. Tente novamente.",
   "editor_trash_button": "Lixeira ({count})",
@@ -4790,5 +4800,14 @@
   "editor_history_snapshottoolarge": "O rascunho atual ou a entrada selecionada é grande demais para restaurar com segurança.",
   "editor_history_restored": "Página restaurada",
   "editor_history_added": "Adicionado",
-  "editor_history_removed": "Removido"
+  "editor_history_removed": "Removido",
+  "publishes_title": "Publicações",
+  "publishes_superseded": "Substituída",
+  "publishes_restore": "Restaurar esta versão",
+  "publishes_changessince": "Alterações desde a versão {version}",
+  "publishes_settingschanged": "Esta versão também alterou as configurações do site.",
+  "publishes_truncated": "Mostrando as primeiras {shown} de {total} páginas alteradas.",
+  "overview_activity_viewall": "Ver tudo",
+  "publishes_toolarge": "Esta versão é grande demais para ser comparada aqui.",
+  "publishes_nosnapshot": "A cópia publicada desta versão não está mais armazenada, então não é possível compará-la nem restaurá-la."
 }

@@ -493,6 +493,15 @@
   "editor_deletegroup": "删除组",
   "editor_deletegroupconfirm": "将分组“{title}”移到回收站？它会在那里保留 30 天，你可以随时恢复。",
   "editor_deletegroupwithchildrenconfirm": "将分组“{title}”及其中的页面（{count}）移到回收站？如需把这些页面留在目录中，请先把它们拖出分组。所有内容会在回收站保留 30 天。",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 个页面链接到此处"
+      }
+    }
+  ],
   "editor_deleted": "已将“{title}”移到回收站",
   "editor_deletefailed": "无法删除页面，请重试。",
   "editor_trash_button": "回收站（{count}）",
@@ -4722,5 +4731,14 @@
   "editor_history_snapshottoolarge": "当前草稿或所选记录过大，无法安全恢复。",
   "editor_history_restored": "页面已恢复",
   "editor_history_added": "已添加",
-  "editor_history_removed": "已删除"
+  "editor_history_removed": "已删除",
+  "publishes_title": "发布记录",
+  "publishes_superseded": "已被替换",
+  "publishes_restore": "恢复此版本",
+  "publishes_changessince": "自版本 {version} 以来的更改",
+  "publishes_settingschanged": "此版本还更改了站点设置。",
+  "publishes_truncated": "正在显示 {total} 个已更改页面中的前 {shown} 个。",
+  "overview_activity_viewall": "查看全部",
+  "publishes_toolarge": "此版本过大，无法在此比较。",
+  "publishes_nosnapshot": "此版本的已发布副本已不再保存，因此无法比较或恢复。"
 }

@@ -493,6 +493,15 @@
   "editor_deletegroup": "গ্রুপ মুছুন",
   "editor_deletegroupconfirm": "গ্রুপ “{title}” ট্র্যাশে সরাবেন? এটি সেখানে 30 দিন থাকবে, তাই আপনি এটি ফিরিয়ে আনতে পারবেন।",
   "editor_deletegroupwithchildrenconfirm": "গ্রুপ “{title}” এবং এর ভেতরের পেজগুলো ({count}) ট্র্যাশে সরাবেন? এই পেজগুলো ট্রিতে রাখতে আগে এগুলো গ্রুপের বাইরে টেনে আনুন। সবকিছু 30 দিন ট্র্যাশে থাকবে।",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count}টি পৃষ্ঠা এখানে লিঙ্ক করে"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ট্র্যাশে সরানো হয়েছে",
   "editor_deletefailed": "পৃষ্ঠাটি মোছা যায়নি। আবার চেষ্টা করুন।",
   "editor_trash_button": "ট্র্যাশ ({count})",
@@ -4724,5 +4733,14 @@
   "editor_history_snapshottoolarge": "বর্তমান খসড়া বা নির্বাচিত এন্ট্রি নিরাপদে পুনরুদ্ধার করার জন্য অনেক বড়।",
   "editor_history_restored": "পৃষ্ঠা পুনরুদ্ধার করা হয়েছে",
   "editor_history_added": "যোগ করা হয়েছে",
-  "editor_history_removed": "সরানো হয়েছে"
+  "editor_history_removed": "সরানো হয়েছে",
+  "publishes_title": "প্রকাশনা",
+  "publishes_superseded": "প্রতিস্থাপিত",
+  "publishes_restore": "এই সংস্করণ ফিরিয়ে আনুন",
+  "publishes_changessince": "সংস্করণ {version} থেকে পরিবর্তন",
+  "publishes_settingschanged": "এই সংস্করণে সাইটের সেটিংসও বদলেছে।",
+  "publishes_truncated": "{total}টি পরিবর্তিত পৃষ্ঠার মধ্যে প্রথম {shown}টি দেখানো হচ্ছে।",
+  "overview_activity_viewall": "সব দেখুন",
+  "publishes_toolarge": "এই সংস্করণটি এখানে তুলনা করার জন্য খুব বড়।",
+  "publishes_nosnapshot": "এই সংস্করণের প্রকাশিত কপি আর সংরক্ষিত নেই, তাই এটি তুলনা করা বা ফিরিয়ে আনা যাবে না।"
 }
