@@ -36,6 +36,7 @@
     "./export-schedule": "./src/export-schedule.ts",
     "./utils": "./src/utils.ts",
     "./organization-handles": "./src/organization-handles.ts",
+    "./markdown-text": "./src/markdown-text.ts",
     "./uuid": "./src/uuid.ts"
   },
   "scripts": {
@@ -46,11 +47,17 @@
   "dependencies": {
     "github-slugger": "^2.0.0",
     "nanoid": "^6.0.2",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "remark-frontmatter": "5.0.0",
+    "remark-gfm": "4.0.1",
+    "remark-mdx": "3.1.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^26.6.6",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "@types/mdast": "^4.0.4"
   }
 }
