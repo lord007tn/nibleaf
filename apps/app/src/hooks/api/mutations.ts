@@ -32,7 +32,7 @@ import { putAsset } from '@/lib/upload-asset-put';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
-import { applyPageReorder, applyPageReorderToList, isPageListKey, rollbackPageReorder } from './page-cache';
+import { applyPageReorder, applyPageReorderToList, isNewerRevision, isPageListKey, newerRevision, rollbackPageReorder } from './page-cache';
 import { acquirePageMove } from './page-move-queue';
 import { queryKeys } from './query-keys';
 import type {
@@ -271,7 +271,9 @@ export const useUpdatePage = (projectId: string) => {
         }
       >(await api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }), 'Could not save the page.'),
     onSuccess: (data, { pageId, body }) => {
-      qc.setQueryData(queryKeys.pages.detail(projectId, pageId), data);
+      // Saves can resolve out of order (an autosave and a rename from the tree),
+      // so a response never replaces a newer revision already in the cache.
+      qc.setQueryData<Page>(queryKeys.pages.detail(projectId, pageId), (cached) => newerRevision(cached, data));
       const structural = data.addressChanged || body.slug !== undefined || body.parentId !== undefined;
       if (structural) {
         void qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
@@ -281,7 +283,7 @@ export const useUpdatePage = (projectId: string) => {
           { queryKey: queryKeys.pages.allForProject(projectId), predicate: (query) => isPageListKey(query.queryKey) },
           (pages) =>
             pages?.map((page) =>
-              page.id === pageId
+              page.id === pageId && !isNewerRevision(page, data)
                 ? {
                     ...page,
                     title: data.title,
