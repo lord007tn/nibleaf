@@ -102,13 +102,19 @@
 
 /* Headings — em-scaled so they track the configured base size (2em/1.5em/
  * 1.1875em ≈ the previous 32/24/19px at the 16px default). */
-.pl-editor .ProseMirror h1 {
+.pl-editor .ProseMirror h1,
+.pl-page-title {
   font-family: var(--typeset-font-heading, inherit);
   font-size: 2em;
   font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.2;
   margin: 1.2em 0 0.25em;
+}
+.pl-page-title {
+  font-size: calc(var(--typeset-size, 16px) * 2);
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 .pl-editor .ProseMirror h2 {
   font-family: var(--typeset-font-heading, inherit);

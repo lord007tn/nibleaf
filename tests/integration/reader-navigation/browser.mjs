@@ -10,6 +10,7 @@
 //   node tests/integration/reader-navigation/browser.mjs [videoDir]
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
+import { chromiumExecutable } from '../lib/capture-env.mjs';
 
 const APP = process.env.APP_URL ?? 'http://localhost:4310';
 const MOCK = process.env.MOCK_URL ?? 'http://localhost:4311';
@@ -21,7 +22,7 @@ const TARGET = 'guides/webhooks';
 const failures = [];
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH ?? `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1248/chrome-win64/chrome.exe`,
+  executablePath: chromiumExecutable(),
 });
 
 const mockControl = async (state) => {

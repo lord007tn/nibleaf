@@ -39,6 +39,14 @@ describe('friendlyErrorMessage', () => {
     );
   });
 
+  it('says a page over the size cap must be split, not the generic 413', () => {
+    const error = new ApiResponseError('This page is too large.', 413, 'page:too_large', undefined, undefined, undefined, undefined, {
+      bytes: 2_097_153,
+      limit: 2_097_152,
+    });
+    expect(friendlyErrorMessage(t, error, 'editor.saveError')).toBe('t:editor.pageTooLarge');
+  });
+
   it('explains common HTTP failures in plain words', () => {
     expect(friendlyErrorMessage(t, new ApiResponseError('Forbidden', 403), 'editor.deleteFailed')).toBe('t:error.noPermission');
     expect(friendlyErrorMessage(t, new ApiResponseError('Unauthorized', 401), 'editor.deleteFailed')).toBe('t:error.signedOut');

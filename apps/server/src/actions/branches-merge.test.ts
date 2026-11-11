@@ -288,6 +288,28 @@ describe('mergeBranch', () => {
     expect(db.audienceGrant.delete).toHaveBeenCalledWith({ where: { id: 'g2' } });
   });
 
+  it('refuses to copy a version body that would grow a main page past the size cap, and writes nothing', async () => {
+    const copyOf = await forkMain();
+    edit(copyOf('billing'), { content: 'x'.repeat(2 * 1024 * 1024 + 1), contentHash: 'huge', updatedAt: AFTER });
+    await expect(attempt()).resolves.toMatchObject({
+      status: 413,
+      code: 'page:too_large',
+      details: { bytes: 2 * 1024 * 1024 + 1, limit: 2 * 1024 * 1024, pages: [{ id: 'billing', path: 'billing', bytes: 2 * 1024 * 1024 + 1 }] },
+    });
+    expect(db.page.updateMany).not.toHaveBeenCalled();
+    expect(db.branch.delete).not.toHaveBeenCalled();
+  });
+
+  it('promotes a version body that shrinks a main page already over the size cap', async () => {
+    const copyOf = await forkMain();
+    edit('billing', { content: 'x'.repeat(3 * 1024 * 1024) });
+    edit(copyOf('billing'), { content: 'x'.repeat(2.5 * 1024 * 1024), contentHash: 'shrunk', updatedAt: AFTER });
+    await expect(attempt()).resolves.toBeNull();
+    expect(db.page.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: 'billing' }), data: { content: 'x'.repeat(2.5 * 1024 * 1024) } }),
+    );
+  });
+
   it('rolls back with a retryable conflict when a row changed after the locked read', async () => {
     const copyOf = await forkMain();
     edit(copyOf('billing'), { title: 'Edited', updatedAt: AFTER });

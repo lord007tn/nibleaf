@@ -16,7 +16,8 @@
     "preview": "vite preview",
     "clean": "git clean -xdf .cache .turbo .output dist node_modules",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache",
+    "test:growth": "vitest run --mode growth --no-file-parallelism --maxWorkers=1 growth"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
