@@ -157,8 +157,9 @@
       outline-offset: 2px;
     }
     /* Forced colours repaint the fill and the tick in the same system colour,
-       so checked would read as unchecked: draw the native checkbox instead. */
-    @media (forced-colors: active) {
+       and print drops backgrounds by default, so checked would read as
+       unchecked: draw the native checkbox instead. */
+    @media (forced-colors: active), print {
       &:where(
           li.task-list-item > input[type="checkbox"],
           ul[data-type="taskList"] > li > label > input[type="checkbox"]

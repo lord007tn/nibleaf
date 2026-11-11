@@ -158,8 +158,8 @@ describe('content blocks shared by the editor and the reader', () => {
       expect(focus?.body).toMatch(/outline-offset: 2px;/);
     });
 
-    it('falls back to the native checkbox in forced colours, where the fill and the tick would share one colour', () => {
-      const forced = block('@media (forced-colors: active)');
+    it('falls back to the native checkbox in forced colours and print, where the fill or the tick would not show', () => {
+      const forced = block('@media (forced-colors: active), print');
       const inner = rules(forced);
       expect(inner.find(({ selector }) => checkboxes.test(selector) && !selector.includes('::'))?.body).toMatch(/appearance: auto;/);
       // Same selectors as the tick, so the same specificity, and later: it wins.
