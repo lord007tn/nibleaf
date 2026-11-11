@@ -133,30 +133,75 @@ describe('detectScriptMismatch', () => {
   });
 
   // Publish checks run this on every page, so hostile input must never block.
-  // These inputs either lose their giant tokens in the linear pre-pass or take
-  // the linear prose scan. Locally each takes about 1–3 ms.
-  it.each([
-    ['an 80k-character email', `${'a'.repeat(40_000)}@${'b'.repeat(40_000)}`],
-    ['one 80k-letter word', 'a'.repeat(80_000)],
-    ['a@ repeated', 'a@'.repeat(20_000)],
-    ['dotted emails', 'a.b@c.'.repeat(8000)],
-    ['an <a flood', '<a'.repeat(20_000)],
-    ['a comment flood', '<!--'.repeat(10_000)],
-    ['a 40k-character URL', `https://${'x'.repeat(40_000)}`],
-    ['a backtick flood', '`'.repeat(20_000)],
-    ['emphasis markers', '*a '.repeat(30_000)],
-    ['brackets', '[a]('.repeat(20_000)],
-    // Non-ASCII runs are kept whole (they may be CJK or Thai prose), so these lean on
-    // the 16 KB sample and the marker guard instead of the long-token drop.
-    ['one 80k-character Han run', '字'.repeat(80_000)],
-    ['one 80k-character Thai run', 'กข'.repeat(40_000)],
-    ['Han emphasis markers', '*字'.repeat(40_000)],
-    ['Han brackets', '[字]('.repeat(20_000)],
-  ])('stays fast on %s', (_, input) => {
-    detectScriptMismatch('Warm up with a short English sentence here.', 'en');
-    const started = performance.now();
-    detectScriptMismatch(`${input}${Math.random()}`, 'en');
-    expect(performance.now() - started).toBeLessThan(50);
+  // Bounds are calibrated like against like on the same machine, so slow CI
+  // cores slow both sides equally while superlinear growth still shows.
+  describe('cost bounds', () => {
+    /** Median of three detections, each with a unique suffix (no cache can help). */
+    const detectionMs = (input: string): number => {
+      detectScriptMismatch('Warm up with a short English sentence here.', 'en');
+      const runs: number[] = [];
+      for (let round = 0; round < 3; round += 1) {
+        const started = performance.now();
+        detectScriptMismatch(`${input}${Math.random()}`, 'en');
+        runs.push(performance.now() - started);
+      }
+      return runs.sort((a, b) => a - b)[1] ?? 0;
+    };
+    /** A plain linear pass over the same input (median of three). */
+    const linearPassMs = (input: string): number => {
+      const runs: number[] = [];
+      for (let round = 0; round < 3; round += 1) {
+        const started = performance.now();
+        let letters = 0;
+        for (let index = 0; index < input.length; index += 1) if (/\p{L}/u.test(input[index] ?? '')) letters += 1;
+        if (letters < 0) throw new Error('unreachable');
+        runs.push(performance.now() - started);
+      }
+      return runs.sort((a, b) => a - b)[1] ?? 0;
+    };
+    /** Ordinary prose in one script, cut to a given length. */
+    const prose = (sentence: string, length: number): string => sentence.repeat(Math.ceil(length / sentence.length)).slice(0, length);
+    const CHINESE_SENTENCE = '要添加新的预订，请打开前台日历，选择房间和日期，然后确认客人的详细信息。';
+    const THAI_SENTENCE = 'หากต้องการเพิ่มการจองใหม่ให้เปิดปฏิทินเลือกห้องและวันที่แล้วยืนยันรายละเอียดของแขก ';
+
+    // These lose their giant ASCII tokens in the pre-pass or exceed the marker
+    // guard, so they take the linear prose scan.
+    it.each([
+      ['an 80k-character email', `${'a'.repeat(40_000)}@${'b'.repeat(40_000)}`],
+      ['one 80k-letter word', 'a'.repeat(80_000)],
+      ['a@ repeated', 'a@'.repeat(20_000)],
+      ['dotted emails', 'a.b@c.'.repeat(8000)],
+      ['an <a flood', '<a'.repeat(20_000)],
+      ['a comment flood', '<!--'.repeat(10_000)],
+      ['a 40k-character URL', `https://${'x'.repeat(40_000)}`],
+      ['a backtick flood', '`'.repeat(20_000)],
+      ['emphasis markers', '*a '.repeat(30_000)],
+      ['brackets', '[a]('.repeat(20_000)],
+      ['Han emphasis markers', '*字'.repeat(40_000)],
+      ['Han brackets', '[字]('.repeat(20_000)],
+    ])('stays linear on %s', (_, input) => {
+      expect(detectionMs(input)).toBeLessThanOrEqual(10 * linearPassMs(input) + 20);
+    });
+
+    // Unspaced CJK and Thai runs are kept (they may be prose), so they take the
+    // Markdown parser on the 16 KB sample: bounded by parsing ordinary prose of
+    // the same size and script.
+    it.each([
+      ['one 80k-character Han run', '字'.repeat(80_000), CHINESE_SENTENCE],
+      ['one 80k-character Thai run', 'กข'.repeat(40_000), THAI_SENTENCE],
+    ])('stays bounded on %s', (_, input, sentence) => {
+      expect(detectionMs(input)).toBeLessThanOrEqual(5 * detectionMs(prose(sentence, input.length)) + 20);
+    });
+
+    // All per-character work runs on the sample, so 80k costs what 16k does.
+    it.each([
+      ['Han', CHINESE_SENTENCE],
+      ['Thai', THAI_SENTENCE],
+    ])('samples %s prose before any per-character work', (_, sentence) => {
+      const long = prose(sentence, 80_000);
+      expect(sampleForScript(long).length).toBeLessThanOrEqual(16_384 + 4);
+      expect(detectionMs(long)).toBeLessThanOrEqual(3 * detectionMs(prose(sentence, 16_384)) + 20);
+    });
   });
 
   // A long, realistic page still goes through the Markdown parser, but only on
