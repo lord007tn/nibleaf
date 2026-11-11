@@ -25,6 +25,17 @@
   // classic runtime and requires React to remain in scope.
   "overrides": [
     {
+      // Clipboard regression inputs deliberately contain empty bookmark anchors
+      // and source whitespace. They are parser data, not rendered application UI.
+      "includes": ["apps/app/src/components/editor/__fixtures__/*.html"],
+      "formatter": { "enabled": false },
+      "linter": {
+        "rules": {
+          "a11y": { "useAnchorContent": "off", "useValidAnchor": "off" }
+        }
+      }
+    },
+    {
       // Preserve the reviewed upstream stylesheet and its recorded SHA-256.
       "includes": [
         "packages/design-system/src/styles/vendor/shadcn-tailwind.css"
