@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   apiKeyFindFirst: vi.fn(),
@@ -45,10 +45,42 @@ vi.mock('@/env', () => ({
   },
 }));
 
+const runtime = vi.hoisted(() => ({
+  /** SEARCH_ANSWER_ENABLED: whether the server allows AI answers at all. */
+  answersEnabled: false,
+  /**
+   * The webhook lifecycle stays in place for publish delivery
+   * (operations/ux/ai-and-integrations.md, PR 7). The durability tests run it
+   * as if delivery were live; the shipped catalog marks Slack, Discord and
+   * Zapier "coming soon", which the "coming soon" tests below use as is.
+   */
+  webhooksLive: true,
+}));
+
+vi.mock('@nibleaf/shared/integrations', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@nibleaf/shared/integrations')>();
+  const live = <T extends { comingSoon: boolean }>(manifest: T): T =>
+    manifest.comingSoon && runtime.webhooksLive ? { ...manifest, comingSoon: false } : manifest;
+  return {
+    ...actual,
+    get INTEGRATION_CATALOG() {
+      return actual.INTEGRATION_CATALOG.map(live);
+    },
+    getIntegrationManifest: (providerId: Parameters<typeof actual.getIntegrationManifest>[0]) => {
+      const manifest = actual.getIntegrationManifest(providerId);
+      return manifest && live(manifest);
+    },
+  };
+});
 vi.mock('@nibleaf/clickhouse/keys', () => ({ keys: () => ({ ANALYTICS_MODE: 'disabled' }) }));
 vi.mock('@nibleaf/qdrant/keys', () => ({ keys: () => ({ QDRANT_URL: undefined }) }));
 vi.mock('@nibleaf/search/keys', () => ({
-  keys: () => ({ SEARCH_RUNTIME: 'legacy', SEARCH_EMBEDDING_MODEL: 'embedding', SEARCH_ANSWER_MODEL: 'answer' }),
+  keys: () => ({
+    SEARCH_RUNTIME: 'legacy',
+    SEARCH_EMBEDDING_MODEL: 'embedding',
+    SEARCH_ANSWER_MODEL: 'answer',
+    SEARCH_ANSWER_ENABLED: runtime.answersEnabled,
+  }),
 }));
 vi.mock('@nibleaf/storage/keys', () => ({ keys: () => ({ STORAGE_PROVIDER: 'minio' }) }));
 
@@ -90,6 +122,7 @@ vi.mock('../git/github', () => ({
 vi.mock('./providers', () => ({ verifyWebhookProvider: mocks.verifyWebhookProvider }));
 
 import { Prisma } from '@nibleaf/database';
+import { env } from '@/env';
 import { digestIntegrationValue, encryptIntegrationSecret } from './crypto';
 import {
   activateProjectIntegration,
@@ -748,5 +781,136 @@ describe('integration lifecycle durability', () => {
         expect.objectContaining({ providerId: 'slack', action: 'delete', connectionId: null }),
       ]),
     );
+  });
+});
+
+/** A fresh catalog read for project-1, whose site config is `config`. */
+const listFor = async (config: unknown) => {
+  mocks.projectFindUnique.mockResolvedValue({ id: 'project-1', organizationId: 'org-1', createdAt: now, config, gitSettings: { settings: {} } });
+  return listProjectIntegrations(context(), 'project-1');
+};
+const resetCatalogMocks = () => {
+  vi.clearAllMocks();
+  mocks.assertProjectAccess.mockResolvedValue({ organizationId: 'org-1', role: 'admin' });
+  mocks.gitConnectionFindUnique.mockResolvedValue(null);
+  mocks.integrationFindMany.mockResolvedValue([]);
+};
+const mutableEnv = env as { OPENROUTER_API_KEY?: string };
+
+describe('the server-managed OpenRouter entry', () => {
+  beforeEach(resetCatalogMocks);
+  afterEach(() => {
+    mutableEnv.OPENROUTER_API_KEY = undefined;
+    runtime.answersEnabled = false;
+  });
+
+  // Matches Smart AI's badge: "Active" only while this site's readers get answers from it.
+  it.each([
+    { operatorKey: false, siteAiOn: false, status: null },
+    { operatorKey: false, siteAiOn: true, status: null },
+    { operatorKey: true, siteAiOn: false, status: 'inactive' },
+    { operatorKey: true, siteAiOn: true, status: 'active' },
+  ])('operator key: $operatorKey, site AI on: $siteAiOn → $status', async ({ operatorKey, siteAiOn, status }) => {
+    runtime.answersEnabled = true;
+    mutableEnv.OPENROUTER_API_KEY = operatorKey ? 'operator-secret-key' : undefined;
+
+    const catalog = await listFor({ search: { aiAnswers: siteAiOn } });
+    const openrouter = catalog.find(({ id }) => id === 'openrouter');
+
+    if (status === null) expect(openrouter?.connection).toBeNull();
+    else expect(openrouter?.connection).toMatchObject({ ownership: 'instance', status });
+    expect(JSON.stringify(catalog)).not.toContain('operator-secret-key');
+  });
+
+  it.each([
+    { name: 'the site uses its own OpenAI key', search: { aiProvider: 'openai', aiAnswers: true }, answersEnabled: true },
+    { name: 'the site turned AI off', search: { aiProvider: 'disabled', aiAnswers: false }, answersEnabled: true },
+    { name: 'the server does not allow answers', search: { aiProvider: 'instance', aiAnswers: true }, answersEnabled: false },
+  ])('is inactive when $name', async ({ search, answersEnabled }) => {
+    runtime.answersEnabled = answersEnabled;
+    mutableEnv.OPENROUTER_API_KEY = 'operator-secret-key';
+
+    const openrouter = (await listFor({ search })).find(({ id }) => id === 'openrouter');
+
+    expect(openrouter?.connection?.status).toBe('inactive');
+  });
+});
+
+describe('Slack, Discord and Zapier while delivery is coming soon', () => {
+  beforeEach(() => {
+    resetCatalogMocks();
+    runtime.webhooksLive = false;
+  });
+  afterEach(() => {
+    runtime.webhooksLive = true;
+  });
+
+  it('ships exactly these three as coming soon', async () => {
+    const actual = await vi.importActual<typeof import('@nibleaf/shared/integrations')>('@nibleaf/shared/integrations');
+    expect(actual.INTEGRATION_CATALOG.filter((manifest) => manifest.comingSoon).map(({ id }) => id)).toEqual(['slack', 'discord', 'zapier']);
+  });
+
+  it('lists them as coming soon, keeping a stored connection visible', async () => {
+    mocks.integrationFindMany.mockResolvedValue([connection()]);
+
+    const catalog = await listFor(null);
+
+    for (const id of ['slack', 'discord', 'zapier']) expect(catalog.find((entry) => entry.id === id)?.availability).toBe('coming_soon');
+    expect(catalog.find(({ id }) => id === 'slack')?.connection).toMatchObject({ providerId: 'slack' });
+    expect(catalog.find(({ id }) => id === 'discord')?.connection).toBeNull();
+  });
+
+  it('refuses to connect, edit, activate, deactivate or test them, before touching anything', async () => {
+    const refused = { code: 'integration:provider_unavailable' };
+    const revision = { expectedRevision: 1, idempotencyKey: 'key-1' };
+
+    await expect(
+      createProjectIntegration(context(), 'project-1', {
+        providerId: 'slack',
+        webhookUrl: 'https://hooks.slack.com/services/T1/B1/secret',
+        idempotencyKey: 'key-1',
+      }),
+    ).rejects.toMatchObject(refused);
+    await expect(
+      updateProjectIntegration(context(), 'project-1', 'discord', { providerId: 'discord', label: 'Team', ...revision }),
+    ).rejects.toMatchObject(refused);
+    await expect(activateProjectIntegration(context(), 'project-1', 'zapier', revision)).rejects.toMatchObject(refused);
+    await expect(deactivateProjectIntegration(context(), 'project-1', 'slack', revision)).rejects.toMatchObject(refused);
+    await expect(
+      verifyProjectIntegration(context(), 'project-1', 'slack', { providerId: 'slack', ...revision, confirmExternalSideEffect: true }),
+    ).rejects.toMatchObject(refused);
+
+    expect(mocks.idempotencyFindFirst).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.verifyWebhookProvider).not.toHaveBeenCalled();
+  });
+
+  it('still removes a stored connection', async () => {
+    const row = connection();
+    mocks.integrationFindUnique.mockResolvedValue(row);
+    mocks.integrationDelete.mockResolvedValue(row);
+    mocks.transaction.mockImplementation((callback: (tx: unknown) => unknown) =>
+      callback({
+        integrationAuditEvent: { create: mocks.auditCreate },
+        integrationConfirmation: {
+          create: mocks.confirmationCreate,
+          deleteMany: mocks.confirmationDeleteMany,
+          findFirst: mocks.confirmationFindFirst,
+          updateMany: mocks.confirmationUpdateMany,
+        },
+        projectIntegration: { delete: mocks.integrationDelete, findUnique: mocks.integrationFindUnique },
+      }),
+    );
+    mocks.confirmationDeleteMany.mockResolvedValue({ count: 0 });
+    mocks.confirmationUpdateMany.mockResolvedValue({ count: 1 });
+    mocks.confirmationCreate.mockImplementation(({ data }) => {
+      mocks.confirmationFindFirst.mockResolvedValue({ id: 'confirmation-1', ...data, consumedAt: null });
+      return data;
+    });
+
+    const confirmation = await createIntegrationDeleteConfirmation(context(), 'project-1', 'slack', { expectedRevision: 1 });
+    await deleteProjectIntegration(context(), 'project-1', 'slack', { confirmationToken: confirmation.confirmationToken });
+
+    expect(mocks.integrationDelete).toHaveBeenCalledTimes(1);
   });
 });

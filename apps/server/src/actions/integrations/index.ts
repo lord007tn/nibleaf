@@ -2,7 +2,7 @@ import { keys as clickHouseKeys } from '@nibleaf/clickhouse/keys';
 import { type IntegrationWebhookDelivery, Prisma, type ProjectIntegration, prisma } from '@nibleaf/database';
 import { keys as qdrantKeys } from '@nibleaf/qdrant/keys';
 import { keys as searchKeys } from '@nibleaf/search/keys';
-import { aiConnectionConfigSchema, aiProviderIdSchema } from '@nibleaf/shared/ai';
+import { aiConnectionConfigSchema, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MemberRole } from '@nibleaf/shared/constants';
 import {
   getIntegrationManifest,
@@ -189,7 +189,7 @@ const adapterConnection = (
   createdAt: Date,
   options?: {
     id?: string;
-    status?: 'active' | 'error';
+    status?: 'active' | 'inactive' | 'error';
     credentialConfigured?: boolean;
     healthCode?: string | null;
     ownership?: 'project' | 'instance';
@@ -213,6 +213,28 @@ const adapterConnection = (
     createdAt: createdAt.toISOString(),
     updatedAt: createdAt.toISOString(),
   };
+};
+
+/** The part of a site's config that says which AI serves its readers. */
+const siteAiSelectionSchema = z.object({
+  search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
+});
+
+/**
+ * Whether this site's readers get answers from the server's own AI provider
+ * right now: the same rule as Smart AI's "AI answers enabled" badge for the
+ * instance provider. The site picks the instance provider (the default), has
+ * answers on, and the server both holds a key and allows answers. Having an
+ * operator key alone does not make the provider active for a site.
+ */
+const siteUsesInstanceAi = (projectConfig: unknown) => {
+  const search = siteAiSelectionSchema.safeParse(projectConfig).data?.search;
+  return (
+    (search?.aiProvider ?? 'instance') === 'instance' &&
+    search?.aiAnswers === true &&
+    Boolean(env.OPENROUTER_API_KEY) &&
+    searchKeys().SEARCH_ANSWER_ENABLED
+  );
 };
 
 const storageProviderId = () => {
@@ -363,7 +385,7 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
           answerModel: searchKeys().SEARCH_ANSWER_MODEL,
         },
         project.createdAt,
-        { ownership: 'instance' },
+        { ownership: 'instance', status: siteUsesInstanceAi(project.config) ? 'active' : 'inactive' },
       ),
     );
   }
@@ -401,8 +423,9 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
 
   return INTEGRATION_CATALOG.map((manifest) => ({
     ...manifest,
-    availability:
-      manifest.lifecycle !== 'managed' || connections.has(manifest.id)
+    availability: manifest.comingSoon
+      ? 'coming_soon'
+      : manifest.lifecycle !== 'managed' || connections.has(manifest.id)
         ? 'available'
         : ['openrouter', 'qdrant', 'clickhouse', 'postmark', 'smtp', 'cloudflare'].includes(manifest.id)
           ? 'not_configured'
@@ -428,6 +451,17 @@ const configurableManifest = (providerId: WebhookProviderId) => {
   if (manifest.lifecycle !== 'configurable') {
     throw integrationError('integration:provider_unsupported', 'This provider does not use the configurable connection lifecycle.');
   }
+  return manifest;
+};
+
+/** Refuses anything but removal for a provider that delivers nothing yet (`comingSoon`). */
+const assertConnectable = (manifest: { comingSoon: boolean }) => {
+  if (manifest.comingSoon) throw integrationError('integration:provider_unavailable', 'This integration is coming soon.');
+};
+
+const connectableManifest = (providerId: WebhookProviderId) => {
+  const manifest = configurableManifest(providerId);
+  assertConnectable(manifest);
   return manifest;
 };
 
@@ -504,7 +538,7 @@ const createIdempotencyRecord = async (
 export const createProjectIntegration = async (ctx: Context<HonoEnv>, projectId: string, body: CreateProjectIntegrationBody) => {
   const access = await authorizeIntegration(ctx, projectId, 'integrations:write', MemberRole.ADMIN);
   assertDashboardPrincipal(access);
-  configurableManifest(body.providerId);
+  connectableManifest(body.providerId);
   const requestValue = canonicalCreateRequest(body);
   const idempotencyDigest = digestIntegrationValue(body.idempotencyKey, 'idempotency-key');
   const requestDigest = digestIntegrationValue(requestValue, 'request');
@@ -554,7 +588,7 @@ export const updateProjectIntegration = async (
   const access = await authorizeIntegration(ctx, projectId, 'integrations:write', MemberRole.ADMIN);
   assertDashboardPrincipal(access);
   if (body.providerId !== providerId) throw integrationError('integration:invalid_configuration', 'The provider configuration is invalid.');
-  configurableManifest(providerId);
+  connectableManifest(providerId);
   const requestValue = canonicalUpdateRequest(providerId, body);
   const idempotencyDigest = digestIntegrationValue(body.idempotencyKey, 'idempotency-key');
   const requestDigest = digestIntegrationValue(requestValue, 'request');
@@ -605,7 +639,7 @@ const setProjectIntegrationStatus = async (
   status: 'ACTIVE' | 'INACTIVE',
 ) => {
   const access = await authorizeIntegration(ctx, projectId, 'integrations:write', MemberRole.ADMIN);
-  configurableManifest(providerId);
+  connectableManifest(providerId);
   const requestValue = canonicalStatusRequest(providerId, status, body.expectedRevision);
   const idempotencyDigest = digestIntegrationValue(body.idempotencyKey, 'idempotency-key');
   const requestDigest = digestIntegrationValue(requestValue, 'request');
@@ -676,6 +710,7 @@ export const verifyProjectIntegration = async (
   if (!(manifest.supportsPassiveVerification || manifest.verificationSideEffect)) {
     throw integrationError('integration:provider_unsupported', 'This provider does not expose project-level verification.');
   }
+  assertConnectable(manifest);
 
   if (body.providerId === 'github') {
     try {

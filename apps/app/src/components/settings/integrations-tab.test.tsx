@@ -121,3 +121,98 @@ describe('integration actions', () => {
     expect(button(container, 'common.save')?.disabled).toBe(true);
   });
 });
+
+const manifest = (id: IntegrationCatalogEntry['id']) => INTEGRATION_CATALOG.find((candidate) => candidate.id === id);
+const catalogOf = (...entries: IntegrationCatalogEntry[]) =>
+  hooks.integrations.mockReturnValue({ isPending: false, isSuccess: true, isError: false, data: entries });
+const storedSlack: NonNullable<IntegrationCatalogEntry['connection']> = {
+  id: 'connection-1',
+  providerId: 'slack',
+  category: 'webhook',
+  ownership: 'project',
+  status: 'active',
+  health: { status: 'unverified', checkedAt: null, code: null },
+  credential: { configured: true },
+  config: { providerId: 'slack', label: 'Alerts' },
+  revision: 3,
+  createdAt: '2026-11-06T00:00:00.000Z',
+  updatedAt: '2026-11-06T00:00:00.000Z',
+};
+
+describe('AI provider details', () => {
+  it.each(['openai', 'openrouter'] as const)('%s links to Smart AI, never to Git settings', async (id) => {
+    catalogOf({ ...manifest(id), availability: 'available', connection: null } as IntegrationCatalogEntry);
+    const container = await renderTab();
+    await act(async () => button(container, `settings.integrations.provider.${id}`)?.click());
+
+    expect(button(container, 'settings.integrations.openSmartAi')).toBeDefined();
+    expect(container.textContent).toContain('settings.integrations.smartAiOwned');
+    expect(container.textContent).not.toContain('settings.integrations.openGitSettings');
+    expect(container.textContent).not.toContain('settings.integrations.adapterOwned');
+  });
+
+  it('keeps the Git settings link for Git providers', async () => {
+    catalogOf({ ...manifest('github'), availability: 'available', connection: null } as IntegrationCatalogEntry);
+    const container = await renderTab();
+    await act(async () => button(container, 'settings.integrations.provider.github')?.click());
+
+    expect(button(container, 'settings.integrations.openGitSettings')).toBeDefined();
+    expect(container.textContent).not.toContain('settings.integrations.openSmartAi');
+  });
+});
+
+describe('Slack, Discord and Zapier while coming soon', () => {
+  it('shows them as coming soon with no way to connect', async () => {
+    catalogOf(
+      ...(['slack', 'discord', 'zapier'] as const).map(
+        (id) => ({ ...manifest(id), availability: 'coming_soon', connection: null }) as IntegrationCatalogEntry,
+      ),
+    );
+    const container = await renderTab();
+
+    const cards = container.querySelectorAll('[data-coming-soon]');
+    expect(cards).toHaveLength(3);
+    for (const card of cards) {
+      expect(card.textContent).toContain('settings.integrations.availability.comingSoon');
+      expect(card.textContent).toContain('settings.integrations.comingSoon.description');
+    }
+    // Nothing to open: the cards are not buttons, so there is no connect form behind them.
+    expect(button(container, 'settings.integrations.provider.slack')).toBeUndefined();
+    expect(container.querySelectorAll('input')).toHaveLength(1); // the catalog search only
+    expect(container.textContent).not.toContain('settings.integrations.connect');
+  });
+
+  it('shows a stored connection as not sending yet, with Remove as the only action', async () => {
+    catalogOf({ ...manifest('slack'), availability: 'coming_soon', connection: storedSlack } as IntegrationCatalogEntry);
+    const container = await renderTab();
+    const card = button(container, 'settings.integrations.provider.slack');
+    expect(card?.textContent).toContain('settings.integrations.status.notSendingYet');
+
+    await act(async () => card?.click());
+
+    const actions = Array.from(container.querySelectorAll('button')).map((element) => element.textContent?.trim());
+    expect(actions).toEqual(['settings.integrations.allIntegrations', 'settings.integrations.remove']);
+    expect(container.querySelector('input')).toBeNull();
+    for (const absent of ['sendTest', 'verify', 'deactivate', 'activate', 'connect']) {
+      expect(container.textContent).not.toContain(`settings.integrations.${absent}`);
+    }
+    expect(container.textContent).toContain('Alerts');
+  });
+
+  it('removes a stored connection after confirming', async () => {
+    hooks.remove.mutateAsync.mockResolvedValue(undefined);
+    catalogOf({ ...manifest('slack'), availability: 'coming_soon', connection: storedSlack } as IntegrationCatalogEntry);
+    const container = await renderTab();
+    await act(async () => button(container, 'settings.integrations.provider.slack')?.click());
+    await act(async () => button(container, 'settings.integrations.remove')?.click());
+
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog?.textContent).toContain('settings.integrations.removeTitle');
+    const confirm = Array.from(dialog?.querySelectorAll('button') ?? []).find(
+      (element) => element.textContent?.trim() === 'settings.integrations.remove',
+    );
+    await act(async () => confirm?.click());
+
+    expect(hooks.remove.mutateAsync).toHaveBeenCalledWith({ providerId: 'slack', expectedRevision: 3 });
+  });
+});
