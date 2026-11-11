@@ -98,7 +98,7 @@ describe('language fallback notice', () => {
     const view = await renderPage(page(), shell('ar'));
     const notes = view.querySelectorAll('[role="note"]');
     expect(notes).toHaveLength(1);
-    const note = notes[0];
+    const note = notes[0] as Element;
     expect(note.getAttribute('lang')).toBe('ar');
     expect(note.getAttribute('dir')).toBe('rtl');
     expect(note.querySelector('p')?.textContent).toBe('هذه الصفحة غير متوفرة باللغة العربية بعد، لذا تقرأ نسختها باللغة English.');
