@@ -6,13 +6,15 @@ import { DirtyStateReporter } from '@/components/project-settings/shared';
 /**
  * What one explicit-save form tells the page's SaveRegion
  * (operations/ui-overhaul.md §5.3). `submit` runs the form's own submit and
- * resolves `'saved'`, `'invalid'` (validation stopped it) or `'failed'` (the
- * server refused; the form showed why).
+ * resolves `'saved'`, `'invalid'` (validation stopped it), `'failed'` (the
+ * server refused; the form showed why) or `'deferred'`: the form asked the
+ * person first (a confirmation) and saves itself once they answer, so the bar
+ * moves on without waiting and without saying "Saved" for it.
  */
 export type SaveRegionForm = {
   isDirty: boolean;
   isSubmitting: boolean;
-  submit: () => Promise<'saved' | 'invalid' | 'failed'>;
+  submit: () => Promise<'saved' | 'invalid' | 'failed' | 'deferred'>;
   discard: () => void;
 };
 
@@ -112,8 +114,13 @@ export function SaveRegionProvider({ children }: { children: ReactNode }) {
     setRunning(true);
     setStatus('');
     try {
+      let deferred = false;
       for (const form of pending) {
         const result = await form.submit();
+        if (result === 'deferred') {
+          deferred = true;
+          continue;
+        }
         if (result === 'invalid') {
           setStatus(t('forms.fixHighlighted'));
           focusFirstInvalid(rootRef.current);
@@ -121,7 +128,7 @@ export function SaveRegionProvider({ children }: { children: ReactNode }) {
         }
         if (result === 'failed') return;
       }
-      setStatus(t('common.saved'));
+      if (!deferred) setStatus(t('common.saved'));
     } finally {
       setRunning(false);
     }

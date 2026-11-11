@@ -449,7 +449,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                     className="mt-2 inline-flex min-h-11 items-center text-primary text-sm underline"
                     to="/app/projects/$projectId/settings"
                     params={{ projectId: project.id }}
-                    search={{ section: 'appearance', appearanceSection: 'redirects' }}
+                    search={{ section: 'redirects' }}
                     onClick={() => onOpenChange(false)}
                   >
                     {t('publish.editRedirects')}
