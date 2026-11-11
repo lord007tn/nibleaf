@@ -11,15 +11,35 @@ vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.translate }));
 const mocks = vi.hoisted(() => ({
   reorder: vi.fn(),
   confirm: vi.fn(),
+  /** The page update request; each test decides when (and how) it settles. */
   update: vi.fn(),
   success: vi.fn(),
   translate: vi.fn((key: string) => key),
-  searchDescription: vi.fn((): { data?: { description: string }; isPending: boolean; isError: boolean } => ({ isPending: false, isError: false })),
+  searchDescription: vi.fn((): { data?: { description: string; revision: string }; isPending: boolean; isFetching: boolean; isError: boolean } => ({
+    isPending: true,
+    isFetching: true,
+    isError: false,
+  })),
 }));
+type UpdateResult = { addressChanged: boolean; redirectsAdded: number; linksUpdated: number; documentsSkipped: number };
+const saved: UpdateResult = { addressChanged: false, redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 };
+/** A promise the test settles by hand, to act while a request is in flight. */
+const deferred = <T,>() => {
+  let resolve: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+};
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: vi.fn() } }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: () => 'error',
-  useUpdatePage: () => ({ isPending: false, mutate: mocks.update }),
+  useUpdatePage: () => ({
+    isPending: false,
+    mutateAsync: (variables: unknown) => mocks.update(variables),
+    mutate: (variables: unknown, options?: { onSuccess?: (data: unknown) => void; onError?: (error: unknown) => void }) =>
+      void Promise.resolve(mocks.update(variables)).then(options?.onSuccess, options?.onError),
+  }),
   useReorderPages: () => ({ isPending: false, mutate: mocks.reorder }),
   usePageSearchDescription: (...args: unknown[]) => mocks.searchDescription(...(args as [])),
 }));
@@ -59,6 +79,7 @@ describe('page settings draft', () => {
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
+    mocks.update.mockReset().mockResolvedValue(saved);
   });
   afterEach(async () => {
     await act(async () => root.unmount());
@@ -87,11 +108,12 @@ describe('page settings draft', () => {
   ])('shows the server address-change feedback after saving: %s', async (result, message) => {
     const close = vi.fn();
     await act(async () => root.render(<PageSettingsDialog onOpenChange={close} open page={page} projectId="project-a" />));
+    const saving = deferred<UpdateResult>();
+    mocks.update.mockReturnValueOnce(saving.promise);
     const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
     if (!save) throw new Error('Save button was not rendered');
     await act(async () => save.click());
-    const options = mocks.update.mock.calls.at(-1)?.[1] as { onSuccess: (data: typeof result) => void };
-    await act(async () => options.onSuccess(result));
+    await act(async () => saving.resolve({ ...result, documentsSkipped: 0 }));
     expect(mocks.success).toHaveBeenLastCalledWith(message);
     if (result.addressChanged) expect(mocks.translate).toHaveBeenCalledWith(message, { path: '\u2066/original\u2069', redirects: 1, links: 2 });
     expect(close).toHaveBeenLastCalledWith(false);
@@ -197,14 +219,14 @@ describe('page settings draft', () => {
   });
 
   describe('the generated search description', () => {
-    /** What the server answers: the description generated from the saved content. */
-    const serve = (content: string) => {
+    /** What the server answers: the description generated from the saved content, for the page's current revision. */
+    const serve = (content: string, { revision = page.updatedAt, isFetching = false } = {}) => {
       const generated = pageDescription({ ...page, content });
-      mocks.searchDescription.mockReturnValue({ data: { description: generated }, isPending: false, isError: false });
+      mocks.searchDescription.mockReturnValue({ data: { description: generated, revision }, isPending: false, isFetching, isError: false });
       return generated;
     };
-    const openSeo = async (nextPage: PageNode = page) => {
-      await act(async () => root.render(<PageSettingsDialog onOpenChange={vi.fn()} open page={nextPage} projectId="project-a" />));
+    const openSeo = async (nextPage: PageNode = page, onOpenChange = vi.fn()) => {
+      await act(async () => root.render(<PageSettingsDialog onOpenChange={onOpenChange} open page={nextPage} projectId="project-a" />));
       const tab = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.seo'));
       await act(async () => tab?.click());
     };
@@ -214,6 +236,8 @@ describe('page settings draft', () => {
     const previewText = () => document.querySelector('[data-slot="search-description"]');
     const writeOwn = () =>
       [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.searchPreview.writeOwn'));
+    const saveButton = () => [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
+    const metaField = () => document.querySelector<HTMLTextAreaElement>('#page-meta-desc');
 
     afterEach(() => mocks.searchDescription.mockReset());
 
@@ -254,6 +278,42 @@ describe('page settings draft', () => {
       expect(preview()).toBeNull();
       expect(writeOwn()).toBeUndefined();
       expect(mocks.searchDescription).toHaveBeenLastCalledWith('project-a', 'page-a', { enabled: false });
+    });
+
+    it('never shows or adopts an answer computed from an older saved body', async () => {
+      // Cached from before the last save: the page is now at a later revision and the refetch is still running.
+      serve('The body as it was before the last save.', { revision: '2026-10-14T23:00:00Z', isFetching: true });
+      await openSeo();
+      expect(previewText()).toBeNull();
+      expect(document.querySelector('[data-slot="search-description-loading"]')).not.toBeNull();
+      expect(writeOwn()?.disabled).toBe(true);
+      await act(async () => writeOwn()?.click());
+      expect(metaField()?.value).toBe('');
+    });
+
+    it('keeps a description adopted during a save, and stays open with it unsaved', async () => {
+      const generated = serve('Install the CLI and sign in to publish your first site.');
+      const close = vi.fn();
+      await openSeo(page, close);
+      const saving = deferred<UpdateResult>();
+      mocks.update.mockReturnValueOnce(saving.promise);
+      await act(async () => saveButton()?.click());
+      // While the first save is in flight, the author adopts the generated text.
+      await act(async () => writeOwn()?.click());
+      expect(metaField()?.value).toBe(generated);
+      await act(async () => saving.resolve(saved));
+      expect(mocks.success).toHaveBeenLastCalledWith('editor.pageSettings.saved');
+      // That save didn't carry the adopted text, so the dialog stays open with it.
+      expect(close).not.toHaveBeenCalledWith(false);
+      expect(metaField()?.value).toBe(generated);
+      // Saving again sends it, and then the dialog closes.
+      await act(async () => saveButton()?.click());
+      expect(mocks.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({ config: expect.objectContaining({ seo: expect.objectContaining({ metaDescription: generated }) }) }),
+        }),
+      );
+      expect(close).toHaveBeenLastCalledWith(false);
     });
 
     it('lets Arabic text take its own direction', async () => {

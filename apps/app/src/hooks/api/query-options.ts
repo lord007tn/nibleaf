@@ -141,8 +141,9 @@ export const pageQueryOptions = (projectId: string | undefined, pageId: string |
   });
 
 /** The description the published site generates from the page's saved content
- *  when the author writes none. Content autosaves while the editor is open, so
- *  every read refetches. */
+ *  when the author writes none, with the page revision (`updatedAt`) it was
+ *  generated from. Content autosaves while the editor is open, so every read
+ *  refetches. */
 export const pageSearchDescriptionQueryOptions = (projectId: string | undefined, pageId: string | undefined) =>
   queryOptions({
     queryKey: queryKeys.pages.searchDescription(projectId ?? '', pageId ?? ''),
@@ -150,7 +151,7 @@ export const pageSearchDescriptionQueryOptions = (projectId: string | undefined,
     queryFn:
       projectId && pageId
         ? async () =>
-            getData<{ description: string }>(
+            getData<{ description: string; revision: string }>(
               await api.app.projects[':projectId'].pages[':id']['search-description'].$get({ param: { projectId, id: pageId } }),
               'search description',
             )
