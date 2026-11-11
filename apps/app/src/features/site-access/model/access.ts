@@ -21,7 +21,8 @@ export type SiteAccess =
 
 export type Decision = { kind: 'allowed' } | { kind: 'locked' } | { kind: 'denied'; reason: MessageKey };
 
-type SiteMember = { role: SiteRole; orgRole: OrgRole | null; viaOrganization: boolean };
+/** `userId` lets a caller that knows the signed-in person forbid acting on yourself. */
+type SiteMember = { role: SiteRole; orgRole: OrgRole | null; viaOrganization: boolean; userId?: string };
 
 export type SiteAction =
   | {
@@ -34,7 +35,8 @@ export type SiteAction =
         | 'site.exports.create'
         | 'site.exports.schedule';
     }
-  | { type: 'site.member.remove'; member: SiteMember }
+  | { type: 'site.member.remove'; member: SiteMember; sessionUserId?: string }
+  | { type: 'site.member.changeRole'; member: SiteMember; sessionUserId?: string }
   | { type: 'site.ownership.transfer'; target: { user: { id: string }; orgRole: OrgRole | null }; sessionUserId: string }
   | { type: 'site.apiKeys.create'; scope: McpKeyPreset | readonly McpScope[] }
   | { type: 'site.apiKeys.revoke'; key: { createdBy: { id: string } | null }; sessionUserId: string };
@@ -60,13 +62,19 @@ export function decide(access: SiteAccess, action: SiteAction): Decision {
     case 'site.content.edit':
       return permission(canEdit(access.role), 'access.viewOnly.action');
     case 'site.member.remove':
-      // members-section.tsx hides organization-managed rows; actions/members.ts
-      // removeMember refuses them, including the owner. Never offer rank escalation.
+    case 'site.member.changeRole': {
+      // The website Team page offers both; actions/members.ts removeMember and
+      // updateMemberRole refuse organization-managed rows, including the owner.
+      // Never offer rank escalation, and never act on yourself (ask another Admin).
       if (!canAdminister(access.role)) return permission(false, 'settings.permissions.title');
       if (action.member.viaOrganization || canAdminister(action.member.orgRole ?? '') || roleAtLeast(action.member.role, 'owner')) {
         return permission(false, 'access.reason.organizationMember');
       }
+      if (action.sessionUserId && action.member.userId === action.sessionUserId) {
+        return permission(false, action.type === 'site.member.remove' ? 'people.reason.removeSelfSite' : 'people.reason.ownRole');
+      }
       return permission(canManageMember(access.role, action.member.role), 'settings.permissions.title');
+    }
     case 'site.delete':
       // modules/app/projects/routes.ts remove uses requireProjectOrgRole(ADMIN).
       return permission(canAdminister(access.orgRole ?? ''), 'access.reason.organizationAdmin');

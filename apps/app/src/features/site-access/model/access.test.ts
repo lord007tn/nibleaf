@@ -213,6 +213,45 @@ describe('site access from the organization and the site grant', () => {
   });
 });
 
+describe('website Team page: changing roles and removing (ported from the people model)', () => {
+  const member = (
+    overrides: Partial<{
+      role: 'owner' | 'admin' | 'member' | 'viewer';
+      orgRole: 'owner' | 'admin' | 'member' | null;
+      viaOrganization: boolean;
+      userId: string;
+    }> = {},
+  ) => ({
+    role: 'member' as const,
+    orgRole: 'member' as const,
+    viaOrganization: false,
+    userId: 'x',
+    ...overrides,
+  });
+  const outcome = (decision: ReturnType<typeof decide>) => (decision.kind === 'denied' ? decision.reason : decision.kind);
+  it.each(['site.member.changeRole', 'site.member.remove'] as const)('%s: a site Admin may act on another, lower member', (type) => {
+    expect(outcome(decide(ready('admin'), { type, member: member(), sessionUserId: 'me' }))).toBe('allowed');
+  });
+  it.each(['site.member.changeRole', 'site.member.remove'] as const)('%s: never on an organization-managed row', (type) => {
+    expect(
+      outcome(decide(ready('admin'), { type, member: member({ role: 'owner', orgRole: 'owner', viaOrganization: true }), sessionUserId: 'me' })),
+    ).toBe('access.reason.organizationMember');
+  });
+  it('never on yourself when the caller says who you are', () => {
+    const self = member({ role: 'admin', userId: 'me' });
+    expect(outcome(decide(ready('admin'), { type: 'site.member.remove', member: self, sessionUserId: 'me' }))).toBe('people.reason.removeSelfSite');
+    expect(outcome(decide(ready('admin'), { type: 'site.member.changeRole', member: self, sessionUserId: 'me' }))).toBe('people.reason.ownRole');
+  });
+  it('explains to an Editor why they cannot change anyone', () => {
+    expect(outcome(decide(ready('member'), { type: 'site.member.changeRole', member: member({ role: 'viewer' }), sessionUserId: 'me' }))).toBe(
+      'settings.permissions.title',
+    );
+  });
+  it('is locked while access is loading', () => {
+    expect(decide({ status: 'loading' }, { type: 'site.member.changeRole', member: member() }).kind).toBe('locked');
+  });
+});
+
 describe('custom API key scopes', () => {
   const body = (scopes: string[]) => createApiKeyBody.safeParse({ name: 'Agent', scopes });
 
