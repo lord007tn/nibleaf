@@ -58,6 +58,7 @@ const item = (version: number, status: string, extra: Record<string, unknown> = 
   createdAt: '2026-11-01T10:00:00.000Z',
   completedAt: status === 'READY' || status === 'FAILED' ? '2026-11-01T10:01:00.000Z' : null,
   publishedBy: 'Fictional Editor',
+  snapshotAvailable: status === 'READY',
   ...extra,
 });
 
@@ -189,6 +190,31 @@ describe('Publishes page', () => {
     expect(document.querySelector('[data-slot="action-dialog"]')).toBeNull();
   });
 
+  it('keeps a failure with an automatic retry to come in progress, then shows where the retry landed', async () => {
+    // The worker records FAILED with no completion time while BullMQ still has a retry.
+    const retrying = { ...item(3, 'FAILED'), completedAt: null };
+    mocks.history.mockReturnValue(historyResult([page([retrying, item(2, 'READY')], { id: 'dep-2', version: 2 })]));
+    await render(<PublishesPage />);
+    expect(rowOf(3)?.querySelector('[data-slot="status-badge"]')?.getAttribute('data-state')).toBe('building');
+    expect(actionsTrigger(3)).toBeUndefined();
+    mocks.history.mockReturnValue(historyResult([page([item(3, 'READY'), item(2, 'READY')], { id: 'dep-3', version: 3 })]));
+    await act(async () => root.render(<PublishesPage />));
+    expect(rowOf(3)?.querySelector('[data-slot="status-badge"]')?.getAttribute('data-state')).toBe('live');
+  });
+
+  it('disables Restore with the reason when a version’s published copy is no longer stored', async () => {
+    mocks.history.mockReturnValue(
+      historyResult([page([item(3, 'READY'), { ...item(2, 'READY'), snapshotAvailable: false }], { id: 'dep-3', version: 3 })]),
+    );
+    await render(<PublishesPage />);
+    await act(async () => actionsTrigger(2)?.click());
+    const restore = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((entry) =>
+      entry.textContent?.startsWith('publishes.restore'),
+    );
+    expect(restore?.getAttribute('aria-disabled')).toBe('true');
+    expect(restore?.textContent).toContain('publishes.noSnapshot');
+  });
+
   it('pages back through older publishes', async () => {
     const fetchNextPage = vi.fn();
     mocks.history.mockReturnValue(historyResult([page([item(25, 'READY')], { id: 'dep-25', version: 25 }, 6)], { hasNextPage: true, fetchNextPage }));
@@ -206,6 +232,7 @@ describe('Publishes page', () => {
 });
 
 const summary = (extra: Record<string, unknown> = {}) => ({
+  status: 'ready',
   previous: { id: 'dep-1', version: 1 },
   totals: { added: 1, modified: 1, removed: 1 },
   changes: [
@@ -261,6 +288,27 @@ describe('Publish version page', () => {
     expect(host.querySelectorAll('[data-change]')).toHaveLength(200);
     expect(host.querySelector('[data-testid="publish-changes-truncated"]')?.textContent).toBe('publishes.truncated(200|272)');
     expect(host.querySelector('[data-total="removed"]')?.textContent).toContain('12');
+  });
+
+  it('explains a version whose published copy is gone, and does not offer to restore it', async () => {
+    mocks.detail.mockReturnValue(
+      detail({ ...item(2, 'READY'), snapshotAvailable: false }, { id: 'dep-3', version: 3 }, { status: 'unavailable', reason: 'no_snapshot' }),
+    );
+    await showVersion('dep-2');
+    expect(host.querySelector('[data-testid="publish-changes-unavailable"]')?.textContent).toBe('publishes.noSnapshot');
+    expect(host.querySelector('[data-testid="publish-changes"]')).toBeNull();
+    const restore = [...host.querySelectorAll('button')].find((button) => button.textContent === 'publishes.restore');
+    expect(restore?.getAttribute('aria-disabled')).toBe('true');
+    await act(async () => restore?.click());
+    expect(document.querySelector('[data-slot="action-dialog"]')).toBeNull();
+  });
+
+  it('says a version is too large to compare, and still offers Restore', async () => {
+    mocks.detail.mockReturnValue(detail(item(2, 'READY'), { id: 'dep-3', version: 3 }, { status: 'unavailable', reason: 'too_large' }));
+    await showVersion('dep-2');
+    expect(host.querySelector('[data-testid="publish-changes-unavailable"]')?.textContent).toBe('publishes.tooLarge');
+    const restore = [...host.querySelectorAll('button')].find((button) => button.textContent === 'publishes.restore');
+    expect(restore?.getAttribute('aria-disabled')).toBeNull();
   });
 
   it('never offers Restore on the live version', async () => {

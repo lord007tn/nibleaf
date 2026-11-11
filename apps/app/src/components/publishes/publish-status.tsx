@@ -2,20 +2,21 @@ import { StatusBadge, type StatusBadgeTone } from '@nibleaf/design-system/compon
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { useDeployments } from '@/hooks/api';
-import { newestLiveDeployment } from '@/hooks/api/deployment-cache';
+import { isPublishInProgress, newestLiveDeployment } from '@/hooks/api/deployment-cache';
 import type { LiveVersion } from '@/hooks/api/publish-history';
 import type { Deployment, DeploymentStatus } from '@/hooks/api/types';
 
 /** How a version reads in the history: the live one, an older published one, or an attempt. */
 export type PublishState = 'live' | 'superseded' | 'failed' | 'building' | 'queued';
 
-export const publishState = (status: DeploymentStatus, isLive: boolean): PublishState => {
+export const publishState = (attempt: { status: DeploymentStatus; completedAt: string | null }, isLive: boolean): PublishState => {
   // The live marker can come from the polled publish list, which sees a version
   // go live before the history is read again: that row is live, not "Building".
   if (isLive) return 'live';
-  if (status === 'READY') return 'superseded';
-  if (status === 'FAILED') return 'failed';
-  return status === 'BUILDING' ? 'building' : 'queued';
+  if (attempt.status === 'READY') return 'superseded';
+  if (attempt.status === 'PENDING') return 'queued';
+  // A failure with an automatic retry to come is still in progress (the publish dialog's rule).
+  return isPublishInProgress(attempt) ? 'building' : 'failed';
 };
 
 /** Only an older published version can be restored: never the live one, nor an attempt that didn't go live. */

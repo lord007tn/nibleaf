@@ -4720,5 +4720,7 @@
   "publishes_changessince": "সংস্করণ {version} থেকে পরিবর্তন",
   "publishes_settingschanged": "এই সংস্করণে সাইটের সেটিংসও বদলেছে।",
   "publishes_truncated": "{total}টি পরিবর্তিত পৃষ্ঠার মধ্যে প্রথম {shown}টি দেখানো হচ্ছে।",
-  "overview_activity_viewall": "সব দেখুন"
+  "overview_activity_viewall": "সব দেখুন",
+  "publishes_toolarge": "এই সংস্করণটি এখানে তুলনা করার জন্য খুব বড়।",
+  "publishes_nosnapshot": "এই সংস্করণের প্রকাশিত কপি আর সংরক্ষিত নেই, তাই এটি তুলনা করা বা ফিরিয়ে আনা যাবে না।"
 }

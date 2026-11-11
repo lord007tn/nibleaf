@@ -35,7 +35,7 @@ export default function PublishVersionPage() {
   const restoreReason = useRestoreReason(projectId);
   const restore = useRestoreVersion(projectId);
   const deployment = detail.data?.deployment;
-  const state = deployment ? publishState(deployment.status, deployment.id === liveId) : null;
+  const state = deployment ? publishState(deployment, deployment.id === liveId) : null;
   const back = (
     <Link
       className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
@@ -71,7 +71,11 @@ export default function PublishVersionPage() {
       <PageHeader
         actions={
           canRestoreState(state) ? (
-            <TooltipButton disabledReason={restoreReason} onClick={() => restore.request(deployment)} variant="outline">
+            <TooltipButton
+              disabledReason={deployment.snapshotAvailable ? restoreReason : t('publishes.noSnapshot')}
+              onClick={() => restore.request(deployment)}
+              variant="outline"
+            >
               <RotateCcw aria-hidden className="size-3.5" />
               {t('publishes.restore')}
             </TooltipButton>
@@ -100,7 +104,12 @@ export default function PublishVersionPage() {
           </ul>
         </Callout>
       ) : null}
-      {detail.data?.summary ? <ChangeSummary summary={detail.data.summary} /> : null}
+      {detail.data?.summary?.status === 'ready' ? <ChangeSummary summary={detail.data.summary} /> : null}
+      {detail.data?.summary?.status === 'unavailable' ? (
+        <Callout data-testid="publish-changes-unavailable" tone="neutral">
+          {t(detail.data.summary.reason === 'no_snapshot' ? 'publishes.noSnapshot' : 'publishes.tooLarge')}
+        </Callout>
+      ) : null}
       {restore.elements}
     </PageContainer>
   );

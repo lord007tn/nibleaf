@@ -9,7 +9,7 @@ import { Check, ExternalLink, Globe2, Loader2, RotateCcw, TriangleAlert } from '
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage, useDeployments, useDomains, useLiveDeployments, useRollback } from '@/hooks/api';
-import { rollbackTarget } from '@/hooks/api/deployment-cache';
+import { isPublishRetrying, rollbackTarget } from '@/hooks/api/deployment-cache';
 import { pickLiveDomain } from '@/hooks/api/domain-state';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
@@ -128,7 +128,7 @@ export function DeployPipeline({
 
   const deployment = observedDeploymentId ? deployments.data?.find((item) => item.id === observedDeploymentId) : deployments.data?.[0];
   const status = deployment?.status;
-  const retrying = Boolean(observedDeploymentId) && status === 'FAILED' && deployment?.completedAt === null;
+  const retrying = Boolean(observedDeploymentId) && isPublishRetrying(deployment);
   const running = status === 'PENDING' || status === 'BUILDING' || retrying;
   const done = status === 'READY';
   const failed = status === 'FAILED' && !retrying;

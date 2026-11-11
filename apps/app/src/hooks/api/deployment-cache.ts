@@ -42,6 +42,16 @@ export const rollbackTarget = <T extends LiveCandidate>(
 
 export const isDeploymentInFlight = (status?: string): boolean => status === 'PENDING' || status === 'BUILDING';
 
+type AttemptState = { status: string; completedAt: string | null };
+
+/** A failed attempt BullMQ will retry: the worker records FAILED with no completion
+ *  time while a retry remains (the reaper completes one left that way too long). */
+export const isPublishRetrying = (attempt: AttemptState | undefined): boolean => attempt?.status === 'FAILED' && attempt.completedAt === null;
+
+/** Queued, building, or failed with an automatic retry still to come. */
+export const isPublishInProgress = (attempt: AttemptState | undefined): boolean =>
+  isDeploymentInFlight(attempt?.status) || isPublishRetrying(attempt);
+
 /** True while any publish of the site is queued or being prepared. */
 const hasPublishInFlight = (deployments: readonly Pick<Deployment, 'status'>[] | undefined): boolean =>
   Boolean(deployments?.some((deployment) => isDeploymentInFlight(deployment.status)));

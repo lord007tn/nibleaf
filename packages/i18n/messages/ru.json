@@ -4810,5 +4810,7 @@
   "publishes_changessince": "Изменения с версии {version}",
   "publishes_settingschanged": "В этой версии также изменились настройки сайта.",
   "publishes_truncated": "Показаны первые {shown} из {total} изменённых страниц.",
-  "overview_activity_viewall": "Показать все"
+  "overview_activity_viewall": "Показать все",
+  "publishes_toolarge": "Эта версия слишком велика, чтобы сравнить её здесь.",
+  "publishes_nosnapshot": "Опубликованная копия этой версии больше не хранится, поэтому её нельзя сравнить или восстановить."
 }

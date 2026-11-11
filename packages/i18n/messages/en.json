@@ -4785,5 +4785,7 @@
   "publishes_changessince": "Changes since version {version}",
   "publishes_settingschanged": "This version also changed site settings.",
   "publishes_truncated": "Showing the first {shown} of {total} changed pages.",
-  "overview_activity_viewall": "View all"
+  "overview_activity_viewall": "View all",
+  "publishes_toolarge": "This version is too large to compare here.",
+  "publishes_nosnapshot": "This version’s published copy is no longer stored, so it can’t be compared or restored."
 }

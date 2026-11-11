@@ -4718,5 +4718,7 @@
   "publishes_changessince": "自版本 {version} 以来的更改",
   "publishes_settingschanged": "此版本还更改了站点设置。",
   "publishes_truncated": "正在显示 {total} 个已更改页面中的前 {shown} 个。",
-  "overview_activity_viewall": "查看全部"
+  "overview_activity_viewall": "查看全部",
+  "publishes_toolarge": "此版本过大，无法在此比较。",
+  "publishes_nosnapshot": "此版本的已发布副本已不再保存，因此无法比较或恢复。"
 }

@@ -28,6 +28,8 @@ export interface PublishHistoryItem {
   completedAt: string | null;
   /** The publisher's display name, or null when unknown (an automatic publish, a deleted account). */
   publishedBy: string | null;
+  /** The published copy is stored, so it can be compared and restored (read from the null bitmap, not the value). */
+  snapshotAvailable: boolean;
 }
 
 /** The newest READY publish: what readers see now. */
@@ -53,6 +55,7 @@ export interface PublishChange {
 }
 
 export interface PublishChangeSummary {
+  status: 'ready';
   /** The READY version compared against; null for the first publish (every page is new). */
   previous: LiveVersion | null;
   totals: { added: number; modified: number; removed: number };
@@ -63,11 +66,18 @@ export interface PublishChangeSummary {
   settingsChanged: boolean;
 }
 
+/** A READY version whose changes can't be shown: comparing it ran past the
+ *  time limit, or its published copy is no longer stored. */
+export interface PublishSummaryUnavailable {
+  status: 'unavailable';
+  reason: 'too_large' | 'no_snapshot';
+}
+
 export interface PublishHistoryDetail {
   deployment: PublishHistoryItem & { error: string | null; errorDetails: unknown };
   live: LiveVersion | null;
-  /** Only a READY version has a snapshot to compare; null otherwise. */
-  summary: PublishChangeSummary | null;
+  /** Only a READY version has something to compare; null otherwise. */
+  summary: PublishChangeSummary | PublishSummaryUnavailable | null;
 }
 
 type ItemRow = Omit<PublishHistoryItem, 'createdAt' | 'completedAt'> & { createdAt: Date; completedAt: Date | null };
@@ -96,7 +106,7 @@ export const listPublishHistory = async (projectId: string, cursor?: number): Pr
   const [rows, live] = await Promise.all([
     prisma.$queryRaw<Array<ItemRow & { pagesCount: number }>>`
       SELECT d.id, d.version, d.status::text AS status, d."pagesCount", d."commitMessage", d."createdAt", d."completedAt",
-        u.name AS "publishedBy"
+        u.name AS "publishedBy", d.snapshot IS NOT NULL AS "snapshotAvailable"
       FROM deployment d LEFT JOIN "user" u ON u.id = d."createdById"
       WHERE d."projectId" = ${projectId} AND d.version < ${before}
       ORDER BY d.version DESC
@@ -111,6 +121,49 @@ export const listPublishHistory = async (projectId: string, cursor?: number): Pr
 
 type ChangeRow = PublishChange & { total: number | null; side: 'change' | 'total' | 'settings' };
 
+/** The longest one comparison may run before the version reads as too large to compare. */
+export const SUMMARY_STATEMENT_TIMEOUT_MS = 5000;
+/** Summaries kept in memory: each is at most {@link HISTORY_CHANGES_LIMIT} small rows. */
+const SUMMARY_CACHE_SIZE = 200;
+
+/**
+ * Both sides of a comparison are READY versions, whose snapshots never change,
+ * so a summary is cached by (site, version, previous version): a version that
+ * goes live in between changes the previous version, and so the key.
+ * Concurrent requests for the same key share one in-flight query.
+ */
+const summaryCache = new Map<string, PublishChangeSummary>();
+const summaryInFlight = new Map<string, Promise<PublishChangeSummary | PublishSummaryUnavailable>>();
+
+const remember = (key: string, summary: PublishChangeSummary) => {
+  summaryCache.delete(key);
+  summaryCache.set(key, summary);
+  if (summaryCache.size > SUMMARY_CACHE_SIZE) {
+    const oldest = summaryCache.keys().next();
+    if (!oldest.done) summaryCache.delete(oldest.value);
+  }
+};
+
+/** Tests only: start from an empty cache. */
+export const clearPublishSummaryCache = () => {
+  summaryCache.clear();
+  summaryInFlight.clear();
+};
+
+/** PostgreSQL's query_canceled (57014), raised by `statement_timeout`, however the driver wraps it. */
+const isStatementTimeout = (error: unknown): boolean => {
+  const seen = new Set<unknown>();
+  const visit = (value: unknown): boolean => {
+    if (!value || typeof value !== 'object' || seen.has(value)) return false;
+    seen.add(value);
+    const record = value as Record<string, unknown>;
+    if (record.code === '57014' || record.originalCode === '57014') return true;
+    if (typeof record.message === 'string' && record.message.includes('statement timeout')) return true;
+    return visit(record.meta) || visit(record.cause);
+  };
+  return visit(error);
+};
+
 /**
  * What a READY version changed against the READY version before it.
  *
@@ -124,8 +177,16 @@ type ChangeRow = PublishChange & { total: number | null; side: 'change' | 'total
  * is covered by `contentHash`). The listed changes stop at
  * {@link HISTORY_CHANGES_LIMIT}; totals count all of them. The PR that added
  * this (AUTH-13) has the plan on a 300-page site with ~3.6 MB snapshots.
+ *
+ * The work itself is bounded too: the comparison runs under a statement
+ * timeout, and one that runs past it reads as `too_large` (never cached, so a
+ * quieter moment can still answer). A finished summary is cached.
  */
-export const summarizePublishChanges = async (projectId: string, deploymentId: string): Promise<PublishChangeSummary> => {
+export const summarizePublishChanges = async (
+  projectId: string,
+  deploymentId: string,
+  { timeoutMs = SUMMARY_STATEMENT_TIMEOUT_MS }: { timeoutMs?: number } = {},
+): Promise<PublishChangeSummary | PublishSummaryUnavailable> => {
   const [previous] = await prisma.$queryRaw<LiveVersion[]>`
     SELECT p.id, p.version FROM deployment p
     JOIN deployment t ON t.id = ${deploymentId} AND t."projectId" = ${projectId}
@@ -133,44 +194,81 @@ export const summarizePublishChanges = async (projectId: string, deploymentId: s
     ORDER BY p.version DESC
     LIMIT 1
   `;
+  const key = `${projectId}:${deploymentId}:${previous?.id ?? ''}`;
+  const cached = summaryCache.get(key);
+  if (cached) {
+    remember(key, cached);
+    return cached;
+  }
+  const running = summaryInFlight.get(key);
+  if (running) return running;
+  const work = compareSnapshots(projectId, deploymentId, previous ?? null, timeoutMs)
+    .then((summary) => {
+      remember(key, summary);
+      return summary;
+    })
+    .catch((error: unknown): PublishSummaryUnavailable => {
+      if (isStatementTimeout(error)) return { status: 'unavailable', reason: 'too_large' };
+      throw error;
+    })
+    .finally(() => summaryInFlight.delete(key));
+  summaryInFlight.set(key, work);
+  return work;
+};
+
+const compareSnapshots = async (
+  projectId: string,
+  deploymentId: string,
+  previous: LiveVersion | null,
+  timeoutMs: number,
+): Promise<PublishChangeSummary> => {
   const previousId = previous?.id ?? null;
-  const rows = await prisma.$queryRaw<ChangeRow[]>`
-    WITH pages AS MATERIALIZED (
-      SELECT d.id = ${deploymentId} AS current, x.settings, e->>'id' AS id, e->>'title' AS title, e->>'path' AS path,
-        e->>'languageCode' AS "languageCode", e->>'kind' AS kind,
-        md5((e - 'updatedAt' - 'createdAt')::text) AS digest
-      FROM deployment d
-      CROSS JOIN LATERAL (SELECT d.snapshot || '{}'::jsonb AS s OFFSET 0) snap
-      CROSS JOIN LATERAL (
-        SELECT md5(jsonb_build_array(
-          snap.s->'project',
-          CASE WHEN jsonb_typeof(snap.s->'openapi') = 'object' THEN (snap.s->'openapi') - 'document' - 'updatedAt' END
-        )::text) AS settings
-        OFFSET 0
-      ) x
-      -- A site published with no pages still yields its settings row.
-      LEFT JOIN LATERAL jsonb_path_query(snap.s, '$.pages[*]') e ON true
-      WHERE d."projectId" = ${projectId} AND d.id IN (${deploymentId}, ${previousId ?? deploymentId}) AND d.snapshot IS NOT NULL
-    ), changes AS (
-      SELECT COALESCE(c.id, p.id) AS id, COALESCE(c.title, p.title) AS title, COALESCE(c.path, p.path) AS path,
-        COALESCE(c."languageCode", p."languageCode") AS "languageCode", COALESCE(c.kind, p.kind) AS kind,
-        CASE WHEN p.id IS NULL THEN 'added' WHEN c.id IS NULL THEN 'removed' ELSE 'modified' END AS status
-      FROM (SELECT * FROM pages WHERE current AND id IS NOT NULL) c
-      FULL JOIN (SELECT * FROM pages WHERE NOT current AND id IS NOT NULL AND ${previousId !== null}) p ON p.id = c.id
-      WHERE c.id IS NULL OR p.id IS NULL OR c.digest <> p.digest
-    ), ranked AS (
-      SELECT *, row_number() OVER (ORDER BY CASE status WHEN 'added' THEN 0 WHEN 'modified' THEN 1 ELSE 2 END, "languageCode", path, id) AS rank
-      FROM changes
-    )
-    SELECT 'change' AS side, id, title, path, "languageCode", kind, status, NULL::int AS total
-    FROM ranked WHERE rank <= ${HISTORY_CHANGES_LIMIT}
-    UNION ALL
-    SELECT 'total', NULL, NULL, NULL, NULL, NULL, status, count(*)::int FROM changes GROUP BY status
-    UNION ALL
-    SELECT 'settings', NULL, NULL, NULL, NULL, NULL,
-      CASE WHEN count(DISTINCT settings) > 1 THEN 'modified' ELSE 'unchanged' END, NULL
-    FROM pages WHERE ${previousId !== null}
-  `;
+  // SET takes no bind parameters; the value is a whole number of milliseconds.
+  const limit = Math.max(1, Math.trunc(timeoutMs));
+  const rows = await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${limit}`);
+      const rows = await tx.$queryRaw<ChangeRow[]>`
+        WITH pages AS MATERIALIZED (
+          SELECT d.id = ${deploymentId} AS current, x.settings, e->>'id' AS id, e->>'title' AS title, e->>'path' AS path,
+            e->>'languageCode' AS "languageCode", e->>'kind' AS kind,
+            md5((e - 'updatedAt' - 'createdAt')::text) AS digest
+          FROM deployment d
+          CROSS JOIN LATERAL (SELECT d.snapshot || '{}'::jsonb AS s OFFSET 0) snap
+          CROSS JOIN LATERAL (
+            SELECT md5(jsonb_build_array(
+              snap.s->'project',
+              CASE WHEN jsonb_typeof(snap.s->'openapi') = 'object' THEN (snap.s->'openapi') - 'document' - 'updatedAt' END
+            )::text) AS settings
+            OFFSET 0
+          ) x
+          -- A site published with no pages still yields its settings row.
+          LEFT JOIN LATERAL jsonb_path_query(snap.s, '$.pages[*]') e ON true
+          WHERE d."projectId" = ${projectId} AND d.id IN (${deploymentId}, ${previousId ?? deploymentId}) AND d.snapshot IS NOT NULL
+        ), changes AS (
+          SELECT COALESCE(c.id, p.id) AS id, COALESCE(c.title, p.title) AS title, COALESCE(c.path, p.path) AS path,
+            COALESCE(c."languageCode", p."languageCode") AS "languageCode", COALESCE(c.kind, p.kind) AS kind,
+            CASE WHEN p.id IS NULL THEN 'added' WHEN c.id IS NULL THEN 'removed' ELSE 'modified' END AS status
+          FROM (SELECT * FROM pages WHERE current AND id IS NOT NULL) c
+          FULL JOIN (SELECT * FROM pages WHERE NOT current AND id IS NOT NULL AND ${previousId !== null}) p ON p.id = c.id
+          WHERE c.id IS NULL OR p.id IS NULL OR c.digest <> p.digest
+        ), ranked AS (
+          SELECT *, row_number() OVER (ORDER BY CASE status WHEN 'added' THEN 0 WHEN 'modified' THEN 1 ELSE 2 END, "languageCode", path, id) AS rank
+          FROM changes
+        )
+        SELECT 'change' AS side, id, title, path, "languageCode", kind, status, NULL::int AS total
+        FROM ranked WHERE rank <= ${HISTORY_CHANGES_LIMIT}
+        UNION ALL
+        SELECT 'total', NULL, NULL, NULL, NULL, NULL, status, count(*)::int FROM changes GROUP BY status
+        UNION ALL
+        SELECT 'settings', NULL, NULL, NULL, NULL, NULL,
+          CASE WHEN count(DISTINCT settings) > 1 THEN 'modified' ELSE 'unchanged' END, NULL
+        FROM pages WHERE ${previousId !== null}
+      `;
+      return rows;
+    },
+    { maxWait: 5000, timeout: limit + 5000 },
+  );
   const totals = { added: 0, modified: 0, removed: 0 };
   const changes: PublishChange[] = [];
   let settingsChanged = false;
@@ -180,22 +278,27 @@ export const summarizePublishChanges = async (projectId: string, deploymentId: s
     else changes.push(change);
   }
   const all = totals.added + totals.modified + totals.removed;
-  return { previous: previous ?? null, totals, changes, truncated: all > changes.length, settingsChanged };
+  return { status: 'ready', previous, totals, changes, truncated: all > changes.length, settingsChanged };
 };
 
 /** One version of the site: its facts, whether it's live, and (when READY) what it changed. */
 export const getPublishHistoryDetail = async (projectId: string, deploymentId: string): Promise<PublishHistoryDetail> => {
   const [[row], live] = await Promise.all([
-    prisma.$queryRaw<Array<ItemRow & { error: string | null; errorDetails: unknown; hasSnapshot: boolean }>>`
+    prisma.$queryRaw<Array<ItemRow & { error: string | null; errorDetails: unknown }>>`
       SELECT d.id, d.version, d.status::text AS status, d."pagesCount", d."commitMessage", d."createdAt", d."completedAt",
-        d.error, d."errorDetails", d.snapshot IS NOT NULL AS "hasSnapshot", u.name AS "publishedBy"
+        d.error, d."errorDetails", d.snapshot IS NOT NULL AS "snapshotAvailable", u.name AS "publishedBy"
       FROM deployment d LEFT JOIN "user" u ON u.id = d."createdById"
       WHERE d.id = ${deploymentId} AND d."projectId" = ${projectId}
     `,
     getLiveVersion(projectId),
   ]);
   if (!row) throw notFound('deployment', { id: deploymentId });
-  const { hasSnapshot, error, errorDetails, ...item } = row;
-  const summary = row.status === 'READY' && hasSnapshot ? await summarizePublishChanges(projectId, deploymentId) : null;
+  const { error, errorDetails, ...item } = row;
+  const summary =
+    row.status !== 'READY'
+      ? null
+      : row.snapshotAvailable
+        ? await summarizePublishChanges(projectId, deploymentId)
+        : ({ status: 'unavailable', reason: 'no_snapshot' } as const);
   return { deployment: { ...toItem(item), error, errorDetails }, live, summary };
 };

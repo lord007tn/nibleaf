@@ -4786,5 +4786,7 @@
   "publishes_changessince": "Alterações desde a versão {version}",
   "publishes_settingschanged": "Esta versão também alterou as configurações do site.",
   "publishes_truncated": "Mostrando as primeiras {shown} de {total} páginas alteradas.",
-  "overview_activity_viewall": "Ver tudo"
+  "overview_activity_viewall": "Ver tudo",
+  "publishes_toolarge": "Esta versão é grande demais para ser comparada aqui.",
+  "publishes_nosnapshot": "A cópia publicada desta versão não está mais armazenada, então não é possível compará-la nem restaurá-la."
 }

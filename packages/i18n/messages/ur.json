@@ -4776,5 +4776,7 @@
   "publishes_changessince": "نسخہ {version} کے بعد کی تبدیلیاں",
   "publishes_settingschanged": "اس نسخے میں سائٹ کی ترتیبات بھی تبدیل ہوئیں۔",
   "publishes_truncated": "{total} تبدیل شدہ صفحات میں سے پہلے {shown} دکھائے جا رہے ہیں۔",
-  "overview_activity_viewall": "سب دیکھیں"
+  "overview_activity_viewall": "سب دیکھیں",
+  "publishes_toolarge": "یہ نسخہ یہاں موازنے کے لیے بہت بڑا ہے۔",
+  "publishes_nosnapshot": "اس نسخے کی شائع شدہ کاپی اب محفوظ نہیں، اس لیے نہ اس کا موازنہ ہو سکتا ہے اور نہ اسے بحال کیا جا سکتا ہے۔"
 }

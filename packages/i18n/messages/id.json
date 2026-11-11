@@ -4718,5 +4718,7 @@
   "publishes_changessince": "Perubahan sejak versi {version}",
   "publishes_settingschanged": "Versi ini juga mengubah pengaturan situs.",
   "publishes_truncated": "Menampilkan {shown} pertama dari {total} halaman yang berubah.",
-  "overview_activity_viewall": "Lihat semua"
+  "overview_activity_viewall": "Lihat semua",
+  "publishes_toolarge": "Versi ini terlalu besar untuk dibandingkan di sini.",
+  "publishes_nosnapshot": "Salinan terbit versi ini tidak lagi disimpan, jadi tidak dapat dibandingkan atau dipulihkan."
 }

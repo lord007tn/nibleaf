@@ -43,7 +43,7 @@ export default function PublishesPage() {
                 onRestore={() => restore.request(item)}
                 projectId={projectId}
                 restoreReason={restoreReason}
-                state={publishState(item.status, item.id === liveId)}
+                state={publishState(item, item.id === liveId)}
               />
             ))}
           </DataList>
@@ -101,7 +101,11 @@ function PublishRow({
       trailing={
         canRestoreState(state) ? (
           <RowActions label={t('settings.visibility.actionsFor', { name: `v${item.version}` })}>
-            <RowActionsItem disabledReason={restoreReason} icon={<RotateCcw aria-hidden />} onSelect={onRestore}>
+            <RowActionsItem
+              disabledReason={item.snapshotAvailable ? restoreReason : t('publishes.noSnapshot')}
+              icon={<RotateCcw aria-hidden />}
+              onSelect={onRestore}
+            >
               {t('publishes.restore')}
             </RowActionsItem>
           </RowActions>

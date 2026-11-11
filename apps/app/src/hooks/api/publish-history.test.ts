@@ -5,7 +5,16 @@ vi.mock('@/services/api', () => ({ api: {} }));
 import { publishHistoryDetailQueryOptions, publishHistoryQueryOptions } from './publish-history';
 import { queryKeys } from './query-keys';
 
-const row = (version: number, status: string) => ({ id: `dep-${version}`, version, status });
+const row = (
+  version: number,
+  status: string,
+  completedAt: string | null = status === 'READY' || status === 'FAILED' ? '2026-11-11T00:00:00Z' : null,
+) => ({
+  id: `dep-${version}`,
+  version,
+  status,
+  completedAt,
+});
 
 describe('publish history queries', () => {
   it('lives under the site’s deployments key, so every publish and rollback refreshes it', () => {
@@ -30,5 +39,15 @@ describe('publish history queries', () => {
     const detailInterval = publishHistoryDetailQueryOptions('site-1', 'dep-3').refetchInterval as (query: unknown) => number | false;
     expect(detailInterval({ state: { data: { deployment: row(3, 'BUILDING') } } })).toBeGreaterThan(0);
     expect(detailInterval({ state: { data: { deployment: row(3, 'READY') } } })).toBe(false);
+  });
+
+  it('keeps re-reading through an automatic retry: FAILED with no completion time is not final', () => {
+    const interval = publishHistoryQueryOptions('site-1').refetchInterval as (query: unknown) => number | false;
+    const withRows = (rows: object[]) => ({ state: { data: { pages: [{ items: rows }] } } });
+    expect(interval(withRows([row(3, 'FAILED', null), row(2, 'READY')]))).toBeGreaterThan(0);
+    expect(interval(withRows([row(3, 'READY'), row(2, 'READY')]))).toBe(false);
+    const detailInterval = publishHistoryDetailQueryOptions('site-1', 'dep-3').refetchInterval as (query: unknown) => number | false;
+    expect(detailInterval({ state: { data: { deployment: row(3, 'FAILED', null) } } })).toBeGreaterThan(0);
+    expect(detailInterval({ state: { data: { deployment: row(3, 'FAILED') } } })).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { Hono } from 'hono';
 import { contextStorage } from 'hono/context-storage';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HonoEnv } from '@/lib/hono/context';
 
 /**
@@ -45,6 +45,14 @@ describe.skipIf(process.env.PUBLISH_HISTORY_INTEGRATION !== '1')('publish histor
     app.route('/api/app/projects/:projectId/deployments', deployments);
     app.onError((error, ctx) => errorMiddleware({ isDevelopment: false })(error, ctx));
   }, 120_000);
+
+  beforeEach(() => history?.clearPublishSummaryCache());
+
+  /** A summary that finished, or a failed test naming why it didn't. */
+  const ready = (summary: Awaited<ReturnType<typeof history.summarizePublishChanges>> | null | undefined) => {
+    if (summary?.status !== 'ready') throw new Error(`expected a ready summary, got ${JSON.stringify(summary)}`);
+    return summary;
+  };
 
   afterAll(async () => {
     if (!db) return;
@@ -227,6 +235,7 @@ describe.skipIf(process.env.PUBLISH_HISTORY_INTEGRATION !== '1')('publish histor
     >;
     expect(detail.live).toMatchObject({ id: v3.id });
     expect(detail.summary).toEqual({
+      status: 'ready',
       previous: { id: v1.id, version: 1 },
       totals: { added: 1, modified: 1, removed: 1 },
       changes: [
@@ -253,13 +262,13 @@ describe.skipIf(process.env.PUBLISH_HISTORY_INTEGRATION !== '1')('publish histor
     await deployment(project.id, 1, 'READY', { snapshot: snapshot(project.id, [], { theme: 'light' }) });
     const v2 = await deployment(project.id, 2, 'READY', { snapshot: snapshot(project.id, [], { theme: 'dark' }) });
     const v3 = await deployment(project.id, 3, 'READY', { snapshot: snapshot(project.id, [], { theme: 'dark' }) });
-    expect(await history.summarizePublishChanges(project.id, v2.id)).toMatchObject({
+    expect(ready(await history.summarizePublishChanges(project.id, v2.id))).toMatchObject({
       totals: { added: 0, modified: 0, removed: 0 },
       changes: [],
       truncated: false,
       settingsChanged: true,
     });
-    expect((await history.summarizePublishChanges(project.id, v3.id)).settingsChanged).toBe(false);
+    expect(ready(await history.summarizePublishChanges(project.id, v3.id)).settingsChanged).toBe(false);
   });
 
   it('caps the listed changes and still counts every one, per kind', async () => {
@@ -269,14 +278,15 @@ describe.skipIf(process.env.PUBLISH_HISTORY_INTEGRATION !== '1')('publish histor
     const addedIds = Array.from({ length: 260 }, (_, i) => `a${String(i).padStart(3, '0')}`);
     await deployment(project.id, 1, 'READY', { snapshot: snapshot(project.id, removedIds.map(page)) });
     const v2 = await deployment(project.id, 2, 'READY', { snapshot: snapshot(project.id, addedIds.map(page)) });
-    const summary = (await call(team.viewer.id, `${project.id}/deployments/history/${v2.id}`)).body.data as unknown as Awaited<
+    const detail = (await call(team.viewer.id, `${project.id}/deployments/history/${v2.id}`)).body.data as unknown as Awaited<
       ReturnType<typeof history.getPublishHistoryDetail>
     >;
-    expect(summary.summary?.changes).toHaveLength(history.HISTORY_CHANGES_LIMIT);
-    expect(summary.summary?.changes.every((change) => change.status === 'added')).toBe(true);
+    const summary = ready(detail.summary);
+    expect(summary.changes).toHaveLength(history.HISTORY_CHANGES_LIMIT);
+    expect(summary.changes.every((change) => change.status === 'added')).toBe(true);
     // The removed pages fall past the cap, yet are counted.
-    expect(summary.summary?.totals).toEqual({ added: 260, modified: 0, removed: 12 });
-    expect(summary.summary?.truncated).toBe(true);
+    expect(summary.totals).toEqual({ added: 260, modified: 0, removed: 12 });
+    expect(summary.truncated).toBe(true);
   });
 
   it('scopes every read to the site in the path', async () => {
@@ -293,7 +303,95 @@ describe.skipIf(process.env.PUBLISH_HISTORY_INTEGRATION !== '1')('publish histor
     };
     expect(listed.items.map((item) => item.id)).not.toContain(foreign.id);
     // A summary request naming another site's version compares nothing of it.
-    const crossed = await history.summarizePublishChanges(one.project.id, foreign.id);
+    const crossed = ready(await history.summarizePublishChanges(one.project.id, foreign.id));
     expect(crossed.changes).toEqual([]);
+  });
+
+  /** Two READY versions of a site with `pages` pages, each with a few KB of distinct text. */
+  const comparablePair = async (pages: number) => {
+    const { project, team } = await site();
+    const page = (i: number, edit = ''): Page => ({
+      id: `p${i}`,
+      title: `Page ${i}`,
+      path: `p/${i}`,
+      content: `${randomUUID().repeat(100)}${i}${edit}`,
+    });
+    const base = Array.from({ length: pages }, (_, i) => page(i));
+    await deployment(project.id, 1, 'READY', { snapshot: snapshot(project.id, base) });
+    const edited = base.map((entry, i) => (i % 10 === 0 ? { ...entry, content: `${entry.content} edited` } : entry));
+    const v2 = await deployment(project.id, 2, 'READY', { snapshot: snapshot(project.id, edited) });
+    return { project, team, v2 };
+  };
+
+  it('compares two published versions once: later requests read the cached summary', async () => {
+    const { project, team, v2 } = await comparablePair(20);
+    const transactions = vi.spyOn(db.prisma, '$transaction');
+    try {
+      const first = await call(team.viewer.id, `${project.id}/deployments/history/${v2.id}`);
+      const second = await call(team.viewer.id, `${project.id}/deployments/history/${v2.id}`);
+      expect(first.status).toBe(200);
+      expect(second.body.data).toEqual(first.body.data);
+      expect(ready((first.body.data as unknown as { summary: never }).summary).totals).toEqual({ added: 0, modified: 2, removed: 0 });
+      expect(transactions).toHaveBeenCalledTimes(1);
+    } finally {
+      transactions.mockRestore();
+    }
+  });
+
+  it('runs one comparison for concurrent requests of the same version', async () => {
+    const { project, v2 } = await comparablePair(20);
+    const transactions = vi.spyOn(db.prisma, '$transaction');
+    try {
+      const results = await Promise.all(Array.from({ length: 6 }, () => history.summarizePublishChanges(project.id, v2.id)));
+      expect(new Set(results).size).toBe(1);
+      expect(ready(results[0]).totals.modified).toBe(2);
+      expect(transactions).toHaveBeenCalledTimes(1);
+    } finally {
+      transactions.mockRestore();
+    }
+  });
+
+  it('reads as too large to compare when the comparison runs past its time limit, and never caches that', async () => {
+    const { project, v2 } = await comparablePair(400);
+    expect(await history.summarizePublishChanges(project.id, v2.id, { timeoutMs: 1 })).toEqual({ status: 'unavailable', reason: 'too_large' });
+    // With the normal limit the same comparison answers: the timeout was not remembered.
+    expect(ready(await history.summarizePublishChanges(project.id, v2.id)).totals.modified).toBe(40);
+  });
+
+  it('says a published version without its stored copy can be neither compared nor restored', async () => {
+    const { project, team } = await site();
+    await deployment(project.id, 1, 'READY', { snapshot: snapshot(project.id, [{ id: 'a', title: 'A', path: 'a', content: 'A' }]) });
+    const lost = await db.prisma.deployment.create({
+      data: { projectId: project.id, version: 2, status: 'READY', pagesCount: 1, completedAt: new Date() },
+    });
+    await deployment(project.id, 3, 'READY');
+    const detail = (await call(team.viewer.id, `${project.id}/deployments/history/${lost.id}`)).body.data as unknown as Awaited<
+      ReturnType<typeof history.getPublishHistoryDetail>
+    >;
+    expect(detail.deployment.snapshotAvailable).toBe(false);
+    expect(detail.summary).toEqual({ status: 'unavailable', reason: 'no_snapshot' });
+    const listed = (await call(team.viewer.id, `${project.id}/deployments/history`)).body.data as unknown as {
+      items: Array<{ version: number; snapshotAvailable: boolean }>;
+    };
+    expect(listed.items.map((item) => [item.version, item.snapshotAvailable])).toEqual([
+      [3, true],
+      [2, false],
+      [1, true],
+    ]);
+    // The restore it would offer is refused by the server too.
+    expect((await call(team.editor.id, `${project.id}/deployments/${lost.id}/rollback`, 'POST')).status).toBe(400);
+  });
+
+  // Last: the limiter's window is shared by every request this file sends.
+  it('rate-limits the version detail, which compares snapshots, but not the history list', async () => {
+    const { project, team, v2 } = await comparablePair(5);
+    let limited: { status: number; body: { error?: { code: string } } } | undefined;
+    for (let i = 0; i < 70 && !limited; i++) {
+      const response = await call(team.viewer.id, `${project.id}/deployments/history/${v2.id}`);
+      if (response.status === 429) limited = response;
+      else expect(response.status).toBe(200);
+    }
+    expect(limited?.body.error?.code).toBe('http:rate_limited');
+    expect((await call(team.viewer.id, `${project.id}/deployments/history`)).status).toBe(200);
   });
 });

@@ -4835,5 +4835,7 @@
   "publishes_changessince": "التغييرات منذ النسخة {version}",
   "publishes_settingschanged": "غيّرت هذه النسخة إعدادات الموقع أيضًا.",
   "publishes_truncated": "تُعرض أول {shown} من أصل {total} صفحة تغيّرت.",
-  "overview_activity_viewall": "عرض الكل"
+  "overview_activity_viewall": "عرض الكل",
+  "publishes_toolarge": "هذه النسخة أكبر من أن تُقارَن هنا.",
+  "publishes_nosnapshot": "لم تعد هذه النسخة المنشورة محفوظة، لذا لا يمكن مقارنتها ولا استعادتها."
 }
