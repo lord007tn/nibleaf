@@ -429,6 +429,13 @@ model JoinLink {
   useCount       Int           @default(0)
   expiresAt      DateTime?
   revokedAt      DateTime?
+  /// Deletion is a tombstone (PR 3): the link leaves every list and admits
+  /// nobody, but the row and its `uses` (who joined) stay for audit.
+  deletedAt      DateTime?
+  /// Who deleted it. A plain id, not a relation: the audit outlives the account.
+  deletedById    String?
+  /// Where it was deleted from: `organization`, or `website:<projectId>`.
+  deletedScope   String?
   createdById    String?
   createdBy      User?         @relation("JoinLinkCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt      DateTime      @default(now())

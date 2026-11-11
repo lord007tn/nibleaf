@@ -156,10 +156,17 @@ export async function renderMemberInvitationEmail({
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
       action: { label: t('email.invite.action'), url: acceptUrl },
+      // What they get (design §6.1): Admin of everything, the websites with their role, or none yet.
       detail: [
-        ...grants.map((grant) => `${grant.name} (${t(INVITE_ROLE_LABELS[grant.role] ?? 'roles.viewer')})`),
+        organizationRole && role === 'admin'
+          ? t('email.invite.accessAdmin')
+          : organizationRole && role === 'member' && !grants.length
+            ? t('email.invite.accessNone')
+            : grants.map((grant) => `${grant.name} (${t(INVITE_ROLE_LABELS[grant.role] ?? 'roles.viewer')})`).join(', '),
         t('email.invite.expiry', params),
-      ].join(' · '),
+      ]
+        .filter(Boolean)
+        .join(' · '),
       language,
       message: t('email.invite.message', params),
       preview: t('email.invite.preview', params),
