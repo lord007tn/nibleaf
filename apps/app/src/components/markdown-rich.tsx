@@ -8,10 +8,9 @@ import { readerMdxComponents } from '@/components/site/mdx/component-map';
 import { type MarkdownProps, MarkdownRenderer } from './markdown';
 
 /** Optional renderer for pages that actually contain raw HTML/MDX or math.
- * React.lazy keeps parse5, KaTeX and the MDX component renderers out of
- * ordinary public-doc navigations; React's streaming SSR still resolves this
- * component before sending its final content, preserving indexable markup and
- * hydration identity. */
+ * Loading it on demand keeps parse5, KaTeX and the MDX component renderers out
+ * of ordinary public-doc navigations; see `richMarkdownModule` for how it loads
+ * before hydration. */
 export default function RichMarkdown(props: MarkdownProps) {
   const { site } = props;
   const mdxComponents = useMemo(() => readerMdxComponents(site) as Components, [site]);
