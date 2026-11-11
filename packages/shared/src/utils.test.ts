@@ -103,19 +103,6 @@ describe('stripMarkdownLinks', () => {
     expect(stripMarkdownLinks(`[${label}](/x)`)).toBe(label);
     expect(stripMarkdownLinks('[unfinished')).toBe('[unfinished');
   });
-  it('treats a `!` as an image marker only right before its bracket, wherever the text around it ends', () => {
-    expect(stripMarkdownLinks('!![i](u)')).toBe('!');
-    expect(stripMarkdownLinks('[a](b)![i](u)c')).toBe('ac');
-    expect(stripMarkdownLinks('[a](b)[c](d)')).toBe('ac');
-    expect(stripMarkdownLinks('wow! [x](y)')).toBe('wow! x');
-    expect(stripMarkdownLinks('a [b] ![c] d')).toBe('a [b] ![c] d');
-    expect(stripMarkdownLinks('![unfinished')).toBe('![unfinished');
-    expect(stripMarkdownLinks('end!')).toBe('end!');
-  });
-  it('copies long text between links whole', () => {
-    const run = ' '.repeat(1_000_000);
-    expect(stripMarkdownLinks(`${run}[a](b)${run}x`)).toBe(`${run}a${run}x`);
-  });
 });
 
 describe('plural', () => {

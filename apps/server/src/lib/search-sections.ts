@@ -20,18 +20,16 @@ const queryTokens = (query: string): string[] =>
     .filter((token) => token.length >= 2);
 
 function normalizeWithOffsets(text: string): { value: string; offsets: number[] } {
-  // Collected and joined once: appending one character at a time to a string is
-  // quadratic in V8 on long sections.
-  const chars: string[] = [];
+  let value = '';
   const offsets: number[] = [];
   for (let index = 0; index < text.length; index += 1) {
     for (const char of normalize(text[index] ?? '')) {
-      chars.push(char);
+      value += char;
       offsets.push(index);
     }
   }
   offsets.push(text.length);
-  return { value: chars.join(''), offsets };
+  return { value, offsets };
 }
 
 /** A preview of the section body around the first matching word, cut on whole words. */
