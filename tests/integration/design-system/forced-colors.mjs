@@ -8,13 +8,16 @@
 //   node tests/integration/design-system/forced-colors.mjs [screenshotPath]
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 import { build } from 'vite';
 
 const appDir = fileURLToPath(new URL('../../../apps/app/', import.meta.url));
 const harness = join(appDir, '.forced-colors-check');
+// The page is built the way the app builds its own: with the app's Vite plugins.
+const fromApp = (name) => import(pathToFileURL(createRequire(join(appDir, 'package.json')).resolve(name)).href);
 const screenshot = process.argv[2];
 
 rmSync(harness, { recursive: true, force: true });
@@ -52,7 +55,7 @@ try {
     base: './',
     logLevel: 'warn',
     configFile: false,
-    plugins: [(await import('@tailwindcss/vite')).default(), (await import('@vitejs/plugin-react')).default()],
+    plugins: [(await fromApp('@tailwindcss/vite')).default(), (await fromApp('@vitejs/plugin-react')).default()],
     build: { outDir: join(harness, 'dist'), emptyOutDir: true },
   });
 
