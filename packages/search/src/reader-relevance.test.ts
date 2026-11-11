@@ -5,54 +5,57 @@ import { cleanSearchText, createDocIndex, foldSearchText, normalizeArabicSearchT
 const doc = (id: string, title: string, content = ''): SearchDoc => ({ id, title, path: id, content, headings: '', description: '' });
 const reader = { relevance: 'reader' as const };
 
-/** Calibrated timing for the ReDoS cases: the same machine's time for a plain
- *  linear pass over the same input. A slow CI core slows both sides equally,
- *  while superlinear growth (hundreds of times slower at 100k) is still caught. */
-const linearPassMs = (input: string): number => {
-  const runs: number[] = [];
-  for (let round = 0; round < 3; round += 1) {
+/**
+ * Calibrated timing for the ReDoS cases: the same work at n and at 4n, on the
+ * same runner, measured in alternating order after a warmup so GC and JIT state
+ * are shared (median of 3). Linear work grows about 4x; quadratic grows 16x. The
+ * bound is 8x plus 20 ms, so a case that runs in a few milliseconds isn't judged
+ * on timer jitter. Each row's n is large enough that its small run takes about
+ * 4 ms here, above the 2.5 ms where 16x would still fit under 8x + 20 ms.
+ */
+const growthMs = (small: string, large: string): [number, number] => {
+  const time = (input: string) => {
     const started = performance.now();
-    let letters = 0;
-    for (let index = 0; index < input.length; index += 1) if (/\p{L}/u.test(input[index] ?? '')) letters += 1;
-    if (letters < 0) throw new Error('unreachable');
-    runs.push(performance.now() - started);
-  }
-  return runs.sort((a, b) => a - b)[1] ?? 0;
-};
-const medianMs = (run: () => void): number => {
-  run();
-  const runs: number[] = [];
+    readerSearchTerms(input);
+    cleanSearchText(input);
+    return performance.now() - started;
+  };
+  time(small);
+  time(large);
+  const times: [number[], number[]] = [[], []];
   for (let round = 0; round < 3; round += 1) {
-    const started = performance.now();
-    run();
-    runs.push(performance.now() - started);
+    if (round % 2 === 0) {
+      times[0].push(time(small));
+      times[1].push(time(large));
+    } else {
+      times[1].push(time(large));
+      times[0].push(time(small));
+    }
   }
-  return runs.sort((a, b) => a - b)[1] ?? 0;
+  const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
+  return [median(times[0]), median(times[1])];
 };
 
 describe('published reader relevance', () => {
   // ReDoS bounds (CodeQL js/polynomial-redos): untrusted queries and page bodies
   // must stay linear. Steady-state latency lives in `pnpm bench:reader`.
   it.each([
-    `${' '.repeat(99_999)}x`,
-    'a '.repeat(50_000),
-    '[('.repeat(50_000),
-    '<!--'.repeat(25_000),
-    '`'.repeat(100_000),
-    '`a``'.repeat(25_000),
-    '```\n'.repeat(25_000),
-    `${'<T>'.repeat(33_333)}x`,
-  ])('stays linear on a 100k-character adversarial input', (input) => {
-    expect(input.length).toBeGreaterThanOrEqual(99_999);
-    const terms = readerSearchTerms(input);
-    const text = cleanSearchText(input);
-    expect(terms.size).toBeLessThanOrEqual(2);
-    expect(text.length).toBeLessThanOrEqual(input.length + 2);
-    const elapsed = medianMs(() => {
-      readerSearchTerms(input);
-      cleanSearchText(input);
-    });
-    expect(elapsed).toBeLessThanOrEqual(10 * linearPassMs(input) + 20);
+    ['spaces, then one letter', (n: number) => `${' '.repeat(n - 1)}x`, 240_000],
+    ['letter-space pairs', (n: number) => 'a '.repeat(n / 2), 100_000],
+    ['open brackets', (n: number) => '[('.repeat(n / 2), 320_000],
+    ['unclosed comments', (n: number) => '<!--'.repeat(n / 4), 400_000],
+    ['backticks', (n: number) => '`'.repeat(n), 600_000],
+    ['unbalanced code spans', (n: number) => '`a``'.repeat(n / 4), 64_000],
+    ['unclosed fences', (n: number) => '```\n'.repeat(n / 4), 64_000],
+    ['unclosed tags, then one letter', (n: number) => `${'<T>'.repeat(n / 3)}x`, 78_000],
+  ] as const)('stays linear on adversarial input: %s', (_label, build, n) => {
+    const small = build(n);
+    const large = build(4 * n);
+    expect(large.length).toBeGreaterThanOrEqual(4 * n - 3);
+    expect(readerSearchTerms(large).size).toBeLessThanOrEqual(2);
+    expect(cleanSearchText(large).length).toBeLessThanOrEqual(large.length + 2);
+    const [smaller, larger] = growthMs(small, large);
+    expect(larger).toBeLessThanOrEqual(8 * smaller + 20);
   });
 
   it('rejects oversized reader queries before retrieval', async () => {
