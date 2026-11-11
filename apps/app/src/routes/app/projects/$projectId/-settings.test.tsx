@@ -124,7 +124,7 @@ vi.mock('@/components/project-settings/languages-section', () => ({
     </div>
   ),
 }));
-vi.mock('@/components/project-settings/members-section', () => ({ MembersSection: () => null }));
+vi.mock('@/features/people/components/site-team-page', () => ({ SiteTeamPage: () => null }));
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
 vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
 vi.mock('@/components/project-settings/smart-ai-section', () => ({ SmartAiSection: () => <div data-testid="smart-ai-settings" /> }));
