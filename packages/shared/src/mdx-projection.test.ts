@@ -181,31 +181,43 @@ describe('projection robustness (#341)', () => {
   });
 
   // Like the shared script-mismatch performance tests, compare work against work
-  // on this runner instead of a fixed wall-clock deadline: doubling the input may
-  // at most double the time, with room for noise (2.5x, plus 20 ms so a case that
-  // runs in a few milliseconds isn't judged on timer jitter). Quadratic work grows 4x.
-  /** Median of three timed projections of `source`, after one warmup. */
-  const projectionMs = (source: string, check: (output: string) => void): number => {
-    const project = () => {
+  // on this runner instead of a fixed wall-clock deadline. Quadrupling the input
+  // may cost at most 8x the time, plus 20 ms so a case that runs in a few
+  // milliseconds isn't judged on timer jitter: linear work measures about 4x (deep
+  // nesting about 5x, an n log n-like term that stays flat from 5k to 320k), and
+  // quadratic work 16x. Sizes are small enough for a busy CI runner, which is
+  // 6-25x slower than a laptop here.
+  /** Median times of `small` and `large`, measured in alternating order after a warmup so GC and JIT state are shared. */
+  const projectionMs = (small: string, large: string, check: (output: string) => void): [number, number] => {
+    const project = (source: string) => {
+      const started = performance.now();
       check(md(source));
       check(portable(source));
-    };
-    project();
-    const runs = Array.from({ length: 3 }, () => {
-      const started = performance.now();
-      project();
       return performance.now() - started;
-    });
-    return runs.sort((a, b) => a - b)[1] ?? 0;
+    };
+    project(small);
+    project(large);
+    const times: [number[], number[]] = [[], []];
+    for (let round = 0; round < 3; round += 1) {
+      if (round % 2 === 0) {
+        times[0].push(project(small));
+        times[1].push(project(large));
+      } else {
+        times[1].push(project(large));
+        times[0].push(project(small));
+      }
+    }
+    const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
+    return [median(times[0]), median(times[1])];
   };
 
   it.each([
-    ['unmatched backticks', (n: number) => 'a ` b '.repeat(n), 20_000],
-    ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 10_000],
-    ['unclosed quotes', (n: number) => '<Card title="'.repeat(n), 10_000],
-    ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 20_000],
-    ['deep quote markers', (n: number) => `${'> '.repeat(n)}x`, 10_000],
-    ['deep nesting', (n: number) => `${'<Note>'.repeat(n)}x${'</Note>'.repeat(n)}`, 10_000],
+    ['unmatched backticks', (n: number) => 'a ` b '.repeat(n), 8000],
+    ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 400],
+    ['unclosed quotes', (n: number) => '<Card title="'.repeat(n), 1200],
+    ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 6000],
+    ['deep quote markers', (n: number) => `${'> '.repeat(n)}x`, 80_000],
+    ['deep nesting', (n: number) => `${'<Note>'.repeat(n)}x${'</Note>'.repeat(n)}`, 1500],
   ] as const)(
     'scales linearly on %s',
     (label, build, n) => {
@@ -213,8 +225,8 @@ describe('projection robustness (#341)', () => {
         expect(typeof output).toBe('string');
         if (label === 'deep nesting' || label === 'deep quote markers') expect(output).toContain('x');
       };
-      const smaller = projectionMs(build(n), check);
-      expect(projectionMs(build(2 * n), check)).toBeLessThanOrEqual(2.5 * smaller + 20);
+      const [smaller, larger] = projectionMs(build(n), build(4 * n), check);
+      expect(larger).toBeLessThanOrEqual(8 * smaller + 20);
     },
     60_000,
   );
