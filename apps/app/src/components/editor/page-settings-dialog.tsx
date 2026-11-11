@@ -233,8 +233,18 @@ export function PageSettingsDialog({
         },
       },
       {
-        onSuccess: () => {
-          toast.success(t('editor.pageSettings.saved'));
+        onSuccess: (result) => {
+          toast.success(
+            result.addressChanged
+              ? // The path is isolated left-to-right so it reads /getting-started, not getting-started/, in Arabic.
+                t('editor.pageSettings.addressChanged', {
+                  path: `\u2066/${page.path}\u2069`,
+                  redirects: result.redirectsAdded,
+                  links: result.linksUpdated,
+                })
+              : t('editor.pageSettings.saved'),
+          );
+          if (result.documentsSkipped) toast.warning(t('editor.pageSettings.linksSkipped', { count: result.documentsSkipped }));
           onOpenChange(false);
         },
         onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.pageSettings.saveError')),
