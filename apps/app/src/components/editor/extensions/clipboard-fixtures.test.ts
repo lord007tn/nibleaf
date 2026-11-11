@@ -176,15 +176,13 @@ describe('writer clipboard fixtures', () => {
     );
   });
 
-  it('cleans a very long run of breaks in one pass, in linear time', () => {
-    // 4,000 breaks took 10.7 s on the previous per-break rescan; one pass is milliseconds.
-    const html = `<ul><li>First${'<br> '.repeat(20_000)}last<ul><li>Child</li></ul></li></ul>`;
-    const started = performance.now();
-    const cleaned = cleanPastedHTML(html);
-    const elapsed = performance.now() - started;
+  it('cleans an item with 20,000 breaks correctly', () => {
+    // Its cost is bounded in clean-paste.growth.test.ts (n vs 4n, serial growth step).
+    const cleaned = cleanPastedHTML(`<ul><li>First${'<br> '.repeat(20_000)}last<ul><li>Child</li></ul></li></ul>`);
+    expect(cleaned).toContain('First');
     expect(cleaned).toContain('last');
+    // Breaks inside the item's prose stay; none sat right before the child list.
     expect(cleaned.match(/<br>/g)?.length).toBe(20_000);
-    expect(elapsed).toBeLessThan(2000);
   });
 
   it('removes a run of filler breaks before a nested list without dropping inline text', () => {
