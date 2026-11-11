@@ -52,6 +52,22 @@ describe('DataList', () => {
     expect(items[0]?.querySelector('[data-slot="data-list-item-trailing"] button')?.textContent).toBe('Remove');
   });
 
+  it('keeps row actions on the title line when the row grows', async () => {
+    const container = await render(
+      <DataList aria-label="Domains">
+        <DataListItem
+          description={<div style={{ height: 400 }}>DNS records</div>}
+          title="docs.acme.com"
+          trailing={<button type="button">More</button>}
+        />
+      </DataList>,
+    );
+    const layout = container.querySelector('[data-slot="data-list-item"] > div');
+    expect(layout?.className).toContain('items-start');
+    // Centring would float the actions halfway down an expanded row.
+    expect(layout?.className).not.toMatch(/items-center/);
+  });
+
   it('adds its own border when it stands alone', async () => {
     const container = await render(
       <DataList bordered>
