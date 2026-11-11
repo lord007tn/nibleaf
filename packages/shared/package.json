@@ -37,6 +37,8 @@
     "./export-schedule": "./src/export-schedule.ts",
     "./project-hostname": "./src/project-hostname.ts",
     "./site-slug": "./src/site-slug.ts",
+    "./script-direction": "./src/script-direction.ts",
+    "./script-mismatch": "./src/script-mismatch.ts",
     "./utils": "./src/utils.ts",
     "./organization-handles": "./src/organization-handles.ts",
     "./markdown-text": "./src/markdown-text.ts"
@@ -48,6 +50,9 @@
   },
   "dependencies": {
     "github-slugger": "^2.0.0",
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-gfm": "^3.1.0",
+    "micromark-extension-gfm": "^3.0.0",
     "nanoid": "^6.0.2",
     "zod": "^4.6.7",
     "remark-frontmatter": "5.0.0",
@@ -58,8 +63,8 @@
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
+    "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
-    "typescript": "^7.0.2",
-    "@types/mdast": "^4.0.4"
+    "typescript": "^7.0.2"
   }
 }
