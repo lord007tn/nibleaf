@@ -91,6 +91,12 @@ async function renderReader(url: string) {
   return Object.assign(container, { router });
 }
 
+it('shows the configured emoji in the reader header when there is no uploaded logo', async () => {
+  mocks.getSite.mockResolvedValueOnce({ ...shell, project: { ...shell.project, icon: '📘' } });
+  await renderReader(MISSING);
+  expect(document.querySelector('header')?.textContent).toContain('📘');
+});
+
 describe('published reader chrome', () => {
   it('starts with a localized skip link that moves focus to the content landmark', async () => {
     const container = await renderReader(MISSING);
