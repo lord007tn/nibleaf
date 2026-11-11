@@ -6,6 +6,19 @@ import { friendlyErrorMessage } from './errors';
 const t = (key: string) => `t:${key}`;
 
 describe('friendlyErrorMessage', () => {
+  it.each([
+    ['page:redirect_invalid', { issues: [{ code: 'too-many-rules' }] }, 'editor.pageSettings.addressRedirectLimit'],
+    ['page:redirect_invalid', { issues: [{ code: 'destination-not-found' }] }, 'editor.pageSettings.addressRedirectInvalid'],
+    ['page:address_conflict', { reason: 'locale_redirect_conflict', from: '/old' }, 'editor.pageSettings.addressLocaleConflict'],
+    [
+      'page:address_conflict',
+      { reason: 'user_redirect_conflict', from: '/old', to: 'https://example.com' },
+      'editor.pageSettings.addressUserRuleConflict',
+    ],
+  ])('council: exposes the localized address remedy for %s %s', (code, details, key) => {
+    const error = new ApiResponseError('Technical failure', 422, code, undefined, undefined, undefined, undefined, details);
+    expect(friendlyErrorMessage(t, error, 'editor.pageSettings.saveError')).toBe(`t:${key}`);
+  });
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
   afterEach(() => consoleError.mockClear());
 

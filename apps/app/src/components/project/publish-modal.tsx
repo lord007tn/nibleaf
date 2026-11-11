@@ -12,6 +12,7 @@ import {
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
+import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -21,10 +22,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { toast } from 'sonner';
 import { friendlyErrorMessage, useDomains, usePendingChanges, usePublish } from '@/hooks/api';
 import { pickLiveDomain } from '@/hooks/api/domain-state';
-import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
+import type { Deployment, PendingChange, Project, PublishCheck } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { type FirstPublishAttribution, readFirstPublishAttribution } from '@/lib/first-publish-activation';
 import { canonicalSiteBase } from '@/lib/site-seo';
+import { PublishChecks } from './publish-checks';
 import { RedirectIssue } from './redirect-issue';
 
 interface PublishModalProps {
@@ -35,6 +37,8 @@ interface PublishModalProps {
   onPublished: (deployment: Deployment, attribution: FirstPublishAttribution | null) => void;
   beforePublish?: () => Promise<void> | Promise<boolean>;
 }
+
+const hasCheckErrors = (checks: readonly PublishCheck[] | undefined): boolean => checks?.some((check) => check.severity === 'error') ?? false;
 
 /** Visual treatment per change status. */
 const STATUS_META: Record<PendingChange['status'], { icon: LucideIcon; dot: string; chip: string; labelKey: MessageKey; order: number }> = {
@@ -201,7 +205,14 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
   }, [pending]);
 
   const doPublish = async () => {
-    if (publishInFlight.current || loadingChanges || refreshingChanges || preflightFailed || (pending?.redirectIssues?.length ?? 0) > 0) {
+    if (
+      publishInFlight.current ||
+      loadingChanges ||
+      refreshingChanges ||
+      preflightFailed ||
+      (pending?.redirectIssues?.length ?? 0) > 0 ||
+      hasCheckErrors(pending?.checks)
+    ) {
       return;
     }
     const token = ++attemptToken.current;
@@ -227,7 +238,13 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
     // after the save barrier instead of publishing from a cached review.
     const latestPreflight = await refreshPreflight().catch(() => null);
     if (!isCurrentAttempt()) return;
-    if (!latestPreflight || latestPreflight.isError || !latestPreflight.data || (latestPreflight.data.redirectIssues?.length ?? 0) > 0) {
+    if (
+      !latestPreflight ||
+      latestPreflight.isError ||
+      !latestPreflight.data ||
+      (latestPreflight.data.redirectIssues?.length ?? 0) > 0 ||
+      hasCheckErrors(latestPreflight.data.checks)
+    ) {
       if (!latestPreflight || latestPreflight.isError || !latestPreflight.data) toast.error(t('publish.preflightFailed'));
       publishInFlight.current = false;
       setPreparing(false);
@@ -265,10 +282,14 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
 
   const count = sorted.length;
   const redirectIssues = pending?.redirectIssues ?? [];
+  const checks = pending?.checks ?? [];
   const checkingChanges = loadingChanges || refreshingChanges;
+  // A check error is something the publish would fail on; warnings never block.
+  const checksBlock = !checkingChanges && hasCheckErrors(checks);
   // An empty article diff is not "nothing to publish": the preflight only compares
   // pages, while redirects and language settings also ship with a publish.
-  const publishBlocked = checkingChanges || preflightFailed || redirectIssues.length > 0;
+  const publishBlocked = checkingChanges || preflightFailed || redirectIssues.length > 0 || checksBlock;
+  const publishBlockedReason = checksBlock && redirectIssues.length === 0 && !preflightFailed ? t('publish.checks.blockedReason') : undefined;
   // Saving the draft, re-checking and sending the publish read as one action.
   const publishing = preparing || publish.isPending;
   const hasBaseline = pending?.hasBaseline ?? true;
@@ -301,10 +322,10 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
               <Button variant="ghost" size="sm" className="-ms-2 h-8" onClick={() => setReviewing(false)}>
                 <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('publish.backToSummary')}
               </Button>
-              <Button size="sm" disabled={publishBlocked} loading={publishing} onClick={doPublish}>
+              <TooltipButton size="sm" disabled={publishBlocked} disabledReason={publishBlockedReason} loading={publishing} onClick={doPublish}>
                 <Rocket className="size-4" />
                 {t('publish.now')}
-              </Button>
+              </TooltipButton>
             </div>
           ) : (
             <>
@@ -532,6 +553,10 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
               ) : null}
             </div>
 
+            {preflightFailed ? null : (
+              <PublishChecks checks={checks} loading={loadingChanges} onFix={() => handleOpenChange(false)} projectId={project.id} />
+            )}
+
             <div className="flex flex-col gap-2">
               <label className="font-medium text-muted-foreground text-xs uppercase tracking-wide" htmlFor="publish-message">
                 {t('publish.whatChanged')}
@@ -552,10 +577,16 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
         {!reviewing ? (
           <DialogFooter className="gap-2.5 px-6 pt-0 pb-5 sm:justify-stretch">
             <DialogClose render={<Button variant="outline" className="h-[42px] flex-none px-4" />}>{t('common.cancel')}</DialogClose>
-            <Button className="h-[42px] flex-1" disabled={publishBlocked} loading={publishing} onClick={doPublish}>
+            <TooltipButton
+              className="h-[42px] flex-1"
+              disabled={publishBlocked}
+              disabledReason={publishBlockedReason}
+              loading={publishing}
+              onClick={doPublish}
+            >
               <Rocket className="size-4" />
               {t('publish.now')}
-            </Button>
+            </TooltipButton>
           </DialogFooter>
         ) : null}
       </DialogContent>

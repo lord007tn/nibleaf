@@ -33,7 +33,7 @@ vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: mocks.
 vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: vi.fn(async () => ({ dataTenantId: 'org-1' })) } } }));
 vi.mock('./sites', () => ({ resolvePublishedAnswerContext: mocks.context, deviceFromUserAgent: () => 'desktop' }));
 vi.mock('./analytics', () => ({ trackProjectEvent: mocks.track }));
-vi.mock('@/lib/ai-search/runtime', () => ({ resolveChatRuntime: mocks.runtime, retrieveChatContext: mocks.retrieve }));
+vi.mock('@/lib/ai-search/runtime', () => ({ resolveChatRuntime: mocks.runtime, retrieveChatLanguages: mocks.retrieve }));
 vi.mock('@/lib/ai-search/chat-budget', () => ({
   reserveChatTurn: mocks.reserve,
   extendChatTurn: mocks.extend,
@@ -55,7 +55,9 @@ vi.mock('@nibleaf/search/workspace', async (importOriginal) => ({
 vi.mock('@nibleaf/search', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@nibleaf/search')>();
   return {
-    CHAT_PROMPT_VERSION: 'chat-v6',
+    CHAT_PROMPT_VERSION: actual.CHAT_PROMPT_VERSION,
+    questionLanguage: actual.questionLanguage,
+    noAnswer: actual.noAnswer,
     CHAT_OUTPUT_TOKEN_LIMITS: actual.CHAT_OUTPUT_TOKEN_LIMITS,
     boundChatHistory: actual.boundChatHistory,
     estimateTokens: actual.estimateTokens,
@@ -235,7 +237,7 @@ describe('reader AI chat stream', () => {
     });
     expect(final.feedbackToken).toBe(chatFeedbackToken('project-1', final.conversationId, final.turnId));
     // The page the reader asked from is passed as a narrowing hint only.
-    expect(mocks.retrieve.mock.calls[0]?.[3]).toMatchObject({ page: { id: 'page-1', title: 'Install' } });
+    expect(mocks.retrieve.mock.calls[0]?.[4]).toMatchObject({ page: { id: 'page-1', title: 'Install' } });
     await settle();
     // The turn reserved the most it can read and write before it ran, measured
     // from the prompts it sends (the reader's page included), then settles to what
@@ -270,13 +272,29 @@ describe('reader AI chat stream', () => {
     );
   });
 
-  it('never calls the model when retrieval is not confident and offers articles instead', async () => {
+  it('uses the Arabic question language throughout a turn on an English reader', async () => {
+    const events = await readEvents(await chatSite('project-1', body({ question: 'كيف أضيف مستخدم جديد؟' })));
+    expect(mocks.condense.mock.calls[0]?.[0]).toMatchObject({ language: 'ar' });
+    expect(mocks.retrieve.mock.calls[0]?.[4]).toMatchObject({ language: 'ar' });
+    expect(mocks.stream.mock.calls[0]?.[0]).toMatchObject({ language: 'ar' });
+    expect(events.find((event) => event.name === AI_CHAT_EVENT.final)?.value).toMatchObject({ language: 'ar' });
+  });
+
+  it('returns an Arabic no-answer with no citations or articles on an English reader', async () => {
+    mocks.retrieve.mockResolvedValue({ chunks: [chunk], hits: [], confidence: 0.05 });
+    const events = await readEvents(await chatSite('project-1', body({ question: 'كيف أضيف مستخدم جديد؟' })));
+    const final = aiChatFinalEventSchema.parse(events.find((event) => event.name === AI_CHAT_EVENT.final)?.value);
+    expect(final).toMatchObject({ status: 'no_answer', language: 'ar', citations: [], suggestions: [] });
+    expect(final.answer).toContain('لم أجد إجابة واضحة');
+  });
+
+  it('never calls the model or attaches articles when retrieval is not confident', async () => {
     mocks.retrieve.mockResolvedValue({ chunks: [chunk], hits: [{ chunk, score: 0.05 }], confidence: 0.05 });
     const events = await readEvents(await chatSite('project-1', body()));
     expect(mocks.stream).not.toHaveBeenCalled();
     const final = aiChatFinalEventSchema.parse(events.find((event) => event.name === AI_CHAT_EVENT.final)?.value);
     expect(final).toMatchObject({ status: 'no_answer', noAnswerReason: 'low_confidence', citations: [] });
-    expect(final.suggestions).toHaveLength(1);
+    expect(final.suggestions).toHaveLength(0);
     expect(final.supportUrl).toBeUndefined();
     expect(events.filter((event) => event.type === 'TEXT_MESSAGE_CONTENT')).toHaveLength(1);
     expect(mocks.suggest).not.toHaveBeenCalled();
@@ -920,7 +938,7 @@ describe('reader AI chat stream', () => {
       }),
     });
     await readEvents(await chatSite('project-1', body({ pagePath: 'internal/secret' })));
-    expect(mocks.retrieve.mock.calls[0]?.[3]).toMatchObject({ page: undefined });
+    expect(mocks.retrieve.mock.calls[0]?.[4]).toMatchObject({ page: undefined });
   });
 });
 

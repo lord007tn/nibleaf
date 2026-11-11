@@ -25,6 +25,7 @@ vi.mock('@nibleaf/i18n/site-search', async (importOriginal) => {
 });
 
 import { SearchShell, SiteSearch } from './site-search';
+import { beginSearchKeystrokes, cancelSearchKeystrokes } from './site-search-keystrokes';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
@@ -74,6 +75,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   for (const root of roots.splice(0)) await act(async () => root.unmount());
+  cancelSearchKeystrokes();
   document.body.replaceChildren();
   vi.clearAllMocks();
 });
@@ -131,7 +133,8 @@ describe('published reader search', () => {
       await vi.dynamicImportSettled();
     });
     await typeQuery('How do I start?');
-    await select('searchAskAiAbout');
+    // Nothing matched: the empty state hands the question over.
+    await act(async () => document.querySelector<HTMLElement>('[data-search-empty-ask]')?.click());
     expect(mocks.askAi).toHaveBeenCalledExactlyOnceWith('How do I start?');
     expect(props.onOpenChange).toHaveBeenLastCalledWith(false);
   });
@@ -458,7 +461,9 @@ describe('published reader search', () => {
     mocks.search.mockReturnValue({ data: [], isFetching: false, error: null });
     await rerender();
     expect(document.body.textContent).toContain('searchNoResultsFor');
-    await select('searchAskAiAbout');
+    // The empty state offers it as a button; the listbox holds only pages.
+    expect(option('searchAskAiAbout')).toBeUndefined();
+    await act(async () => document.querySelector<HTMLElement>('[data-search-empty-ask]')?.click());
     expect(onAskAi).toHaveBeenCalledTimes(2);
   });
 
@@ -528,31 +533,25 @@ describe('published reader search', () => {
     document.body.append(container);
     const root = createRoot(container);
     roots.push(root);
-    await act(async () => root.render(<SiteSearchDialog projectId="docs" open onOpenChange={vi.fn()} lang="en" initialQuery="sea" />));
-    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    beginSearchKeystrokes();
+    const held = document.activeElement as HTMLInputElement;
+    held.value = 'sea';
+    await act(async () => root.render(<SiteSearchDialog projectId="docs" open onOpenChange={vi.fn()} lang="en" />));
     expect(input()?.value).toBe('sea');
+    expect(document.activeElement).toBe(input());
     expect(input()?.selectionStart).toBe(3);
+    // The hidden field is gone once the dialog has the text.
+    expect(document.querySelector('[data-search-keystrokes]')).toBeNull();
   });
 
   it('shows a working input at once while the dialog code is still loading', async () => {
-    const onChange = vi.fn();
     const onClose = vi.fn();
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
     roots.push(root);
     await act(async () =>
-      root.render(
-        <SearchShell
-          value=""
-          onChange={onChange}
-          onClose={onClose}
-          placeholder="Search documentation…"
-          label="Search documentation"
-          cancelLabel="Cancel"
-          rtl
-        />,
-      ),
+      root.render(<SearchShell onClose={onClose} placeholder="Search documentation…" label="Search documentation" cancelLabel="Cancel" rtl />),
     );
     const field = container.querySelector('input');
     expect(document.activeElement).toBe(field);
@@ -561,11 +560,6 @@ describe('published reader search', () => {
     expect(shellDialog?.getAttribute('aria-modal')).toBe('true');
     expect(shellDialog?.getAttribute('aria-label')).toBe('Search documentation');
     expect(shellDialog?.getAttribute('dir')).toBe('rtl');
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, 'r');
-      field?.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    expect(onChange).toHaveBeenCalledWith('r');
     await act(async () => field?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     expect(onClose).toHaveBeenCalledOnce();
     const cancel = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Cancel');
@@ -669,4 +663,219 @@ it('keeps default-language search navigation on the clean URL', async () => {
   await act(async () => result.click());
   expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/setup' });
   window.history.replaceState(null, '', '/');
+});
+
+/** Types like a keyboard: each key goes to whatever has focus when it is pressed
+ * (a keydown handler may move focus first), and lands in it if it is a field. */
+const typeKeys = (text: string) =>
+  act(async () => {
+    for (const key of text) {
+      const target = document.activeElement ?? document.body;
+      const allowed = target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      const field = document.activeElement;
+      if (!allowed || !(field instanceof HTMLInputElement)) continue;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, field.value + key);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+/** Backspace in whatever field has focus. */
+const backspace = () =>
+  act(async () => {
+    const field = document.activeElement;
+    const allowed = field?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    const target = document.activeElement;
+    if (!allowed || !(target instanceof HTMLInputElement)) return;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(target, target.value.slice(0, -1));
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+const pressShortcut = () =>
+  act(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }));
+  });
+
+describe('keystrokes typed while search opens', () => {
+  it('keeps every key typed between ⌘K and the field mounting, caret at the end', async () => {
+    const { props, rerender } = await render({ open: false });
+    await pressShortcut();
+    expect(props.onOpenChange).toHaveBeenCalledWith(true);
+    await typeKeys('cancel ');
+    // Focus falls back to the page for a moment (one field handing over to the next).
+    await act(async () => (document.activeElement as HTMLElement | null)?.blur());
+    await typeKeys('reser');
+    await rerender({ open: true });
+    await typeKeys('vation');
+    expect(input()?.value).toBe('cancel reservation');
+    expect(document.activeElement).toBe(input());
+    expect(input()?.selectionStart).toBe('cancel reservation'.length);
+    expect(document.querySelector('[data-search-keystrokes]')).toBeNull();
+  });
+
+  it('keeps Arabic typed before the field mounts in a right-to-left dialog', async () => {
+    const { rerender } = await render({ open: false, lang: 'ar' });
+    await pressShortcut();
+    await typeKeys('إلغاء ');
+    await rerender({ open: true });
+    await typeKeys('الحجز');
+    expect(input()?.value).toBe('إلغاء الحجز');
+    expect(document.querySelector('[role="dialog"]')?.getAttribute('dir')).toBe('rtl');
+  });
+
+  it('replaces the old query with what was typed on reopen, and selects it when nothing was', async () => {
+    const { rerender } = await render();
+    await typeQuery('setup');
+    await rerender({ open: false });
+    await pressShortcut();
+    await typeKeys('api');
+    await rerender({ open: true });
+    expect(input()?.value).toBe('api');
+    await rerender({ open: false });
+    await pressShortcut();
+    await rerender({ open: true });
+    expect(input()?.value).toBe('api');
+    expect([input()?.selectionStart, input()?.selectionEnd]).toEqual([0, 3]);
+  });
+
+  it('keeps the field empty when the reader typed on reopen and deleted it all again', async () => {
+    const { rerender } = await render();
+    await typeQuery('setup');
+    await rerender({ open: false });
+    await pressShortcut();
+    await typeKeys('x');
+    await backspace();
+    await rerender({ open: true });
+    // Edited, now empty: the old query does not come back.
+    expect(input()?.value).toBe('');
+    expect(document.activeElement).toBe(input());
+    expect(document.body.textContent).not.toContain('Setup guide');
+    await typeKeys('api');
+    expect(input()?.value).toBe('api');
+  });
+
+  it('waits for the final input after compositionend (Firefox and Safari order)', async () => {
+    const { rerender } = await render({ open: false });
+    await pressShortcut();
+    const held = document.activeElement as HTMLInputElement;
+    await act(async () => {
+      held.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+      held.value = 'かな';
+    });
+    await rerender({ open: true });
+    await act(async () => {
+      held.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '仮名' }));
+      // The committed text arrives with the input event that follows.
+      held.value = '仮名';
+      held.dispatchEvent(new InputEvent('input', { bubbles: true, data: '仮名', inputType: 'insertFromComposition' }));
+    });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(input()?.value).toBe('仮名');
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('waits for an open IME composition before taking the text', async () => {
+    const { rerender } = await render({ open: false });
+    await pressShortcut();
+    const held = document.activeElement as HTMLInputElement;
+    await act(async () => {
+      held.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+      held.value = 'かな';
+    });
+    await rerender({ open: true });
+    // Nothing is cut mid-composition: the held field keeps focus and the text.
+    expect(input()?.value).toBe('');
+    expect(document.activeElement).toBe(held);
+    await act(async () => {
+      held.value = '仮名';
+      held.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '仮名' }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(input()?.value).toBe('仮名');
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('closes on Esc pressed before the field is ready, and keeps nothing', async () => {
+    const { props } = await render({ open: false });
+    await pressShortcut();
+    await typeKeys('ab');
+    await act(async () => {
+      document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    });
+    expect(props.onOpenChange).toHaveBeenLastCalledWith(false);
+    expect(document.querySelector('[data-search-keystrokes]')).toBeNull();
+  });
+
+  it('ignores shortcuts but keeps AltGr characters while it holds the keys', async () => {
+    await render({ open: false });
+    await pressShortcut();
+    const held = document.activeElement as HTMLInputElement;
+    await act(async () => held.blur());
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true }));
+    });
+    expect(document.activeElement).not.toBe(held);
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '@', ctrlKey: true, altKey: true, bubbles: true }));
+    });
+    expect(document.activeElement).toBe(held);
+  });
+});
+
+describe('empty search results', () => {
+  it('says nothing matched and offers to ask the assistant, with Enter doing the same', async () => {
+    mocks.realLabels = true;
+    await render({ suggestions });
+    await typeQuery('kubernetes');
+    const empty = document.querySelector('[data-search-empty]');
+    expect(empty?.textContent).toContain('No results for “kubernetes”');
+    const ask = document.querySelector<HTMLButtonElement>('[data-search-empty-ask]');
+    expect(ask?.textContent).toContain('Ask AI about “kubernetes”');
+    expect(empty?.textContent).not.toContain('Check the spelling');
+    // The query is the reader's own text, isolated from the sentence around it.
+    expect(ask?.querySelector('bdi')?.textContent).toBe('kubernetes');
+    // Suggested pages stay in the list, but none is picked for Enter.
+    expect(option('Getting started')?.getAttribute('aria-selected')).not.toBe('true');
+    await press('Enter');
+    expect(mocks.askAi).toHaveBeenCalledExactlyOnceWith('kubernetes');
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('suggests checking the spelling when the site has no assistant', async () => {
+    mocks.realLabels = true;
+    await render({ onAskAi: undefined, lang: 'ar' });
+    await typeQuery('كوبرنيتس');
+    const empty = document.querySelector('[data-search-empty]');
+    expect(empty?.textContent).toContain('لا توجد نتائج لـ «كوبرنيتس»');
+    expect(empty?.textContent).toContain('تحقّق من الإملاء');
+    expect(document.querySelector('[data-search-empty-ask]')).toBeNull();
+    await press('Enter');
+    expect(mocks.askAi).not.toHaveBeenCalled();
+  });
+});
+
+describe('result-language filter', () => {
+  const languages = [
+    { code: 'en', label: 'English' },
+    { code: 'ar', label: 'العربية' },
+  ];
+
+  it('shows when filters are enabled and narrows the search to the chosen language', async () => {
+    await render({ languages, filtersEnabled: true });
+    const trigger = document.querySelector<HTMLElement>('[aria-label="searchFilterLanguage"]');
+    expect(trigger).not.toBeNull();
+    // Every language by default, the reader's own ranked first.
+    expect(mocks.search.mock.lastCall?.[2]).not.toHaveProperty('language');
+    expect(mocks.search.mock.lastCall?.[2]).toMatchObject({ prefer: 'en' });
+    await act(async () => trigger?.click());
+    const arabic = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((item) => item.textContent === 'العربية');
+    expect(arabic).toBeDefined();
+    await act(async () => arabic?.click());
+    await typeQuery('setup');
+    expect(mocks.search).toHaveBeenLastCalledWith('docs', 'setup', expect.objectContaining({ language: 'ar' }));
+  });
+
+  it('stays hidden when filters are disabled or the site has one language', async () => {
+    await render({ languages, filtersEnabled: false });
+    expect(document.querySelector('[aria-label="searchFilterLanguage"]')).toBeNull();
+    await render({ languages: languages.slice(0, 1), filtersEnabled: true });
+    expect(document.querySelector('[aria-label="searchFilterLanguage"]')).toBeNull();
+  });
 });

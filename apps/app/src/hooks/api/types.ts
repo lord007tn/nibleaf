@@ -245,6 +245,21 @@ export interface PendingChange {
   truncated: boolean;
 }
 
+/** A pre-publish quality check on the draft being previewed. Warnings leave
+ *  publishing allowed; an `error` blocks it (the publish would fail). */
+export interface PublishCheck {
+  code: 'broken-internal-link' | 'missing-alt' | 'untitled-page' | 'stray-characters' | 'unreadable-slug' | 'empty-page' | 'duplicate-title';
+  severity: 'error' | 'warning';
+  pageId: string;
+  languageCode: string;
+  title: string;
+  path: string;
+  /** The link, image source, stray text, slug or other page's path. */
+  detail: string;
+  /** Why a link is broken when it isn't a missing page: too long to serve. */
+  reason?: 'path-too-long';
+}
+
 interface DeploymentDiffLine {
   type: 'added' | 'removed' | 'unchanged';
   text: string;
@@ -387,6 +402,7 @@ export interface NavNode {
 
 export interface SiteShell {
   project: {
+    icon?: string | null;
     id: string;
     name: string;
     slug: string;
@@ -432,6 +448,8 @@ export interface SitePage {
     description: string | null;
     /** Summary derived from the body: SEO/social fallback only, never a lede. */
     excerpt: string;
+    /** Cleaned once by the API: SEO override, then summary, then body excerpt. */
+    seoDescription?: string;
     icon: string | null;
     path: string;
     content: string;
