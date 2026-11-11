@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { computeAccessibleName, getRole } from 'dom-accessibility-api';
+import { computeAccessibleName, getRole, isInaccessible } from 'dom-accessibility-api';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -107,6 +107,26 @@ describe('page history panel', () => {
     );
     await wait();
   };
+  it('says, in the accessibility tree, when a Trash restore could not bring back all history', async () => {
+    mocks.history.mockResolvedValue({ entries: [], next: null, trimmedFromTrash: { kept: 2, total: 5, at: '2026-11-11T08:00:00.000Z' } });
+    await render();
+    const notice = host.querySelector('[data-testid="history-trimmed-from-trash"]');
+    expect(notice).not.toBeNull();
+    expect(getRole(notice as Element)).toBe('status');
+    expect(isInaccessible(notice as Element)).toBe(false);
+    expect(notice?.textContent).toContain('editor.history.trimmedFromTrash');
+    // Shown above the list, even when no revision came back.
+    expect(host.textContent).toContain('editor.history.empty');
+    await click('editor.history.published');
+    expect(host.querySelector('[data-testid="history-trimmed-from-trash"]')).toBeNull();
+  });
+
+  it('shows no notice when the history came back whole', async () => {
+    await render();
+    expect(host.textContent).toContain('Fictional editor');
+    expect(host.querySelector('[data-testid="history-trimmed-from-trash"]')).toBeNull();
+  });
+
   it('shows author, size and a server diff, then restores with the compared revision and hands the response to the editor', async () => {
     const onRestored = vi.fn();
     mocks.restore.mockResolvedValue({ ...page, title: 'Saved', content: 'Old body', updatedAt: '2026-11-11T09:01:00.000Z' });

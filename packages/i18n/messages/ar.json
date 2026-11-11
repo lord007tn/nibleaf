@@ -4807,6 +4807,7 @@
   "editor_history_nochanges": "هذا المحتوى مطابق للمسودة الحالية.",
   "editor_history_error": "تعذّر تحميل سجل الصفحة أو استعادتها. يرجى المحاولة مجددًا.",
   "editor_history_empty": "لا يوجد سجل بعد",
+  "editor_history_trimmedfromtrash": "لم يُحتفظ ببعض السجل الأقدم عند نقل هذه الصفحة إلى سلة المحذوفات (استُعيدت {kept} من أصل {total} مراجعة).",
   "editor_history_emptydescription": "ستظهر هنا المراجعات المحفوظة والنسخ المنشورة.",
   "editor_history_version": "النسخة {version}",
   "editor_history_beforerestore": "قبل الاستعادة",

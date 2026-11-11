@@ -4757,6 +4757,7 @@
   "editor_history_nochanges": "Dieser Eintrag entspricht dem aktuellen Entwurf.",
   "editor_history_error": "Der Seitenverlauf konnte nicht geladen oder wiederhergestellt werden. Versuchen Sie es erneut.",
   "editor_history_empty": "Noch kein Verlauf",
+  "editor_history_trimmedfromtrash": "Ein Teil des älteren Verlaufs wurde beim Verschieben dieser Seite in den Papierkorb nicht behalten ({kept} von {total} Ständen wiederhergestellt).",
   "editor_history_emptydescription": "Gespeicherte Stände und veröffentlichte Versionen erscheinen hier.",
   "editor_history_version": "Version {version}",
   "editor_history_beforerestore": "Vor Wiederherstellung",

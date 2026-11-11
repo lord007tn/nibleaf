@@ -1,5 +1,6 @@
 import { ActionDialog } from '@nibleaf/design-system/components/ui/action-dialog';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { DataList, DataListItem, DataListSkeleton } from '@nibleaf/design-system/components/ui/data-list';
 import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
@@ -18,6 +19,7 @@ import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { pageHistoryComparisonQueryOptions, pageHistoryQueryOptions, restorePageHistory } from '@/hooks/api/page-history';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Page } from '@/hooks/api/types';
+import { localeTag } from '@/lib/format';
 import { isEditorRevisionConflict } from './editor-draft';
 
 export default function PageHistoryPanel({
@@ -44,6 +46,8 @@ export default function PageHistoryPanel({
     pageHistoryComparisonQueryOptions(projectId, page.id, selected ? { source: selected.source, entryId: selected.id } : null, page.updatedAt),
   );
   const entries = history.data?.pages.flatMap((batch) => batch.entries) ?? [];
+  // Set when a Trash restore could not bring back all of this page's history.
+  const trimmed = source === 'revision' ? history.data?.pages[0]?.trimmedFromTrash : undefined;
   const compared = comparison.data;
   const unchanged = compared?.diff.status === 'equal' && compared.title.before === compared.title.after;
   const disabledReason = !canRestore
@@ -91,6 +95,14 @@ export default function PageHistoryPanel({
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+            {trimmed ? (
+              <Callout className="mb-4" data-testid="history-trimmed-from-trash" tone="info">
+                {t('editor.history.trimmedFromTrash', {
+                  kept: new Intl.NumberFormat(localeTag(locale)).format(trimmed.kept),
+                  total: new Intl.NumberFormat(localeTag(locale)).format(trimmed.total),
+                })}
+              </Callout>
+            ) : null}
             {history.isPending ? (
               <DataListSkeleton loadingLabel={t('common.loading')} rows={3} bordered />
             ) : history.isError ? (
