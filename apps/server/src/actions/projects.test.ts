@@ -164,8 +164,6 @@ describe('project page counts', () => {
     mocks.projectFindFirst.mockResolvedValue({
       id: 'project-a',
       _count: { pages: 58, deployments: 3, domains: 1 },
-      addons: [],
-      organization: { usagePlan: null },
       languages: [
         { id: 'lang-en', code: 'en', projectTranslations: [{ name: 'Docs' }] },
         { id: 'lang-ar', code: 'ar', projectTranslations: [] },
@@ -185,13 +183,7 @@ describe('project page counts', () => {
   });
 
   it('says whether the site has a published version an export can copy, however old', async () => {
-    mocks.projectFindFirst.mockResolvedValue({
-      id: 'project-a',
-      _count: { pages: 1, deployments: 80, domains: 0 },
-      languages: [],
-      addons: [],
-      organization: { usagePlan: null },
-    });
+    mocks.projectFindFirst.mockResolvedValue({ id: 'project-a', _count: { pages: 1, deployments: 80, domains: 0 }, languages: [] });
     mocks.deploymentFindFirst.mockResolvedValueOnce({ id: 'deployment-1' }).mockResolvedValueOnce(null);
 
     await expect(getProject('org-a', 'project-a')).resolves.toMatchObject({ hasPublishedVersion: true });
@@ -205,13 +197,7 @@ describe('project page counts', () => {
 
   it('counts every publish that went live, beyond the newest 50 attempts, and none that failed', async () => {
     // 80 attempts: most failed, and the live ones are older than the deployments list reaches.
-    mocks.projectFindFirst.mockResolvedValue({
-      id: 'project-a',
-      _count: { pages: 1, deployments: 80, domains: 0 },
-      languages: [],
-      addons: [],
-      organization: { usagePlan: null },
-    });
+    mocks.projectFindFirst.mockResolvedValue({ id: 'project-a', _count: { pages: 1, deployments: 80, domains: 0 }, languages: [] });
     mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-1' });
     mocks.deploymentCount.mockResolvedValueOnce(3).mockResolvedValueOnce(0);
 

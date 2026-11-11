@@ -56,10 +56,12 @@ it.each([
   ['pending', 'unknown'],
   ['accepted', 'granted'],
   ['declined', 'denied'],
-] as const)('uses %s consent for default-on published add-ons', async (choice, consentState) => {
+] as const)('uses %s consent for default-on published add-ons (no ProjectAddon rows, canonical free plan)', async (choice, consentState) => {
+  // The seeded free plan has no entitlement rows; #447's resolver decides by eligibility.
+  const freePlan = { key: 'free', active: true, entitlements: [] };
   if (choice !== 'pending') window.localStorage.setItem('nibleaf.analytics.consent.docs', choice);
   const config = projectConfigSchema.parse(
-    projectConfigWithAddons({ addons: { feedback: false }, analytics: { cookieConsent: false } }, projectAddonRowsForDelivery([], null)),
+    projectConfigWithAddons({ addons: { feedback: false }, analytics: { cookieConsent: false } }, projectAddonRowsForDelivery([], null, freePlan)),
   );
   await render(config);
   expect(mocks.createEvent).toHaveBeenCalledWith(

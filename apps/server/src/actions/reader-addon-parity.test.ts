@@ -1,4 +1,4 @@
-import type { AddonDeliveryPlanAssignment } from '@nibleaf/shared/addons';
+import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
 import { projectConfigSchema } from '@nibleaf/validators';
@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@nibleaf/database', () => ({
   Prisma: { DbNull: null },
+  // #447's shared resolver: the canonical free plan as configured in the DB.
+  deliveryPlanSelect: {},
+  loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
   prisma: {
     project: { findUnique: mocks.project, findFirst: mocks.project },
     page: { findMany: mocks.pages },
@@ -37,8 +40,9 @@ vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() })
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
 import { getCurrentSnapshot } from './deployments';
-import { getProject } from './projects';
 import { getSite, invalidatePublishedSiteConfig } from './sites';
+
+const defaultPlan = { key: 'free', active: true, entitlements: [] };
 
 const freePlan: AddonDeliveryPlanAssignment = {
   status: 'active',
@@ -86,15 +90,28 @@ describe('reader add-on parity', () => {
     invalidatePublishedSiteConfig(live.id);
   });
 
+  /** What the dashboard's add-on settings decide for the same live rows and plan:
+   *  #447's shared resolver (its own 40-case cross-consumer parity test pins
+   *  settings == MCP == usage == worker == delivery). */
+  const dashboardView = () =>
+    projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan, defaultPlan));
+
+  /** Serves the NEXT publish too: snapshots keep stored config and the overlay
+   *  projects live rows at serve time, so readers must see the same thing. */
+  const servedAfterNextPublish = async () => {
+    const nextPublish = await getCurrentSnapshot(live.id);
+    mocks.deploymentHead.mockResolvedValue({ id: `next-${expect.getState().currentTestName}`, version: 2 });
+    mocks.deploymentSnapshot.mockResolvedValue({ snapshot: nextPublish });
+    invalidatePublishedSiteConfig(live.id);
+    return (await getSite(live.id)).project.config;
+  };
+
   it.each(['free', 'legacy'] as const)('serves registry defaults for a %s project with no add-on rows, without republishing', async (kind) => {
     if (kind === 'legacy') live.organization.usagePlan = null;
     const original = structuredClone(frozen);
-    const dashboard = await getProject(live.organizationId, live.id);
     const published = await getSite(live.id);
-    const nextPublish = await getCurrentSnapshot(live.id);
 
-    expect(published.project.config).toEqual(dashboard.config);
-    expect(nextPublish.project.config).toEqual(dashboard.config);
+    expect(published.project.config).toEqual(dashboardView());
     expect(published.project.config).toMatchObject({
       addons: { feedback: true, consentBanner: { enabled: true }, grammarLinter: false },
       analytics: { cookieConsent: true },
@@ -102,8 +119,7 @@ describe('reader add-on parity', () => {
     expect(projectConfigSchema.safeParse(published.project.config).success).toBe(true);
     expect(analyticsConsentPolicy(published.project.config)).toBe('required');
     expect(frozen).toEqual(original);
-    expect(dashboard).not.toHaveProperty('organization');
-    expect(dashboard).not.toHaveProperty('addons');
+    expect(await servedAfterNextPublish()).toEqual(published.project.config);
   });
 
   it('honors explicit owner disables over enabled frozen or stored config', async () => {
@@ -111,17 +127,17 @@ describe('reader add-on parity', () => {
       { key: 'feedback', enabled: false, config: {} },
       { key: 'consent-banner', enabled: false, config: {} },
     ];
+    live.config = { ...live.config, addons: { feedback: true }, analytics: { cookieConsent: true } };
     frozen.project.config = { addons: { feedback: true }, analytics: { cookieConsent: true }, redirects: [] };
-    const dashboard = await getProject(live.organizationId, live.id);
     const published = await getSite(live.id);
 
-    expect(published.project.config).toEqual(dashboard.config);
-    expect((await getCurrentSnapshot(live.id)).project.config).toEqual(dashboard.config);
+    expect(published.project.config).toEqual(dashboardView());
     expect(published.project.config).toMatchObject({
       addons: { feedback: false, consentBanner: { enabled: false } },
       analytics: { cookieConsent: false },
     });
     expect(analyticsConsentPolicy(published.project.config)).toBe('not_required');
+    expect(await servedAfterNextPublish()).toEqual(published.project.config);
   });
 
   it('applies explicit capability restrictions consistently to dashboard and readers', async () => {
@@ -129,14 +145,13 @@ describe('reader add-on parity', () => {
       ...freePlan,
       plan: { ...freePlan.plan, entitlements: [{ capabilityKey: 'addons.feedback', enabled: false, meter: null }] },
     };
-    const dashboard = await getProject(live.organizationId, live.id);
     const published = await getSite(live.id);
 
-    expect(published.project.config).toEqual(dashboard.config);
-    expect((await getCurrentSnapshot(live.id)).project.config).toEqual(dashboard.config);
+    expect(published.project.config).toEqual(dashboardView());
     expect(published.project.config).toMatchObject({
       addons: { feedback: false, consentBanner: { enabled: true } },
       analytics: { cookieConsent: true },
     });
+    expect(await servedAfterNextPublish()).toEqual(published.project.config);
   });
 });
