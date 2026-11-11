@@ -17,7 +17,7 @@ export function EditorConflictDialog({
   server: ServerSnapshot;
   draft: { title: string; content: string };
   onResolve: (draft: { title: string; content: string }) => void;
-  onClose: () => void;
+  onClose: (draft: { title: string; content: string }) => void;
 }) {
   const t = useT();
   const [title, setTitle] = useState(draft.title);
@@ -26,7 +26,7 @@ export function EditorConflictDialog({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open) onClose({ title, content });
       }}
     >
       <DialogContent className="sm:max-w-4xl">
@@ -47,7 +47,7 @@ export function EditorConflictDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={() => onClose({ title, content })}>
             {t('common.cancel')}
           </Button>
           <Button onClick={() => onResolve({ title, content })}>{t('editor.conflict.resolve')}</Button>

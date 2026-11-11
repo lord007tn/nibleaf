@@ -57,7 +57,7 @@ describe.skipIf(process.env.PAGE_ADDRESS_INTEGRATION !== '1')('page address tran
     const project = await db.prisma.project.create({ data: { organizationId: org.id, name: 'Synthetic docs', slug } });
     const branch = await db.prisma.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
     const language = await db.prisma.language.create({ data: { projectId: project.id, code: 'en', label: 'English', isDefault: true } });
-    const text = count > 2 ? `${'Documentation paragraph. '.repeat(524)}\n\n[link](/old#install)` : '[link](/old)';
+    const text = count > 2 ? `${'Documentation paragraph. '.repeat(503)}\n\n[link](/old#install)` : '[link](/old)';
     await db.prisma.page.createMany({
       data: Array.from({ length: count }, (_, index) => ({
         id: `${slug}-${index}`,

@@ -204,6 +204,21 @@ describe('page address preservation through page actions', () => {
     expect(state.config().redirects[0]?.to).toBe('https://example.com/custom');
   });
 
+  it('council: sequential language moves cannot redirect both published locales to the last destination', async () => {
+    const state = seed([
+      pageFixture('english', 'old'),
+      pageFixture('arabic', 'old', 'main', 'ar'),
+      pageFixture('en-parent', 'en-parent'),
+      pageFixture('ar-parent', 'ar-parent', 'main', 'ar'),
+    ]);
+    await reorderPages('project', { items: [{ id: 'english', parentId: 'en-parent', position: 0 }] });
+    await expect(reorderPages('project', { items: [{ id: 'arabic', parentId: 'ar-parent', position: 0 }] })).rejects.toMatchObject({
+      code: 'page:address_conflict',
+      details: { reason: 'locale_redirect_conflict', from: '/old' },
+    });
+    expect(state.pages().find((page) => page.id === 'arabic')?.path).toBe('old');
+  });
+
   it('council: generated provenance survives validation and a sequential slug swap', async () => {
     const state = seed([pageFixture('target', 'a')]);
     await updatePage('project', 'target', { slug: 'b' });

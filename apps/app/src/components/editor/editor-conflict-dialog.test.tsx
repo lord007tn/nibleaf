@@ -35,6 +35,9 @@ it('keeps the unsaved draft visible until the writer explicitly accepts a merged
       local.dispatchEvent(new Event('input', { bubbles: true }));
     });
     const resume = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.conflict.resolve'));
+    const cancel = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('common.cancel'));
+    await act(async () => cancel?.click());
+    expect(close).toHaveBeenCalledWith({ title: 'My title', content: '[link](/new)\nMy unsaved text' });
     await act(async () => resume?.click());
     expect(resolve).toHaveBeenCalledWith({ title: 'My title', content: '[link](/new)\nMy unsaved text' });
   } finally {

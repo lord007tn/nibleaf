@@ -188,6 +188,23 @@ export const preservePageAddresses = async (
       !options.routes?.some((route) => route.path === mapping.to && route.languageCode === mapping.targetLanguage.code)
     )
       continue;
+    const liveLanguages = new Set(
+      live?.pages
+        .filter(
+          (page) =>
+            page.versionId === mapping.branchId &&
+            page.path === mapping.old &&
+            !page.hidden &&
+            live.project.languages.some((language) => language.code === page.languageCode && (language.isDefault || language.enabled !== false)),
+        )
+        .map((page) => page.languageCode),
+    );
+    if (liveLanguages.size > 1)
+      throw new AppError({
+        code: 'page:address_conflict',
+        message: `Published languages share /${mapping.from}. A global redirect cannot safely select their destinations. Give these pages distinct addresses.`,
+        details: { reason: 'locale_redirect_conflict', from: `/${mapping.from}`, languages: [...liveLanguages] },
+      });
     const to = `/${mapping.to}${mapping.targetLanguage.isDefault ? '' : `?lang=${encodeURIComponent(mapping.targetLanguage.code)}`}`;
     const conflicting = candidates.find((rule) => rule.from === `/${mapping.from}` && rule.to !== to);
     if (conflicting)

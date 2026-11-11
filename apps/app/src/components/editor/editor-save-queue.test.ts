@@ -25,6 +25,11 @@ describe('editor save queue', () => {
     await expect(queued).rejects.toBe(conflict);
     expect(save).toHaveBeenCalledOnce();
     expect(newer.content).toContain('More unsaved text');
+    queue.resolveConflict(original.id, 'reviewed-revision');
+    await queue.save({ ...newer, content: newer.content.replace('/old', '/new'), expectedUpdatedAt: 'reviewed-revision' });
+    expect(save).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: '[link](/new)\nUnsaved text\nMore unsaved text', expectedUpdatedAt: 'reviewed-revision' }),
+    );
   });
 
   it('council: successful queued saves advance only their own base revision', async () => {
@@ -33,6 +38,10 @@ describe('editor save queue', () => {
     const base = { ...draft('one'), expectedUpdatedAt: 'revision-1' };
     await Promise.all([queue.save(base), queue.save({ ...base, content: 'two' })]);
     expect(save.mock.calls[1]?.[0]).toMatchObject({ expectedUpdatedAt: 'revision-2' });
+    await queue.save({ ...base, content: 'fresh server base', expectedUpdatedAt: 'remote-revision' });
+    expect(save.mock.calls[2]?.[0]).toMatchObject({ expectedUpdatedAt: 'remote-revision' });
+    await queue.save({ ...base, content: 'stale queued text' });
+    expect(save.mock.calls[3]?.[0]).toMatchObject({ expectedUpdatedAt: 'revision-1' });
   });
   it('waits for an older request before saving a newer draft or another page', async () => {
     const first = deferred();

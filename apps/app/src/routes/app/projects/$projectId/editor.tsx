@@ -1425,7 +1425,11 @@ function EditorPage() {
                     <EditorConflictDialog
                       server={conflictServer}
                       draft={{ title, content }}
-                      onClose={() => setConflictServer(null)}
+                      onClose={(merged) => {
+                        setTitle(merged.title);
+                        setContent(merged.content);
+                        setConflictServer(null);
+                      }}
                       onResolve={(merged) => {
                         saveDraft.cancel();
                         saveQueue.resolveConflict(page.id, conflictServer.updatedAt);
