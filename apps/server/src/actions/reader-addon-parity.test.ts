@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   deploymentHead: vi.fn(),
   deploymentSnapshot: vi.fn(),
   pages: vi.fn(),
+  orgProjects: vi.fn(),
 }));
 
 vi.mock('@nibleaf/database', () => ({
@@ -17,7 +18,7 @@ vi.mock('@nibleaf/database', () => ({
   deliveryPlanSelect: {},
   loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
   prisma: {
-    project: { findUnique: mocks.project, findFirst: mocks.project },
+    project: { findUnique: mocks.project, findFirst: mocks.project, findMany: mocks.orgProjects },
     page: { findMany: mocks.pages },
     deployment: { findFirst: mocks.deploymentHead, findUnique: mocks.deploymentSnapshot, count: vi.fn(async () => 1) },
   },
@@ -40,7 +41,7 @@ vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() })
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
 import { getCurrentSnapshot } from './deployments';
-import { getSite, invalidatePublishedSiteConfig } from './sites';
+import { getSite, invalidateOrganizationPublishedConfig, invalidatePublishedSiteConfig } from './sites';
 
 const defaultPlan = { key: 'free', active: true, entitlements: [] };
 
@@ -153,5 +154,25 @@ describe('reader add-on parity', () => {
       analytics: { cookieConsent: true },
     });
     expect(await servedAfterNextPublish()).toEqual(published.project.config);
+  });
+
+  it('a plan or entitlement write reaches readers of every website in the organization at once', async () => {
+    // Like a real DB read, the cached live row is a copy, not the object this test mutates.
+    mocks.project.mockImplementation(async () => structuredClone(live));
+    const before = await getSite(live.id);
+    expect(before.project.config).toMatchObject({ addons: { feedback: true } });
+
+    // The org's plan changes (an assignment or entitlement write)...
+    live.organization.usagePlan = {
+      ...freePlan,
+      plan: { ...freePlan.plan, entitlements: [{ capabilityKey: 'addons.feedback', enabled: false, meter: null }] },
+    };
+    // ...while the 15 s live-chrome cache still holds the old projection.
+    expect((await getSite(live.id)).project.config).toMatchObject({ addons: { feedback: true } });
+
+    mocks.orgProjects.mockResolvedValue([{ id: live.id }, { id: 'sibling-site' }]);
+    await expect(invalidateOrganizationPublishedConfig(live.organizationId)).resolves.toBe(2);
+    expect(mocks.orgProjects).toHaveBeenCalledWith({ where: { organizationId: live.organizationId }, select: { id: true } });
+    expect((await getSite(live.id)).project.config).toMatchObject({ addons: { feedback: false } });
   });
 });

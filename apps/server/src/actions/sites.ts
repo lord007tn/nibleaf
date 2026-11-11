@@ -152,6 +152,15 @@ export const invalidatePublishedSiteConfig = (projectId: string): void => {
   deploymentMissCache.delete(projectId);
 };
 
+/** A plan assignment or entitlement applies to every website of the organization.
+ *  After writing one, drop each website's cached live config, so the next reader
+ *  request re-resolves add-ons and consent through the shared resolver (#447). */
+export const invalidateOrganizationPublishedConfig = async (organizationId: string): Promise<number> => {
+  const projects = await prisma.project.findMany({ where: { organizationId }, select: { id: true } });
+  for (const { id } of projects) invalidatePublishedSiteConfig(id);
+  return projects.length;
+};
+
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
   const cached = liveChromeCache.get(projectId);
   if (cached !== undefined) {
