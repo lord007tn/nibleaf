@@ -158,7 +158,7 @@ describe('inbound draft page links', () => {
     expect(result.pages.at(-1)?.id).toBe('source-19');
   });
 
-  it('bounds 300-page repeat-open cost using the existing content cache', () => {
+  it('opens a 300-page site twice with the same answer (its cost: publish-checks.growth.test.ts)', () => {
     const snapshot = site([
       ...Array.from({ length: 298 }, (_, i) =>
         page({
@@ -170,20 +170,8 @@ describe('inbound draft page links', () => {
       child(),
     ]);
     snapshot.project.config = { redirects: [{ from: '/old-setup', to: '/guide/setup' }] };
-    const coldStart = performance.now();
     expect(findInboundPageLinks(snapshot, 'target').total).toBe(298);
-    const coldMs = performance.now() - coldStart;
-    let warmMs = Number.POSITIVE_INFINITY;
-    for (let round = 0; round < 3; round++) {
-      const start = performance.now();
-      expect(findInboundPageLinks(snapshot, 'target').total).toBe(298);
-      warmMs = Math.min(warmMs, performance.now() - start);
-    }
-    // Generous on shared CI cores; this catches accidentally re-parsing every
-    // body on repeat opens, while reporting both measured costs for review.
-    expect(warmMs).toBeLessThan(coldMs / 2 + 50);
-    expect(warmMs).toBeLessThan(500);
-    console.info(`inbound links: 300 pages, cold ${coldMs.toFixed(1)} ms, warm ${warmMs.toFixed(1)} ms`);
+    expect(findInboundPageLinks(snapshot, 'target').total).toBe(298);
   });
 });
 

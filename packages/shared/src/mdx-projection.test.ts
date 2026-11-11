@@ -180,37 +180,7 @@ describe('projection robustness (#341)', () => {
     expect(output).not.toMatch(/^(?:> ){33}/);
   });
 
-  // Like the shared script-mismatch performance tests, compare work against work
-  // on this runner instead of a fixed wall-clock deadline. Quadrupling the input
-  // may cost at most 8x the time, plus 20 ms so a case that runs in a few
-  // milliseconds isn't judged on timer jitter: linear work measures about 4x (deep
-  // nesting about 5x, an n log n-like term that stays flat from 5k to 320k), and
-  // quadratic work 16x. Sizes are small enough for a busy CI runner, which is
-  // 6-25x slower than a laptop here.
-  /** Median times of `small` and `large`, measured in alternating order after a warmup so GC and JIT state are shared. */
-  const projectionMs = (small: string, large: string, check: (output: string) => void): [number, number] => {
-    const project = (source: string) => {
-      const started = performance.now();
-      check(md(source));
-      check(portable(source));
-      return performance.now() - started;
-    };
-    project(small);
-    project(large);
-    const times: [number[], number[]] = [[], []];
-    for (let round = 0; round < 3; round += 1) {
-      if (round % 2 === 0) {
-        times[0].push(project(small));
-        times[1].push(project(large));
-      } else {
-        times[1].push(project(large));
-        times[0].push(project(small));
-      }
-    }
-    const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
-    return [median(times[0]), median(times[1])];
-  };
-
+  // Their cost is bounded in mdx-projection.growth.test.ts (pnpm test:growth).
   it.each([
     ['unmatched backticks', (n: number) => 'a ` b '.repeat(n), 8000],
     ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 400],
@@ -218,16 +188,11 @@ describe('projection robustness (#341)', () => {
     ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 6000],
     ['deep quote markers', (n: number) => `${'> '.repeat(n)}x`, 200_000],
     ['deep nesting', (n: number) => `${'<Note>'.repeat(n)}x${'</Note>'.repeat(n)}`, 1500],
-  ] as const)(
-    'scales linearly on %s',
-    (label, build, n) => {
-      const check = (output: string) => {
-        expect(typeof output).toBe('string');
-        if (label === 'deep nesting' || label === 'deep quote markers') expect(output).toContain('x');
-      };
-      const [smaller, larger] = projectionMs(build(n), build(4 * n), check);
-      expect(larger).toBeLessThanOrEqual(8 * smaller + 20);
-    },
-    60_000,
-  );
+  ] as const)('projects %s', (label, build, n) => {
+    const source = build(4 * n);
+    for (const output of [md(source), portable(source)]) {
+      expect(typeof output).toBe('string');
+      if (label === 'deep nesting' || label === 'deep quote markers') expect(output).toContain('x');
+    }
+  });
 });
