@@ -1,10 +1,11 @@
 import type { IntegrationCatalogEntry } from '@nibleaf/shared/integrations';
-import { queryOptions, skipToken } from '@tanstack/react-query';
+import { queryOptions, replaceEqualDeep, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { liveDeploymentsKey, syncPublishReceipt } from './deployment-cache';
 import type { ExportRun, ExportSchedule } from './exports';
 import type { GitWorkflowStatus } from './git-workflow';
+import { keepNewerPageRows, newerRevision } from './page-cache';
 import { queryKeys } from './query-keys';
 import type { ReaderAccessData } from './reader-access';
 import type {
@@ -66,6 +67,9 @@ export const pagesQueryOptions = (projectId: string | undefined, languageId?: st
             'pages',
           )
       : skipToken,
+    // A list request that started before a save resolves after it: keep the rows
+    // the save already updated rather than putting back their older revision.
+    structuralSharing: (cached, fetched) => replaceEqualDeep(cached, keepNewerPageRows(cached as PageNode[] | undefined, fetched as PageNode[])),
   });
 
 export const languagesQueryOptions = (projectId: string | undefined) =>
@@ -138,6 +142,8 @@ export const pageQueryOptions = (projectId: string | undefined, pageId: string |
       projectId && pageId
         ? async () => getData<Page>(await api.app.projects[':projectId'].pages[':id'].$get({ param: { projectId, id: pageId } }), 'page')
         : skipToken,
+    // Likewise for one page: a late read never replaces a newer saved revision.
+    structuralSharing: (cached, fetched) => replaceEqualDeep(cached, newerRevision(cached as Page | undefined, fetched as Page)),
   });
 
 // What the next publish will change vs. the last publish. Cheap to recompute, and

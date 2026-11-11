@@ -91,3 +91,35 @@ export function rollbackPageReorder<T extends CachedPage>(current: T[], before: 
   if (current === optimistic) for (const page of before) if (!optimisticById.has(page.id)) next.push(page);
   return next;
 }
+
+/** A page revision's time, from the server's `updatedAt` (oldest when missing). */
+const revisionTime = (page: { updatedAt?: string } | undefined): number => {
+  const time = page?.updatedAt ? Date.parse(page.updatedAt) : Number.NaN;
+  return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+};
+
+/** Whether `cached` holds a strictly newer revision of the page than `incoming`. */
+export const isNewerRevision = (cached: { updatedAt?: string } | undefined, incoming: { updatedAt?: string }): boolean =>
+  revisionTime(cached) > revisionTime(incoming);
+
+/** The newer of two copies of one page: a response or fetch that resolves late
+ *  never replaces a revision the cache already has. */
+export const newerRevision = <T extends { updatedAt?: string }>(cached: T | undefined, incoming: T): T =>
+  cached && isNewerRevision(cached, incoming) ? cached : incoming;
+
+/** A fetched page list, keeping any row the cache already holds at a newer
+ *  revision (a save response that landed while the list request was in flight). */
+export function keepNewerPageRows<T extends { id: string; updatedAt?: string }>(cached: readonly T[] | undefined, incoming: T[]): T[] {
+  if (!cached?.length) return incoming;
+  const byId = new Map(cached.map((page) => [page.id, page]));
+  let kept = false;
+  const merged = incoming.map((row) => {
+    const current = byId.get(row.id);
+    if (current && isNewerRevision(current, row)) {
+      kept = true;
+      return current;
+    }
+    return row;
+  });
+  return kept ? merged : incoming;
+}
