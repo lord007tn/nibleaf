@@ -66,6 +66,10 @@ export function decide(access: SiteAccess, action: SiteAction): Decision {
       // The website Team page offers both; actions/members.ts removeMember and
       // updateMemberRole refuse organization-managed rows, including the owner.
       // Never offer rank escalation, and never act on yourself (ask another Admin).
+      // The self rule is UI POLICY ONLY: the server PERMITS self-removal and
+      // self-demotion (actions/members.ts removeMember / updateMemberRole), so
+      // a parity pass must not read this stricter check as drift. It applies
+      // only when the caller passes `sessionUserId` and the member's `userId`.
       if (!canAdminister(access.role)) return permission(false, 'settings.permissions.title');
       if (action.member.viaOrganization || canAdminister(action.member.orgRole ?? '') || roleAtLeast(action.member.role, 'owner')) {
         return permission(false, 'access.reason.organizationMember');
