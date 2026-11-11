@@ -304,7 +304,8 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
     const target =
       pendingFocus === 'link'
         ? menuRef.current?.querySelector<HTMLInputElement>('input[role="combobox"]')
-        : toolbarRef.current?.querySelector<HTMLElement>(TOOLBAR_ITEM);
+        : (toolbarRef.current?.querySelector<HTMLElement>(`${TOOLBAR_ITEM}[tabindex="0"]`) ??
+          toolbarRef.current?.querySelector<HTMLElement>(TOOLBAR_ITEM));
     if (!target) return;
     target.focus();
     if (target instanceof HTMLInputElement) target.select();
@@ -337,6 +338,17 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
     { labelKey: 'editor.format.highlight', icon: Highlighter, active: state.highlight, run: () => editor.chain().focus().toggleHighlight().run() },
   ];
 
+  // Roving tabindex: the toolbar is one Tab stop, on the control last focused
+  // (the first one at the start); the arrow keys move along it.
+  const itemKeys = ['turnInto', ...buttons.map((button) => button.labelKey), 'link', ...(onComment ? ['comment'] : [])];
+  const [rovingKey, setRovingKey] = useState('turnInto');
+  const tabStop = itemKeys.includes(rovingKey) ? rovingKey : 'turnInto';
+  const rovingProps = (key: string) => ({
+    'data-toolbar-item': key,
+    tabIndex: key === tabStop ? 0 : -1,
+    onFocus: () => setRovingKey(key),
+  });
+
   const comment = () => {
     const { from, to } = editor.state.selection;
     const quote = editor.state.doc.textBetween(from, to, ' ').trim();
@@ -347,7 +359,8 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
     editor.view.dispatch(editor.state.tr.setMeta(TEXT_MENU_KEY, 'hide').setMeta('addToHistory', false));
   };
 
-  // Arrow keys move along the toolbar in reading order (mirrored in RTL).
+  // Arrow keys move along the toolbar in reading order (mirrored in RTL). Read in
+  // the capture phase, so an open tooltip cannot swallow Escape.
   const onToolbarKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.nativeEvent.isComposing) return;
     const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(TOOLBAR_ITEM));
@@ -385,16 +398,15 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
       className="flex max-w-[calc(100vw-1rem)] flex-col rounded-lg border border-border bg-card p-1 shadow-lg"
     >
       {!inspectingLink ? (
-        // biome-ignore lint/a11y/noNoninteractiveElementInteractions: a toolbar moves focus between its buttons with the arrow keys (WAI-ARIA toolbar pattern).
         <div
           ref={toolbarRef}
           role="toolbar"
           aria-label={t('editor.format.toolbar')}
           aria-keyshortcuts="Alt+F10"
           className="flex flex-wrap items-center gap-0.5"
-          onKeyDown={onToolbarKeyDown}
+          onKeyDownCapture={onToolbarKeyDown}
         >
-          <TurnIntoMenu editor={editor} kind={state.kind} />
+          <TurnIntoMenu editor={editor} kind={state.kind} rovingProps={rovingProps('turnInto')} />
           <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
           {buttons.map((button) => {
             const Icon = button.icon;
@@ -402,7 +414,7 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
               <IconButton
                 aria-pressed={button.active}
                 className={iconButton(button.active)}
-                data-toolbar-item=""
+                {...rovingProps(button.labelKey)}
                 key={button.labelKey}
                 label={withShortcut(button.labelKey, button.shortcut)}
                 onClick={button.run}
@@ -419,7 +431,7 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
             aria-expanded={showLinkPanel}
             aria-pressed={state.link}
             className={iconButton(state.link)}
-            data-toolbar-item=""
+            {...rovingProps('link')}
             label={withShortcut('editor.format.link', 'K')}
             onClick={() => setLinkOpen((open) => !open)}
             onMouseDown={(event) => event.preventDefault()}
@@ -431,7 +443,7 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
           {onComment ? (
             <IconButton
               className={iconButton(false)}
-              data-toolbar-item=""
+              {...rovingProps('comment')}
               label={t('editor.comment')}
               onClick={comment}
               onMouseDown={(event) => event.preventDefault()}
@@ -453,7 +465,16 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
  * The current type is the checked choice; choosing one keeps the selection and
  * returns focus to the text.
  */
-function TurnIntoMenu({ editor, kind }: { editor: Editor; kind: TurnIntoKind | null }) {
+function TurnIntoMenu({
+  editor,
+  kind,
+  rovingProps,
+}: {
+  editor: Editor;
+  kind: TurnIntoKind | null;
+  /** The toolbar's roving tabindex for this control. */
+  rovingProps: { 'data-toolbar-item': string; tabIndex: number; onFocus: () => void };
+}) {
   const t = useT();
   const current = TURN_INTO_OPTIONS.find((option) => option.kind === kind);
   const CurrentIcon = current?.icon ?? Pilcrow;
@@ -469,7 +490,7 @@ function TurnIntoMenu({ editor, kind }: { editor: Editor; kind: TurnIntoKind | n
         render={
           <Button
             className="h-7 gap-1 px-1.5 text-foreground/80"
-            data-toolbar-item=""
+            {...rovingProps}
             size="xs"
             title={t('editor.format.turnInto')}
             type="button"
