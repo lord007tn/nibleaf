@@ -100,7 +100,7 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2" data-testid="publish-checks">
-      <h3 className="font-medium text-muted-foreground text-xs uppercase tracking-wide" id={headingId}>
+      <h3 className="font-medium text-sm" id={headingId}>
         {t('publish.checks.title')}
       </h3>
       {loading ? (
