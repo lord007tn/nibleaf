@@ -44,7 +44,8 @@
     "./script-mismatch": "./src/script-mismatch.ts",
     "./utils": "./src/utils.ts",
     "./organization-handles": "./src/organization-handles.ts",
-    "./markdown-text": "./src/markdown-text.ts"
+    "./markdown-text": "./src/markdown-text.ts",
+    "./markdown-code-usage": "./src/markdown-code-usage.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",

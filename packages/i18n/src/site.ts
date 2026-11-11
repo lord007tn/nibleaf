@@ -18,6 +18,7 @@ import { site_changelogpagecount } from './paraglide/messages/site_changelogpage
 import { site_changelogrelease } from './paraglide/messages/site_changelogrelease.js';
 import { site_changelogsubtitle } from './paraglide/messages/site_changelogsubtitle.js';
 import { site_changeversion } from './paraglide/messages/site_changeversion.js';
+import { site_controlloadfailed } from './paraglide/messages/site_controlloadfailed.js';
 import { site_copymarkdown } from './paraglide/messages/site_copymarkdown.js';
 import { site_darkmode } from './paraglide/messages/site_darkmode.js';
 import { site_defaultversion } from './paraglide/messages/site_defaultversion.js';
@@ -111,6 +112,7 @@ const siteMessages = {
   searchEmpty: site_searchempty,
   loading: site_loading,
   articleLoadFailed: site_articleloadfailed,
+  controlLoadFailed: site_controlloadfailed,
   previous: site_previous,
   next: site_next,
   onThisPage: site_onthispage,

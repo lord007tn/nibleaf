@@ -2220,6 +2220,7 @@
   "site_results": "Results",
   "site_loading": "Loading…",
   "site_articleloadfailed": "This page couldn't load. Try again",
+  "site_controlloadfailed": "Couldn't open. Select it again to try again.",
   "site_previous": "Previous",
   "site_next": "Next",
   "site_onthispage": "On this page",
