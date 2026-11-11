@@ -1199,6 +1199,12 @@ importers:
       nanoid:
         specifier: ^6.0.2
         version: 6.0.2
+      parse5:
+        specifier: 7.3.0
+        version: 7.3.0
+      rehype-raw:
+        specifier: 7.0.0
+        version: 7.0.0
       remark-frontmatter:
         specifier: 5.0.0
         version: 5.0.0
@@ -1211,6 +1217,9 @@ importers:
       remark-parse:
         specifier: 11.0.0
         version: 11.0.0
+      remark-rehype:
+        specifier: 11.1.2
+        version: 11.1.2
       unified:
         specifier: 11.0.5
         version: 11.0.5
