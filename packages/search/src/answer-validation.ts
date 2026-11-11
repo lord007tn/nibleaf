@@ -46,28 +46,81 @@ const markdownBlocks = (text: string): string[] => {
   return blocks.filter(Boolean);
 };
 
-/** Remove complete leading refusals and generic next-step offers, while
- * retaining any supported remainder with its own citation markers. */
+/** Collapse whitespace in one tokenization pass, retaining offsets so a
+ * supported remainder keeps its original Markdown. Work and storage are linear. */
+const refusalText = (text: string) => {
+  const parts: string[] = [];
+  const offsets: number[] = [];
+  for (const word of text.matchAll(/\S+/gu)) {
+    if (parts.length) {
+      parts.push(' ');
+      offsets.push(word.index);
+    }
+    parts.push(word[0]);
+    for (let index = 0; index < word[0].length; index++) offsets.push(word.index + index);
+  }
+  offsets.push(text.length);
+  return { normalized: parts.join(''), offsets };
+};
+
+const isCitationGroup = (label: string) => label.split(/[,;،؛]/u).every((id) => /^S\d+$/u.test(id.trim()));
+
+/** Each bracket range is visited once, including malformed/nested markers. */
+const withoutSentenceCitations = (sentence: string) => {
+  const parts: string[] = [];
+  let cursor = 0;
+  while (cursor < sentence.length) {
+    const open = sentence.indexOf('[', cursor);
+    const close = open < 0 ? -1 : sentence.indexOf(']', open + 1);
+    if (close < 0) break;
+    const inner = sentence.lastIndexOf('[', close);
+    if (isCitationGroup(sentence.slice(inner + 1, close))) parts.push(sentence.slice(cursor, inner));
+    else parts.push(sentence.slice(cursor, close + 1));
+    cursor = close + 1;
+  }
+  parts.push(sentence.slice(cursor));
+  return parts.join('');
+};
+
+/** Match only normalized text. The sentence classes are disjoint, and all
+ * refusal patterns are anchored without quantified whitespace groups. */
 const withoutRefusal = (text: string): string => {
+  const { normalized, offsets } = refusalText(text);
+  const sentences = /[^.!?؟]+[.!?؟]*/gu;
   let declined = false;
-  for (const match of text.matchAll(/[^.!?؟]+[.!?؟]*(?:\s*\[S\d+(?:\s*[,;،؛]\s*S\d+)*\])*/gu)) {
-    const sentence = match[0];
-    const prose = normalizeArabicSearchText(sentence.replace(/\[S\d+(?:\s*[,;،؛]\s*S\d+)*\]/g, ''))
-      .replace(/\s+/g, ' ')
-      .trim()
-      .replace(/^(?:sorry|عذرا)[،,:\s]*/iu, '');
+  for (let match = sentences.exec(normalized); match !== null; match = sentences.exec(normalized)) {
+    let end = sentences.lastIndex;
+    // Consume trailing citation groups without a repeated whitespace regex.
+    while (end < normalized.length) {
+      const start = normalized[end] === ' ' ? end + 1 : end;
+      if (normalized[start] !== '[') break;
+      let close = start + 1;
+      while (close < normalized.length && 'S0123456789 ,;،؛'.includes(normalized[close] ?? '')) close++;
+      if (normalized[close] !== ']' || !isCitationGroup(normalized.slice(start + 1, close))) break;
+      end = close + 1;
+    }
+    sentences.lastIndex = end;
+    const sentence = normalized.slice(match.index, end);
+    // Removing a marker can join two normalized spaces; this isolated replace
+    // is linear too, without adjacent or nested quantified groups.
+    let prose = normalizeArabicSearchText(withoutSentenceCitations(sentence)).replace(/ +/g, ' ').trim().toLowerCase();
+    if (prose.startsWith('sorry') || prose.startsWith('عذرا')) {
+      let start = prose.startsWith('sorry') ? 5 : 4;
+      while (start < prose.length && ' ،,:'.includes(prose[start] ?? '')) start++;
+      prose = prose.slice(start);
+    }
     const refusal =
       /^(?:I (?:couldn['’]t|could not|can['’]t|cannot) (?:verify|find|answer)\b|(?:The supplied documentation|The documentation|The docs) (?:does not|do not|doesn['’]t|don['’]t) (?:state|mention|cover|describe)\b|لم اجد (?:اجابه|اجابة|معلومات)|لا (?:اجد|يمكنني تاكيد))/iu.test(
         prose,
       );
     if (refusal) {
-      const connector = sentence.match(/\b(?:but|however|instead)\b[,،]?\s*|لكن[,،]?\s*/iu);
-      if (connector?.index !== undefined) return text.slice((match.index ?? 0) + connector.index + connector[0].length).trim();
+      const connector = sentence.match(/\b(?:but|however|instead)\b[,،]? ?|لكن[,،]? ?/iu);
+      if (connector?.index !== undefined) return text.slice(offsets[match.index + connector.index + connector[0].length]).trim();
       declined = true;
       continue;
     }
     if (declined && /^(?:try (?:another|a different|searching|asking)|contact (?:our )?support|جرب |حاول |تواصل مع الدعم)/iu.test(prose)) continue;
-    return text.slice(match.index).trim();
+    return text.slice(offsets[match.index]).trim();
   }
   return declined ? '' : text;
 };

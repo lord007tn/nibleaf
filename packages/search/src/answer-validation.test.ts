@@ -20,7 +20,23 @@ const chunk: SearchChunk = {
 
 describe('chat heading detection', () => {
   it.each([
+    ['refusal with 100k spaces', `I couldn't verify this from the docs.${' '.repeat(100_000)}Try another question. [S1]`, 'no_answer'],
+    ['100k spaces interleaved with partial refusal tokens', `I could${`n't v${' '.repeat(1000)}`.repeat(100)}erify this. [S1]`, 'answered'],
+  ])('handles %s in under 50ms after warm-up', (_name, answer, status) => {
+    validateCitedAnswer(answer, [chunk], '', 'chat');
+    const started = performance.now();
+    const result = validateCitedAnswer(answer, [chunk], '', 'chat');
+    const elapsed = performance.now() - started;
+    expect(result.status).toBe(status);
+    expect(elapsed).toBeLessThan(50);
+  });
+  it.each([
+    [
+      "Sorry,\nI couldn't find automatic invites.\n\nYou can add a user from Users. [S1]\n\n1. Open Users. [S1]\n2. Choose Add. [S1]",
+      'You can add a user from Users. [S1]\n\n1. Open Users. [S1]\n2. Choose Add. [S1]',
+    ],
     ["I couldn't find automatic invites. You can add a user from Users. [S1]", 'You can add a user from Users. [S1]'],
+    ["I [S1] couldn't find automatic invites. You can add a user from Users. [S1]", 'You can add a user from Users. [S1]'],
     ["Sorry, I couldn't find automatic invites. You can add a user from Users. [S1]", 'You can add a user from Users. [S1]'],
     ['لم أجد معلومات عن الدعوات التلقائية. يمكنك إضافة مستخدم من المستخدمين. [S1]', 'يمكنك إضافة مستخدم من المستخدمين. [S1]'],
     ['عذرًا، لم أجد معلومات عن الدعوات التلقائية. يمكنك إضافة مستخدم من المستخدمين. [S1]', 'يمكنك إضافة مستخدم من المستخدمين. [S1]'],
