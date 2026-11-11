@@ -13,6 +13,7 @@ import {
   openApiConfigurationQueryOptions,
   pageQueryOptions,
   pagesQueryOptions,
+  pageTrashQueryOptions,
   pendingChangesQueryOptions,
   projectAddonsQueryOptions,
   projectMembersQueryOptions,
@@ -55,6 +56,9 @@ export const useApiKeys = (projectId: string | undefined, waiting?: { id: string
 
 export const usePages = (projectId: string | undefined, languageId?: string, branchId?: string) =>
   useQuery(pagesQueryOptions(projectId, languageId, branchId));
+
+/** A branch's Trash; the default branch when `branchId` is omitted. */
+export const usePageTrash = (projectId: string | undefined, branchId?: string) => useQuery(pageTrashQueryOptions(projectId, branchId));
 
 export const useLanguages = (projectId: string | undefined) => useQuery(languagesQueryOptions(projectId));
 

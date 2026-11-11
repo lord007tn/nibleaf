@@ -66,6 +66,7 @@ import { LanguageSettingsDialog } from '@/components/editor/language-settings-di
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
+import { PageTrashButton } from '@/components/editor/page-trash-dialog';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
 import { NeverPublishedBanner, PagePublishStateBar, SaveStatus } from '@/components/editor/save-status';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
@@ -99,7 +100,13 @@ import {
   useUploadAsset,
 } from '@/hooks/api';
 import { assetUploadErrorMessage } from '@/hooks/api/client-helpers';
-import { aiDraftCapabilityQueryOptions, commentsQueryOptions, pageQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
+import {
+  aiDraftCapabilityQueryOptions,
+  commentsQueryOptions,
+  pageQueryOptions,
+  pageTrashQueryOptions,
+  projectMembersQueryOptions,
+} from '@/hooks/api/query-options';
 import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
@@ -130,6 +137,7 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
     prefetchScopedPages(queryClient, projectId, { languageId: 'all' });
     prefetchRouteData(queryClient, aiDraftCapabilityQueryOptions(projectId));
     prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
+    prefetchRouteData(queryClient, pageTrashQueryOptions(projectId));
     if (page) {
       prefetchRouteData(queryClient, pageQueryOptions(projectId, page));
       prefetchRouteData(queryClient, commentsQueryOptions(projectId, page));
@@ -1321,6 +1329,11 @@ function EditorPage() {
               )}
             </div>
           </ScrollArea>
+          {view === 'config' || isPending ? null : (
+            <div className="shrink-0 border-border border-t px-2 py-1.5">
+              <PageTrashButton branchId={activeBranchId ?? undefined} canEdit={canEditContent} languages={orderedLanguages} projectId={projectId} />
+            </div>
+          )}
           <AddLanguageDialog projectId={projectId} open={addLangOpen} onOpenChange={setAddLangOpen} onCreated={() => setAddLangOpen(false)} />
           {langSettings ? (
             <LanguageSettingsDialog

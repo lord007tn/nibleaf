@@ -19,6 +19,11 @@ export const queryKeys = {
     allForProject: (projectId: string) => ['pages', projectId] as const,
     detail: (projectId: string, pageId: string) => ['pages', projectId, pageId] as const,
   },
+  pageTrash: {
+    /** Every branch's Trash for a site — use for invalidation. */
+    all: (projectId: string) => ['page-trash', projectId] as const,
+    list: (projectId: string, branchId?: string) => ['page-trash', projectId, branchId ?? null] as const,
+  },
   languages: {
     all: (projectId: string) => ['languages', projectId] as const,
   },
