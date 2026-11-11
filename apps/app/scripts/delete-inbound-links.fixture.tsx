@@ -1,6 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { ConfirmProvider, useConfirm } from '@nibleaf/design-system/components/ui/confirm';
-import '@nibleaf/design-system/globals.css';
 import { setLanguage } from '@nibleaf/i18n/locale-state';
 import { useT } from '@nibleaf/i18n/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
