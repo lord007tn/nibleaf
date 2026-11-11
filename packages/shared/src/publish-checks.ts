@@ -18,7 +18,6 @@
  *   with `resolveSiteRoute`, the reader's own route order, following redirects.
  */
 import { createHash } from 'node:crypto';
-import remarkGfm from 'remark-gfm';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
@@ -89,12 +88,17 @@ export interface PageContentFacts {
 }
 
 // The same parse as #426's link rewriter (micromark MDX + mdast-util-mdx, via
-// remark-mdx), plus GFM as the reader renders it.
-const mdxParser = unified().use(remarkParse).use(remarkGfm).use(remarkMdx);
-// The reader renders CommonMark + GFM: what it treats as code (indented code
+// remark-mdx). GFM is left out on purpose: it roughly doubles the cost and
+// changes nothing the checks read (links in table cells parse the same, its
+// autolink literals are external), except footnotes, handled below.
+const mdxParser = unified().use(remarkParse).use(remarkMdx);
+// The reader renders CommonMark (+ GFM): what it treats as code (indented code
 // included, which MDX disables) comes from this parse, and invalid MDX is read
 // with it entirely, where JSX and comments are raw HTML.
-const markdownParser = unified().use(remarkParse).use(remarkGfm);
+const markdownParser = unified().use(remarkParse);
+/** Without GFM a footnote (`[^1]` with `[^1]: text`) parses as a reference
+ *  link; the reader renders it as an in-page footnote, never a page link. */
+const isFootnoteLabel = (identifier: string | undefined): boolean => identifier?.startsWith('^') === true;
 
 /** Never-rendering subtrees: code, raw HTML (comments included), MDX expressions and ESM. */
 const SILENT = new Set(['code', 'inlineCode', 'html', 'mdxFlowExpression', 'mdxTextExpression', 'mdxjsEsm', 'yaml', 'toml']);
@@ -151,7 +155,13 @@ const collectFacts = (content: string): PageContentFacts => {
   const definitions = new Map<string, string>();
   const collectDefinitions = (node: MarkdownNode) => {
     if (SILENT.has(node.type) || inCode(node)) return;
-    if (node.type === 'definition' && node.identifier && node.url !== undefined && !definitions.has(node.identifier)) {
+    if (
+      node.type === 'definition' &&
+      node.identifier &&
+      !isFootnoteLabel(node.identifier) &&
+      node.url !== undefined &&
+      !definitions.has(node.identifier)
+    ) {
       definitions.set(node.identifier, node.url);
     }
     for (const child of node.children ?? []) collectDefinitions(child);
@@ -208,6 +218,8 @@ const collectFacts = (content: string): PageContentFacts => {
         for (const child of node.children ?? []) visit(child, linksRender && !lowercase);
         return;
       }
+      default:
+        break;
     }
     for (const child of node.children ?? []) visit(child, linksRender);
   };

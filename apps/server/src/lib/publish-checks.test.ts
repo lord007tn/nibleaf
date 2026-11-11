@@ -145,17 +145,18 @@ describe('broken-internal-link', () => {
     expect(linkChecks(content)).toEqual([]);
   });
 
-  it('finds links in href attributes and reference definitions, and in linked images', () => {
+  it('checks links that render: inline, linked images and used references, not unused definitions or JSX attributes', () => {
     const content = [
-      '<Card title="Next" href="/card-missing" />',
+      'See [the guide][ref] and [![Logo](/logo.png)](/image-link-missing).',
+      '',
+      '<Card title="Next" href="/card-attribute" />',
       '',
       '[ref]: /reference-missing',
-      '',
-      '[![Logo](/logo.png)](/image-link-missing)',
+      '[unused]: /unused-definition',
       '',
       '[^1]: A footnote, not a link.',
     ].join('\n');
-    expect(linkChecks(content)).toEqual(['/card-missing', '/reference-missing', '/image-link-missing']);
+    expect(linkChecks(content)).toEqual(['/reference-missing', '/image-link-missing']);
   });
 
   it('keeps links inside their docs version', () => {
@@ -195,6 +196,27 @@ describe('missing-alt', () => {
 
   it('ignores images in code', () => {
     expect(codes(snapshot([page({ path: 'a', content: '```\n![](/a.png)\n```' })]), 'missing-alt')).toEqual([]);
+  });
+
+  it('flags reference-style images, a multiline <img> and an <img> inside a component', () => {
+    const content = [
+      '![][shot]',
+      '',
+      '[shot]: /reference.png',
+      '',
+      '<img',
+      '  src="/multiline.png"',
+      '/>',
+      '',
+      '<Frame>',
+      '  <img src="/framed.png" alt="" />',
+      '</Frame>',
+    ].join('\n');
+    expect(codes(snapshot([page({ path: 'a', content })]), 'missing-alt').map((check) => check.detail)).toEqual([
+      '/reference.png',
+      '/multiline.png',
+      '/framed.png',
+    ]);
   });
 });
 
@@ -272,6 +294,11 @@ describe('empty-page', () => {
     ['an unclosed comment (rendered as text)', '<!-- never closed', false],
   ])('treats a page with %s as empty: %s', (_case, content, empty) => {
     expect(codes(snapshot([page({ path: 'a', content })]), 'empty-page')).toHaveLength(empty ? 1 : 0);
+  });
+
+  it('reports an empty page and every other finding on it: a commented-out link renders nothing', () => {
+    const commented = page({ path: 'a', content: '<!-- [a](/missing) -->' });
+    expect(collectPublishChecks(snapshot([commented])).map((check) => [check.code, check.detail])).toEqual([['empty-page', '']]);
   });
 });
 

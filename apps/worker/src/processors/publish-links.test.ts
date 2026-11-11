@@ -232,9 +232,12 @@ describe('publish dialog and worker parity', () => {
         content: [
           '[ok](/start#top) [ok](/reference) [ok](/ar/دليل) [ok](/دليل?lang=ar) [ok](/old) [ok](/changelog) [ok](/api)',
           '[broken](/configuration) [broken](/ar/missing) [broken](limits) [broken](/secret) [broken](/دليل?lang=ar&lang=en#x)',
-          '<Card href="/card-missing" />',
+          '[broken](/v2/ar/only-in-v2) [broken][used]',
           '',
-          '[ref]: /reference-missing',
+          '<Card href="/card-attribute" />',
+          '',
+          '[used]: /reference-missing',
+          '[unused]: /unused-definition',
           '',
           '```',
           '[in code](/code-missing)',
@@ -242,6 +245,8 @@ describe('publish dialog and worker parity', () => {
         ].join('\n'),
       }),
       page({ path: 'مقدمة', languageCode: 'ar', content: '[ok](/start) [broken](/nowhere)' }),
+      // A page whose only content is a commented-out link: an empty page, and no link renders.
+      page({ path: 'commented', title: 'Commented', content: '<!-- [a](/commented-missing) -->' }),
     ];
     const site = snapshot(
       pages,
@@ -262,8 +267,8 @@ describe('publish dialog and worker parity', () => {
     expect(dialog.sort()).toEqual(
       [
         'guides/intro /ar/missing',
-        'guides/intro /card-missing',
         'guides/intro /configuration',
+        'guides/intro /v2/ar/only-in-v2',
         'guides/intro /reference-missing',
         'guides/intro /secret',
         'guides/intro /دليل?lang=ar&lang=en#x',
@@ -278,6 +283,14 @@ describe('publish dialog and worker parity', () => {
         .filter((check) => check.code === 'broken-internal-link')
         .every((check) => check.severity === 'error'),
     ).toBe(true);
+  });
+
+  it('agrees on a page whose only content is a commented-out link: an empty-page warning, nothing blocking', () => {
+    const site = snapshot([page({ path: 'start' }), page({ path: 'commented', content: '<!-- [a](/missing) -->' })]);
+    const dialog = collectPublishChecks(site);
+    expect(dialog.map((check) => [check.code, check.severity])).toEqual([['empty-page', 'warning']]);
+    expect(collectPublishIssues(site)).toEqual([]);
+    expect(dialog.some((check) => check.severity === 'error')).toBe(collectPublishIssues(site).length > 0);
   });
 
   it.each<[string, AddonDeliveryPlanAssignment | null]>([

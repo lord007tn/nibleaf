@@ -179,6 +179,7 @@ describe('pre-publish link check vs the reader', () => {
     ['a link inside code', 'Run `[a](/missing-code)` here.\n\n```\n[b](/missing-fence)\n```\n\n    [c](/missing-indented)'],
     ['a link inside an HTML comment', '<!-- [a](/missing-comment) -->'],
     ['an unused reference definition', 'Text.\n\n[unused]: /missing-definition'],
+    ['a footnote', 'A claim.[^1]\n\n[^1]: Source text'],
   ])('renders no link for %s, and the check reports none', (_case, content) => {
     const linking = page({ path: 'start', content });
     const snapshot = snapshotWith(linking);
@@ -186,10 +187,15 @@ describe('pre-publish link check vs the reader', () => {
     expect(findBrokenInternalLinks(snapshot)).toEqual([]);
   });
 
-  it('renders the link of a used reference and a link between escaped backticks, and the check judges both', () => {
-    const linking = page({ path: 'start', content: 'See [it][ref] and \\`[b](/missing-escaped)\\`.\n\n[ref]: /missing-reference' });
+  it('renders the link of a used reference, a link between escaped backticks and one in a table cell, and the check judges all three', () => {
+    const linking = page({
+      path: 'start',
+      content: 'See [it][ref] and \\`[b](/missing-escaped)\\`.\n\n| a | b |\n| - | - |\n| [c](/missing-cell) | d |\n\n[ref]: /missing-reference',
+    });
     const snapshot = snapshotWith(linking);
-    expect(renderedLinks(snapshot, linking).map((url) => url.pathname)).toEqual(['/missing-reference', '/missing-escaped']);
-    expect(findBrokenInternalLinks(snapshot).map((link) => link.href)).toEqual(['/missing-reference', '/missing-escaped']);
+    const rendered = renderedLinks(snapshot, linking).map((url) => url.pathname);
+    expect(rendered).toEqual(['/missing-reference', '/missing-escaped', '/missing-cell']);
+    expect(rendered.map((path) => readerServes(snapshot, new URL(path, ORIGIN)))).toEqual(['not-found', 'not-found', 'not-found']);
+    expect(findBrokenInternalLinks(snapshot).map((link) => link.href)).toEqual(['/missing-reference', '/missing-escaped', '/missing-cell']);
   });
 });
