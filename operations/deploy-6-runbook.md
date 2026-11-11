@@ -135,7 +135,8 @@ The `{publish}` and `{search}` queues (`QUEUE_CLUSTER=true`, so the names carry 
 
 ## 2. Backup (verified)
 
-On the host, inside the Postgres container:
+Run this **after §3 (build) and immediately before §4 (deploy)**; see "Writes after the snapshot" below. On the host, inside the
+Postgres container:
 
 ```sh
 P=$(docker ps --format '{{.Names}}' | grep "^postgres-<RESOURCE_UUID>-" | head -1)
@@ -146,8 +147,28 @@ docker exec -i $P pg_restore -l < $F > /root/deploy6-restore-list.txt
 echo "pg_restore -l exit=$? entries=$(wc -l < /root/deploy6-restore-list.txt) tabledata=$(grep -c 'TABLE DATA' /root/deploy6-restore-list.txt)"
 ```
 
-Pass: both exits are 0, and the TABLE DATA count is at least deploy 5's (80). Record the path, size and sha256 in the release record.
-Never prune or delete older dumps.
+Pass: both exits are 0, and the TABLE DATA count is at least deploy 5's (80). The listing only proves the archive is readable, so
+also **test a restore** into a throwaway database in the same container, compare counts with the live database, then drop it:
+
+```sh
+C='select count(*) from project; select count(*) from "user"; select count(*) from _prisma_migrations'
+docker exec $P sh -c 'dropdb -U "$POSTGRES_USER" --if-exists nibleaf_restore_test && createdb -U "$POSTGRES_USER" nibleaf_restore_test'
+docker exec -i $P sh -c 'pg_restore -U "$POSTGRES_USER" -d nibleaf_restore_test --no-owner --exit-on-error' < $F; echo "restore exit=$?"
+echo "restored: $(docker exec -e C="$C" $P sh -c 'psql -U "$POSTGRES_USER" -d nibleaf_restore_test -tA -c "$C"' | tr '\n' ' ')"
+echo "live:     $(docker exec -e C="$C" $P sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA -c "$C"' | tr '\n' ' ')"
+docker exec $P sh -c 'dropdb -U "$POSTGRES_USER" nibleaf_restore_test'
+```
+
+Pass: restore exit 0, and the restored project, user and migration counts equal the live ones (live counts may only be higher
+from writes since the dump). Record the dump path, size, sha256 **and** the restore-test result (exit code, both count lines,
+UTC time) in the release record. Never prune or delete older dumps.
+
+**Writes after the snapshot.** Coolify's stop-then-start gives no window to dump with the app stopped, so writes made between
+the dump and the old containers stopping are not in it. Keep that window to about a minute: take the dump **last**, after the
+image is built (§3) and immediately before Redeploy (§4). The dump is only restored for a failed, partially applied migration
+(§4 Rollback). In that case, before restoring, export anything written after the dump's timestamp from the failed database
+(`pg_dump --data-only` of the affected tables, or rows with `"updatedAt"`/`"createdAt"` after it), restore, then re-apply those
+rows. Record in the release record whether any such writes existed.
 
 ---
 
@@ -179,6 +200,10 @@ gh workflow run docker.yml --repo lord007tn/nibleaf --ref main \
    source; check it matches §1.1.3.
 5. Track health from outside until both report the new revision:
    `curl -s https://api.nibleaf.com/health` and `curl -s https://nibleaf.com/health` → `"revision":"<TARGET_SHA>"`.
+6. Then require **three consecutive passing rounds**, 10 s apart, over every public target: both health endpoints (revision =
+   `<TARGET_SHA>`), one published custom-domain docs page, one `*.nibleaf.com` docs page, and the admin login page, each HTTP 200.
+   `scripts/coolify-release-probes.mjs` implements the same probes. A failed round restarts the count. If three passing rounds
+   don't happen within 10 minutes, roll back (below), then re-run the same probes expecting the **previous** revision, and stop.
 
 **Rollback:** set the Production `NIBLEAF_IMAGE_TAG` back to `sha-0a18349c9855fa9dc6961e0f28bffe1be20febe3` and Redeploy.
 PR 1 ignores PR 2/3's expand-only columns, and RESTRICT only refuses deletions PR 1 never attempts. Drain `{email}` first if
@@ -277,6 +302,13 @@ Accepted by the master on 2026-11-11. The **owner** generates every value on the
 manager (plus one offline copy), and pastes it into Coolify. **No value ever appears in a thread, PR, log or this file.**
 To verify, check presence and decoded byte length only (Appendix A), or compare a `sha256sum` fingerprint of the stored copy.
 
+**Never replace an existing value.** Run Appendix A first. A variable that is already SET keeps its value: replacing an
+encryption key makes stored ciphertext unreadable, and replacing `ANALYTICS_HASH_SALT` splits visitor identities. Generate a value
+only for a variable that is ABSENT or EMPTY, and only after confirming nothing depends on an earlier value (no stored integration
+credentials or webhook secrets for the integration key, no Git connections for the Git key, no ClickHouse events for the salt).
+If something does, recover the earlier value from the owner's password manager instead. Rotation goes through the `_PREVIOUS`
+variables (`AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS`, `INTEGRATION_CREDENTIAL_PREVIOUS_KEYS`), never a plain replacement.
+
 | Variable | Generate | Unlocks | Depends on |
 | --- | --- | --- | --- |
 | `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` | `openssl rand -base64 32` (44 chars, 32 bytes) | Smart AI connections with the site's own keys, and project webhooks | — |
@@ -362,7 +394,12 @@ for svc in server worker app; do
   C=$(pick $svc); ENVS=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' $C)
   echo "== $svc ($(docker inspect -f '{{.Config.Image}}' $C | sed 's#.*:##' | cut -c1-12))"
   for n in $PUBLIC; do l=$(printf '%s\n' "$ENVS" | grep -m1 "^$n="); if [ -z "$l" ]; then echo "  $n ABSENT"; else echo "  $n = ${l#*=}"; fi; done
-  for n in $SECRETS; do l=$(printf '%s\n' "$ENVS" | grep -m1 "^$n="); if [ -z "$l" ]; then echo "  $n ABSENT"; else v=${l#*=}; if [ -z "$v" ]; then echo "  $n EMPTY"; else b=$(printf '%s' "$v" | base64 -d 2>/dev/null | wc -c); echo "  $n SET (chars=${#v}, base64-decoded-bytes=$b)"; fi; fi; unset v l; done
+  for n in $SECRETS; do l=$(printf '%s\n' "$ENVS" | grep -m1 "^$n="); if [ -z "$l" ]; then echo "  $n ABSENT"; else v=${l#*=}; if [ -z "$v" ]; then echo "  $n EMPTY"; else
+    case $n in
+      ANALYTICS_HASH_SALT|GIT_WORKER_SECRET)
+        if printf '%s' "$v" | grep -Eq '^([0-9a-fA-F]{2})+$'; then echo "  $n SET (chars=${#v}, hex-decoded-bytes=$((${#v} / 2)))"; else echo "  $n SET (chars=${#v}, INVALID HEX)"; fi ;;
+      *) b=$(printf '%s' "$v" | base64 -d 2>/dev/null | wc -c); echo "  $n SET (chars=${#v}, base64-decoded-bytes=$b)" ;;
+    esac; fi; fi; unset v l; done
 done
 W=$(pick worker); S=$(pick server); CH=$(pick clickhouse); P=$(pick postgres)
 echo "== worker /health analytics: $(docker exec $W node -e "fetch('http://127.0.0.1:'+(process.env.WORKER_PORT||3001)+'/health').then(r=>r.text()).then(console.log)" | grep -o '"analytics":{[^}]*}')"
