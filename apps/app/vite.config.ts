@@ -174,6 +174,9 @@ export default defineConfig(({ mode }) => {
       // better-auth session cookies stay first-party. All /api/** → the Nibleaf API.
       // Custom-domain serving is handled in src/server.ts (request URL rewrite).
       nitro({
+        // Files under /assets/ are served before any route; this answers the rest
+        // with a 404 that is never cached (see the handler for why it throws).
+        handlers: [{ route: '/assets/**', handler: './src/lib/asset-not-found.server.ts' }],
         routeRules: {
           '/**': { headers: SECURITY_HEADERS },
           // Marks static build output for the custom-domain edge, which shares one

@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   markerFindUnique: vi.fn(),
   checkpointUpdateMany: vi.fn(),
   projectDelete: vi.fn(),
+  revisionsDelete: vi.fn(),
+  revisionStatesDelete: vi.fn(),
 }));
 
 vi.mock('@nibleaf/bullmq', () => ({
@@ -30,6 +32,13 @@ vi.mock('@nibleaf/clickhouse', () => ({
 vi.mock('@nibleaf/database', () => ({
   beginUsageDeletion: mocks.beginUsageDeletion,
   prisma: {
+    $transaction: async (work: (tx: unknown) => unknown) =>
+      work({
+        $queryRaw: vi.fn(),
+        pageRevision: { deleteMany: mocks.revisionsDelete },
+        pageRevisionState: { deleteMany: mocks.revisionStatesDelete },
+        project: { delete: mocks.projectDelete },
+      }),
     project: { findUnique: mocks.projectFindUnique, delete: mocks.projectDelete },
     usageStorageMarker: { findUnique: mocks.markerFindUnique },
     usageProviderCheckpoint: { updateMany: mocks.checkpointUpdateMany },
@@ -75,6 +84,9 @@ describe('shared tenant privacy erasure', () => {
       { name: 'erase-project-storage', data: { projectId: 'project-a' } },
       { jobId: 'erase-storage-project-a', delay: 60_000 },
     );
+    expect(mocks.revisionsDelete).toHaveBeenCalledExactlyOnceWith({ where: { projectId: 'project-a' } });
+    expect(mocks.revisionStatesDelete).toHaveBeenCalledExactlyOnceWith({ where: { projectId: 'project-a' } });
+    expect(mocks.revisionsDelete).toHaveBeenCalledBefore(mocks.projectDelete);
     expect(mocks.deleteProjectUsage).toHaveBeenCalledBefore(mocks.createJob);
     expect(Math.max(...mocks.createJob.mock.invocationCallOrder)).toBeLessThan(mocks.projectDelete.mock.invocationCallOrder[0] ?? 0);
   });

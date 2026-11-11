@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { documentationComponentContractEntries } from './documentation-component-contract';
 import { findBrokenInternalLinks } from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 
@@ -61,9 +62,13 @@ describe('code boundaries come from the parsed tree', () => {
     expect(broken('````md\n```\n[a](/missing)\n```\n````\n\n[b](/gone)')).toEqual(['/gone']);
   });
 
-  it('ignores links in comments, MDX expressions and JSX attributes', () => {
+  it('ignores links in HTML comments and non-link JSX attributes', () => {
     expect(broken('<!-- [a](/in-comment) -->\n\nText.')).toEqual([]);
-    expect(broken('{/* [a](/in-expression) */}\n\n<Card title="Next" href="/in-attribute" />')).toEqual([]);
+    expect(broken('<Card title="[Next](/in-attribute)" />')).toEqual([]);
+  });
+
+  it('checks a link in an MDX comment, which the reader renders as text with a live link', () => {
+    expect(broken('{/* [a](/in-expression) */}')).toEqual(['/in-expression']);
   });
 
   it('reports a link inside an MDX component body', () => {
@@ -73,6 +78,82 @@ describe('code boundaries come from the parsed tree', () => {
   it('reads invalid MDX as the reader does (CommonMark + raw HTML)', () => {
     // `a < b` breaks MDX; the reader still renders the link.
     expect(broken('If a < b, see [a](/missing).\n\n<!-- [c](/commented) -->')).toEqual(['/missing']);
+  });
+});
+
+describe('literal hrefs on elements the reader renders as links', () => {
+  // The link components come from the reader's component contract, the source
+  // mdx-config's sanitizer and the component map are built from.
+  const hrefComponents = documentationComponentContractEntries().flatMap(([tag, component]) => ('href' in component.attributes ? [tag] : []));
+  it('takes link components from the reader contract', () => {
+    expect([...hrefComponents].sort()).toEqual(['Button', 'Card', 'RelatedCard']);
+  });
+  it.each(hrefComponents)('checks every contract component with an href: %s', (tag) => {
+    expect(broken(`<${tag} href="/missing">Next</${tag}>`)).toEqual(['/missing']);
+  });
+
+  it.each(['Card', 'Button', 'RelatedCard', 'a'])('checks %s literals and ignores expressions', (tag) => {
+    expect(broken(`<${tag} href="/missing">Next</${tag}>`)).toEqual(['/missing']);
+    expect(broken(`<${tag} href='/exists'>Next</${tag}>`)).toEqual([]);
+    expect(broken(`<${tag} href={"/missing"}>Next</${tag}>`)).toEqual([]);
+    expect(broken(`<${tag} href={destination}>Next</${tag}>`)).toEqual([]);
+  });
+
+  it('finds CardGroup children and inline links in document order, including inside raw HTML', () => {
+    expect(
+      broken(
+        '<CardGroup>\n\n<Card href="/card">Next</Card>\n\n</CardGroup>\n\nText <Button href="/button">Go</Button>.\n\n<div><a href="/anchor">Go</a></div>',
+      ),
+    ).toEqual(['/card', '/button', '/anchor']);
+  });
+
+  it("matches the reader's case-insensitive HTML tags and attributes", () => {
+    expect(broken('<card HREF="/card" />\n\n<RELATEDCARD href="/related" />\n\n<button href="/button">Go</button>')).toEqual([
+      '/card',
+      '/related',
+      '/button',
+    ]);
+  });
+
+  it('ignores non-link component props', () => {
+    expect(broken('<CardGroup href="/group"><Note href="/note" /></CardGroup>')).toEqual([]);
+  });
+
+  it('skips external URLs, anchors and files just like Markdown links', () => {
+    expect(
+      broken(
+        '<Card href="https://example.com/missing" />\n\n<Button href="#section">Go</Button>\n\n<RelatedCard href="/file.pdf" />\n\n<a href="//example.com/missing">Go</a>',
+      ),
+    ).toEqual([]);
+  });
+
+  it('ignores JSX examples in fenced, inline and indented code', () => {
+    expect(broken('`<Card href="/inline" />`\n\n```mdx\n<Button href="/fenced">Go</Button>\n```\n\n    <a href="/indented">Go</a>')).toEqual([]);
+  });
+
+  it('resolves component hrefs relative to the page with version, language, twins and redirects', () => {
+    const snapshot = site([
+      page({
+        path: 'guides/intro',
+        versionId: 'v2',
+        languageCode: 'ar',
+        content:
+          '<Card href="next.mdx?lang=ar#top" />\n\n<RelatedCard href="/old" />\n\n<Button href="/next.md?lang=en">Go</Button>\n\n<a href="/missing?lang=ar">Go</a>',
+      }),
+      page({ path: 'guides/next', versionId: 'v2', languageCode: 'ar' }),
+      page({ path: 'next', versionId: 'v2', languageCode: 'ar' }),
+    ]);
+    snapshot.project.versions.push({ id: 'v2', name: 'v2', slug: 'v2', isDefault: false });
+    snapshot.project.languages.push({ code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null });
+    snapshot.project.config = { redirects: [{ from: '/v2/old', to: '/v2/next?lang=ar' }] };
+    expect(findBrokenInternalLinks(snapshot).map((link) => link.href)).toEqual(['/next.md?lang=en', '/missing?lang=ar']);
+  });
+
+  it('applies the reader path length bound to literal component hrefs', () => {
+    const href = `/${'x'.repeat(2048)}`;
+    expect(findBrokenInternalLinks(site([page({ path: 'start', content: `<Card href="${href}" />` })]))).toEqual([
+      expect.objectContaining({ href, reason: 'path-too-long' }),
+    ]);
   });
 });
 
