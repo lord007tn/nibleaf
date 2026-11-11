@@ -34,7 +34,7 @@ it.each([
   // The reader un-indents component lines; an indented Markdown line stays code.
   ['indented Card line', 'Intro\n\n    <Card href="/indented">Next</Card>\n\nMore\n\n    [code](/indented-code)', ['/indented']],
   ['Markdown link between blank lines in raw HTML', '<div>\n\n[x](/in-div)\n\n</div>\n\n<div>\n[y](/raw-text)\n</div>', ['/in-div']],
-  ['link in an MDX comment, which the reader shows', '{/* [a](/in-mdx-comment) */}', ['/in-mdx-comment']],
+  ['link in an MDX comment, which the reader drops', '{/* [a](/in-mdx-comment) */}', []],
 ] as const)('matches actual reader links for %s through both publish adapters', (_name, content, expected) => {
   const html = renderToStaticMarkup(<RichMarkdown content={content} />);
   const { document } = parseHTML(html);

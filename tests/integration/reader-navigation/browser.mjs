@@ -179,8 +179,8 @@ await scenario('a private site is never prefetched, and a reader whose access is
   await mockControl({ revoked: true });
   await link(page, TARGET, PRIVATE_SITE).click();
   await page.waitForTimeout(3000);
-  // The refusal may be retried by the data layer; it is never served from a prefetch.
-  assert.ok(loadsOf(trace, TARGET) >= 1, 'the click asked the server');
+  // The refusal reaches the browser as a 403 (hooks/api/api-error-serialization.ts), so it isn't retried.
+  assert.equal(loadsOf(trace, TARGET), 1, 'the click asked the server once');
   assert.notEqual(await heading(page), targetTitle, 'the page did not open');
   assert.ok(!(await page.locator('main').innerText()).includes(targetTitle), 'none of its content is shown');
   assert.equal(trace.documents.length, 1, 'and a refusal is not retried as a document load');
@@ -239,6 +239,59 @@ await scenario('a refused or failing page keeps its error page, with no document
     assert.notEqual(await heading(page), targetTitle);
     await context.close();
   }
+});
+
+await scenario('a link to a missing page shows the not-found page after one request, as the server would', async () => {
+  const MISSING = 'guides/no-such-page';
+  const { context, page, trace } = await reader();
+  // What the server renders for that URL.
+  const direct = await context.newPage();
+  await direct.goto(pageUrl(MISSING), { waitUntil: 'load' });
+  const notFoundTitle = await heading(direct);
+  await direct.close();
+  assert.notEqual(notFoundTitle, '', 'the server renders a not-found heading');
+  trace.documents.length = 0;
+  trace.pageLoads.length = 0;
+
+  await page.goto(pageUrl(START), { waitUntil: 'load' });
+  await hydrated(page);
+  // An in-site link to a page that doesn't exist (a typo in content, say).
+  await page.evaluate((href) => {
+    const anchor = Object.assign(document.createElement('a'), { href, textContent: 'Missing page' });
+    anchor.id = 'missing-link';
+    document.querySelector('main')?.prepend(anchor);
+  }, `/sites/${SITE}/${MISSING}`);
+  await page.locator('#missing-link').click();
+  await page.waitForFunction((title) => document.querySelector('main h1')?.textContent === title, notFoundTitle, { timeout: 10_000 });
+  await page.waitForTimeout(3000);
+  assert.equal(loadsOf(trace, MISSING), 1, 'one request: a 404 is not retried');
+  assert.equal(trace.documents.length, 1, 'no document load');
+  assert.equal(await page.evaluate(() => location.pathname), `/sites/${SITE}/${MISSING}`);
+  await context.close();
+});
+
+await scenario('server functions answer same-origin requests only', async () => {
+  // A real page-data request, as the reader sends it.
+  const { context, page, trace } = await reader();
+  await page.goto(pageUrl(START), { waitUntil: 'load' });
+  await hydrated(page);
+  await link(page, TARGET).focus();
+  await page.waitForTimeout(500);
+  await context.close();
+  const url = trace.pageLoads.find((entry) => entry.includes(TARGET));
+  assert.ok(url, 'captured a page-data request');
+  const send = (headers, init = {}) =>
+    fetch(new URL(url.slice(url.indexOf('/_serverFn/')), APP), { headers: { 'x-tsr-serverfn': 'true', ...headers }, redirect: 'manual', ...init });
+  const sameOrigin = await send({ 'Sec-Fetch-Site': 'same-origin', Origin: new URL(APP).origin });
+  assert.equal(sameOrigin.status, 200, 'a same-origin request is answered');
+  for (const headers of [{ 'Sec-Fetch-Site': 'cross-site' }, { Origin: 'https://elsewhere.example' }]) {
+    assert.equal((await send(headers)).status, 403, `refused: ${JSON.stringify(headers)}`);
+  }
+  const crossSitePost = await send(
+    { Origin: 'https://elsewhere.example', 'Content-Type': 'text/plain; x=application/json' },
+    { method: 'POST', body: '{}' },
+  );
+  assert.equal(crossSitePost.status, 403, 'a cross-site POST is refused');
 });
 
 // On the private site every navigation asks the server again (nothing is cached),

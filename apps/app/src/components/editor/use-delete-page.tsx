@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { PageNode } from '@/hooks/api';
 import { friendlyErrorMessage, useDeletePage } from '@/hooks/api';
 import { type RestoredPage, useRestorePageTrash } from '@/hooks/api/page-trash';
+import { DeletePageInboundLinks } from './delete-page-inbound-links';
 import { countDescendants } from './page-tree-utils';
 
 /** How long the delete toast (and its Undo) stays up. */
@@ -62,7 +63,13 @@ export function useDeletePageFlow(projectId: string, pages: PageNode[] | undefin
       : count > 0
         ? t('editor.deletePageWithChildrenConfirm', { title, count })
         : t('editor.deletePageConfirm', { title });
-    const ok = await confirm({ title: label, description, confirmLabel: label, destructive: true });
+    const ok = await confirm({
+      title: label,
+      description,
+      children: <DeletePageInboundLinks projectId={projectId} pageId={node.id} />,
+      confirmLabel: label,
+      destructive: true,
+    });
     if (!ok) return;
     try {
       await options?.beforeDelete?.();

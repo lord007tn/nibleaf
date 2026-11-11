@@ -15,6 +15,9 @@ interface PendingChangesLike {
  *  here, not in ./query-keys, which ships with published docs: dashboard-only. */
 export const liveDeploymentsKey = (projectId: string) => [...queryKeys.deployments.all(projectId), 'live'] as const;
 
+/** The Publishes page's reads (history list and each version's detail), dashboard-only too. */
+export const publishHistoryKey = (projectId: string) => [...queryKeys.deployments.all(projectId), 'history'] as const;
+
 type LiveCandidate = Pick<Deployment, 'id' | 'status' | 'version'>;
 
 /** Every READY row of the polled list (newest 50 attempts) and the live-only list, newest first, once each. */
@@ -38,6 +41,16 @@ export const rollbackTarget = <T extends LiveCandidate>(
 ): T | undefined => liveRows(attempts, live).find((row) => row.id !== current?.id && (!current || row.version < current.version));
 
 export const isDeploymentInFlight = (status?: string): boolean => status === 'PENDING' || status === 'BUILDING';
+
+type AttemptState = { status: string; completedAt: string | null };
+
+/** A failed attempt BullMQ will retry: the worker records FAILED with no completion
+ *  time while a retry remains (the reaper completes one left that way too long). */
+export const isPublishRetrying = (attempt: AttemptState | undefined): boolean => attempt?.status === 'FAILED' && attempt.completedAt === null;
+
+/** Queued, building, or failed with an automatic retry still to come. */
+export const isPublishInProgress = (attempt: AttemptState | undefined): boolean =>
+  isDeploymentInFlight(attempt?.status) || isPublishRetrying(attempt);
 
 /** True while any publish of the site is queued or being prepared. */
 const hasPublishInFlight = (deployments: readonly Pick<Deployment, 'status'>[] | undefined): boolean =>
@@ -96,6 +109,8 @@ export const syncPublishReceipt = (
   void queryClient.resetQueries({ queryKey: queryKeys.deployments.changes(projectId), exact: true });
   void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
   void queryClient.invalidateQueries({ queryKey: liveDeploymentsKey(projectId), exact: true });
+  // A newer live version moves the Publishes page's "Live" marker and Restore.
+  void queryClient.invalidateQueries({ queryKey: publishHistoryKey(projectId) });
   void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all(), exact: true });
   // The site's own publish facts (how many went live, whether one is exportable).
   void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });

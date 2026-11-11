@@ -93,6 +93,8 @@
   "publish_checking": "परिवर्तनों की जाँच की जा रही है...",
   "publish_none": "अंतिम प्रकाशन के बाद से कोई परिवर्तन नहीं.",
   "publish_nonehint": "पिछली बार प्रकाशित करने के बाद किसी लेख में बदलाव नहीं हुआ है। रीडायरेक्ट जैसे सेटिंग बदलाव लागू करने के लिए आप फिर भी प्रकाशित कर सकते हैं।",
+  "publish_addpagefirst": "प्रकाशित करने से पहले एक पेज जोड़ें।",
+  "publish_uptodate": "इस साइट की हर चीज़ पहले से लाइव है।",
   "publish_sinceversion": "प्रकाशित संस्करण {version}",
   "publish_firstpublish": "पहले प्रकाशित करें",
   "publish_firstpublishhint": "पहली बार अपनी साइट प्रकाशित कर रहे हैं.",
@@ -491,6 +493,16 @@
   "editor_deletegroup": "समूह हटाएँ",
   "editor_deletegroupconfirm": "समूह “{title}” को ट्रैश में ले जाएँ? यह वहाँ 30 दिन तक रहेगा, इसलिए आप इसे वापस ला सकते हैं।",
   "editor_deletegroupwithchildrenconfirm": "समूह “{title}” और इसके अंदर के पेज ({count}) ट्रैश में ले जाएँ? इन पेजों को ट्री में रखने के लिए पहले इन्हें समूह से बाहर खींचें। सब कुछ 30 दिन तक ट्रैश में रहेगा।",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} पेज यहाँ लिंक करता है",
+        "form=*": "{count} पेज यहाँ लिंक करते हैं"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ट्रैश में ले जाया गया",
   "editor_deletefailed": "पेज हटाया नहीं जा सका। फिर से कोशिश करें।",
   "editor_trash_button": "ट्रैश ({count})",
@@ -2041,11 +2053,13 @@
   "deploy_step_live": "जियो",
   "deploy_deploying": "प्रकाशित हो रहा है…",
   "deploy_deployed": "आपके बदलाव प्रकाशित हो गए हैं",
+  "deploy_firstlive": "आपकी साइट लाइव है",
   "deploy_failed": "प्रकाशन पूरा नहीं हुआ",
   "deploy_faileddetails": "क्या गड़बड़ हुई",
   "deploy_published": "प्रकाशित - आपकी साइट लाइव है",
   "deploy_viewsite": "साइट देखें",
   "deploy_viewsitearrow": "साइट देखें →",
+  "deploy_copyaddress": "पता कॉपी करें",
   "deploy_done": "हो गया",
   "deploy_close": "बंद करें",
   "deploy_rollback": "पिछला संस्करण बहाल करें",
@@ -4709,5 +4723,14 @@
   "editor_history_snapshottoolarge": "वर्तमान मसौदा या चुनी गई प्रविष्टि सुरक्षित रूप से बहाल करने के लिए बहुत बड़ी है।",
   "editor_history_restored": "पृष्ठ बहाल हो गया",
   "editor_history_added": "जोड़ा गया",
-  "editor_history_removed": "हटाया गया"
+  "editor_history_removed": "हटाया गया",
+  "publishes_title": "प्रकाशन",
+  "publishes_superseded": "बदला गया",
+  "publishes_restore": "यह संस्करण बहाल करें",
+  "publishes_changessince": "संस्करण {version} के बाद के बदलाव",
+  "publishes_settingschanged": "इस संस्करण ने साइट सेटिंग्स भी बदलीं।",
+  "publishes_truncated": "{total} बदले गए पेजों में से पहले {shown} दिखाए जा रहे हैं।",
+  "overview_activity_viewall": "सभी देखें",
+  "publishes_toolarge": "यह संस्करण यहाँ तुलना करने के लिए बहुत बड़ा है।",
+  "publishes_nosnapshot": "इस संस्करण की प्रकाशित प्रति अब सहेजी नहीं है, इसलिए इसकी तुलना नहीं की जा सकती और इसे बहाल नहीं किया जा सकता।"
 }

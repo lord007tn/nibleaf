@@ -107,6 +107,8 @@ const PAGES = [
       description: 'Tidewater is a shipping API for booking, tracking, and settling container freight from one integration.',
       content: `Tidewater gives your product a single, well-documented surface for the messy world of ocean freight. You create a **shipment**, we negotiate with carriers, and you receive \`shipment.updated\` webhooks as the containers move.
 
+{/* Reviewer note: link the [draft pricing page](/guides/pricing-draft) once legal signs off. MDX drops comments, so readers never see this. */}
+
 ## What you can build
 
 <CardGroup cols="2">

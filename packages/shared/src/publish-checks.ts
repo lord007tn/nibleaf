@@ -363,7 +363,7 @@ const CACHE_LIMIT = 2000;
 const factsCache = new Map<string, PageContentFacts>();
 
 /** What a page's content renders that the checks look at (cached per content). */
-export const pageContentFacts = (content: string): PageContentFacts => {
+export const pageContentFacts = (content: string, cache = true): PageContentFacts => {
   const key = createHash('sha1').update(content).digest('base64');
   const cached = factsCache.get(key);
   if (cached) {
@@ -372,6 +372,7 @@ export const pageContentFacts = (content: string): PageContentFacts => {
     return cached;
   }
   const facts = collectFacts(content);
+  if (!cache) return facts;
   factsCache.set(key, facts);
   if (factsCache.size > CACHE_LIMIT) {
     const oldest = factsCache.keys().next().value;
@@ -411,13 +412,14 @@ const resolveSegments = (pathname: string, base: readonly string[]): string[] =>
 
 /** Follow what the reader serves for a site path, through configured and
  *  language-prefix redirects (bounded like redirect chains). */
-const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined): boolean => {
+const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined): boolean | SnapshotPage => {
   let path = startPath;
   let lang = startLang;
   for (let hop = 0; hop <= MAX_REDIRECT_CHAIN_LENGTH; hop++) {
     if (RESERVED_ROUTES.has(path)) return true;
     const route = resolveSiteRoute(snapshot, path, { lang });
-    if (route.kind === 'page' || route.kind === 'openapi') return true;
+    if (route.kind === 'page') return route.page;
+    if (route.kind === 'openapi') return true;
     if (route.kind === 'not-found') return false;
     if (/^https?:\/\//i.test(route.to)) return true;
     const target = new URL(route.to, 'https://site.invalid');
@@ -443,14 +445,18 @@ const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | 
 const createLinkResolver = (snapshot: SiteSnapshot) => {
   const defaultCode = publicLanguages(snapshot.project.languages).find((language) => language.isDefault)?.code;
   const versionById = new Map(snapshot.project.versions.map((version) => [version.id, version]));
-  return (href: string, page: SnapshotPage): boolean | null => {
+  // A site's shared navigation links repeat across many bodies. Normalize in
+  // the source page's context first, then resolve each destination only once
+  // per immutable snapshot scan (including redirect chains).
+  const destinations = new Map<string, ReturnType<typeof reaches>>();
+  return (href: string, page: SnapshotPage, siteAbsolute = false): boolean | SnapshotPage | null => {
     const trimmed = href.trim();
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('{') || trimmed.startsWith('//') || SCHEME.test(trimmed)) return null;
     const { pathname, query } = splitHref(trimmed);
     if (!pathname) return null;
     const absolute = pathname.startsWith('/');
     const version = versionById.get(page.versionId);
-    const versionPrefix = version && !version.isDefault ? [version.slug] : [];
+    const versionPrefix = !siteAbsolute && version && !version.isDefault ? [version.slug] : [];
     const base = absolute ? versionPrefix : [...versionPrefix, ...page.path.split('/').filter(Boolean).slice(0, -1)];
     const segments = resolveSegments(absolute ? pathname.slice(1) : pathname, base);
     const last = segments.at(-1) ?? '';
@@ -458,8 +464,18 @@ const createLinkResolver = (snapshot: SiteSnapshot) => {
     else if (FILE_EXTENSION.test(last)) return null;
 
     const params = new URLSearchParams(query);
-    const lang = params.has('lang') ? searchLanguage(params) : absolute && page.languageCode !== defaultCode ? page.languageCode : undefined;
-    return reaches(snapshot, segments.join('/'), lang);
+    const lang = params.has('lang')
+      ? searchLanguage(params)
+      : !siteAbsolute && absolute && page.languageCode !== defaultCode
+        ? page.languageCode
+        : undefined;
+    const path = segments.join('/');
+    const key = JSON.stringify([path, lang]);
+    const cached = destinations.get(key);
+    if (cached !== undefined) return cached;
+    const destination = reaches(snapshot, path, lang);
+    destinations.set(key, destination);
+    return destination;
   };
 };
 
@@ -490,4 +506,71 @@ export function findBrokenInternalLinks(snapshot: SiteSnapshot): BrokenInternalL
     }
   }
   return broken;
+}
+
+/** Draft pages outside a deleted subtree that render a link into it. Sources
+ * stay on the target's branch; destinations follow the reader's version,
+ * language, fallback and redirect rules. Hidden drafts are sources too.
+ * Parsing uses the same per-content cache as publish checks. */
+export interface InboundPageLinks {
+  pages: Pick<SnapshotPage, 'id' | 'title' | 'path'>[];
+  total: number;
+}
+
+/** Only the inbound advisory treats absolute URLs on trusted site hosts as
+ * internal. Publish checks deliberately continue treating them as external.
+ * URL normalizes host case and each scheme's default port. */
+const stripSiteOrigin = (href: string, hosts: ReadonlySet<string>): string | null => {
+  const trimmed = href.trim();
+  if (!/^https?:\/\//i.test(trimmed) && !trimmed.startsWith('//')) return null;
+  try {
+    const url = new URL(trimmed, 'https://site.invalid');
+    if (!hosts.has(url.host)) return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
+};
+
+/** Compute every deletion advisory in one scan. Keep only capped summaries
+ * and counts, so the server can cache the branch map without retaining bodies
+ * or unbounded inbound edge lists. */
+export function buildInboundPageLinkMap(snapshot: SiteSnapshot, trustedOrigins: readonly string[] = []): Map<string, InboundPageLinks> {
+  const hosts = new Set(trustedOrigins.map((origin) => new URL(origin).host));
+  const byId = new Map(snapshot.pages.map((page) => [page.id, page]));
+  const results = new Map<string, InboundPageLinks>(snapshot.pages.map((page) => [page.id, { pages: [], total: 0 }]));
+  const resolveLink = createLinkResolver(snapshot);
+  // A scan larger than the facts cache must not evict it sequentially. Reuse
+  // any existing facts, but don't insert misses; the branch map caches this scan.
+  const cacheFacts = snapshot.pages.length <= CACHE_LIMIT;
+  for (const page of snapshot.pages) {
+    if (page.kind !== 'PAGE') continue;
+    const ancestors = new Set<string>();
+    for (let id: string | undefined = page.id; id && !ancestors.has(id); id = byId.get(id)?.parentId ?? undefined) ancestors.add(id);
+    const affected = new Set<string>();
+    for (const href of pageContentFacts(page.content, cacheFacts).links) {
+      if (sitePathTooLong(href)) continue;
+      const siteHref = stripSiteOrigin(href, hosts);
+      // Full URLs already select their version/language. Unlike root-relative
+      // authored links, the reader does not add the source page's context.
+      const destination = resolveLink(siteHref ?? href, page, siteHref !== null);
+      if (typeof destination !== 'object' || destination === null || destination.versionId !== page.versionId) continue;
+      // A source inside an ancestor's subtree goes to Trash with it. Shared
+      // ancestors of multiple destinations count only once for this source.
+      for (let id: string | undefined = destination.id; id && !ancestors.has(id) && !affected.has(id); id = byId.get(id)?.parentId ?? undefined)
+        affected.add(id);
+    }
+    const summary = { id: page.id, title: page.title, path: page.path };
+    for (const id of affected) {
+      const result = results.get(id);
+      if (!result) continue;
+      result.total += 1;
+      if (result.pages.length < 20) result.pages.push(summary);
+    }
+  }
+  return results;
+}
+
+export function findInboundPageLinks(snapshot: SiteSnapshot, pageId: string, trustedOrigins: readonly string[] = []): InboundPageLinks {
+  return buildInboundPageLinkMap(snapshot, trustedOrigins).get(pageId) ?? { pages: [], total: 0 };
 }
