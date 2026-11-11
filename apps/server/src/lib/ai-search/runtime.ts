@@ -438,7 +438,7 @@ export const retrieveChatLanguages = async (
       context.languages.find((language) => language === scope.language) ??
       context.languages.find((language) => language === context.defaultLanguage) ??
       context.languages[0];
-    if (!primaryLanguage) return { ...emptyRetrieval(), hits: [] };
+    if (!primaryLanguage) return { chunks: [], hits: [], confidence: 0, cacheHit: false };
     const primaryScope = { ...scope, language: primaryLanguage };
     const readable = context.pages.filter(
       (page) => page.kind === 'PAGE' && !page.hidden && (scope.allowedPageIds === null || scope.allowedPageIds.has(page.id)),
