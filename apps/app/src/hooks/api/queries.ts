@@ -116,7 +116,8 @@ export const useAiDraftCapability = (projectId: string, options?: { enabled?: bo
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
 
 /** The first inbox page (newest 50). Pass `enabled: false` until the popover opens. */
-export const useNotifications = (options?: { enabled?: boolean }) => useQuery({ ...notificationsQueryOptions(), enabled: options?.enabled ?? true });
+export const useNotifications = (options?: { enabled?: boolean; organizationId?: string }) =>
+  useQuery({ ...notificationsQueryOptions(options?.organizationId), enabled: options?.enabled ?? true });
 
 /** Unread badge count for the header bell. Polls every 60s. */
 export const useUnreadNotificationCount = () => useQuery({ ...unreadNotificationCountQueryOptions(), refetchInterval: 60_000 });

@@ -49,7 +49,6 @@ vi.mock('@/hooks/api', async () => ({
   useRemoveProjectMember: () => mutation,
   useUpdateProjectMemberRole: () => mutation,
   useCancelProjectInvitation: () => mutation,
-  useTransferProjectOwnership: () => mutation,
   useInviteSuggestions: () => ({ data: [] }),
 }));
 

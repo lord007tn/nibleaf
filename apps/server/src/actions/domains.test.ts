@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   domain: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), delete: vi.fn() },
   member: { findFirst: vi.fn() },
   transaction: vi.fn(),
+  queryRaw: vi.fn(),
   invalidate: vi.fn(),
   dns: { resolveTxt: vi.fn(), resolveCname: vi.fn(), resolve4: vi.fn(), resolve6: vi.fn() },
   cloudflare: vi.fn(() => false),
@@ -69,6 +70,7 @@ const routed = () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.transaction.mockImplementation((write) => write({ domain: mocks.domain, $queryRaw: mocks.queryRaw }));
   mocks.domain.findFirst.mockResolvedValue(row);
   mocks.domain.update.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ ...row, ...data }));
   mocks.dns.resolveTxt.mockResolvedValue([['nibleaf-verify=token']]);
@@ -249,7 +251,7 @@ describe('primary and removal', () => {
   it('refuses to make a domain primary before it is live, with a code the dashboard can explain', async () => {
     mocks.domain.findFirst.mockResolvedValue({ ...row, isPrimary: false, sslStatus: 'PROVISIONING' });
     await expect(setPrimaryDomain('org-1', 'site-1', 'domain-1')).rejects.toMatchObject({ code: 'domain:not_ready', status: 409 });
-    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.domain.updateMany).not.toHaveBeenCalled();
   });
 
   it('stops redirecting to a domain as soon as it is made primary or removed', async () => {
