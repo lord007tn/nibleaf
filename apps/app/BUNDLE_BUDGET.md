@@ -76,8 +76,12 @@ include that chunk. So:
   0.33 CLS). Its markup carries `data-hydration-module`, and the router's
   `hydrate` hook loads the modules it finds before React hydrates, so each one
   stays out of the first-load preloads and loads only on pages that render it.
-  The reader's loaders import the declarations lazily, because they sit in the
-  eager chunk.
+  Render it in a `HydrationIsland` (`src/components/hydration-island.tsx`):
+  if the module can't load, hydrating keeps the server HTML as sent, a client
+  navigation shows the island's pending and failed states instead of the
+  route's error page, and the module retries a bounded number of times (never
+  during render). The reader's loaders import the declarations lazily, because
+  they sit in the eager chunk.
 
 - Marketing code doesn't import a Lucide icon the reader also uses. Rolldown
   groups shared modules by the chunks that import them, so a new importer

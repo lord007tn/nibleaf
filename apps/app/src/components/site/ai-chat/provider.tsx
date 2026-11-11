@@ -1,20 +1,36 @@
 import type { AiChatOpenSource } from '@nibleaf/validators';
 import { type ComponentProps, createContext, type ReactNode, Suspense, useContext, useState } from 'react';
+import { HydrationIsland } from '@/components/hydration-island';
 import { DocumentationReaderLayout } from '@/components/site/documentation-theme-provider';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { siteChatUiModule } from '@/lib/reader-hydration-modules';
 
 // The chat's launcher, panel, state and strings load on demand from one module,
 // so the public docs bundle carries only this context (see load-chat-ui.ts).
-// Their server markup loads that module before hydrating, so neither suspends
-// and drops its server HTML then (see lib/hydration-modules.ts).
+// Their server markup loads that module before hydrating (see
+// lib/hydration-modules.ts). If it can't load, hydrating keeps their server
+// markup while it retries, then drops it: a launcher without its code does
+// nothing.
+const CHAT_MODULES = [siteChatUiModule];
 function ChatRoot(props: ComponentProps<typeof import('./chat-ui').ChatRoot>) {
-  const ui = siteChatUiModule.useModule();
-  return <ui.ChatRoot {...props} />;
+  return (
+    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} modules={CHAT_MODULES}>
+      {() => {
+        const ui = siteChatUiModule.read();
+        return <ui.ChatRoot {...props} />;
+      }}
+    </HydrationIsland>
+  );
 }
 function PageAction(props: ComponentProps<typeof import('./chat-ui').PageAction>) {
-  const ui = siteChatUiModule.useModule();
-  return <ui.PageAction {...props} />;
+  return (
+    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} modules={CHAT_MODULES}>
+      {() => {
+        const ui = siteChatUiModule.read();
+        return <ui.PageAction {...props} />;
+      }}
+    </HydrationIsland>
+  );
 }
 
 export type PageContext = { title: string; path: string };

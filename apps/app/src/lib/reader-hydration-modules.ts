@@ -22,8 +22,9 @@ export const articleMarkdownModule = hydrationModule('markdown', () => import('@
 export const richMarkdownModule = hydrationModule('markdown-rich', () => import('@/components/markdown').then((module) => module.loadRichMarkdown()));
 
 /** Loads the renderers an article needs before it renders, so navigating to it
- *  never shows a fallback first. A failed download is left to the renderer's
- *  own boundary. */
+ *  never shows a fallback first. Never rejects: a failed download is left to
+ *  the article's island, which retries and says so inline (not the route's
+ *  error page). */
 export const loadArticleRenderer = async (content: string): Promise<void> => {
   await Promise.all(
     [articleMarkdownModule, ...(needsRichMarkdown(content) ? [richMarkdownModule] : [])].map((module) => module.load().catch(() => undefined)),

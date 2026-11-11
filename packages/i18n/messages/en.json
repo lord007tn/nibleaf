@@ -2179,6 +2179,7 @@
   "site_searchprompt": "Type to search…",
   "site_results": "Results",
   "site_loading": "Loading…",
+  "site_articleloadfailed": "This page couldn't load. Try again",
   "site_previous": "Previous",
   "site_next": "Next",
   "site_onthispage": "On this page",

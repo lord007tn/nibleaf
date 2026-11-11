@@ -4,11 +4,17 @@ import { PassThrough } from 'node:stream';
 import { act, type ReactNode, useEffect, useState } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToPipeableStream } from 'react-dom/server.node';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SitePage } from '@/hooks/api/types';
 import type { SiteLanguageAlternate } from './page-alternates-context';
 
 vi.mock('@/providers/site-analytics-provider', () => ({ useSiteAnalytics: () => ({ track: vi.fn() }) }));
+// The router as the app configures it (`getRouter()` in router.tsx), with an
+// empty route tree: the tests call its `hydrate` option, not a copy of it.
+vi.mock('@/routeTree.gen', async () => {
+  const { createRootRoute } = await import('@tanstack/react-router');
+  return { routeTree: createRootRoute() };
+});
 
 let root: Root | undefined;
 let container: HTMLDivElement | undefined;
@@ -22,8 +28,10 @@ afterEach(async () => {
   container = undefined;
   releaseRich = undefined;
   vi.doUnmock('@/components/markdown-rich');
+  vi.doUnmock('@/components/markdown');
   vi.resetModules();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 const renderCompleteHtml = (node: ReactNode): Promise<string> =>
@@ -99,10 +107,13 @@ const sitePage = (language: string, content: string): SitePage => ({
   next: null,
 });
 
-/** What the router's `hydrate` hook does in the browser (see router.tsx). */
+/** The configured router's `hydrate` hook, which TanStack awaits in the
+ *  browser before React hydrates. */
 const runRouterHydrateHook = async () => {
-  const { loadServerRenderedModules } = await import('@/lib/hydration-modules');
-  await loadServerRenderedModules(document, () => import('@/lib/reader-hydration-modules').then((module) => module.readerHydrationModules));
+  const { getRouter } = await import('@/router');
+  const { hydrate } = getRouter().options;
+  expect(hydrate).toBeTypeOf('function');
+  await hydrate?.(undefined as never);
 };
 
 /** Server-renders `data`, then hydrates it with a fresh (cold) client module
@@ -110,6 +121,8 @@ const runRouterHydrateHook = async () => {
  *  where the router's `hydrate` hook does. */
 async function serverRenderThenHydrate(data: SitePage, beforeHydrate: () => Promise<void> = runRouterHydrateHook) {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  // The server's loader loads the article's renderers before rendering.
+  await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(data.page.content);
   const ServerReader = createReader(await importReader());
   container = document.createElement('div');
   container.innerHTML = await renderCompleteHtml(<ServerReader data={data} />);
@@ -176,14 +189,16 @@ it('keeps a server-rendered rich (HTML/MDX, math) article through hydration', as
     releaseRich?.();
     await hydrating;
   });
-  expect(richRequests).toBe(1);
-  expect(serverBody?.getAttribute('data-hydration-module')).toBe('markdown-rich');
-  expect(serverBody?.parentElement?.getAttribute('data-hydration-module')).toBe('markdown');
+  // The body first: the same element the server sent, never removed.
   expect(bodyRemovals).toEqual([]);
   expect(container?.querySelector('article .typeset')).toBe(serverBody);
   expect(container?.textContent).toContain('Raw MDX needs the rich renderer.');
   expect(container?.querySelector('article .katex')).not.toBeNull();
   expect(recoverableErrors).toEqual([]);
+  // Then how: the hook loaded the marked rich renderer once, before hydrating.
+  expect(richRequests).toBe(1);
+  expect(serverBody?.getAttribute('data-hydration-module')).toBe('markdown-rich');
+  expect(serverBody?.closest('[data-hydration-module="markdown"]')).not.toBeNull();
 }, 30_000);
 
 it('loads the rich renderer before hydrating only when the server HTML used it', async () => {
@@ -198,3 +213,116 @@ it('loads the rich renderer before hydrating only when the server HTML used it',
   expect(container?.querySelector('[data-hydration-module="markdown-rich"]')).toBeNull();
   expect(richRequests).toBe(0);
 }, 30_000);
+
+describe('when the article renderer cannot load', () => {
+  const text = 'The guide stays readable without its renderer.';
+  /** Makes the browser's article-renderer chunk fail its first `failures`
+   *  downloads, then load. Counts every download. */
+  const failArticleRenderer = (failures: number) => {
+    const downloads = { count: 0 };
+    vi.doMock('@/components/markdown', async (importOriginal) => {
+      downloads.count++;
+      if (downloads.count <= failures) throw new Error('Failed to fetch dynamically imported module');
+      return importOriginal();
+    });
+    return downloads;
+  };
+  const advance = async (ms: number) => {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  };
+  const bodyText = () => [...(container?.querySelectorAll('article p') ?? [])].filter((node) => node.textContent === text);
+
+  it('keeps the server-rendered body, with no error page, and stops retrying after a few attempts', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    let downloads = { count: 0 };
+    const { recoverableErrors } = await serverRenderThenHydrate(sitePage('en', text), async () => {
+      downloads = failArticleRenderer(Number.POSITIVE_INFINITY);
+      await runRouterHydrateHook();
+    });
+    expect(downloads.count).toBe(1);
+    expect(bodyText()).toHaveLength(1);
+    expect(container?.querySelector('[role="alert"]')).toBeNull();
+    expect(recoverableErrors).toEqual([]);
+    // Retries back off (1 s, 3 s, 9 s), then stop for good.
+    await advance(1000);
+    expect(downloads.count).toBe(2);
+    await advance(60_000);
+    expect(downloads.count).toBe(4);
+    await advance(10 * 60_000);
+    expect(downloads.count).toBe(4);
+    expect(bodyText()).toHaveLength(1);
+    expect(container?.querySelector('[role="alert"]')).toBeNull();
+    expect(recoverableErrors).toEqual([]);
+  }, 30_000);
+
+  it('swaps in the renderer when a retry succeeds', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    let downloads = { count: 0 };
+    const { recoverableErrors } = await serverRenderThenHydrate(
+      sitePage(
+        'en',
+        `${text}
+
+[Details](/details)`,
+      ),
+      async () => {
+        downloads = failArticleRenderer(2);
+        await runRouterHydrateHook();
+      },
+    );
+    expect(bodyText()).toHaveLength(1);
+    await advance(1000);
+    expect(downloads.count).toBe(2);
+    expect(bodyText()).toHaveLength(1);
+    await advance(3000);
+    expect(downloads.count).toBe(3);
+    // The live renderer replaced the kept server markup, once.
+    expect(bodyText()).toHaveLength(1);
+    expect(container?.querySelectorAll('article .typeset')).toHaveLength(1);
+    expect(container?.querySelectorAll('article a[href*="/details"]')).toHaveLength(1);
+    expect(recoverableErrors).toEqual([]);
+  }, 30_000);
+
+  it('says so inline on a client navigation, and its retry loads the page', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+    const downloads = failArticleRenderer(4);
+    // A navigation: the loader's download fails (and is caught), then the page
+    // renders on the client with no server markup.
+    const { loadArticleRenderer } = await import('@/lib/reader-hydration-modules');
+    await loadArticleRenderer(text);
+    expect(downloads.count).toBe(1);
+    const { createRoot } = await import('react-dom/client');
+    const ClientReader = createReader(await importReader());
+    container = document.createElement('div');
+    document.body.append(container);
+    const errors: unknown[] = [];
+    await act(async () => {
+      root = createRoot(container as HTMLDivElement, {
+        onUncaughtError: (error) => errors.push(error),
+        onCaughtError: (error) => errors.push(error),
+      });
+      root.render(<ClientReader data={sitePage('en', text)} />);
+    });
+    // The page's chrome renders, with a body-shaped placeholder while retrying.
+    expect(container.querySelector('article h1')?.textContent).toBe('Guide');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    await advance(60_000);
+    expect(downloads.count).toBe(4);
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("This page couldn't load.");
+    expect(errors).toEqual([]);
+    await act(async () => {
+      alert?.querySelector('button')?.click();
+    });
+    expect(downloads.count).toBe(5);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    // The real renderer still has to import.
+    await act(async () => {
+      await vi.waitFor(() => expect(bodyText()).toHaveLength(1));
+    });
+    expect(errors).toEqual([]);
+  }, 30_000);
+});

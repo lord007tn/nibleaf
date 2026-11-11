@@ -6,6 +6,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
+import { HydrationIsland } from '@/components/hydration-island';
 import { Callout } from '@/components/site/mdx/callout';
 import { type DocumentationComponents, str } from '@/components/site/mdx/props';
 import {
@@ -42,12 +43,7 @@ export interface MarkdownProps {
 /** The rich renderer's chunk (see richMarkdownModule). */
 export const loadRichMarkdown = () => import('./markdown-rich').then((module) => module.default);
 
-/** The rich renderer, rendered in the same pass whenever its chunk has loaded
- *  (always the case while hydrating a page whose server HTML used it). */
-function RichMarkdown(props: MarkdownProps) {
-  const Rich = richMarkdownModule.useModule();
-  return <Rich {...props} />;
-}
+const RICH_MODULES = [richMarkdownModule];
 
 /** Rewrite a root-relative internal doc link to the site base. External URLs,
  *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
@@ -125,12 +121,20 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
  *  Pass `site` on a published site so internal links resolve to the site base. */
 export function Markdown({ content, className, site }: MarkdownProps) {
   if (needsRichMarkdown(content)) {
-    // Never suspends while hydrating: the chunk loads before hydration (and in
-    // the reader's loaders before navigating). The fallback only shows when a
-    // page needs the chunk before it has loaded, and it keeps the text in place.
+    // The router loads the rich chunk before hydrating markup it rendered, and
+    // the reader's loaders before navigating. Until it loads, hydrating keeps
+    // the server's markup and a client render shows the plain renderer, which
+    // keeps the text readable; so does a chunk that never loads. Only the
+    // server render suspends, waiting for the chunk.
+    const plain = <MarkdownRenderer content={content} className={className} site={site} />;
     return (
-      <Suspense fallback={<MarkdownRenderer content={content} className={className} site={site} />}>
-        <RichMarkdown content={content} className={className} site={site} />
+      <Suspense fallback={plain}>
+        <HydrationIsland className="contents" modules={RICH_MODULES} pending={plain} failed={() => plain}>
+          {() => {
+            const Rich = richMarkdownModule.read();
+            return <Rich content={content} className={className} site={site} />;
+          }}
+        </HydrationIsland>
       </Suspense>
     );
   }

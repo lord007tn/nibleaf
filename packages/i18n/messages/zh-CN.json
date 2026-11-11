@@ -2076,6 +2076,7 @@
   "site_searchprompt": "输入搜索...",
   "site_results": "结果",
   "site_loading": "加载中...",
+  "site_articleloadfailed": "无法加载此页面。重试",
   "site_previous": "上一页",
   "site_next": "下一页",
   "site_onthispage": "在此页面上",

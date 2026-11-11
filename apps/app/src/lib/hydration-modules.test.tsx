@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
-import { HYDRATION_MODULE_ATTRIBUTE, hydrationModule, loadServerRenderedModules } from './hydration-modules';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { HydrationIsland } from '@/components/hydration-island';
+import { HYDRATION_MODULE_ATTRIBUTE, HYDRATION_RETRY_DELAYS_MS, hydrationModule, loadServerRenderedModules } from './hydration-modules';
 
 const markup = (html: string) => {
   const root = document.createElement('div');
@@ -10,16 +11,24 @@ const markup = (html: string) => {
   return root;
 };
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('hydration modules', () => {
   it('renders a loaded module in the same pass, without suspending', async () => {
     const greeting = hydrationModule('greeting', async () => ({ Greeting: () => <p>Hello</p> }));
-    function Island() {
-      const { Greeting } = greeting.useModule();
-      return <Greeting />;
-    }
     await greeting.load();
     // No Suspense boundary: a suspension here would throw.
-    expect(renderToStaticMarkup(<Island />)).toBe('<p>Hello</p>');
+    const html = renderToStaticMarkup(
+      <HydrationIsland modules={[greeting]}>
+        {() => {
+          const { Greeting } = greeting.read();
+          return <Greeting />;
+        }}
+      </HydrationIsland>,
+    );
+    expect(html).toContain('<p>Hello</p>');
   });
 
   it('marks the markup it renders', () => {
@@ -43,11 +52,36 @@ describe('hydration modules', () => {
     expect(declarations).not.toHaveBeenCalled();
   });
 
-  it('lets hydration go ahead when a download fails, and retries it later', async () => {
-    const importer = vi.fn<() => Promise<string>>().mockRejectedValueOnce(new Error('chunk failed')).mockResolvedValue('loaded');
-    const flaky = hydrationModule('flaky', importer);
+  it('lets hydration go ahead when a download fails, leaving the module to retry', async () => {
+    const flaky = hydrationModule('flaky', vi.fn<() => Promise<string>>().mockRejectedValue(new Error('chunk failed')));
     await expect(loadServerRenderedModules(markup(`<p ${HYDRATION_MODULE_ATTRIBUTE}="flaky"></p>`), async () => [flaky])).resolves.toBeUndefined();
-    await expect(flaky.load()).resolves.toBe('loaded');
-    expect(importer).toHaveBeenCalledTimes(2);
+    expect(flaky.status()).toBe('idle');
+  });
+
+  it('retries with backoff a bounded number of times, then only when asked', async () => {
+    vi.useFakeTimers();
+    const importer = vi.fn<() => Promise<string>>().mockRejectedValue(new Error('chunk failed'));
+    const flaky = hydrationModule('flaky', importer);
+    await flaky.load().catch(() => undefined);
+    const gaveUp = flaky.retry();
+    expect(flaky.status()).toBe('loading');
+    for (const delay of HYDRATION_RETRY_DELAYS_MS) await vi.advanceTimersByTimeAsync(delay);
+    await expect(gaveUp).resolves.toBeUndefined();
+    expect(importer).toHaveBeenCalledTimes(1 + HYDRATION_RETRY_DELAYS_MS.length);
+    expect(flaky.status()).toBe('failed');
+    // Giving up is final until the reader asks again.
+    await expect(flaky.retry()).resolves.toBeUndefined();
+    expect(importer).toHaveBeenCalledTimes(1 + HYDRATION_RETRY_DELAYS_MS.length);
+    importer.mockResolvedValue('loaded');
+    await expect(flaky.retry({ again: true })).resolves.toBe('loaded');
+    expect(flaky.status()).toBe('loaded');
+    expect(flaky.read()).toBe('loaded');
+  });
+
+  it('joins a download in flight instead of starting another', async () => {
+    const importer = vi.fn(async () => 'loaded');
+    const once = hydrationModule('once', importer);
+    await Promise.all([once.load(), once.retry(), once.load()]);
+    expect(importer).toHaveBeenCalledTimes(1);
   });
 });
