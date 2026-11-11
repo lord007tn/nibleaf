@@ -33,9 +33,10 @@ function utf8ByteLength(text: string): number {
  * over the cap, so its owner is never locked out. A create has no stored body:
  * anything over the cap is refused. Content under the cap costs one bounded
  * scan; `stored` is only measured, up to the new size, when `next` is over it.
+ * `limit` is the cap (tests pass a small one to exercise the rule cheaply).
  */
-export function oversizedPageContent(next: string, stored?: string): number | null {
-  if (!exceedsUtf8Bytes(next, MAX_PAGE_CONTENT_BYTES)) return null;
+export function oversizedPageContent(next: string, stored?: string, limit = MAX_PAGE_CONTENT_BYTES): number | null {
+  if (!exceedsUtf8Bytes(next, limit)) return null;
   const bytes = utf8ByteLength(next);
   // `stored` holding at least as many bytes means this write does not grow it.
   if (stored !== undefined && exceedsUtf8Bytes(stored, bytes - 1)) return null;

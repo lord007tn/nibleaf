@@ -20,6 +20,12 @@ vi.mock('mdast-util-from-markdown', async (original) => {
 });
 vi.mock('@nibleaf/database', () => ({ Prisma: { JsonNull: null }, prisma: { page: database.page, $transaction: database.transaction } }));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: vi.fn() }));
+// The real size rule, with a cap a test can lower so it needs only a small body.
+const sizeCap = vi.hoisted(() => ({ bytes: undefined as number | undefined }));
+vi.mock('@nibleaf/shared/page-limits', async (original) => {
+  const real = await original<typeof import('@nibleaf/shared/page-limits')>();
+  return { ...real, oversizedPageContent: (next: string, stored?: string) => real.oversizedPageContent(next, stored, sizeCap.bytes) };
+});
 vi.mock('./branches', () => ({
   getDefaultBranch: async () => ({ id: 'main' }),
   assertBranchInProject: async (_projectId: string, id: string) => ({ id }),
@@ -297,6 +303,7 @@ describe('page address preservation through page actions', () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    sizeCap.bytes = undefined;
     database.inTransaction = false;
     database.parsesUnderLock = 0;
   });
@@ -319,7 +326,9 @@ describe('page address preservation through page actions', () => {
   });
 
   it('skips and reports a linking page whose rewritten links would cross the size cap, and still renames', async () => {
-    const cap = 2 * 1024 * 1024;
+    // The real rule at a 64 KiB cap: the same behaviour as at 2 MiB, with a small body.
+    const cap = 64 * 1024;
+    sizeCap.bytes = cap;
     const links = '[x](/a) '.repeat(10);
     // Exactly at the cap: each rewritten link adds 18 bytes and would cross it.
     const atCap = `${links}\n\n${'y'.repeat(cap - links.length - 2)}`;
