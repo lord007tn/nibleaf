@@ -17,8 +17,12 @@ export interface TurnScope {
 }
 /** Article link, opening the cited section when the source names one, in the
  * language and version the turn was answered in (the reader may have switched since). */
-const sourceHref = (options: Pick<ChatOptions, 'projectId' | 'lang' | 'version'>, source: Pick<AiChatSource, 'path' | 'anchor'>, scope: TurnScope) =>
-  `${siteHref(options.projectId, source.path, { lang: scope.lang ?? options.lang, version: scope.version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
+const sourceHref = (
+  options: Pick<ChatOptions, 'projectId' | 'lang' | 'version'>,
+  source: Pick<AiChatSource, 'path' | 'anchor' | 'language'>,
+  scope: TurnScope,
+) =>
+  `${siteHref(options.projectId, source.path, { lang: source.language ?? scope.lang ?? options.lang, version: scope.version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
 
 export function ChatMessage({
   text,
@@ -47,12 +51,12 @@ export function ChatMessage({
   onSourceOpen?: (source: AiChatSource, position: number) => void;
   onCopy?: () => void;
 }) {
-  const t = siteChatT(options.lang);
+  const t = siteChatT(final?.language ?? options.lang);
   const prefix = final?.turnId ?? 'draft';
   // A captured scope keeps its version even when that is the default one
   // (undefined); only a turn without one links in the version on screen.
   const href = (source: AiChatSource) => sourceHref(options, source, { lang: final?.language, version: options.version, ...scope });
-  const sources = final?.status === 'no_answer' ? final.suggestions : (final?.citations ?? []);
+  const sources = final?.status === 'no_answer' ? [] : (final?.citations ?? []);
   // Sources are numbered in the order they are listed, so the answer's markers
   // and the cards read 1, 2, 3 whatever ids the model cited.
   const sourceNumber = (id: string) => {
@@ -89,19 +93,17 @@ export function ChatMessage({
   return (
     <div aria-busy={busy} className="space-y-3 rounded-xl border p-4">
       {final?.status === 'no_answer' ? (
-        <>
-          <p className="font-medium">{t('aiNoAnswer')}</p>
-          <p>{t('aiRephrase')}</p>
-          {sources.length > 0 && <p>{t('aiSuggestions')}</p>}
-        </>
+        // Answers come in the QUESTION's language, which can differ from the site's
+        // (an Arabic question on an English site), so each lays itself out by its content.
+        <p dir="auto">{final.answer}</p>
       ) : (
-        <div className="min-w-0 break-words text-sm leading-7 [&_li]:ms-5 [&_ul]:list-disc [&_ol]:list-decimal">
+        <div dir="auto" className="min-w-0 break-words text-sm leading-7 [&_li]:ms-5 [&_ul]:list-disc [&_ol]:list-decimal">
           <ReactMarkdown
             allowedElements={['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
             skipHtml
             unwrapDisallowed
             components={{
-              p: ({ children }) => <p>{cite(children)}</p>,
+              p: ({ children }) => <p dir="auto">{cite(children)}</p>,
               // Answer headings stay compact labels inside the chat bubble.
               ...Object.fromEntries(
                 (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag) => [
@@ -140,7 +142,12 @@ export function ChatMessage({
               <span className="font-medium">
                 {index + 1}. {source.title}
               </span>
-              {source.heading && <span className="ms-2 text-muted-foreground">{source.heading}</span>}
+              {source.heading && (
+                <span className="text-muted-foreground">
+                  {' › '}
+                  {source.heading}
+                </span>
+              )}
               <span className="mt-1 line-clamp-2 block text-muted-foreground text-xs">{source.snippet}</span>
             </a>
           ))}

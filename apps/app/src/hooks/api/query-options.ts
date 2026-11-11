@@ -275,11 +275,7 @@ export const notificationsQueryOptions = (organizationId?: string) =>
   });
 
 /** Unread badge count for the header bell (the hook adds polling). */
-export const unreadNotificationCountQueryOptions = () =>
-  queryOptions({
-    queryKey: queryKeys.notifications.unreadCount(),
-    queryFn: async () => getData(await api.app.notifications['unread-count'].$get(), 'notifications'),
-  });
+export { unreadNotificationCountQueryOptions } from './notification-query-options';
 
 // ─── Exports, Git workflow, reader access ────────────────────────────────────
 

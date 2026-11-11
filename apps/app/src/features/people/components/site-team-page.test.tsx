@@ -16,6 +16,10 @@ vi.mock('@nibleaf/i18n/react', () => ({
 vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', subscribeLanguage: () => () => undefined }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'u-me' } } }) }));
 vi.mock('@/hooks/api/queries', () => ({ useProjectMembers: () => mocks.team() }));
+// useSiteAccess (site-access/api) reads the same members query through the
+// @/hooks/api barrel; unmocked, the barrel loads the real API client and its
+// server-env origin, which fails outside a configured environment (CI).
+vi.mock('@/hooks/api', () => ({ useProjectMembers: () => mocks.team() }));
 vi.mock('../api/query-options', () => ({
   siteJoinLinksQueryOptions: (id: string) => ({ queryKey: ['members', id, 'join-links'], queryFn: async () => [] }),
 }));

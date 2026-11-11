@@ -7,19 +7,22 @@ import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-section';
 import { useT } from '@nibleaf/i18n/react';
+import type { MemberRole } from '@nibleaf/shared/constants';
+import type { OrgRole } from '@nibleaf/shared/rbac';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, Crown, Link2, UserMinus, UserPlus, Users } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { QueryErrorState } from '@/components/query-error-state';
+import { useSiteAccess } from '@/features/site-access/api/hooks';
+import { decide } from '@/features/site-access/model/access';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import type { SwitcherOrganization } from '@/hooks/api/organization-query-options';
 import { useProjectMembers } from '@/hooks/api/queries';
 import { useSession } from '@/services/auth-client';
 import { useChangeSiteRole, useRemoveFromSite, useResendSiteInvitation, useRevokeSiteInvitation } from '../api/mutations';
 import { siteJoinLinksQueryOptions } from '../api/query-options';
-import { canManageSiteTeam, canOnSiteMember, type SiteViewer } from '../model/permissions';
 import { personDisplay } from '../model/person';
 import { assignableSiteRoles, type EffectiveSiteRole, isOrgAdminRole, isSiteRole, type SiteRole, siteRoleLabel } from '../model/roles';
 import { AddPeopleDialog } from './add-people-dialog';
@@ -51,8 +54,11 @@ export function SiteTeamPage({
   const { data: session } = useSession();
   const team = useProjectMembers(projectId);
   const me = team.data?.members.find((member) => member.user.id === session?.user.id);
-  const viewer: SiteViewer = { userId: session?.user.id ?? '', role: (me?.role as EffectiveSiteRole | undefined) ?? null };
-  const canManage = canManageSiteTeam(viewer);
+  // The shared site-access model (one policy for every website screen); it
+  // reuses this page's members query, so no extra request.
+  const access = useSiteAccess(projectId);
+  const sessionUserId = session?.user.id ?? '';
+  const canManage = decide(access, { type: 'site.members.manage' }).kind === 'allowed';
   const links = useQuery({ ...siteJoinLinksQueryOptions(projectId), enabled: canManage });
   const changeRole = useChangeSiteRole(projectId);
   const removeFromSite = useRemoveFromSite(projectId);
@@ -78,7 +84,7 @@ export function SiteTeamPage({
       },
     );
   const orgName = organization?.name ?? '';
-  const allowed = viewer.role ? assignableSiteRoles(viewer.role) : [];
+  const allowed = access.status === 'ready' ? assignableSiteRoles(access.role as EffectiveSiteRole) : [];
 
   if (team.isError && !team.data) return <QueryErrorState onRetry={() => void team.refetch()} retrying={team.isFetching} />;
 
@@ -163,16 +169,21 @@ export function SiteTeamPage({
           <DataList aria-label={t('people.site.access')}>
             {withAccess.map((member) => {
               const person = personDisplay(member.user);
-              const target = { userId: member.user.id, role: member.role, viaOrganization: member.viaOrganization };
-              const change = canOnSiteMember(viewer, 'changeRole', target);
-              const remove = canOnSiteMember(viewer, 'remove', target);
+              const target = {
+                userId: member.user.id,
+                role: member.role as MemberRole,
+                orgRole: (member.orgRole ?? null) as OrgRole | null,
+                viaOrganization: member.viaOrganization,
+              };
+              const change = decide(access, { type: 'site.member.changeRole', member: target, sessionUserId });
+              const remove = decide(access, { type: 'site.member.remove', member: target, sessionUserId });
               return (
                 <DataListItem
                   key={member.id}
                   title={<PersonCell image={member.user.image} isYou={member.user.id === session?.user.id} person={person} />}
                   trailing={
                     <>
-                      {change.allowed && isSiteRole(member.role) ? (
+                      {change.kind === 'allowed' && isSiteRole(member.role) ? (
                         <SiteRoleSelect
                           allowed={allowed}
                           label={t('people.site.roleFor', { name: person.primary })}

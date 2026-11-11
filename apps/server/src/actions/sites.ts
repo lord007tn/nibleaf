@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AnalyticsPayload, ConsentState, PublicAnalyticsEvent } from '@nibleaf/clickhouse';
 import { deliveryPlanSelect, loadDefaultDeliveryPlan, prisma } from '@nibleaf/database';
+import { logger } from '@nibleaf/logger';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
 import {
@@ -150,6 +151,22 @@ export const invalidatePublishedSiteConfig = (projectId: string): void => {
   liveDeploymentCache.delete(projectId);
   assetDeploymentHeads.delete(projectId);
   deploymentMissCache.delete(projectId);
+};
+
+/** A plan assignment or entitlement applies to every website of the organization.
+ *  After writing one, drop each website's cached live config, so the next reader
+ *  request re-resolves add-ons and consent through the shared resolver (#447). */
+export const invalidateOrganizationPublishedConfig = async (organizationId: string): Promise<number> => {
+  // Cache invalidation must never fail the write that triggered it: on error,
+  // log it and let the 15 s live-chrome TTL bound the staleness.
+  try {
+    const projects = await prisma.project.findMany({ where: { organizationId }, select: { id: true } });
+    for (const { id } of projects) invalidatePublishedSiteConfig(id);
+    return projects.length;
+  } catch (error) {
+    logger.warn({ err: error, organizationId }, 'Could not invalidate published site config for the organization; live chrome expires within 15 s');
+    return 0;
+  }
 };
 
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
@@ -910,7 +927,7 @@ export const resolvePublishedAnswerContext = async (identifier: string, lang?: s
 /** Grounded answer mode uses the exact same server-derived publication and
  * reader scope as results mode. The client cannot submit any tenant/page filter. */
 export const answerSite = async (identifier: string, query: string, lang?: string, version?: string) => {
-  const { snapshot, scope, available } = await resolvePublishedAnswerContext(identifier, lang, version);
+  const { snapshot, scope, available, versionPages } = await resolvePublishedAnswerContext(identifier, lang, version);
   if (!available) {
     throw new AppError({ code: 'search:unavailable', message: 'AI answers are not ready for this workspace.' });
   }
@@ -920,7 +937,11 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
   if (!quota.allowed) {
     throw new AppError({ code: 'http:rate_limited', message: 'This site has reached its daily AI answer quota.' });
   }
-  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal).catch((cause) => {
+  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal, {
+    languages: resolvePublishedSearchLanguages(snapshot),
+    defaultLanguage: defaultLanguage(snapshot.project).code,
+    pages: versionPages,
+  }).catch((cause) => {
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
   });
