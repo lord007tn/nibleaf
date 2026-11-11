@@ -102,6 +102,7 @@
     "@types/react-dom": "^19.3.0",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "6.2.1",
+    "dom-accessibility-api": "0.7.0",
     "hono": "^4.13.16",
     "jsdom": "^31.0.0",
     "nitro": "3.0.260903-beta",
