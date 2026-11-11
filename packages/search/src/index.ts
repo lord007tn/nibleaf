@@ -8,6 +8,7 @@ export * from './answer-chat';
 export * from './answer-validation';
 export { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
 export * from './hybrid';
+export { questionLanguage } from './language';
 export * from './providers';
 
 // Orama ships a built-in tokenizer (word splitter + optional stemmer) per
