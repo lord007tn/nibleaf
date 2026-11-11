@@ -9,6 +9,7 @@ import {
 } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { comparePageHistory, listPageHistory, restorePageHistory } from '@/actions/page-history';
+import { getPageInboundLinks } from '@/actions/page-inbound-links';
 import { deletePage } from '@/actions/page-trash';
 import { createPage, getPage, getPageSearchDescription, listPages, pageStructureRevision, reorderPages, updatePage } from '@/actions/pages';
 import { assertProjectInOrg } from '@/actions/projects';
@@ -47,6 +48,10 @@ const app = new Hono<HonoEnv>()
   .get('/:id/search-description', ...pagesRoutes.searchDescription, async (ctx) => {
     const projectId = await projectScope(ctx);
     return ctx.json({ data: await getPageSearchDescription(projectId, ctx.req.param('id')) }, 200);
+  })
+  .get('/:id/inbound-links', ...pagesRoutes.inboundLinks, async (ctx) => {
+    const projectId = await projectScope(ctx);
+    return ctx.json({ data: await getPageInboundLinks(projectId, ctx.req.param('id')) }, 200);
   })
   .get('/:id/history', ...pagesRoutes.get, validator('query', pageHistoryQuery), async (ctx) => {
     const projectId = await projectScope(ctx);

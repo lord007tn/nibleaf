@@ -946,6 +946,7 @@ export const MESSAGE_IDS = {
   'editor.deleteGroup': 'editor_deletegroup',
   'editor.deleteGroupConfirm': 'editor_deletegroupconfirm',
   'editor.deleteGroupWithChildrenConfirm': 'editor_deletegroupwithchildrenconfirm',
+  'editor.deleteInboundLinks': 'editor_deleteinboundlinks',
   'editor.deleted': 'editor_deleted',
   'editor.deleteFailed': 'editor_deletefailed',
   'editor.trash.button': 'editor_trash_button',

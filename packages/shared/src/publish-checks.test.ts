@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { documentationComponentContractEntries } from './documentation-component-contract';
-import { findBrokenInternalLinks } from './publish-checks';
+import { findBrokenInternalLinks, findInboundPageLinks } from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 
 let sequence = 0;
@@ -44,6 +44,91 @@ const site = (pages: SnapshotPage[]): SiteSnapshot => ({
 /** The broken links on one page with `content`, next to an existing `/exists` page. */
 const broken = (content: string) =>
   findBrokenInternalLinks(site([page({ path: 'start', content }), page({ path: 'exists' })])).map((link) => link.href);
+
+describe('inbound draft page links', () => {
+  const target = () => page({ id: 'target', path: 'guide', kind: 'GROUP' });
+  const child = () => page({ id: 'child', parentId: 'target', path: 'guide/setup', content: '[self](/guide/setup)' });
+
+  it('finds rendered links into a page or descendant, following redirects and relative paths, once per source', () => {
+    const snapshot = site([
+      target(),
+      child(),
+      page({ id: 'direct', path: 'direct', content: '[group](/guide) [child](/guide/setup)' }),
+      page({ id: 'relative', path: 'guide/other', content: '[relative](setup.md#install)' }),
+      page({ id: 'redirect', path: 'redirect', content: '<Card href="/old-setup">Setup</Card>' }),
+      page({ id: 'ignored', path: 'ignored', content: '`[code](/guide)`\n\n<!-- [comment](/guide) -->\n\n[external](https://elsewhere.test/guide)' }),
+    ]);
+    snapshot.project.config = { redirects: [{ from: '/old-setup', to: '/guide/setup' }] };
+    expect(findInboundPageLinks(snapshot, 'target')).toEqual({
+      total: 3,
+      pages: [
+        { id: 'direct', title: snapshot.pages[2]?.title, path: 'direct' },
+        { id: 'relative', title: snapshot.pages[3]?.title, path: 'guide/other' },
+        { id: 'redirect', title: snapshot.pages[4]?.title, path: 'redirect' },
+      ],
+    });
+    expect(findInboundPageLinks(snapshot, 'child').total).toBe(3);
+  });
+
+  it('respects language query, prefix and default fallback; excludes another branch and the whole subtree', () => {
+    const snapshot = site([
+      target(),
+      child(),
+      page({ id: 'inside', parentId: 'child', path: 'guide/setup/inside', content: '[ancestor](/guide)' }),
+      page({ id: 'ar-target', path: 'guide/setup', languageCode: 'ar' }),
+      page({ id: 'arabic', path: 'arabic', languageCode: 'ar', content: '[translated](/guide/setup)' }),
+      page({ id: 'prefix', path: 'prefix', content: '[translated](/ar/guide/setup)' }),
+      page({ id: 'explicit-en', path: 'en-link', languageCode: 'ar', content: '[English](/guide/setup?lang=en)' }),
+      page({ id: 'fallback', path: 'fallback', languageCode: 'ar', content: '[fallback](/guide/setup/inside)' }),
+      page({ id: 'other-branch', path: 'other-branch', versionId: 'v2', content: '[main](/guide/setup)' }),
+      page({ id: 'hidden-draft', path: 'hidden-draft', hidden: true, content: '[main](/guide/setup)' }),
+    ]);
+    snapshot.project.languages.push({ code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null });
+    snapshot.project.versions.push({ id: 'v2', name: 'Old', slug: 'old', isDefault: false });
+    expect(findInboundPageLinks(snapshot, 'target').pages.map((p) => p.id)).toEqual(['explicit-en', 'fallback', 'hidden-draft']);
+    expect(findInboundPageLinks(snapshot, 'ar-target').pages.map((p) => p.id)).toEqual(['arabic', 'prefix']);
+  });
+
+  it('caps the list at 20 without capping the count or counting repeated links twice', () => {
+    const snapshot = site([
+      target(),
+      child(),
+      ...Array.from({ length: 27 }, (_, i) => page({ id: `source-${i}`, path: `source-${i}`, content: '[one](/guide/setup) [two](/guide)' })),
+    ]);
+    const result = findInboundPageLinks(snapshot, 'target');
+    expect(result.total).toBe(27);
+    expect(result.pages).toHaveLength(20);
+    expect(result.pages.at(-1)?.id).toBe('source-19');
+  });
+
+  it('bounds 300-page repeat-open cost using the existing content cache', () => {
+    const snapshot = site([
+      ...Array.from({ length: 298 }, (_, i) =>
+        page({
+          path: `cost-${i}`,
+          content: `# Topic ${i}\n\n${Array.from({ length: 4 }, (_, j) => `[related](/cost-${(i + j + 1) % 298})`).join(' ')} [guide](/old-setup)\n\n${'Useful documentation. '.repeat(30)}`,
+        }),
+      ),
+      target(),
+      child(),
+    ]);
+    snapshot.project.config = { redirects: [{ from: '/old-setup', to: '/guide/setup' }] };
+    const coldStart = performance.now();
+    expect(findInboundPageLinks(snapshot, 'target').total).toBe(298);
+    const coldMs = performance.now() - coldStart;
+    let warmMs = Number.POSITIVE_INFINITY;
+    for (let round = 0; round < 3; round++) {
+      const start = performance.now();
+      expect(findInboundPageLinks(snapshot, 'target').total).toBe(298);
+      warmMs = Math.min(warmMs, performance.now() - start);
+    }
+    // Generous on shared CI cores; this catches accidentally re-parsing every
+    // body on repeat opens, while reporting both measured costs for review.
+    expect(warmMs).toBeLessThan(coldMs / 2 + 50);
+    expect(warmMs).toBeLessThan(500);
+    console.info(`inbound links: 300 pages, cold ${coldMs.toFixed(1)} ms, warm ${warmMs.toFixed(1)} ms`);
+  });
+});
 
 describe('code boundaries come from the parsed tree', () => {
   it('reports a link between escaped backticks (they are not code)', () => {

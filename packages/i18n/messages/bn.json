@@ -491,6 +491,15 @@
   "editor_deletegroup": "গ্রুপ মুছুন",
   "editor_deletegroupconfirm": "গ্রুপ “{title}” ট্র্যাশে সরাবেন? এটি সেখানে 30 দিন থাকবে, তাই আপনি এটি ফিরিয়ে আনতে পারবেন।",
   "editor_deletegroupwithchildrenconfirm": "গ্রুপ “{title}” এবং এর ভেতরের পেজগুলো ({count}) ট্র্যাশে সরাবেন? এই পেজগুলো ট্রিতে রাখতে আগে এগুলো গ্রুপের বাইরে টেনে আনুন। সবকিছু 30 দিন ট্র্যাশে থাকবে।",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count}টি পৃষ্ঠা এখানে লিঙ্ক করে"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ট্র্যাশে সরানো হয়েছে",
   "editor_deletefailed": "পৃষ্ঠাটি মোছা যায়নি। আবার চেষ্টা করুন।",
   "editor_trash_button": "ট্র্যাশ ({count})",

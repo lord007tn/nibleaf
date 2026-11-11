@@ -23,6 +23,7 @@ vi.mock('@/hooks/api', () => ({
   useDeletePage: () => ({ mutate: mocks.deleteMutate }),
 }));
 vi.mock('@/hooks/api/errors', () => ({ friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key }));
+vi.mock('@/hooks/api/page-inbound-links', () => ({ usePageInboundLinks: () => ({ data: { total: 0, pages: [] } }) }));
 vi.mock('@/hooks/api/page-trash', () => ({
   useRestorePageTrash: () => ({ mutateAsync: mocks.restore, isPending: false }),
   usePurgePageTrash: () => ({ mutateAsync: mocks.purge }),

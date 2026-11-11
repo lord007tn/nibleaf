@@ -491,6 +491,16 @@
   "editor_deletegroup": "समूह हटाएँ",
   "editor_deletegroupconfirm": "समूह “{title}” को ट्रैश में ले जाएँ? यह वहाँ 30 दिन तक रहेगा, इसलिए आप इसे वापस ला सकते हैं।",
   "editor_deletegroupwithchildrenconfirm": "समूह “{title}” और इसके अंदर के पेज ({count}) ट्रैश में ले जाएँ? इन पेजों को ट्री में रखने के लिए पहले इन्हें समूह से बाहर खींचें। सब कुछ 30 दिन तक ट्रैश में रहेगा।",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} पेज यहाँ लिंक करता है",
+        "form=*": "{count} पेज यहाँ लिंक करते हैं"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ट्रैश में ले जाया गया",
   "editor_deletefailed": "पेज हटाया नहीं जा सका। फिर से कोशिश करें।",
   "editor_trash_button": "ट्रैश ({count})",

@@ -411,13 +411,14 @@ const resolveSegments = (pathname: string, base: readonly string[]): string[] =>
 
 /** Follow what the reader serves for a site path, through configured and
  *  language-prefix redirects (bounded like redirect chains). */
-const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined): boolean => {
+const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined): boolean | SnapshotPage => {
   let path = startPath;
   let lang = startLang;
   for (let hop = 0; hop <= MAX_REDIRECT_CHAIN_LENGTH; hop++) {
     if (RESERVED_ROUTES.has(path)) return true;
     const route = resolveSiteRoute(snapshot, path, { lang });
-    if (route.kind === 'page' || route.kind === 'openapi') return true;
+    if (route.kind === 'page') return route.page;
+    if (route.kind === 'openapi') return true;
     if (route.kind === 'not-found') return false;
     if (/^https?:\/\//i.test(route.to)) return true;
     const target = new URL(route.to, 'https://site.invalid');
@@ -443,7 +444,11 @@ const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | 
 const createLinkResolver = (snapshot: SiteSnapshot) => {
   const defaultCode = publicLanguages(snapshot.project.languages).find((language) => language.isDefault)?.code;
   const versionById = new Map(snapshot.project.versions.map((version) => [version.id, version]));
-  return (href: string, page: SnapshotPage): boolean | null => {
+  // A site's shared navigation links repeat across many bodies. Normalize in
+  // the source page's context first, then resolve each destination only once
+  // per immutable snapshot scan (including redirect chains).
+  const destinations = new Map<string, ReturnType<typeof reaches>>();
+  return (href: string, page: SnapshotPage): boolean | SnapshotPage | null => {
     const trimmed = href.trim();
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('{') || trimmed.startsWith('//') || SCHEME.test(trimmed)) return null;
     const { pathname, query } = splitHref(trimmed);
@@ -459,7 +464,13 @@ const createLinkResolver = (snapshot: SiteSnapshot) => {
 
     const params = new URLSearchParams(query);
     const lang = params.has('lang') ? searchLanguage(params) : absolute && page.languageCode !== defaultCode ? page.languageCode : undefined;
-    return reaches(snapshot, segments.join('/'), lang);
+    const path = segments.join('/');
+    const key = JSON.stringify([path, lang]);
+    const cached = destinations.get(key);
+    if (cached !== undefined) return cached;
+    const destination = reaches(snapshot, path, lang);
+    destinations.set(key, destination);
+    return destination;
   };
 };
 
@@ -490,4 +501,43 @@ export function findBrokenInternalLinks(snapshot: SiteSnapshot): BrokenInternalL
     }
   }
   return broken;
+}
+
+/** Draft pages outside a deleted subtree that render a link into it. Sources
+ * stay on the target's branch; destinations follow the reader's version,
+ * language, fallback and redirect rules. Hidden drafts are sources too.
+ * Parsing uses the same per-content cache as publish checks. */
+export function findInboundPageLinks(snapshot: SiteSnapshot, pageId: string) {
+  const target = snapshot.pages.find((page) => page.id === pageId);
+  if (!target) return { pages: [], total: 0 };
+  const branchPages = snapshot.pages.filter((page) => page.versionId === target.versionId);
+  const children = new Map<string, string[]>();
+  for (const page of branchPages) {
+    if (!page.parentId) continue;
+    const siblings = children.get(page.parentId) ?? [];
+    siblings.push(page.id);
+    children.set(page.parentId, siblings);
+  }
+  const subtree = new Set<string>();
+  const pending = [pageId];
+  for (let id = pending.pop(); id !== undefined; id = pending.pop()) {
+    if (subtree.has(id)) continue;
+    subtree.add(id);
+    pending.push(...(children.get(id) ?? []));
+  }
+  const resolveLink = createLinkResolver(snapshot);
+  const pages: Pick<SnapshotPage, 'id' | 'title' | 'path'>[] = [];
+  let total = 0;
+  for (const page of branchPages) {
+    if (page.kind !== 'PAGE' || subtree.has(page.id)) continue;
+    const linksHere = pageContentFacts(page.content).links.some((href) => {
+      if (sitePathTooLong(href)) return false;
+      const destination = resolveLink(href, page);
+      return typeof destination === 'object' && destination !== null && subtree.has(destination.id);
+    });
+    if (!linksHere) continue;
+    total += 1;
+    if (pages.length < 20) pages.push({ id: page.id, title: page.title, path: page.path });
+  }
+  return { pages, total };
 }
