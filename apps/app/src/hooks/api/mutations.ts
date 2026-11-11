@@ -278,14 +278,26 @@ export const useUpdatePage = (projectId: string) => {
   });
 };
 
+/** What deleting a page answers: the Trash item that holds it, for Undo. */
+export interface DeletedPage {
+  id: string;
+  trashId: string;
+  pageCount: number;
+  expiresAt: string;
+}
+
 export const useDeletePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (pageId: string) =>
-      mutateData(await api.app.projects[':projectId'].pages[':id'].$delete({ param: { projectId, id: pageId } }), 'Could not delete the page.'),
+      mutateData<DeletedPage>(
+        await api.app.projects[':projectId'].pages[':id'].$delete({ param: { projectId, id: pageId } }),
+        'Could not delete the page.',
+      ),
     onSuccess: (_data, pageId) => {
       qc.removeQueries({ queryKey: queryKeys.pages.detail(projectId, pageId), exact: true });
       void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+      void qc.invalidateQueries({ queryKey: queryKeys.pageTrash.all(projectId) });
       return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
     },
   });

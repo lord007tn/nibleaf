@@ -67,6 +67,7 @@ import { LanguageSettingsDialog } from '@/components/editor/language-settings-di
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
+import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
 import { NeverPublishedBanner, PagePublishStateBar, SaveStatus } from '@/components/editor/save-status';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
@@ -1325,6 +1326,11 @@ function EditorPage() {
               )}
             </div>
           </ScrollArea>
+          {view === 'config' || isPending ? null : (
+            <div className="shrink-0 border-border border-t px-2 py-1.5">
+              <PageTrashButton branchId={activeBranchId ?? undefined} canEdit={canEditContent} languages={orderedLanguages} projectId={projectId} />
+            </div>
+          )}
           {historyForId && page?.id === historyForId ? (
             <Suspense fallback={null}>
               <PageHistoryPanel

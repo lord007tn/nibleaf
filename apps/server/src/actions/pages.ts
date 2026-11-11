@@ -120,7 +120,7 @@ export const getPageSearchDescription = async (projectId: string, id: string) =>
 /** A unique slug among a parent's children within one language, deriving from the
  *  title when absent. Scoped to (projectId, languageId, parentId) so two languages
  *  can each have e.g. `/introduction`. */
-const uniqueSiblingSlug = async (
+export const uniqueSiblingSlug = async (
   db: Prisma.TransactionClient,
   projectId: string,
   languageId: string,
@@ -217,7 +217,7 @@ export const recomputeProjectPaths = async (projectId: string, tx: Prisma.Transa
 };
 
 /** A move or slug change rewrites the paths of the page and its subtree. */
-const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
+export const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
 
 export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
   const page = await prisma.$transaction(
@@ -417,16 +417,6 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
   }
   return updated;
 };
-
-export const deletePage = async (projectId: string, id: string) =>
-  prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
-    await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
-    const page = await tx.page.findFirst({ where: { id, projectId }, select: { id: true } });
-    if (!page) throw notFound('page', { id });
-    await tx.page.delete({ where: { id } });
-    return { id };
-  });
 
 type ReorderRow = {
   id: string;

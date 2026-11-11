@@ -9,16 +9,8 @@ import {
 } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { comparePageHistory, listPageHistory, restorePageHistory } from '@/actions/page-history';
-import {
-  createPage,
-  deletePage,
-  getPage,
-  getPageSearchDescription,
-  listPages,
-  pageStructureRevision,
-  reorderPages,
-  updatePage,
-} from '@/actions/pages';
+import { deletePage } from '@/actions/page-trash';
+import { createPage, getPage, getPageSearchDescription, listPages, pageStructureRevision, reorderPages, updatePage } from '@/actions/pages';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -75,7 +67,7 @@ const app = new Hono<HonoEnv>()
   })
   .delete('/:id', ...pagesRoutes.remove, async (ctx) => {
     const projectId = await projectScope(ctx);
-    return ctx.json({ data: await deletePage(projectId, ctx.req.param('id')) }, 200);
+    return ctx.json({ data: await deletePage(projectId, ctx.req.param('id'), getContextUserOrThrow().id) }, 200);
   });
 
 export default app;
