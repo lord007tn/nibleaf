@@ -37,10 +37,6 @@ export function emailsError(text: string, { single = false }: { single?: boolean
   return null;
 }
 
-/** Whether a field's error is visible: after it was left, or after a submit attempt (ui-overhaul §6.4). */
-export const fieldErrorVisible = (error: unknown, meta: { isBlurred: boolean }, submissionAttempts: number) =>
-  Boolean(error) && (submissionAttempts > 0 || meta.isBlurred);
-
 const DAY = 86_400_000;
 /** An invitation's lifetime as the list shows it. */
 export function invitationTiming(expiresAt: string | Date, now = Date.now()): { expired: boolean; daysLeft: number } {

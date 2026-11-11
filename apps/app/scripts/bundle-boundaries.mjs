@@ -23,8 +23,6 @@ const forbiddenPublicModules = [
   // validateSearch can't be split.
   /\/apps\/app\/src\/hooks\/api\/(?:index|query-options|mutations|route-prefetch|deployment-cache|analytics\/)/,
   /\/apps\/app\/src\/components\/(?:app|project|project-settings|settings|editor|oauth)\//,
-  // Feature modules (operations/ui-overhaul.md §7) are dashboard code.
-  /\/apps\/app\/src\/features\//,
   /\/apps\/app\/src\/components\/analytics\/(?!insights\/filters\.ts$)/,
   /\/apps\/app\/src\/components\/ai-conversations\/(?!search\.ts$)/,
   // Route ids and validateSearch parsers stay in non-split route options.

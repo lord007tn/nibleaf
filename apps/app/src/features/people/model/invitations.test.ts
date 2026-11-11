@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emailsError, fieldErrorVisible, invitationTiming, parseEmails } from './invitations';
+import { emailsError, invitationTiming, parseEmails } from './invitations';
 import { draftNeedsWarning, type JoinLinkDraft, joinLinkBody, joinLinkErrors, linkActions, normalizeDomain } from './join-links';
 import { assignableSiteRoles, DEFAULT_INVITE_SITE_ROLE, DEFAULT_JOIN_LINK_SITE_ROLE, orgRoleLabel, SITE_ROLE_OPTIONS, siteRoleLabel } from './roles';
 
@@ -13,12 +13,6 @@ describe('invite emails', () => {
     expect(emailsError('a@x.io')).toBeNull();
     expect(emailsError('a@x.io b@', {})).toEqual({ key: 'people.invite.error.invalid', values: { emails: 'b@' } });
     expect(emailsError('a@x.io b@x.io', { single: true })).toEqual({ key: 'people.invite.error.oneAddress' });
-  });
-  it('shows a field error only after blur or a submit attempt', () => {
-    expect(fieldErrorVisible('required', { isBlurred: false }, 0)).toBe(false);
-    expect(fieldErrorVisible('required', { isBlurred: true }, 0)).toBe(true);
-    expect(fieldErrorVisible('required', { isBlurred: false }, 1)).toBe(true);
-    expect(fieldErrorVisible(undefined, { isBlurred: true }, 1)).toBe(false);
   });
   it('counts the days an invitation has left', () => {
     const now = Date.parse('2026-11-10T12:00:00Z');

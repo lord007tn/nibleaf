@@ -8,9 +8,10 @@ import { CheckCircle2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
+import { fieldErrorsVisible } from '@/lib/forms/field-errors';
 import { inviteAcceptUrl } from '@/lib/invitations';
 import { useInviteToSite } from '../api/mutations';
-import { emailsError, fieldErrorVisible, parseEmails } from '../model/invitations';
+import { emailsError, parseEmails } from '../model/invitations';
 import { DEFAULT_INVITE_SITE_ROLE, SITE_ROLE_OPTIONS, type SiteRole, siteRoleLabel } from '../model/roles';
 import { InviteEmailField } from './invite-email-field';
 import { RoleOptionList } from './role-options';
@@ -44,7 +45,8 @@ export function AddPeopleDialog({
   const [failure, setFailure] = useState<string | null>(null);
   const [invited, setInvited] = useState<{ id: string; email: string; emailed: boolean } | null>(null);
   const error = emailsError(email, { single: true });
-  const showError = fieldErrorVisible(error, { isBlurred: blurred }, attempts);
+  // The shared timing rule (lib/forms, ui-overhaul §6.4): after leaving the field or a submit attempt.
+  const showError = fieldErrorsVisible({ errors: error ? [error.key] : [], isBlurred: blurred }, attempts);
 
   const reset = () => {
     setEmail('');

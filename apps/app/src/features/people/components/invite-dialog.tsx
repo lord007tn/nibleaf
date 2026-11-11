@@ -8,9 +8,10 @@ import { useT } from '@nibleaf/i18n/react';
 import { CheckCircle2, Mail } from 'lucide-react';
 import { useId, useState } from 'react';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
+import { fieldErrorsVisible } from '@/lib/forms/field-errors';
 import { inviteAcceptUrl } from '@/lib/invitations';
 import { type InviteResult, useInviteToOrganization } from '../api/mutations';
-import { emailsError, fieldErrorVisible, parseEmails } from '../model/invitations';
+import { emailsError, parseEmails } from '../model/invitations';
 import { type GrantSelection, grantsFromSelection } from '../model/members';
 import { type AssignableOrgRole, DEFAULT_INVITE_SITE_ROLE, ORG_ROLE_OPTIONS } from '../model/roles';
 import { RoleOptionList } from './role-options';
@@ -56,7 +57,8 @@ export function InviteDialog({
     setResult(null);
   };
   const error = emailsError(emails);
-  const showError = fieldErrorVisible(error, { isBlurred: blurred }, attempts);
+  // The shared timing rule (lib/forms, ui-overhaul §6.4): after leaving the field or a submit attempt.
+  const showError = fieldErrorsVisible({ errors: error ? [error.key] : [], isBlurred: blurred }, attempts);
   const count = parseEmails(emails).valid.length;
 
   const submit = async () => {
