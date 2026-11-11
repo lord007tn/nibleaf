@@ -4692,6 +4692,7 @@
   "editor_history_nochanges": "এই এন্ট্রিটি বর্তমান খসড়ার সঙ্গে মিলে যায়।",
   "editor_history_error": "ইতিহাস লোড বা পৃষ্ঠা পুনরুদ্ধার করা যায়নি। আবার চেষ্টা করুন।",
   "editor_history_empty": "এখনও কোনো ইতিহাস নেই",
+  "editor_history_trimmedfromtrash": "এই পেজটি ট্র্যাশে সরানোর সময় কিছু পুরোনো ইতিহাস রাখা হয়নি ({total}টির মধ্যে {kept}টি সংশোধন পুনরুদ্ধার হয়েছে)।",
   "editor_history_emptydescription": "সংরক্ষিত সংশোধন ও প্রকাশিত সংস্করণ এখানে দেখা যাবে।",
   "editor_history_version": "সংস্করণ {version}",
   "editor_history_beforerestore": "পুনরুদ্ধারের আগে",

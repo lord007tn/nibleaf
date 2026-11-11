@@ -4758,6 +4758,7 @@
   "editor_history_nochanges": "Esta entrada corresponde ao rascunho atual.",
   "editor_history_error": "Não foi possível carregar ou restaurar o histórico. Tente novamente.",
   "editor_history_empty": "Ainda não há histórico",
+  "editor_history_trimmedfromtrash": "Parte do histórico mais antigo não foi mantida quando esta página foi para a lixeira ({kept} de {total} revisões restauradas).",
   "editor_history_emptydescription": "As revisões salvas e versões publicadas aparecerão aqui.",
   "editor_history_version": "Versão {version}",
   "editor_history_beforerestore": "Antes da restauração",

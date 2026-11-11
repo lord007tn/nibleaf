@@ -4690,6 +4690,7 @@
   "editor_history_nochanges": "此记录与当前草稿相同。",
   "editor_history_error": "无法加载历史记录或恢复页面，请重试。",
   "editor_history_empty": "暂无历史记录",
+  "editor_history_trimmedfromtrash": "将此页面移到回收站时，部分较早的历史记录未能保留（已恢复 {kept}/{total} 个修订）。",
   "editor_history_emptydescription": "已保存的修订和已发布的版本将显示在这里。",
   "editor_history_version": "版本 {version}",
   "editor_history_beforerestore": "恢复前",

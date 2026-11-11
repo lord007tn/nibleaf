@@ -4757,6 +4757,7 @@
   "editor_history_nochanges": "Esta entrada coincide con el borrador actual.",
   "editor_history_error": "No se pudo cargar o restaurar el historial. Inténtalo de nuevo.",
   "editor_history_empty": "Aún no hay historial",
+  "editor_history_trimmedfromtrash": "Parte del historial más antiguo no se conservó al mover esta página a la papelera (se restauraron {kept} de {total} revisiones).",
   "editor_history_emptydescription": "Aquí aparecerán las revisiones guardadas y las versiones publicadas.",
   "editor_history_version": "Versión {version}",
   "editor_history_beforerestore": "Antes de restaurar",

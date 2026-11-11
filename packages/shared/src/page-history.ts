@@ -66,6 +66,14 @@ export interface PageHistoryEntry {
   version: number | null;
 }
 
+/** When a Trash restore could not bring back all of a page's history: how many
+ *  revisions came back, of how many, and when (#492). */
+export interface PageHistoryTrimmedFromTrash {
+  kept: number;
+  total: number;
+  at: string;
+}
+
 export interface PageHistoryComparison {
   expectedUpdatedAt: string;
   title: { before: string; after: string };

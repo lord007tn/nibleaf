@@ -6,16 +6,27 @@ import {
   PAGE_REVISION_MAX_BYTES,
   type PageHistoryComparison,
   type PageHistoryEntry,
+  type PageHistoryTrimmedFromTrash,
 } from '@nibleaf/shared/page-history';
 import type { PageHistoryQuery, PageHistorySelection, UpdatePageBody } from '@nibleaf/validators';
+import { z } from 'zod';
 import { badRequest, notFound } from '@/errors';
 import { getPage, updatePage } from './pages';
 
 type EntryRow = Omit<PageHistoryEntry, 'createdAt'> & { createdAt: Date };
 
+const trimmedFromTrashSchema = z.object({ kept: z.number().int().nonnegative(), total: z.number().int().positive(), at: z.string() });
+
+/** The page's note that a Trash restore trimmed its history, if it has a valid one. */
+const trimmedFromTrash = (value: unknown): PageHistoryTrimmedFromTrash | null => {
+  const parsed = trimmedFromTrashSchema.safeParse(value);
+  return parsed.success && parsed.data.kept < parsed.data.total ? parsed.data : null;
+};
+
 export async function listPageHistory(projectId: string, pageId: string, query: PageHistoryQuery) {
-  const page = await prisma.page.findFirst({ where: { id: pageId, projectId }, select: { id: true } });
+  const page = await prisma.page.findFirst({ where: { id: pageId, projectId }, select: { id: true, historyTrimmedFromTrash: true } });
   if (!page) throw notFound('page', { id: pageId });
+  const trimmed = trimmedFromTrash(page.historyTrimmedFromTrash);
   const before = query.before ? new Date(query.before) : new Date('9999-01-01');
   const beforeId = query.beforeId ?? '\uffff';
   if (query.source === 'published') {
@@ -45,7 +56,11 @@ export async function listPageHistory(projectId: string, pageId: string, query: 
       .filter((row) => row.present)
       .map(({ present: _, ...row }) => ({ ...row, createdAt: row.createdAt.toISOString() }));
     const last = rows.at(-1);
-    return { entries, next: rows.length === 20 && last ? { before: last.createdAt.toISOString(), beforeId: last.id } : null };
+    return {
+      entries,
+      next: rows.length === 20 && last ? { before: last.createdAt.toISOString(), beforeId: last.id } : null,
+      trimmedFromTrash: trimmed,
+    };
   }
   const rows = await prisma.$queryRaw<EntryRow[]>`
     SELECT r.id, 'revision'::text AS source, r.title, r."createdAt", r."contentBytes",
@@ -57,7 +72,7 @@ export async function listPageHistory(projectId: string, pageId: string, query: 
   `;
   const entries: PageHistoryEntry[] = rows.slice(0, 50).map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }));
   const last = entries.at(-1);
-  return { entries, next: rows.length > 50 && last ? { before: last.createdAt, beforeId: last.id } : null };
+  return { entries, next: rows.length > 50 && last ? { before: last.createdAt, beforeId: last.id } : null, trimmedFromTrash: trimmed };
 }
 
 type HistorySettings = Pick<UpdatePageBody, 'description' | 'icon' | 'hidden' | 'config'>;

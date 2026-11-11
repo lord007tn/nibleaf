@@ -1,4 +1,4 @@
-import type { PageHistoryComparison, PageHistoryEntry } from '@nibleaf/shared/page-history';
+import type { PageHistoryComparison, PageHistoryEntry, PageHistoryTrimmedFromTrash } from '@nibleaf/shared/page-history';
 import type { PageHistorySelection } from '@nibleaf/validators';
 import { infiniteQueryOptions, queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
@@ -12,7 +12,8 @@ const pageHistoryKeys = {
 };
 
 type Cursor = { before: string; beforeId: string } | undefined;
-type HistoryList = { entries: PageHistoryEntry[]; next: Cursor | null };
+/** `trimmedFromTrash`: a Trash restore could not bring back all of the page's history (#492). */
+type HistoryList = { entries: PageHistoryEntry[]; next: Cursor | null; trimmedFromTrash?: PageHistoryTrimmedFromTrash | null };
 
 export const pageHistoryQueryOptions = (projectId: string, pageId: string, source: PageHistorySelection['source']) =>
   infiniteQueryOptions({

@@ -32,6 +32,7 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
   let orgs: typeof import('./organizations');
   let projects: typeof import('./projects');
   let erasure: typeof import('@nibleaf/auth/tenant-erasure');
+  let history: typeof import('./page-history');
   const organizationIds: string[] = [];
   const userIds: string[] = [];
 
@@ -43,6 +44,7 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
     orgs = await import('./organizations');
     projects = await import('./projects');
     erasure = await import('@nibleaf/auth/tenant-erasure');
+    history = await import('./page-history');
   }, 120_000);
   afterAll(async () => {
     if (!db) return;
@@ -455,6 +457,225 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
     });
   });
 
+  describe('page history goes to Trash and comes back (#492)', () => {
+    /** Revisions oldest first, a day apart, with `size` bytes of content each. */
+    const addRevisions = async (f: Awaited<ReturnType<typeof fixture>>, pageId: string, authors: Array<string | null>, size = 10, firstDay = 1) => {
+      const rows: Array<Awaited<ReturnType<typeof db.prisma.pageRevision.create>>> = [];
+      for (const [index, userId] of authors.entries()) {
+        rows.push(
+          await db.prisma.pageRevision.create({
+            data: {
+              projectId: f.project.id,
+              pageId,
+              userId,
+              title: `Rev ${firstDay + index}`,
+              content: `${'x'.repeat(size)}${index}`,
+              contentBytes: size,
+              reason: index === 0 ? 'before-restore' : 'autosave',
+              createdAt: new Date(Date.UTC(2026, 9, firstDay + index)),
+            },
+          }),
+        );
+      }
+      return rows;
+    };
+    const revisionsOf = (pageIds: string[]) =>
+      db.prisma.pageRevision.findMany({
+        where: { pageId: { in: pageIds } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: { id: true, pageId: true, userId: true, createdAt: true, reason: true, title: true, content: true },
+      });
+    const payloadOf = async (trashId: string) =>
+      (await db.prisma.pageTrash.findUniqueOrThrow({ where: { id: trashId } })).payload as {
+        schemaVersion: number;
+        revisions: Array<{ id: string; userId: string | null; content: string }>;
+        revisionCounts: Record<string, { total: number; kept: number }>;
+      };
+    const listed = (projectId: string, pageId: string) => history.listPageHistory(projectId, pageId, { source: 'revision' });
+
+    it('restores the same revisions, authors and times, with no notice', async () => {
+      const f = await fixture();
+      const other = await person();
+      const before = [...(await addRevisions(f, f.setup.id, [f.author.id, other.id, null])), ...(await addRevisions(f, f.deep.id, [f.author.id]))];
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      // Gone from the live table with the pages; carried in the payload.
+      expect(await revisionsOf([f.setup.id, f.deep.id])).toEqual([]);
+      const payload = await payloadOf(deleted.trashId);
+      expect(payload.schemaVersion).toBe(trash.PAGE_TRASH_SCHEMA_VERSION);
+      expect(payload.revisions).toHaveLength(4);
+      expect(payload.revisionCounts).toEqual({ [f.setup.id]: { total: 3, kept: 3 }, [f.deep.id]: { total: 1, kept: 1 } });
+      await trash.restorePageTrashItem(f.project.id, deleted.trashId);
+      const after = await revisionsOf([f.setup.id, f.deep.id]);
+      const shape = (rows: typeof after) =>
+        rows.map(({ id, pageId, userId, createdAt, reason, title, content }) => ({
+          id,
+          pageId,
+          userId,
+          at: createdAt.toISOString(),
+          reason,
+          title,
+          content,
+        }));
+      expect(shape(after)).toEqual(shape(before.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))));
+      const list = await listed(f.project.id, f.setup.id);
+      expect(list.entries.map((entry) => entry.id)).toEqual(
+        before
+          .filter((row) => row.pageId === f.setup.id)
+          .map((row) => row.id)
+          .reverse(),
+      );
+      expect(list.entries.map((entry) => entry.author)).toEqual([null, 'Synthetic author', 'Synthetic author']);
+      expect(list.trimmedFromTrash).toBeNull();
+      expect((await db.prisma.page.findUniqueOrThrow({ where: { id: f.setup.id } })).historyTrimmedFromTrash).toBeNull();
+    });
+
+    it('drops the oldest revisions to fit the cap, keeps the newest, and records the notice', async () => {
+      const f = await fixture();
+      await addRevisions(f, f.setup.id, [f.author.id, f.author.id, f.author.id], 4000, 1);
+      const newest = await addRevisions(f, f.deep.id, [f.author.id, f.author.id], 4000, 10);
+      // Measure the full payload, then delete again with room for the two newest only.
+      const probe = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      const full = await payloadOf(probe.trashId);
+      const fullBytes = Buffer.byteLength(JSON.stringify(full), 'utf8');
+      const sizeOf = (index: number) => Buffer.byteLength(JSON.stringify(full.revisions[index]), 'utf8') + 1;
+      await trash.restorePageTrashItem(f.project.id, probe.trashId);
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id, {
+        maxPayloadBytes: fullBytes - sizeOf(0) - sizeOf(1) - sizeOf(2),
+      });
+      const payload = await payloadOf(deleted.trashId);
+      expect(payload.revisions.map((revision) => revision.id)).toEqual(newest.map((row) => row.id));
+      expect(payload.revisionCounts).toEqual({ [f.setup.id]: { total: 3, kept: 0 }, [f.deep.id]: { total: 2, kept: 2 } });
+      await trash.restorePageTrashItem(f.project.id, deleted.trashId);
+      expect((await revisionsOf([f.setup.id, f.deep.id])).map((row) => row.id)).toEqual(newest.map((row) => row.id));
+      const notice = (await listed(f.project.id, f.setup.id)).trimmedFromTrash;
+      expect(notice).toMatchObject({ kept: 0, total: 3 });
+      expect(Number.isNaN(Date.parse(notice?.at ?? ''))).toBe(false);
+      expect((await listed(f.project.id, f.deep.id)).trimmedFromTrash).toBeNull();
+      // Moving the page to Trash again clears the notice; this restore keeps everything.
+      const again = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      await trash.restorePageTrashItem(f.project.id, again.trashId);
+      expect((await listed(f.project.id, f.setup.id)).trimmedFromTrash).toBeNull();
+    });
+
+    it('still refuses when the pages alone are over the cap', async () => {
+      const f = await fixture();
+      await addRevisions(f, f.setup.id, [f.author.id], 2000);
+      await expect(trash.deletePage(f.project.id, f.setup.id, f.author.id, { maxPayloadBytes: 300 })).rejects.toMatchObject({
+        code: 'page:trash_too_large',
+      });
+      expect((await revisionsOf([f.setup.id])).length).toBe(1);
+    });
+
+    it('restores an older payload without history', async () => {
+      const f = await fixture();
+      await addRevisions(f, f.setup.id, [f.author.id]);
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      const { revisions: _revisions, revisionCounts: _counts, ...rest } = await payloadOf(deleted.trashId);
+      await db.prisma.pageTrash.update({ where: { id: deleted.trashId }, data: { payload: { ...rest, schemaVersion: 1 } as never } });
+      await expect(trash.restorePageTrashItem(f.project.id, deleted.trashId)).resolves.toMatchObject({ page: { id: f.setup.id } });
+      expect(await revisionsOf([f.setup.id])).toEqual([]);
+      expect((await listed(f.project.id, f.setup.id)).trimmedFromTrash).toBeNull();
+    });
+
+    it('forgets the author of a revision whose account is deleted while the page is in Trash', async () => {
+      const f = await fixture();
+      const leaving = await person();
+      const [byLeaving, byAuthor] = await addRevisions(f, f.setup.id, [leaving.id, f.author.id]);
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      expect(JSON.stringify(await payloadOf(deleted.trashId))).toContain(leaving.id);
+      await db.prisma.user.delete({ where: { id: leaving.id } });
+      const payload = await payloadOf(deleted.trashId);
+      expect(JSON.stringify(payload)).not.toContain(leaving.id);
+      expect(payload.revisions.map((revision) => revision.userId)).toEqual([null, f.author.id]);
+      await trash.restorePageTrashItem(f.project.id, deleted.trashId);
+      expect((await revisionsOf([f.setup.id])).map((row) => [row.id, row.userId])).toEqual([
+        [byLeaving?.id, null],
+        [byAuthor?.id, f.author.id],
+      ]);
+    });
+
+    it('does not carry a revision author deleted while the page was being moved to Trash', async () => {
+      const f = await fixture();
+      const leaving = await person();
+      await addRevisions(f, f.setup.id, [leaving.id]);
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id, {
+        afterCommentsRead: async () => {
+          // The page row lock does not stop the account delete; its SET NULL waits on nothing here.
+          await db.prisma.user.delete({ where: { id: leaving.id } });
+        },
+      });
+      expect(JSON.stringify(await payloadOf(deleted.trashId))).not.toContain(leaving.id);
+      await trash.restorePageTrashItem(f.project.id, deleted.trashId);
+      expect((await revisionsOf([f.setup.id])).map((row) => row.userId)).toEqual([null]);
+    });
+
+    it('makes an account delete wait for the trash write that holds its revisions, then forgets the author', async () => {
+      const f = await fixture();
+      const leaving = await person();
+      await addRevisions(f, f.setup.id, [leaving.id]);
+      let accountDelete: Promise<unknown> | undefined;
+      let waited = false;
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id, {
+        afterAuthorsLocked: async () => {
+          accountDelete = db.prisma.user.delete({ where: { id: leaving.id } });
+          const settled = await Promise.race([accountDelete.then(() => 'done'), new Promise((resolve) => setTimeout(() => resolve('waiting'), 500))]);
+          waited = settled === 'waiting';
+        },
+      });
+      expect(waited).toBe(true);
+      await accountDelete;
+      expect(JSON.stringify(await payloadOf(deleted.trashId))).not.toContain(leaving.id);
+      await trash.restorePageTrashItem(f.project.id, deleted.trashId);
+      expect((await revisionsOf([f.setup.id])).map((row) => row.userId)).toEqual([null]);
+    });
+
+    it('leaves no history behind after delete forever or expiry', async () => {
+      const f = await fixture();
+      await addRevisions(f, f.setup.id, [f.author.id, f.author.id]);
+      await addRevisions(f, f.last.id, [f.author.id]);
+      const forever = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      await trash.purgePageTrashItem(f.project.id, forever.trashId);
+      expect(await db.prisma.pageTrash.count({ where: { id: forever.trashId } })).toBe(0);
+      const expiring = await trash.deletePage(f.project.id, f.last.id, f.author.id);
+      await db.prisma.pageTrash.update({ where: { id: expiring.trashId }, data: { expiresAt: new Date(Date.now() - 1000) } });
+      await trash.deletePage(f.project.id, f.intro.id, f.author.id);
+      expect(await db.prisma.pageTrash.count({ where: { id: expiring.trashId } })).toBe(0);
+      expect(await revisionsOf([f.setup.id, f.deep.id, f.last.id])).toEqual([]);
+    });
+
+    it('makes an account delete wait for a restore that brings back its history, then nulls the author', async () => {
+      const f = await fixture();
+      // An author with history on the page and no comments.
+      const historian = await person();
+      const [revision] = await addRevisions(f, f.setup.id, [historian.id]);
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      let accountDelete: Promise<unknown> | undefined;
+      let waited = false;
+      await expect(
+        trash.restorePageTrashItem(
+          f.project.id,
+          deleted.trashId,
+          {},
+          {
+            afterAuthorsLocked: async () => {
+              accountDelete = db.prisma.user.delete({ where: { id: historian.id } });
+              const settled = await Promise.race([
+                accountDelete.then(() => 'done'),
+                new Promise((resolve) => setTimeout(() => resolve('waiting'), 500)),
+              ]);
+              waited = settled === 'waiting';
+            },
+          },
+        ),
+      ).resolves.toBeDefined();
+      expect(waited).toBe(true);
+      await accountDelete;
+      expect(await db.prisma.user.count({ where: { id: historian.id } })).toBe(0);
+      const restored = await revisionsOf([f.setup.id]);
+      expect(restored.map((row) => [row.id, row.userId])).toEqual([[revision?.id, null]]);
+    });
+  });
+
   describe('erasure leaves no Trash behind', () => {
     /** A real org with an owner and two websites, each with a page in Trash. */
     const orgFixture = async () => {
@@ -465,13 +686,26 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
       for (const label of ['A', 'B']) {
         const site = await projects.createProject(owner.id, { name: `${label} ${randomUUID().slice(0, 8)}`, organizationId: org.id });
         const page = await pages.createPage(site.id, { title: `Doomed ${label}`, content: 'Private draft' });
+        await db.prisma.pageRevision.create({
+          data: {
+            projectId: site.id,
+            pageId: page.id,
+            userId: owner.id,
+            title: 'Old',
+            content: 'Private history',
+            contentBytes: 18,
+            reason: 'autosave',
+          },
+        });
         const deleted = await trash.deletePage(site.id, page.id, owner.id);
         sites.push({ site, trashId: deleted.trashId });
       }
       const name = (await db.prisma.organization.findUniqueOrThrow({ where: { id: org.id } })).name;
       return { owner, org, name, sites };
     };
-    const trashLeft = (projectIds: string[]) => db.prisma.pageTrash.count({ where: { projectId: { in: projectIds } } });
+    const trashLeft = async (projectIds: string[]) =>
+      (await db.prisma.pageTrash.count({ where: { projectId: { in: projectIds } } })) +
+      (await db.prisma.pageRevision.count({ where: { projectId: { in: projectIds } } }));
 
     it('tenant erasure of one website', async () => {
       const f = await orgFixture();
