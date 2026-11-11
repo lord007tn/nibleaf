@@ -92,8 +92,8 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   const name = values.name.trim();
   const derived = deriveSiteSlug(name);
   const showAddress = editingAddress || addressEdited || (Boolean(name) && derived.needsCustomAddress);
-  const typedSlug = addressEdited ? values.slug : derived.slug;
-  const validSlug = projectSlug.safeParse(typedSlug).success;
+  const typedSlug = addressEdited ? values.slug : undefined;
+  const validSlug = typedSlug === undefined || projectSlug.safeParse(typedSlug).success;
   const [checked, setChecked] = useState({ name, slug: typedSlug });
   useEffect(() => {
     const timer = setTimeout(() => setChecked({ name, slug: typedSlug }), 250);

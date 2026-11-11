@@ -38,9 +38,7 @@ beforeEach(() => {
   mocks.locale = 'en';
   mocks.sites = [];
   mocks.create.mockResolvedValue({ id: 'site', firstPageId: 'welcome-page' });
-  mocks.availability.mockImplementation(async () =>
-    Response.json({ data: { available: true } }),
-  );
+  mocks.availability.mockImplementation(async () => Response.json({ data: { available: true } }));
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -350,7 +348,7 @@ describe('create site dialog', () => {
   it('shows the final neutral suffix and preserves an address the author edits', async () => {
     mocks.availability.mockImplementation(async ({ query }: { query: { slug?: string } }) =>
       Response.json({
-        data: { available: query.slug !== 'site-178xry5', ...(query.slug === 'site-178xry5' ? { suggestion: 'site-178xry5-2' } : {}) },
+        data: { available: query.slug !== undefined, ...(query.slug === undefined ? { suggestion: 'site-178xry5-2' } : {}) },
       }),
     );
     await render();
