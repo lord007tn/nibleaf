@@ -318,6 +318,24 @@ describe('page address preservation through page actions', () => {
     expect(validateSnapshotRedirects(state.snapshot()).issues).toEqual([]);
   });
 
+  it('skips and reports a linking page whose rewritten links would cross the size cap, and still renames', async () => {
+    const cap = 2 * 1024 * 1024;
+    const links = '[x](/a) '.repeat(10);
+    // Exactly at the cap: each rewritten link adds 18 bytes and would cross it.
+    const atCap = `${links}\n\n${'y'.repeat(cap - links.length - 2)}`;
+    const state = seed(
+      [pageFixture('target', 'a'), { ...pageFixture('big'), content: atCap }, { ...pageFixture('small'), content: '[x](/a)' }],
+      false,
+    );
+    expect(await updatePage('project', 'target', { slug: 'much-longer-address' })).toMatchObject({
+      path: 'much-longer-address',
+      linksUpdated: 1,
+      documentsSkipped: 1,
+    });
+    expect(state.pages().find((page) => page.id === 'big')?.content).toBe(atCap);
+    expect(state.pages().find((page) => page.id === 'small')?.content).toBe('[x](/much-longer-address)');
+  });
+
   it('relinks an unpublished page without creating a redirect', async () => {
     const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[draft](/old)' }], false);
     expect(await updatePage('project', 'target', { slug: 'new' })).toMatchObject({ redirectsAdded: 0, linksUpdated: 1 });

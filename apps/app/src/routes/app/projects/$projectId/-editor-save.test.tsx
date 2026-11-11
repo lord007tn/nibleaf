@@ -226,11 +226,17 @@ describe('AUTH-16 editor save lifecycle', () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(container.textContent).toContain('editor.savedShort');
 
-    // Typing the refused text again does not resend it; the error comes back.
+    // The refusal was measured at revision-1. The baseline is now revision-2,
+    // where the same text may fit (here the server accepts it): it is sent.
+    mocks.update.mockResolvedValue({ ...page, content: 'Huge', updatedAt: 'revision-3' });
     await edit('Huge');
     await debounce();
-    expect(mocks.update).toHaveBeenCalledTimes(2);
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('editor.pageTooLarge');
+    expect(mocks.update).toHaveBeenCalledTimes(3);
+    expect(mocks.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ content: 'Huge', expectedUpdatedAt: 'revision-2' }) }),
+    );
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.textContent).toContain('editor.savedShort');
   });
   it('settles a cancelled debounced draft when undo restores the server copy', async () => {
     await edit('Unsaved');

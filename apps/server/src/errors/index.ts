@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'http:conflict'
   | 'http:unprocessable'
   | 'http:rate_limited'
+  | 'http:payload_too_large'
   | 'http:internal'
   | 'auth:no_user'
   | 'auth:invalid_session'
@@ -102,6 +103,7 @@ const ERROR_STATUS = {
   'http:conflict': 409,
   'http:unprocessable': 422,
   'http:rate_limited': 429,
+  'http:payload_too_large': 413,
   'http:internal': 500,
   'auth:no_user': 401,
   'auth:invalid_session': 401,

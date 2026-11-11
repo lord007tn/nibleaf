@@ -509,10 +509,12 @@ function EditorPage() {
   // The freshest server copy we know of (a save response can be newer than the
   // detail query, which refetches after it).
   const lastSavedRef = useRef<PageNode | null>(null);
-  // The last draft the server refused for its size, with that refusal. Autosave
-  // never sends the same text again (it would fail the same way); the next edit
-  // does, and Retry still can.
-  const tooLargeDraftRef = useRef<{ id: string; title: string; content: string; error: unknown } | null>(null);
+  // The last draft the server refused for its size: the page, the revision it
+  // was measured against, its text, and the refusal. Autosave does not send the
+  // same text at the same revision again (it would fail the same way); the next
+  // edit does, and Retry still can. A successful save or a new server revision
+  // clears it: the same text may fit against another stored body.
+  const tooLargeDraftRef = useRef<{ id: string; revision: string | undefined; title: string; content: string; error: unknown } | null>(null);
   useLayoutEffect(() => {
     draftRef.current = { synced, draft: { title, content }, page };
     updatePageRef.current = updatePage;
@@ -545,6 +547,7 @@ function EditorPage() {
               body: { expectedUpdatedAt: draft.expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
             });
             lastSavedRef.current = saved;
+            tooLargeDraftRef.current = null;
             if (mounted.current) setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
             const latest = draftRef.current;
             if (mounted.current && latest.synced?.id === draft.id) {
@@ -552,7 +555,9 @@ function EditorPage() {
             }
             return saved;
           } catch (error) {
-            if (isPageTooLarge(error)) tooLargeDraftRef.current = { id: draft.id, title: draft.title, content: draft.content, error };
+            if (isPageTooLarge(error)) {
+              tooLargeDraftRef.current = { id: draft.id, revision: draft.expectedUpdatedAt, title: draft.title, content: draft.content, error };
+            }
             if (mounted.current && draftRef.current.synced?.id === draft.id) {
               setSaveError(error);
               setStatus(navigator.onLine === false ? 'offline' : 'error');
@@ -589,9 +594,11 @@ function EditorPage() {
       return;
     }
     const refused = tooLargeDraftRef.current;
-    if (refused && refused.id === page.id && refused.title === title && refused.content === content) {
-      // Still the text the server refused for its size: keep the draft and the
-      // error, and wait for the next edit instead of sending it again.
+    // Another page or a new server revision: that refusal no longer applies.
+    if (refused && (refused.id !== page.id || refused.revision !== synced?.updatedAt)) tooLargeDraftRef.current = null;
+    else if (refused && refused.title === title && refused.content === content) {
+      // Still the text the server refused for its size, at the same revision:
+      // keep the draft and the error, and wait for the next edit.
       saveDraft.cancel();
       setSaveError(refused.error);
       setStatus('error');
