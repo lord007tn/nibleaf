@@ -718,7 +718,7 @@ export const getSitePageMarkdown = async (identifier: string, path: string, lang
 
 const neighbour = (node?: NavNode) => (node ? { title: node.title, path: node.path } : null);
 
-const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ title: string; path: string }> => {
+const breadcrumbTrail = (pages: readonly SnapshotPage[], page: SnapshotPage): Array<{ title: string; path: string }> => {
   const byId = new Map(pages.map((p) => [p.id, p]));
   const trail: Array<{ title: string; path: string }> = [];
   let current: SnapshotPage | undefined = page;
