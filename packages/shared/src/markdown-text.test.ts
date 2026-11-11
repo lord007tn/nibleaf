@@ -150,3 +150,40 @@ describe('cleaning happens once (council #453)', () => {
     expect(excerpt(page.content)).toBe('Read this guide.');
   });
 });
+
+// AUTH-19: the automatic meta description used to read
+// "Install Run the installer, then sign in . See Configuration. First item … | Name | Value |…".
+describe('pageDescription', () => {
+  const page = (content: string, description: string | null = null) => ({ content, description, config: null });
+
+  it('uses the page paragraphs only: no heading, list, table or code text', () => {
+    const content =
+      '# Install\n\nRun the installer, then sign in . See [Configuration](/config).\n\n1. First item\n2. Second item\n\n| Name | Value |\n| --- | --- |\n| a | b |\n\n```bash\nnpm i\n```\n\nThen open the dashboard .';
+    expect(pageDescription(page(content))).toBe('Run the installer, then sign in. See Configuration. Then open the dashboard.');
+  });
+
+  it('keeps paragraphs inside callouts and quotes, in order', () => {
+    const content = '> [!NOTE]\n> Back up the database first.\n\n<Note>\nUse a strong password.\n</Note>\n\n## Steps\n\n- Ignored list item';
+    expect(pageDescription(page(content))).toBe('Back up the database first. Use a strong password.');
+  });
+
+  it('falls back to all visible text when a page has no paragraphs', () => {
+    expect(pageDescription(page('# Shortcuts\n\n- Save with Ctrl+S\n- Search with Ctrl+K'))).toBe('Shortcuts Save with Ctrl+S Search with Ctrl+K');
+  });
+
+  it('tidies Arabic punctuation spacing and caps at about 155 characters on a word boundary', () => {
+    expect(pageDescription(page('افتح لوحة التحكم ، ثم اختر الحجز ؟'))).toBe('افتح لوحة التحكم، ثم اختر الحجز؟');
+    // A dotfile or extension after a space is not punctuation ending a phrase.
+    expect(pageDescription(page('Copy .env.production.example , then edit it .'))).toBe('Copy .env.production.example, then edit it.');
+    const long = pageDescription(page(`${'Configure the reservation calendar for each property. '.repeat(6)}`));
+    expect(long.length).toBeLessThanOrEqual(155);
+    expect(long.endsWith('…')).toBe(true);
+  });
+
+  it('prefers the author description and the SEO override', () => {
+    expect(pageDescription(page('Body text here.', 'Written **summary**.'))).toBe('Written summary.');
+    expect(pageDescription({ content: 'Body.', description: 'Summary.', config: { seo: { metaDescription: 'From SEO settings .' } } })).toBe(
+      'From SEO settings.',
+    );
+  });
+});
