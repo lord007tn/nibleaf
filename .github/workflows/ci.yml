@@ -348,6 +348,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Timing bounds (n against 4n, testing/growth) measure two sides of the same
+      # work; other files in parallel workers on this 2-core runner slow one side.
+      # They run here instead, one package and one file at a time.
+      - name: Growth tests, serial
+        run: pnpm test:growth
+
       - name: Verify indexed multilingual search and chat fixtures
         env:
           QDRANT_INTEGRATION_URL: http://127.0.0.1:6333

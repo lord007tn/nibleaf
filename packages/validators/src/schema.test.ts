@@ -1,4 +1,3 @@
-import { constantGrowthLimit, growthMs } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
 
 it('council: REST revisions survive validation and generated rules round-trip through config', () => {
@@ -375,10 +374,6 @@ describe('addDomainBody', () => {
     const value = normalizeDomainInput(hostile(50_000));
     expect(addDomainBody.safeParse({ domain: hostile(50_000) }).success).toBe(false);
     expect(value.length).toBeLessThanOrEqual(2048);
-    // The input is capped before any work, so 4x the input costs the same
-    // (testing/growth, constant bound).
-    const [small, large] = growthMs(normalizeDomainInput, hostile(12_500), hostile(50_000), { minMs: 12 });
-    expect(large).toBeLessThanOrEqual(constantGrowthLimit(small));
   });
 
   it('reads at most 2,048 characters of a paste', () => {
