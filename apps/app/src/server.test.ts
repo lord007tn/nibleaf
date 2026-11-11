@@ -49,6 +49,32 @@ describe('published Markdown edge routing', () => {
     });
   });
 
+  it.each(['http://localhost:4310/sites/project-1/og/intro.png?lang=ar', 'https://docs-index-test.example/og/intro.png?lang=ar'])(
+    'proxies binary OG cards and conditional headers on %s',
+    async (url) => {
+      mocks.got.mockImplementation(async (target: string) =>
+        target.includes('/og/') ? { ...upstream(Buffer.from('png')), headers: { etag: '"card"' } } : upstream({ data: { projectId: 'project-1' } }),
+      );
+      const response = await server.fetch(new Request(url, { headers: { 'if-none-match': '"previous"' } }));
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toBe('image/png');
+      expect(response.headers.get('etag')).toBe('"card"');
+      expect(await response.text()).toBe('png');
+      const call = mocks.got.mock.calls.find(([target]) => String(target).includes('/og/'));
+      expect(call?.[0]).toContain('/api/public/sites/project-1/og/intro.png?lang=ar');
+      expect(call?.[1]).toMatchObject({ responseType: 'buffer', headers: { 'if-none-match': '"previous"' } });
+      expect(mocks.startHandler).not.toHaveBeenCalled();
+    },
+  );
+
+  it('preserves private OG refusals and never falls through to HTML', async () => {
+    mocks.got.mockResolvedValueOnce(upstream('', 404));
+    const response = await server.fetch(new Request('http://localhost:4310/sites/project-1/og/intro.png'));
+    expect(response.status).toBe(404);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(mocks.startHandler).not.toHaveBeenCalled();
+  });
+
   it.each(['/', '/ar', '/pricing', '/sign-in', '/dashboard', '/sites/project-1/intro'])(
     'keeps nonce HTML private on %s, even when credentials are present',
     async (path) => {
