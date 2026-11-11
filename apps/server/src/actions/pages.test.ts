@@ -15,7 +15,7 @@ const database = vi.hoisted(() => ({
 const recordEdit = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/page-address-changes', () => ({
   prepareAddressLinks: async () => new Map(),
-  prepareReorderAddressLinks: vi.fn(async () => new Map()),
+  prepareReorderAddressLinks: vi.fn(async () => ({ documents: new Map(), assertRevisions: async () => undefined })),
   assertAddressLinkRevisions: async () => undefined,
   preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 }),
 }));

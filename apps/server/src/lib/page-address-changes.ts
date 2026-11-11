@@ -27,16 +27,15 @@ export const prepareAddressLinks = async (projectId: string, override?: { id: st
 };
 type PreparedAddressLinks = Awaited<ReturnType<typeof prepareAddressLinks>>;
 
-export const assertAddressLinkRevisions = async (
-  projectId: string,
-  prepared: PreparedAddressLinks,
-  tx: Prisma.TransactionClient,
-  scope: 'project' | 'rewritten' = 'project',
-) => {
-  const pages = await tx.page.findMany({
-    where: { projectId, ...(scope === 'rewritten' ? { id: { in: [...prepared.keys()] } } : {}) },
-    select: { id: true, content: true, updatedAt: true },
+const addressLinkRace = () =>
+  new AppError({
+    code: 'page:address_conflict',
+    message: 'Pages changed while links were prepared. Try the address change again.',
+    details: { reason: 'address_raced' },
   });
+
+export const assertAddressLinkRevisions = async (projectId: string, prepared: PreparedAddressLinks, tx: Prisma.TransactionClient) => {
+  const pages = await tx.page.findMany({ where: { projectId }, select: { id: true, content: true, updatedAt: true } });
   if (
     pages.length !== prepared.size ||
     pages.some((page) => {
@@ -44,11 +43,7 @@ export const assertAddressLinkRevisions = async (
       return !base || base.updatedAt.getTime() !== page.updatedAt.getTime() || base.content !== page.content;
     })
   )
-    throw new AppError({
-      code: 'page:address_conflict',
-      message: 'Pages changed while links were prepared. Try the address change again.',
-      details: { reason: 'address_raced' },
-    });
+    throw addressLinkRace();
 };
 
 const redirectFailure = (issues: import('@nibleaf/shared/redirects').RedirectValidationIssue[]) =>
@@ -176,7 +171,7 @@ const rewriteAddressDocument = (
   });
 };
 
-/** Discover links outside locks; retain revisions only for documents that will be rewritten. */
+/** Parse outside locks and retain a revision baseline for every document in the affected branches. */
 export const prepareReorderAddressLinks = async (projectId: string, changes: PagePathChange[]) => {
   const { project, pages, snapshot } = await loadAddressContext(projectId, prisma);
   const nextSnapshot = {
@@ -194,14 +189,38 @@ export const prepareReorderAddressLinks = async (projectId: string, changes: Pag
   };
   const context = addressMappings(nextSnapshot, project.languages, changes);
   const prepared: PreparedAddressLinks = new Map();
+  const revisions = new Map<string, Date>();
   for (const page of pages) {
     if (!changes.some((change) => change.branchId === page.branchId)) continue;
+    revisions.set(page.id, page.updatedAt);
     const links = preparePageLinks(page.content);
     const path = changes.find((change) => change.id === page.id)?.path ?? page.path;
     if (!rewriteAddressDocument({ ...page, path }, changes, context, links).linksUpdated) continue;
     prepared.set(page.id, { content: page.content, updatedAt: page.updatedAt, links });
   }
-  return prepared;
+  return {
+    documents: prepared,
+    assertRevisions: async (tx: Prisma.TransactionClient) => {
+      const current = await tx.page.findMany({
+        where: { projectId, id: { in: [...revisions.keys()] } },
+        select: { id: true, updatedAt: true },
+      });
+      if (current.length !== revisions.size) throw addressLinkRace();
+      const changedIds = current.filter((page) => page.updatedAt.getTime() !== revisions.get(page.id)?.getTime()).map((page) => page.id);
+      if (!changedIds.length) return;
+      const changed = await tx.page.findMany({
+        where: { projectId, id: { in: changedIds } },
+        select: { id: true, path: true, branchId: true, languageId: true, content: true },
+      });
+      if (changed.length !== changedIds.length) throw addressLinkRace();
+      for (const page of changed) {
+        const path = changes.find((change) => change.id === page.id)?.path ?? page.path;
+        const result = rewriteAddressDocument({ ...page, path }, changes, context, preparePageLinks(page.content));
+        // A fresh preparation must replace any stale patch or newly relevant link.
+        if (prepared.has(page.id) || result.linksUpdated) throw addressLinkRace();
+      }
+    },
+  };
 };
 
 /** Called with the project and page locks held, after recomputing draft paths. */

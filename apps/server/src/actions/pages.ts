@@ -601,7 +601,7 @@ const reorderPlanRevision = (pages: (ReorderRow & { path: string })[]) => JSON.s
 
 const reorderPagesAttempt = async (projectId: string, request: ReorderPagesBody) => {
   const observed = await planReorder(projectId, request, prisma);
-  const prepared = observed.changes.length ? await prepareReorderAddressLinks(projectId, observed.changes) : new Map();
+  const prepared = observed.changes.length ? await prepareReorderAddressLinks(projectId, observed.changes) : undefined;
   const branchId = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
@@ -611,7 +611,7 @@ const reorderPagesAttempt = async (projectId: string, request: ReorderPagesBody)
         throw new AppError({ code: 'page:address_conflict', details: { reason: 'address_raced' } });
       }
       const { byPage, body, nextTree, moved, proposed, moveBranchId } = plan;
-      if (prepared.size) await assertAddressLinkRevisions(projectId, prepared, tx, 'rewritten');
+      await prepared?.assertRevisions(tx);
       for (const id of moved) {
         const page = nextTree.get(id);
         const before = byPage.get(id);
@@ -632,7 +632,7 @@ const reorderPagesAttempt = async (projectId: string, request: ReorderPagesBody)
         projectId,
         changes.map((change) => ({ ...change, oldLanguageId: byPage.get(change.id)?.languageId })),
         tx,
-        prepared,
+        prepared?.documents ?? new Map(),
       );
       return moveBranchId ?? (body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined);
     },
