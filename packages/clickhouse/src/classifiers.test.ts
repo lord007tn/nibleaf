@@ -1,3 +1,4 @@
+import { growthMs, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
 import { classifyCrawledResource, classifyReferral, classifyUserAgent, normalizeSearchTerm } from './classifiers';
 import { buildAnalyticsEvent, publicAnalyticsEventSchema } from './events';
@@ -123,17 +124,17 @@ it('keeps punctuation around redacted emails and handles several per token', () 
   expect(normalizeSearchTerm('@scope/pkg and user@host')).toBe('@scope/pkg and user@host');
 });
 it('redacts in linear time on adversarial input', () => {
+  // Each shape at 4x the size costs about 4x (testing/growth); the larger is the size these always used.
   const adversarial = [
-    `"${'\\"'.repeat(20_000)}`,
-    `${'a'.repeat(40_000)}@`,
-    `${'@'.repeat(40_000)}.`,
-    `${'a.'.repeat(20_000)}@x`,
-    'a@'.repeat(20_000),
-    `x@${'b'.repeat(40_000)}`,
+    (n: number) => `"${'\\"'.repeat(n / 2)}`,
+    (n: number) => `${'a'.repeat(n)}@`,
+    (n: number) => `${'@'.repeat(n)}.`,
+    (n: number) => `${'a.'.repeat(n / 2)}@x`,
+    (n: number) => 'a@'.repeat(n / 2),
+    (n: number) => `x@${'b'.repeat(n)}`,
   ];
-  for (const input of adversarial) {
-    const started = performance.now();
-    normalizeSearchTerm(input);
-    expect(performance.now() - started).toBeLessThan(250);
+  for (const build of adversarial) {
+    const [small, large] = growthMs(normalizeSearchTerm, build(10_000), build(40_000));
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   }
 });

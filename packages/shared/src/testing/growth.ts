@@ -45,6 +45,38 @@ export const growthMs = <T>(run: (input: T) => unknown, small: T, large: T, { mi
   return [median(times[0]), median(times[1])];
 };
 
+/** `growthMs` for async work (index building, a model call through a fake adapter):
+ *  the same measurement, awaiting each run. */
+export const growthMsAsync = async <T>(
+  run: (input: T) => Promise<unknown>,
+  small: T,
+  large: T,
+  { minMs = 4 }: { minMs?: number } = {},
+): Promise<[number, number]> => {
+  let repeat = 1;
+  const time = async (input: T) => {
+    const started = performance.now();
+    for (let index = 0; index < repeat; index += 1) await run(input);
+    return performance.now() - started;
+  };
+  await time(small);
+  await time(large);
+  while ((await time(small)) < minMs && repeat < 1 << 24) repeat *= 2;
+  await time(large);
+  const times: [number[], number[]] = [[], []];
+  for (let round = 0; round < 3; round += 1) {
+    if (round % 2 === 0) {
+      times[0].push(await time(small));
+      times[1].push(await time(large));
+    } else {
+      times[1].push(await time(large));
+      times[0].push(await time(small));
+    }
+  }
+  const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
+  return [median(times[0]), median(times[1])];
+};
+
 /** The most a 4x larger input may cost when the work is linear: 8x, plus 20 ms
  *  of timer and scheduling noise. Quadratic work (16x) fails it. */
 export const linearGrowthLimit = (smallMs: number): number => 8 * smallMs + 20;
