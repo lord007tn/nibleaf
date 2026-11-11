@@ -1,6 +1,6 @@
 import { createJoinLinkBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { createJoinLink, listJoinLinks, regenerateJoinLink, revokeJoinLink } from '@/actions/join-links';
+import { createJoinLink, deleteJoinLink, listJoinLinks, regenerateJoinLink, revokeJoinLink } from '@/actions/join-links';
 import { getContextMembershipOrThrow, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import routes from './routes';
@@ -17,6 +17,9 @@ const app = new Hono<HonoEnv>()
   )
   .post('/:id/revoke', ...routes.revoke, async (ctx) =>
     ctx.json({ data: await revokeJoinLink(getContextOrganizationIdOrThrow(), ctx.req.param('id'), actor(), ctx.req.param('projectId')) }, 200),
+  )
+  .delete('/:id', ...routes.remove, async (ctx) =>
+    ctx.json({ data: await deleteJoinLink(getContextOrganizationIdOrThrow(), ctx.req.param('id'), actor(), ctx.req.param('projectId')) }, 200),
   )
   .post('/:id/regenerate', ...routes.regenerate, async (ctx) =>
     ctx.json({ data: await regenerateJoinLink(getContextOrganizationIdOrThrow(), ctx.req.param('id'), actor(), ctx.req.param('projectId')) }, 200),

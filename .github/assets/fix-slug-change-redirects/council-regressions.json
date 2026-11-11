@@ -1,0 +1,272 @@
+{
+  "baselineHead": "1daea7bab2c9b9a80f9e690355c53626bbff9732",
+  "fixedSourceCommit": "a572752dade02977b77295509c39b3c3f2550cc0",
+  "method": "Identical test files copied into an isolated detached baseline checkout. Only test files changed there; production code and lockfile stayed at the baseline revision.",
+  "targetedRegressions": [
+    {
+      "file": "apps/app/src/components/editor/editor-draft.test.ts",
+      "test": "aiAssistState council: a conflicted draft never hydrates from a refreshed server copy or autosaves",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected { id: 'a', …(3) } to be null",
+      "testSha256": "25809fd2ad0dd389d25631eb9c0c07860dfc0075c3017877014612b9a705d965",
+      "id": "R01"
+    },
+    {
+      "file": "apps/app/src/components/editor/editor-save-queue.test.ts",
+      "test": "editor save queue council: rename conflict blocks queued stale saves without dropping unsaved drafts",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "Error: promise resolved \"'saved'\" instead of rejecting",
+      "testSha256": "01267f36fd2a79cecd7f3df5ca9ad6d23e580349b8a7d1f5576760ae1bd2a463",
+      "id": "R02"
+    },
+    {
+      "file": "apps/app/src/components/editor/editor-save-queue.test.ts",
+      "test": "editor save queue council: successful queued saves advance only their own base revision",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected { id: 'page-a', title: 'Title', …(2) } to match object { expectedUpdatedAt: 'revision-2' }",
+      "testSha256": "01267f36fd2a79cecd7f3df5ca9ad6d23e580349b8a7d1f5576760ae1bd2a463",
+      "id": "R03"
+    },
+    {
+      "file": "apps/app/src/components/project-settings/redirects-section.test.tsx",
+      "test": "council: redirect settings preserve generated provenance until the writer edits a rule",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected last \"vi.fn()\" call to have been called with [ Anything, …(1) ]",
+      "testSha256": "95820a26024f97dd017bfe39924c377a1116470b78f40e2be99cdcdcc19e6ab6",
+      "id": "R04"
+    },
+    {
+      "file": "apps/app/src/hooks/api/errors.test.ts",
+      "test": "friendlyErrorMessage council: exposes the localized address remedy for page:address_conflict { …(2) }",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected 't:editor.pageSettings.saveError' to be 't:editor.pageSettings.addressLocaleCo…' // Object.is equality",
+      "testSha256": "763d70b5b41aac3bebec1d09c4da39a537e28bd3119ff620e21c7db65b56506b",
+      "id": "R05"
+    },
+    {
+      "file": "apps/app/src/hooks/api/errors.test.ts",
+      "test": "friendlyErrorMessage council: exposes the localized address remedy for page:address_conflict { …(3) }",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected 't:editor.pageSettings.saveError' to be 't:editor.pageSettings.addressUserRule…' // Object.is equality",
+      "testSha256": "763d70b5b41aac3bebec1d09c4da39a537e28bd3119ff620e21c7db65b56506b",
+      "id": "R06"
+    },
+    {
+      "file": "apps/app/src/hooks/api/errors.test.ts",
+      "test": "friendlyErrorMessage council: exposes the localized address remedy for page:redirect_invalid { issues: [ [Object] ] }",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected 't:editor.pageSettings.saveError' to be 't:editor.pageSettings.addressRedirect…' // Object.is equality",
+      "testSha256": "763d70b5b41aac3bebec1d09c4da39a537e28bd3119ff620e21c7db65b56506b",
+      "id": "R07"
+    },
+    {
+      "file": "apps/app/src/hooks/api/errors.test.ts",
+      "test": "friendlyErrorMessage council: exposes the localized address remedy for page:redirect_invalid { issues: [ [Object] ] }",
+      "case": 2,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected 't:editor.pageSettings.saveError' to be 't:editor.pageSettings.addressRedirect…' // Object.is equality",
+      "testSha256": "763d70b5b41aac3bebec1d09c4da39a537e28bd3119ff620e21c7db65b56506b",
+      "id": "R08"
+    },
+    {
+      "file": "apps/app/src/routes/app/projects/$projectId/-editor-settings.test.tsx",
+      "test": "editor AI assist availability council: autosave carries the editor base revision while a remote rename refresh arrives",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected last \"vi.fn()\" call to have been called with [ ObjectContaining{…} ]",
+      "testSha256": "7f58569bbb35bd7e2e323766c17efc6ab344373e3ed018ae2fc50ca6b29c1333",
+      "id": "R09"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.postgres.test.ts",
+      "test": "page address transactions in PostgreSQL council: 313-page fixture measures real transaction time with no parsing under locks",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected 313 to be +0 // Object.is equality",
+      "testSha256": "433b785942ec0ee2eb228a7757b2c3d17dd08d0641fbc4a254be18b5435ea02c",
+      "id": "R10"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.postgres.test.ts",
+      "test": "page address transactions in PostgreSQL council: real PostgreSQL rollback, commit, and stale autosave preserve the address-link invariant",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "Error: promise resolved \"{ …(21) }\" instead of rejecting",
+      "testSha256": "433b785942ec0ee2eb228a7757b2c3d17dd08d0641fbc4a254be18b5435ea02c",
+      "id": "R11"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: a document changed after preparation aborts safely instead of applying stale patches",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "Error: promise resolved \"{ id: 'target', …(20) }\" instead of rejecting",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R12"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: a user redirect is never replaced by a generated redirect",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "Error: promise resolved \"{ id: 'target', …(20) }\" instead of rejecting",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R13"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: conflicting locale destinations roll back instead of letting the last language win",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "Error: promise resolved \"[ { id: 'english', …(17) }, …(3) ]\" instead of rejecting",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R14"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: document parsing never runs under the structural transaction lock",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected 2 to be +0 // Object.is equality",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R15"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: failed MDX documents are counted and left untouched",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected { id: 'target', …(20) } to match object { documentsSkipped: 1, …(1) }",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R16"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: generated provenance survives validation and a sequential slug swap",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected { from: '/a', to: '/b' } to match object { from: '/a', to: '/b', …(1) }",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R17"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: redirect validation returns structured issues for a localized remedy",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "Error: expected AppError: Redirect validation failed (1):… { …(4) } to match object { code: 'page:redirect_invalid', …(1) }",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R18"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: relative and reference destinations resolve against a moving source old address",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected +0 to be 2 // Object.is equality",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R19"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: sequential language moves cannot redirect both published locales to the last destination",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "Error: promise resolved \"[ { id: 'english', …(17) }, …(3) ]\" instead of rejecting",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R20"
+    },
+    {
+      "file": "apps/server/src/actions/pages.address-changes.test.ts",
+      "test": "page address preservation through page actions council: stale REST autosave cannot undo a rename link rewrite",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "Error: promise resolved \"{ id: 'source', …(20) }\" instead of rejecting",
+      "testSha256": "aafcd905c7baf85c06a7179668066a50d2b27cc664b804abe2d4ba02bd4cbf82",
+      "id": "R21"
+    },
+    {
+      "file": "apps/server/src/lib/rewrite-page-links.test.ts",
+      "test": "rewritePageLinks council: expressions, multiline JSX props and HTML stay byte-identical",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected '{true && \"[expression](/new)\"}\\n\\n<Ca…' to be '{true && \"[expression](/old)\"}\\n\\n<Ca…' // Object.is equality",
+      "testSha256": "9c88815666d91476f976cf5222158ebead06598e546394978a520311f60677aa",
+      "id": "R22"
+    },
+    {
+      "file": "apps/server/src/mcp/content-write.test.ts",
+      "test": "update_page council: REST page conflicts retain the MCP revision-conflict contract",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected { Object (code, message, ...) } to match object { code: 'mcp:revision_conflict', …(1) }",
+      "testSha256": "9430ef13bc3c9525e58f37ee2771860e9c0174648125484ea9cc53f40d375a2c",
+      "id": "R23"
+    },
+    {
+      "file": "packages/validators/src/schema.test.ts",
+      "test": "council: REST revisions survive validation and generated rules round-trip through config",
+      "case": 1,
+      "baseline": "failed",
+      "fixed": "passed",
+      "baselineFailure": "AssertionError: expected { content: 'Draft' } to match object { Object (expectedUpdatedAt) }",
+      "testSha256": "e9a69f6d18fc1a308b31d139b4559b39ce47c0c8092811c8ea0d1ed63a4a0980",
+      "id": "R24"
+    }
+  ],
+  "conservationControl": {
+    "test": "preserves Arabic, emoji and CRLF bytes outside the patched destination",
+    "baseline": "passed",
+    "fixed": "passed"
+  },
+  "performance": {
+    "database": "PostgreSQL 18.6, isolated local test database",
+    "pages": 313,
+    "charactersPerPage": 12597,
+    "baseline": {
+      "fixture": "313-pages",
+      "charactersPerPage": 12597,
+      "transactionMs": 4152,
+      "requestMs": 4181,
+      "parsesUnderLock": 313
+    },
+    "fixed": {
+      "fixture": "313-pages",
+      "charactersPerPage": 12597,
+      "transactionMs": 259,
+      "requestMs": 4088,
+      "parsesUnderLock": 0
+    },
+    "limits": "One synthetic run per revision on this machine; not a production latency estimate. Transaction time includes begin/commit and database round trips. Request time includes preparation."
+  }
+}

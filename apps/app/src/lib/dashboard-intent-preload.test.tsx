@@ -84,7 +84,7 @@ describe('useDashboardIntentPreload', () => {
     await mount();
     await settle();
     // Always revalidated, never a per-build query (that would rename reader chunks every build).
-    expect(fetchManifest).toHaveBeenCalledWith('/assets/dashboard-preloads.json', { cache: 'no-cache' });
+    expect(fetchManifest).toHaveBeenCalledWith('/dashboard-preloads.json', { cache: 'no-cache' });
 
     const sites = link('/app/sites');
     hover(sites);

@@ -400,6 +400,7 @@ export interface NavNode {
 
 export interface SiteShell {
   project: {
+    icon?: string | null;
     id: string;
     name: string;
     slug: string;
@@ -445,6 +446,8 @@ export interface SitePage {
     description: string | null;
     /** Summary derived from the body: SEO/social fallback only, never a lede. */
     excerpt: string;
+    /** Cleaned once by the API: SEO override, then summary, then body excerpt. */
+    seoDescription?: string;
     icon: string | null;
     path: string;
     content: string;

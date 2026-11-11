@@ -121,6 +121,13 @@ describe('buildLlmsTxt', () => {
 });
 
 describe('buildLlmsFullTxt', () => {
+  it('prefers clean author SEO overrides for summaries in both AI documents', () => {
+    const snap = snapshot([
+      page({ id: 'intro', description: '**Summary** [link](/docs)', config: { seo: { metaDescription: '[!TIP] `Preferred` summary' } } }),
+    ]);
+    expect(buildLlmsTxt(snap, BASE)).toContain(': Preferred summary');
+    expect(buildLlmsFullTxt(snap, BASE)).toContain('> Preferred summary');
+  });
   it('concatenates page markdown with per-page headers and source URLs', () => {
     const snap = snapshot([
       page({ id: 'intro', title: 'Introduction', content: '# Welcome\n\nHello.' }),

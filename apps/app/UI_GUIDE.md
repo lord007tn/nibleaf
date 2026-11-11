@@ -77,6 +77,21 @@ A toggle or select that saves on its own needs no save bar. Its mutation:
 - is optimistic only when the outcome is predictable and touches nothing else (`operations/ui-overhaul.md` §8.2);
 - rolls back on failure and toasts a plain-language message.
 
+## Permissions
+
+Read `useSiteAccess(projectId)` from `features/site-access/api/use-site-access` and use the pure model's
+`decide(access, action)` in feature models:
+
+```ts
+const edit = decide(access, { type: 'site.content.edit' });
+const remove = decide(access, { type: 'site.member.remove', member });
+```
+
+`allowed` enables the control; `locked` disables it without permission copy while access is unknown.
+`denied` carries a `MessageKey` to translate into a visible reason. Show one retry at the section top for
+`unavailable`. Cached `ready` access remains usable when `stale`. Keep role checks out of components;
+the server still authorizes every write.
+
 ## Disabled, unavailable, empty
 
 - **Disabled controls say why.** Use `disabledReason` on `SettingsRow`, `Button`, `TooltipButton` and

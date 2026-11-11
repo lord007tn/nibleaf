@@ -1,10 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import type { AnalyticsPayload, ConsentState, PublicAnalyticsEvent } from '@nibleaf/clickhouse';
-import { prisma } from '@nibleaf/database';
+import { deliveryPlanSelect, loadDefaultDeliveryPlan, prisma } from '@nibleaf/database';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
-import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import {
+  type AddonDeliveryPlan,
+  type AddonDeliveryPlanAssignment,
+  projectAddonRowsForDelivery,
+  projectConfigWithAddons,
+} from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
+import { pageDescription, pageExcerpt } from '@nibleaf/shared/markdown-text';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -14,7 +20,6 @@ import {
   isPageTranslation,
   mergeLanguageChrome,
   type NavNode,
-  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
@@ -104,6 +109,8 @@ interface LiveChromeRow {
   }[];
   addons: { key: string; enabled: boolean; config: unknown }[];
   organization: { usagePlan: AddonDeliveryPlanAssignment | null };
+  /** The canonical default plan, for an org without an active assignment. */
+  defaultPlan: AddonDeliveryPlan | null;
 }
 
 /** A snapshot project enriched with the fields the published-site edge needs
@@ -176,13 +183,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
               status: true,
               effectiveAt: true,
               expiresAt: true,
-              plan: {
-                select: {
-                  key: true,
-                  active: true,
-                  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
-                },
-              },
+              plan: { select: deliveryPlanSelect },
             },
           },
         },
@@ -208,7 +209,9 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       },
     },
   });
-  const stamped = live ? { ...live, stamp: await assetReferences.stamp(projectId, live) } : null;
+  // The canonical default plan rides with the cached row; the plan itself is
+  // evaluated per request (expiry is time-based), see overlayLiveChrome.
+  const stamped = live ? { ...live, defaultPlan: await loadDefaultDeliveryPlan(), stamp: await assetReferences.stamp(projectId, live) } : null;
   if (!stamped || stamped.stamp !== null) liveChromeCache.set(projectId, stamped);
   return stamped;
 };
@@ -230,7 +233,7 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
   // so they never appear publicly until the next publish, and the frozen
   // label/direction/isDefault keep the exactly-one-default invariant intact.
   const liveByCode = new Map(live.languages.map((language) => [language.code, language]));
-  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan));
+  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan, live.defaultPlan));
   return {
     ...project,
     name: live.name,
@@ -557,8 +560,34 @@ export const getSiteOpenApi = async (identifier: string) => {
 
 /** A single published page with TOC, breadcrumbs, and prev/next neighbours.
  *  Scoped to the active language, falling back to the default language. */
-export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) => {
-  const { snapshot } = await getPublished(identifier);
+export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) =>
+  publishedPage(await getPublished(identifier), path, lang, version);
+
+/** Public cards use the same viewer gate and frozen page resolution as HTML,
+ * but never accept an authenticated view of WORKSPACE/READERS content. */
+export const getSiteOgData = async (identifier: string, path: string, lang?: string, version?: string) => {
+  const published = await getPublished(identifier);
+  if ((published.snapshot.project as PublicSnapshotProject).accessMode !== 'PUBLIC' || published.viewer.kind !== 'public') {
+    throw notFound('site');
+  }
+  const data = publishedPage(published, path, lang, version);
+  const config = data.project.config as {
+    seo?: { metaTitle?: string };
+    styling?: { primaryColor?: string };
+    branding?: { logoLight?: string };
+  } | null;
+  return {
+    projectId: data.project.id,
+    deploymentId: published.deploymentId,
+    title: data.page.config?.seo?.metaTitle?.trim() || data.page.title,
+    siteName: data.languageConfig?.seo?.metaTitle || config?.seo?.metaTitle || data.languageConfig?.name || data.project.name,
+    brandColor: config?.styling?.primaryColor || '#2563eb',
+    logo: config?.branding?.logoLight || null,
+    rtl: data.project.languages.find((language) => language.code === data.activeLanguage)?.direction === 'RTL',
+  };
+};
+
+const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string, version?: string) => {
   // The page lookup is shared with the pre-publish link checks (`resolveSitePage`).
   const match = resolveSitePage(snapshot, path, lang, version);
   if (!match) {
@@ -623,6 +652,8 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
       // the page's own first paragraph twice.
       description: explicitPageDescription(page),
       excerpt: pageExcerpt(page),
+      // Cleaned once here; the reader only truncates (never re-parses) it.
+      seoDescription: pageDescription(page),
       icon: page.icon,
       path: page.path,
       content: page.content,

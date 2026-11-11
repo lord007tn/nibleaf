@@ -37,6 +37,9 @@ vi.mock('@nibleaf/clickhouse', () => ({
   buildAnalyticsEvent: mocks.buildAnalyticsEvent,
 }));
 vi.mock('@nibleaf/database', () => ({
+  // The canonical free plan as seeded in production: no entitlement rows.
+  deliveryPlanSelect: {},
+  loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
   Prisma: { DbNull: null },
   prisma: {
     $queryRaw: mocks.queryRaw,

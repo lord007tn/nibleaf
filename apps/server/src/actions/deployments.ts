@@ -1,6 +1,6 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
-import { type Deployment, Prisma, prisma } from '@nibleaf/database';
+import { type Deployment, deliveryPlanSelect, loadDefaultDeliveryPlan, Prisma, prisma } from '@nibleaf/database';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { type RedirectValidationIssue, summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
@@ -109,13 +109,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
               status: true,
               effectiveAt: true,
               expiresAt: true,
-              plan: {
-                select: {
-                  key: true,
-                  active: true,
-                  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
-                },
-              },
+              plan: { select: deliveryPlanSelect },
             },
           },
         },
@@ -138,7 +132,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
     updatedAt: updatedAt.toISOString(),
   }));
   return buildSnapshot(
-    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan) },
+    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan, await loadDefaultDeliveryPlan()) },
     pageRows,
     new Date().toISOString(),
   );

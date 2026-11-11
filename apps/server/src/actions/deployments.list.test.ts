@@ -4,6 +4,9 @@ const mocks = vi.hoisted(() => ({ deploymentFindMany: vi.fn() }));
 
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), QueueNames: { PUBLISH: 'publish' } }));
 vi.mock('@nibleaf/database', () => ({
+  // The canonical free plan as seeded in production: no entitlement rows.
+  deliveryPlanSelect: {},
+  loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
   Prisma: { PrismaClientKnownRequestError: class extends Error {}, DbNull: 'DbNull' },
   prisma: { deployment: { findMany: mocks.deploymentFindMany } },
 }));

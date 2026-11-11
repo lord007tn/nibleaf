@@ -35,7 +35,6 @@ import { DomainSection } from '@/components/project-settings/domain-section';
 import { ExportsSection } from '@/components/project-settings/exports-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { LanguagesSection } from '@/components/project-settings/languages-section';
-import { MembersSection } from '@/components/project-settings/members-section';
 import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { SearchSection } from '@/components/project-settings/search-section';
 import {
@@ -52,6 +51,7 @@ import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
+import { SiteTeamPage } from '@/features/people/components/site-team-page';
 import type { Project } from '@/hooks/api';
 import { type SwitcherOrganization, useOrganizationOfProject, useProject, useProjectMembers } from '@/hooks/api';
 import {
@@ -457,7 +457,7 @@ function ActiveSection({
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
-    members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
+    members: <SiteTeamPage key={`members-${projectId}`} organization={organization} projectId={projectId} siteName={project.name} />,
     apiKeys: <ApiKeysTab role={role} key={`api-keys-${projectId}`} projectId={projectId} />,
     usage: (
       <>

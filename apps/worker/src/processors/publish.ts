@@ -7,7 +7,7 @@ import {
   clickHouseWritesEnabled,
   deterministicAnalyticsEventId,
 } from '@nibleaf/clickhouse';
-import { type Deployment, Prisma, type Project, prisma } from '@nibleaf/database';
+import { type Deployment, deliveryPlanSelect, loadDefaultDeliveryPlan, Prisma, type Project, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks } from '@nibleaf/shared/publish-checks';
@@ -320,13 +320,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
                 status: true,
                 effectiveAt: true,
                 expiresAt: true,
-                plan: {
-                  select: {
-                    key: true,
-                    active: true,
-                    entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
-                  },
-                },
+                plan: { select: deliveryPlanSelect },
               },
             },
           },
@@ -381,7 +375,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     const draftSnapshot =
       approved ??
       buildSnapshot(
-        { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan) },
+        { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan, await loadDefaultDeliveryPlan()) },
         pageRows,
         new Date().toISOString(),
       );

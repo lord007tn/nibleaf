@@ -9,14 +9,12 @@ import type {
   CreatePageBody,
   CreateProjectBody,
   GitbookImportBody,
-  InviteMemberBody,
   MarkNotificationsReadBody,
   MintlifyImportBody,
   ProjectConfigUpdate,
   ReorderPagesBody,
   RotateApiKeyBody,
   UpdateLanguageBody,
-  UpdateMemberRoleBody,
   UpdatePageBody,
   UpdateProjectAddonBody,
   UpdateProjectBody,
@@ -254,11 +252,17 @@ export const useUpdatePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ pageId, body }: { pageId: string; body: UpdatePageBody }) =>
-      mutateData<Page>(
+      mutateData<Page & { addressChanged: boolean; redirectsAdded: number; linksUpdated: number; documentsSkipped: number }>(
         await api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }),
         'Could not save the page.',
       ),
-    onSuccess: (_data, { pageId }) => {
+    onError: (_error, { pageId }) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
+    },
+    onSuccess: (data, { pageId }) => {
+      if (data.addressChanged) {
+        qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+      }
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
@@ -310,6 +314,7 @@ export const useReorderPages = (projectId: string) => {
       for (const [key, pages] of context?.previous ?? []) qc.setQueryData(key, pages);
     },
     onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
       void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
       return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
     },
@@ -472,51 +477,6 @@ export const useDeleteAsset = (projectId: string) => {
     mutationFn: async (assetId: string) =>
       mutateData(await api.app.projects[':projectId'].assets[':assetId'].$delete({ param: { projectId, assetId } }), 'Could not delete the file.'),
     onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.assets.all(projectId) }),
-  });
-};
-
-// ─── Per-site members (each site owns its own people/roles) ──────────────────
-
-export const useInviteProjectMember = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: InviteMemberBody) =>
-      mutateData(await api.app.projects[':projectId'].members.invite.$post({ param: { projectId }, json: body }), 'Could not send the invite.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
-  });
-};
-
-export const useUpdateProjectMemberRole = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: UpdateMemberRoleBody }) =>
-      mutateData(
-        await api.app.projects[':projectId'].members[':id'].role.$patch({ param: { projectId, id }, json: body }),
-        'Could not update the role.',
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
-  });
-};
-
-export const useRemoveProjectMember = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData(await api.app.projects[':projectId'].members[':id'].$delete({ param: { projectId, id } }), 'Could not remove the member.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
-  });
-};
-
-export const useCancelProjectInvitation = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData(
-        await api.app.projects[':projectId'].members.invitations[':id'].$delete({ param: { projectId, id } }),
-        'Could not revoke the invitation.',
-      ),
-    // A refused revoke (already accepted) also means the list is out of date.
-    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
   });
 };
 
