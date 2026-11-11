@@ -2,6 +2,14 @@
 set -eu
 
 cmd="${1:-help}"
+# Platforms that run one image per service without a per-service command (for
+# example Coolify Docker Image applications) select the role through
+# NIBLEAF_COMMAND instead. An explicit command argument always wins.
+if [ "$cmd" = "help" ] && [ -n "${NIBLEAF_COMMAND:-}" ]; then
+  cmd="$NIBLEAF_COMMAND"
+  if [ "$#" -gt 0 ]; then shift; fi
+  set -- "$cmd" "$@"
+fi
 
 # Known weak/demo secrets that must never be used in production. The compose
 # file ships these as defaults so local `docker compose up` works out of the box;
@@ -70,6 +78,16 @@ case "$cmd" in
     ;;
   server)
     require_prod_secret
+    # Rolling deploys (operations/runbook-rolling-deploys.md): the new API
+    # container applies expand-only migrations BEFORE it can become healthy, so
+    # a failed migration leaves the container unhealthy and the platform keeps
+    # the previous one serving. Prisma serializes concurrent runs with an
+    # advisory lock. Never seeds.
+    if [ "${NIBLEAF_MIGRATE_ON_START:-}" = "true" ]; then
+      echo "[nibleaf] applying database migrations before start…"
+      (cd packages/database && node ../../node_modules/prisma/build/index.js migrate deploy)
+      echo "[nibleaf] migrations applied"
+    fi
     echo "[nibleaf] starting API server on :${API_PORT:-4311}"
     # Keep the service itself under Docker's init so SIGTERM reaches its handler.
     cd apps/server
