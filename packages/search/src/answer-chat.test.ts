@@ -393,33 +393,37 @@ describe('a bounded context and strict reservations', () => {
   });
 
   it('sizes and fits 1 MB of digits and rare characters in linear time', () => {
-    const mixed = Array.from({ length: 150_000 }, (_, index) => (index % 2 ? '12 34 ' : '𠀀😀')).join('');
-    expect(tokenBound(mixed)).toBeGreaterThan(1_000_000);
-    const huge = sized(0, mixed);
-    const twelve = Array.from({ length: 12 }, (_, index) => ({ ...huge, id: `c${index}` }));
-    const shape: ChatTurnShape = {
-      question: mixed,
-      history: Array.from({ length: 12 }, (_, index) => ({ role: index % 2 ? ('assistant' as const) : ('user' as const), content: mixed })),
-      language: 'en',
-      pageContext: { title: mixed, path: mixed },
+    const mixedOf = (segments: number) => Array.from({ length: segments }, (_, index) => (index % 2 ? '12 34 ' : '𠀀😀')).join('');
+    /** Everything a chat turn sizes and fits, for one input. */
+    const sizeAndFit = (mixed: string) => {
+      const huge = sized(0, mixed);
+      const twelve = Array.from({ length: 12 }, (_, index) => ({ ...huge, id: `c${index}` }));
+      const shape: ChatTurnShape = {
+        question: mixed,
+        history: Array.from({ length: 12 }, (_, index) => ({ role: index % 2 ? ('assistant' as const) : ('user' as const), content: mixed })),
+        language: 'en',
+        pageContext: { title: mixed, path: mixed },
+      };
+      estimateTokens(mixed);
+      boundChatHistory(shape.history, { maxMessages: 12, maxTokens: 16_000 });
+      const context = fitChatContext(twelve);
+      chatTurnReservation(shape);
+      chatCallInputBounds(shape, [huge]);
+      chatCallInputTokens(shape, [huge]);
+      chatSourcesTokens(shape, twelve);
+      fitChatSources(
+        shape,
+        Array.from({ length: 300 }, (_, index) => sized(index, mixed.slice(0, 80))),
+        5000,
+      );
+      return { context, fitted: fitChatSources(shape, [huge], 2000) };
     };
-    const started = performance.now();
-    estimateTokens(mixed);
-    boundChatHistory(shape.history, { maxMessages: 12, maxTokens: 16_000 });
+    const mixed = mixedOf(150_000);
+    expect(tokenBound(mixed)).toBeGreaterThan(1_000_000);
+    const { context, fitted } = sizeAndFit(mixed);
     // A prompt keeps 6,000 characters of each source, so a few of them fit.
-    expect(sourcesTokens(fitChatContext(twelve))).toBeLessThanOrEqual(24_000);
-    chatTurnReservation(shape);
-    chatCallInputBounds(shape, [huge]);
-    chatCallInputTokens(shape, [huge]);
-    chatSourcesTokens(shape, twelve);
-    fitChatSources(
-      shape,
-      Array.from({ length: 300 }, (_, index) => sized(index, mixed.slice(0, 80))),
-      5000,
-    );
-    expect(fitChatSources(shape, [huge], 2000)).toHaveLength(1);
-    // A generous wall-clock bound: CI runs packages in parallel, and a quadratic regression on 1 MB takes minutes.
-    expect(performance.now() - started).toBeLessThan(5000);
+    expect(sourcesTokens(context)).toBeLessThanOrEqual(24_000);
+    expect(fitted).toHaveLength(1);
   });
 
   it('reads fewer sources when a budget has less room, never more than it reserved', () => {
@@ -505,17 +509,11 @@ describe('follow-up suggestions', () => {
   });
   it('compares suggestions with earlier questions in linear time', async () => {
     const adapter = fakeText();
-    adapter.setResponses([{ text: '["Can I export?"]' }]);
-    const started = performance.now();
-    const result = await suggestFollowUps({
-      adapter,
-      question: `${'?'.repeat(50_000)}x`,
-      chunks,
-      language: 'en',
-      asked: [`${'. '.repeat(25_000)}x`],
-    });
-    expect(result.questions).toEqual(['Can I export?']);
-    expect(performance.now() - started).toBeLessThan(200);
+    const suggest = (n: number) => {
+      adapter.setResponses([{ text: '["Can I export?"]' }]);
+      return suggestFollowUps({ adapter, question: `${'?'.repeat(n)}x`, chunks, language: 'en', asked: [`${'. '.repeat(n / 2)}x`] });
+    };
+    expect((await suggest(50_000)).questions).toEqual(['Can I export?']);
   });
   it.each([
     [{ error: 'boom' }, true],
@@ -550,12 +548,9 @@ describe('follow-up suggestions', () => {
     const cut = fakeText();
     cut.setResponses([{ text: `["${'\\"'.repeat(200)}` }]);
     expect((await suggestFollowUps({ adapter: cut, question: 'How?', chunks, language: 'en' })).failed).toBe(true);
-    // Reading a long, hostile cut-off output is one pass.
-    const started = performance.now();
+    // A long, hostile cut-off output (its cost is bounded in answer-chat.growth.test.ts).
     expect(parseFollowUpQuestions(`["${'\\"'.repeat(500_000)}`, 'How?')).toEqual({ questions: [], unreadable: true });
     expect(parseFollowUpQuestions(`[${'"Can I? ", '.repeat(100_000)}`, 'How?').questions).toEqual(['Can I?']);
-    // A generous wall-clock bound: CI runs packages in parallel, and a quadratic pass over 1 MB takes minutes.
-    expect(performance.now() - started).toBeLessThan(3000);
   });
   it('finds the list past a bracket in prose before it', async () => {
     expect(parseFollowUpQuestions('Here are [two] ideas: ["Can I export?", "Is it free?"]', 'How?')).toEqual({
