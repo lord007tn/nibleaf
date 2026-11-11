@@ -1,4 +1,5 @@
 import { type MessageKey, resolveLocale, translateFn } from '@nibleaf/i18n';
+import { pageStructureRevisionSource } from '@nibleaf/shared/page-moves';
 import { slugifyUnicode } from '@nibleaf/shared/utils';
 import type { PageNode } from '@/hooks/api';
 
@@ -143,4 +144,18 @@ export function isSwitchSettled(
   if (!pending) return true;
   if (pending.kind === 'create') return false;
   return shown.selectedId === pending.id && (shown.groupId === pending.id || shown.pageId === pending.id);
+}
+
+/**
+ * The structure revision the server reports for this branch's page list
+ * (`x-page-structure-revision`), from the rows the tree shows, so a move can be
+ * refused if the tree changed since the writer chose its destination.
+ * Undefined when it can't be computed exactly: rows without their branch, or
+ * no Web Crypto (an insecure origin). The move then goes without it.
+ */
+export async function pageStructureRevision(rows: readonly PageNode[]): Promise<string | undefined> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle || rows.some((page) => !page.branchId)) return undefined;
+  const digest = await subtle.digest('SHA-256', new TextEncoder().encode(pageStructureRevisionSource(rows)));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

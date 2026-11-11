@@ -16,7 +16,13 @@ const access = vi.hoisted(() => ({
     ['site-b', 'org-b'],
   ]),
 }));
-const database = vi.hoisted(() => ({ pageFindFirst: vi.fn(), pageFindMany: vi.fn(), projectFindUnique: vi.fn(), revision: vi.fn() }));
+const database = vi.hoisted(() => ({
+  pageFindFirst: vi.fn(),
+  pageFindMany: vi.fn(),
+  projectFindUnique: vi.fn(),
+  revision: vi.fn(),
+  transaction: vi.fn(),
+}));
 const history = vi.hoisted(() => ({ listPageHistory: vi.fn(), comparePageHistory: vi.fn(), restorePageHistory: vi.fn() }));
 vi.mock('@/actions/page-history', () => history);
 vi.mock('@/lib/site-host', () => ({ trustedSiteOrigins: () => [] }));
@@ -27,6 +33,7 @@ vi.mock('@nibleaf/database', () => ({
     page: { findFirst: database.pageFindFirst, findMany: database.pageFindMany },
     project: { findUnique: database.projectFindUnique },
     $queryRaw: database.revision,
+    $transaction: database.transaction,
   },
 }));
 // The real guards run; only the membership lookup they rely on is a fixture.
@@ -226,5 +233,17 @@ describe('GET /pages/:id/search-description', () => {
     for (let attempt = 0; attempt < 61; attempt += 1) statuses.push((await read('site-a', 'page-a')).status);
     expect(statuses[0]).toBe(200);
     expect(statuses.at(-1)).toBe(429);
+  });
+});
+
+describe('POST /pages/:id/duplicate', () => {
+  const duplicate = (projectId: string, user: string | null) =>
+    app.request(`/api/app/projects/${projectId}/pages/page-a/duplicate`, { method: 'POST', headers: user ? { 'x-test-user': user } : {} });
+
+  it('turns a Viewer away with 403, an outsider with 404 and no session with 401, before any write', async () => {
+    expect((await duplicate('site-a', 'viewer')).status).toBe(403);
+    expect((await duplicate('site-a', 'outsider')).status).toBe(404);
+    expect((await duplicate('site-a', null)).status).toBe(401);
+    expect(database.transaction).not.toHaveBeenCalled();
   });
 });

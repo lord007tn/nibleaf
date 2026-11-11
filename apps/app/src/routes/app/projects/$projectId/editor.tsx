@@ -66,6 +66,8 @@ import { createEditorSaveQueue, type PageDraft } from '@/components/editor/edito
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
+import { MovePageDialog } from '@/components/editor/move-page-dialog';
+import { pagePublicLink } from '@/components/editor/page-public-link';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
 import { PageTrashButton } from '@/components/editor/page-trash-button';
@@ -85,12 +87,15 @@ import {
   friendlyErrorMessage,
   pageNeverPublished,
   pagePublishState,
+  pickLiveDomain,
   queryKeys,
   useAiDraftCapability,
   useBranches,
   useComments,
   useCreatePage,
   useDeleteAsset,
+  useDomains,
+  useDuplicatePage,
   useLanguages,
   usePage,
   usePages,
@@ -108,6 +113,7 @@ import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
+import { copyToClipboard } from '@/lib/invitations';
 import { resolveProjectEditAccess } from '@/lib/project-settings-access';
 import { typographyVars } from '@/lib/typography';
 import { useSession } from '@/services/auth-client';
@@ -201,7 +207,10 @@ function EditorPage() {
   const { data: languages } = useLanguages(projectId);
   const { data: allPages, isPending } = usePages(projectId, undefined, activeBranchId ?? undefined);
   const createPage = useCreatePage(projectId);
+  const duplicatePage = useDuplicatePage(projectId);
   const updatePage = useUpdatePage(projectId);
+  const { data: domains } = useDomains(projectId);
+  const [moveForId, setMoveForId] = useState<string | null>(null);
   const [historyForId, setHistoryForId] = useState<string | null>(null);
   const uploadAsset = useUploadAsset(projectId);
   const deleteAsset = useDeleteAsset(projectId);
@@ -877,6 +886,65 @@ function EditorPage() {
       },
     });
   };
+  // ─── Row menu actions (AUTH-38) ───────────────────────────────────────────────
+  // Duplicate saves the page being edited first, so the copy has its latest
+  // text, then opens the copy as creating a page does.
+  const duplicateNode = (id: string) => {
+    if (creationInFlight.current || transitionInFlight.current) return;
+    beginSwitch({ kind: 'create' }, () => {
+      creationInFlight.current = true;
+      duplicatePage.mutate(id, {
+        onSuccess: (created) => {
+          setPendingSwitch({ kind: 'open', id: created.id });
+          setSelectedId(created.id);
+          toast.success(t('editor.duplicated', { title: created.title }));
+        },
+        onError: () => setPendingSwitch(null),
+        onSettled: () => {
+          creationInFlight.current = false;
+        },
+      });
+    });
+  };
+  // The page's address on the published site, as the reader builds it: the
+  // live domain, the version prefix and the language (left out for the default one).
+  const copyPageLink = async (id: string) => {
+    const node = (allPages ?? []).find((p) => p.id === id);
+    if (!node || !project) return;
+    const url = pagePublicLink(projectId, node, {
+      slug: project.slug,
+      primaryDomain: domains ? pickLiveDomain(domains)?.domain : undefined,
+      languages: orderedLanguages,
+      versionSlug: publishedVersionSlugFor(branches, node.branchId ?? activeBranchId),
+    });
+    if (!(await copyToClipboard(url))) {
+      toast.error(t('settings.members.copyFailed'));
+      return;
+    }
+    toast.success(pageNeverPublished(id, pendingChanges) ? t('editor.linkCopiedUnpublished') : t('editor.linkCopied'));
+  };
+  const pageHref = useCallback((id: string) => `/app/projects/${encodeURIComponent(projectId)}/editor?page=${encodeURIComponent(id)}`, [projectId]);
+  // Hidden pages stay in the editor and leave the site's navigation on the next
+  // publish. Conditional on the revision the writer saw, like every page save;
+  // the open page's draft is saved first so the two don't conflict.
+  const toggleHidden = (id: string) =>
+    void runAfterSavingDraft({
+      action: () => {
+        const node = (allPages ?? []).find((p) => p.id === id);
+        if (!node) return;
+        const latest = freshestServerCopy(id, node, freshestServerCopy(id, draftRef.current.page, lastSavedRef.current));
+        const hidden = !node.hidden;
+        updatePage.mutate(
+          { pageId: id, body: { hidden, expectedUpdatedAt: latest?.updatedAt ?? node.updatedAt } },
+          {
+            onSuccess: () => {
+              if (hidden) toast.success(t('editor.hiddenNotice', { title: node.config?.sidebarTitle?.trim() || node.title }));
+            },
+            onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.visibilityFailed')),
+          },
+        );
+      },
+    });
 
   // Raw Markdown is a focused workspace: the source editor gets the entire
   // application canvas while the page tree and comments/AI rail temporarily
@@ -1360,11 +1428,30 @@ function EditorPage() {
                               onSettings={(id) => void runAfterSavingDraft({ action: () => setSettingsForId(id) })}
                               onRename={renameNode}
                               onDelete={deleteNode}
+                              onDuplicate={duplicateNode}
+                              onCopyLink={(id) => void copyPageLink(id)}
+                              onMoveTo={setMoveForId}
+                              onToggleHidden={toggleHidden}
+                              pageHref={pageHref}
+                              creating={createPage.isPending || duplicatePage.isPending || switching}
                             />
                           )}
                         </div>
                       );
                     })}
+                    {(() => {
+                      const moving = moveForId && canEditContent ? (allPages ?? []).find((p) => p.id === moveForId) : undefined;
+                      return moving ? (
+                        <MovePageDialog
+                          key={moving.id}
+                          page={moving}
+                          pages={allPages ?? []}
+                          languages={orderedLanguages}
+                          onMove={(move) => reorderPages.mutateAsync(move)}
+                          onClose={() => setMoveForId(null)}
+                        />
+                      ) : null;
+                    })()}
                   </PageTreeDndProvider>
 
                   {/* Add a language */}

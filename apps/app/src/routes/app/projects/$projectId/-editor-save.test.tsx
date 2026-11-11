@@ -57,6 +57,9 @@ vi.mock('@/hooks/api', async () => ({
   useUploadAsset: () => ({}),
   useDeleteAsset: () => ({}),
   useReorderPages: () => ({}),
+  useDuplicatePage: () => ({ mutate: vi.fn(), isPending: false }),
+  useDomains: () => ({}),
+  pickLiveDomain: () => undefined,
 }));
 vi.mock('@/hooks/api/query-options', () => ({
   aiDraftCapabilityQueryOptions: (id: string) => ({ queryKey: ['workspace-ai', id, 'draft-capability'] }),
