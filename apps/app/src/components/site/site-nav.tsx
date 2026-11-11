@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import { ChevronRight } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';
@@ -61,23 +62,26 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
   const childrenId = `${id}-children`;
   return (
     <li>
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-start gap-0.5 pointer-coarse:items-center">
         <a
           id={linkId}
           href={siteHref(projectId, node.path, { lang, version: isVersionIndependentNavNode(node) ? undefined : version })}
           aria-current={active ? 'page' : undefined}
           className={cn(
             // Touch screens get 44px rows; mouse and trackpad keep the dense list.
-            'relative flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors pointer-coarse:min-h-11',
+            'relative flex min-w-0 flex-1 items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors pointer-coarse:min-h-11 pointer-coarse:items-center',
             active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
             // Entries in a railed list recolor their segment of the rail when active.
             rail && active && 'before:absolute before:-start-[13px] before:inset-y-1 before:w-[1.5px] before:rounded-full before:bg-primary',
           )}
         >
-          <PageIcon name={node.icon} className={cn('size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/80')} />
-          <span className="truncate">{node.title}</span>
+          <PageIcon name={node.icon} className={cn('mt-0.5 size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/80')} />
+          {/* Long titles wrap onto a second line instead of losing their end to an ellipsis. */}
+          <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
+            {node.title}
+          </span>
           {node.tag ? (
-            <span className="ms-auto shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase tracking-wide">
+            <span className="ms-auto mt-0.5 shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase tracking-wide">
               {node.tag}
             </span>
           ) : null}
@@ -91,7 +95,7 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
             aria-controls={childrenId}
             aria-label={toggleLabel}
             aria-labelledby={`${toggleId} ${linkId}`}
-            className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:size-11"
+            className="mt-0.5 grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground pointer-coarse:mt-0 transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:size-11"
           >
             <ChevronRight className={cn('size-3.5 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
           </button>
@@ -133,14 +137,16 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm pointer-coarse:min-h-11"
+        className="group flex w-full cursor-pointer items-start justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
-        <span className="truncate">{node.title}</span>
+        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
+          {node.title}
+        </span>
         {/* Resting state hides the chevron on fine pointers only; keyboard focus,
             touch devices, and the collapsed state always show it. */}
         <ChevronRight
           className={cn(
-            'size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:opacity-100 rtl:-scale-x-100',
+            'mt-[3px] size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:opacity-100 rtl:-scale-x-100',
             open ? 'rotate-90 rtl:-rotate-90' : 'opacity-100',
           )}
         />
@@ -179,11 +185,13 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:min-h-11"
+        className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
-        <ChevronRight className={cn('size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
-        {node.icon ? <PageIcon name={node.icon} className="size-3.5 shrink-0 text-muted-foreground/80" /> : null}
-        <span className="truncate">{node.title}</span>
+        <ChevronRight className={cn('mt-[3px] size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
+        {node.icon ? <PageIcon name={node.icon} className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/80" /> : null}
+        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
+          {node.title}
+        </span>
       </button>
       {open && node.children.length > 0 ? (
         <NavItems

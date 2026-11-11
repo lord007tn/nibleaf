@@ -51,6 +51,9 @@ export const siteChatBody = z
     consent: aiChatConsentSchema.default('unknown'),
     /** Per-tab random id; hashed before storage, never stored raw. */
     sessionId: z.string().trim().min(8).max(128).optional(),
+    /** `revision` of the chat policy (`aiChatPolicySchema`) the reader was shown.
+     * A turn whose revision is no longer current is refused with `policy_changed`. */
+    policyRevision: z.string().trim().min(1).max(64).optional(),
   })
   .strict();
 export type SiteChatBody = z.infer<typeof siteChatBody>;
@@ -84,8 +87,25 @@ export const aiChatErrorCodeSchema = z.enum([
   'unavailable',
   'invalid_request',
   'failed',
+  /** What the chat stores about questions, or the site's consent rule, changed
+   * since the reader's page loaded it: show the new policy and let them resend. */
+  'policy_changed',
 ]);
 export type AiChatErrorCode = z.infer<typeof aiChatErrorCodeSchema>;
+
+/** `GET /api/public/sites/:id/chat/policy`, never cached: what the chat keeps
+ * of a reader's questions right now, the site's consent rule, and a revision of
+ * both that each chat turn sends back (`siteChatBody.policyRevision`). */
+export const aiChatPolicySchema = z
+  .object({
+    storesQuestions: z.boolean(),
+    /** Days question text is kept; null when it is not kept. */
+    questionRetentionDays: z.number().int().positive().nullable(),
+    consent: z.enum(['required', 'blocked', 'not_required']),
+    revision: z.string().min(1).max(64),
+  })
+  .strict();
+export type AiChatPolicy = z.infer<typeof aiChatPolicySchema>;
 export const aiChatErrorEventSchema = z.object({ code: aiChatErrorCodeSchema }).strict();
 export type AiChatErrorEvent = z.infer<typeof aiChatErrorEventSchema>;
 

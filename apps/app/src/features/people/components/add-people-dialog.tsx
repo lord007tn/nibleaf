@@ -172,7 +172,8 @@ export function AddPeopleDialog({
             <RoleOptionList
               legend={t('people.site.role', { site: siteName })}
               onChange={setRole}
-              options={SITE_ROLE_OPTIONS.filter((option) => allowedRoles.includes(option.role))}
+              options={SITE_ROLE_OPTIONS}
+              unavailableReason={(option) => (allowedRoles.includes(option) ? undefined : t('people.reason.roleAboveYours'))}
               value={role}
             />
             {failure ? (

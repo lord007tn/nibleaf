@@ -152,6 +152,36 @@ describe('required auth email delivery feedback', () => {
     expect(container.textContent).not.toContain(unavailable.message);
   });
 
+  it.each([
+    ['sign-in', signIn],
+    ['sign-up', signUp],
+  ])('%s recovers from consumed-code consent errors', async (_label, Page) => {
+    mocks.locale = 'en';
+    mocks.send.mockResolvedValue({ error: null });
+    mocks.verify.mockResolvedValue({ error: { code: 'TERMS_REQUIRED' } });
+    await render(Page);
+    await submit();
+    await enter('[data-input-otp]', '123456');
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('Accept the terms, then request a new code.');
+    expect(container.querySelector('[data-input-otp]')).toBeNull();
+    expect(container.querySelector('input[type="email"]')).not.toBeNull();
+  });
+
+  it.each([
+    ['sign-in', signIn],
+    ['sign-up', signUp],
+  ])('%s explains a verified code on a closed instance', async (_label, Page) => {
+    mocks.locale = 'en';
+    mocks.send.mockResolvedValue({ error: null });
+    mocks.verify.mockResolvedValue({ error: { code: 'SIGNUP_CLOSED' } });
+    await render(Page);
+    await submit();
+    await enter('[data-input-otp]', '123456');
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      'New account registration is closed on this instance. Contact your administrator for access.',
+    );
+  });
+
   it('the installed OTP input completes after rendering the latest sixth digit', async () => {
     mocks.send.mockResolvedValue({ error: null });
     await render(signIn);
@@ -159,6 +189,6 @@ describe('required auth email delivery feedback', () => {
     for (const value of ['1', '12', '123', '1234', '12345']) await enter('[data-input-otp]', value);
     expect(mocks.verify).not.toHaveBeenCalled();
     await enter('[data-input-otp]', '123456');
-    expect(mocks.verify).toHaveBeenCalledExactlyOnceWith({ email: 'synthetic@example.test', otp: '123456' });
+    expect(mocks.verify).toHaveBeenCalledExactlyOnceWith({ email: 'synthetic@example.test', otp: '123456', acceptTerms: true });
   });
 });
