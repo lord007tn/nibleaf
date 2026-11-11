@@ -4690,6 +4690,7 @@
   "editor_history_nochanges": "Entri ini sama dengan draf saat ini.",
   "editor_history_error": "Tidak dapat memuat riwayat atau memulihkan halaman. Coba lagi.",
   "editor_history_empty": "Belum ada riwayat",
+  "editor_history_trimmedfromtrash": "Sebagian riwayat lama tidak disimpan saat halaman ini dipindahkan ke Sampah ({kept} dari {total} revisi dipulihkan).",
   "editor_history_emptydescription": "Revisi tersimpan dan versi terbit akan muncul di sini.",
   "editor_history_version": "Versi {version}",
   "editor_history_beforerestore": "Sebelum pemulihan",

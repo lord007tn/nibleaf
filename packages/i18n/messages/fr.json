@@ -4757,6 +4757,7 @@
   "editor_history_nochanges": "Cette entrée correspond au brouillon actuel.",
   "editor_history_error": "Impossible de charger ou de restaurer l’historique. Veuillez réessayer.",
   "editor_history_empty": "Aucun historique",
+  "editor_history_trimmedfromtrash": "Une partie de l’historique ancien n’a pas été conservée lors de la mise à la corbeille de cette page ({kept} révisions restaurées sur {total}).",
   "editor_history_emptydescription": "Les révisions enregistrées et les versions publiées apparaîtront ici.",
   "editor_history_version": "Version {version}",
   "editor_history_beforerestore": "Avant restauration",

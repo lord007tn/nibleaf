@@ -4782,6 +4782,7 @@
   "editor_history_nochanges": "Эта запись совпадает с текущим черновиком.",
   "editor_history_error": "Не удалось загрузить историю или восстановить страницу. Повторите попытку.",
   "editor_history_empty": "История пока пуста",
+  "editor_history_trimmedfromtrash": "Часть старой истории не сохранилась при перемещении страницы в корзину (восстановлено редакций: {kept} из {total}).",
   "editor_history_emptydescription": "Здесь появятся сохранённые редакции и опубликованные версии.",
   "editor_history_version": "Версия {version}",
   "editor_history_beforerestore": "До восстановления",

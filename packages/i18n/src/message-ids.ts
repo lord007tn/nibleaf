@@ -9,6 +9,7 @@ export const MESSAGE_IDS = {
   'editor.history.noChanges': 'editor_history_nochanges',
   'editor.history.error': 'editor_history_error',
   'editor.history.empty': 'editor_history_empty',
+  'editor.history.trimmedFromTrash': 'editor_history_trimmedfromtrash',
   'editor.history.emptyDescription': 'editor_history_emptydescription',
   'editor.history.version': 'editor_history_version',
   'editor.history.beforeRestore': 'editor_history_beforerestore',

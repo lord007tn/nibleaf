@@ -4757,6 +4757,7 @@
   "editor_history_nochanges": "This entry matches the current draft.",
   "editor_history_error": "Could not load or restore page history. Please try again.",
   "editor_history_empty": "No history yet",
+  "editor_history_trimmedfromtrash": "Some older history wasn’t kept when this page was moved to Trash ({kept} of {total} revisions restored).",
   "editor_history_emptydescription": "Saved revisions and published versions will appear here.",
   "editor_history_version": "Version {version}",
   "editor_history_beforerestore": "Before restore",

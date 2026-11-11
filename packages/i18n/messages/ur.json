@@ -4748,6 +4748,7 @@
   "editor_history_nochanges": "یہ اندراج موجودہ مسودے کے مطابق ہے۔",
   "editor_history_error": "تاریخ لوڈ یا صفحہ بحال نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
   "editor_history_empty": "ابھی کوئی تاریخ نہیں",
+  "editor_history_trimmedfromtrash": "اس صفحے کو ردی میں منتقل کرتے وقت کچھ پرانی تاریخ محفوظ نہیں رہی ({total} میں سے {kept} ترامیم بحال ہوئیں)۔",
   "editor_history_emptydescription": "محفوظ ترامیم اور شائع شدہ نسخے یہاں نظر آئیں گے۔",
   "editor_history_version": "نسخہ {version}",
   "editor_history_beforerestore": "بحالی سے پہلے",

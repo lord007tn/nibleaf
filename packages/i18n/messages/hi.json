@@ -4692,6 +4692,7 @@
   "editor_history_nochanges": "यह प्रविष्टि वर्तमान मसौदे से मेल खाती है।",
   "editor_history_error": "इतिहास लोड या पृष्ठ बहाल नहीं हो सका। कृपया फिर से कोशिश करें।",
   "editor_history_empty": "अभी कोई इतिहास नहीं है",
+  "editor_history_trimmedfromtrash": "इस पेज को ट्रैश में ले जाते समय कुछ पुराना इतिहास नहीं रखा गया ({total} में से {kept} संशोधन पुनर्स्थापित हुए)।",
   "editor_history_emptydescription": "सहेजे गए संशोधन और प्रकाशित संस्करण यहाँ दिखाई देंगे।",
   "editor_history_version": "संस्करण {version}",
   "editor_history_beforerestore": "बहाली से पहले",
