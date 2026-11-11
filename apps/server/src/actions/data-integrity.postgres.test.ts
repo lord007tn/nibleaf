@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Member, Prisma } from '@nibleaf/database';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -99,6 +99,64 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     }
     return outcomes;
   };
+
+  const staleTreeFixture = async () => {
+    const { organization, project, branch, language } = await fixture();
+    const editors: string[] = [];
+    for (let index = 0; index < 2; index++) {
+      const user = await db.prisma.user.create({ data: { name: 'Synthetic tree editor', email: `move-${randomUUID()}@example.invalid` } });
+      userIds.push(user.id);
+      editors.push(user.id);
+      await db.prisma.member.create({ data: { organizationId: organization.id, userId: user.id, role: 'viewer', orgRole: 'member' } });
+      await db.prisma.projectMember.create({ data: { organizationId: organization.id, projectId: project.id, userId: user.id, role: 'member' } });
+    }
+    const group = await pages.createPage(project.id, { title: 'Synthetic group', slug: 'group', kind: 'GROUP', branchId: branch.id, languageId: language.id });
+    const first = await pages.createPage(project.id, { title: 'Synthetic first', slug: 'first', branchId: branch.id, languageId: language.id });
+    const second = await pages.createPage(project.id, { title: 'Synthetic second', slug: 'second', branchId: branch.id, languageId: language.id });
+    const snapshot = await pages.listPages(project.id, undefined, branch.id);
+    const access = await import('../lib/access');
+    for (const userId of editors) expect((await access.resolveSiteAccess(userId, project.id)).role).toBe('member');
+    // This compatibility envelope lets the exact regression also execute on
+    // 960ba7c9: that action reads the stale legacy items. The fixed action
+    // dispatches the pageId intent and ignores those obsolete snapshot fields.
+    // The editor itself sends only the narrow intent, never these legacy items.
+    const request = (pageId: string, expectedStructureRevision?: string) => ({
+      pageId,
+      parentId: group.id,
+      position: { at: 'end' as const },
+      ...(expectedStructureRevision ? { expectedStructureRevision } : {}),
+      items: snapshot.map((page) => ({ id: page.id, parentId: page.id === pageId ? group.id : page.parentId, position: page.id === pageId ? 0 : page.position })),
+    });
+    return { project, group, first, second, snapshot, request };
+  };
+
+  it('council P1: two editors moving from one stale tree preserve both intents in PostgreSQL', async () => {
+    const { project, group, first, second, request } = await staleTreeFixture();
+    const outcomes = await whileLocked(
+      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR NO KEY UPDATE`,
+      () => [pages.reorderPages(project.id, request(first.id)), pages.reorderPages(project.id, request(second.id))],
+    );
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(['fulfilled', 'fulfilled']);
+    const moved = await db.prisma.page.findMany({ where: { id: { in: [first.id, second.id] } }, orderBy: { position: 'asc' } });
+    expect(moved.map((page) => page.parentId)).toEqual([group.id, group.id]);
+    expect(moved.map((page) => page.position)).toEqual([0, 1]);
+    expect(new Set(moved.map((page) => page.path))).toEqual(new Set(['group/first', 'group/second']));
+  });
+
+  it('council P1: a stale structure revision returns a typed 409 after the current-state lock', async () => {
+    const { project, group, first, second, snapshot, request } = await staleTreeFixture();
+    // Public revision protocol: SHA-256 of the ID-sorted structural tuples.
+    const revision = createHash('sha256').update(JSON.stringify([...snapshot].sort((a, b) => a.id.localeCompare(b.id))
+      .map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]))).digest('hex');
+    const outcomes = await whileLocked(
+      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR NO KEY UPDATE`,
+      () => [pages.reorderPages(project.id, request(first.id, revision)), pages.reorderPages(project.id, request(second.id, revision))],
+    );
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    const refused = outcomes.find((outcome) => outcome.status === 'rejected');
+    expect(refused?.status === 'rejected' ? refused.reason : null).toMatchObject({ status: 409, code: 'database:conflict', details: { reason: 'structure_changed' } });
+    expect(await db.prisma.page.count({ where: { projectId: project.id, parentId: group.id } })).toBe(1);
+  });
 
   it('merges overlapping language sections after acquiring the project lock', async () => {
     const { project, language } = await fixture();
