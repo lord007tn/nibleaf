@@ -43,6 +43,7 @@ import {
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
+import { readerQuestionStorage } from '@/lib/ai-search/conversation-archive';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
 import { answerPublishedSearch, answerSearchAvailable, runPublishedSearch } from '@/lib/ai-search/runtime';
 import { AssetReferenceAccess } from '@/lib/asset-reference-access';
@@ -527,6 +528,7 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
     config: shellLanguage?.isDefault ? snapshot.project.config : mergeLanguageChrome(snapshot.project.config, shellLanguage?.config),
     languages: servedLanguages,
   };
+  const search = resolvePublishedSearchRequest(snapshot.project.config, {}).configuration;
   return {
     project,
     languages: servedLanguages,
@@ -548,9 +550,10 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
     // Signed in on the site itself (never on a public site, whose shell is shared-cacheable).
     signedIn: viewer.siteSession === true,
     capabilities: {
-      answer:
-        resolvePublishedSearchRequest(snapshot.project.config, {}).configuration.aiAnswers &&
-        (await answerSearchAvailable(snapshot.project.id, deploymentId)),
+      answer: search.aiAnswers && (await answerSearchAvailable(snapshot.project.id, deploymentId)),
+      // Whether the chat keeps question text, from the real capture configuration,
+      // so the reader is never told questions are saved when they are not.
+      ...readerQuestionStorage(search.aiConversationCapture),
     },
   };
 };

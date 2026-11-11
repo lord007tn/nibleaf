@@ -12,13 +12,11 @@ async function seed() {
     throw new Error('Refusing to seed in production. Set ALLOW_SEED=1 to override.');
   }
 
-  // Use the same passwordless provisioning path as customer sign-up. Creating
-  // the short-lived OTP is server-only and does not require a delivery provider.
-  // Consuming it runs the normal workspace/starter hooks. Idempotent.
+  // Exempt: this fictional demo identity is operator-created, with no person
+  // accepting legal terms. Keep consent null and run the normal starter hooks.
   const existing = await prisma.user.findUnique({ where: { email: DEMO.email }, select: { id: true } });
   if (!existing) {
-    const otp = await auth.api.createVerificationOTP({ body: { email: DEMO.email, type: 'sign-in' } });
-    await auth.api.signInEmailOTP({ body: { ...DEMO, otp } });
+    await (await auth.$context).internalAdapter.createUser({ ...DEMO, emailVerified: true }, { method: 'email-otp' });
   }
 
   const user = await prisma.user.findUnique({ where: { email: DEMO.email } });

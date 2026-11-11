@@ -1,5 +1,6 @@
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
-import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
+import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
+import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, pageContentFacts } from '@nibleaf/shared/publish-checks';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
