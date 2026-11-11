@@ -71,7 +71,7 @@ const GROUPS = [
 
 const FENCE = '```';
 
-const CURL_SHIPMENT =`\`\`\`bash
+const CURL_SHIPMENT = `\`\`\`bash
 curl https://api.tidewater.dev/v1/shipments \\
   -H "Authorization: Bearer tw_live_9f3c…" \\
   -H "Content-Type: application/json" \\

@@ -1,0 +1,186 @@
+/*
+ * Content blocks the editor and the reader share (AUTH-26): tables, code blocks
+ * and task lists look the same while authoring and once published.
+ *
+ * Both surfaces carry `.nibleaf-content`: the reader's article root (the
+ * `.typeset` element in components/markdown.tsx) and the editor's ProseMirror
+ * root (components/editor/tiptap-editor.tsx). The rules sit in the components
+ * layer at one class of specificity and load after typeset.css, so they replace
+ * typeset's defaults for these blocks while a site theme's table and code
+ * variants (styles.css: data-theme-tables, data-theme-code) still win.
+ * tiptap.css keeps the editor-only interaction styles (selection, resize
+ * handles, node views); its rules are unlayered, so it must not restyle these
+ * blocks itself.
+ *
+ * Markup on each surface:
+ *   table  reader  div.typeset-scroll > table > thead + tbody
+ *          editor  div.tableWrapper > table > colgroup + tbody (header cells are th)
+ *   code   reader  div[data-theme-component="code"] > span.content-code-language ~ pre > code.hljs
+ *          editor  pre[data-language] > code (the language label is its ::before)
+ *   tasks  reader  ul.contains-task-list > li.task-list-item > input[type="checkbox"][disabled]
+ *          editor  ul[data-type="taskList"] > li > label > input[type="checkbox"]
+ */
+
+@layer components {
+  /* Like typeset, stay out of components that draw their own chrome. */
+  .nibleaf-content
+  :where(*):not(
+    :where(
+      .not-typeset,
+      [data-not-typeset],
+      .not-typeset *,
+      [data-not-typeset] *
+    )
+  ) {
+    /* Tables: one rounded frame on the scroll wrapper, a rule around every
+       cell, and a tinted header row. The table's own hidden border wins the
+       collapsed-border contest on its outer edges, so only the rules between
+       cells show, whichever way the table and each cell run (cells carry their
+       own dir, so a logical start/end border could land on either side). */
+    &:where(.typeset-scroll:has(> table), .tableWrapper) {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius, 0.625rem);
+    }
+    &:where(table) {
+      min-width: 100%;
+      margin: 0;
+      border: hidden;
+      border-collapse: collapse;
+      font-size: 1em;
+      line-height: 1.5;
+      font-variant-numeric: tabular-nums;
+    }
+    &:where(th, td) {
+      border: 1px solid var(--border);
+      padding: 0.5em 0.75em;
+      text-align: start;
+      vertical-align: top;
+    }
+    &:where(th) {
+      background-color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* Task lists: no bullets, and a checkbox that reads at body size in both
+       themes. The reader's checkboxes are disabled (GFM), which browsers draw
+       faint, so both surfaces draw their own: an outlined box, filled with the
+       primary colour once checked, the tick cut out of it so it shows the page
+       behind in light and dark alike. */
+    &:where(ul.contains-task-list, ul[data-type="taskList"]) {
+      list-style: none;
+      padding-inline-start: 0.25em;
+    }
+    &:where(li.task-list-item, ul[data-type="taskList"] > li) {
+      padding-inline-start: 0;
+    }
+    &:where(
+        li.task-list-item > input[type="checkbox"],
+        ul[data-type="taskList"] > li > label > input[type="checkbox"]
+      ) {
+      appearance: none;
+      display: inline-block;
+      flex: none;
+      inline-size: 1em;
+      block-size: 1em;
+      margin: 0;
+      vertical-align: -0.15em;
+      border: 1.5px solid var(--muted-foreground);
+      border-radius: 0.25em;
+      background-color: transparent;
+      opacity: 1;
+    }
+    &:where(li.task-list-item > input[type="checkbox"]) {
+      margin-inline-end: 0.6em;
+    }
+    &:where(
+        li.task-list-item > input[type="checkbox"]:checked,
+        ul[data-type="taskList"] > li > label > input[type="checkbox"]:checked
+      ) {
+      border-color: var(--primary);
+      background-color: var(--primary);
+      mask:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.25 6.75 11 12 5.25' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+        center / 100% 100% no-repeat,
+        linear-gradient(#000 0 0);
+      mask-composite: exclude;
+    }
+  }
+
+  /* Code blocks: one dark panel. The reader's panel is the wrapper around the
+     <pre> (it also holds the copy button); the editor's is the <pre> itself. */
+  .nibleaf-content :where([data-theme-component="code"], pre[data-language]) {
+    position: relative;
+    border: 1px solid rgb(0 0 0 / 0.2);
+    border-radius: calc(var(--radius, 0.625rem) * 1.4);
+    background-color: var(--theme-code, #0d1117);
+    color: var(--theme-code-foreground, #c9d1d9);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+  .dark
+    .nibleaf-content
+    :where([data-theme-component="code"], pre[data-language]) {
+    border-color: rgb(255 255 255 / 0.1);
+  }
+  .nibleaf-content :where([data-theme-component="code"]) {
+    overflow: hidden;
+  }
+  .nibleaf-content
+    :where([data-theme-component="code"] pre, pre[data-language]) {
+    padding: 1rem;
+    overflow-x: auto;
+    direction: ltr;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 13px;
+    line-height: 1.625;
+    tab-size: 2;
+  }
+  /* The language label: the reader's badge, the editor's ::before. Code with a
+     language starts below it. */
+  .nibleaf-content :where(.content-code-language),
+  .nibleaf-content pre[data-language]::before {
+    position: absolute;
+    top: 0.625rem;
+    inset-inline-start: 0.875rem;
+    z-index: 1;
+    direction: ltr;
+    color: rgb(255 255 255 / 0.6);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 11px;
+    line-height: 1rem;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+  .nibleaf-content
+    :where(
+      .content-code-language ~ pre,
+      pre[data-language]:not([data-language="code"], [data-language="null"])
+    ) {
+    padding-block-start: 2.25rem;
+  }
+  /* The site chrome sets its Arabic font on every element in an Arabic page
+     (styles.css, `.nibleaf-site-chrome :lang(ar)`); code and its label stay
+     monospace there too, as they do in the editor. */
+  .nibleaf-content
+    :is([data-theme-component="code"], pre[data-language])
+    :is(pre, code, .content-code-language) {
+    font-family: var(--font-mono, ui-monospace, monospace);
+  }
+  .nibleaf-content :where(pre code) {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+  }
+}
+
+/* highlight.js's theme (design-system globals.css, unlayered) gives every
+   highlighted <code> its own background and padding: inside the panel above
+   that drew a second, darker box. Unlayered too, and more specific. */
+.nibleaf-content [data-theme-component="code"] pre code.hljs {
+  overflow-x: visible;
+  padding: 0;
+  background: transparent;
+}

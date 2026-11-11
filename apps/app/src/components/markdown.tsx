@@ -66,9 +66,10 @@ export function resolveDocHref(href: string | undefined, site: SiteLinkContext |
 }
 
 // Base document typography (sizes, spacing, rhythm) is owned by typeset.css —
-// the reader-configurable engine driven by --typeset-size/-leading/-flow. Only
-// behavioural concerns live here: sticky-header scroll margins, the table
-// scroll container, the custom code-block chrome, and image borders. typeset
+// the reader-configurable engine driven by --typeset-size/-leading/-flow, with
+// tables, code blocks and task lists in content-blocks.css, shared with the
+// editor. Only behavioural concerns live here: sticky-header scroll margins,
+// the table scroll container, the code-block controls, and image borders. typeset
 // uses zero-specificity :where() selectors, so any class added here wins.
 // Heading scroll margins track the site chrome's sticky header height via
 // --content-scroll-mt (set on the chrome wrapper); the 6rem fallback keeps
@@ -228,7 +229,9 @@ export function MarkdownRenderer({
     return mergedComponents;
   }, [site, mdxComponents]);
   return (
-    <div className={cn('typeset', className)}>
+    // nibleaf-content: the tables, code blocks and task lists styled the same
+    // in the editor (content-blocks.css).
+    <div className={cn('typeset nibleaf-content', className)}>
       <ReactMarkdown
         components={components}
         remarkPlugins={[remarkGfm, ...extraRemarkPlugins, remarkCallouts, remarkCodeMeta]}
