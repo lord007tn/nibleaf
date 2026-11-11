@@ -13,8 +13,19 @@ import { currentFocusTarget, restoreFocusFallback } from '../../lib/focus'
 const hasContent = (node: React.ReactNode) =>
   node != null && node !== false && !(typeof node === "string" && node.trim() === "")
 
-/** Typed confirmation compares what a person sees: no edge spaces, one Unicode form, same case. */
-const normalizeTyped = (value: string) => value.trim().normalize("NFC")
+/**
+ * Invisible direction marks (Unicode Bidi_Control: LRM, RLM, ALM, the embedding
+ * and override marks, and the isolates). A stored name can carry one that the
+ * person can't see or type, so they never decide a match.
+ */
+const BIDI_CONTROLS = /[؜‎‏‪-‮⁦-⁩]/g
+
+/**
+ * Typed confirmation compares what a person sees: no direction marks, no edge
+ * spaces, one Unicode form, same case. Letters and combining marks (Arabic
+ * harakat included) still count.
+ */
+const normalizeTyped = (value: string) => value.replace(BIDI_CONTROLS, "").trim().normalize("NFC")
 
 type TypedConfirmationProps =
   | { confirmText?: undefined; confirmTextLabel?: undefined; confirmTextMismatch?: undefined }
@@ -67,8 +78,10 @@ type ActionDialogProps = {
  * person can retry or cancel. Callers mark the mutation with
  * `meta: { suppressGlobalError: true }` so the error isn't also toasted.
  *
- * With `confirmText` the person types it to confirm. The button stays enabled;
- * pressing it with a mismatch shows the field error and focuses the field.
+ * With `confirmText` the person types it to confirm. Confirm stays disabled
+ * (focusable, announced as unavailable with the field's label as its reason)
+ * until the typed text matches; a non-empty mismatch shows the field error as
+ * they type, and Enter with a mismatch focuses the field.
  */
 function ActionDialog({
   open,
@@ -133,7 +146,7 @@ function ActionDialog({
   // actions, else the action itself.
   const focusOnOpen = confirmText !== undefined ? "input" : destructive ? "cancel" : "confirm"
   const typedMatches = confirmText === undefined || normalizeTyped(typed) === normalizeTyped(confirmText)
-  const showMismatch = typedAttempted && !typedMatches
+  const showMismatch = !typedMatches && (typedAttempted || typed.trim() !== "")
 
   const requestOpenChange = (next: boolean) => {
     // Nothing closes the dialog while the action runs.
@@ -246,6 +259,7 @@ function ActionDialog({
               variant={destructive ? "destructive" : "default"}
               loading={pending}
               loadingText={pendingLabel}
+              disabledReason={typedMatches ? undefined : confirmTextLabel}
               focusableWhenDisabled
             >
               {confirmLabel}

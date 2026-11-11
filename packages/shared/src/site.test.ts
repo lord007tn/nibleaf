@@ -7,8 +7,10 @@ import {
   explicitPageDescription,
   extractHeadings,
   interpolateVariables,
+  interpolateVariablesWithin,
   isPageTranslation,
   languageEndonym,
+  languageNameIn,
   mergeLanguageChrome,
   projectSlugFromSubdomainHost,
   publicLanguages,
@@ -369,6 +371,23 @@ describe('interpolateVariables', () => {
   });
 });
 
+describe('interpolateVariablesWithin', () => {
+  it('substitutes like interpolateVariables when the text fits', () => {
+    const text = '{{ a }} and {{b}} and {{c}}';
+    expect(interpolateVariablesWithin(text, { a: '1', b: '2' }, 100)).toBe(interpolateVariables(text, { a: '1', b: '2' }));
+    expect(interpolateVariablesWithin('plain text', {}, 5)).toBe('plain');
+  });
+  it('stops expanding at the limit, so long values cannot amplify a large body', () => {
+    const text = '{{x}}'.repeat(200_000);
+    const value = 'v'.repeat(500);
+    const started = performance.now();
+    const result = interpolateVariablesWithin(text, { x: value }, 8192);
+    expect(performance.now() - started).toBeLessThan(50);
+    expect(result).toHaveLength(8192);
+    expect(result).toBe(value.repeat(17).slice(0, 8192));
+  });
+});
+
 describe('pageDescription and defaultLanguage', () => {
   const proj = (languages: SnapshotLanguage[]): SnapshotProject => ({ languages }) as unknown as SnapshotProject;
 
@@ -439,6 +458,12 @@ describe('publicLanguages', () => {
   });
   it('keeps the stored label for a code the platform cannot name', () => {
     expect(languageEndonym('x-klingon')).toBeNull();
+    // `la` is a valid tag the platform has no locale data for: DisplayNames would
+    // quietly answer in en-US ("Latin"), so the stored label is kept.
+    expect(languageEndonym('la')).toBeNull();
+    expect(languageNameIn('la', 'en')).toBeNull();
+    expect(languageNameIn('ar', 'en')).toBe('الإنجليزية');
+    expect(publicLanguages([lang({ code: 'la', isDefault: true, label: 'Latina' })])[0]?.label).toBe('Latina');
     expect(publicLanguages([lang({ code: 'x-klingon', isDefault: true, label: 'Klingon' })])[0]?.label).toBe('Klingon');
   });
 });
