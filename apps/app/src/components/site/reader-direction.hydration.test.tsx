@@ -90,9 +90,9 @@ async function loadReader() {
     import('./site-page-view'),
     import('./site-reader-context'),
     import('./toc'),
-    // The code-split article renderer, loaded before rendering as the reader's loaders do.
-    import('@/components/markdown'),
   ]);
+  // The code-split article renderer, loaded before rendering as the reader's loaders do.
+  await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(data.page.content);
   return function Reader() {
     return (
       <SiteReaderContext.Provider value={shell}>
