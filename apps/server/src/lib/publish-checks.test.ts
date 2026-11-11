@@ -263,6 +263,16 @@ describe('empty-page', () => {
     const group = page({ path: 'b', kind: 'GROUP', content: '' });
     expect(codes(snapshot([empty, group]), 'empty-page').map((check) => check.pageId)).toEqual([empty.id]);
   });
+
+  it.each([
+    ['only an HTML comment', '<!-- only a comment -->', true],
+    ['only an MDX comment', '{/* draft notes */}', true],
+    ['several comments and blank lines', '<!-- a -->\n\n{/* b */}\n<!-- c\nspanning lines -->\n', true],
+    ['a comment and text', '<!-- note -->\nReal content.', false],
+    ['an unclosed comment (rendered as text)', '<!-- never closed', false],
+  ])('treats a page with %s as empty: %s', (_case, content, empty) => {
+    expect(codes(snapshot([page({ path: 'a', content })]), 'empty-page')).toHaveLength(empty ? 1 : 0);
+  });
 });
 
 describe('duplicate-title', () => {
