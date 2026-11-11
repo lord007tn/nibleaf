@@ -169,6 +169,12 @@ jobs:
           BRANCH_PROMOTE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/branches.postgres.test.ts
 
+      - name: Verify page address atomicity and parsing outside locks
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PAGE_ADDRESS_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/pages.address-changes.postgres.test.ts --maxWorkers=1
+
       - name: Verify the Viewer role cannot change a site
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
