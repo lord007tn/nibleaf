@@ -52,7 +52,7 @@ export interface PublishChangeSummary {
 
 /** A live-able version whose changes can't be shown: too large to compare in
  *  time, or its published copy is no longer stored. */
-export interface PublishSummaryUnavailable {
+interface PublishSummaryUnavailable {
   status: 'unavailable';
   reason: 'too_large' | 'no_snapshot';
 }
