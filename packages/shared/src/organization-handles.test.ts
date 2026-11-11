@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isValidOrganizationHandle, organizationHandleBase, organizationHandleCandidates } from './organization-handles';
+import { growthMs, linearGrowthLimit } from './testing/growth';
 
 const take = (iterator: Generator<string>, count: number) => Array.from({ length: count }, () => iterator.next().value);
 
@@ -35,11 +36,12 @@ describe('organization handles', () => {
 
 describe('organizationHandleBase on adversarial input', () => {
   it('trims long runs of separators in linear time', () => {
-    const name = `${'-'.repeat(100_000)}acme${'-'.repeat(100_000)}x`;
-    const started = performance.now();
-    expect(organizationHandleBase(name, 'abcdef123')).toBe('acme-x');
+    const name = (n: number) => `${'-'.repeat(n)}acme${'-'.repeat(n)}x`;
+    expect(organizationHandleBase(name(100_000), 'abcdef123')).toBe('acme-x');
     expect(organizationHandleBase('-'.repeat(200_000), 'abcdef123')).toBe('org-abcdef');
-    expect(performance.now() - started).toBeLessThan(1000);
+    // 4x the separators costs about 4x (testing/growth).
+    const [small, large] = growthMs((input: string) => organizationHandleBase(input, 'abcdef123'), name(25_000), name(100_000));
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
   it('drops a trailing separator left by the 48-character cap', () => {
     expect(organizationHandleBase(`${'a'.repeat(47)} b`, 'abcdef123')).toBe('a'.repeat(47));

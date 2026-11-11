@@ -22,6 +22,7 @@ import {
   type SnapshotProject,
   withOpenApiNav,
 } from './site';
+import { constantGrowthLimit, growthMs } from './testing/growth';
 
 describe('isPageTranslation', () => {
   it('uses an explicit translation key when localized paths differ', () => {
@@ -380,11 +381,14 @@ describe('interpolateVariablesWithin', () => {
   it('stops expanding at the limit, so long values cannot amplify a large body', () => {
     const text = '{{x}}'.repeat(200_000);
     const value = 'v'.repeat(500);
-    const started = performance.now();
     const result = interpolateVariablesWithin(text, { x: value }, 8192);
-    expect(performance.now() - started).toBeLessThan(50);
     expect(result).toHaveLength(8192);
     expect(result).toBe(value.repeat(17).slice(0, 8192));
+    // The work stops at the limit: 4x the body costs the same (testing/growth,
+    // constant bound).
+    const expand = (body: string) => interpolateVariablesWithin(body, { x: value }, 8192);
+    const [small, large] = growthMs(expand, '{{x}}'.repeat(50_000), text, { minMs: 12 });
+    expect(large).toBeLessThanOrEqual(constantGrowthLimit(small));
   });
 });
 
