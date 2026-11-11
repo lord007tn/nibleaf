@@ -5,11 +5,11 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
+// Its own module so the radio items stay out of the reader's first load.
+import { DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@nibleaf/design-system/components/ui/dropdown-menu-radio';
 import { SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@nibleaf/design-system/components/ui/sidebar';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { type Theme, useTheme } from '@nibleaf/design-system/theme';

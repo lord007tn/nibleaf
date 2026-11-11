@@ -32,10 +32,11 @@ export const Route = createFileRoute('/app')({
   // Organizations feed every signed-in screen (switcher, palette, landing), so
   // start them with the session check instead of after the shell mounts.
   // The bell's unread count too, so its badge is there on first paint (audit WORKSPACE-28).
-  // Lazily imported: this file is in the router's eager chunk, which docs pages load.
+  // Lazily, from its own small module: this file is in the router's eager chunk,
+  // which public docs pages load, so nothing here may add to their first load.
   loader: async ({ context: { queryClient } }) => {
     prefetchRouteData(queryClient, switcherQueryOptions());
-    const { unreadNotificationCountQueryOptions } = await import('@/hooks/api/query-options');
+    const { unreadNotificationCountQueryOptions } = await import('@/hooks/api/notification-query-options');
     prefetchRouteData(queryClient, unreadNotificationCountQueryOptions());
   },
   head: () => ({
