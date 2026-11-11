@@ -4222,7 +4222,6 @@
   "editor_tree_search": "Filter halaman berdasarkan judul atau alamat",
   "editor_tree_noresults": "Tidak ada halaman yang cocok",
   "editor_tree_filterreason": "Hapus filter untuk memindahkan halaman.",
-  "editor_tree_label": "Halaman",
   "editor_tree_instructions": "Gunakan tombol panah untuk menavigasi, Enter untuk membuka, F2 untuk mengganti nama, Shift+F10 untuk tindakan, dan Alt+Shift+D untuk gagang seret. Pada gagang, tekan Spasi untuk memindahkan, panah untuk memilih tujuan, Spasi untuk meletakkan, atau Escape untuk membatalkan.",
   "editor_tree_movedinside": "{title} dipindahkan ke dalam {parent}, posisi {position} dari {total}.",
   "editor_tree_movedroot": "{title} dipindahkan ke {language}, posisi {position} dari {total}."

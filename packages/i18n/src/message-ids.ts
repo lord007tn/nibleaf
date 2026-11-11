@@ -3,7 +3,6 @@ export const MESSAGE_IDS = {
   'editor.tree.search': 'editor_tree_search',
   'editor.tree.noResults': 'editor_tree_noresults',
   'editor.tree.filterReason': 'editor_tree_filterreason',
-  'editor.tree.label': 'editor_tree_label',
   'editor.tree.instructions': 'editor_tree_instructions',
   'editor.tree.movedInside': 'editor_tree_movedinside',
   'editor.tree.movedRoot': 'editor_tree_movedroot',

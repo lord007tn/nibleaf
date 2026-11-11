@@ -314,8 +314,8 @@ export interface TreeLanguage {
 interface TreeDndState {
   readOnly: boolean;
   filter: string;
-  focusedId: string | null;
-  setFocusedId: (id: string) => void;
+  dir: 'ltr' | 'rtl';
+  languageLabel: (id: string) => string;
   instructionId: string;
   draggingId: string | null;
   projection: Projection | null;
@@ -329,6 +329,7 @@ interface TreeDndState {
 }
 
 const TreeDndContext = createContext<TreeDndState | null>(null);
+const languageHeaderId = (instructionId: string, languageId: string) => `${instructionId}-${languageId}-header`;
 
 const useTreeDnd = () => {
   const value = useContext(TreeDndContext);
@@ -359,9 +360,6 @@ export function PageTreeDndProvider({
   const [filter, setFilter] = useState('');
   const filtering = filter.trim().length > 0;
   const instructionId = useId();
-  const [focusedId, setFocusedId] = useState<string | null>(null);
-  const treeRef = useRef<HTMLDivElement>(null);
-  const typeahead = useRef({ text: '', time: 0 });
   const [announcement, setAnnouncement] = useState('');
   const finalAnnouncement = useRef('');
   useEffect(() => {
@@ -553,8 +551,8 @@ export function PageTreeDndProvider({
   const state: TreeDndState = {
     readOnly,
     filter,
-    focusedId: visible.some((item) => item.id === focusedId) ? focusedId : (visible.find((item) => !isMarker(item))?.id ?? null),
-    setFocusedId,
+    dir,
+    languageLabel,
     instructionId,
     draggingId,
     projection,
@@ -568,45 +566,6 @@ export function PageTreeDndProvider({
   };
 
   const draggingNode = draggingId ? pageById.get(draggingId) : null;
-  const navigate = (event: KeyboardEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    const row = target.closest<HTMLElement>('[role="treeitem"]');
-    if (!row || target !== row || draggingId) return;
-    const rows = visible.filter((item): item is Flat => !isMarker(item));
-    const index = rows.findIndex((item) => item.id === row.dataset.pageId);
-    const item = rows[index];
-    if (!item) return;
-    let next: Flat | undefined;
-    const forward = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
-    const back = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
-    if (event.key === 'ArrowDown') next = rows[Math.min(index + 1, rows.length - 1)];
-    else if (event.key === 'ArrowUp') next = rows[Math.max(0, index - 1)];
-    else if (event.key === 'Home') next = rows[0];
-    else if (event.key === 'End') next = rows[rows.length - 1];
-    else if (event.key === forward) {
-      if (parentIds.has(item.id) && collapsed.has(item.id) && !filtering) toggleCollapse(item.id);
-      else if (rows[index + 1]?.parentId === item.id) next = rows[index + 1];
-    } else if (event.key === back) {
-      if (parentIds.has(item.id) && !collapsed.has(item.id) && !filtering) toggleCollapse(item.id);
-      else next = rows.find((candidate) => candidate.id === item.parentId);
-    } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey && event.key !== ' ') {
-      const now = Date.now();
-      const letter = normalizePageSearch(event.key);
-      const previous = now - typeahead.current.time < 700 ? typeahead.current.text : '';
-      const text = previous === letter ? letter : previous + letter;
-      typeahead.current = { text, time: now };
-      next = [...rows.slice(index + 1), ...rows.slice(0, index + 1)].find((candidate) =>
-        normalizePageSearch(rowName(candidate.node).label).startsWith(text),
-      );
-    } else return;
-    event.preventDefault();
-    if (next) {
-      setFocusedId(next.id);
-      treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]').forEach((element) => {
-        if (element.dataset.pageId === next.id) element.focus();
-      });
-    }
-  };
   return (
     <TreeDndContext value={state}>
       <div dir={dir} className="mb-2 space-y-1">
@@ -644,21 +603,7 @@ export function PageTreeDndProvider({
         onDragCancel={reset}
       >
         <SortableContext items={visible.map((item) => item.id)} strategy={sortingStrategy}>
-          {/* Own the page groups in the accessibility tree while language
-              settings and add controls keep their independent toolbar focus. */}
-          {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions lint/a11y/noStaticElementInteractions: delegates key events only from the owned treeitems. */}
-          <div ref={treeRef} dir={dir} onKeyDown={navigate}>
-            <div
-              role="tree"
-              aria-label={t('editor.tree.label')}
-              aria-describedby={instructionId}
-              aria-owns={languages
-                .filter((language) => (flatByLanguage.get(language.id)?.length ?? 0) > 0)
-                .map((language) => `${instructionId}-${language.id}`)
-                .join(' ')}
-            />
-            {children}
-          </div>
+          {children}
           {filtering && !visible.some((item) => !isMarker(item)) ? <EmptyState title={t('editor.tree.noResults')} /> : null}
         </SortableContext>
         <DragOverlay>{draggingNode ? <RowPresentation node={draggingNode} depth={0} overlay hint={dropHint ?? undefined} /> : null}</DragOverlay>
@@ -671,14 +616,20 @@ export function PageTreeDndProvider({
  *  dragging and takes a drop as "top of this language". Highlighted when the
  *  dragged page would land in this language from another one. */
 export function LanguageDropTarget({ languageId, className, children }: { languageId: string; className?: string; children: ReactNode }) {
-  const { readOnly, filter, projection, sourceLanguageId } = useTreeDnd();
+  const { readOnly, filter, dir, projection, sourceLanguageId, instructionId, languageLabel } = useTreeDnd();
   const { setNodeRef, transform, transition } = useSortable({
     id: languageMarkerId(languageId),
     disabled: { draggable: true, droppable: readOnly || Boolean(filter.trim()) },
   });
   const target = Boolean(projection && sourceLanguageId && projection.languageId === languageId && projection.languageId !== sourceLanguageId);
   return (
+    // biome-ignore lint/a11y/useSemanticElements: this labels a language header and its toolbar, not form fields.
     <div
+      role="group"
+      id={languageHeaderId(instructionId, languageId)}
+      aria-label={languageLabel(languageId)}
+      dir={dir}
+      data-language-id={languageId}
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition, ...(target ? DROP_RING : {}) }}
       className={cn('rounded-md', target && 'bg-primary/5', className)}
@@ -707,23 +658,53 @@ export function SortablePageTree({
   onRename?: (id: string, title: string, field: RenameField) => void;
   onDelete?: (id: string) => void;
 }) {
-  const {
-    readOnly,
-    filter,
-    focusedId,
-    setFocusedId,
-    instructionId,
-    rowsFor,
-    depthOf,
-    parentIds,
-    collapsed,
-    toggleCollapse,
-    projection,
-    draggingId,
-    dropHint,
-  } = useTreeDnd();
+  const { readOnly, filter, dir, instructionId, rowsFor, depthOf, parentIds, collapsed, toggleCollapse, projection, draggingId, dropHint } =
+    useTreeDnd();
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
+  const typeahead = useRef({ text: '', time: 0 });
   const rows = rowsFor(languageId);
+  const tabStopId = rows.some((item) => item.id === focusedId) ? focusedId : rows[0]?.id;
+  const navigate = (event: KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const row = target.closest<HTMLElement>('[role="treeitem"]');
+    if (!row || target !== row || draggingId) return;
+    const index = rows.findIndex((item) => item.id === row.dataset.pageId);
+    const item = rows[index];
+    if (!item) return;
+    let next: Flat | undefined;
+    const filtering = Boolean(filter.trim());
+    const forward = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+    const back = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+    if (event.key === 'ArrowDown') next = rows[Math.min(index + 1, rows.length - 1)];
+    else if (event.key === 'ArrowUp') next = rows[Math.max(0, index - 1)];
+    else if (event.key === 'Home') next = rows[0];
+    else if (event.key === 'End') next = rows[rows.length - 1];
+    else if (event.key === forward) {
+      if (parentIds.has(item.id) && collapsed.has(item.id) && !filtering) toggleCollapse(item.id);
+      else if (rows[index + 1]?.parentId === item.id) next = rows[index + 1];
+    } else if (event.key === back) {
+      if (parentIds.has(item.id) && !collapsed.has(item.id) && !filtering) toggleCollapse(item.id);
+      else next = rows.find((candidate) => candidate.id === item.parentId);
+    } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey && event.key !== ' ') {
+      const now = Date.now();
+      const letter = normalizePageSearch(event.key);
+      const previous = now - typeahead.current.time < 700 ? typeahead.current.text : '';
+      const text = previous === letter ? letter : previous + letter;
+      typeahead.current = { text, time: now };
+      next = [...rows.slice(index + 1), ...rows.slice(0, index + 1)].find((candidate) =>
+        normalizePageSearch(rowName(candidate.node).label).startsWith(text),
+      );
+    } else return;
+    event.preventDefault();
+    if (next) {
+      setFocusedId(next.id);
+      treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]').forEach((element) => {
+        if (element.dataset.pageId === next.id) element.focus();
+      });
+    }
+  };
   const finishRename = useCallback(
     (id: string, title: string | null, field: RenameField) => {
       setRenamingId(null);
@@ -761,7 +742,7 @@ export function SortablePageTree({
         readOnly={readOnly}
         dragDisabled={Boolean(filter.trim())}
         filter={filter}
-        focused={focusedId === item.id}
+        focused={tabStopId === item.id}
         onFocusRow={setFocusedId}
         instructionId={instructionId}
         setSize={siblings.length}
@@ -778,8 +759,14 @@ export function SortablePageTree({
     ));
   };
   return (
-    // biome-ignore lint/a11y/useSemanticElements: ARIA tree groups are not form fieldsets.
-    <div role="group" id={`${instructionId}-${languageId}`}>
+    <div
+      ref={treeRef}
+      role="tree"
+      aria-labelledby={languageHeaderId(instructionId, languageId)}
+      aria-describedby={instructionId}
+      dir={dir}
+      onKeyDown={navigate}
+    >
       {renderGroup(null)}
     </div>
   );

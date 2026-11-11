@@ -4287,7 +4287,6 @@
   "editor_tree_search": "Filtrer les pages par titre ou adresse",
   "editor_tree_noresults": "Aucune page correspondante",
   "editor_tree_filterreason": "Effacez le filtre pour déplacer des pages.",
-  "editor_tree_label": "Pages",
   "editor_tree_instructions": "Utilisez les flèches pour naviguer, Entrée pour ouvrir, F2 pour renommer, Maj+F10 pour les actions et Alt+Shift+D pour la poignée de déplacement. Sur la poignée, appuyez sur Espace pour déplacer, les flèches pour choisir la destination, Espace pour déposer ou Échap pour annuler.",
   "editor_tree_movedinside": "{title} a été déplacée dans {parent}, position {position} sur {total}.",
   "editor_tree_movedroot": "{title} a été déplacée vers {language}, position {position} sur {total}."

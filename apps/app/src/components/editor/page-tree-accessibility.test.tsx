@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { PageNode } from '@/hooks/api';
-import { PageTreeDndProvider, SortablePageTree } from './sortable-page-tree';
+import { LanguageDropTarget, languageMarkerId, PageTreeDndProvider, SortablePageTree } from './sortable-page-tree';
 
 const translate = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, 'en');
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => translate }));
@@ -26,17 +26,45 @@ const pages = [
   updatedAt: '',
 })) as PageNode[];
 
-async function render(dir: 'ltr' | 'rtl' = 'ltr', collapsed = false) {
+async function render(dir: 'ltr' | 'rtl' = 'ltr', collapsed = false, multilingual = false) {
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
   const onSelect = vi.fn();
   const onMove = vi.fn();
   const onRename = vi.fn();
+  const languages = [{ id: 'en', label: 'English', collapsed }, ...(multilingual ? [{ id: 'ar', label: 'العربية', collapsed: false }] : [])];
+  const allPages = multilingual
+    ? [
+        ...pages,
+        ...pages.slice(0, 2).map((page, index) => ({
+          ...page,
+          id: `ar-${page.id}`,
+          parentId: index === 0 ? null : 'ar-guide',
+          languageId: 'ar',
+          title: index === 0 ? 'دليل البدء' : 'إعدادات',
+        })),
+      ]
+    : pages;
   await act(async () =>
     root.render(
-      <PageTreeDndProvider pages={pages} languages={[{ id: 'en', label: 'English', collapsed }]} dir={dir} onMove={onMove}>
-        <SortablePageTree languageId="en" activeId="guide" onSelect={onSelect} onAddChild={vi.fn()} onSettings={vi.fn()} onRename={onRename} />
+      <PageTreeDndProvider pages={allPages} languages={languages} dir={dir} onMove={onMove}>
+        {languages.map((language) => (
+          <div key={language.id}>
+            <LanguageDropTarget languageId={language.id}>
+              <button type="button">{language.label}</button>
+              <button type="button">Settings</button>
+            </LanguageDropTarget>
+            <SortablePageTree
+              languageId={language.id}
+              activeId="guide"
+              onSelect={onSelect}
+              onAddChild={vi.fn()}
+              onSettings={vi.fn()}
+              onRename={onRename}
+            />
+          </div>
+        ))}
       </PageTreeDndProvider>,
     ),
   );
@@ -59,8 +87,12 @@ it('exposes a grouped tree with one tab stop, sibling metadata and a shared desc
   await render();
   const tree = container.querySelector('[role="tree"]');
   expect(tree).not.toBeNull();
-  const ownedGroup = document.getElementById(tree?.getAttribute('aria-owns') ?? '');
-  expect(ownedGroup?.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
+  expect(tree?.querySelectorAll('[role="treeitem"]')).toHaveLength(3);
+  expect(tree?.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
+  expect(container.querySelector('[aria-owns]')).toBeNull();
+  const header = document.getElementById(tree?.getAttribute('aria-labelledby') ?? '');
+  expect(header?.getAttribute('aria-label')).toBe('English');
+  expect(header?.closest('[role="tree"]')).toBeNull();
   expect(row('guide').getAttribute('aria-expanded')).toBe('true');
   expect(row('guide').getAttribute('aria-selected')).toBe('true');
   expect(row('guide').getAttribute('aria-setsize')).toBe('2');
@@ -71,6 +103,59 @@ it('exposes a grouped tree with one tab stop, sibling metadata and a shared desc
   expect(new Set(descriptions).size).toBe(1);
   expect(tree?.getAttribute('aria-describedby')).toBe(descriptions[0]);
   expect(document.getElementById(descriptions[0] ?? '')?.textContent).toContain('F2');
+});
+
+it('nests each language tree in the DOM, leaves header controls outside, and keeps independent roving focus and boundaries', async () => {
+  await render('ltr', false, true);
+  const trees = [...container.querySelectorAll<HTMLElement>('[role="tree"]')];
+  expect(trees).toHaveLength(2);
+  expect(trees.map((tree) => tree.querySelectorAll('[role="treeitem"]').length)).toEqual([3, 2]);
+  expect(container.querySelector('[aria-owns]')).toBeNull();
+  for (const [index, tree] of trees.entries()) {
+    expect(tree.querySelectorAll('[role="treeitem"][tabindex="0"]')).toHaveLength(1);
+    const header = document.getElementById(tree.getAttribute('aria-labelledby') ?? '') as HTMLElement;
+    expect(header.getAttribute('aria-label')).toBe(index === 0 ? 'English' : 'العربية');
+    expect(header.closest('[role="tree"]')).toBeNull();
+    expect(header.compareDocumentPosition(tree) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect([...header.querySelectorAll('button')].every((button) => !tree.contains(button))).toBe(true);
+  }
+  await act(async () => row('config').focus());
+  await key(row('config'), 'ArrowDown');
+  expect(document.activeElement).toBe(row('config'));
+  await act(async () => row('ar-guide').focus());
+  await key(row('ar-guide'), 'ArrowUp');
+  expect(document.activeElement).toBe(row('ar-guide'));
+  await key(row('ar-guide'), 'End');
+  expect(document.activeElement).toBe(row('ar-child'));
+  expect(trees.map((tree) => tree.querySelector('[tabindex="0"]')?.getAttribute('data-page-id'))).toEqual(['config', 'ar-child']);
+  await key(row('ar-child'), 'Home');
+  expect(document.activeElement).toBe(row('ar-guide'));
+});
+
+it('moves a page through another language header using the shared dnd context', async () => {
+  const positions = [languageMarkerId('en'), 'guide', 'child', 'config', languageMarkerId('ar'), 'ar-guide', 'ar-child'];
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const selector = '[data-sortable-page-id], [data-language-id]';
+    const measured = this.closest<HTMLElement>(selector) ?? this.querySelector<HTMLElement>(selector);
+    const id = measured?.dataset.sortablePageId ?? languageMarkerId(measured?.dataset.languageId ?? 'en');
+    const top = Math.max(0, positions.indexOf(id)) * 32;
+    return { x: 0, y: top, top, bottom: top + 32, left: 0, right: 300, width: 300, height: 32, toJSON: () => ({}) };
+  });
+  const { onMove } = await render('ltr', false, true);
+  const handle = row('config').querySelector('[data-drag-handle]') as HTMLElement;
+  await act(async () => handle.focus());
+  await key(handle, ' ');
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+  await key(handle, 'ArrowDown');
+  expect(container.querySelector('[data-language-id="ar"]')?.getAttribute('data-drop-target')).toBe('language');
+  await key(handle, ' ');
+  expect(onMove).toHaveBeenCalledWith(
+    expect.arrayContaining([
+      { id: 'config', parentId: null, languageId: 'ar', position: 0 },
+      { id: 'ar-guide', parentId: null, languageId: 'ar', position: 1 },
+    ]),
+  );
+  expect(container.querySelector('[data-tree-announcement]')?.textContent).toBe('Configuration moved to العربية, position 1 of 2.');
 });
 
 it.each(['ltr', 'rtl'] as const)('navigates, collapses, expands and opens in %s', async (dir) => {

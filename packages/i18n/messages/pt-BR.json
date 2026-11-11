@@ -4288,7 +4288,6 @@
   "editor_tree_search": "Filtrar páginas por título ou endereço",
   "editor_tree_noresults": "Nenhuma página correspondente",
   "editor_tree_filterreason": "Limpe o filtro para mover páginas.",
-  "editor_tree_label": "Páginas",
   "editor_tree_instructions": "Use as setas para navegar, Enter para abrir, F2 para renomear, Shift+F10 para ações e Alt+Shift+D para a alça de arrastar. Na alça, pressione Espaço para mover, as setas para escolher o destino, Espaço para soltar ou Escape para cancelar.",
   "editor_tree_movedinside": "{title} foi movida para dentro de {parent}, posição {position} de {total}.",
   "editor_tree_movedroot": "{title} foi movida para {language}, posição {position} de {total}."
