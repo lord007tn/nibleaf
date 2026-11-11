@@ -289,8 +289,10 @@
     /* Inside right-to-left prose an isolated span that wraps is cut into line
        fragments, and each fragment lands at the far end of its line, so a
        command like `acme export --out ./backup` reads out of order. One atomic
-       box keeps the command together; it wraps left to right inside itself. */
-    &:where([dir="rtl"] :not(pre) > code) {
+       box keeps the command together; it wraps left to right inside itself.
+       Keyed on the parent's RESOLVED direction (:dir), so dir="auto" blocks that
+       resolve to RTL are covered and LTR-isolated blocks inside RTL pages aren't. */
+    &:where(:not(pre):dir(rtl) > code) {
       display: inline-block;
       max-width: 100%;
       overflow-wrap: anywhere;
@@ -430,6 +432,11 @@
     }
     &:where(th:first-child, td:first-child) {
       padding-inline-start: 0;
+    }
+    /* A cell lays its text out by its own script (dir from the renderer) but
+       keeps its column's alignment, set by the table's direction. */
+    &:where(th[dir], td[dir]) {
+      text-align: match-parent;
     }
     &:where(th[align="center"], td[align="center"]) {
       text-align: center;

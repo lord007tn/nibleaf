@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { type ComponentProps, lazy, Suspense, useMemo } from 'react';
+import { type ComponentProps, Suspense, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeHighlight from 'rehype-highlight';
@@ -11,6 +11,7 @@ import { type DocumentationComponents, str } from '@/components/site/mdx/props';
 import {
   normalizeMdxBlocks,
   rehypeAuthoredComponentProps,
+  rehypeBlockDirection,
   rehypeMermaid,
   remarkCallouts,
   remarkCodeMeta,
@@ -19,6 +20,8 @@ import {
 import { MermaidBlock } from '@/components/site/mermaid-block';
 import { Pre } from '@/components/site/reader-code-block';
 import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
+import { HydrationIsland } from '@/lib/hydration-modules';
+import { needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -37,12 +40,10 @@ export interface MarkdownProps {
   site?: SiteLinkContext;
 }
 
-const RichMarkdown = lazy(() => import('./markdown-rich'));
+/** The rich renderer's chunk (see richMarkdownModule). */
+export const loadRichMarkdown = () => import('./markdown-rich').then((module) => module.default);
 
-/** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
- * detection conservative—false positives only load the richer renderer, while
- * false negatives could change output. */
-export const needsRichMarkdown = (content: string): boolean => /<\/?[A-Za-z][^>]*>/.test(content) || /(^|[^\\])\$\$?[\s\S]*?\$\$?/m.test(content);
+const RICH_MODULES = [richMarkdownModule];
 
 /** Rewrite a root-relative internal doc link to the site base. External URLs,
  *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
@@ -111,7 +112,11 @@ function anchorRenderer(site: SiteLinkContext | undefined) {
  *  (rehypeMermaid). Every authored component tag needs raw HTML, so its renderer
  *  ships with the lazy rich renderer (see site/mdx/component-map.tsx). */
 export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'mermaid'> = {
-  callout: ({ type, children }) => <Callout type={str(type)}>{children}</Callout>,
+  callout: ({ type, dir, children }) => (
+    <Callout type={str(type)} dir={str(dir)}>
+      {children}
+    </Callout>
+  ),
   mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
 
@@ -120,9 +125,20 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
  *  Pass `site` on a published site so internal links resolve to the site base. */
 export function Markdown({ content, className, site }: MarkdownProps) {
   if (needsRichMarkdown(content)) {
+    // The router loads the rich chunk before hydrating markup it rendered, and
+    // the reader's loaders before navigating. Until it loads, hydrating keeps
+    // the server's markup and a client render shows the plain renderer, which
+    // keeps the text readable; so does a chunk that never loads. Only the
+    // server render suspends, waiting for the chunk.
+    const plain = <MarkdownRenderer content={content} className={className} site={site} />;
     return (
-      <Suspense fallback={<MarkdownRenderer content={content} className={className} site={site} />}>
-        <RichMarkdown content={content} className={className} site={site} />
+      <Suspense fallback={plain}>
+        <HydrationIsland className="contents" {...richMarkdownModule.marker} modules={RICH_MODULES} pending={plain} failed={() => plain}>
+          {() => {
+            const Rich = richMarkdownModule.read();
+            return <Rich content={content} className={className} site={site} />;
+          }}
+        </HydrationIsland>
       </Suspense>
     );
   }
@@ -192,6 +208,8 @@ export function MarkdownRenderer({
           [rehypeSanitize, sanitizeSchema],
           ...afterSanitizePlugins,
           rehypeMermaid,
+          // Each block lays out by its own script; code stays left to right.
+          rehypeBlockDirection,
           rehypeSlug,
           // `heading-anchor` class lets the anchor renderer keep heading styling
           // (not link color/underline); tabIndex -1 keeps it out of the tab order.

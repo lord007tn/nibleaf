@@ -31,7 +31,7 @@ import { publishedSiteLogo } from '@/lib/site-branding';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
-import { readerFallbackHead, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
+import { readerFallbackHead, siteEmoji, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
@@ -292,6 +292,7 @@ function SiteChrome() {
   // React Compiler memoizes this value; a manual useMemo here blocks compilation.
   const readerContext: SiteReaderContextValue = {
     lang: readerLanguage,
+    languages,
     homeHref: readerHomeHref,
     openSearch: showSearch ? () => setSearchOpen(true) : undefined,
   };
@@ -364,7 +365,7 @@ function SiteChrome() {
       ) : (
         <>
           <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
-            {(siteName || t('documentation'))[0]}
+            {siteEmoji(site.project.icon) || (siteName || t('documentation'))[0]}
           </span>
           <span className="truncate">{siteName ?? t('documentation')}</span>
         </>

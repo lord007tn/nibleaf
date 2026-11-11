@@ -2170,6 +2170,7 @@
   "site_searchprompt": "تلاش کرنے کے لیے ٹائپ کریں…",
   "site_results": "نتائج",
   "site_loading": "لوڈ ہو رہا ہے…",
+  "site_articleloadfailed": "یہ صفحہ لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں",
   "site_previous": "پچھلا",
   "site_next": "اگلا",
   "site_onthispage": "اس صفحہ پر",
@@ -4597,5 +4598,16 @@
   "people_invite_retryfor": "Retry the email to {email}",
   "people_invite_recipients": "Invited people",
   "people_invitations_resendnotqueued": "The invitation to {email} works for 7 more days, but its email couldn’t be queued. Copy the link instead.",
-  "people_site_invitedfailed": "The invitation for {email} exists, but its email couldn’t be queued. Copy the link or retry."
+  "people_site_invitedfailed": "The invitation for {email} exists, but its email couldn’t be queued. Copy the link or retry.",
+  "account_menu_help": "Help and documentation",
+  "account_menu_whatsNew": "What's new",
+  "account_menu_shortcuts": "Keyboard shortcuts",
+  "account_menu_reportProblem": "Report a problem",
+  "shortcuts_title": "Keyboard shortcuts",
+  "shortcuts_description": "Work faster in the dashboard. Letter shortcuts work when you are not typing in a field.",
+  "shortcuts_commandPalette": "Search and run commands",
+  "shortcuts_switchOrganization": "Switch organization",
+  "shortcuts_switchWebsite": "Switch website",
+  "shortcuts_close": "Close a menu or dialog",
+  "shortcuts_then": "then"
 }
