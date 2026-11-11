@@ -114,6 +114,19 @@ describe('GET /pages/:id/search-description', () => {
     expect(await response.json()).toEqual({ data: { description: 'Install the CLI and sign in.', revision: REVISION.toISOString() } });
   });
 
+  it('serves the full generated text, not the search-length cut: the editor cuts the preview and "Write your own" starts from it', async () => {
+    const long = `Nibleaf ${'docs go up in a day so you can '.repeat(8)}`.trim();
+    // Another project revision, so the cached description of the short body isn't served.
+    database.projectFindUnique.mockResolvedValue({ config: null, updatedAt: new Date('2026-11-10T09:00:00.000Z') });
+    database.pageFindFirst.mockImplementation(async ({ select }: { select: Record<string, true> }) =>
+      select.content ? { content: long, updatedAt: PAGE.updatedAt } : { updatedAt: PAGE.updatedAt },
+    );
+    const { data } = (await (await read('site-a', 'page-a')).json()) as { data: { description: string } };
+    expect(data.description).toBe(long);
+    expect(data.description.length).toBeGreaterThan(155);
+    expect(data.description.endsWith('…')).toBe(false);
+  });
+
   it('answers 401 without a session and 404 to someone without access to the site, before reading the page', async () => {
     expect((await read('site-a', 'page-a', null)).status).toBe(401);
     expect((await read('site-a', 'page-a', 'outsider')).status).toBe(404);

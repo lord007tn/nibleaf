@@ -819,6 +819,8 @@ const authInstance = betterAuth({
         // and authorizes nothing); disable them so admins see that too.
         await reassignOrDeleteOrgs(user.id);
         await revokeJoinLinksBeyondRole(prisma, null, user.id, null);
+        // Copies of the account's comments in Trash are removed by the
+        // page_trash_erase_user trigger, in the user delete's own transaction.
       },
     },
   },

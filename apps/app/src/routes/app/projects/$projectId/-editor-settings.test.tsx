@@ -67,6 +67,7 @@ vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { 
 vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/components/editor/use-media-query', () => ({ useMediaQuery: () => true }));
 vi.mock('@/components/editor/use-delete-page', () => ({ useDeletePageFlow: () => vi.fn() }));
+vi.mock('@/components/editor/page-trash-button', () => ({ PageTrashButton: () => null }));
 vi.mock('@/components/editor/use-ai-assist-session', () => ({ useAiAssistSession: () => ({}), aiAssistPageId: () => null }));
 vi.mock('@/components/editor/site-config-panel', () => ({
   ConfigSectionList: () => <nav data-testid="config-sections" />,
@@ -206,6 +207,13 @@ describe('editor site settings permissions', () => {
     const loader = Route.options.loader as (args: unknown) => void;
     loader({ context: { queryClient: {} }, params: { projectId: 'project-1' }, deps: {} });
     expect(mocks.prefetch).toHaveBeenCalledWith({}, { queryKey: ['workspace-ai', 'project-1', 'draft-capability'] });
+  });
+
+  it('never requests Trash when the editor opens', () => {
+    const loader = Route.options.loader as (args: unknown) => void;
+    loader({ context: { queryClient: {} }, params: { projectId: 'project-1' }, deps: {} });
+    const keys = mocks.prefetch.mock.calls.map(([, options]) => (options as { queryKey?: unknown[] } | undefined)?.queryKey?.[0]);
+    expect(keys).not.toContain('page-trash');
   });
 });
 

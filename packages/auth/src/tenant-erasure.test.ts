@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   markerFindUnique: vi.fn(),
   checkpointUpdateMany: vi.fn(),
   projectDelete: vi.fn(),
+  pageTrashDeleteMany: vi.fn(),
   revisionsDelete: vi.fn(),
   revisionStatesDelete: vi.fn(),
 }));
@@ -37,6 +38,7 @@ vi.mock('@nibleaf/database', () => ({
         $queryRaw: vi.fn(),
         pageRevision: { deleteMany: mocks.revisionsDelete },
         pageRevisionState: { deleteMany: mocks.revisionStatesDelete },
+        pageTrash: { deleteMany: mocks.pageTrashDeleteMany },
         project: { delete: mocks.projectDelete },
       }),
     project: { findUnique: mocks.projectFindUnique, delete: mocks.projectDelete },
@@ -60,6 +62,7 @@ describe('shared tenant privacy erasure', () => {
     mocks.removeJob.mockResolvedValue(true);
     mocks.checkpointUpdateMany.mockResolvedValue({ count: 0 });
     mocks.projectDelete.mockResolvedValue({ id: 'org-a' });
+    mocks.pageTrashDeleteMany.mockResolvedValue({ count: 0 });
   });
 
   it('fails closed before ClickHouse, search, or relational deletion while usage is pending', async () => {
@@ -68,6 +71,7 @@ describe('shared tenant privacy erasure', () => {
     expect(mocks.deleteProjectUsage).not.toHaveBeenCalled();
     expect(mocks.createJob).not.toHaveBeenCalled();
     expect(mocks.projectDelete).not.toHaveBeenCalled();
+    expect(mocks.pageTrashDeleteMany).not.toHaveBeenCalled();
   });
 
   it('tombstones retained facts, queues search and storage erasure, then deletes relational scope', async () => {
@@ -89,6 +93,9 @@ describe('shared tenant privacy erasure', () => {
     expect(mocks.revisionsDelete).toHaveBeenCalledBefore(mocks.projectDelete);
     expect(mocks.deleteProjectUsage).toHaveBeenCalledBefore(mocks.createJob);
     expect(Math.max(...mocks.createJob.mock.invocationCallOrder)).toBeLessThan(mocks.projectDelete.mock.invocationCallOrder[0] ?? 0);
+    // Trash (deleted page content, comment bodies) is purged explicitly, not only by cascade.
+    expect(mocks.pageTrashDeleteMany).toHaveBeenCalledExactlyOnceWith({ where: { projectId: 'project-a' } });
+    expect(mocks.pageTrashDeleteMany).toHaveBeenCalledBefore(mocks.projectDelete);
   });
 
   it('never deletes the relational scope when storage erasure cannot be queued', async () => {
