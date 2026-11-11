@@ -2,7 +2,7 @@ import { languagePathTarget, type SiteLanguageCandidate } from '@nibleaf/shared/
 import { siteBasePath } from '@/lib/site-paths';
 
 // Language-prefix resolution is shared with the pre-publish link checks.
-export { matchSiteLanguage, type SiteLanguageCandidate } from '@nibleaf/shared/site-route';
+export { matchSiteLanguage } from '@nibleaf/shared/site-route';
 
 export interface LanguagePathRedirectInput {
   /** The page route's splat (everything after the site base), encoded or decoded. */
