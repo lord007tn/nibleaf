@@ -62,7 +62,6 @@
     "@nibleaf/tsconfig": "workspace:*",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
-    "typescript": "^7.0.2",
-    "@types/mdast": "^4.0.4"
+    "typescript": "^7.0.2"
   }
 }
