@@ -493,6 +493,15 @@
   "editor_deletegroup": "删除组",
   "editor_deletegroupconfirm": "将分组“{title}”移到回收站？它会在那里保留 30 天，你可以随时恢复。",
   "editor_deletegroupwithchildrenconfirm": "将分组“{title}”及其中的页面（{count}）移到回收站？如需把这些页面留在目录中，请先把它们拖出分组。所有内容会在回收站保留 30 天。",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 个页面链接到此处"
+      }
+    }
+  ],
   "editor_deleted": "已将“{title}”移到回收站",
   "editor_deletefailed": "无法删除页面，请重试。",
   "editor_trash_button": "回收站（{count}）",
@@ -3000,9 +3009,18 @@
   "settings_integrations_status_active": "活动",
   "settings_integrations_status_inactive": "非活动",
   "settings_integrations_status_error": "需要关注",
+  "settings_integrations_status_notsendingyet": "尚未发送",
+  "settings_integrations_status_notinuse": "已连接，未使用",
+  "settings_integrations_comingsoon_description": "在你的站点发布时发送通知，即将推出。",
+  "settings_integrations_comingsoon_saved": "此连接已保存，但 Nibleaf 尚未向其发送任何内容。你可以将其移除。",
+  "settings_integrations_remove": "移除",
+  "settings_integrations_removetitle": "移除 {name}？",
+  "settings_integrations_removedescription": "Nibleaf 将忘记此 {name} 连接及其 Webhook URL。此操作无法撤销。",
+  "settings_integrations_removedtoast": "已移除 {name}",
   "settings_integrations_availability_available": "可用",
   "settings_integrations_availability_notconfigured": "未配置",
   "settings_integrations_availability_unavailable": "无法获取",
+  "settings_integrations_availability_comingsoon": "即将推出",
   "settings_integrations_health": "运行状况",
   "settings_integrations_health_healthy": "正常",
   "settings_integrations_health_unhealthy": "异常",
@@ -3022,6 +3040,8 @@
   "settings_integrations_statusdescription": "此处仅显示隐私安全的配置和运行状态信息。",
   "settings_integrations_adapterowned": "此提供者保留其现有的配置屏幕和生命周期.",
   "settings_integrations_opengitsettings": "打开 Git 设置",
+  "settings_integrations_opensmartai": "打开 Smart AI",
+  "settings_integrations_smartaiowned": "密钥、模型和开启 AI 回答的开关都在 Smart AI 中。",
   "settings_integrations_managedready": "由 Nibleaf 运维方配置",
   "settings_integrations_managedunavailable": "未为 Nibleaf 实例配置",
   "settings_integrations_manageddescription": "由实例管理的凭据绝不会在项目设置中显示或更改。",
@@ -3646,6 +3666,7 @@
   "settings_smartai_enabled": "AI answers enabled",
   "settings_smartai_disabled": "AI answers disabled",
   "settings_smartai_disable": "关闭此站点的 AI",
+  "settings_smartai_alreadyoff": "此站点的 AI 回答已关闭。",
   "settings_smartai_encryptionmissing": "Your administrator needs to configure credential encryption before provider keys can be saved.",
   "settings_smartai_infrastructuremissing": "Semantic search infrastructure is not configured. Ask your administrator to finish search setup.",
   "settings_smartai_instance": "Instance-managed provider",
@@ -4712,5 +4733,14 @@
   "editor_history_snapshottoolarge": "当前草稿或所选记录过大，无法安全恢复。",
   "editor_history_restored": "页面已恢复",
   "editor_history_added": "已添加",
-  "editor_history_removed": "已删除"
+  "editor_history_removed": "已删除",
+  "publishes_title": "发布记录",
+  "publishes_superseded": "已被替换",
+  "publishes_restore": "恢复此版本",
+  "publishes_changessince": "自版本 {version} 以来的更改",
+  "publishes_settingschanged": "此版本还更改了站点设置。",
+  "publishes_truncated": "正在显示 {total} 个已更改页面中的前 {shown} 个。",
+  "overview_activity_viewall": "查看全部",
+  "publishes_toolarge": "此版本过大，无法在此比较。",
+  "publishes_nosnapshot": "此版本的已发布副本已不再保存，因此无法比较或恢复。"
 }

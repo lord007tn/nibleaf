@@ -493,6 +493,16 @@
   "editor_deletegroup": "समूह हटाएँ",
   "editor_deletegroupconfirm": "समूह “{title}” को ट्रैश में ले जाएँ? यह वहाँ 30 दिन तक रहेगा, इसलिए आप इसे वापस ला सकते हैं।",
   "editor_deletegroupwithchildrenconfirm": "समूह “{title}” और इसके अंदर के पेज ({count}) ट्रैश में ले जाएँ? इन पेजों को ट्री में रखने के लिए पहले इन्हें समूह से बाहर खींचें। सब कुछ 30 दिन तक ट्रैश में रहेगा।",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} पेज यहाँ लिंक करता है",
+        "form=*": "{count} पेज यहाँ लिंक करते हैं"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ट्रैश में ले जाया गया",
   "editor_deletefailed": "पेज हटाया नहीं जा सका। फिर से कोशिश करें।",
   "editor_trash_button": "ट्रैश ({count})",
@@ -3000,9 +3010,18 @@
   "settings_integrations_status_active": "सक्रिय",
   "settings_integrations_status_inactive": "निष्क्रिय",
   "settings_integrations_status_error": "ध्यान देना",
+  "settings_integrations_status_notsendingyet": "अभी भेजा नहीं जा रहा",
+  "settings_integrations_status_notinuse": "कनेक्टेड, उपयोग में नहीं",
+  "settings_integrations_comingsoon_description": "आपकी साइट प्रकाशित होने पर पोस्ट करेगा, जल्द आ रहा है।",
+  "settings_integrations_comingsoon_saved": "यह कनेक्शन सहेजा गया है, लेकिन Nibleaf अभी इसमें कुछ नहीं भेजता। आप इसे हटा सकते हैं।",
+  "settings_integrations_remove": "हटाएँ",
+  "settings_integrations_removetitle": "{name} हटाएँ?",
+  "settings_integrations_removedescription": "Nibleaf यह {name} कनेक्शन और उसका webhook URL हटा देगा। इसे पूर्ववत नहीं किया जा सकता।",
+  "settings_integrations_removedtoast": "{name} हटाया गया",
   "settings_integrations_availability_available": "उपलब्ध",
   "settings_integrations_availability_notconfigured": "कॉन्फ़िगर नहीं किया गया",
   "settings_integrations_availability_unavailable": "अनुपलब्ध",
+  "settings_integrations_availability_comingsoon": "जल्द आ रहा है",
   "settings_integrations_health": "स्वास्थ्य",
   "settings_integrations_health_healthy": "स्वस्थ",
   "settings_integrations_health_unhealthy": "अस्वस्थ",
@@ -3022,6 +3041,8 @@
   "settings_integrations_statusdescription": "यहाँ केवल गोपनीयता-सुरक्षित कॉन्फ़िगरेशन और संचालन स्थिति दिखाई जाती है।",
   "settings_integrations_adapterowned": "यह प्रदाता अपने मौजूदा कॉन्फ़िगरेशन स्क्रीन और लाइफसाइकिल को रखता है।",
   "settings_integrations_opengitsettings": "ओपन गिट सेटिंग्स",
+  "settings_integrations_opensmartai": "Smart AI खोलें",
+  "settings_integrations_smartaiowned": "कुंजियाँ, मॉडल और AI उत्तर चालू करने का स्विच Smart AI में हैं।",
   "settings_integrations_managedready": "Nibleaf ऑपरेटर द्वारा कॉन्फ़िगर किया गया",
   "settings_integrations_managedunavailable": "इस Nibleaf इंस्टेंस के लिए कॉन्फ़िगर नहीं किया गया",
   "settings_integrations_manageddescription": "इंस्टेंस-प्रबंधित क्रेडेंशियल कभी परियोजना सेटिंग्स से उजागर या परिवर्तित नहीं होते हैं।",
@@ -3646,6 +3667,7 @@
   "settings_smartai_enabled": "AI answers enabled",
   "settings_smartai_disabled": "AI answers disabled",
   "settings_smartai_disable": "इस साइट के लिए AI बंद करें",
+  "settings_smartai_alreadyoff": "इस साइट के लिए AI उत्तर पहले से बंद हैं।",
   "settings_smartai_encryptionmissing": "Your administrator needs to configure credential encryption before provider keys can be saved.",
   "settings_smartai_infrastructuremissing": "Semantic search infrastructure is not configured. Ask your administrator to finish search setup.",
   "settings_smartai_instance": "Instance-managed provider",
@@ -4714,5 +4736,14 @@
   "editor_history_snapshottoolarge": "वर्तमान मसौदा या चुनी गई प्रविष्टि सुरक्षित रूप से बहाल करने के लिए बहुत बड़ी है।",
   "editor_history_restored": "पृष्ठ बहाल हो गया",
   "editor_history_added": "जोड़ा गया",
-  "editor_history_removed": "हटाया गया"
+  "editor_history_removed": "हटाया गया",
+  "publishes_title": "प्रकाशन",
+  "publishes_superseded": "बदला गया",
+  "publishes_restore": "यह संस्करण बहाल करें",
+  "publishes_changessince": "संस्करण {version} के बाद के बदलाव",
+  "publishes_settingschanged": "इस संस्करण ने साइट सेटिंग्स भी बदलीं।",
+  "publishes_truncated": "{total} बदले गए पेजों में से पहले {shown} दिखाए जा रहे हैं।",
+  "overview_activity_viewall": "सभी देखें",
+  "publishes_toolarge": "यह संस्करण यहाँ तुलना करने के लिए बहुत बड़ा है।",
+  "publishes_nosnapshot": "इस संस्करण की प्रकाशित प्रति अब सहेजी नहीं है, इसलिए इसकी तुलना नहीं की जा सकती और इसे बहाल नहीं किया जा सकता।"
 }

@@ -502,6 +502,16 @@
   "editor_deletegroup": "گروپ حذف کریں",
   "editor_deletegroupconfirm": "گروپ “{title}” کو ردی میں منتقل کریں؟ یہ وہاں 30 دن تک رہے گا، اس لیے آپ اسے بحال کر سکتے ہیں۔",
   "editor_deletegroupwithchildrenconfirm": "گروپ “{title}” اور اس کے اندر کے صفحات ({count}) ردی میں منتقل کریں؟ ان صفحات کو درخت میں رکھنے کے لیے پہلے انہیں گروپ سے باہر گھسیٹیں۔ سب کچھ 30 دن تک ردی میں رہے گا۔",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ یہاں لنک کرتا ہے",
+        "form=*": "{count} صفحات یہاں لنک کرتے ہیں"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ردی میں منتقل ہو گیا",
   "editor_deletefailed": "صفحہ حذف نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
   "editor_trash_button": "ردی ({count})",
@@ -3056,9 +3066,18 @@
   "settings_integrations_status_active": "فعال",
   "settings_integrations_status_inactive": "غیر فعال",
   "settings_integrations_status_error": "توجہ کی ضرورت ہے",
+  "settings_integrations_status_notsendingyet": "ابھی نہیں بھیج رہا",
+  "settings_integrations_status_notinuse": "منسلک، استعمال میں نہیں",
+  "settings_integrations_comingsoon_description": "آپ کی سائٹ شائع ہونے پر پوسٹ کرے گا، جلد آ رہا ہے۔",
+  "settings_integrations_comingsoon_saved": "یہ کنکشن محفوظ ہے، لیکن Nibleaf ابھی اس پر کچھ نہیں بھیجتا۔ آپ اسے ہٹا سکتے ہیں۔",
+  "settings_integrations_remove": "ہٹائیں",
+  "settings_integrations_removetitle": "{name} ہٹائیں؟",
+  "settings_integrations_removedescription": "Nibleaf یہ {name} کنکشن اور اس کا webhook URL بھول جائے گا۔ اسے واپس نہیں کیا جا سکتا۔",
+  "settings_integrations_removedtoast": "{name} ہٹا دیا گیا",
   "settings_integrations_availability_available": "دستیاب",
   "settings_integrations_availability_notconfigured": "تشکیل شدہ نہیں ہے",
   "settings_integrations_availability_unavailable": "دستیاب نہیں",
+  "settings_integrations_availability_comingsoon": "جلد آ رہا ہے",
   "settings_integrations_health": "صحت",
   "settings_integrations_health_healthy": "صحت مند",
   "settings_integrations_health_unhealthy": "غیر صحت مند",
@@ -3078,6 +3097,8 @@
   "settings_integrations_statusdescription": "صرف رازداری سے محفوظ کنفیگریشن اور صحت کی معلومات یہاں دکھائی گئی ہیں ۔",
   "settings_integrations_adapterowned": "یہ فراہم کنندہ اپنی موجودہ کنفیگریشن اسکرین اور لائف سائیکل کو برقرار رکھتا ہے ۔",
   "settings_integrations_opengitsettings": "Git سیٹنگز کھولیں",
+  "settings_integrations_opensmartai": "Smart AI کھولیں",
+  "settings_integrations_smartaiowned": "کلیدیں، ماڈلز اور AI جوابات آن کرنے کا سوئچ Smart AI میں ہیں۔",
   "settings_integrations_managedready": "Nibleaf آپریٹر کے ذریعہ تشکیل کردہ",
   "settings_integrations_managedunavailable": "اس Nibleaf انسٹنس کے لیے تشکیل شدہ نہیں",
   "settings_integrations_manageddescription": "انسٹنس کے زیر انتظام اسناد کو کبھی بھی پراجیکٹ کی ترتیبات میں ظاہر یا تبدیل نہیں کیا جاتا۔",
@@ -3702,6 +3723,7 @@
   "settings_smartai_enabled": "AI answers enabled",
   "settings_smartai_disabled": "AI answers disabled",
   "settings_smartai_disable": "اس سائٹ کے لیے AI بند کریں",
+  "settings_smartai_alreadyoff": "اس سائٹ کے لیے AI جوابات پہلے سے بند ہیں۔",
   "settings_smartai_encryptionmissing": "Your administrator needs to configure credential encryption before provider keys can be saved.",
   "settings_smartai_infrastructuremissing": "Semantic search infrastructure is not configured. Ask your administrator to finish search setup.",
   "settings_smartai_instance": "Instance-managed provider",
@@ -4770,5 +4792,14 @@
   "editor_history_snapshottoolarge": "موجودہ مسودہ یا منتخب اندراج محفوظ بحالی کے لیے بہت بڑا ہے۔",
   "editor_history_restored": "صفحہ بحال ہو گیا",
   "editor_history_added": "شامل کیا گیا",
-  "editor_history_removed": "حذف کیا گیا"
+  "editor_history_removed": "حذف کیا گیا",
+  "publishes_title": "اشاعتیں",
+  "publishes_superseded": "تبدیل شدہ",
+  "publishes_restore": "یہ نسخہ بحال کریں",
+  "publishes_changessince": "نسخہ {version} کے بعد کی تبدیلیاں",
+  "publishes_settingschanged": "اس نسخے میں سائٹ کی ترتیبات بھی تبدیل ہوئیں۔",
+  "publishes_truncated": "{total} تبدیل شدہ صفحات میں سے پہلے {shown} دکھائے جا رہے ہیں۔",
+  "overview_activity_viewall": "سب دیکھیں",
+  "publishes_toolarge": "یہ نسخہ یہاں موازنے کے لیے بہت بڑا ہے۔",
+  "publishes_nosnapshot": "اس نسخے کی شائع شدہ کاپی اب محفوظ نہیں، اس لیے نہ اس کا موازنہ ہو سکتا ہے اور نہ اسے بحال کیا جا سکتا ہے۔"
 }

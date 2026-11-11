@@ -493,6 +493,15 @@
   "editor_deletegroup": "গ্রুপ মুছুন",
   "editor_deletegroupconfirm": "গ্রুপ “{title}” ট্র্যাশে সরাবেন? এটি সেখানে 30 দিন থাকবে, তাই আপনি এটি ফিরিয়ে আনতে পারবেন।",
   "editor_deletegroupwithchildrenconfirm": "গ্রুপ “{title}” এবং এর ভেতরের পেজগুলো ({count}) ট্র্যাশে সরাবেন? এই পেজগুলো ট্রিতে রাখতে আগে এগুলো গ্রুপের বাইরে টেনে আনুন। সবকিছু 30 দিন ট্র্যাশে থাকবে।",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count}টি পৃষ্ঠা এখানে লিঙ্ক করে"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ট্র্যাশে সরানো হয়েছে",
   "editor_deletefailed": "পৃষ্ঠাটি মোছা যায়নি। আবার চেষ্টা করুন।",
   "editor_trash_button": "ট্র্যাশ ({count})",
@@ -3000,9 +3009,18 @@
   "settings_integrations_status_active": "সক্রিয়",
   "settings_integrations_status_inactive": "নিষ্ক্রিয়",
   "settings_integrations_status_error": "মনোযোগ প্রয়োজন",
+  "settings_integrations_status_notsendingyet": "এখনও পাঠানো হচ্ছে না",
+  "settings_integrations_status_notinuse": "সংযুক্ত, ব্যবহার হচ্ছে না",
+  "settings_integrations_comingsoon_description": "আপনার সাইট প্রকাশিত হলে পোস্ট করবে, শীঘ্রই আসছে।",
+  "settings_integrations_comingsoon_saved": "এই সংযোগটি সংরক্ষিত আছে, কিন্তু Nibleaf এখনও এতে কিছু পাঠায় না। আপনি এটি সরাতে পারেন।",
+  "settings_integrations_remove": "সরান",
+  "settings_integrations_removetitle": "{name} সরাবেন?",
+  "settings_integrations_removedescription": "Nibleaf এই {name} সংযোগ এবং এর webhook URL মুছে ফেলবে। এটি পূর্বাবস্থায় ফেরানো যাবে না।",
+  "settings_integrations_removedtoast": "{name} সরানো হয়েছে",
   "settings_integrations_availability_available": "উপলভ্য",
   "settings_integrations_availability_notconfigured": "কনফিগার করা হয়নি",
   "settings_integrations_availability_unavailable": "পাওয়া যাচ্ছে না",
+  "settings_integrations_availability_comingsoon": "শীঘ্রই আসছে",
   "settings_integrations_health": "স্বাস্থ্য",
   "settings_integrations_health_healthy": "সুস্থ",
   "settings_integrations_health_unhealthy": "অসুস্থ",
@@ -3022,6 +3040,8 @@
   "settings_integrations_statusdescription": "শুধুমাত্র গোপনীয়তা-নিরাপদ কনফিগারেশন এবং স্বাস্থ্য সম্পর্কিত তথ্য এখানে দেখানো হয়েছে ।",
   "settings_integrations_adapterowned": "এই প্রদানকারী তার বিদ্যমান কনফিগারেশন স্ক্রিন এবং জীবনচক্র রাখে ।",
   "settings_integrations_opengitsettings": "গিট সেটিংস খুলুন",
+  "settings_integrations_opensmartai": "Smart AI খুলুন",
+  "settings_integrations_smartaiowned": "কী, মডেল এবং AI উত্তর চালু করার সুইচ Smart AI-তে আছে।",
   "settings_integrations_managedready": "Nibleaf অপারেটর দ্বারা কনফিগার করা হয়েছে",
   "settings_integrations_managedunavailable": "এই Nibleaf ইনস্ট্যান্সের জন্য কনফিগার করা হয়নি",
   "settings_integrations_manageddescription": "ইনস্ট্যান্স-পরিচালিত শংসাপত্র কখনও প্রজেক্ট সেটিংসে প্রকাশ বা পরিবর্তন করা হয় না।",
@@ -3646,6 +3666,7 @@
   "settings_smartai_enabled": "AI answers enabled",
   "settings_smartai_disabled": "AI answers disabled",
   "settings_smartai_disable": "এই সাইটের জন্য AI বন্ধ করুন",
+  "settings_smartai_alreadyoff": "এই সাইটের জন্য AI উত্তর ইতিমধ্যে বন্ধ আছে।",
   "settings_smartai_encryptionmissing": "Your administrator needs to configure credential encryption before provider keys can be saved.",
   "settings_smartai_infrastructuremissing": "Semantic search infrastructure is not configured. Ask your administrator to finish search setup.",
   "settings_smartai_instance": "Instance-managed provider",
@@ -4714,5 +4735,14 @@
   "editor_history_snapshottoolarge": "বর্তমান খসড়া বা নির্বাচিত এন্ট্রি নিরাপদে পুনরুদ্ধার করার জন্য অনেক বড়।",
   "editor_history_restored": "পৃষ্ঠা পুনরুদ্ধার করা হয়েছে",
   "editor_history_added": "যোগ করা হয়েছে",
-  "editor_history_removed": "সরানো হয়েছে"
+  "editor_history_removed": "সরানো হয়েছে",
+  "publishes_title": "প্রকাশনা",
+  "publishes_superseded": "প্রতিস্থাপিত",
+  "publishes_restore": "এই সংস্করণ ফিরিয়ে আনুন",
+  "publishes_changessince": "সংস্করণ {version} থেকে পরিবর্তন",
+  "publishes_settingschanged": "এই সংস্করণে সাইটের সেটিংসও বদলেছে।",
+  "publishes_truncated": "{total}টি পরিবর্তিত পৃষ্ঠার মধ্যে প্রথম {shown}টি দেখানো হচ্ছে।",
+  "overview_activity_viewall": "সব দেখুন",
+  "publishes_toolarge": "এই সংস্করণটি এখানে তুলনা করার জন্য খুব বড়।",
+  "publishes_nosnapshot": "এই সংস্করণের প্রকাশিত কপি আর সংরক্ষিত নেই, তাই এটি তুলনা করা বা ফিরিয়ে আনা যাবে না।"
 }

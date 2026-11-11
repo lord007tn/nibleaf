@@ -536,6 +536,16 @@
   "editor_deletegroup": "Delete group",
   "editor_deletegroupconfirm": "Move the group “{title}” to Trash? It stays there for 30 days, so you can restore it.",
   "editor_deletegroupwithchildrenconfirm": "Move the group “{title}” and the pages inside it ({count}) to Trash? To keep those pages in the tree, drag them out of the group first. Everything stays in Trash for 30 days.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page links here",
+        "form=*": "{count} pages link here"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” moved to Trash",
   "editor_deletefailed": "Couldn't delete the page. Try again.",
   "editor_trash_button": "Trash ({count})",
@@ -3065,9 +3075,18 @@
   "settings_integrations_status_active": "Active",
   "settings_integrations_status_inactive": "Inactive",
   "settings_integrations_status_error": "Needs attention",
+  "settings_integrations_status_notsendingyet": "Not sending yet",
+  "settings_integrations_status_notinuse": "Connected, not in use",
+  "settings_integrations_comingsoon_description": "Posts when your site is published, coming soon.",
+  "settings_integrations_comingsoon_saved": "This connection is saved, but Nibleaf doesn’t send anything to it yet. You can remove it.",
+  "settings_integrations_remove": "Remove",
+  "settings_integrations_removetitle": "Remove {name}?",
+  "settings_integrations_removedescription": "Nibleaf forgets this {name} connection and its webhook URL. This can’t be undone.",
+  "settings_integrations_removedtoast": "{name} removed",
   "settings_integrations_availability_available": "Available",
   "settings_integrations_availability_notconfigured": "Not configured",
   "settings_integrations_availability_unavailable": "Unavailable",
+  "settings_integrations_availability_comingsoon": "Coming soon",
   "settings_integrations_health": "Health",
   "settings_integrations_health_healthy": "Healthy",
   "settings_integrations_health_unhealthy": "Unhealthy",
@@ -3087,6 +3106,8 @@
   "settings_integrations_statusdescription": "Only privacy-safe configuration and health information is shown here.",
   "settings_integrations_adapterowned": "This provider keeps its existing configuration screen and lifecycle.",
   "settings_integrations_opengitsettings": "Open Git settings",
+  "settings_integrations_opensmartai": "Open Smart AI",
+  "settings_integrations_smartaiowned": "Keys, models and the switch that turns AI answers on are in Smart AI.",
   "settings_integrations_managedready": "Configured by the Nibleaf operator",
   "settings_integrations_managedunavailable": "Not configured for this Nibleaf instance",
   "settings_integrations_manageddescription": "Instance-managed credentials are never exposed or changed from project settings.",
@@ -3711,6 +3732,7 @@
   "settings_smartai_enabled": "AI answers enabled",
   "settings_smartai_disabled": "AI answers disabled",
   "settings_smartai_disable": "Turn off AI for this site",
+  "settings_smartai_alreadyoff": "AI answers are already off for this site.",
   "settings_smartai_encryptionmissing": "Your administrator needs to configure credential encryption before provider keys can be saved.",
   "settings_smartai_infrastructuremissing": "Semantic search infrastructure is not configured. Ask your administrator to finish search setup.",
   "settings_smartai_instance": "Instance-managed provider",
@@ -4779,5 +4801,14 @@
   "editor_history_snapshottoolarge": "The current draft or selected entry is too large to restore safely.",
   "editor_history_restored": "Page restored",
   "editor_history_added": "Added",
-  "editor_history_removed": "Removed"
+  "editor_history_removed": "Removed",
+  "publishes_title": "Publishes",
+  "publishes_superseded": "Replaced",
+  "publishes_restore": "Restore this version",
+  "publishes_changessince": "Changes since version {version}",
+  "publishes_settingschanged": "This version also changed site settings.",
+  "publishes_truncated": "Showing the first {shown} of {total} changed pages.",
+  "overview_activity_viewall": "View all",
+  "publishes_toolarge": "This version is too large to compare here.",
+  "publishes_nosnapshot": "This version’s published copy is no longer stored, so it can’t be compared or restored."
 }

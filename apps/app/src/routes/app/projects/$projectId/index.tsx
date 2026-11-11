@@ -281,9 +281,20 @@ function SiteOverviewPage() {
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="font-semibold text-sm">{t('overview.activity.title')}</h2>
-            {latestDeployment ? (
-              <Badge variant={deploymentStatusVariant(latestDeployment.status)}>{deploymentStatusLabel(latestDeployment.status, t)}</Badge>
-            ) : null}
+            <div className="flex items-center gap-3">
+              {latestDeployment ? (
+                <Badge variant={deploymentStatusVariant(latestDeployment.status)}>{deploymentStatusLabel(latestDeployment.status, t)}</Badge>
+              ) : null}
+              {/* The full history: every publish, what each changed, and Restore. */}
+              <Link
+                className="text-primary text-xs hover:underline"
+                data-testid="activity-view-all"
+                params={{ projectId }}
+                to="/app/projects/$projectId/publishes"
+              >
+                {t('overview.activity.viewAll')}
+              </Link>
+            </div>
           </div>
           <div aria-busy={deploymentsPending || undefined} className="flex flex-col gap-2">
             {deploymentsPending ? (
@@ -302,7 +313,14 @@ function SiteOverviewPage() {
             ) : null}
             {deploymentsFailed ? <QueryErrorState onRetry={() => void deploymentsQuery.refetch()} retrying={deploymentsQuery.isFetching} /> : null}
             {(deployments ?? []).slice(0, 3).map((deployment) => (
-              <div className="flex items-center justify-between gap-3 text-sm" key={deployment.id}>
+              // Each line opens that version: what it changed, and Restore.
+              <Link
+                className="-mx-1.5 flex items-center justify-between gap-3 rounded-md px-1.5 text-sm hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+                data-testid="activity-row"
+                key={deployment.id}
+                params={{ projectId, deploymentId: deployment.id }}
+                to="/app/projects/$projectId/publishes/$deploymentId"
+              >
                 {/* The version tag is code (always LTR); commit messages are free
                     text in whatever language the author wrote, so they resolve
                     their own direction and truncate on their own end. */}
@@ -324,7 +342,7 @@ function SiteOverviewPage() {
                   ) : null}
                 </div>
                 <span className="shrink-0 text-muted-foreground text-xs">{date(deployment.completedAt ?? deployment.createdAt)}</span>
-              </div>
+              </Link>
             ))}
             {deployments && deployments.length === 0 ? <p className="text-muted-foreground text-sm">{t('overview.activity.empty')}</p> : null}
           </div>

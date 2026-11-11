@@ -540,6 +540,20 @@
   "editor_deletegroup": "حذف المجموعة",
   "editor_deletegroupconfirm": "نقل المجموعة «{title}» إلى سلة المحذوفات؟ ستبقى هناك 30 يومًا، ويمكنك استعادتها خلالها.",
   "editor_deletegroupwithchildrenconfirm": "نقل المجموعة «{title}» والصفحات الموجودة داخلها ({count}) إلى سلة المحذوفات؟ للإبقاء على هذه الصفحات في الشجرة، اسحبها خارج المجموعة أولًا. يبقى كل شيء في السلة 30 يومًا.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا توجد صفحات ترتبط هنا",
+        "form=one": "صفحة واحدة ترتبط هنا",
+        "form=two": "صفحتان ترتبطان هنا",
+        "form=few": "{count} صفحات ترتبط هنا",
+        "form=many": "{count} صفحة ترتبط هنا",
+        "form=*": "{count} صفحة ترتبط هنا"
+      }
+    }
+  ],
   "editor_deleted": "نُقلت «{title}» إلى سلة المحذوفات",
   "editor_deletefailed": "تعذّر حذف الصفحة. حاول مجددًا.",
   "editor_trash_button": "سلة المحذوفات ({count})",
@@ -3100,9 +3114,18 @@
   "settings_integrations_status_active": "نشط",
   "settings_integrations_status_inactive": "غير نشط",
   "settings_integrations_status_error": "يحتاج إلى انتباه",
+  "settings_integrations_status_notsendingyet": "لا يُرسل بعد",
+  "settings_integrations_status_notinuse": "متصل، غير مستخدم",
+  "settings_integrations_comingsoon_description": "سينشر رسالة عند نشر موقعك، قريبًا.",
+  "settings_integrations_comingsoon_saved": "هذا الاتصال محفوظ، لكن Nibleaf لا يرسل إليه أي شيء بعد. يمكنك إزالته.",
+  "settings_integrations_remove": "إزالة",
+  "settings_integrations_removetitle": "إزالة {name}؟",
+  "settings_integrations_removedescription": "سينسى Nibleaf اتصال {name} هذا ورابط Webhook الخاص به. لا يمكن التراجع عن ذلك.",
+  "settings_integrations_removedtoast": "تمت إزالة {name}",
   "settings_integrations_availability_available": "متاح",
   "settings_integrations_availability_notconfigured": "غير مُعدّ",
   "settings_integrations_availability_unavailable": "غير متاح",
+  "settings_integrations_availability_comingsoon": "قريبًا",
   "settings_integrations_health": "الحالة الصحية",
   "settings_integrations_health_healthy": "سليم",
   "settings_integrations_health_unhealthy": "غير سليم",
@@ -3122,6 +3145,8 @@
   "settings_integrations_statusdescription": "تظهر هنا فقط الإعدادات الآمنة للخصوصية ومعلومات الحالة.",
   "settings_integrations_adapterowned": "يحتفظ هذا المزوّد بشاشة الإعداد ودورة الحياة الحالية.",
   "settings_integrations_opengitsettings": "فتح إعدادات Git",
+  "settings_integrations_opensmartai": "فتح إعدادات الذكاء الاصطناعي",
+  "settings_integrations_smartaiowned": "المفاتيح والنماذج ومفتاح تشغيل إجابات الذكاء الاصطناعي موجودة في صفحة «الذكاء الاصطناعي».",
   "settings_integrations_managedready": "أعدّه مشغّل Nibleaf",
   "settings_integrations_managedunavailable": "غير مُعدّ في نسخة Nibleaf هذه",
   "settings_integrations_manageddescription": "لا تظهر بيانات الاعتماد التي يديرها المشغّل ولا تتغير من إعدادات المشروع.",
@@ -3746,6 +3771,7 @@
   "settings_smartai_enabled": "الإجابات الذكية مفعّلة",
   "settings_smartai_disabled": "الإجابات الذكية غير مفعّلة",
   "settings_smartai_disable": "إيقاف الذكاء الاصطناعي لهذا الموقع",
+  "settings_smartai_alreadyoff": "إجابات الذكاء الاصطناعي متوقفة بالفعل لهذا الموقع.",
   "settings_smartai_encryptionmissing": "يحتاج مسؤول الاستضافة إلى إعداد تشفير بيانات الاعتماد قبل حفظ مفاتيح المزوّدين.",
   "settings_smartai_infrastructuremissing": "البنية الأساسية للبحث الدلالي غير معدّة. اطلب من مسؤول الاستضافة إكمال إعداد البحث.",
   "settings_smartai_instance": "مزوّد تديره الاستضافة",
@@ -4829,5 +4855,14 @@
   "editor_history_snapshottoolarge": "المسودة الحالية أو المحتوى المختار أكبر من أن يُستعاد بأمان.",
   "editor_history_restored": "تمت استعادة الصفحة",
   "editor_history_added": "مضاف",
-  "editor_history_removed": "محذوف"
+  "editor_history_removed": "محذوف",
+  "publishes_title": "سجل النشر",
+  "publishes_superseded": "سابقة",
+  "publishes_restore": "استعادة هذه النسخة",
+  "publishes_changessince": "التغييرات منذ النسخة {version}",
+  "publishes_settingschanged": "غيّرت هذه النسخة إعدادات الموقع أيضًا.",
+  "publishes_truncated": "تُعرض أول {shown} من أصل {total} صفحة تغيّرت.",
+  "overview_activity_viewall": "عرض الكل",
+  "publishes_toolarge": "هذه النسخة أكبر من أن تُقارَن هنا.",
+  "publishes_nosnapshot": "لم تعد هذه النسخة المنشورة محفوظة، لذا لا يمكن مقارنتها ولا استعادتها."
 }

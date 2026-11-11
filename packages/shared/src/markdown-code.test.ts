@@ -54,9 +54,7 @@ describe('import Markdown code boundaries', () => {
   it('restores a large page with many fences in one pass', () => {
     const input = '```\n'.repeat(100_000);
     const protectedCode = protectMarkdownCode(input);
-    const started = performance.now();
     expect(protectedCode.restore(protectedCode.content)).toBe(input);
-    expect(performance.now() - started).toBeLessThan(1000);
   });
 
   it('keeps placeholder-shaped text inside a literal unchanged', () => {

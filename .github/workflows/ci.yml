@@ -285,6 +285,12 @@ jobs:
           PAGE_TRASH_POSTGRES: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/page-trash.postgres.test.ts --maxWorkers=1
 
+      - name: Verify the publish history (access, paging, bounded change summaries)
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PUBLISH_HISTORY_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/deployment-history.postgres.test.ts
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt
@@ -347,6 +353,12 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      # Timing bounds (n against 4n, testing/growth) measure two sides of the same
+      # work; other files in parallel workers on this 2-core runner slow one side.
+      # They run here instead, one package and one file at a time.
+      - name: Growth tests, serial
+        run: pnpm test:growth
 
       - name: Verify indexed multilingual search and chat fixtures
         env:

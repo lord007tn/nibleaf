@@ -502,6 +502,16 @@
   "editor_deletegroup": "Eliminar grupo",
   "editor_deletegroupconfirm": "¿Mover el grupo «{title}» a la papelera? Se queda ahí 30 días, así que puedes restaurarlo.",
   "editor_deletegroupwithchildrenconfirm": "¿Mover el grupo «{title}» y las páginas que contiene ({count}) a la papelera? Para mantener esas páginas en el árbol, sácalas primero del grupo. Todo se queda 30 días en la papelera.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} página enlaza aquí",
+        "form=*": "{count} páginas enlazan aquí"
+      }
+    }
+  ],
   "editor_deleted": "«{title}» movida a la papelera",
   "editor_deletefailed": "No se pudo eliminar la página. Inténtalo de nuevo.",
   "editor_trash_button": "Papelera ({count})",
@@ -3065,9 +3075,18 @@
   "settings_integrations_status_active": "Activo",
   "settings_integrations_status_inactive": "Inactivo",
   "settings_integrations_status_error": "Needs attention.",
+  "settings_integrations_status_notsendingyet": "Aún no envía",
+  "settings_integrations_status_notinuse": "Conectado, sin usar",
+  "settings_integrations_comingsoon_description": "Publicará un aviso cuando se publique tu sitio. Próximamente.",
+  "settings_integrations_comingsoon_saved": "Esta conexión está guardada, pero Nibleaf aún no le envía nada. Puedes quitarla.",
+  "settings_integrations_remove": "Quitar",
+  "settings_integrations_removetitle": "¿Quitar {name}?",
+  "settings_integrations_removedescription": "Nibleaf olvidará esta conexión de {name} y su URL de webhook. No se puede deshacer.",
+  "settings_integrations_removedtoast": "{name} quitado",
   "settings_integrations_availability_available": "Disponible",
   "settings_integrations_availability_notconfigured": "Sin configurar",
   "settings_integrations_availability_unavailable": "No disponible",
+  "settings_integrations_availability_comingsoon": "Próximamente",
   "settings_integrations_health": "Estado operativo",
   "settings_integrations_health_healthy": "Operativa",
   "settings_integrations_health_unhealthy": "Con problemas",
@@ -3087,6 +3106,8 @@
   "settings_integrations_statusdescription": "Aquí solo se muestran la configuración segura para la privacidad y el estado operativo.",
   "settings_integrations_adapterowned": "Este proveedor mantiene su pantalla de configuración y ciclo de vida existentes.",
   "settings_integrations_opengitsettings": "Abrir configuración de Git",
+  "settings_integrations_opensmartai": "Abrir Smart AI",
+  "settings_integrations_smartaiowned": "Las claves, los modelos y el interruptor de las respuestas de IA están en Smart AI.",
   "settings_integrations_managedready": "Configurado por el operador Nibleaf",
   "settings_integrations_managedunavailable": "No configurado para esta instancia de Nibleaf",
   "settings_integrations_manageddescription": "Las credenciales gestionadas por instancias nunca se exponen ni cambian desde la configuración del proyecto.",
@@ -3711,6 +3732,7 @@
   "settings_smartai_enabled": "AI answers enabled",
   "settings_smartai_disabled": "AI answers disabled",
   "settings_smartai_disable": "Desactivar la IA de este sitio",
+  "settings_smartai_alreadyoff": "Las respuestas de IA ya están desactivadas en este sitio.",
   "settings_smartai_encryptionmissing": "Your administrator needs to configure credential encryption before provider keys can be saved.",
   "settings_smartai_infrastructuremissing": "Semantic search infrastructure is not configured. Ask your administrator to finish search setup.",
   "settings_smartai_instance": "Instance-managed provider",
@@ -4779,5 +4801,14 @@
   "editor_history_snapshottoolarge": "El borrador actual o la entrada seleccionada es demasiado grande para restaurarlo de forma segura.",
   "editor_history_restored": "Página restaurada",
   "editor_history_added": "Añadido",
-  "editor_history_removed": "Eliminado"
+  "editor_history_removed": "Eliminado",
+  "publishes_title": "Publicaciones",
+  "publishes_superseded": "Reemplazada",
+  "publishes_restore": "Restaurar esta versión",
+  "publishes_changessince": "Cambios desde la versión {version}",
+  "publishes_settingschanged": "Esta versión también cambió la configuración del sitio.",
+  "publishes_truncated": "Se muestran las primeras {shown} de {total} páginas modificadas.",
+  "overview_activity_viewall": "Ver todo",
+  "publishes_toolarge": "Esta versión es demasiado grande para compararla aquí.",
+  "publishes_nosnapshot": "La copia publicada de esta versión ya no está guardada, así que no se puede comparar ni restaurar."
 }

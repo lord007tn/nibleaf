@@ -493,6 +493,15 @@
   "editor_deletegroup": "Hapus grup",
   "editor_deletegroupconfirm": "Pindahkan grup “{title}” ke Sampah? Grup ini disimpan di sana selama 30 hari, jadi Anda bisa memulihkannya.",
   "editor_deletegroupwithchildrenconfirm": "Pindahkan grup “{title}” dan halaman di dalamnya ({count}) ke Sampah? Untuk mempertahankan halaman tersebut di pohon, seret keluar dari grup terlebih dahulu. Semuanya disimpan di Sampah selama 30 hari.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} halaman menautkan ke sini"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” dipindahkan ke Sampah",
   "editor_deletefailed": "Tidak dapat menghapus halaman. Coba lagi.",
   "editor_trash_button": "Sampah ({count})",
@@ -3000,9 +3009,18 @@
   "settings_integrations_status_active": "Aktif",
   "settings_integrations_status_inactive": "Tidak aktif",
   "settings_integrations_status_error": "Butuh perhatian",
+  "settings_integrations_status_notsendingyet": "Belum mengirim",
+  "settings_integrations_status_notinuse": "Terhubung, tidak digunakan",
+  "settings_integrations_comingsoon_description": "Mengirim kabar saat situs Anda dipublikasikan, segera hadir.",
+  "settings_integrations_comingsoon_saved": "Koneksi ini tersimpan, tetapi Nibleaf belum mengirim apa pun ke sana. Anda dapat menghapusnya.",
+  "settings_integrations_remove": "Hapus",
+  "settings_integrations_removetitle": "Hapus {name}?",
+  "settings_integrations_removedescription": "Nibleaf akan melupakan koneksi {name} ini beserta URL webhook-nya. Tindakan ini tidak dapat dibatalkan.",
+  "settings_integrations_removedtoast": "{name} dihapus",
   "settings_integrations_availability_available": "Tersedia",
   "settings_integrations_availability_notconfigured": "Tidak dikonfigurasi",
   "settings_integrations_availability_unavailable": "Tidak tersedia",
+  "settings_integrations_availability_comingsoon": "Segera hadir",
   "settings_integrations_health": "Status operasional",
   "settings_integrations_health_healthy": "Beroperasi",
   "settings_integrations_health_unhealthy": "Bermasalah",
@@ -3022,6 +3040,8 @@
   "settings_integrations_statusdescription": "Hanya konfigurasi yang aman bagi privasi dan status operasional yang ditampilkan di sini.",
   "settings_integrations_adapterowned": "Penyedia ini tetap menggunakan layar konfigurasi dan siklus hidup yang sudah ada.",
   "settings_integrations_opengitsettings": "Buka pengaturan Git",
+  "settings_integrations_opensmartai": "Buka Smart AI",
+  "settings_integrations_smartaiowned": "Kunci, model, dan tombol untuk mengaktifkan jawaban AI ada di Smart AI.",
   "settings_integrations_managedready": "Dikonfigurasi oleh operator Nibleaf",
   "settings_integrations_managedunavailable": "Tidak dikonfigurasi untuk instansi Nibleaf ini",
   "settings_integrations_manageddescription": "Kredensial yang dikelola instans tidak pernah ditampilkan atau diubah dari pengaturan proyek.",
@@ -3646,6 +3666,7 @@
   "settings_smartai_enabled": "AI answers enabled",
   "settings_smartai_disabled": "AI answers disabled",
   "settings_smartai_disable": "Matikan AI untuk situs ini",
+  "settings_smartai_alreadyoff": "Jawaban AI sudah nonaktif untuk situs ini.",
   "settings_smartai_encryptionmissing": "Your administrator needs to configure credential encryption before provider keys can be saved.",
   "settings_smartai_infrastructuremissing": "Semantic search infrastructure is not configured. Ask your administrator to finish search setup.",
   "settings_smartai_instance": "Instance-managed provider",
@@ -4712,5 +4733,14 @@
   "editor_history_snapshottoolarge": "Draf saat ini atau entri terpilih terlalu besar untuk dipulihkan dengan aman.",
   "editor_history_restored": "Halaman dipulihkan",
   "editor_history_added": "Ditambahkan",
-  "editor_history_removed": "Dihapus"
+  "editor_history_removed": "Dihapus",
+  "publishes_title": "Publikasi",
+  "publishes_superseded": "Digantikan",
+  "publishes_restore": "Pulihkan versi ini",
+  "publishes_changessince": "Perubahan sejak versi {version}",
+  "publishes_settingschanged": "Versi ini juga mengubah pengaturan situs.",
+  "publishes_truncated": "Menampilkan {shown} pertama dari {total} halaman yang berubah.",
+  "overview_activity_viewall": "Lihat semua",
+  "publishes_toolarge": "Versi ini terlalu besar untuk dibandingkan di sini.",
+  "publishes_nosnapshot": "Salinan terbit versi ini tidak lagi disimpan, jadi tidak dapat dibandingkan atau dipulihkan."
 }

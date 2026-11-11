@@ -504,6 +504,18 @@
   "editor_deletegroup": "Удалить группу",
   "editor_deletegroupconfirm": "Переместить группу «{title}» в корзину? Она хранится там 30 дней, и её можно восстановить.",
   "editor_deletegroupwithchildrenconfirm": "Переместить группу «{title}» и вложенные страницы ({count}) в корзину? Чтобы оставить эти страницы в дереве, сначала перетащите их из группы. Всё хранится в корзине 30 дней.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} страница ссылается сюда",
+        "form=few": "{count} страницы ссылаются сюда",
+        "form=many": "{count} страниц ссылаются сюда",
+        "form=*": "{count} страницы ссылаются сюда"
+      }
+    }
+  ],
   "editor_deleted": "«{title}» перемещена в корзину",
   "editor_deletefailed": "Не удалось удалить страницу. Попробуйте ещё раз.",
   "editor_trash_button": "Корзина ({count})",
@@ -3086,9 +3098,18 @@
   "settings_integrations_status_active": "Активный",
   "settings_integrations_status_inactive": "неактивный",
   "settings_integrations_status_error": "Требует внимания",
+  "settings_integrations_status_notsendingyet": "Пока не отправляет",
+  "settings_integrations_status_notinuse": "Подключено, не используется",
+  "settings_integrations_comingsoon_description": "Будет сообщать о публикации вашего сайта. Скоро.",
+  "settings_integrations_comingsoon_saved": "Это подключение сохранено, но Nibleaf пока ничего в него не отправляет. Его можно удалить.",
+  "settings_integrations_remove": "Удалить",
+  "settings_integrations_removetitle": "Удалить {name}?",
+  "settings_integrations_removedescription": "Nibleaf забудет это подключение {name} и его URL вебхука. Это действие нельзя отменить.",
+  "settings_integrations_removedtoast": "Подключение {name} удалено",
   "settings_integrations_availability_available": "Доступный",
   "settings_integrations_availability_notconfigured": "Не сконфигурированный",
   "settings_integrations_availability_unavailable": "Недоступный",
+  "settings_integrations_availability_comingsoon": "Скоро",
   "settings_integrations_health": "Состояние",
   "settings_integrations_health_healthy": "Работает",
   "settings_integrations_health_unhealthy": "Есть проблемы",
@@ -3108,6 +3129,8 @@
   "settings_integrations_statusdescription": "Здесь показаны только безопасные для конфиденциальности настройки и сведения о состоянии.",
   "settings_integrations_adapterowned": "Этот провайдер сохраняет существующий экран конфигурации и жизненный цикл.",
   "settings_integrations_opengitsettings": "Настройки Open Git",
+  "settings_integrations_opensmartai": "Открыть Smart AI",
+  "settings_integrations_smartaiowned": "Ключи, модели и переключатель ответов ИИ находятся в разделе Smart AI.",
   "settings_integrations_managedready": "Настроен оператором Nibleaf",
   "settings_integrations_managedunavailable": "Не настроен для этого экземпляра Nibleaf",
   "settings_integrations_manageddescription": "Управляемые экземпляром учётные данные никогда не отображаются и не изменяются в настройках проекта.",
@@ -3732,6 +3755,7 @@
   "settings_smartai_enabled": "AI answers enabled",
   "settings_smartai_disabled": "AI answers disabled",
   "settings_smartai_disable": "Отключить ИИ для этого сайта",
+  "settings_smartai_alreadyoff": "Ответы ИИ для этого сайта уже выключены.",
   "settings_smartai_encryptionmissing": "Your administrator needs to configure credential encryption before provider keys can be saved.",
   "settings_smartai_infrastructuremissing": "Semantic search infrastructure is not configured. Ask your administrator to finish search setup.",
   "settings_smartai_instance": "Instance-managed provider",
@@ -4804,5 +4828,14 @@
   "editor_history_snapshottoolarge": "Текущий черновик или выбранная запись слишком велики для безопасного восстановления.",
   "editor_history_restored": "Страница восстановлена",
   "editor_history_added": "Добавлено",
-  "editor_history_removed": "Удалено"
+  "editor_history_removed": "Удалено",
+  "publishes_title": "Публикации",
+  "publishes_superseded": "Заменена",
+  "publishes_restore": "Восстановить эту версию",
+  "publishes_changessince": "Изменения с версии {version}",
+  "publishes_settingschanged": "В этой версии также изменились настройки сайта.",
+  "publishes_truncated": "Показаны первые {shown} из {total} изменённых страниц.",
+  "overview_activity_viewall": "Показать все",
+  "publishes_toolarge": "Эта версия слишком велика, чтобы сравнить её здесь.",
+  "publishes_nosnapshot": "Опубликованная копия этой версии больше не хранится, поэтому её нельзя сравнить или восстановить."
 }

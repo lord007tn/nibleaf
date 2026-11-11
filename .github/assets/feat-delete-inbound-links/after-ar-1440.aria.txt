@@ -1,0 +1,24 @@
+- dialog "حذف الصفحة":
+  - heading "حذف الصفحة" [level=2]
+  - paragraph: نقل «Setup» إلى سلة المحذوفات؟ سيتوقف القرّاء عن رؤيتها بعد النشر القادم. ستبقى في السلة 30 يومًا، ويمكنك استعادتها خلالها.
+  - status:
+    - text: 8 صفحات ترتبط هنا
+    - list:
+      - listitem:
+        - link "البدء السريع":
+          - /url: /app/projects/fixture-site/editor?page=source-0
+      - listitem:
+        - link "دليل التثبيت":
+          - /url: /app/projects/fixture-site/editor?page=source-1
+      - listitem:
+        - link "إعداد الحساب":
+          - /url: /app/projects/fixture-site/editor?page=source-2
+      - listitem:
+        - link "مرجع الواجهة":
+          - /url: /app/projects/fixture-site/editor?page=source-3
+      - listitem:
+        - link "الأسئلة الشائعة":
+          - /url: /app/projects/fixture-site/editor?page=source-4
+    - paragraph: +3 أخرى
+  - button "إلغاء"
+  - button "حذف الصفحة"

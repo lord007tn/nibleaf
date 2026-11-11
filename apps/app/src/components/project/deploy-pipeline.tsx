@@ -9,7 +9,7 @@ import { Check, ExternalLink, Globe2, Loader2, RotateCcw, TriangleAlert } from '
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage, useDeployments, useDomains, useLiveDeployments, useRollback } from '@/hooks/api';
-import { rollbackTarget } from '@/hooks/api/deployment-cache';
+import { isPublishRetrying, rollbackTarget } from '@/hooks/api/deployment-cache';
 import { pickLiveDomain } from '@/hooks/api/domain-state';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
@@ -49,6 +49,9 @@ interface DeployPipelineProps {
   onOpenChange: (open: boolean) => void;
   trackedAttribution?: FirstPublishAttribution | null;
   trackedDeploymentId?: string | null;
+  /** The tracked deployment restores this published version (started outside the
+   *  dialog, e.g. from the Publishes page): progress, outcome and retry read as a restore. */
+  restoring?: { targetId: string; version: number } | null;
 }
 
 const STEP_KEYS = ['deploy.step.queued', 'deploy.step.building', 'deploy.step.indexing', 'deploy.step.live'] as const;
@@ -79,7 +82,16 @@ function activeStep(status: DeploymentStatus | undefined): number {
 type StepState = 'done' | 'active' | 'failed' | 'pending';
 
 /** Live deploy progress. Polls the deployments list while building. Faithful to design lines 2143-2178. */
-export function DeployPipeline({ project, open, onOpenChange, trackedAttribution, trackedDeploymentId, onRetry, currentPage }: DeployPipelineProps) {
+export function DeployPipeline({
+  project,
+  open,
+  onOpenChange,
+  trackedAttribution,
+  trackedDeploymentId,
+  onRetry,
+  currentPage,
+  restoring,
+}: DeployPipelineProps) {
   const domains = useDomains(project.id);
   const liveDomain = domains.data ? pickLiveDomain(domains.data)?.domain : undefined;
   const siteOptions: SiteUrlOptions = {
@@ -101,7 +113,12 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     projectId: string;
     sourceId: string | null | undefined;
   } | null>(null);
-  const restoration = restoreRequest?.projectId === project.id && restoreRequest.sourceId === trackedDeploymentId ? restoreRequest : null;
+  const restoration =
+    restoreRequest?.projectId === project.id && restoreRequest.sourceId === trackedDeploymentId
+      ? restoreRequest
+      : restoring && trackedDeploymentId
+        ? { ...restoring, id: trackedDeploymentId, projectId: project.id, sourceId: trackedDeploymentId }
+        : null;
   const observedDeploymentId = restoration?.id ?? trackedDeploymentId;
   const deployments = useDeployments(project.id, {
     enabled: open || Boolean(observedDeploymentId),
@@ -111,7 +128,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
 
   const deployment = observedDeploymentId ? deployments.data?.find((item) => item.id === observedDeploymentId) : deployments.data?.[0];
   const status = deployment?.status;
-  const retrying = Boolean(observedDeploymentId) && status === 'FAILED' && deployment?.completedAt === null;
+  const retrying = Boolean(observedDeploymentId) && isPublishRetrying(deployment);
   const running = status === 'PENDING' || status === 'BUILDING' || retrying;
   const done = status === 'READY';
   const failed = status === 'FAILED' && !retrying;
