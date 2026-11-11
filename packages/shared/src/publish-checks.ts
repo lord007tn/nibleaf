@@ -21,6 +21,7 @@
  *   with `resolveSiteRoute`, the reader's own route order, following redirects.
  */
 import { createHash } from 'node:crypto';
+import { setImmediate } from 'node:timers/promises';
 import type { Root } from 'mdast';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import rehypeRaw from 'rehype-raw';
@@ -560,10 +561,15 @@ const stripSiteOrigin = (href: string, hosts: ReadonlySet<string>): string | nul
 /** Compute every deletion advisory in one scan. Keep only capped summaries
  * and counts, so the server can cache the branch map without retaining bodies
  * or unbounded inbound edge lists. */
-export function buildInboundPageLinkMap(snapshot: SiteSnapshot, trustedOrigins: readonly string[] = []): Map<string, InboundPageLinks> {
+function* inboundPageLinkSteps(snapshot: SiteSnapshot, trustedOrigins: readonly string[]): Generator<void, Map<string, InboundPageLinks>> {
   const hosts = new Set(trustedOrigins.map((origin) => new URL(origin).host));
-  const byId = new Map(snapshot.pages.map((page) => [page.id, page]));
-  const results = new Map<string, InboundPageLinks>(snapshot.pages.map((page) => [page.id, { pages: [], total: 0 }]));
+  const byId = new Map<string, SnapshotPage>();
+  const results = new Map<string, InboundPageLinks>();
+  for (const page of snapshot.pages) {
+    byId.set(page.id, page);
+    results.set(page.id, { pages: [], total: 0 });
+    yield;
+  }
   const resolveLink = createLinkResolver(snapshot);
   const factsOf = snapshotContentFacts(snapshot);
   for (const page of snapshot.pages) {
@@ -590,8 +596,50 @@ export function buildInboundPageLinkMap(snapshot: SiteSnapshot, trustedOrigins: 
       result.total += 1;
       if (result.pages.length < 20) result.pages.push(summary);
     }
+    yield;
   }
   return results;
+}
+
+export function buildInboundPageLinkMap(snapshot: SiteSnapshot, trustedOrigins: readonly string[] = []): Map<string, InboundPageLinks> {
+  const steps = inboundPageLinkSteps(snapshot, trustedOrigins);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** Same ordered scan as the synchronous advisory, with an elapsed-time budget.
+ * A page's parse is indivisible; check after each page rather than guessing how
+ * many pages fit a slice. Clock/scheduler injection keeps slice tests untimed. */
+export async function buildInboundPageLinkMapAsync(
+  snapshot: SiteSnapshot,
+  trustedOrigins: readonly string[] = [],
+  {
+    signal,
+    sliceMs = 25,
+    now = () => performance.now(),
+    yieldToEventLoop = setImmediate,
+  }: {
+    signal?: AbortSignal;
+    sliceMs?: number;
+    now?: () => number;
+    yieldToEventLoop?: () => Promise<unknown>;
+  } = {},
+): Promise<Map<string, InboundPageLinks>> {
+  signal?.throwIfAborted();
+  const steps = inboundPageLinkSteps(snapshot, trustedOrigins);
+  let started = now();
+  let step = steps.next();
+  while (!step.done) {
+    if (now() - started >= sliceMs) {
+      await yieldToEventLoop();
+      signal?.throwIfAborted();
+      started = now();
+    }
+    step = steps.next();
+  }
+  signal?.throwIfAborted();
+  return step.value;
 }
 
 export function findInboundPageLinks(snapshot: SiteSnapshot, pageId: string, trustedOrigins: readonly string[] = []): InboundPageLinks {
