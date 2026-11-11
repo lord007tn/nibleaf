@@ -1,5 +1,18 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'editor.tree.previewInside': 'editor_tree_previewinside',
+  'editor.tree.previewRoot': 'editor_tree_previewroot',
+  'editor.tree.moving': 'editor_tree_moving',
+  'editor.tree.moveFailed': 'editor_tree_movefailed',
+  'editor.tree.moveBusy': 'editor_tree_movebusy',
+  'editor.tree.structureChanged': 'editor_tree_structurechanged',
+  'editor.tree.search': 'editor_tree_search',
+  'editor.tree.noResults': 'editor_tree_noresults',
+  'editor.tree.filterReason': 'editor_tree_filterreason',
+  'editor.tree.instructions': 'editor_tree_instructions',
+  'editor.tree.movedInside': 'editor_tree_movedinside',
+  'editor.tree.movedRoot': 'editor_tree_movedroot',
+
   'editor.pageSettings.linksSkipped': 'editor_pagesettings_linksskipped',
   'editor.pageSettings.addressRaced': 'editor_pagesettings_addressraced',
   'editor.pageSettings.addressRedirectInvalid': 'editor_pagesettings_addressredirectinvalid',
@@ -404,6 +417,7 @@ export const MESSAGE_IDS = {
   'site.searchKeysOpen': 'site_searchkeysopen',
   'site.searchKeysClose': 'site_searchkeysclose',
   'site.searchVersionLabel': 'site_searchversionlabel',
+  'site.searchAllLanguages': 'site_searchalllanguages',
   'brand.oss': 'brand_oss',
   'common.cancel': 'common_cancel',
   'common.save': 'common_save',

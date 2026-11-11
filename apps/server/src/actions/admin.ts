@@ -5,6 +5,7 @@ import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { type AdminListInput, adminSitePage } from '@/lib/admin-lists';
 import { inviteMember } from './members';
+import { invalidateOrganizationPublishedConfig } from './sites';
 import { getProjectUsage } from './usage';
 import { parseWorkspaceMetadata } from './workspace';
 
@@ -69,6 +70,8 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
     await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, select: { id: true } });
     return { organization, project };
   });
+  // The transaction assigned the organization's plan: no website may keep stale add-ons.
+  await invalidateOrganizationPublishedConfig(created.organization.id);
 
   try {
     // `bootstrapOwner`: the one sanctioned owner-invitation — this org was
