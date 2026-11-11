@@ -93,6 +93,8 @@
   "publish_checking": "Memeriksa perubahan…",
   "publish_none": "Tidak ada perubahan sejak publikasi terakhir.",
   "publish_nonehint": "Tidak ada perubahan artikel sejak publikasi terakhir. Anda tetap bisa memublikasikan untuk menerapkan perubahan pengaturan, seperti pengalihan.",
+  "publish_addpagefirst": "Tambahkan halaman sebelum memublikasikan.",
+  "publish_uptodate": "Semua isi situs ini sudah tayang.",
   "publish_sinceversion": "Versi terbit {version}",
   "publish_firstpublish": "Publikasikan pertama",
   "publish_firstpublishhint": "Publikasikan situs Anda untuk pertama kalinya.",
@@ -491,6 +493,15 @@
   "editor_deletegroup": "Hapus grup",
   "editor_deletegroupconfirm": "Pindahkan grup “{title}” ke Sampah? Grup ini disimpan di sana selama 30 hari, jadi Anda bisa memulihkannya.",
   "editor_deletegroupwithchildrenconfirm": "Pindahkan grup “{title}” dan halaman di dalamnya ({count}) ke Sampah? Untuk mempertahankan halaman tersebut di pohon, seret keluar dari grup terlebih dahulu. Semuanya disimpan di Sampah selama 30 hari.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} halaman menautkan ke sini"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” dipindahkan ke Sampah",
   "editor_deletefailed": "Tidak dapat menghapus halaman. Coba lagi.",
   "editor_trash_button": "Sampah ({count})",
@@ -2041,11 +2052,13 @@
   "deploy_step_live": "Hidup",
   "deploy_deploying": "Menerbitkan…",
   "deploy_deployed": "Perubahan Anda sudah tayang",
+  "deploy_firstlive": "Situs Anda sudah tayang",
   "deploy_failed": "Penerbitan belum selesai",
   "deploy_faileddetails": "Apa yang salah",
   "deploy_published": "Diterbitkan — situs Anda aktif",
   "deploy_viewsite": "Lihat situs",
   "deploy_viewsitearrow": "Lihat situs →",
+  "deploy_copyaddress": "Salin alamat",
   "deploy_done": "Selesai",
   "deploy_close": "Tutup",
   "deploy_rollback": "Pulihkan versi sebelumnya",
@@ -4707,5 +4720,14 @@
   "editor_history_snapshottoolarge": "Draf saat ini atau entri terpilih terlalu besar untuk dipulihkan dengan aman.",
   "editor_history_restored": "Halaman dipulihkan",
   "editor_history_added": "Ditambahkan",
-  "editor_history_removed": "Dihapus"
+  "editor_history_removed": "Dihapus",
+  "publishes_title": "Publikasi",
+  "publishes_superseded": "Digantikan",
+  "publishes_restore": "Pulihkan versi ini",
+  "publishes_changessince": "Perubahan sejak versi {version}",
+  "publishes_settingschanged": "Versi ini juga mengubah pengaturan situs.",
+  "publishes_truncated": "Menampilkan {shown} pertama dari {total} halaman yang berubah.",
+  "overview_activity_viewall": "Lihat semua",
+  "publishes_toolarge": "Versi ini terlalu besar untuk dibandingkan di sini.",
+  "publishes_nosnapshot": "Salinan terbit versi ini tidak lagi disimpan, jadi tidak dapat dibandingkan atau dipulihkan."
 }

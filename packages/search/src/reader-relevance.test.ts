@@ -1,58 +1,27 @@
-import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { cleanSearchText, createDocIndex, foldSearchText, normalizeArabicSearchText, readerSearchTerms, type SearchDoc, searchDocs } from './index';
 
 const doc = (id: string, title: string, content = ''): SearchDoc => ({ id, title, path: id, content, headings: '', description: '' });
 const reader = { relevance: 'reader' as const };
 
-/** Calibrated timing for the ReDoS cases: the same machine's time for a plain
- *  linear pass over the same input. A slow CI core slows both sides equally,
- *  while superlinear growth (hundreds of times slower at 100k) is still caught. */
-const linearPassMs = (input: string): number => {
-  const runs: number[] = [];
-  for (let round = 0; round < 3; round += 1) {
-    const started = performance.now();
-    let letters = 0;
-    for (let index = 0; index < input.length; index += 1) if (/\p{L}/u.test(input[index] ?? '')) letters += 1;
-    if (letters < 0) throw new Error('unreachable');
-    runs.push(performance.now() - started);
-  }
-  return runs.sort((a, b) => a - b)[1] ?? 0;
-};
-const medianMs = (run: () => void): number => {
-  run();
-  const runs: number[] = [];
-  for (let round = 0; round < 3; round += 1) {
-    const started = performance.now();
-    run();
-    runs.push(performance.now() - started);
-  }
-  return runs.sort((a, b) => a - b)[1] ?? 0;
-};
-
 describe('published reader relevance', () => {
   // ReDoS bounds (CodeQL js/polynomial-redos): untrusted queries and page bodies
   // must stay linear. Steady-state latency lives in `pnpm bench:reader`.
+  // Their cost is bounded in reader-relevance.growth.test.ts (pnpm test:growth).
   it.each([
-    `${' '.repeat(99_999)}x`,
-    'a '.repeat(50_000),
-    '[('.repeat(50_000),
-    '<!--'.repeat(25_000),
-    '`'.repeat(100_000),
-    '`a``'.repeat(25_000),
-    '```\n'.repeat(25_000),
-    `${'<T>'.repeat(33_333)}x`,
-  ])('stays linear on a 100k-character adversarial input', (input) => {
-    expect(input.length).toBeGreaterThanOrEqual(99_999);
-    const terms = readerSearchTerms(input);
-    const text = cleanSearchText(input);
-    expect(terms.size).toBeLessThanOrEqual(2);
-    expect(text.length).toBeLessThanOrEqual(input.length + 2);
-    const elapsed = medianMs(() => {
-      readerSearchTerms(input);
-      cleanSearchText(input);
-    });
-    expect(elapsed).toBeLessThanOrEqual(10 * linearPassMs(input) + 20);
+    ['spaces, then one letter', (n: number) => `${' '.repeat(n - 1)}x`, 240_000],
+    ['letter-space pairs', (n: number) => 'a '.repeat(n / 2), 100_000],
+    ['open brackets', (n: number) => '[('.repeat(n / 2), 320_000],
+    ['unclosed comments', (n: number) => '<!--'.repeat(n / 4), 400_000],
+    ['backticks', (n: number) => '`'.repeat(n), 600_000],
+    ['unbalanced code spans', (n: number) => '`a``'.repeat(n / 4), 64_000],
+    ['unclosed fences', (n: number) => '```\n'.repeat(n / 4), 64_000],
+    ['unclosed tags, then one letter', (n: number) => `${'<T>'.repeat(n / 3)}x`, 78_000],
+  ] as const)('reads adversarial input: %s', (_label, build, n) => {
+    const large = build(4 * n);
+    expect(large.length).toBeGreaterThanOrEqual(4 * n - 3);
+    expect(readerSearchTerms(large).size).toBeLessThanOrEqual(2);
+    expect(cleanSearchText(large).length).toBeLessThanOrEqual(large.length + 2);
   });
 
   it('rejects oversized reader queries before retrieval', async () => {

@@ -102,6 +102,8 @@
   "publish_checking": "Vérification des modifications…",
   "publish_none": "Aucun changement depuis la dernière publication.",
   "publish_nonehint": "Aucun article n’a changé depuis la dernière publication. Vous pouvez quand même publier pour appliquer des changements de paramètres, comme les redirections.",
+  "publish_addpagefirst": "Ajoutez une page avant de publier.",
+  "publish_uptodate": "Tout le contenu de ce site est déjà en ligne.",
   "publish_sinceversion": "Version publiée {version}",
   "publish_firstpublish": "Première publication",
   "publish_firstpublishhint": "Publier votre site pour la première fois.",
@@ -500,6 +502,16 @@
   "editor_deletegroup": "Supprimer le groupe",
   "editor_deletegroupconfirm": "Mettre le groupe « {title} » à la corbeille ? Il y reste 30 jours, vous pourrez donc le restaurer.",
   "editor_deletegroupwithchildrenconfirm": "Mettre le groupe « {title} » et les pages qu’il contient ({count}) à la corbeille ? Pour garder ces pages dans l’arborescence, faites-les d’abord glisser hors du groupe. Tout reste 30 jours dans la corbeille.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page pointe ici",
+        "form=*": "{count} pages pointent ici"
+      }
+    }
+  ],
   "editor_deleted": "« {title} » mis à la corbeille",
   "editor_deletefailed": "Impossible de supprimer la page. Réessayez.",
   "editor_trash_button": "Corbeille ({count})",
@@ -2104,11 +2116,13 @@
   "deploy_step_live": "En direct",
   "deploy_deploying": "Publication…",
   "deploy_deployed": "Vos modifications sont en ligne",
+  "deploy_firstlive": "Votre site est en ligne",
   "deploy_failed": "La publication n’a pas abouti",
   "deploy_faileddetails": "Ce qui n’a pas fonctionné",
   "deploy_published": "Publié : votre site est en ligne",
   "deploy_viewsite": "Voir le site",
   "deploy_viewsitearrow": "Voir le site →",
+  "deploy_copyaddress": "Copier l’adresse",
   "deploy_done": "Terminé",
   "deploy_close": "Fermer",
   "deploy_rollback": "Restaurer la version précédente",
@@ -4774,5 +4788,14 @@
   "editor_history_snapshottoolarge": "Le brouillon actuel ou l’entrée sélectionnée est trop volumineux pour une restauration sûre.",
   "editor_history_restored": "Page restaurée",
   "editor_history_added": "Ajouté",
-  "editor_history_removed": "Supprimé"
+  "editor_history_removed": "Supprimé",
+  "publishes_title": "Publications",
+  "publishes_superseded": "Remplacée",
+  "publishes_restore": "Restaurer cette version",
+  "publishes_changessince": "Modifications depuis la version {version}",
+  "publishes_settingschanged": "Cette version a aussi modifié les paramètres du site.",
+  "publishes_truncated": "Affichage des {shown} premières pages modifiées sur {total}.",
+  "overview_activity_viewall": "Tout afficher",
+  "publishes_toolarge": "Cette version est trop volumineuse pour être comparée ici.",
+  "publishes_nosnapshot": "La copie publiée de cette version n’est plus conservée : elle ne peut donc être ni comparée ni restaurée."
 }
