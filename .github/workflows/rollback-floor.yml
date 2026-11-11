@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:17.11-alpine3.24@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0
         env:
           POSTGRES_DB: orgs_legacy_ci
           POSTGRES_USER: nibleaf
@@ -28,17 +28,17 @@ jobs:
     env:
       POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5562/orgs_legacy_ci
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Checkout the minimum supported rollback revision
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: 0a18349c9855fa9dc6961e0f28bffe1be20febe3
           path: .rollback-floor
           persist-credentials: false
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 26
           cache: pnpm
@@ -60,7 +60,7 @@ jobs:
         run: node scripts/legacy-schema-compat.mjs "$GITHUB_WORKSPACE/.rollback-floor" "$RUNNER_TEMP/rollback-floor" --rollback-floor
       - name: Upload rollback compatibility receipts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: rollback-floor-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/rollback-floor

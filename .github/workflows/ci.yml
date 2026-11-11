@@ -472,7 +472,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:17.11-alpine3.24@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0
         env:
           POSTGRES_DB: nibleaf_analytics_test
           POSTGRES_USER: nibleaf
@@ -491,7 +491,7 @@ jobs:
           --health-cmd "redis-cli ping" --health-interval 5s
           --health-timeout 5s --health-retries 12
       clickhouse:
-        image: clickhouse/clickhouse-server:25.8-alpine
+        image: clickhouse/clickhouse-server:25.8.33.6-alpine@sha256:87e0a5b72f5465b18eacca7c76850e7ff551c9795c50e451f5646299e5e24146
         env:
           CLICKHOUSE_DB: nibleaf_analytics_test
           CLICKHOUSE_USER: nibleaf
@@ -516,9 +516,9 @@ jobs:
       CLICKHOUSE_WRITER_USERNAME: nibleaf
       CLICKHOUSE_WRITER_PASSWORD: nibleaf
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 26
           cache: pnpm
@@ -551,7 +551,7 @@ jobs:
     outputs:
       required: ${{ steps.paths.outputs.required }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
       - id: paths
@@ -560,11 +560,31 @@ jobs:
         run: |
           if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
             echo "required=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE_SHA" HEAD -- packages/database/prisma/ 'scripts/migration-safety*' | grep -q .; then
+          elif ! git diff --quiet "$BASE_SHA" HEAD -- \
+            ':(glob)packages/database/**' \
+            ':(glob)packages/auth/**' \
+            ':(glob)packages/shared/**' \
+            ':(glob)packages/validators/**' \
+            ':(glob)apps/server/**' \
+            ':(glob)scripts/migration-safety*' \
+            ':(glob)scripts/**/legacy*' \
+            ':(glob)scripts/self-host*' \
+            ':(glob)**/docker-compose*.yml' \
+            ':(glob)**/Dockerfile*' \
+            ':(glob)**/docker-entrypoint*' \
+            ':(glob)docker/**' \
+            ':(glob).dockerignore' \
+            ':(glob).github/workflows/ci.yml' \
+            ':(glob).github/workflows/docker.yml' \
+            ':(glob).github/workflows/release.yml' \
+            ':(glob).github/workflows/rollback-floor.yml' \
+            ':(glob)pnpm-lock.yaml' \
+            ':(glob)pnpm-workspace.yaml' \
+            ':(glob)package.json'; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           else
             echo "required=false" >> "$GITHUB_OUTPUT"
-            echo "Rollback floor suites are not required: no Prisma or migration-safety changes."
+            echo "Rollback floor suites are not required: no rollback-sensitive paths changed."
           fi
 
   rollback-floor:

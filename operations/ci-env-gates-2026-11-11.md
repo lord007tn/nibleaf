@@ -33,7 +33,7 @@ The existing harness pins pre-organizations `8a3ce217`, which is not the support
 
 The complete local floor rehearsal passed: old-code journey (1), new-code setup (1), old-code rollback scenarios (4), current compatibility checks (3). Current setup explicitly creates administered organizations. Current checks compare against the pinned PR1 resolver and preserve legitimate organization membership after website access is removed. The old-code journey uses PR1 admission actions following a real OTP sign-in; its removed Better Auth organization endpoint is used only by the historical pre-floor mode. Data partitions are verified from the actual created website rather than assuming they equal the organization.
 
-PRs run these suites only for `packages/database/prisma/**` or `scripts/migration-safety*` changes. Release and manual Docker workflows require the reusable floor check before publication. The Docker workflow remains manual-only.
+PRs run these suites when the rollback-sensitive path filter in `.github/workflows/ci.yml` matches database, auth, shared/validator, server, legacy harness/fixture, migration-tooling, Docker/Compose startup, relevant workflow or dependency-manifest changes. The filter includes this PR's harness and workflow changes. Release and manual Docker workflows require the reusable floor check before publication. The Docker workflow remains manual-only.
 
 ## Integration and restore coverage
 
