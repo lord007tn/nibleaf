@@ -85,6 +85,13 @@ export interface IntegrationManifest {
   ownership: 'project' | 'instance';
   authKind: 'none' | 'secret' | 'managed';
   lifecycle: 'configurable' | 'adapter' | 'managed';
+  /**
+   * Shown to site owners but not connectable yet: nothing delivers this
+   * provider's events, so new connections, edits, tests and activation are
+   * refused and a stored connection can only be removed. Publish-result
+   * delivery (operations/ux/ai-and-integrations.md, PR 7) turns it off.
+   */
+  comingSoon: boolean;
   supportsActivation: boolean;
   supportsCredentialFreeUpdate: boolean;
   supportsDelete: boolean;
@@ -113,6 +120,7 @@ const managed = (id: IntegrationProviderId, category: IntegrationCategory, capab
   supportsDelete: false,
   supportsPassiveVerification: false,
   verificationSideEffect: false,
+  comingSoon: false,
   navigation: { settingsSection: null, documentation },
   configFields: [],
 });
@@ -135,6 +143,7 @@ const adapter = (
   supportsDelete: false,
   supportsPassiveVerification: false,
   verificationSideEffect: false,
+  comingSoon: false,
   navigation: { settingsSection, documentation },
   configFields: [],
 });
@@ -151,6 +160,7 @@ const webhook = (id: 'slack' | 'discord' | 'zapier', verificationSideEffect: boo
   supportsDelete: true,
   supportsPassiveVerification: !verificationSideEffect,
   verificationSideEffect,
+  comingSoon: true,
   navigation: { settingsSection: 'integrations', documentation },
   configFields: [
     { key: 'webhookUrl', kind: 'secret', required: true, secret: true },
@@ -222,7 +232,7 @@ export interface IntegrationConnectionSummary {
 }
 
 export interface IntegrationCatalogEntry extends IntegrationManifest {
-  availability: 'available' | 'not_configured' | 'unavailable';
+  availability: 'available' | 'not_configured' | 'unavailable' | 'coming_soon';
   connection: IntegrationConnectionSummary | null;
 }
 
