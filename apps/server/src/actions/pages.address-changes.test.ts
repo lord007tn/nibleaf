@@ -95,6 +95,17 @@ const seed = (initial: Row[], published = true) => {
   const findFirst = async ({ where }: { where: Record<string, unknown> }) => pages.find((page) => matches(page, where)) ?? null;
   const tx = {
     $queryRaw: vi.fn().mockResolvedValue([]),
+    $executeRaw: vi.fn().mockImplementation(async (_query, serialized: string) => {
+      if (failContent) throw new Error('content write failed');
+      const patches = JSON.parse(serialized) as { id: string; content: string; updatedAt: string }[];
+      for (const patch of patches) {
+        const index = pages.findIndex((page) => page.id === patch.id);
+        const page = pages[index];
+        if (!page) throw new Error('Missing patch fixture');
+        pages[index] = { ...page, content: patch.content, updatedAt: new Date(patch.updatedAt) };
+      }
+      return patches.length;
+    }),
     page: {
       findFirst,
       findFirstOrThrow: findFirst,
@@ -254,9 +265,10 @@ describe('page address preservation through page actions', () => {
   });
 
   it('council: document parsing never runs under the structural transaction lock', async () => {
-    seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[link](/old)' }]);
+    const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[link](/old)' }]);
     await updatePage('project', 'target', { slug: 'new' });
     expect(database.parsesUnderLock).toBe(0);
+    expect(state.tx.$executeRaw).toHaveBeenCalledOnce();
   });
 
   it('council: a document changed after preparation aborts safely instead of applying stale patches', async () => {

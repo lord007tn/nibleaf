@@ -236,6 +236,7 @@ export const preservePageAddresses = async (
       data: { config: { ...(project.config as Prisma.JsonObject), redirects: validation.redirects.map((rule) => ({ ...rule })) } },
     });
   }
+  const patches: { id: string; content: string; updatedAt: string }[] = [];
   for (const page of pages) {
     if (!changes.some((change) => change.branchId === page.branchId)) continue;
     const previousLanguageId = changes.find((change) => change.id === page.id)?.oldLanguageId;
@@ -246,18 +247,25 @@ export const preservePageAddresses = async (
     const result = document.links.rewrite((href) => {
       if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\?)/i.test(href)) return href;
       if (href.startsWith('/')) return rewriteHref(href, sourceLanguage, page.branchId);
+      if (href.includes('\\')) return href;
       const absolute = new URL(href, `https://nibleaf.invalid/${oldPath}`);
+      if (absolute.origin !== 'https://nibleaf.invalid') return href;
       const resolved = `${absolute.pathname}${absolute.search}${absolute.hash}`;
       const rewritten = rewriteHref(resolved, sourceLanguage, page.branchId);
       return rewritten !== resolved || oldPath !== page.path ? rewritten : href;
     });
     counts.documentsSkipped += result.documentsSkipped;
     if (!result.linksUpdated) continue;
-    await tx.page.update({
-      where: { id: page.id },
-      data: { content: result.content, updatedAt: new Date(Math.max(Date.now(), page.updatedAt.getTime() + 1)) },
-    });
+    patches.push({ id: page.id, content: result.content, updatedAt: new Date(Math.max(Date.now(), page.updatedAt.getTime() + 1)).toISOString() });
     counts.linksUpdated += result.linksUpdated;
+  }
+  if (patches.length) {
+    const updated = await tx.$executeRaw`
+      UPDATE "page" AS p SET content = patch.content, "updatedAt" = patch."updatedAt"
+      FROM jsonb_to_recordset(${JSON.stringify(patches)}::jsonb)
+        AS patch(id text, content text, "updatedAt" timestamp)
+      WHERE p.id = patch.id AND p."projectId" = ${projectId}`;
+    if (updated !== patches.length) throw new AppError({ code: 'page:address_conflict', details: { reason: 'address_raced' } });
   }
   return counts;
 };
