@@ -208,6 +208,10 @@ describe('reader layout ergonomics', () => {
     expect(html).toContain(language === 'ar' ? 'التالي' : 'Next');
     expect(html).toContain('line-clamp-2');
     expect(html).toContain('min-h-11');
+    // Chevrons mirror on their own resolved direction. Tailwind's rtl: variant matches
+    // any [dir="rtl"] ancestor, which leaks into LTR-isolated blocks inside RTL pages.
+    expect(html.match(/\[&amp;:dir\(rtl\)\]:-scale-x-100/g)).toHaveLength(2);
+    expect(html).not.toContain('rtl:-scale-x-100"');
   });
   it('selects from all heading positions, supports reverse scrolling and forces the final heading at the end', () => {
     const headings = [
