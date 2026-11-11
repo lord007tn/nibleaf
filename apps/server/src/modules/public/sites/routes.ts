@@ -32,6 +32,13 @@ const sitesRoutes = {
     description: 'Stream one tenant-scoped AI chat turn (AG-UI server-sent events) grounded in the active published deployment.',
     responses: ok,
   }),
+  chatPolicy: createRouteConfig({
+    guard: passthrough,
+    tags: ['public'],
+    description:
+      "What the reader chat keeps of questions right now, the site's consent rule, and the revision each chat turn must send. Never cached.",
+    responses: ok,
+  }),
   chatEvents: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'Record content-free reader chat events.', responses: ok }),
   chatFeedback: createRouteConfig({
     guard: passthrough,
