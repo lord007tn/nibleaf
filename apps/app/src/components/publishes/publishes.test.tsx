@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   edit: { value: 'edit' as string },
   rollback: vi.fn(),
   pipeline: vi.fn(),
+  params: { projectId: 'site-1' } as Record<string, string>,
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -17,6 +18,7 @@ vi.mock('@nibleaf/i18n/react', () => ({
 }));
 vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', subscribeLanguage: () => () => undefined }));
 vi.mock('@tanstack/react-router', () => ({
+  useParams: () => mocks.params,
   Link: ({ children, to, params, className }: { children: ReactNode; to: string; params?: Record<string, string>; className?: string }) => (
     <a className={className} data-params={JSON.stringify(params ?? {})} data-to={to} href="/link">
       {children}
@@ -92,6 +94,7 @@ const actionsTrigger = (version: number) =>
   );
 
 beforeEach(() => {
+  mocks.params = { projectId: 'site-1' };
   mocks.edit.value = 'edit';
   mocks.deployments.mockReturnValue({ data: undefined });
   mocks.rollback.mockResolvedValue({ id: 'dep-restore', version: 9, status: 'PENDING' });
@@ -114,7 +117,7 @@ describe('Publishes page', () => {
         }),
       ]),
     );
-    await render(<PublishesPage projectId="site-1" />);
+    await render(<PublishesPage />);
     const versions = [...host.querySelectorAll('[data-version]')].map((row) => row.getAttribute('data-version'));
     expect(versions).toEqual(['5', '4', '3', '2']);
     const states = [...host.querySelectorAll('[data-version] [data-slot="status-badge"]')].map((badge) => badge.getAttribute('data-state'));
@@ -132,7 +135,7 @@ describe('Publishes page', () => {
     mocks.history.mockReturnValue(historyResult([page([item(3, 'BUILDING'), item(2, 'READY')], { id: 'dep-2', version: 2 })]));
     // The publish dialog's poll already saw v3 go live.
     mocks.deployments.mockReturnValue({ data: [item(3, 'READY'), item(2, 'READY')] });
-    await render(<PublishesPage projectId="site-1" />);
+    await render(<PublishesPage />);
     expect(rowOf(2)?.querySelector('[data-slot="status-badge"]')?.getAttribute('data-state')).toBe('superseded');
     expect(rowOf(3)?.hasAttribute('data-live')).toBe(true);
   });
@@ -141,7 +144,7 @@ describe('Publishes page', () => {
     mocks.history.mockReturnValue(
       historyResult([page([item(5, 'PENDING'), item(4, 'FAILED'), item(3, 'READY'), item(2, 'READY')], { id: 'dep-3', version: 3 })]),
     );
-    await render(<PublishesPage projectId="site-1" />);
+    await render(<PublishesPage />);
     expect(actionsTrigger(5)).toBeUndefined();
     expect(actionsTrigger(4)).toBeUndefined();
     expect(actionsTrigger(3)).toBeUndefined();
@@ -150,7 +153,7 @@ describe('Publishes page', () => {
 
   it('confirms, restores through the rollback mutation and follows it in the publish dialog as a restore', async () => {
     mocks.history.mockReturnValue(historyResult([page([item(3, 'READY'), item(2, 'READY')], { id: 'dep-3', version: 3 })]));
-    await render(<PublishesPage projectId="site-1" />);
+    await render(<PublishesPage />);
     await act(async () => actionsTrigger(2)?.click());
     const restore = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((entry) =>
       entry.textContent?.startsWith('publishes.restore'),
@@ -170,7 +173,7 @@ describe('Publishes page', () => {
   it('keeps Restore visible but disabled, with the reason, for a Viewer', async () => {
     mocks.edit.value = 'viewOnly';
     mocks.history.mockReturnValue(historyResult([page([item(3, 'READY'), item(2, 'READY')], { id: 'dep-3', version: 3 })]));
-    await render(<PublishesPage projectId="site-1" />);
+    await render(<PublishesPage />);
     await act(async () => actionsTrigger(2)?.click());
     const restore = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((entry) =>
       entry.textContent?.startsWith('publishes.restore'),
@@ -184,7 +187,7 @@ describe('Publishes page', () => {
   it('pages back through older publishes', async () => {
     const fetchNextPage = vi.fn();
     mocks.history.mockReturnValue(historyResult([page([item(25, 'READY')], { id: 'dep-25', version: 25 }, 6)], { hasNextPage: true, fetchNextPage }));
-    await render(<PublishesPage projectId="site-1" />);
+    await render(<PublishesPage />);
     const more = [...host.querySelectorAll('button')].find((button) => button.textContent === 'editor.history.more');
     await act(async () => more?.click());
     expect(fetchNextPage).toHaveBeenCalledOnce();
@@ -192,7 +195,7 @@ describe('Publishes page', () => {
 
   it('says nothing was published yet on a new site', async () => {
     mocks.history.mockReturnValue(historyResult([page([], null)]));
-    await render(<PublishesPage projectId="site-1" />);
+    await render(<PublishesPage />);
     expect(host.textContent).toContain('overview.activity.empty');
   });
 });
@@ -219,7 +222,7 @@ const detail = (deployment: ReturnType<typeof item> & Record<string, unknown>, l
 describe('Publish version page', () => {
   it('shows what the version added, edited and removed against the previous one, and offers Restore', async () => {
     mocks.detail.mockReturnValue(detail(item(2, 'READY'), { id: 'dep-3', version: 3 }, summary({ settingsChanged: true })));
-    await render(<PublishVersionPage deploymentId="dep-2" projectId="site-1" />);
+    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-2' }), (<PublishVersionPage />)));
     expect(host.querySelector('h1')?.textContent).toBe('editor.history.version(2)');
     expect(host.querySelector('h2')?.textContent).toBe('publishes.changesSince(1)');
     const changes = [...host.querySelectorAll('[data-change]')].map((row) => [row.getAttribute('data-change'), row.textContent]);
@@ -249,7 +252,7 @@ describe('Publish version page', () => {
     mocks.detail.mockReturnValue(
       detail(item(2, 'READY'), { id: 'dep-2', version: 2 }, summary({ changes, totals: { added: 260, modified: 0, removed: 12 }, truncated: true })),
     );
-    await render(<PublishVersionPage deploymentId="dep-2" projectId="site-1" />);
+    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-2' }), (<PublishVersionPage />)));
     expect(host.querySelectorAll('[data-change]')).toHaveLength(200);
     expect(host.querySelector('[data-testid="publish-changes-truncated"]')?.textContent).toBe('publishes.truncated(200|272)');
     expect(host.querySelector('[data-total="removed"]')?.textContent).toContain('12');
@@ -257,7 +260,7 @@ describe('Publish version page', () => {
 
   it('never offers Restore on the live version', async () => {
     mocks.detail.mockReturnValue(detail(item(3, 'READY'), { id: 'dep-3', version: 3 }, summary()));
-    await render(<PublishVersionPage deploymentId="dep-3" projectId="site-1" />);
+    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-3' }), (<PublishVersionPage />)));
     expect(host.querySelector('[data-slot="status-badge"][data-state="live"]')).not.toBeNull();
     expect([...host.querySelectorAll('button')].some((button) => button.textContent === 'publishes.restore')).toBe(false);
   });
@@ -272,7 +275,7 @@ describe('Publish version page', () => {
         null,
       ),
     );
-    await render(<PublishVersionPage deploymentId="dep-4" projectId="site-1" />);
+    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-4' }), (<PublishVersionPage />)));
     expect(host.textContent).toContain('deploy.failedDetails');
     expect(host.textContent).toContain('Guide — Links to a missing page');
     expect(host.querySelector('[data-testid="publish-changes"]')).toBeNull();
@@ -282,7 +285,7 @@ describe('Publish version page', () => {
   it('disables Restore with the reason for someone without publish rights', async () => {
     mocks.edit.value = 'viewOnly';
     mocks.detail.mockReturnValue(detail(item(2, 'READY'), { id: 'dep-3', version: 3 }, summary()));
-    await render(<PublishVersionPage deploymentId="dep-2" projectId="site-1" />);
+    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-2' }), (<PublishVersionPage />)));
     const restore = [...host.querySelectorAll('button')].find((button) => button.textContent === 'publishes.restore');
     expect(restore?.getAttribute('aria-disabled')).toBe('true');
     await act(async () => restore?.click());
@@ -293,7 +296,7 @@ describe('Publish version page', () => {
     mocks.detail.mockReturnValue(
       detail(item(1, 'READY'), { id: 'dep-1', version: 1 }, summary({ previous: null, totals: { added: 3, modified: 0, removed: 0 } })),
     );
-    await render(<PublishVersionPage deploymentId="dep-1" projectId="site-1" />);
+    await render(((mocks.params = { projectId: 'site-1', deploymentId: 'dep-1' }), (<PublishVersionPage />)));
     expect(host.querySelector('h2')?.textContent).toBe('publish.firstPublish');
   });
 });

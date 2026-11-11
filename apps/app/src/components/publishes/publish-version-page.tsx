@@ -7,7 +7,7 @@ import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { Link } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { QueryErrorState } from '@/components/query-error-state';
 import { type PublishChange, type PublishChangeSummary, usePublishHistoryDetail } from '@/hooks/api/publish-history';
@@ -26,7 +26,8 @@ const CHANGE_TONE = { added: 'success', modified: 'info', removed: 'danger' } as
 
 /** One version of the site: who published it, what it changed against the
  *  version before it, and (for an older live version) Restore. */
-export default function PublishVersionPage({ projectId, deploymentId }: { projectId: string; deploymentId: string }) {
+export default function PublishVersionPage() {
+  const { projectId, deploymentId } = useParams({ from: '/app/projects/$projectId/publishes/$deploymentId' });
   const t = useT();
   const fmt = useFormatters();
   const detail = usePublishHistoryDetail(projectId, deploymentId);

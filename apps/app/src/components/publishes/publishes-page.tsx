@@ -4,7 +4,7 @@ import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { PageContainer } from '@nibleaf/design-system/components/ui/page-container';
 import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { useT } from '@nibleaf/i18n/react';
-import { Link } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { Rocket, RotateCcw } from 'lucide-react';
 import { QueryErrorState } from '@/components/query-error-state';
 import { type PublishHistoryItem, usePublishHistory } from '@/hooks/api/publish-history';
@@ -13,7 +13,8 @@ import { canRestoreState, PublishStatusBadge, publishState, useLiveVersionId } f
 import { useRestoreReason, useRestoreVersion } from './restore-version';
 
 /** The site's publish history: every attempt, newest first, the live one marked. */
-export default function PublishesPage({ projectId }: { projectId: string }) {
+export default function PublishesPage() {
+  const { projectId } = useParams({ from: '/app/projects/$projectId/publishes/' });
   const t = useT();
   const history = usePublishHistory(projectId);
   const items = history.data?.pages.flatMap((page) => page.items) ?? [];
