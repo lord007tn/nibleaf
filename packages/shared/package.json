@@ -15,6 +15,7 @@
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
+    "./page-moves": "./src/page-moves.ts",
     "./integrations": "./src/integrations.ts",
     "./join-links": "./src/join-links.ts",
     "./mcp": "./src/mcp.ts",
