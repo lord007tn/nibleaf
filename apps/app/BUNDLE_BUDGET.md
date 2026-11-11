@@ -108,7 +108,7 @@ include that chunk. So:
   listed (`leakedDashboardPreloads` in `scripts/bundle-boundaries.mjs`; it
   needs the `BUNDLE_ANALYZE=true` report, like the module check).
 - Dashboard navigations get their preloads from the dashboard instead. The
-  client build writes `assets/dashboard-preloads.json`: for each dashboard
+  client build writes `dashboard-preloads.json` (site root): for each dashboard
   route id, every chunk its split parts load (each chunk and its static
   imports, minus what the entry already loads). The signed-in shell
   (`routes/app/route.tsx`) calls `useDashboardIntentPreload`
@@ -131,7 +131,8 @@ The router's eager `index` chunk carried `__vite__mapDeps`: the dependency
 chunk names of every lazy route, dashboard routes included (343 entries, ~11 KB
 raw). Dashboard routes now get no preload list there
 (`scripts/dashboard-preload-plugin.ts`), and the signed-in shell preloads a
-route's chunks on hover or focus from `assets/dashboard-preloads.json`.
+route's chunks on hover or focus from `/dashboard-preloads.json`. It is rewritten by every build under the same
+name, so it is served outside the immutable `/assets/` with `public, max-age=60, must-revalidate`.
 
 Measured against main@bae70857 (analyzed builds, gzip level 9):
 

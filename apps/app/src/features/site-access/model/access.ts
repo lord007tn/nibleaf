@@ -48,6 +48,11 @@ export function decide(access: SiteAccess, action: SiteAction): Decision {
 
   switch (action.type) {
     // Existing settings route, members-section and domain settings use canAdminister.
+    // `site.settings.manage` covers the website's own settings only. It does NOT
+    // authorize the plan or notification defaults: those belong to the
+    // organization and need its Owner or Admin role (apps/server/src/actions/
+    // workspace.ts ORGANIZATION_FIELDS). Give them their own decision when those
+    // controls adopt this model, rather than widening this one.
     case 'site.settings.manage':
     case 'site.members.manage':
     case 'site.domain.manage':
@@ -81,6 +86,12 @@ export function decide(access: SiteAccess, action: SiteAction): Decision {
       // actions/api-keys.ts issueScopes + settings/api-keys-tab.tsx selectionPermitted.
       // Every current McpScope requires MEMBER (shared/mcp.ts MCP_SCOPE_MIN_ROLE);
       // only the full_admin preset additionally requires ADMIN. Parity is tested.
+      //
+      // Eligibility only: whether this role may hold these scopes. It does not
+      // say a custom selection is complete. The request schema (validators
+      // createApiKeyBody) also requires `mcp:connect`, so ['pages:read'] is
+      // eligible here and still refused there; the API-keys form always keeps
+      // `mcp:connect` selected. Both halves are tested.
       return permission(
         Array.isArray(action.scope)
           ? action.scope.length > 0 && canEdit(access.role)
