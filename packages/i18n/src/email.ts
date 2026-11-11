@@ -20,6 +20,8 @@ import {
   email_deployment_ready_preview,
   email_deployment_ready_subject,
   email_deployment_ready_title,
+  email_invite_accessadmin,
+  email_invite_accessnone,
   email_invite_action,
   email_invite_expiry,
   email_invite_message,
@@ -117,6 +119,8 @@ const emailMessages = {
   'email.invite.message': email_invite_message,
   'email.invite.action': email_invite_action,
   'email.invite.expiry': email_invite_expiry,
+  'email.invite.accessAdmin': email_invite_accessadmin,
+  'email.invite.accessNone': email_invite_accessnone,
   // Role names inside the invitation sentence ("…as Viewer").
   'roles.organizationMember': roles_organizationmember,
   'roles.owner': roles_owner,

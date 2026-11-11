@@ -208,6 +208,12 @@ jobs:
           ROLLBACK_SAFETY_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/rollback-safety.postgres.test.ts --maxWorkers=1
 
+      - name: Verify organization people management (invitations, resend, members without websites)
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ORG_PEOPLE_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/organization-people.postgres.test.ts --maxWorkers=1
+
       - name: Verify join links (atomic max uses, one answer for bad links)
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
