@@ -465,3 +465,106 @@ jobs:
           retention-days: 90
 
       # Dependency vulnerabilities are scanned by the dedicated OSV workflow.
+
+  integration:
+    name: Redis, ClickHouse & Qdrant integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: nibleaf_analytics_test
+          POSTGRES_USER: nibleaf
+          POSTGRES_PASSWORD: nibleaf
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nibleaf -d nibleaf_analytics_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 12
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8-alpine
+        env:
+          CLICKHOUSE_DB: nibleaf_analytics_test
+          CLICKHOUSE_USER: nibleaf
+          CLICKHOUSE_PASSWORD: nibleaf
+        ports: ["8123:8123"]
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      qdrant:
+        image: qdrant/qdrant:v1.19.0
+        ports: ["6333:6333"]
+    env:
+      POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf_analytics_test
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
+      ANALYTICS_HASH_SALT: ci-analytics-hash-salt
+      CLICKHOUSE_URL: http://127.0.0.1:8123
+      CLICKHOUSE_DATABASE: nibleaf_analytics_test
+      CLICKHOUSE_READER_USERNAME: nibleaf
+      CLICKHOUSE_READER_PASSWORD: nibleaf
+      CLICKHOUSE_WRITER_USERNAME: nibleaf
+      CLICKHOUSE_WRITER_PASSWORD: nibleaf
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm --filter @nibleaf/i18n run setup
+      - run: pnpm exec turbo run build --filter="@nibleaf/server^..." --filter="@nibleaf/worker^..."
+      - name: Prepare the isolated pipeline databases
+        run: |
+          pnpm --filter @nibleaf/database exec prisma migrate deploy
+          pnpm --filter @nibleaf/clickhouse migrate
+      - name: Verify chat budgets on Redis
+        env:
+          NIBLEAF_REDIS_TESTS: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/lib/ai-search/chat-budget.redis.test.ts --maxWorkers=1
+      - name: Verify analytics outage replay and erasure
+        env:
+          CLICKHOUSE_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/worker exec vitest run src/analytics/pipeline.integration.test.ts --maxWorkers=1
+      - name: Wait for Qdrant readiness
+        run: curl --fail --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:6333/readyz
+      - name: Verify Qdrant tenant isolation
+        env:
+          QDRANT_INTEGRATION_URL: http://127.0.0.1:6333
+        run: pnpm --filter @nibleaf/qdrant exec vitest run src/client.integration.test.ts --maxWorkers=1
+
+  rollback-floor-changes:
+    name: Detect rollback compatibility changes
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.paths.outputs.required }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE_SHA" HEAD -- packages/database/prisma/ 'scripts/migration-safety*' | grep -q .; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "required=false" >> "$GITHUB_OUTPUT"
+            echo "Rollback floor suites are not required: no Prisma or migration-safety changes."
+          fi
+
+  rollback-floor:
+    needs: rollback-floor-changes
+    if: needs.rollback-floor-changes.outputs.required == 'true'
+    uses: ./.github/workflows/rollback-floor.yml

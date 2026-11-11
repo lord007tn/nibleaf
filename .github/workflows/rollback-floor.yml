@@ -1,0 +1,67 @@
+name: Rollback floor compatibility
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  rollback-floor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: orgs_legacy_ci
+          POSTGRES_USER: nibleaf
+          POSTGRES_PASSWORD: nibleaf
+        ports: ["5562:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nibleaf -d orgs_legacy_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5562/orgs_legacy_ci
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Checkout the minimum supported rollback revision
+        uses: actions/checkout@v7
+        with:
+          ref: 0a18349c9855fa9dc6961e0f28bffe1be20febe3
+          path: .rollback-floor
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - name: Build current database and runtime dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+          pnpm --filter @nibleaf/i18n run setup
+          pnpm exec turbo run build --filter="@nibleaf/server^..."
+          pnpm --filter @nibleaf/database exec prisma migrate deploy
+      - name: Build the pinned rollback runtime
+        working-directory: .rollback-floor
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm db:generate
+          pnpm --filter @nibleaf/i18n run setup
+          pnpm exec turbo run build --filter="@nibleaf/server^..."
+      - name: Run old writes, new writes, rollback and compatibility assertions
+        run: node scripts/legacy-schema-compat.mjs "$GITHUB_WORKSPACE/.rollback-floor" "$RUNNER_TEMP/rollback-floor" --rollback-floor
+      - name: Upload rollback compatibility receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rollback-floor-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/rollback-floor
+          if-no-files-found: warn

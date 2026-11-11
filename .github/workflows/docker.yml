@@ -75,7 +75,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  rollback-floor:
+    uses: ./.github/workflows/rollback-floor.yml
+    with:
+      ref: ${{ inputs.ref }}
+
   image:
+    needs: rollback-floor
     name: Build self-host image
     runs-on: ubuntu-latest
     timeout-minutes: 90

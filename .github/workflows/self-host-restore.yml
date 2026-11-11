@@ -1,0 +1,47 @@
+name: Self-host restore drill
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: self-host-restore-drill
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Restore the isolated database and storage fixture
+        env:
+          SELF_HOST_RESTORE_DRILL: "1"
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test scripts/self-host-restore.test.mjs 2>&1 | tee "$RUNNER_TEMP/self-host-restore.log"
+      - name: Upload restore receipt
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: self-host-restore-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/self-host-restore.log
+          if-no-files-found: warn
+      - name: Record failure in the single tracking issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESTORE_DRILL_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RESTORE_DRILL_LOG: ${{ runner.temp }}/self-host-restore.log
+        run: node scripts/report-restore-drill.mjs
