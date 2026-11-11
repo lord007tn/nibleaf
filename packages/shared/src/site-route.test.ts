@@ -78,3 +78,50 @@ describe('site routes on adversarial paths', () => {
     expect(resolveSiteRoute(site, `${slashes}api-reference${slashes}`)).toEqual({ kind: 'openapi' });
   });
 });
+
+// resolveSitePage answers from a per-snapshot index (one pass over the pages per
+// version and language); each case pins what the linear scans it replaced returned.
+describe('resolveSitePage lookups', () => {
+  const withPages = (pages: SnapshotPage[]): SiteSnapshot => ({ ...site, pages });
+  const at = (path: string, extra: Partial<SnapshotPage>): SnapshotPage => ({ ...page(path), ...extra });
+
+  it('serves the first visible page at a path, in snapshot order', () => {
+    const snapshot = withPages([
+      at('setup', { id: 'hidden', hidden: true }),
+      at('setup', { id: 'group', kind: 'GROUP' as SnapshotPage['kind'] }),
+      at('setup', { id: 'first' }),
+      at('setup', { id: 'second' }),
+    ]);
+    expect(resolveSitePage(snapshot, 'setup')?.page.id).toBe('first');
+  });
+
+  it('resolves a section prefix to the first page beneath it in nav order, and nothing for a partial segment', () => {
+    const snapshot = withPages([at('guides/b', { id: 'b', position: 2 }), at('guides/a', { id: 'a', position: 1 }), at('guidesx', { id: 'x' })]);
+    expect(resolveSitePage(snapshot, 'guides')?.page.id).toBe('a');
+    expect(resolveSitePage(snapshot, 'guide')).toBeNull();
+    expect(resolveSitePage(snapshot, 'guides/a/deeper')).toBeNull();
+  });
+
+  it('notices pages added to the same snapshot array', () => {
+    const snapshot = withPages([page('guide')]);
+    expect(resolveSitePage(snapshot, 'later')).toBeNull();
+    snapshot.pages.push(page('later'));
+    expect(resolveSitePage(snapshot, 'later')?.page.path).toBe('later');
+  });
+
+  it('applies the project languages of each lookup, though the pages array (and so its index) is shared', () => {
+    // The published API reuses the frozen pages array across requests while the
+    // live overlay changes each language's `enabled` flag; the index caches only
+    // per-language page lookups, never which language a request gets.
+    const pages = [page('setup'), at('setup', { id: 'ar-setup', languageCode: 'ar' })];
+    const arabic = { code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null } as SiteSnapshot['project']['languages'][number];
+    const withArabic = (enabled: boolean): SiteSnapshot => ({
+      ...site,
+      project: { ...site.project, languages: [...site.project.languages, { ...arabic, enabled }] },
+      pages,
+    });
+    expect(resolveSitePage(withArabic(true), 'setup', 'ar')?.page.id).toBe('ar-setup');
+    expect(resolveSitePage(withArabic(false), 'setup', 'ar')?.page.id).toBe('page-setup');
+    expect(resolveSitePage(withArabic(true), 'setup', 'ar')?.page.id).toBe('ar-setup');
+  });
+});
