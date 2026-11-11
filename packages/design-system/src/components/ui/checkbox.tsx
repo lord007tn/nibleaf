@@ -16,8 +16,10 @@ import { cn } from "../../lib/utils"
 
 // The tick and dash are strokes in the text color, so they stay visible in
 // forced colors, where the filled background is dropped.
+// The unticked border uses the muted text colour, not `--input`: an empty box needs a 3:1 boundary
+// against the page and card (WCAG 1.4.11), which `--input` (about 1.2:1 light, 1.7:1 dark) doesn't give.
 const boxClasses =
-  "peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input bg-background text-primary-foreground shadow-xs transition-colors after:absolute after:-inset-2.5 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:border-primary data-checked:bg-primary data-indeterminate:border-primary data-indeterminate:bg-primary dark:bg-input/30 dark:data-checked:bg-primary dark:data-indeterminate:bg-primary data-disabled:cursor-not-allowed data-disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+  "peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-muted-foreground bg-background text-primary-foreground shadow-xs transition-colors after:absolute after:-inset-2.5 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:border-primary data-checked:bg-primary data-indeterminate:border-primary data-indeterminate:bg-primary dark:bg-input/30 dark:data-checked:bg-primary dark:data-indeterminate:bg-primary data-disabled:cursor-not-allowed data-disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
 
 type CheckboxProps = CheckboxPrimitive.Root.Props & DisabledReasonProps
 
