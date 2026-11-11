@@ -8,6 +8,7 @@ import { site_analyticsconsentmanage } from './paraglide/messages/site_analytics
 import { site_analyticsconsentprivacy } from './paraglide/messages/site_analyticsconsentprivacy.js';
 import { site_analyticsconsenttitle } from './paraglide/messages/site_analyticsconsenttitle.js';
 import { site_articledetails } from './paraglide/messages/site_articledetails.js';
+import { site_articleloadfailed } from './paraglide/messages/site_articleloadfailed.js';
 import { site_blog } from './paraglide/messages/site_blog.js';
 import { site_breadcrumb } from './paraglide/messages/site_breadcrumb.js';
 import { site_changelanguage } from './paraglide/messages/site_changelanguage.js';
@@ -17,6 +18,7 @@ import { site_changelogpagecount } from './paraglide/messages/site_changelogpage
 import { site_changelogrelease } from './paraglide/messages/site_changelogrelease.js';
 import { site_changelogsubtitle } from './paraglide/messages/site_changelogsubtitle.js';
 import { site_changeversion } from './paraglide/messages/site_changeversion.js';
+import { site_controlloadfailed } from './paraglide/messages/site_controlloadfailed.js';
 import { site_copymarkdown } from './paraglide/messages/site_copymarkdown.js';
 import { site_darkmode } from './paraglide/messages/site_darkmode.js';
 import { site_defaultversion } from './paraglide/messages/site_defaultversion.js';
@@ -109,6 +111,8 @@ const siteMessages = {
   searchPlaceholder: site_searchplaceholder,
   searchEmpty: site_searchempty,
   loading: site_loading,
+  articleLoadFailed: site_articleloadfailed,
+  controlLoadFailed: site_controlloadfailed,
   previous: site_previous,
   next: site_next,
   onThisPage: site_onthispage,

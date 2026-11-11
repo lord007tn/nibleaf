@@ -1,7 +1,7 @@
 import type { QdrantScoredPoint } from '@nibleaf/qdrant';
-import { chunkSearchDocument, type SearchScope } from '@nibleaf/search';
+import { chunkSearchDocument, hybridTokens, rerankHybridChunks, type SearchScope, sparseVectorForChunk, sparseVectorForQuery } from '@nibleaf/search';
 import { describe, expect, it } from 'vitest';
-import { chunkFromPoint, filterForSearchScope, pagesToWiden, retrieveChatContext } from './runtime';
+import { type ChatLanguageContext, chunkFromPoint, filterForSearchScope, pagesToWiden, retrieveChatContext, retrieveChatLanguages } from './runtime';
 
 const scope = (projectId = 'tenant-a', pages: string[] | null = ['page-a']): SearchScope => ({
   projectId,
@@ -34,6 +34,132 @@ const point = (overrides: Record<string, unknown> = {}): QdrantScoredPoint => ({
     direction: 'rtl',
     ...overrides,
   },
+});
+
+describe('bilingual chat retrieval', () => {
+  const pages: ChatLanguageContext['pages'] = [
+    { id: 'users-en', title: 'Add a new user', path: 'users', translationKey: 'users', languageCode: 'en', kind: 'PAGE', hidden: false },
+    { id: 'users-ar', title: 'إضافة مستخدم جديد', path: 'المستخدمون', translationKey: 'users', languageCode: 'ar', kind: 'PAGE', hidden: false },
+    { id: 'intro-ar', title: 'البدء', path: 'البدء', translationKey: null, languageCode: 'ar', kind: 'PAGE', hidden: false },
+  ];
+  const context = { languages: ['en', 'ar'], pages };
+  const chunks = pages.flatMap((page) =>
+    chunkSearchDocument(scope(), {
+      id: page.id,
+      title: page.title,
+      path: page.path,
+      description: '',
+      headings: [],
+      language: page.languageCode,
+      visible: true,
+      content:
+        page.id === 'users-ar'
+          ? 'لإضافة مستخدم جديد، افتح المستخدمين واضغط إضافة مستخدم.'
+          : page.id === 'users-en'
+            ? 'To add a new user, open Users and click Add user.'
+            : 'مرحبًا بك في دليل جود بوكينج.',
+    }),
+  );
+  type Search = NonNullable<Parameters<typeof retrieveChatLanguages>[5]>;
+  const query = 'كيف أضيف مستخدمًا جديدًا؟';
+  const readerScope = { ...scope('tenant-a', null), language: 'en' };
+
+  it('retrieves the Arabic add-user guide using real sparse tokens and reranking on an English reader', async () => {
+    const calls: SearchScope[] = [];
+    const search: Search = async (target, question) => {
+      calls.push(target);
+      const vector = sparseVectorForQuery(question, target.language);
+      const terms = new Set(vector.indices);
+      const candidates = chunks.filter(
+        (chunk) => chunk.language === target.language && (target.allowedPageIds === null || target.allowedPageIds.has(chunk.pageId)),
+      );
+      const hits = rerankHybridChunks(
+        question,
+        candidates.flatMap((chunk) => {
+          const sparse = sparseVectorForChunk(chunk);
+          const overlap = sparse.indices.filter((index) => terms.has(index)).length;
+          return overlap ? [{ chunk, score: Math.min(0.6, overlap / 20) }] : [];
+        }),
+      );
+      return { chunks: hits, confidence: hits[0]?.score ?? 0, cacheHit: false };
+    };
+    const result = await retrieveChatLanguages(readerScope, query, {} as never, context, { language: 'ar' }, search);
+    expect(hybridTokens(query)).toContain('جديدا');
+    expect(result.chunks[0]).toMatchObject({ pageId: 'users-ar', language: 'ar' });
+    expect(calls.every((target) => target.language === 'ar')).toBe(true);
+    expect(
+      calls.every(
+        (target) =>
+          target.projectId === readerScope.projectId &&
+          target.visibility === readerScope.visibility &&
+          target.deploymentId === readerScope.deploymentId,
+      ),
+    ).toBe(true);
+  });
+
+  const stub = (translated: boolean, granted: string[] | null = null) => {
+    const calls: SearchScope[] = [];
+    const search: Search = async (target) => {
+      calls.push(target);
+      const isTranslation = target.language === 'ar' && target.allowedPageIds?.has('users-ar');
+      const found = chunks.filter(
+        (chunk) =>
+          chunk.pageId === (isTranslation && translated ? 'users-ar' : target.language === 'en' ? 'users-en' : '') &&
+          (target.allowedPageIds === null || target.allowedPageIds.has(chunk.pageId)),
+      );
+      return { chunks: found.map((chunk) => ({ chunk, score: 0.8 })), confidence: found.length ? 0.8 : 0, cacheHit: false };
+    };
+    return { search, calls, scope: { ...readerScope, allowedPageIds: granted === null ? null : new Set(granted) } };
+  };
+
+  it('falls back to English when Arabic recall is weak and no translation is retrievable', async () => {
+    const { search, calls, scope: target } = stub(false);
+    const result = await retrieveChatLanguages(target, query, {} as never, context, { language: 'ar' }, search);
+    expect(calls[0]?.language).toBe('ar');
+    expect(calls.some((call) => call.language === 'en')).toBe(true);
+    expect(result.chunks[0]?.language).toBe('en');
+  });
+
+  it('prefers an authorized translation linked by translationKey even with different paths', async () => {
+    const { search, scope: target } = stub(true);
+    const result = await retrieveChatLanguages(target, query, {} as never, context, { language: 'ar' }, search);
+    expect(result.chunks[0]).toMatchObject({ pageId: 'users-ar', path: 'المستخدمون' });
+    expect(result.chunks.some((chunk) => chunk.pageId === 'users-en')).toBe(false);
+  });
+
+  it('still tries another language when the current-page boost masks weak main-query recall', async () => {
+    const base = stub(false);
+    const search: Search = async (target, ...args) => {
+      if (target.allowedPageIds?.has('intro-ar')) {
+        const found = chunks.filter((chunk) => chunk.pageId === 'intro-ar');
+        return { chunks: found.map((chunk) => ({ chunk, score: 0.9 })), confidence: 0.9, cacheHit: false };
+      }
+      return base.search(target, ...args);
+    };
+    const result = await retrieveChatLanguages(
+      { ...base.scope, language: 'ar' },
+      query,
+      {} as never,
+      context,
+      {
+        language: 'ar',
+        page: { id: 'intro-ar', title: 'البدء' },
+      },
+      search,
+    );
+    expect(base.calls.some((call) => call.language === 'en')).toBe(true);
+    expect(result.chunks[0]?.language).toBe('en');
+  });
+
+  it('never widens grants to an ungranted translation or a disabled language', async () => {
+    const { search, calls, scope: target } = stub(true, ['users-en']);
+    const result = await retrieveChatLanguages(target, query, {} as never, context, { language: 'ar' }, search);
+    expect(result.chunks[0]?.pageId).toBe('users-en');
+    expect(calls.every((call) => call.allowedPageIds?.has('users-en'))).toBe(true);
+    const disabled = stub(true);
+    await retrieveChatLanguages(disabled.scope, query, {} as never, { ...context, languages: ['en'] }, { language: 'ar' }, disabled.search);
+    expect(disabled.calls.every((call) => call.language === 'en')).toBe(true);
+  });
 });
 
 describe('reading the rest of pages that appear only thinly', () => {

@@ -8,3 +8,8 @@
 # component templates (a drift check), not credentials. Later commits store a short
 # hash prefix instead; this fingerprint only covers the #320 commit that added them.
 912329bd34993a80ac55b02eb72f1960dcdbc26f:packages/shared/src/theme-repository-templates/component-templates.test.ts:generic-api-key:42
+
+# False positive: a made-up nanoid-style page slug in the unreadable-slug test fixtures
+# (PR #435), labelled "random token". Later commits assemble it at runtime; this
+# fingerprint only covers the commit that added it.
+d8cebd20b108bed388db5f522e18334efcbcbb74:apps/server/src/lib/publish-checks.test.ts:generic-api-key:247

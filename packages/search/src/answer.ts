@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { citationFor, validateCitedAnswer } from './answer-validation';
 import type { SearchChunk } from './hybrid';
+import { questionLanguage } from './language';
 import type { ChatProvider, ChatUsage } from './providers';
 import { answerOutputSchema } from './validators/provider';
 
@@ -12,6 +13,7 @@ export interface GroundedCitation {
   heading?: string;
   snippet: string;
   direction: 'ltr' | 'rtl';
+  language?: string;
 }
 
 export interface GroundedAnswer {
@@ -59,10 +61,11 @@ export const generateGroundedAnswer = async (
   query: string,
   chunks: SearchChunk[],
   retrievalConfidence: number,
-  language: string,
+  readerLanguage: string,
   signal?: AbortSignal,
   minimumConfidence = 0.2,
 ): Promise<GroundedAnswer> => {
+  const language = questionLanguage(query, readerLanguage);
   if (chunks.length === 0 || retrievalConfidence < minimumConfidence) return noAnswer(language, retrievalConfidence);
   const completion = await provider.complete(
     [

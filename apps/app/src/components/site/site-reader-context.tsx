@@ -5,6 +5,9 @@ import { createContext, useContext } from 'react';
 export interface SiteReaderContextValue {
   /** Active content language code, for localized chrome strings. */
   lang?: string;
+  /** The site's languages, so content shown in another language (a fallback
+   *  page) can carry that language's direction. */
+  languages?: ReadonlyArray<{ code: string; direction: 'LTR' | 'RTL' }>;
   /** The docs home URL, keeping the active language and version. */
   homeHref: string;
   /** Opens the search dialog; absent when the site turned search off. */
