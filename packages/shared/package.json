@@ -11,6 +11,7 @@
     "./addons": "./src/addons.ts",
     "./ai": "./src/ai.ts",
     "./callouts": "./src/callouts.ts",
+    "./reader-markdown": "./src/reader-markdown.ts",
     "./client-ip": "./src/client-ip.ts",
     "./legal": "./src/legal.ts",
     "./languages": "./src/languages.ts",
@@ -46,7 +47,8 @@
     "./utils": "./src/utils.ts",
     "./organization-handles": "./src/organization-handles.ts",
     "./markdown-text": "./src/markdown-text.ts",
-    "./markdown-code-usage": "./src/markdown-code-usage.ts"
+    "./markdown-code-usage": "./src/markdown-code-usage.ts",
+    "./uuid": "./src/uuid.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
@@ -60,10 +62,13 @@
     "micromark-extension-gfm": "^3.0.0",
     "nanoid": "^6.0.2",
     "zod": "^4.6.7",
+    "parse5": "7.3.0",
+    "rehype-raw": "7.0.0",
     "remark-frontmatter": "5.0.0",
     "remark-gfm": "4.0.1",
     "remark-mdx": "3.1.1",
     "remark-parse": "11.0.0",
+    "remark-rehype": "11.1.2",
     "unified": "11.0.5"
   },
   "devDependencies": {
