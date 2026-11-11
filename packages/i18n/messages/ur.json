@@ -4272,7 +4272,7 @@
   "editor_tree_noresults": "کوئی مماثل صفحہ نہیں",
   "editor_tree_filterreason": "صفحات منتقل کرنے کے لیے فلٹر صاف کریں۔",
   "editor_tree_label": "صفحات",
-  "editor_tree_instructions": "حرکت کے لیے تیر، کھولنے کے لیے Enter، نام بدلنے کے لیے F2، کارروائیوں کے لیے Shift+F10 اور ڈریگ ہینڈل کے لیے Alt+D دبائیں۔ ہینڈل پر منتقلی شروع کرنے کے لیے اسپیس، منزل چننے کے لیے تیر، چھوڑنے کے لیے اسپیس یا منسوخ کرنے کے لیے Escape دبائیں۔",
+  "editor_tree_instructions": "حرکت کے لیے تیر، کھولنے کے لیے Enter، نام بدلنے کے لیے F2، کارروائیوں کے لیے Shift+F10 اور ڈریگ ہینڈل کے لیے Alt+Shift+D دبائیں۔ ہینڈل پر منتقلی شروع کرنے کے لیے اسپیس، منزل چننے کے لیے تیر، چھوڑنے کے لیے اسپیس یا منسوخ کرنے کے لیے Escape دبائیں۔",
   "editor_tree_movedinside": "{title} کو {parent} کے اندر منتقل کیا گیا، مقام {position} از {total}۔",
   "editor_tree_movedroot": "{title} کو {language} میں منتقل کیا گیا، مقام {position} از {total}۔"
 }

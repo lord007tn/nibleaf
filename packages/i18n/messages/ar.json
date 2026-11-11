@@ -4320,7 +4320,7 @@
   "editor_tree_noresults": "لا توجد صفحات مطابقة",
   "editor_tree_filterreason": "امسح التصفية لنقل الصفحات.",
   "editor_tree_label": "الصفحات",
-  "editor_tree_instructions": "استخدم الأسهم للتنقل، وEnter للفتح، وF2 لإعادة التسمية، وShift+F10 للإجراءات، وAlt+D للوصول إلى مقبض السحب. عند المقبض، اضغط مسافة لبدء النقل، والأسهم لاختيار الوجهة، ومسافة للإفلات، أو Escape للإلغاء.",
+  "editor_tree_instructions": "استخدم الأسهم للتنقل، وEnter للفتح، وF2 لإعادة التسمية، وShift+F10 للإجراءات، وAlt+Shift+D للوصول إلى مقبض السحب. عند المقبض، اضغط مسافة لبدء النقل، والأسهم لاختيار الوجهة، ومسافة للإفلات، أو Escape للإلغاء.",
   "editor_tree_movedinside": "تم نقل {title} داخل {parent}، في الموضع {position} من {total}.",
   "editor_tree_movedroot": "تم نقل {title} إلى {language}، في الموضع {position} من {total}."
 }

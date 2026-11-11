@@ -4281,7 +4281,7 @@
   "editor_tree_noresults": "Keine passenden Seiten",
   "editor_tree_filterreason": "Filter löschen, um Seiten zu verschieben.",
   "editor_tree_label": "Seiten",
-  "editor_tree_instructions": "Mit Pfeiltasten navigieren, mit Enter öffnen, mit F2 umbenennen, mit Umschalt+F10 Aktionen öffnen und mit Alt+D den Ziehgriff fokussieren. Am Griff: Leertaste zum Verschieben, Pfeiltasten für das Ziel, Leertaste zum Ablegen, Escape zum Abbrechen.",
+  "editor_tree_instructions": "Mit Pfeiltasten navigieren, mit Enter öffnen, mit F2 umbenennen, mit Umschalt+F10 Aktionen öffnen und mit Alt+Shift+D den Ziehgriff fokussieren. Am Griff: Leertaste zum Verschieben, Pfeiltasten für das Ziel, Leertaste zum Ablegen, Escape zum Abbrechen.",
   "editor_tree_movedinside": "{title} in {parent} verschoben, Position {position} von {total}.",
   "editor_tree_movedroot": "{title} nach {language} verschoben, Position {position} von {total}."
 }

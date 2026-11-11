@@ -124,7 +124,7 @@ it('filters inside folded groups, highlights title/address matches, disables dra
 it('reaches the drag handle and actions from the focused row without adding tab stops', async () => {
   await render();
   await act(async () => row('child').focus());
-  await key(row('child'), 'd', { altKey: true });
+  await key(row('child'), 'd', { altKey: true, shiftKey: true });
   expect(document.activeElement).toBe(row('child').querySelector('[data-drag-handle]'));
   await key(document.activeElement as Element, 'Escape');
   expect(document.activeElement).toBe(row('child'));

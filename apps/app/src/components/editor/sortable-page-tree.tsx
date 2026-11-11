@@ -935,7 +935,7 @@ const RowPresentation = memo(function RowPresentation({
         } else if ((event.key === 'F10' && event.shiftKey) || event.key === 'ContextMenu') {
           event.preventDefault();
           event.currentTarget.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.click();
-        } else if (event.altKey && event.key.toLowerCase() === 'd') {
+        } else if (event.altKey && event.shiftKey && event.key.toLowerCase() === 'd') {
           event.preventDefault();
           event.currentTarget.querySelector<HTMLButtonElement>('[data-drag-handle]')?.focus();
         }
