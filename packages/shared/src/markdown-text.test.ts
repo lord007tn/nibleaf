@@ -58,26 +58,46 @@ describe('markdownToPlainText on adversarial input (ReDoS, CodeQL js/polynomial-
     ['dense emphasis (16 KB of *a)', '*a'.repeat(8192)],
     ['dense underscores', '_a'.repeat(8192)],
   ];
-  // Every dense case above takes the linear strip: under 50 ms even on CI.
-  it.each(cases)('stays fast on %s', (_, input) => {
+  /** Calibrated timing: the same machine's time for a plain linear pass over the
+   *  same input. A slow CI core slows both equally, so the ratio stays meaningful,
+   *  while superlinear growth (hundreds of times slower at this size) is still caught. */
+  const plainStripMs = (input: string): number => {
+    const runs: number[] = [];
+    for (let round = 0; round < 3; round += 1) {
+      const started = performance.now();
+      let letters = 0;
+      for (let index = 0; index < input.length; index += 1) if (/\p{L}/u.test(input[index] ?? '')) letters += 1;
+      if (letters < 0) throw new Error('unreachable');
+      runs.push(performance.now() - started);
+    }
+    return runs.sort((a, b) => a - b)[1] ?? 0;
+  };
+  const extractionMs = (input: string): number => {
     markdownToPlainText('<!-- warm up --> <b>x</b> [a](b) *y*');
     const started = performance.now();
     // A unique suffix bypasses the per-content cache, so this measures extraction.
     markdownToPlainText(`${input}${Math.random()}`);
-    expect(performance.now() - started).toBeLessThan(50);
+    return performance.now() - started;
+  };
+
+  // Every dense case above takes the linear strip.
+  it.each(cases)('stays linear on %s', (_, input) => {
+    expect(extractionMs(input)).toBeLessThanOrEqual(10 * plainStripMs(input) + 20);
   });
 
-  // Just under the 200-marker guard the parser still runs. Its cost there is
-  // bounded (tens of ms on CI) and paid once per content, thanks to the cache.
-  // The 250 ms bound proves no superlinear blow-up, which takes seconds on CI.
+  // Just under the 200-marker guard the parser still runs, on a 1.5 KB prefix.
+  // Measured against a plain pass over that same prefix.
   it.each([
     ['emphasis just under the marker guard', '*aaaaaaa'.repeat(192)],
     ['tags just under the marker guard', `<b>${'a'.repeat(13)}`.repeat(96)],
   ])('stays bounded on %s', (_, input) => {
-    markdownToPlainText('<!-- warm up --> <b>x</b> [a](b) *y*');
-    const started = performance.now();
-    markdownToPlainText(`${input}${Math.random()}`);
-    expect(performance.now() - started).toBeLessThan(250);
+    expect(extractionMs(input)).toBeLessThanOrEqual(10 * plainStripMs(input.slice(0, 1536)) + 20);
+  });
+
+  it('strips unclosed raw HTML linearly instead of parsing it', () => {
+    expect(markdownToPlainText('Intro text. <script>const secret = 1;')).not.toContain('secret');
+    expect(markdownToPlainText('Intro text. <!-- unfinished internal note')).toBe('Intro text.');
+    expect(markdownToPlainText('Intro text. <style>p { color: red }')).not.toContain('color');
   });
 
   it('the linear fallback still gives a clean description for a marker-heavy page', () => {

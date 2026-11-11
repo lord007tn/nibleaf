@@ -63,6 +63,40 @@ const stripSpans = (value: string, open: string, close: string): string => {
   return output + value.slice(cursor);
 };
 
+const RAW_REGIONS = [
+  { open: '<!--', close: '-->' },
+  { open: '<script', close: '</script' },
+  { open: '<style', close: '</style' },
+] as const;
+
+/** Removes HTML comments and <script>/<style> elements with their content. An
+ *  unclosed one hides the rest, as in CommonMark. One forward pass: each
+ *  opener's next position is cached and only searched again once the cursor
+ *  passes it, so no input is rescanned. */
+const dropRawRegions = (value: string): string => {
+  const lower = value.toLowerCase();
+  const next = RAW_REGIONS.map(({ open }) => lower.indexOf(open));
+  let output = '';
+  let cursor = 0;
+  for (;;) {
+    for (const [index, region] of RAW_REGIONS.entries()) {
+      if ((next[index] ?? -1) !== -1 && (next[index] ?? 0) < cursor) next[index] = lower.indexOf(region.open, cursor);
+    }
+    let pick = -1;
+    for (const [index, position] of next.entries()) if (position !== -1 && (pick === -1 || position < (next[pick] ?? 0))) pick = index;
+    if (pick === -1) return output + value.slice(cursor);
+    const start = next[pick] ?? 0;
+    const region = RAW_REGIONS[pick];
+    if (!region) return output + value.slice(cursor);
+    output += `${value.slice(cursor, start)} `;
+    const close = lower.indexOf(region.close, start + region.open.length);
+    if (close === -1) return output;
+    const end = region.close === '-->' ? close + 3 : lower.indexOf('>', close);
+    if (end === -1) return output;
+    cursor = region.close === '-->' ? end : end + 1;
+  }
+};
+
 /** A leading `---` YAML or `+++` TOML block, removed with a linear line scan. */
 const stripFrontmatter = (source: string): string => {
   for (const fence of ['---', '+++']) {
@@ -89,7 +123,7 @@ const linearStrip = (source: string): string => {
     if (!fence) prose.push(line);
   }
   // stripMarkdownLinks is a single forward pass: link text stays, URLs and images go.
-  let text = stripMarkdownLinks(stripSpans(stripSpans(prose.join('\n'), '<!--', '-->'), '{/*', '*/}'));
+  let text = stripMarkdownLinks(stripSpans(dropRawRegions(prose.join('\n')), '{/*', '*/}'));
   let output = '';
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index] ?? '';
@@ -188,8 +222,21 @@ const markerCount = (source: string): number => {
 
 const cache = new Map<string, string>();
 
+/** Raw HTML that opens inside the prefix but doesn't close there: the parser
+ *  would scan it to the end, so it is stripped linearly instead. */
+const hasUnclosedRawHtml = (prefix: string): boolean => {
+  const lower = prefix.toLowerCase();
+  const comment = lower.indexOf('<!--');
+  if (comment !== -1 && lower.indexOf('-->', comment + 4) === -1) return true;
+  for (const tag of ['script', 'style']) {
+    const open = lower.indexOf(`<${tag}`);
+    if (open !== -1 && lower.indexOf(`</${tag}`, open) === -1) return true;
+  }
+  return false;
+};
+
 const extractPrefix = (prefix: string): string => {
-  if (markerCount(prefix) > MAX_MARKERS) return linearStrip(prefix);
+  if (markerCount(prefix) > MAX_MARKERS || hasUnclosedRawHtml(prefix)) return linearStrip(prefix);
   const walk: Walk = { parts: [], rawText: null };
   collect(parse(prefix), walk);
   return walk.parts
