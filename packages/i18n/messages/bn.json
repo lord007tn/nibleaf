@@ -3010,6 +3010,7 @@
   "settings_integrations_status_inactive": "নিষ্ক্রিয়",
   "settings_integrations_status_error": "মনোযোগ প্রয়োজন",
   "settings_integrations_status_notsendingyet": "এখনও পাঠানো হচ্ছে না",
+  "settings_integrations_status_notinuse": "সংযুক্ত, ব্যবহার হচ্ছে না",
   "settings_integrations_comingsoon_description": "আপনার সাইট প্রকাশিত হলে পোস্ট করবে, শীঘ্রই আসছে।",
   "settings_integrations_comingsoon_saved": "এই সংযোগটি সংরক্ষিত আছে, কিন্তু Nibleaf এখনও এতে কিছু পাঠায় না। আপনি এটি সরাতে পারেন।",
   "settings_integrations_remove": "সরান",

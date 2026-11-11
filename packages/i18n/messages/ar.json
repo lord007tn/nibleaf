@@ -3115,6 +3115,7 @@
   "settings_integrations_status_inactive": "غير نشط",
   "settings_integrations_status_error": "يحتاج إلى انتباه",
   "settings_integrations_status_notsendingyet": "لا يُرسل بعد",
+  "settings_integrations_status_notinuse": "متصل، غير مستخدم",
   "settings_integrations_comingsoon_description": "سينشر رسالة عند نشر موقعك، قريبًا.",
   "settings_integrations_comingsoon_saved": "هذا الاتصال محفوظ، لكن Nibleaf لا يرسل إليه أي شيء بعد. يمكنك إزالته.",
   "settings_integrations_remove": "إزالة",

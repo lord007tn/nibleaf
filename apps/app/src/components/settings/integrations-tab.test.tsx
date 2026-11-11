@@ -216,3 +216,30 @@ describe('Slack, Discord and Zapier while coming soon', () => {
     expect(hooks.remove.mutateAsync).toHaveBeenCalledWith({ providerId: 'slack', expectedRevision: 3 });
   });
 });
+
+describe('AI provider card status', () => {
+  const aiConnection = (
+    ownership: 'project' | 'instance',
+    status: 'active' | 'inactive' | 'error',
+  ): NonNullable<IntegrationCatalogEntry['connection']> => ({
+    ...storedSlack,
+    id: `ai-${ownership}`,
+    providerId: 'openai',
+    category: 'ai',
+    ownership,
+    status,
+    config: { providerId: 'openai', answerModel: 'openai/gpt-6-luna', embeddingModel: 'openai/text-embedding-3-large' },
+  });
+
+  it.each([
+    { ownership: 'project', status: 'inactive', label: 'settings.integrations.status.notInUse' },
+    { ownership: 'project', status: 'active', label: 'settings.integrations.status.active' },
+    { ownership: 'project', status: 'error', label: 'settings.integrations.status.error' },
+    { ownership: 'instance', status: 'inactive', label: 'settings.integrations.status.inactive' },
+  ] as const)('a $ownership key that is $status reads "$label"', async ({ ownership, status, label }) => {
+    catalogOf({ ...manifest('openai'), availability: 'available', connection: aiConnection(ownership, status) } as IntegrationCatalogEntry);
+    const container = await renderTab();
+
+    expect(button(container, 'settings.integrations.provider.openai')?.textContent).toContain(label);
+  });
+});

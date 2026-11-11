@@ -3099,6 +3099,7 @@
   "settings_integrations_status_inactive": "неактивный",
   "settings_integrations_status_error": "Требует внимания",
   "settings_integrations_status_notsendingyet": "Пока не отправляет",
+  "settings_integrations_status_notinuse": "Подключено, не используется",
   "settings_integrations_comingsoon_description": "Будет сообщать о публикации вашего сайта. Скоро.",
   "settings_integrations_comingsoon_saved": "Это подключение сохранено, но Nibleaf пока ничего в него не отправляет. Его можно удалить.",
   "settings_integrations_remove": "Удалить",

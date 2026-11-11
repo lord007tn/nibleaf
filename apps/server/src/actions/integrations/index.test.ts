@@ -48,6 +48,8 @@ vi.mock('@/env', () => ({
 const runtime = vi.hoisted(() => ({
   /** SEARCH_ANSWER_ENABLED: whether the server allows AI answers at all. */
   answersEnabled: false,
+  /** SEARCH_EMBEDDING_MODEL: what a stored AI key must be built for. */
+  embeddingModel: 'embedding',
   /**
    * The webhook lifecycle stays in place for publish delivery
    * (operations/ux/ai-and-integrations.md, PR 7). The durability tests run it
@@ -77,7 +79,7 @@ vi.mock('@nibleaf/qdrant/keys', () => ({ keys: () => ({ QDRANT_URL: undefined })
 vi.mock('@nibleaf/search/keys', () => ({
   keys: () => ({
     SEARCH_RUNTIME: 'legacy',
-    SEARCH_EMBEDDING_MODEL: 'embedding',
+    SEARCH_EMBEDDING_MODEL: runtime.embeddingModel,
     SEARCH_ANSWER_MODEL: 'answer',
     SEARCH_ANSWER_ENABLED: runtime.answersEnabled,
   }),
@@ -912,5 +914,132 @@ describe('Slack, Discord and Zapier while delivery is coming soon', () => {
     await deleteProjectIntegration(context(), 'project-1', 'slack', { confirmationToken: confirmation.confirmationToken });
 
     expect(mocks.integrationDelete).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("a site's own stored AI keys", () => {
+  const embedding = 'openai/text-embedding-3-large';
+  const storedKey = (providerId: 'openai' | 'openrouter', overrides: Record<string, unknown> = {}) => ({
+    ...connection(),
+    id: `ai-${providerId}`,
+    providerId,
+    config: { answerModel: 'openai/gpt-6-luna', embeddingModel: embedding },
+    // A real envelope, so "readable with the current keyring" is checked for real.
+    credentialEncrypted: encryptIntegrationSecret(
+      JSON.stringify({ kind: 'workspace-ai', projectId: 'project-1', providerId, apiKey: `site-${providerId}-secret` }),
+    ),
+    lastVerificationStatus: 'HEALTHY',
+    lastVerifiedAt: now,
+    ...overrides,
+  });
+  const statuses = async (stored: ReturnType<typeof storedKey>[], search: Record<string, unknown>) => {
+    mocks.integrationFindMany.mockResolvedValue(stored);
+    const catalog = await listFor({ search });
+    expect(JSON.stringify(catalog)).not.toMatch(/site-(openai|openrouter)-secret|operator-secret-key/);
+    return Object.fromEntries(
+      (['openai', 'openrouter'] as const).map((id) => [id, catalog.find((entry) => entry.id === id)?.connection?.status ?? null]),
+    );
+  };
+
+  beforeEach(() => {
+    resetCatalogMocks();
+    runtime.answersEnabled = true;
+    runtime.embeddingModel = embedding;
+    mutableEnv.OPENROUTER_API_KEY = 'operator-secret-key';
+  });
+  afterEach(() => {
+    runtime.answersEnabled = false;
+    runtime.embeddingModel = 'embedding';
+    mutableEnv.OPENROUTER_API_KEY = undefined;
+  });
+
+  // One rule with the operator entry: "active" only while it is what answers readers.
+  it.each([
+    {
+      name: 'own OpenAI key, AI on',
+      stored: ['openai'],
+      search: { aiProvider: 'openai', aiAnswers: true },
+      openai: 'active',
+      openrouter: 'inactive',
+    },
+    {
+      name: 'own OpenAI key, AI off',
+      stored: ['openai'],
+      search: { aiProvider: 'openai', aiAnswers: false },
+      openai: 'inactive',
+      openrouter: 'inactive',
+    },
+    {
+      name: 'own OpenRouter key, AI on',
+      stored: ['openrouter'],
+      search: { aiProvider: 'openrouter', aiAnswers: true },
+      openai: null,
+      openrouter: 'active',
+    },
+    {
+      name: 'own OpenRouter key, AI off',
+      stored: ['openrouter'],
+      search: { aiProvider: 'openrouter', aiAnswers: false },
+      openai: null,
+      openrouter: 'inactive',
+    },
+    {
+      name: 'own OpenAI key saved, server AI selected and on',
+      stored: ['openai'],
+      search: { aiProvider: 'instance', aiAnswers: true },
+      openai: 'inactive',
+      openrouter: 'active',
+    },
+    {
+      name: 'own OpenRouter key saved, server AI selected and on',
+      stored: ['openrouter'],
+      search: { aiAnswers: true },
+      openai: null,
+      openrouter: 'inactive',
+    },
+    {
+      name: 'both keys saved, OpenAI selected and on',
+      stored: ['openai', 'openrouter'],
+      search: { aiProvider: 'openai', aiAnswers: true },
+      openai: 'active',
+      openrouter: 'inactive',
+    },
+    {
+      name: 'own key saved, AI turned off',
+      stored: ['openai'],
+      search: { aiProvider: 'disabled', aiAnswers: false },
+      openai: 'inactive',
+      openrouter: 'inactive',
+    },
+  ] as const)('$name → OpenAI $openai, OpenRouter $openrouter', async ({ stored, search, openai, openrouter }) => {
+    expect(
+      await statuses(
+        stored.map((id) => storedKey(id)),
+        search,
+      ),
+    ).toEqual({ openai, openrouter });
+  });
+
+  it.each([
+    { name: 'it failed its last check', overrides: { lastVerificationStatus: 'UNHEALTHY' } },
+    { name: 'it was built for another embedding model', overrides: { config: { answerModel: 'm', embeddingModel: 'openai/old-embedding' } } },
+    { name: 'it is switched off in the database', overrides: { status: 'INACTIVE' } },
+    { name: 'its stored key cannot be read with the current keyring', overrides: { credentialEncrypted: 'not-an-envelope' } },
+    {
+      name: 'its stored key belongs to another site',
+      overrides: {
+        credentialEncrypted: encryptIntegrationSecret(
+          JSON.stringify({ kind: 'workspace-ai', projectId: 'project-2', providerId: 'openai', apiKey: 'other-site-secret' }),
+        ),
+      },
+    },
+  ])('needs attention when selected and on but $name', async ({ overrides }) => {
+    const result = await statuses([storedKey('openai', overrides)], { aiProvider: 'openai', aiAnswers: true });
+    expect(result.openai).toBe('error');
+  });
+
+  it('keeps a key marked broken as needing attention even when not in use', async () => {
+    const result = await statuses([storedKey('openrouter', { status: 'ERROR' })], { aiProvider: 'instance', aiAnswers: true });
+    expect(result.openrouter).toBe('error');
   });
 });

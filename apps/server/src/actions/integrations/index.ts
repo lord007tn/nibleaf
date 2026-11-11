@@ -2,7 +2,7 @@ import { keys as clickHouseKeys } from '@nibleaf/clickhouse/keys';
 import { type IntegrationWebhookDelivery, Prisma, type ProjectIntegration, prisma } from '@nibleaf/database';
 import { keys as qdrantKeys } from '@nibleaf/qdrant/keys';
 import { keys as searchKeys } from '@nibleaf/search/keys';
-import { aiConnectionConfigSchema, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
+import { aiConnectionConfigSchema, aiCredentialSchema, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MemberRole } from '@nibleaf/shared/constants';
 import {
   getIntegrationManifest,
@@ -220,21 +220,52 @@ const siteAiSelectionSchema = z.object({
   search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
 });
 
+/** Whether the reader could decrypt this stored key for this site and provider (never returns the key). */
+const storedAiKeyReadable = (stored: Pick<ProjectIntegration, 'projectId' | 'credentialEncrypted'>, providerId: 'openai' | 'openrouter') => {
+  try {
+    const credential = aiCredentialSchema.parse(JSON.parse(decryptIntegrationSecret(stored.credentialEncrypted)));
+    return credential.projectId === stored.projectId && credential.providerId === providerId;
+  } catch {
+    return false;
+  }
+};
+
 /**
- * Whether this site's readers get answers from the server's own AI provider
- * right now: the same rule as Smart AI's "AI answers enabled" badge for the
- * instance provider. The site picks the instance provider (the default), has
- * answers on, and the server both holds a key and allows answers. Having an
- * operator key alone does not make the provider active for a site.
+ * The one status rule for every AI provider card, the server's own provider
+ * ("instance") and a site's stored OpenAI or OpenRouter key alike. It follows
+ * the reader's resolver (`resolveWorkspaceAiConfiguration`,
+ * packages/search/src/workspace.ts):
+ * - `active` only while this site's readers get answers from that source: it
+ *   is the site's selected source (the instance provider by default), answers
+ *   are on, and the source can serve them (the server holds a key and allows
+ *   answers; a stored key is active, verified, built for the server's
+ *   embedding model and readable with the current keyring);
+ * - `error` when a stored key is selected and on but can't serve, or was
+ *   marked broken;
+ * - `inactive` otherwise, e.g. a key that is saved but not the selected
+ *   source, or AI answers turned off for the site.
+ * Holding a key never makes a source active on its own.
  */
-const siteUsesInstanceAi = (projectConfig: unknown) => {
+const aiSourceStatus = (
+  source: 'instance' | 'openai' | 'openrouter',
+  projectConfig: unknown,
+  stored?: Pick<ProjectIntegration, 'projectId' | 'status' | 'lastVerificationStatus' | 'config' | 'credentialEncrypted'>,
+): 'active' | 'inactive' | 'error' => {
   const search = siteAiSelectionSchema.safeParse(projectConfig).data?.search;
-  return (
-    (search?.aiProvider ?? 'instance') === 'instance' &&
-    search?.aiAnswers === true &&
-    Boolean(env.OPENROUTER_API_KEY) &&
-    searchKeys().SEARCH_ANSWER_ENABLED
-  );
+  const selectedAndOn = (search?.aiProvider ?? 'instance') === source && search?.aiAnswers === true;
+  if (source === 'instance') {
+    return selectedAndOn && env.OPENROUTER_API_KEY && searchKeys().SEARCH_ANSWER_ENABLED ? 'active' : 'inactive';
+  }
+  if (stored?.status === 'ERROR') return 'error';
+  if (!selectedAndOn) return 'inactive';
+  const embeddingModel = aiConnectionConfigSchema.safeParse(stored?.config).data?.embeddingModel;
+  const canServe =
+    stored?.status === 'ACTIVE' &&
+    stored.lastVerificationStatus === 'HEALTHY' &&
+    embeddingModel === searchKeys().SEARCH_EMBEDDING_MODEL &&
+    (source !== 'openai' || embeddingModel.startsWith('openai/')) &&
+    storedAiKeyReadable(stored, source);
+  return canServe ? 'active' : 'error';
 };
 
 const storageProviderId = () => {
@@ -290,7 +321,10 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
     if (providerId.success) connections.set(providerId.data, projectConnectionSummary(connection, providerId.data));
     const ai = aiProviderIdSchema.safeParse(connection.providerId);
     if (ai.success && aiConnectionConfigSchema.safeParse(connection.config).success)
-      connections.set(ai.data, projectConnectionSummary(connection, ai.data));
+      connections.set(ai.data, {
+        ...projectConnectionSummary(connection, ai.data),
+        status: aiSourceStatus(ai.data, project.config, connection),
+      });
   }
 
   if (gitConnection) {
@@ -385,7 +419,7 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
           answerModel: searchKeys().SEARCH_ANSWER_MODEL,
         },
         project.createdAt,
-        { ownership: 'instance', status: siteUsesInstanceAi(project.config) ? 'active' : 'inactive' },
+        { ownership: 'instance', status: aiSourceStatus('instance', project.config) },
       ),
     );
   }

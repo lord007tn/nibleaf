@@ -241,12 +241,16 @@ function IntegrationStatus({ entry }: { entry: IntegrationCatalogEntry }) {
   const t = useT();
   const comingSoon = isComingSoon(entry);
   const status = comingSoon ? undefined : entry.connection?.status;
+  // A site's own AI key that is saved but isn't what answers readers right now.
+  const savedKeyNotInUse = status === 'inactive' && entry.category === 'ai' && entry.connection?.ownership === 'project';
   const label = t(
     comingSoon && entry.connection
       ? 'settings.integrations.status.notSendingYet'
-      : status
-        ? STATUS_KEYS[status]
-        : AVAILABILITY_KEYS[entry.availability],
+      : savedKeyNotInUse
+        ? 'settings.integrations.status.notInUse'
+        : status
+          ? STATUS_KEYS[status]
+          : AVAILABILITY_KEYS[entry.availability],
   );
   return (
     <Badge

@@ -3067,6 +3067,7 @@
   "settings_integrations_status_inactive": "غیر فعال",
   "settings_integrations_status_error": "توجہ کی ضرورت ہے",
   "settings_integrations_status_notsendingyet": "ابھی نہیں بھیج رہا",
+  "settings_integrations_status_notinuse": "منسلک، استعمال میں نہیں",
   "settings_integrations_comingsoon_description": "آپ کی سائٹ شائع ہونے پر پوسٹ کرے گا، جلد آ رہا ہے۔",
   "settings_integrations_comingsoon_saved": "یہ کنکشن محفوظ ہے، لیکن Nibleaf ابھی اس پر کچھ نہیں بھیجتا۔ آپ اسے ہٹا سکتے ہیں۔",
   "settings_integrations_remove": "ہٹائیں",

@@ -3010,6 +3010,7 @@
   "settings_integrations_status_inactive": "Tidak aktif",
   "settings_integrations_status_error": "Butuh perhatian",
   "settings_integrations_status_notsendingyet": "Belum mengirim",
+  "settings_integrations_status_notinuse": "Terhubung, tidak digunakan",
   "settings_integrations_comingsoon_description": "Mengirim kabar saat situs Anda dipublikasikan, segera hadir.",
   "settings_integrations_comingsoon_saved": "Koneksi ini tersimpan, tetapi Nibleaf belum mengirim apa pun ke sana. Anda dapat menghapusnya.",
   "settings_integrations_remove": "Hapus",

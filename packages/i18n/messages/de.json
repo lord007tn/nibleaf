@@ -3076,6 +3076,7 @@
   "settings_integrations_status_inactive": "Inaktiv",
   "settings_integrations_status_error": "Benötigt Aufmerksamkeit",
   "settings_integrations_status_notsendingyet": "Sendet noch nicht",
+  "settings_integrations_status_notinuse": "Verbunden, nicht in Verwendung",
   "settings_integrations_comingsoon_description": "Meldet jede Veröffentlichung Ihrer Website, demnächst verfügbar.",
   "settings_integrations_comingsoon_saved": "Diese Verbindung ist gespeichert, aber Nibleaf sendet noch nichts dorthin. Sie können sie entfernen.",
   "settings_integrations_remove": "Entfernen",

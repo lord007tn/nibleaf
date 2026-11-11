@@ -3010,6 +3010,7 @@
   "settings_integrations_status_inactive": "非活动",
   "settings_integrations_status_error": "需要关注",
   "settings_integrations_status_notsendingyet": "尚未发送",
+  "settings_integrations_status_notinuse": "已连接，未使用",
   "settings_integrations_comingsoon_description": "在你的站点发布时发送通知，即将推出。",
   "settings_integrations_comingsoon_saved": "此连接已保存，但 Nibleaf 尚未向其发送任何内容。你可以将其移除。",
   "settings_integrations_remove": "移除",

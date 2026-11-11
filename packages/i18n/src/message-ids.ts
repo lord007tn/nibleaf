@@ -1942,6 +1942,7 @@ export const MESSAGE_IDS = {
   'settings.integrations.status.inactive': 'settings_integrations_status_inactive',
   'settings.integrations.status.error': 'settings_integrations_status_error',
   'settings.integrations.status.notSendingYet': 'settings_integrations_status_notsendingyet',
+  'settings.integrations.status.notInUse': 'settings_integrations_status_notinuse',
   'settings.integrations.comingSoon.description': 'settings_integrations_comingsoon_description',
   'settings.integrations.comingSoon.saved': 'settings_integrations_comingsoon_saved',
   'settings.integrations.remove': 'settings_integrations_remove',
