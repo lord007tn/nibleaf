@@ -3828,7 +3828,7 @@
   "site_ai_invalid": "Please ask a question between 2 and 500 characters.",
   "site_ai_failed": "Something went wrong. Please try again.",
   "site_ai_policy_changed": "How this chat handles questions changed while this page was open. Check the notes below, then send your question again.",
-  "site_ai_offline": "You're offline. Check your connection and try again.",
+  "site_ai_offline": "Anda sedang offline. Periksa koneksi internet Anda dan coba lagi.",
   "site_ai_incorrect": "Incorrect",
   "site_ai_incomplete": "Incomplete",
   "site_ai_notrelevant": "Not relevant",

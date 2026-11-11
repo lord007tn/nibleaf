@@ -348,6 +348,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           {prev ? (
             <a
               href={siteHref(projectId, prev.path, { lang: navigationLanguage, version: versionPrefix })}
+              rel="prev"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <ChevronLeft className="size-4 shrink-0 [&:dir(rtl)]:-scale-x-100" />
@@ -364,6 +365,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           {next ? (
             <a
               href={siteHref(projectId, next.path, { lang: navigationLanguage, version: versionPrefix })}
+              rel="next"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <span className="min-w-0">

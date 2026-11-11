@@ -17,9 +17,9 @@ Every documentation tool sits in one of two camps, whatever its editor looks lik
 | Feed to an LLM | Directly | Extraction pipeline first |
 | Migration cost | Usually lower, but components, metadata, links, and assets still need work | A project with a deadline |
 
-Block-database platforms are not built by malicious people. A database of structured blocks is genuinely easier to build real-time collaboration and granular permissions on top of. But the storage choice quietly becomes a switching cost, and switching costs quietly become pricing power. When your 2,000-page knowledge base exists only as rows in someone else&#39;s database, every renewal negotiation starts from a weaker position.
+Block-database platforms are not built by malicious people. A database of structured blocks is genuinely easier to build real-time collaboration and granular permissions on top of. But the storage choice quietly becomes a switching cost, and switching costs quietly become pricing power. When your 2,000-page knowledge base exists only as rows in someone else's database, every renewal negotiation starts from a weaker position.
 
-## What &quot;WYSIWYG over Markdown&quot; means technically
+## What "WYSIWYG over Markdown" means technically
 
 The common objection is that visual editors *require* a richer document model than Markdown can express, so lock-in is the price of a good editor. That is half true and fully avoidable.
 
@@ -27,7 +27,7 @@ Modern block editors (TipTap, ProseMirror, Lexical and friends) do maintain an i
 
 A Markdown-native editor treats the internal model as ephemeral:
 
-1. **On load:** parse the stored Markdown into the editor&#39;s document tree.
+1. **On load:** parse the stored Markdown into the editor's document tree.
 2. **While editing:** operate on the tree — blocks, slash commands, keyboard shortcuts, all of it.
 3. **On save:** serialize the tree back to Markdown. The tree is discarded. Nothing editor-internal ever touches storage.
 
@@ -100,6 +100,6 @@ Record which representation is authoritative, how conflicts are surfaced, and wh
 
 Ask any documentation vendor two questions. First: *what exactly is written to storage when I press save?* Second: *if I export everything today, will the files render somewhere else tomorrow?*
 
-If the answers are &quot;Markdown&quot; and &quot;yes,&quot; the platform is competing for your renewal on quality. Any other answer, and part of what you are paying for — now or eventually — is the difficulty of leaving.
+If the answers are "Markdown" and "yes," the platform is competing for your renewal on quality. Any other answer, and part of what you are paying for — now or eventually — is the difficulty of leaving.
 
 > Platform details for Mintlify, GitBook, and Docusaurus reflect their public documentation as reviewed on August 17, 2026 and may change.

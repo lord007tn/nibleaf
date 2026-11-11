@@ -1,4 +1,4 @@
-import { normalizeArabicSearchText, stripMarkdown } from '@nibleaf/search';
+import { cleanSearchText, normalizeArabicSearchText } from '@nibleaf/search';
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import { extractHeadings, type Heading } from '@nibleaf/shared/site';
 import { LruCache } from './lru';
@@ -33,9 +33,8 @@ function normalizeWithOffsets(text: string): { value: string; offsets: number[] 
 }
 
 /** A preview of the section body around the first matching word, cut on whole words. */
-function sectionSnippet(lines: string[], tokens: string[]): string {
+function sectionSnippet(text: string, tokens: string[]): string {
   // Keep code text (a reader may search for a command) but drop the fence markers.
-  const text = stripMarkdown(lines.filter((line) => !line.trimStart().startsWith('```')).join('\n'));
   if (text.length <= SNIPPET_LENGTH) return text;
   // Match in normalized text (no Arabic diacritics, folded alef forms), then map
   // the position back to the original text so the window stays on the match.
@@ -57,7 +56,7 @@ function sectionSnippet(lines: string[], tokens: string[]): string {
 
 interface ParsedSection {
   heading: Heading;
-  lines: string[];
+  text: string;
   /** Normalized heading and body text, so scoring does no per-query normalization. */
   headingText: string;
   bodyText: string;
@@ -84,11 +83,10 @@ function parseSections(content: string): ParsedSection[] {
     }
     sections.at(-1)?.lines.push(line);
   }
-  return sections.map((section) => ({
-    ...section,
-    headingText: normalize(section.heading.text),
-    bodyText: normalize(section.lines.join(' ')),
-  }));
+  return sections.map((section) => {
+    const text = cleanSearchText(section.lines.join('\n'));
+    return { heading: section.heading, text, headingText: normalize(section.heading.text), bodyText: normalize(text) };
+  });
 }
 
 /**
@@ -130,5 +128,5 @@ export function matchedSearchSection(
     }
   }
   if (!match) return undefined;
-  return { section: { id: match.heading.id, title: match.heading.text }, snippet: sectionSnippet(match.lines, tokens) };
+  return { section: { id: match.heading.id, title: match.heading.text }, snippet: sectionSnippet(match.text, tokens) };
 }

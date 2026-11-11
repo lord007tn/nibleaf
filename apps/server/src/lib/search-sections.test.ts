@@ -30,6 +30,14 @@ const billing = {
 };
 
 describe('matchedSearchSection', () => {
+  it('uses clean plain text for imported callouts, escaped lists, images and HTML', () => {
+    const page = {
+      title: 'Guide',
+      content:
+        '## Billing\n\n> [!IMPORTANT]\n---\n\\-1- Download the [invoice](https://example.test) from <b>Billing</b>. ![](zvtn4xmp.jpg) \\-6- Save.',
+    };
+    expect(matchedSearchSection(page, 'invoice')?.snippet).toBe('Download the invoice from Billing. Save.');
+  });
   it('points at a heading that names the query, previewing that section', () => {
     expect(matchedSearchSection(billing, 'cancel subscription')).toEqual({
       section: { id: 'cancel-your-subscription', title: 'Cancel your subscription' },
