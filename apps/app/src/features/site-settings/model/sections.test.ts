@@ -75,6 +75,12 @@ describe('parseSettingsSearch', () => {
     expect(parseSettingsSearch({ section: 'general', appearanceSection: 'redirects' })).toEqual({ section: 'general' });
   });
 
+  // Council #456: an inherited property passed as a section left a blank page.
+  it.each(['toString', 'constructor', '__proto__', 'hasOwnProperty', 'valueOf'])('drops the inherited name %s', (name) => {
+    expect(parseSettingsSearch({ section: name })).toEqual({ section: undefined });
+    expect(parseSettingsSearch({ section: 'appearance', appearanceSection: name })).toEqual({ section: 'appearance' });
+  });
+
   it('sends the old Analytics section to Integrations', () => {
     expect(parseSettingsSearch({ section: 'analytics' })).toEqual({ section: 'integrations' });
   });

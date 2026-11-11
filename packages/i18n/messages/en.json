@@ -3978,6 +3978,7 @@
   "editor_viewonly_grouphint": "Groups keep related pages together in the sidebar. Open a page in this group to read it.",
   "editor_comments_viewonly": "You can read comments. Viewers can't add or resolve them.",
   "settings_permissions_viewerbody": "Ask a site owner or Admin to update these settings. As a Viewer you can read the site and the sections available to your role.",
+  "settings_permissions_dangerbody": "Only the organization's Owner and Admins can delete this website. Ask one of them if it needs to go.",
   "overview_viewpages": "View pages",
   "join_title": "Join {site}",
   "join_subtitle": "Join a documentation site on Nibleaf.",

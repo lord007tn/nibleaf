@@ -3947,6 +3947,7 @@ export const MESSAGE_IDS = {
   'editor.viewOnly.groupHint': 'editor_viewonly_grouphint',
   'editor.comments.viewOnly': 'editor_comments_viewonly',
   'settings.permissions.viewerBody': 'settings_permissions_viewerbody',
+  'settings.permissions.dangerBody': 'settings_permissions_dangerbody',
   'overview.viewPages': 'overview_viewpages',
   'join.title': 'join_title',
   'join.subtitle': 'join_subtitle',

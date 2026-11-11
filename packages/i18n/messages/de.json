@@ -3978,6 +3978,7 @@
   "editor_viewonly_grouphint": "Gruppen fassen zusammengehörige Seiten in der Seitenleiste zusammen. Öffnen Sie eine Seite dieser Gruppe, um sie zu lesen.",
   "editor_comments_viewonly": "Sie können Kommentare lesen. Leser können keine hinzufügen oder erledigen.",
   "settings_permissions_viewerbody": "Bitten Sie einen Website-Inhaber oder Admin, diese Einstellungen zu aktualisieren. Als Leser können Sie die Website und die für Ihre Rolle verfügbaren Bereiche lesen.",
+  "settings_permissions_dangerbody": "Nur die Inhaber und Admins der Organisation können diese Website löschen. Bitten Sie eine dieser Personen darum, falls nötig.",
   "overview_viewpages": "Seiten ansehen",
   "join_title": "{site} beitreten",
   "join_subtitle": "Treten Sie einer Dokumentationswebsite auf Nibleaf bei.",

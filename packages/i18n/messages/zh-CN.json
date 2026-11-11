@@ -3913,6 +3913,7 @@
   "editor_viewonly_grouphint": "分组会把相关页面集中在侧边栏中。打开此分组中的页面即可阅读。",
   "editor_comments_viewonly": "您可以阅读评论。查看者无法添加或解决评论。",
   "settings_permissions_viewerbody": "请联系站点所有者或管理员更新这些设置。作为查看者，您可以阅读站点以及当前角色可访问的部分。",
+  "settings_permissions_dangerbody": "只有组织的所有者和管理员可以删除此网站。如有需要，请联系其中一位。",
   "overview_viewpages": "查看页面",
   "join_title": "加入 {site}",
   "join_subtitle": "加入 Nibleaf 上的文档站点。",

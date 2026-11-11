@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { PageContainer } from '@nibleaf/design-system/components/ui/page-container';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
@@ -53,6 +54,7 @@ import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
+import { SiteTeamPage } from '@/features/people/components/site-team-page';
 import {
   APPEARANCE_SECTION_IDS,
   type AppearanceSectionId,
@@ -62,7 +64,6 @@ import {
   type SectionId,
 } from '@/features/site-settings/model/ids';
 import { type SettingsAccess, sectionAllowed, sectionLabelKey, settingsNav, WIDE_SECTIONS } from '@/features/site-settings/model/sections';
-import { SiteTeamPage } from '@/features/people/components/site-team-page';
 import type { Project } from '@/hooks/api';
 import { type SwitcherOrganization, useOrganizationOfProject, useProject, useProjectMembers } from '@/hooks/api';
 import {
@@ -229,20 +230,38 @@ function ProjectSettingsPage() {
   const allowed = sectionAllowed(section, access);
   // On a phone, /settings with no page is the list of pages; each page links back to it.
   const listPage = !requestedSection;
+  // Where the person is: the list or a page they opened. It changes only when
+  // they navigate, never when permissions resolve the default entry's page.
+  const place = requestedSection ?? 'list';
 
   const contentRef = useRef<HTMLDivElement>(null);
-  const shownSection = useRef(section);
+  const navHeadingRef = useRef<HTMLHeadingElement>(null);
+  const shownPlace = useRef(place);
   useEffect(() => {
-    if (shownSection.current === section) return;
-    shownSection.current = section;
-    // Moving to another page moves focus to its heading, so keyboard and screen
-    // reader users start at the top of what they opened.
-    const heading = contentRef.current?.querySelector<HTMLElement>('h1, h2');
-    const target = heading ?? contentRef.current;
-    if (!target) return;
-    if (heading && !heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
-    target.focus();
-  }, [section]);
+    if (shownPlace.current === place) return;
+    shownPlace.current = place;
+    // Moving to a page focuses its heading, and back to the list focuses the
+    // list's heading, so keyboard and screen reader users start at the top of
+    // what they opened. A page's heading can mount after its data loads.
+    const target = () => (place === 'list' ? navHeadingRef.current : contentRef.current?.querySelector<HTMLElement>('h1, h2'));
+    const focus = () => {
+      const heading = target();
+      if (!heading) return false;
+      if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+      heading.focus();
+      return true;
+    };
+    if (focus() || !contentRef.current) return;
+    const observer = new MutationObserver(() => {
+      if (focus()) observer.disconnect();
+    });
+    observer.observe(contentRef.current, { childList: true, subtree: true });
+    const stop = setTimeout(() => observer.disconnect(), 10_000);
+    return () => {
+      observer.disconnect();
+      clearTimeout(stop);
+    };
+  }, [place]);
 
   if (membersUnavailable) {
     return (
@@ -263,10 +282,14 @@ function ProjectSettingsPage() {
   return (
     <ConfigDirtyProvider report={reportDirty}>
       <div className="flex min-w-0 flex-col bg-background md:min-h-[calc(100dvh-3rem)] md:flex-row">
-        {/* The column runs the page's full height; the nav inside it sticks below the site header. */}
+        {/* The column runs the page's full height; the nav inside it sticks below the 3rem site header and is
+            at most the viewport less the header and the inset layout's 0.5rem bottom margin, so it never
+            slides under the header at the end of the page. */}
         <div className={cn('w-full shrink-0 bg-card md:w-60 md:border-border md:border-e', !listPage && 'hidden md:block')}>
-          <nav aria-label={t('settings.title')} className="px-3 py-4 md:sticky md:top-12 md:max-h-[calc(100dvh-3rem)] md:overflow-y-auto">
-            <h2 className="px-3 pb-3 font-semibold text-base md:text-sm">{t('settings.title')}</h2>
+          <nav aria-label={t('settings.title')} className="px-3 py-4 md:sticky md:top-12 md:max-h-[calc(100dvh-3.5rem)] md:overflow-y-auto">
+            <h2 className="px-3 pb-3 font-semibold text-base outline-none md:text-sm" ref={navHeadingRef}>
+              {t('settings.title')}
+            </h2>
             {nav.map((group) => (
               <div className="mt-4 first-of-type:mt-0" key={group.id}>
                 {group.labelKey ? (
@@ -309,56 +332,64 @@ function ProjectSettingsPage() {
           </nav>
         </div>
 
-        <div
-          className={cn('min-w-0 flex-1 px-4 pt-4 pb-24 outline-none sm:px-6 md:px-9 md:pt-8 md:pb-32', listPage && 'hidden md:block')}
-          ref={contentRef}
-          tabIndex={-1}
-        >
-          <Link
-            className="-ms-1 mb-4 inline-flex items-center gap-1 rounded-md px-1 py-1 text-muted-foreground text-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:hidden"
-            params={{ projectId }}
-            search={{}}
-            to="/app/projects/$projectId/settings"
-          >
-            <ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />
-            {t('settings.backToAll')}
-          </Link>
-          {projectPending ? (
-            <SettingsFormSkeleton />
-          ) : projectError || !project ? (
-            <QueryErrorState onRetry={() => void retryProject()} retrying={projectFetching} />
-          ) : !allowed ? (
-            <div className="max-w-4xl rounded-xl border border-border bg-card p-6" role="status">
-              <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
-              <p className="mt-2 text-muted-foreground text-sm">
-                {t(access.canEditContent ? 'settings.permissions.body' : 'settings.permissions.viewerBody')}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  nativeButton={false}
-                  render={<Link params={{ projectId }} search={{ section: firstAllowed ?? 'languages' }} to="/app/projects/$projectId/settings" />}
-                  variant="outline"
-                >
-                  {t(sectionLabelKey(firstAllowed ?? 'languages'))}
-                </Button>
-                <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />}>
-                  {t(access.canEditContent ? 'project.editor' : 'overview.viewPages')}
-                </Button>
+        <div className={cn('min-w-0 flex-1 outline-none', listPage && 'hidden md:block')} ref={contentRef} tabIndex={-1}>
+          <PageContainer width={WIDE_SECTIONS.has(section) ? 'wide' : 'default'}>
+            <Link
+              className="-ms-1 -mb-4 inline-flex items-center gap-1 self-start rounded-md px-1 py-1 text-muted-foreground text-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:hidden"
+              params={{ projectId }}
+              search={{}}
+              to="/app/projects/$projectId/settings"
+            >
+              <ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />
+              {t('settings.backToAll')}
+            </Link>
+            {projectPending ? (
+              <SettingsFormSkeleton />
+            ) : projectError || !project ? (
+              <QueryErrorState onRetry={() => void retryProject()} retrying={projectFetching} />
+            ) : !allowed ? (
+              <div className="rounded-xl border border-border bg-card p-6" role="status">
+                <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
+                <p className="mt-2 text-muted-foreground text-sm">
+                  {t(
+                    // Deleting the website is the organization's call, whatever the site role (§4.2).
+                    section === 'danger'
+                      ? 'settings.permissions.dangerBody'
+                      : access.canEditContent
+                        ? 'settings.permissions.body'
+                        : 'settings.permissions.viewerBody',
+                  )}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    nativeButton={false}
+                    render={<Link params={{ projectId }} search={{ section: firstAllowed ?? 'languages' }} to="/app/projects/$projectId/settings" />}
+                    variant="outline"
+                  >
+                    {t(sectionLabelKey(firstAllowed ?? 'languages'))}
+                  </Button>
+                  <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />}>
+                    {t(access.canEditContent ? 'project.editor' : 'overview.viewPages')}
+                  </Button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <ActiveSection
-              appearanceSection={appearanceSection}
-              canCreateExports={access.canEditContent}
-              canManageSchedules={access.canManage}
-              movedSection={movedSection}
-              organization={organization}
-              project={project}
-              projectId={projectId}
-              role={currentMember?.role ?? ''}
-              section={section}
-            />
-          )}
+            ) : (
+              <ActiveSection
+                appearanceSection={appearanceSection}
+                // Entering the list (or another page) starts the page afresh, so a
+                // draft discarded on the way out is really gone.
+                key={place}
+                canCreateExports={access.canEditContent}
+                canManageSchedules={access.canManage}
+                movedSection={movedSection}
+                organization={organization}
+                project={project}
+                projectId={projectId}
+                role={currentMember?.role ?? ''}
+                section={section}
+              />
+            )}
+          </PageContainer>
         </div>
       </div>
     </ConfigDirtyProvider>
@@ -420,7 +451,7 @@ function ActiveSection({
     ),
     danger: <DangerSection organization={organization} project={project} />,
   };
-  return <div className={cn('w-full', WIDE_SECTIONS.has(section) ? 'max-w-6xl' : 'max-w-4xl')}>{sections[section]}</div>;
+  return <div className="w-full min-w-0">{sections[section]}</div>;
 }
 
 /** Where Plan and Notifications went (§5.2): a one-line pointer for old links and habits. */

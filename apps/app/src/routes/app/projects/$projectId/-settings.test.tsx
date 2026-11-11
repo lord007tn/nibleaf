@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, type ComponentType, type ReactNode } from 'react';
+import { act, type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -105,16 +105,34 @@ vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { 
 vi.mock('@/components/project-settings/addons-section', () => ({ AddonsSection: () => null }));
 vi.mock('@/components/project-settings/authentication-section', () => ({ AuthenticationSection: () => null }));
 vi.mock('@/components/project-settings/danger-section', () => ({ DangerSection: () => <div data-testid="danger-settings" /> }));
-vi.mock('@/components/project-settings/domain-section', () => ({ DomainSection: () => null }));
+vi.mock('@/components/project-settings/domain-section', () => ({
+  // Its heading mounts only after its data "loads", as real sections do.
+  DomainSection: () => {
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+      const id = setTimeout(() => setReady(true), 20);
+      return () => clearTimeout(id);
+    }, []);
+    return ready ? <h1>Custom domain</h1> : <p>loading</p>;
+  },
+}));
 vi.mock('@/components/project-settings/exports-section', () => ({ ExportsSection: () => null }));
 vi.mock('@/components/project-settings/general-section', async () => {
   const { DirtyStateReporter } = await import('@/components/project-settings/shared');
   return {
-    GeneralSection: () => (
-      <div data-testid="general-settings">
-        <DirtyStateReporter dirty={mocks.dirty} />
-      </div>
-    ),
+    // Holds its own draft, as the real form does: a remount starts it afresh.
+    GeneralSection: () => {
+      const [edited, setEdited] = useState(false);
+      return (
+        <div data-edited={String(edited)} data-testid="general-settings">
+          <h1>General</h1>
+          <button onClick={() => setEdited(true)} type="button">
+            Edit name
+          </button>
+          <DirtyStateReporter dirty={edited || mocks.dirty} />
+        </div>
+      );
+    },
   };
 });
 vi.mock('@/components/project-settings/languages-section', () => ({
@@ -313,6 +331,94 @@ describe('site settings permissions', () => {
     expect(nav?.className).toContain('md:sticky');
   });
 
+  // Council #456: Back to the list only hid the page, so a discarded draft stayed mounted.
+  it('starts a page afresh after leaving it for the list, so a discarded draft is gone', async () => {
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    await act(async () => [...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit name')?.click());
+    expect(container.querySelector('[data-testid="general-settings"]')?.getAttribute('data-edited')).toBe('true');
+    const blocker = () => mocks.blocker.mock.lastCall?.[0];
+    expect(blocker().enableBeforeUnload()).toBe(true);
+
+    // The guard asks on the way out; "Keep editing" stays, with the edit.
+    mocks.confirm.mockResolvedValueOnce(false);
+    await expect(blocker().shouldBlockFn()).resolves.toBe(true);
+    expect(container.querySelector('[data-testid="general-settings"]')?.getAttribute('data-edited')).toBe('true');
+
+    // "Discard" lets the Back link through to the list: the draft and the guard are gone.
+    mocks.confirm.mockResolvedValueOnce(true);
+    await expect(blocker().shouldBlockFn()).resolves.toBe(false);
+    mocks.section = undefined;
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('[data-testid="general-settings"]')?.getAttribute('data-edited')).toBe('false');
+    expect(blocker().enableBeforeUnload()).toBe(false);
+  });
+
+  it("starts an Editor's default page afresh too (Languages)", async () => {
+    mocks.section = 'languages';
+    await act(async () => root.render(<SettingsPage />));
+    const before = container.querySelector('[data-testid="language-settings"]');
+    mocks.section = undefined;
+    await act(async () => root.render(<SettingsPage />));
+    // Same page on a wide screen, but a new instance.
+    expect(container.querySelector('[data-testid="language-settings"]')).not.toBe(before);
+  });
+
+  // Council #456: focus followed the resolved section, not navigation.
+  it('leaves focus alone on a cold default entry while permissions resolve', async () => {
+    mocks.section = undefined;
+    mocks.members.mockReturnValue({ isPending: true });
+    await act(async () => root.render(<SettingsPage />));
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'member' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('focuses the page heading when opened from the list, and the list heading on the way back', async () => {
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    mocks.section = undefined;
+    await act(async () => root.render(<SettingsPage />));
+    expect(document.activeElement).toBe(document.body);
+    // General is the default page as well, so the section is the same; only the place changes.
+    mocks.section = 'general';
+    await act(async () => root.render(<SettingsPage />));
+    expect(document.activeElement).toBe(container.querySelector('[data-testid="general-settings"] h1'));
+    mocks.section = undefined;
+    await act(async () => root.render(<SettingsPage />));
+    expect(document.activeElement).toBe(container.querySelector('nav h2'));
+  });
+
+  it('waits for a page heading that mounts after its data loads', async () => {
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    mocks.section = 'domain';
+    await act(async () => root.render(<SettingsPage />));
+    expect(document.activeElement).toBe(document.body);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 60)));
+    expect(document.activeElement?.textContent).toBe('Custom domain');
+  });
+
+  it("tells a site-only Admin that deleting is the organization's call", async () => {
+    mocks.section = 'danger';
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('[data-testid="danger-settings"]')).toBeNull();
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.permissions.dangerBody');
+    expect(container.querySelector('[role="status"]')?.textContent).not.toContain('settings.permissions.body');
+  });
+
+  it.each([
+    ['general', 'wide'],
+    ['languages', 'default'],
+  ])('lays %s out in the %s page column', async (section, width) => {
+    mocks.section = section;
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('[data-slot="page-container"]')?.getAttribute('data-width')).toBe(width);
+  });
+
   it("moves focus to the new page's heading when the page changes", async () => {
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
@@ -329,7 +435,8 @@ describe('site settings permissions', () => {
     await act(async () => root.render(<SettingsPage />));
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(container.textContent).toContain('settings.permissions.title');
-    expect(container.textContent).toContain('settings.permissions.body');
+    // Deleting the website is the organization's call, so its denial says so.
+    expect(container.textContent).toContain(section === 'danger' ? 'settings.permissions.dangerBody' : 'settings.permissions.body');
     expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.languages');
     expect(
       container.querySelector('[data-testid="general-settings"], [data-testid="danger-settings"], [data-testid="smart-ai-settings"]'),

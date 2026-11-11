@@ -67,8 +67,9 @@ export function parseSettingsSearch(search: Record<string, unknown>): SettingsSe
   if (section === 'appearance' && typeof appearanceSection === 'string' && Object.hasOwn(PROMOTED_APPEARANCE_SECTIONS, appearanceSection)) {
     return { section: PROMOTED_APPEARANCE_SECTIONS[appearanceSection as keyof typeof PROMOTED_APPEARANCE_SECTIONS] };
   }
-  const parsed: SettingsSearch['section'] =
-    isSectionId(section) || isMovedSectionId(section) ? section : typeof section === 'string' ? RENAMED_SECTIONS[section] : undefined;
+  // Own keys only: `toString`, `constructor` or `__proto__` must not resolve to something inherited.
+  const renamed = typeof section === 'string' && Object.hasOwn(RENAMED_SECTIONS, section) ? RENAMED_SECTIONS[section] : undefined;
+  const parsed: SettingsSearch['section'] = isSectionId(section) || isMovedSectionId(section) ? section : renamed;
   return {
     section: parsed,
     ...(parsed === 'appearance' && isAppearanceSectionId(appearanceSection) ? { appearanceSection } : {}),

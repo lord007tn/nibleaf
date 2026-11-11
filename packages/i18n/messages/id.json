@@ -3913,6 +3913,7 @@
   "editor_viewonly_grouphint": "Grup menyatukan halaman terkait di bilah samping. Buka halaman dalam grup ini untuk membacanya.",
   "editor_comments_viewonly": "Anda dapat membaca komentar. Pembaca tidak dapat menambahkan atau menyelesaikannya.",
   "settings_permissions_viewerbody": "Minta pemilik situs atau admin memperbarui pengaturan ini. Sebagai pembaca, Anda dapat membaca situs dan bagian yang tersedia untuk peran Anda.",
+  "settings_permissions_dangerbody": "Hanya pemilik dan admin organisasi yang bisa menghapus situs web ini. Minta salah satu dari mereka jika perlu.",
   "overview_viewpages": "Lihat halaman",
   "join_title": "Bergabung ke {site}",
   "join_subtitle": "Bergabung ke situs dokumentasi di Nibleaf.",

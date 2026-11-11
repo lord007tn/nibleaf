@@ -3978,6 +3978,7 @@
   "editor_viewonly_grouphint": "Les groupes rassemblent les pages liées dans la barre latérale. Ouvrez une page de ce groupe pour la lire.",
   "editor_comments_viewonly": "Vous pouvez lire les commentaires. Les lecteurs ne peuvent ni en ajouter ni les résoudre.",
   "settings_permissions_viewerbody": "Demandez au propriétaire du site ou à un administrateur de modifier ces paramètres. En tant que lecteur, vous pouvez consulter le site et les sections accessibles à votre rôle.",
+  "settings_permissions_dangerbody": "Seuls le propriétaire et les administrateurs de l’organisation peuvent supprimer ce site web. Demandez-le à l’un d’eux si besoin.",
   "overview_viewpages": "Voir les pages",
   "join_title": "Rejoindre {site}",
   "join_subtitle": "Rejoignez un site de documentation sur Nibleaf.",
