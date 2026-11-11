@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@nibleaf/database', () => ({
+  // The canonical free plan as seeded in production: no entitlement rows.
+  deliveryPlanSelect: {},
+  loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
   prisma: {
     project: { findUnique: mocks.projectFindUnique },
     deployment: { findFirst: mocks.deploymentFindFirst, findUnique: mocks.deploymentFindUnique },

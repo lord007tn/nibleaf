@@ -1,9 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import type { AnalyticsPayload, ConsentState, PublicAnalyticsEvent } from '@nibleaf/clickhouse';
-import { prisma } from '@nibleaf/database';
+import { deliveryPlanSelect, loadDefaultDeliveryPlan, prisma } from '@nibleaf/database';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
-import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import {
+  type AddonDeliveryPlan,
+  type AddonDeliveryPlanAssignment,
+  projectAddonRowsForDelivery,
+  projectConfigWithAddons,
+} from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
@@ -96,6 +101,8 @@ interface LiveChromeRow {
   }[];
   addons: { key: string; enabled: boolean; config: unknown }[];
   organization: { usagePlan: AddonDeliveryPlanAssignment | null };
+  /** The canonical default plan, for an org without an active assignment. */
+  defaultPlan: AddonDeliveryPlan | null;
 }
 
 /** A snapshot project enriched with the fields the published-site edge needs
@@ -168,13 +175,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
               status: true,
               effectiveAt: true,
               expiresAt: true,
-              plan: {
-                select: {
-                  key: true,
-                  active: true,
-                  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
-                },
-              },
+              plan: { select: deliveryPlanSelect },
             },
           },
         },
@@ -200,7 +201,9 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       },
     },
   });
-  const stamped = live ? { ...live, stamp: await assetReferences.stamp(projectId, live) } : null;
+  // The canonical default plan rides with the cached row; the plan itself is
+  // evaluated per request (expiry is time-based), see overlayLiveChrome.
+  const stamped = live ? { ...live, defaultPlan: await loadDefaultDeliveryPlan(), stamp: await assetReferences.stamp(projectId, live) } : null;
   if (!stamped || stamped.stamp !== null) liveChromeCache.set(projectId, stamped);
   return stamped;
 };
@@ -222,7 +225,7 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
   // so they never appear publicly until the next publish, and the frozen
   // label/direction/isDefault keep the exactly-one-default invariant intact.
   const liveByCode = new Map(live.languages.map((language) => [language.code, language]));
-  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan));
+  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan, live.defaultPlan));
   return {
     ...project,
     name: live.name,

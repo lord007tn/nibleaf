@@ -5,7 +5,17 @@ const DASHBOARD_ROUTE_SOURCE = /\/apps\/app\/src\/routes\/app\//;
 
 /** Where the client build writes the dashboard's route preload lists, read by
  *  `src/lib/dashboard-intent-preload.ts`. */
-const DASHBOARD_PRELOADS_FILE = 'assets/dashboard-preloads.json';
+/**
+ * The manifest changes with every build under a fixed name, so it lives at the
+ * site root, outside `/assets/`: everything under `/assets/` is content-hashed
+ * and served `immutable` for a year (and marked as static build output for the
+ * custom-domain edge). vite.config.ts serves this file with a short, revalidated
+ * cache instead.
+ */
+export const DASHBOARD_PRELOADS_FILE = 'dashboard-preloads.json';
+
+/** How long a browser or proxy may reuse the manifest before checking it again. Never `immutable`. */
+export const DASHBOARD_PRELOADS_CACHE_CONTROL = 'public, max-age=60, must-revalidate';
 
 const ROUTE_FILE = /\/src\/routes\/([^?]+?)\.tsx?(?:\?.*)?$/;
 
@@ -88,7 +98,7 @@ export function buildDashboardPreloads(chunks: readonly ManifestChunk[]): Record
  * dynamic imports no preload list. A dashboard route chunk still loads its
  * dependencies through its own static imports. So that they don't load level by
  * level after a click, the client build also writes each dashboard route's
- * full chunk list to `assets/dashboard-preloads.json`, which the signed-in shell
+ * full chunk list to `dashboard-preloads.json`, which the signed-in shell
  * reads to preload a link's chunks on hover or focus
  * (`src/lib/dashboard-intent-preload.ts`).
  */

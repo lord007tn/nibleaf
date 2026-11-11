@@ -206,6 +206,20 @@ export const markUsageProviderAttempt = async (provider: string, record: Finaliz
     });
   });
 
+/** The plan columns every capability decision needs (see
+ * `@nibleaf/shared/plan-policy`). One select, so publish, public delivery and
+ * the worker load exactly what settings evaluate. */
+export const deliveryPlanSelect = {
+  key: true,
+  active: true,
+  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
+} satisfies Prisma.UsagePlanSelect;
+
+/** The canonical default plan (`DEFAULT_PLAN_KEY` in @nibleaf/shared/plan-policy)
+ * with its real configuration; null when it does not exist. */
+export const loadDefaultDeliveryPlan = (db: Pick<Prisma.TransactionClient, 'usagePlan'> = prisma) =>
+  db.usagePlan.findUnique({ where: { key: 'free' }, select: deliveryPlanSelect });
+
 /** Usage owns default plan provisioning. Product creation paths call this in
  * the same transaction as the organization; add-ons and payment adapters never
  * write plan state. The free plan has no invented quotas or payment metadata. */
