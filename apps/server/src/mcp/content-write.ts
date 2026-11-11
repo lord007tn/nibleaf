@@ -182,7 +182,10 @@ const withRevisionGuard = async <T>(projectId: string, pageId: string, write: ()
   try {
     return await write();
   } catch (error) {
-    if (error instanceof AppError && error.code === 'database:conflict' && error.details?.reason === 'revision_conflict') {
+    if (
+      error instanceof AppError &&
+      (error.code === 'page:revision_conflict' || (error.code === 'database:conflict' && error.details?.reason === 'revision_conflict'))
+    ) {
       throw revisionConflict(await getPage(projectId, pageId));
     }
     throw error;
