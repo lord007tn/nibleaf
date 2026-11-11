@@ -26,13 +26,13 @@ const node = (type: string, ...children: unknown[]) => ({ type, children });
 const paragraph = (...children: unknown[]) => node('paragraph', ...children);
 
 describe('writer clipboard fixtures', () => {
-  it.each(['google-docs-nested', 'notion-nested'])('preserves the entire nested tree and marks from %s without gaps', (name) => {
+  it.each(['google-docs.reconstructed', 'notion.reconstructed'])('preserves the entire nested tree and marks from %s without gaps', (name) => {
     const instance = editor();
     instance.view.pasteHTML(fixture(name), new Event('paste') as ClipboardEvent);
     expect(tree(instance.state.doc)).toEqual(
       node(
         'doc',
-        node('heading', text('Moving a document', name === 'google-docs-nested' ? ['bold'] : [])),
+        node('heading', text('Moving a document', name === 'google-docs.reconstructed' ? ['bold'] : [])),
         node(
           'bulletList',
           node('listItem', paragraph(text('First item'))),
@@ -68,7 +68,7 @@ describe('writer clipboard fixtures', () => {
 
   it('preserves mixed document blocks, marks, text and task state', () => {
     const instance = editor();
-    instance.view.pasteHTML(fixture('mixed-document'), new Event('paste') as ClipboardEvent);
+    instance.view.pasteHTML(fixture('mixed-document.reconstructed'), new Event('paste') as ClipboardEvent);
     const doc = instance.state.doc;
     expect(doc.content.content.map((child) => child.type.name)).toEqual([
       'heading',

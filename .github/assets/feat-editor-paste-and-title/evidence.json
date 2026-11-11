@@ -17,7 +17,8 @@
         "focus": "none",
         "focusWidth": 1
       },
-      "emptyListParagraphs": 2
+      "emptyListParagraphs": 2,
+      "notionEmptyListParagraphs": 1
     },
     {
       "phase": "before",
@@ -33,7 +34,8 @@
         "focus": "none",
         "focusWidth": 1
       },
-      "emptyListParagraphs": 2
+      "emptyListParagraphs": 2,
+      "notionEmptyListParagraphs": 1
     },
     {
       "phase": "before",
@@ -49,7 +51,8 @@
         "focus": "none",
         "focusWidth": 1
       },
-      "emptyListParagraphs": 2
+      "emptyListParagraphs": 2,
+      "notionEmptyListParagraphs": 1
     },
     {
       "phase": "before",
@@ -65,7 +68,8 @@
         "focus": "none",
         "focusWidth": 1
       },
-      "emptyListParagraphs": 2
+      "emptyListParagraphs": 2,
+      "notionEmptyListParagraphs": 1
     },
     {
       "phase": "after",
@@ -81,7 +85,8 @@
         "focus": "solid",
         "focusWidth": 2
       },
-      "emptyListParagraphs": 0
+      "emptyListParagraphs": 0,
+      "notionEmptyListParagraphs": 0
     },
     {
       "phase": "after",
@@ -97,7 +102,8 @@
         "focus": "solid",
         "focusWidth": 2
       },
-      "emptyListParagraphs": 0
+      "emptyListParagraphs": 0,
+      "notionEmptyListParagraphs": 0
     },
     {
       "phase": "after",
@@ -113,7 +119,8 @@
         "focus": "solid",
         "focusWidth": 2
       },
-      "emptyListParagraphs": 0
+      "emptyListParagraphs": 0,
+      "notionEmptyListParagraphs": 0
     },
     {
       "phase": "after",
@@ -129,7 +136,8 @@
         "focus": "solid",
         "focusWidth": 2
       },
-      "emptyListParagraphs": 0
+      "emptyListParagraphs": 0,
+      "notionEmptyListParagraphs": 0
     }
   ]
 }

@@ -132,7 +132,7 @@ try {
         }
         await field.press('Enter');
         assert.equal(await page.locator('.ProseMirror').evaluate((el) => document.activeElement === el), true);
-        let html = await readFile(resolve(appDir, 'src/components/editor/__fixtures__/google-docs-nested.html'), 'utf8');
+        let html = await readFile(resolve(appDir, 'src/components/editor/__fixtures__/google-docs.reconstructed.html'), 'utf8');
         if (locale === 'ar')
           for (const [english, arabic] of [
             ['Moving a document', 'نقل مستند'],
@@ -148,12 +148,14 @@ try {
             ['Next number', 'الرقم التالي'],
           ])
             html = html.replaceAll(english, arabic);
-        await page.locator('.ProseMirror').evaluate((element, html) => {
-          const data = new DataTransfer();
-          data.setData('text/html', html);
-          data.setData('text/plain', 'Writer clipboard fixture');
-          element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
-        }, html);
+        const pasteHTML = (html) =>
+          page.locator('.ProseMirror').evaluate((element, html) => {
+            const data = new DataTransfer();
+            data.setData('text/html', html);
+            data.setData('text/plain', 'Writer clipboard fixture');
+            element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+          }, html);
+        await pasteHTML(html);
         await page.locator('.ProseMirror h2').waitFor();
         await frame();
         const empty = await page.locator('.ProseMirror li p').evaluateAll((elements) => elements.filter((el) => !el.textContent.trim()).length);
@@ -168,10 +170,19 @@ try {
           resolve(output, `${name}.gif`),
           ...frames,
         ]);
+        // Independently reproduce the Notion fixture on the same real editor.
+        // Media above remains the Google Docs journey; both inputs are checked.
+        await page.locator('.ProseMirror').click();
+        await page.keyboard.press('Control+a');
+        await page.keyboard.press('Backspace');
+        await pasteHTML(await readFile(resolve(appDir, 'src/components/editor/__fixtures__/notion.reconstructed.html'), 'utf8'));
+        await page.locator('.ProseMirror h2').waitFor();
+        const notionEmpty = await page.locator('.ProseMirror li p').evaluateAll((elements) => elements.filter((el) => !el.textContent.trim()).length);
+        assert.equal(phase === 'before' ? notionEmpty > 0 : notionEmpty === 0, true, `${name}: Notion expected gap state`);
         assert.deepEqual(errors, [], `${name}: no browser errors`);
-        evidence.push({ phase, locale, width, geometry, emptyListParagraphs: empty });
+        evidence.push({ phase, locale, width, geometry, emptyListParagraphs: empty, notionEmptyListParagraphs: notionEmpty });
         await context.close();
-        console.log(`${name}: captured, empty list paragraphs=${empty}`);
+        console.log(`${name}: captured, empty list paragraphs: Docs=${empty}, Notion=${notionEmpty}`);
       }
   }
   await writeFile(

@@ -13,7 +13,8 @@ The PNG shows the resulting title and pasted document. Arabic uses translated
 fictional fixture text and the real Arabic catalog for editor controls.
 
 `evidence.json` records viewport sizes, title geometry, the keyboard focus outline,
-and empty paragraphs inside list items (two before; zero after). The browser also
+and empty paragraphs inside list items (Google Docs: two before; Notion: one
+before; zero after for both). The browser also
 asserts that long unbroken titles do not overflow horizontally.
 
 These are isolated component journeys. Page-link suggestions are excluded;
