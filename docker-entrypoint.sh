@@ -2,6 +2,14 @@
 set -eu
 
 cmd="${1:-help}"
+# Platforms that run one image per service without a per-service command (for
+# example Coolify Docker Image applications) select the role through
+# NIBLEAF_COMMAND instead. An explicit command argument always wins.
+if [ "$cmd" = "help" ] && [ -n "${NIBLEAF_COMMAND:-}" ]; then
+  cmd="$NIBLEAF_COMMAND"
+  if [ "$#" -gt 0 ]; then shift; fi
+  set -- "$cmd" "$@"
+fi
 
 # Known weak/demo secrets that must never be used in production. The compose
 # file ships these as defaults so local `docker compose up` works out of the box;
@@ -70,6 +78,35 @@ case "$cmd" in
     ;;
   server)
     require_prod_secret
+    # Rolling deploys (operations/runbook-rolling-deploys.md): the new API
+    # container applies expand-only migrations BEFORE it can become healthy, so
+    # a failed migration leaves the container unhealthy and the platform keeps
+    # the previous one serving. Prisma serializes concurrent runs with an
+    # advisory lock. Never seeds.
+    #
+    # Prisma waits at most 10 s for its migration advisory lock, so a second
+    # replacement starting during another's migration fails fast; retry a
+    # bounded number of times. The lock must never be disabled here.
+    if [ "${NIBLEAF_MIGRATE_ON_START:-}" = "true" ]; then
+      if [ -n "${PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK:-}" ]; then
+        echo "[nibleaf] FATAL: PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK must be unset when NIBLEAF_MIGRATE_ON_START=true." >&2
+        exit 1
+      fi
+      attempts="${NIBLEAF_MIGRATE_ATTEMPTS:-5}"
+      delay="${NIBLEAF_MIGRATE_RETRY_DELAY_S:-10}"
+      attempt=1
+      echo "[nibleaf] applying database migrations before start…"
+      until (cd packages/database && node ../../node_modules/prisma/build/index.js migrate deploy); do
+        if [ "$attempt" -ge "$attempts" ]; then
+          echo "[nibleaf] FATAL: migrations failed after $attempt attempts; not starting (the previous container keeps serving)." >&2
+          exit 1
+        fi
+        echo "[nibleaf] migrate attempt $attempt failed; retrying in ${delay}s" >&2
+        attempt=$((attempt + 1))
+        sleep "$delay"
+      done
+      echo "[nibleaf] migrations applied"
+    fi
     echo "[nibleaf] starting API server on :${API_PORT:-4311}"
     # Keep the service itself under Docker's init so SIGTERM reaches its handler.
     cd apps/server
