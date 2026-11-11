@@ -1,7 +1,13 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildDashboardPreloads, routeIdFromModuleId, transitiveImports } from './dashboard-preload-plugin.ts';
+import {
+  buildDashboardPreloads,
+  DASHBOARD_PRELOADS_CACHE_CONTROL,
+  DASHBOARD_PRELOADS_FILE,
+  routeIdFromModuleId,
+  transitiveImports,
+} from './dashboard-preload-plugin.ts';
 
 const routesRoot = join(import.meta.dirname, '..', 'src', 'routes');
 const routeModule = (file: string, query = '') => `C:/repo/apps/app/src/routes/${file}${query}`;
@@ -78,5 +84,16 @@ describe('buildDashboardPreloads', () => {
     expect(buildDashboardPreloads(chunks)).toEqual({
       '/app/(dashboard)/sites': ['/assets/icons.js', '/assets/queries.js', '/assets/sites-loader.js', '/assets/sites.js', '/assets/table.js'],
     });
+  });
+});
+
+describe('the dashboard preload manifest', () => {
+  it('is served outside the immutable, content-hashed /assets/ with a short, revalidated cache', () => {
+    // Rewritten by every build under the same name: a year-long immutable copy would go stale.
+    expect(DASHBOARD_PRELOADS_FILE.startsWith('assets/')).toBe(false);
+    expect(DASHBOARD_PRELOADS_CACHE_CONTROL).toMatch(/must-revalidate/);
+    expect(DASHBOARD_PRELOADS_CACHE_CONTROL).not.toMatch(/immutable/);
+    const config = readFileSync(join(import.meta.dirname, '..', 'vite.config.ts'), 'utf8');
+    expect(config).toContain(`'/${DASHBOARD_PRELOADS_FILE}': { headers: { 'cache-control': DASHBOARD_PRELOADS_CACHE_CONTROL } }`);
   });
 });
