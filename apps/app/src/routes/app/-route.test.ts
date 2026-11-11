@@ -38,8 +38,14 @@ describe('/app guard for a signed-out visitor', () => {
     await expect(open('/app')).rejects.toEqual({ redirect: { to: '/sign-in', search: {} } });
   });
 
+  it('asks for an empty name and preserves the original destination', async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: 'new-user', name: '  ' } });
+    const original = '/app/projects/p1/ai?conversation=c9&language=ar#details';
+    await expect(open(original)).rejects.toEqual({ redirect: { to: '/welcome/name', search: { redirect: original } } });
+  });
+
   it('lets a signed-in visitor through', async () => {
-    mocks.getSession.mockResolvedValue({ user: { id: 'user-1' } });
-    await expect(open('/app/projects/p1')).resolves.toEqual({ routeSession: { user: { id: 'user-1' } } });
+    mocks.getSession.mockResolvedValue({ user: { id: 'user-1', name: 'Ada' } });
+    await expect(open('/app/projects/p1')).resolves.toEqual({ routeSession: { user: { id: 'user-1', name: 'Ada' } } });
   });
 });

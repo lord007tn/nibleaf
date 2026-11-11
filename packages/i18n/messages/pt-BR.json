@@ -161,11 +161,9 @@
   "preview_privatebody": "Só membros deste site podem abrir as prévias dos pull requests. Entre com sua conta da equipe e você voltará para cá.",
   "editor_previewsaveerror": "Não foi possível salvar o rascunho mais recente antes de abrir a visualização.",
   "editor_previewpopupblocked": "Permitir que pop-ups abram a visualização do rascunho em uma nova guia.",
-  "settings_heading": "Configurações do site",
   "settings_group_site": "Local",
   "settings_group_deployment": "Importação e sincronização",
   "settings_group_workspace": "Espaço de trabalho",
-  "settings_group_advanced": "Avançado",
   "settings_general": "Geral",
   "settings_branding": "Marca",
   "settings_styling": "Estilo",
@@ -1410,13 +1408,17 @@
   "auth_google_signup": "Crie uma conta com Google",
   "auth_google_submitting": "Abrindo Google…",
   "auth_divider_or": "ou",
-  "auth_legal_agreeprefix": "Eu concordo com o",
+  "auth_legal_continueprefix": "Ao continuar, você concorda com os",
+  "auth_legal_signupclosed": "O cadastro de novas contas está fechado nesta instância. Entre em contato com seu administrador para obter acesso.",
+  "auth_legal_termsrequired": "Aceite os termos e solicite um novo código.",
+  "auth_name_title": "Como podemos chamar você?",
+  "auth_name_description": "Adicione seu nome para continuar para seu espaço de trabalho.",
+  "auth_name_required": "Digite seu nome.",
+  "auth_name_continue": "Salvar e continuar",
   "auth_legal_terms": "Termos de Serviço",
-  "auth_legal_and": "e o",
+  "auth_legal_and": " e a ",
   "auth_legal_privacy": "Política de Privacidade",
   "auth_legal_agreesuffix": ".",
-  "auth_legal_agreefirst": "Aceite os Termos de Serviço e a Política de Privacidade para continuar.",
-  "auth_legal_socialnoticeprefix": "Ao continuar, você concorda com os",
   "auth_legal_signupdisabled": "As inscrições estão atualmente desativadas nesta instância.",
   "auth_signup_subtitle": "Crie sua conta",
   "auth_signup_submit": "Criar conta",
@@ -2180,6 +2182,7 @@
   "site_results": "Resultados",
   "site_loading": "Carregando…",
   "site_articleloadfailed": "Não foi possível carregar esta página. Tentar novamente",
+  "site_controlloadfailed": "Não foi possível abrir. Selecione de novo para tentar novamente.",
   "site_previous": "Anterior",
   "site_next": "Próximo",
   "site_onthispage": "Nesta página",
@@ -3808,7 +3811,7 @@
   "dashboard_ai_answerrate": "{rate} answer rate",
   "dashboard_ai_votes": "{up} helpful / {down} not helpful",
   "site_ai_title": "Ask AI",
-  "site_ai_subtitle": "Answers come from these docs",
+  "site_ai_subtitle": "Answers use these docs and link to their sources.",
   "site_ai_new": "New chat",
   "site_ai_close": "Close",
   "site_ai_intro": "What would you like to know? Ask a question about these docs.",
@@ -3831,7 +3834,16 @@
   "site_ai_stopped": "You stopped this answer before it was finished.",
   "site_ai_suggestions_added": "Suggested next questions added.",
   "site_ai_caution": "AI can make mistakes — check the sources.",
-  "site_ai_privacy": "Questions are saved to help improve these docs. Please don't include personal details.",
+  "site_ai_saved": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "Questions are kept for {count} day to help improve these docs. Please don't include personal details.",
+        "form=*": "Questions are kept for {count} days to help improve these docs. Please don't include personal details."
+      }
+    }
+  ],
   "site_ai_searching": "Looking through the docs…",
   "site_ai_writing": "Writing an answer…",
   "site_ai_checking": "Checking the sources…",
@@ -3855,6 +3867,7 @@
   "site_ai_unavailable": "The assistant isn't available right now.",
   "site_ai_invalid": "Please ask a question between 2 and 500 characters.",
   "site_ai_failed": "Something went wrong. Please try again.",
+  "site_ai_policy_changed": "How this chat handles questions changed while this page was open. Check the notes below, then send your question again.",
   "site_ai_offline": "You're offline. Check your connection and try again.",
   "site_ai_incorrect": "Incorrect",
   "site_ai_incomplete": "Incomplete",
@@ -3996,6 +4009,7 @@
   "editor_viewonly_grouphint": "Grupos reúnem páginas relacionadas na barra lateral. Abra uma página deste grupo para lê-la.",
   "editor_comments_viewonly": "Você pode ler os comentários. Leitores não podem adicioná-los nem resolvê-los.",
   "settings_permissions_viewerbody": "Peça ao proprietário do site ou a um administrador para atualizar estas configurações. Como leitor, você pode ler o site e as seções disponíveis para sua função.",
+  "settings_permissions_dangerbody": "Somente o proprietário e os administradores da organização podem excluir este site. Peça a um deles, se necessário.",
   "overview_viewpages": "Ver páginas",
   "join_title": "Entrar em {site}",
   "join_subtitle": "Entre em um site de documentação no Nibleaf.",
@@ -4277,6 +4291,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "Conteúdo",
+  "settings_group_ai": "IA",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4327,6 +4343,7 @@
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
   "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "Todas as configurações",
   "people_orgrole_owner": "Owner",
   "people_orgrole_admin": "Admin",
   "people_orgrole_member": "Member",
@@ -4662,5 +4679,51 @@
   "newsite_starter_faq_title": "Perguntas frequentes",
   "newsite_starter_faq_content": "## Dúvidas comuns\n\nResponda a uma pergunta real em poucas frases.\n\n- Explique onde encontrar as configurações da conta.\n- Diga como entrar em contato com sua equipe.\n",
   "newsite_addresslatinhint": "Os endereços dos sites usam letras latinas. Escolha um endereço fácil de ler, por exemplo, help-center.",
-  "newsite_addressunavailable": "Este endereço está reservado ou indisponível. Escolha outro endereço."
+  "newsite_addressunavailable": "Este endereço está reservado ou indisponível. Escolha outro endereço.",
+  "publish_checks_title": "Verificações",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} erro",
+        "form=*": "{count} erros"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} aviso",
+        "form=*": "{count} avisos"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "ainda é possível publicar",
+  "publish_checks_mustfix": "corrija os erros para publicar",
+  "publish_checks_allclear": "Todas as verificações passaram",
+  "publish_checks_allclearhint": "Nenhum link quebrado, imagem sem texto alternativo, página sem título ou caractere solto.",
+  "publish_checks_fix": "Corrigir",
+  "publish_checks_fixlabel": "Corrigir {title} no editor",
+  "publish_checks_blockedreason": "Corrija os erros em Verificações antes de publicar.",
+  "publish_checks_error": "Erro",
+  "publish_checks_warning": "Aviso",
+  "publish_checks_duplicateof": "Mesmo título de {path}",
+  "publish_checks_pathtoolong": "Endereço do link longo demais (mais de 2.048 caracteres)",
+  "publish_checks_brokenlink": "Links quebrados",
+  "publish_checks_brokenlinkhint": "Estes links levam a uma página que não existirá no site publicado.",
+  "publish_checks_missingalt": "Imagens sem texto alternativo",
+  "publish_checks_missingalthint": "Leitores de tela não conseguem descrever estas imagens. Adicione um texto alternativo a cada uma.",
+  "publish_checks_untitledpage": "Páginas sem título",
+  "publish_checks_untitledpagehint": "Dê a estas páginas um título de verdade para que os leitores as encontrem.",
+  "publish_checks_straycharacters": "Caracteres soltos",
+  "publish_checks_straycharactershint": "Uma / sozinha ou um --- literal aparece na página como texto.",
+  "publish_checks_unreadableslug": "Endereços web difíceis de ler",
+  "publish_checks_unreadableslughint": "Use um endereço curto feito de palavras para que o link seja fácil de ler e compartilhar.",
+  "publish_checks_emptypage": "Páginas vazias",
+  "publish_checks_emptypagehint": "Estas páginas ainda não têm conteúdo, então os leitores veriam uma página em branco.",
+  "publish_checks_duplicatetitle": "Títulos duplicados",
+  "publish_checks_duplicatetitlehint": "Páginas da mesma seção têm o mesmo título, então os leitores não conseguem diferenciá-las."
 }

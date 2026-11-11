@@ -47,7 +47,7 @@ import { env } from '@/env';
 import { AppError } from '@/errors';
 import { type ChatTurnHold, extendChatTurn, releaseChatTurn, reserveChatTurn, settleChatSpend } from '@/lib/ai-search/chat-budget';
 import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
-import { recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
+import { readerChatPolicy, recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
 import { type ChatRetrieval, resolveChatRuntime, retrieveChatLanguages } from '@/lib/ai-search/runtime';
@@ -69,6 +69,7 @@ const ERROR_MESSAGES: Record<AiChatErrorCode, string> = {
   unavailable: 'AI answers are temporarily unavailable.',
   invalid_request: 'The question could not be processed.',
   failed: 'The answer could not be completed.',
+  policy_changed: 'How this chat stores questions changed. Review it and send your question again.',
 };
 
 /** Content-free analytics vocabulary (see aiPayload in @nibleaf/clickhouse). */
@@ -328,6 +329,10 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const consent = trustedChatConsent(context.snapshot.project.config, body.consent);
   const emit = chatEventRecorder(context, { ...reader, consent, ...(body.sessionId ? { sessionId: body.sessionId } : {}) });
   yield { type: EventType.RUN_STARTED, threadId, runId, timestamp: Date.now() };
+  // The reader was shown a capture policy that is no longer the current one (the
+  // page stayed open while it changed): refuse before anything is spent or kept,
+  // so the reader sees the new policy and decides whether to send again.
+  if (body.policyRevision !== undefined && body.policyRevision !== chatPolicyOf(context).revision) return yield* fail('policy_changed');
   const page = resolvePageContext(context, body.pagePath);
   // Sized from the prompts the turn's calls send, so the budgets hold.
   const shape = chatTurnShape(body, language, page);
@@ -746,6 +751,16 @@ const finishTurn = async ({
       : {}),
   });
 };
+
+/** The capture policy a chat turn in this context runs under, from the same
+ * live configuration the turn's archive uses. */
+const chatPolicyOf = (context: PublishedAnswerContext) =>
+  readerChatPolicy(context.snapshot.project.config, context.request.configuration.aiConversationCapture);
+
+/** What the reader's chat must disclose before a question is sent, with the
+ * revision each turn sends back. Served uncached (see the route). */
+export const getSiteChatPolicy = async (identifier: string, lang?: string, version?: string) =>
+  chatPolicyOf(await resolvePublishedAnswerContext(identifier, lang, version));
 
 /** Stream one reader chat turn as AG-UI server-sent events. Publication and
  * reader access are resolved first so unknown/private sites stay 404; every

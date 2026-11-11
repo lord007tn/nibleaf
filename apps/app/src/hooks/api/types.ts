@@ -245,6 +245,21 @@ export interface PendingChange {
   truncated: boolean;
 }
 
+/** A pre-publish quality check on the draft being previewed. Warnings leave
+ *  publishing allowed; an `error` blocks it (the publish would fail). */
+export interface PublishCheck {
+  code: 'broken-internal-link' | 'missing-alt' | 'untitled-page' | 'stray-characters' | 'unreadable-slug' | 'empty-page' | 'duplicate-title';
+  severity: 'error' | 'warning';
+  pageId: string;
+  languageCode: string;
+  title: string;
+  path: string;
+  /** The link, image source, stray text, slug or other page's path. */
+  detail: string;
+  /** Why a link is broken when it isn't a missing page: too long to serve. */
+  reason?: 'path-too-long';
+}
+
 interface DeploymentDiffLine {
   type: 'added' | 'removed' | 'unchanged';
   text: string;
@@ -409,11 +424,13 @@ export interface SiteShell {
   generatedAt: string;
   /** Validated OpenAPI document metadata frozen in the current deployment. */
   openapi?: PublishedOpenApi | null;
-  /** `answer`: the site enables AI answers and the instance can serve them.
-   *  Optional because a response from an older API omits it; treat as off. */
   /** Signed in on the site itself (a reader, or a team member signed in with an email code), so it can offer Sign out. */
   signedIn?: boolean;
-  capabilities?: { answer: boolean };
+  /** `answer`: the site enables AI answers and the instance can serve them.
+   *  `storesQuestions`: the chat keeps question text (the site's setting is on
+   *  and the instance can encrypt it), for `questionRetentionDays` days.
+   *  Optional because a response from an older API omits them; treat as off. */
+  capabilities?: { answer: boolean; storesQuestions?: boolean; questionRetentionDays?: number | null };
 }
 
 interface Heading {

@@ -311,7 +311,7 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
   const source = useMemo(() => jwtValues(data.jwt), [data.jwt]);
   // Set while the confirmation runs the save, so a failure shows in the dialog rather than a toast.
   const confirming = useRef<{ failure: unknown } | null>(null);
-  const [confirmation, setConfirmation] = useState<{ impacts: JwtImpact[]; settle: (outcome: 'saved' | 'invalid' | 'failed') => void }>();
+  const [confirmation, setConfirmation] = useState<{ impacts: JwtImpact[] }>();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const problemText = (field: JwtField, problem: JwtProblem | undefined) => {
     if (!problem) return;
@@ -353,15 +353,16 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
     if (outcome === 'invalid') onInvalid();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [onInvalid, submitDraft]);
-  const submit = useCallback(async (): Promise<'saved' | 'invalid' | 'failed'> => {
+  const submit = useCallback(async (): Promise<'saved' | 'invalid' | 'failed' | 'deferred'> => {
     const values = form.state.values;
     const impacts = jwtChangeImpacts(baseline, values);
     // Nothing that changes who can sign in, or a value to fix first: save (or show the problems) now.
     if (impacts.length === 0 || !jwtSaveRequest(values).ok) return save();
-    return new Promise((settle) => {
-      setConfirmation({ impacts, settle });
-      setConfirmOpen(true);
-    });
+    // Ask first. The save bar moves on idle (it shows "Saving…" only once the
+    // save really runs, from the dialog), and the dialog reports the outcome.
+    setConfirmation({ impacts });
+    setConfirmOpen(true);
+    return 'deferred';
   }, [baseline, form, save]);
   useSaveRegionForm('reader-jwt', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
@@ -457,16 +458,12 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
           try {
             const outcome = await save();
             if (outcome === 'failed') throw confirming.current.failure ?? new Error('The JWT settings were not saved.');
-            confirmation?.settle(outcome);
+            if (outcome === 'saved') toast.success(t('settings.authentication.reader.jwtSaved'));
           } finally {
             confirming.current = null;
           }
         }}
-        onOpenChange={(open) => {
-          setConfirmOpen(open);
-          // Closed without saving: the save bar's Save ends with nothing saved (settling twice does nothing).
-          if (!open) confirmation?.settle('failed');
-        }}
+        onOpenChange={setConfirmOpen}
         open={confirmOpen}
         title={t('settings.visibility.jwt.confirm.title')}
       >
