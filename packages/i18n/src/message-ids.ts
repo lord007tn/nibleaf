@@ -452,6 +452,7 @@ export const MESSAGE_IDS = {
   'settings.permissions.body': 'settings_permissions_body',
   'editor.saveError': 'editor_saveerror',
   'editor.retrySave': 'editor_retrysave',
+  'editor.pageTooLarge': 'editor_pagetoolarge',
   'dashboard.search.noResults': 'dashboard_search_noresults',
   'dashboard.search.clear': 'dashboard_search_clear',
   'auth.invite.switchAccount': 'auth_invite_switchaccount',
