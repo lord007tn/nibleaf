@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from 'react';
  * Reader controls whose implementation only matters once a reader opens them:
  * the header's language and version menus and the phone drawer. Their Base UI
  * popups bring floating-ui positioning, focus management and scroll locking,
- * about 45 KiB gzip that every published docs page used to load.
+ * about 60 KiB gzip that every published docs page used to load.
  *
  * The page renders a static trigger with the same markup. Its implementation
  * loads on intent (pointer, touch or focus) and then replaces it. A click that

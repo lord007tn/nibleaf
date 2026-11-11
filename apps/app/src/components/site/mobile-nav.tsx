@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import type { NavNode } from '@/hooks/api';
 import { intentModule, useIntentModule } from '@/lib/intent-module';
 
-export interface MobileNavLink {
+interface MobileNavLink {
   label: string;
   href: string;
   active: boolean;

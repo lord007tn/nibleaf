@@ -64,7 +64,7 @@ const LUCIDE_EXPORT = /export \{([^}]*)\} from '\.\/icons\/([\w-]+)\.mjs'/g;
 const ICON_MODULE = /\/node_modules\/lucide-react\/dist\/esm\/icons\/([\w-]+)\.mjs$/;
 
 /** Icon file names (`chevron-right`) the reader's first-load modules import. */
-export function readerIconFiles(appRoot: string): Set<string> {
+function readerIconFiles(appRoot: string): Set<string> {
   // Every export name and alias (`HelpCircle`, `CircleHelpIcon`) to its file.
   const lucideEntry = createRequire(join(appRoot, 'package.json')).resolve('lucide-react');
   const index = readFileSync(join(dirname(lucideEntry), '../esm/lucide-react.mjs'), 'utf8');

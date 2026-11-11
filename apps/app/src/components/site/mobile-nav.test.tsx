@@ -29,65 +29,69 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-it.each([false, true])('keeps configured reader destinations and the CTA available in the mobile drawer (RTL: %s)', async (isRtl) => {
-  const container = document.createElement('div');
-  document.body.append(container);
-  const root = createRoot(container);
-  roots.push(root);
-  await act(async () =>
-    root.render(
-      <MobileNav
-        nodes={[]}
-        projectId="docs"
-        currentPath="start"
-        label={isRtl ? 'القائمة' : 'Menu'}
-        closeLabel={isRtl ? 'إغلاق' : undefined}
-        toggleLabel="Toggle subpages"
-        isRtl={isRtl}
-        links={[{ label: 'Changelog', href: '#changes', active: false, external: false }]}
-        anchors={[{ label: 'Community', href: 'https://community.example.com', active: false, external: true }]}
-        cta={{ label: 'Contact us', href: 'https://example.com/contact' }}
-      />,
-    ),
-  );
-  // The drawer loads on the first click (or on hover or focus), replaces the
-  // static button with its own trigger, and opens.
-  await act(async () => container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]')?.click());
-  await vi.waitFor(async () => {
-    await act(async () => {
-      await vi.dynamicImportSettled();
-    });
-    expect(document.querySelector('[data-slot="sheet-content"]')).not.toBeNull();
-  }, 10_000);
-  const trigger = container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]');
-  let drawer = document.querySelector('[data-slot="sheet-content"]');
-  expect(drawer?.getAttribute('dir')).toBe(isRtl ? 'rtl' : 'ltr');
-  expect(drawer?.getAttribute('data-side')).toBe(isRtl ? 'right' : 'left');
-  const close = drawer?.querySelector<HTMLButtonElement>('[data-slot="sheet-close"]');
-  expect(close?.textContent).toBe(isRtl ? 'إغلاق' : 'Close');
-  expect(drawer?.hasAttribute('closelabel')).toBe(false);
-  await act(async () => close?.click());
-  expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
-  await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
-  await act(async () => trigger?.click());
-  drawer = document.querySelector('[data-slot="sheet-content"]');
-  const community = drawer?.querySelector<HTMLAnchorElement>('a[href="https://community.example.com"]');
-  expect(community?.textContent).toContain('Community');
-  expect(community?.target).toBe('_blank');
-  expect(community?.rel).toBe('noreferrer');
-  const cta = drawer?.querySelector<HTMLAnchorElement>('a[data-analytics-cta]');
-  expect(cta?.textContent).toContain('Contact us');
-  expect(cta?.href).toBe('https://example.com/contact');
-  expect(cta?.dataset.analyticsPlacement).toBe('mobile-navbar');
-  await act(async () => cta?.click());
-  expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
+it.each([false, true])(
+  'keeps configured reader destinations and the CTA available in the mobile drawer (RTL: %s)',
+  async (isRtl) => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () =>
+      root.render(
+        <MobileNav
+          nodes={[]}
+          projectId="docs"
+          currentPath="start"
+          label={isRtl ? 'القائمة' : 'Menu'}
+          closeLabel={isRtl ? 'إغلاق' : undefined}
+          toggleLabel="Toggle subpages"
+          isRtl={isRtl}
+          links={[{ label: 'Changelog', href: '#changes', active: false, external: false }]}
+          anchors={[{ label: 'Community', href: 'https://community.example.com', active: false, external: true }]}
+          cta={{ label: 'Contact us', href: 'https://example.com/contact' }}
+        />,
+      ),
+    );
+    // The drawer loads on the first click (or on hover or focus), replaces the
+    // static button with its own trigger, and opens.
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]')?.click());
+    await vi.waitFor(async () => {
+      await act(async () => {
+        await vi.dynamicImportSettled();
+      });
+      expect(document.querySelector('[data-slot="sheet-content"]')).not.toBeNull();
+    }, 10_000);
+    const trigger = container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]');
+    let drawer = document.querySelector('[data-slot="sheet-content"]');
+    expect(drawer?.getAttribute('dir')).toBe(isRtl ? 'rtl' : 'ltr');
+    expect(drawer?.getAttribute('data-side')).toBe(isRtl ? 'right' : 'left');
+    const close = drawer?.querySelector<HTMLButtonElement>('[data-slot="sheet-close"]');
+    expect(close?.textContent).toBe(isRtl ? 'إغلاق' : 'Close');
+    expect(drawer?.hasAttribute('closelabel')).toBe(false);
+    await act(async () => close?.click());
+    expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
+    await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+    await act(async () => trigger?.click());
+    drawer = document.querySelector('[data-slot="sheet-content"]');
+    const community = drawer?.querySelector<HTMLAnchorElement>('a[href="https://community.example.com"]');
+    expect(community?.textContent).toContain('Community');
+    expect(community?.target).toBe('_blank');
+    expect(community?.rel).toBe('noreferrer');
+    const cta = drawer?.querySelector<HTMLAnchorElement>('a[data-analytics-cta]');
+    expect(cta?.textContent).toContain('Contact us');
+    expect(cta?.href).toBe('https://example.com/contact');
+    expect(cta?.dataset.analyticsPlacement).toBe('mobile-navbar');
+    await act(async () => cta?.click());
+    expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
 
-  await act(async () => trigger?.click());
-  const hashLink = document.querySelector<HTMLAnchorElement>('a[href="#changes"]');
-  await act(async () => hashLink?.click());
-  // Same-page links do not change currentPath, so clicks must close the drawer.
-  expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
-}, 20_000);
+    await act(async () => trigger?.click());
+    const hashLink = document.querySelector<HTMLAnchorElement>('a[href="#changes"]');
+    await act(async () => hashLink?.click());
+    // Same-page links do not change currentPath, so clicks must close the drawer.
+    expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
+  },
+  20_000,
+);
 
 it('offers language and version as labelled drawer settings showing the current value', async () => {
   const container = document.createElement('div');

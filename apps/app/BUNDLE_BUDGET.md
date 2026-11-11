@@ -82,9 +82,41 @@ include that chunk. So:
     loads the ones it finds. They stay out of the first-load preloads and load
     only on pages that render them. The reader's loaders import the
     declarations lazily, because the loaders sit in the eager chunk.
-  - The Ask AI launcher and card load after hydration, keeping their server
-    markup until then. A router import of the chat would let Rolldown re-split
-    the consent modules it shares with the reader (about 250 B gzip).
+  - Code in a language outside the article renderer's core highlight.js
+    grammars (`CORE_HIGHLIGHT_GRAMMARS` in
+    `src/components/site/reader-highlight.ts`: Bash/shell, JS/TS, JSON,
+    HTML/XML, CSS, Python, YAML, SQL, Markdown, diff, GraphQL, plain text)
+    loads that grammar per article, one chunk each
+    (`src/components/site/highlight-grammars.ts`). `lazyHighlightLanguages`
+    (`src/lib/highlight-languages.ts`) finds them in the content; the article's
+    island lists their keys (`hljs-rust`, space-separated) so the router's hook
+    loads them before hydrating, and the server waits for them. Together the
+    two sets are exactly lowlight's `common` set, which rehype-highlight used,
+    and `reader-highlight.test.ts` checks the output matches rehype-highlight's
+    for every language.
+  - The rich renderer's check (`needsRichMarkdown`) ignores fenced code and
+    single-line inline code: a `<div>` or `$HOME` in a code sample used to load
+    parse5 and KaTeX.
+  - The Ask AI launcher and card keep their server markup until a reader
+    reaches for them (`loadOnIntent`: pointer, touch or focus), and a click
+    that comes first is replayed once the chat loads. A search hand-off, an
+    `?ask=` link or a site that asks for analytics consent (whose launcher
+    isn't in the server markup) loads it at once. A router import of the chat
+    would let Rolldown re-split the consent modules it shares with the reader
+    (about 250 B gzip).
+- Controls whose code only matters once opened render a static trigger with
+  the same markup and load on intent (`src/lib/intent-module.ts`): the header's
+  language and version menus (`header-menus.tsx`), the phone drawer
+  (`mobile-nav-drawer.tsx`) and the search dialog (on pointer, touch, focus or
+  the shortcut; never on idle). A click before the code has loaded opens the
+  control once it has. Don't import a Base UI popup (menu, dialog, sheet,
+  select, popover, scroll area) from reader code that renders on first paint:
+  their floating-ui positioning and focus management are about 60 KiB gzip.
+- The reader's first-paint Lucide icons are two chunks, not one per icon:
+  `site-icons` and `site-shared-icons` (the icons marketing also uses), built
+  by `readerIconGroups` (`scripts/reader-icons.ts`) from the imports of the
+  files in `READER_ICON_SOURCES`. Add a file there when a new first-paint
+  reader module imports icons.
 
 - Marketing code doesn't import a Lucide icon the reader also uses. Rolldown
   groups shared modules by the chunks that import them, so a new importer
@@ -124,6 +156,26 @@ include that chunk. So:
   `forbiddenPublicModules`, so docs pages can't start loading it.
 
 ## Budget history
+
+### 345,100 bytes, unchanged: reader first load trimmed (READER-05)
+
+Measured on production builds with `BUNDLE_ANALYZE=true` (gzip level 9), main@03c84760:
+
+| Build | public-docs | public-docs-index | JS files (all modulepreloads) | article renderer before hydrating |
+| --- | --- | --- | --- | --- |
+| main@03c84760 | 334.32 KiB | 333.14 KiB | 107, 42 of them single icons | +12 files, 115.11 KiB |
+| this change | 264.92 KiB | 264.16 KiB | 51, 2 icon chunks | +13 files, 88.16 KiB |
+
+- **Header menus and the phone drawer, about 60 KiB.** Base UI's menu, dialog
+  and scroll area with floating-ui load on intent behind static triggers.
+- **Icons, about 6 KiB and 40 requests.** Two icon chunks instead of one per icon.
+- **highlight.js, about 27 KiB of the article renderer.** 14 core grammars up
+  front; the other 23 of lowlight's common set load per article.
+- **Off the load entirely:** the search dialog (was idle-preloaded, now on
+  intent), the chat UI (now on intent), parse5 and KaTeX on pages whose only
+  HTML or `$` is in code, and mermaid until a diagram is near the viewport.
+
+The budget stays at 345,100 bytes, leaving about 72 KiB of headroom.
 
 ### 348,200 → 345,100 bytes: dashboard preload lists out of the eager chunk (#393)
 
