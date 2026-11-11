@@ -248,8 +248,12 @@ export function cleanPasteDOM(root: HTMLElement, fallbackDir: 'ltr' | 'rtl' = 'l
           (node.nodeType === 1 && ['ul', 'ol'].includes((node as Element).localName)) ||
           (node.nodeType === 3 && !node.textContent?.trim()),
       )
-    )
+    ) {
       paragraph.replaceWith(...paragraph.childNodes);
+      // Unwrapping can leave the paragraph's trailing break right before the
+      // child list (`<p>Parent<br></p><ul>`); one more linear pass removes it.
+      removeBreaksBeforeChildLists(item);
+    }
   }
   return root;
 }

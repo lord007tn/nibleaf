@@ -4,6 +4,7 @@ import { computeAccessibleName, getRole } from 'dom-accessibility-api';
 import { act, createRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { typographyVars } from '@/lib/typography';
 import { focusBodyStart, PageTitleField } from './page-title-field';
 
 describe('PageTitleField (B2/B36)', () => {
@@ -31,6 +32,29 @@ describe('PageTitleField (B2/B36)', () => {
     if (!field) throw new Error('Title field was not rendered');
     return { field, onChange, onEnter };
   };
+
+  it("carries the project's heading font and base size, wherever it is rendered", async () => {
+    const ref = createRef<HTMLTextAreaElement>();
+    const style = typographyVars({ headingFont: 'Lora', baseSize: '18' });
+    await act(async () =>
+      root.render(
+        <PageTitleField
+          label="Page title"
+          placeholder="Untitled"
+          onChange={vi.fn()}
+          onEnter={vi.fn()}
+          textareaRef={ref}
+          value="Guide"
+          style={style}
+        />,
+      ),
+    );
+    const field = container.querySelector('textarea');
+    if (!field) throw new Error('Title field was not rendered');
+    // The title's own rules (.pl-page-title) read these variables, as the body H1 does.
+    expect(field.style.getPropertyValue('--typeset-font-heading')).toContain("'Lora'");
+    expect(field.style.getPropertyValue('--typeset-size')).toBe('18px');
+  });
 
   it('moves to the body on Enter instead of inserting a line break', async () => {
     const { field, onEnter } = await renderField();

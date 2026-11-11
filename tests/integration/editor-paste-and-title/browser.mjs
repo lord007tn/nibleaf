@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import { extname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
+import { acquireDevstackLock, chromiumExecutable } from '../lib/capture-env.mjs';
 
 const root = resolve(import.meta.dirname, '../../..');
 const appDir = resolve(root, 'apps/app');
@@ -15,12 +16,11 @@ const appRequire = createRequire(resolve(appDir, 'package.json'));
 const fromApp = async (name) => import(pathToFileURL(appRequire.resolve(name)).href);
 const output = resolve(root, '.github/assets/feat-editor-paste-and-title');
 const baseline = process.env.BASELINE ?? '47ddeff639238867c5ecd8fb520dba46a1072edc';
-const lock = 'C:/Users/raedb/.t3/worktrees/nibleaf/editor-devstack.lock';
-await mkdir(lock); // Never remove or borrow someone else's lock.
+// NIBLEAF_DEVSTACK_LOCK sets the lock path; only a lock this run created is released.
+const lock = await acquireDevstackLock(`feat/editor-paste-and-title\n${root}`);
 let browser;
 let harness;
 try {
-  await writeFile(resolve(lock, 'owner.txt'), `feat/editor-paste-and-title\npid=${process.pid}\n${root}\n`);
   harness = await mkdtemp(resolve(appDir, '.paste-capture-'));
   await mkdir(output, { recursive: true });
   await writeFile(
@@ -43,7 +43,7 @@ try {
   const evidence = [];
   browser = await chromium.launch({
     headless: true,
-    executablePath: `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1248/chrome-win64/chrome.exe`,
+    executablePath: chromiumExecutable(),
   });
   for (const phase of ['before', 'after']) {
     const dist = resolve(harness, phase);
@@ -201,5 +201,5 @@ try {
 } finally {
   await browser?.close();
   if (harness) await rm(harness, { recursive: true, force: true });
-  await rm(lock, { recursive: true });
+  await lock.release();
 }

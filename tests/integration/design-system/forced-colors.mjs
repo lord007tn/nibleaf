@@ -13,6 +13,7 @@ import { extname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright-core';
 import { build } from 'vite';
+import { chromiumExecutable } from '../lib/capture-env.mjs';
 
 const appDir = fileURLToPath(new URL('../../../apps/app/', import.meta.url));
 const harness = join(appDir, '.forced-colors-check');
@@ -60,7 +61,7 @@ try {
   });
 
   const browser = await chromium.launch({
-    executablePath: process.env.CHROMIUM_PATH ?? `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1248/chrome-win64/chrome.exe`,
+    executablePath: chromiumExecutable(),
   });
   const page = await browser.newPage({ viewport: { width: 520, height: 420 } });
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };

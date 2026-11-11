@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { type RefObject, useLayoutEffect } from 'react';
+import { type CSSProperties, type RefObject, useLayoutEffect } from 'react';
 
 /**
  * The big page title above the body. A one-line textarea rather than an input
@@ -16,6 +16,7 @@ export function PageTitleField({
   lang,
   textareaRef,
   className,
+  style,
   readOnly = false,
 }: {
   value: string;
@@ -27,6 +28,8 @@ export function PageTitleField({
   lang?: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   className?: string;
+  /** The project's typography variables (typographyVars), so the title matches the body headings wherever it is rendered. */
+  style?: CSSProperties;
   /** Viewers read the title; they cannot change it. */
   readOnly?: boolean;
 }) {
@@ -61,6 +64,7 @@ export function PageTitleField({
       placeholder={placeholder}
       readOnly={readOnly}
       rows={1}
+      style={style}
       wrap="soft"
       value={value}
     />

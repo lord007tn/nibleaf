@@ -185,6 +185,26 @@ describe('writer clipboard fixtures', () => {
     expect(cleaned.match(/<br>/g)?.length).toBe(20_000);
   });
 
+  it('removes a break left before the child list once the item paragraph is unwrapped', () => {
+    const instance = editor();
+    instance.view.pasteHTML('<ul><li><p>Parent<br></p><ul><li>Child</li></ul></li></ul>', new Event('paste') as ClipboardEvent);
+    expect(tree(instance.state.doc.firstChild?.firstChild as PMNode)).toEqual(
+      node('listItem', paragraph(text('Parent')), node('bulletList', node('listItem', paragraph(text('Child'))))),
+    );
+  });
+
+  it('keeps the soft break inside an unwrapped item paragraph that has more prose', () => {
+    const instance = editor();
+    instance.view.pasteHTML('<ul><li><p>Parent<br>continued</p><ul><li>Child</li></ul></li></ul>', new Event('paste') as ClipboardEvent);
+    expect(tree(instance.state.doc.firstChild?.firstChild as PMNode)).toEqual(
+      node(
+        'listItem',
+        paragraph(text('Parent'), node('hardBreak'), text('continued')),
+        node('bulletList', node('listItem', paragraph(text('Child')))),
+      ),
+    );
+  });
+
   it('removes a run of filler breaks before a nested list without dropping inline text', () => {
     const instance = editor();
     instance.view.pasteHTML('<ul><li>Parent<br> <br>\n<ul><li>Child</li></ul></li></ul>', new Event('paste') as ClipboardEvent);
