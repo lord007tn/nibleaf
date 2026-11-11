@@ -186,7 +186,6 @@ describe('projection robustness (#341)', () => {
     ['unclosed quotes', '<Card title="'.repeat(20_000)],
     ['unbalanced braces', 'x { y '.repeat(40_000)],
     ['deep quote markers', `${'> '.repeat(20_000)}x`],
-    ['deep nesting', `${'<Note>'.repeat(20_000)}x${'</Note>'.repeat(20_000)}`],
   ])('stays fast on %s', (_label, source) => {
     const started = performance.now();
     md(source);
@@ -194,4 +193,25 @@ describe('projection robustness (#341)', () => {
     // Linear work takes well under a second here; quadratic work took tens of seconds.
     expect(performance.now() - started).toBeLessThan(5000);
   });
+
+  it('scales linearly on deep nesting', () => {
+    // Like the shared script-mismatch performance tests, compare medians
+    // against work on this runner instead of a fixed wall-clock deadline.
+    const projectionMs = (depth: number): number => {
+      const source = `${'<Note>'.repeat(depth)}x${'</Note>'.repeat(depth)}`;
+      const project = () => {
+        expect(md(source)).toContain('x');
+        expect(portable(source)).toContain('x');
+      };
+      project();
+      const runs = Array.from({ length: 3 }, () => {
+        const started = performance.now();
+        project();
+        return performance.now() - started;
+      });
+      return runs.sort((a, b) => a - b)[1] ?? 0;
+    };
+    const smaller = projectionMs(10_000);
+    expect(projectionMs(20_000)).toBeLessThanOrEqual(2.5 * smaller);
+  }, 60_000);
 });
