@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   checkpointUpdateMany: vi.fn(),
   projectDelete: vi.fn(),
   pageTrashDeleteMany: vi.fn(),
+  revisionsDelete: vi.fn(),
+  revisionStatesDelete: vi.fn(),
 }));
 
 vi.mock('@nibleaf/bullmq', () => ({
@@ -31,10 +33,17 @@ vi.mock('@nibleaf/clickhouse', () => ({
 vi.mock('@nibleaf/database', () => ({
   beginUsageDeletion: mocks.beginUsageDeletion,
   prisma: {
+    $transaction: async (work: (tx: unknown) => unknown) =>
+      work({
+        $queryRaw: vi.fn(),
+        pageRevision: { deleteMany: mocks.revisionsDelete },
+        pageRevisionState: { deleteMany: mocks.revisionStatesDelete },
+        pageTrash: { deleteMany: mocks.pageTrashDeleteMany },
+        project: { delete: mocks.projectDelete },
+      }),
     project: { findUnique: mocks.projectFindUnique, delete: mocks.projectDelete },
     usageStorageMarker: { findUnique: mocks.markerFindUnique },
     usageProviderCheckpoint: { updateMany: mocks.checkpointUpdateMany },
-    pageTrash: { deleteMany: mocks.pageTrashDeleteMany },
   },
 }));
 
@@ -79,6 +88,9 @@ describe('shared tenant privacy erasure', () => {
       { name: 'erase-project-storage', data: { projectId: 'project-a' } },
       { jobId: 'erase-storage-project-a', delay: 60_000 },
     );
+    expect(mocks.revisionsDelete).toHaveBeenCalledExactlyOnceWith({ where: { projectId: 'project-a' } });
+    expect(mocks.revisionStatesDelete).toHaveBeenCalledExactlyOnceWith({ where: { projectId: 'project-a' } });
+    expect(mocks.revisionsDelete).toHaveBeenCalledBefore(mocks.projectDelete);
     expect(mocks.deleteProjectUsage).toHaveBeenCalledBefore(mocks.createJob);
     expect(Math.max(...mocks.createJob.mock.invocationCallOrder)).toBeLessThan(mocks.projectDelete.mock.invocationCallOrder[0] ?? 0);
     // Trash (deleted page content, comment bodies) is purged explicitly, not only by cascade.

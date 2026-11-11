@@ -54,10 +54,16 @@ export const eraseProject = async (projectId: string) => {
     where: { organizationId: partitionId, OR: [{ projectId: project.id }, { projectId: null }] },
     data: { status: 'deletion_pending', hasError: false },
   });
-  // Trash holds deleted page content and comment bodies: purge it explicitly,
-  // not only through the project cascade.
-  await prisma.pageTrash.deleteMany({ where: { projectId: project.id } });
-  await prisma.project.delete({ where: { id: project.id } });
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR UPDATE`;
+    // Explicit privacy erasure, also reached by every website in an org's fixed
+    // deletion manifest. Keep this list independent of cascading foreign keys.
+    await tx.pageRevision.deleteMany({ where: { projectId: project.id } });
+    await tx.pageRevisionState.deleteMany({ where: { projectId: project.id } });
+    // Trash holds deleted page content and comment bodies.
+    await tx.pageTrash.deleteMany({ where: { projectId: project.id } });
+    await tx.project.delete({ where: { id: project.id } });
+  });
   return { organizationId: project.organizationId, projectId: project.id };
 };
 

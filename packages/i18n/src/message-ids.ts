@@ -1,5 +1,29 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'editor.history.title': 'editor_history_title',
+  'editor.history.description': 'editor_history_description',
+  'editor.history.revisions': 'editor_history_revisions',
+  'editor.history.published': 'editor_history_published',
+  'editor.history.viewOnly': 'editor_history_viewonly',
+  'editor.history.pick': 'editor_history_pick',
+  'editor.history.noChanges': 'editor_history_nochanges',
+  'editor.history.error': 'editor_history_error',
+  'editor.history.empty': 'editor_history_empty',
+  'editor.history.emptyDescription': 'editor_history_emptydescription',
+  'editor.history.version': 'editor_history_version',
+  'editor.history.beforeRestore': 'editor_history_beforerestore',
+  'editor.history.autosave': 'editor_history_autosave',
+  'editor.history.unknownAuthor': 'editor_history_unknownauthor',
+  'editor.history.bytes': 'editor_history_bytes',
+  'editor.history.compare': 'editor_history_compare',
+  'editor.history.more': 'editor_history_more',
+  'editor.history.diff': 'editor_history_diff',
+  'editor.history.diffDirection': 'editor_history_diffdirection',
+  'editor.history.tooLarge': 'editor_history_toolarge',
+  'editor.history.restore': 'editor_history_restore',
+  'editor.history.confirm': 'editor_history_confirm',
+  'editor.history.snapshotTooLarge': 'editor_history_snapshottoolarge',
+  'editor.history.restored': 'editor_history_restored',
   'newSite.addressLatinHint': 'newsite_addresslatinhint',
   'newSite.address': 'newsite_address',
   'newSite.editAddress': 'newsite_editaddress',
@@ -4602,6 +4626,8 @@ export const MESSAGE_IDS = {
   'publish.checks.duplicateTitle': 'publish_checks_duplicatetitle',
   'publish.checks.duplicateTitleHint': 'publish_checks_duplicatetitlehint',
   'newSite.addressUnavailable': 'newsite_addressunavailable',
+  'editor.history.added': 'editor_history_added',
+  'editor.history.removed': 'editor_history_removed',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

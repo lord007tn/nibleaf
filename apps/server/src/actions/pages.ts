@@ -10,6 +10,7 @@ import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { BulkReorderPagesBody, CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
 import { assertAddressLinkRevisions, type PagePathChange, prepareAddressLinks, preservePageAddresses } from '@/lib/page-address-changes';
+import { snapshotPage } from '@/lib/page-history';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { logFirstContentEdit } from './platform-events';
@@ -286,6 +287,8 @@ const isRecordNotFound = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2025';
 
 interface UpdatePageOptions {
+  /** Restore exact recoverable values while retaining the current address. */
+  restore?: boolean;
   /** Optimistic-concurrency precondition: apply the update only while the page's
    *  `updatedAt` still equals this value. The final write is conditional on it,
    *  so an edit that lands between the read and the write is never overwritten. */
@@ -328,7 +331,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         if (lockStructure) await assertAddressLinkRevisions(projectId, prepared, tx);
         const page = await tx.page.findFirst({ where: { id, projectId } });
         if (!page) throw notFound('page', { id });
-        const route = pageRouteEdit(page, body);
+        const route = pageRouteEdit(page, options?.restore ? {} : body);
         if (!lockStructure && route.structural) throw new StructuralPageEdit();
         const expectedUpdatedAt = options?.expectedUpdatedAt ?? (body.expectedUpdatedAt ? new Date(body.expectedUpdatedAt) : undefined);
         if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
@@ -351,7 +354,21 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         const nextSlug = structural
           ? await uniqueSiblingSlug(tx, projectId, page.languageId, page.branchId, nextParentId, route.desiredSlug, id)
           : page.slug;
-        const nextConfig = mergePageConfig(page.config, body.config);
+        const nextConfig = options?.restore ? body.config : mergePageConfig(page.config, body.config);
+        const historySnapshot = await snapshotPage(
+          tx,
+          page,
+          {
+            title: body.title ?? page.title,
+            content: body.content ?? page.content,
+            description: body.description === undefined ? page.description : body.description,
+            icon: body.icon === undefined ? page.icon : body.icon,
+            hidden: body.hidden ?? page.hidden,
+            config: nextConfig === undefined ? page.config : nextConfig,
+          },
+          userId,
+          options?.restore ?? false,
+        );
         const updated = await tx.page
           .update({
             // With a precondition the write matches only the revision that was read;
@@ -381,7 +398,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         const saved = structural ? await tx.page.findFirstOrThrow({ where: { id, projectId } }) : updated;
         return {
           page,
-          updated: { ...saved, ...addressChanges, addressChanged: saved.path !== page.path },
+          updated: { ...saved, ...addressChanges, historySnapshot, addressChanged: saved.path !== page.path },
         };
       },
       { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
@@ -389,7 +406,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
   };
   let result: Awaited<ReturnType<typeof save>>;
   try {
-    result = await save(pageRouteEdit(initial, body).structural);
+    result = await save(pageRouteEdit(initial, options?.restore ? {} : body).structural);
   } catch (error) {
     if (!(error instanceof StructuralPageEdit)) throw error;
     result = await save(true);
