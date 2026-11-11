@@ -88,28 +88,39 @@ const logoData = async (data: SiteOgData): Promise<string | null> => {
   }
 };
 
-/** Wrap on words and graphemes before passing complete logical lines to
- * resvg's bidi/shaping engine. Arabic is never reversed or split into letters. */
-const titleLines = (title: string): string[] => {
+const TITLE_LINE = 30;
+const graphemes = (text: string): string[] =>
+  Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text), (item) => item.segment);
+
+/** Wrap at whitespace, so punctuation stays attached to its word ("write,"
+ *  never becomes "write" + ", publish"), before passing complete logical lines
+ *  to resvg's bidi/shaping engine. Only a single token longer than a line is
+ *  split, and then by graphemes, so Arabic is never reversed or broken apart. */
+export const titleLines = (title: string): string[] => {
   const text = excerpt(title, 120);
   const lines: string[] = [];
-  let line = '';
-  for (const { segment } of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)) {
-    const units = Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(segment), (item) => item.segment);
-    if (Array.from(line).length + units.length > 30 && line.trim()) {
-      lines.push(line.trim());
-      line = '';
-    }
-    for (const unit of units) {
-      if (Array.from(line).length >= 30) {
-        lines.push(line.trim());
-        line = '';
+  let line: string[] = [];
+  const flush = () => {
+    const value = line.join('').trim();
+    if (value) lines.push(value);
+    line = [];
+  };
+  for (const token of text.split(/\s+/).filter(Boolean)) {
+    const units = graphemes(token);
+    const needed = (line.length ? line.length + 1 : 0) + units.length;
+    if (needed > TITLE_LINE && line.length) flush();
+    if (units.length > TITLE_LINE) {
+      for (const unit of units) {
+        if (line.length >= TITLE_LINE) flush();
+        line.push(unit);
       }
-      line += unit;
+      continue;
     }
+    if (line.length) line.push(' ');
+    line.push(...units);
   }
-  if (line.trim()) lines.push(line.trim());
-  return lines.length > 4 ? [...lines.slice(0, 3), excerpt(lines.slice(3).join(' '), 30)] : lines;
+  flush();
+  return lines.length > 4 ? [...lines.slice(0, 3), excerpt(lines.slice(3).join(' '), TITLE_LINE)] : lines;
 };
 
 export const renderSiteOg = async (data: SiteOgData): Promise<Buffer> => {

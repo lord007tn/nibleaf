@@ -6,7 +6,7 @@ vi.mock('@nibleaf/database', () => ({ prisma: { asset: { findUnique: mocks.asset
 vi.mock('@nibleaf/storage', () => ({ getObjectStream: mocks.object }));
 vi.mock('@/actions/importers/ghost-assets', () => ({ fetchPublicImage: mocks.remote }));
 
-import { cachedSiteOg, renderSiteOg, type SiteOgData, siteOgEtag } from './site-og';
+import { cachedSiteOg, renderSiteOg, type SiteOgData, siteOgEtag, titleLines } from './site-og';
 
 const data: SiteOgData = {
   projectId: 'project',
@@ -96,5 +96,35 @@ describe('server-only OG renderer', () => {
     } finally {
       clock.mockRestore();
     }
+  });
+});
+
+describe('OG title wrapping', () => {
+  it('keeps punctuation attached to its word', () => {
+    const title = 'Introduction to Nibleaf: write, publish and answer questions from your docs';
+    const lines = titleLines(title);
+    expect(lines.join(' ')).toBe(title);
+    expect(lines).toContain('write, publish and answer');
+    for (const line of lines) {
+      expect(line).not.toMatch(/^[,.:;!?)]/);
+      expect(Array.from(line).length).toBeLessThanOrEqual(30);
+    }
+  });
+
+  it('wraps Arabic at word boundaries without splitting words', () => {
+    const title = 'مقدمة إلى Nibleaf: اكتب وانشر وأجب عن الأسئلة من وثائقك';
+    const lines = titleLines(title);
+    expect(lines.join(' ')).toBe(title);
+    for (const line of lines) expect(Array.from(line).length).toBeLessThanOrEqual(30);
+  });
+
+  it('splits only a single token longer than a line, by graphemes', () => {
+    const lines = titleLines(`${'a'.repeat(45)} end`);
+    expect(lines[0]).toHaveLength(30);
+    expect(lines.join('')).toBe(`${'a'.repeat(45)} end`);
+  });
+
+  it('caps the card at four lines', () => {
+    expect(titleLines(Array.from({ length: 40 }, (_, i) => `word${i}`).join(' ')).length).toBeLessThanOrEqual(4);
   });
 });
