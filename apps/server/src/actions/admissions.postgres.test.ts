@@ -108,6 +108,17 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
     const invitation = await invite(f, user, 'member', []);
     expect((await admissions.admit(user.id, { invitationId: invitation.id })).landing).toEqual({ organization: f.org.slug });
   });
+  it.each(['invitation', 'join-link'])('admits a nameless account through %s without changing its profile or consent', async (flow) => {
+    const f = await fixture();
+    const user = await person();
+    await db.prisma.user.update({ where: { id: user.id }, data: { name: '' } });
+    const admission = flow === 'invitation'
+      ? { invitationId: (await invite(f, user)).id }
+      : { token: (await organizations.createOrganizationJoinLink(f.org.id, f.owner.id, { grants: [{ projectId: f.projectId, role: 'member' }] })).token };
+    expect((await admissions.admit(user.id, admission)).landing).toEqual({ projectId: f.projectId });
+    expect(await grantRoles(f.org.id, user.id)).toEqual([[f.projectId, 'member']]);
+    expect(await db.prisma.user.findUniqueOrThrow({ where: { id: user.id } })).toMatchObject({ name: '', termsAcceptedAt: null, termsVersion: null });
+  });
   it('normalizes invitation addresses and keeps unrelated grants on upgrade', async () => {
     const f = await fixture();
     const user = await person();

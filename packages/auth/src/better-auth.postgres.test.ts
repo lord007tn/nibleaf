@@ -405,7 +405,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(await prisma.user.count({ where: { email } })).toBe(0);
   });
 
-  it('persists consent only in protected OAuth state and rejects tampering and replay', async () => {
+  it('persists consent only in protected OAuth state', async () => {
     const started = await send('/sign-in/social', {
       body: { provider: 'google', callbackURL: '/app', additionalData: { acceptTerms: true, termsVersion: 'forged' } },
     });
@@ -413,13 +413,24 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     const state = new URL(url).searchParams.get('state') as string;
     const stored = await prisma.verification.findFirstOrThrow({ where: { identifier: `auth-state:${state}` } });
     expect(JSON.parse(stored.value).serverContext).toMatchObject({ termsVersion: TERMS_VERSION });
+  });
+
+  it('rejects tampered and replayed Google state without creating extra accounts', async () => {
+    const email = addressFor('google-state');
+    const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
+    mocks.googleIdToken = `${encode({ alg: 'RS256' })}.${encode({ sub: email, email, email_verified: true, name: 'Synthetic', aud: GOOGLE_CLIENT_ID, iss: 'https://accounts.google.com', exp: Math.floor(Date.now() / 1000) + 3600 })}.signature`;
+    const started = await send('/sign-in/social', { body: { provider: 'google', callbackURL: '/app', additionalData: { acceptTerms: true } } });
+    const { url } = await started.json() as { url: string };
+    const state = new URL(url).searchParams.get('state') as string;
     const cookie = setCookiePairs(started).join('; ');
     const tampered = await send(`/callback/google?code=synthetic&state=${state}tampered`, { cookie });
     expect(tampered.headers.get('location')).not.toBe('/app');
+    expect(await prisma.user.count({ where: { email } })).toBe(0);
     const callback = `/callback/google?code=synthetic&state=${state}`;
-    await send(callback, { cookie });
+    expectSignedInRedirect(await send(callback, { cookie }));
     const replay = await send(callback, { cookie });
     expect(replay.headers.get('location')).toContain('state_mismatch');
+    expect(await prisma.user.count({ where: { email } })).toBe(1);
   });
 
   it('allows an existing Google account to log in without the acceptance flag', async () => {
