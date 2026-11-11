@@ -12,6 +12,7 @@
     "./ai": "./src/ai.ts",
     "./callouts": "./src/callouts.ts",
     "./client-ip": "./src/client-ip.ts",
+    "./languages": "./src/languages.ts",
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",

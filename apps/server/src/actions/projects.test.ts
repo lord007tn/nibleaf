@@ -1,3 +1,4 @@
+import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { resolveTheme, THEME_PRESETS } from '@nibleaf/shared/themes';
 import { type CreateProjectBody, projectConfigSchema } from '@nibleaf/validators';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
     projectAddonAuditEvent: { createMany: vi.fn() },
     language: { create: vi.fn() },
     branch: { create: vi.fn() },
+    page: { create: vi.fn() },
   },
 }));
 
@@ -40,7 +42,13 @@ vi.mock('@nibleaf/auth/tenant-erasure', () => ({
 }));
 vi.mock('@nibleaf/database', () => ({
   assignDefaultUsagePlan: vi.fn(),
-  Prisma: { DbNull: 'DbNull' },
+  Prisma: {
+    DbNull: 'DbNull',
+    PrismaClientKnownRequestError: class extends Error {
+      code = 'P2002';
+      meta = { target: ['slug'] };
+    },
+  },
   prisma: {
     member: { findMany: mocks.memberFindMany },
     userPreference: { findUnique: mocks.preferenceFindUnique },
@@ -55,7 +63,7 @@ vi.mock('@nibleaf/database', () => ({
   },
 }));
 
-import { createProject, getProject, listProjects } from './projects';
+import { checkProjectAvailability, createProject, getProject, listProjects } from './projects';
 
 /** The one definition of "pages" shared by the workspace overview, the sites
  *  list and the MCP project DTO: content pages on the default branch across
@@ -297,5 +305,112 @@ describe('createProject', () => {
     expect(mocks.tx.language.create).toHaveBeenCalledWith({
       data: { projectId: 'project-new', code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
     });
+  });
+});
+
+describe('site creation language, starters and address availability', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.memberFindMany.mockResolvedValue([{ organizationId: 'org-a', orgRole: 'owner' }]);
+    mocks.projectFindMany.mockResolvedValue([{ name: 'Acme Docs' }]);
+    mocks.projectFindFirst.mockResolvedValue(null);
+    mocks.resolveOrgAccess.mockResolvedValue({ organizationId: 'org-a', orgRole: 'admin' });
+    mocks.lockOrganization.mockResolvedValue({ id: 'org-a' });
+    mocks.tx.member.findUnique.mockResolvedValue({ orgRole: 'admin' });
+    mocks.preferenceFindUnique.mockResolvedValue({ lastOrganizationId: 'org-a' });
+    mocks.tx.project.create.mockResolvedValue({ id: 'project-new' });
+    mocks.tx.language.create.mockResolvedValue({ id: 'language-new' });
+    mocks.tx.branch.create.mockResolvedValue({ id: 'branch-new' });
+    mocks.tx.page.create.mockImplementation(async () => ({ id: `page-${mocks.tx.page.create.mock.calls.length}` }));
+  });
+
+  it.each([
+    ['en', 'English', 'LTR'],
+    ['ar', 'العربية', 'RTL'],
+    ['ur', 'اردو', 'RTL'],
+    ['zh', '简体中文', 'LTR'],
+  ] as const)('sets %s as the default content language', async (language, label, direction) => {
+    await createProject('user-1', { name: 'Docs', language });
+    expect(mocks.tx.language.create).toHaveBeenCalledWith({
+      data: { projectId: 'project-new', code: language, label, direction, isDefault: true, position: 0 },
+    });
+  });
+
+  it.each([
+    ['blank', 1],
+    ['product-docs', 4],
+    ['help-center', 3],
+  ] as const)('creates %s pages in the chosen language and returns the first id', async (starter, count) => {
+    const result = await createProject('user-1', { name: 'Docs', language: 'ar', starter });
+    expect(result.firstPageId).toBe('page-1');
+    expect(mocks.tx.page.create).toHaveBeenCalledTimes(count);
+    const pages = mocks.tx.page.create.mock.calls.map(([args]) => args.data);
+    for (const page of pages) {
+      expect(page).toMatchObject({ projectId: 'project-new', branchId: 'branch-new', languageId: 'language-new' });
+      expect(page.title).toMatch(/[\u0600-\u06ff]/);
+      expect(page.content).toMatch(/^## /);
+      expect(page.content).toContain('\n- ');
+    }
+    expect(pages[0]).toMatchObject({ title: 'مرحباً', slug: 'welcome', path: 'welcome', parentId: null });
+    if (starter === 'product-docs') expect(pages[3]).toMatchObject({ parentId: 'page-3', path: 'guides/first-guide', position: 0 });
+  });
+
+  it.each(INTERFACE_LOCALES)('uses translated starter copy for $code', async ({ code }) => {
+    const language = code === 'zh-CN' ? 'zh' : code;
+    await createProject('user-1', { name: 'Docs', language, starter: 'help-center' });
+    const title = mocks.tx.page.create.mock.calls[0]?.[0].data.title;
+    expect(title).toBeTruthy();
+    if (code !== 'en') expect(title).not.toBe('Welcome');
+  });
+
+  it('keeps the existing empty tree when starter is omitted', async () => {
+    await createProject('user-1', { name: 'Docs' });
+    expect(mocks.tx.page.create).not.toHaveBeenCalled();
+  });
+
+  it('returns a typed 409 with a free suggestion before writing a taken typed address', async () => {
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.slug === 'taken' ? { id: 'other' } : null));
+    await expect(createProject('user-1', { name: 'Docs', slug: 'taken' })).rejects.toMatchObject({
+      code: 'database:conflict',
+      status: 409,
+      details: { reason: 'slug_taken', slug: 'taken', suggestedSlug: 'taken-2' },
+    });
+    expect(mocks.tx.project.create).not.toHaveBeenCalled();
+  });
+
+  it('maps unique-constraint races to the same typed conflict', async () => {
+    const { Prisma } = await import('@nibleaf/database');
+    mocks.tx.project.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('race', { code: 'P2002', clientVersion: 'test', meta: { target: ['slug'] } }),
+    );
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.slug === 'taken' ? { id: 'other' } : null)).mockResolvedValueOnce(null);
+    await expect(createProject('user-1', { name: 'Docs', slug: 'taken' })).rejects.toMatchObject({
+      status: 409,
+      details: { reason: 'slug_taken', suggestedSlug: 'taken-2' },
+    });
+  });
+
+  it('reports the final auto-derived slug and only checks names in accessible sites', async () => {
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.slug === 'acme-docs' ? { id: 'other' } : null));
+    await expect(checkProjectAvailability('user-1', { name: '  ACME Docs ' })).resolves.toEqual({
+      slug: 'acme-docs-2',
+      available: true,
+      suggestedSlug: 'acme-docs-2',
+      nameTaken: true,
+    });
+    expect(mocks.projectFindMany).toHaveBeenCalledWith({ where: { id: { in: ['project-a'] } }, select: { name: true } });
+    await expect(checkProjectAvailability('user-1', { name: 'New', slug: 'acme-docs' })).resolves.toMatchObject({
+      available: false,
+      nameTaken: false,
+      suggestedSlug: 'acme-docs-2',
+    });
+  });
+  it('checks only the requested organization and refuses an inaccessible organization', async () => {
+    await checkProjectAvailability('user-1', { organizationId: 'org-a', name: 'Docs' });
+    expect(mocks.resolveOrgAccess).toHaveBeenCalledWith('user-1', 'org-a');
+    mocks.projectFindMany.mockClear();
+    mocks.resolveOrgAccess.mockRejectedValueOnce(new Error('organization not found'));
+    await expect(checkProjectAvailability('user-1', { organizationId: 'private-org', name: 'Docs' })).rejects.toThrow('organization not found');
+    expect(mocks.projectFindMany).not.toHaveBeenCalled();
   });
 });

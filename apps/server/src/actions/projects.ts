@@ -1,14 +1,17 @@
 import { eraseProject, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
 import { Prisma, prisma } from '@nibleaf/database';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import { slugify } from '@nibleaf/shared/utils';
-import type { CreateProjectBody, ProjectConfigUpdate, UpdateProjectBody } from '@nibleaf/validators';
-import { conflict, forbidden, notFound } from '@/errors';
+import type { CreateProjectBody, ProjectConfigUpdate, projectAvailabilityQuery, UpdateProjectBody } from '@nibleaf/validators';
+import type { z } from 'zod';
+import { badRequest, conflict, forbidden, notFound } from '@/errors';
 import { accessibleProjectIds, accessibleProjectRoles, resolveOrgAccess } from '@/lib/access';
 import { siteHosts } from '@/lib/site-host';
 import { lockOrganization } from './admissions';
 import { mutateProjectConfig } from './project-config';
+import { createStarterPages } from './project-starters';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;
 const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
@@ -194,45 +197,86 @@ export const resolveWebsiteOrganization = async (userId: string, organizationId?
   return chosen.organizationId;
 };
 
+/** Name checks only inspect sites this user can access; global address checks reveal no site data. */
+export const checkProjectAvailability = async (userId: string, query: z.infer<typeof projectAvailabilityQuery>) => {
+  const organizationId = await resolveWebsiteOrganization(userId, query.organizationId);
+  const ids = await accessibleProjectIds(userId, organizationId);
+  const [names, suggestedSlug] = await Promise.all([
+    prisma.project.findMany({ where: { id: { in: ids } }, select: { name: true } }),
+    uniqueProjectSlug(query.slug ?? query.name),
+  ]);
+  return {
+    slug: query.slug ?? suggestedSlug,
+    available: !query.slug || suggestedSlug === query.slug,
+    suggestedSlug,
+    nameTaken: names.some((site) => site.name.trim().normalize('NFC').toLocaleLowerCase() === query.name.trim().normalize('NFC').toLocaleLowerCase()),
+  };
+};
+
 /** Create a website inside an existing organization (design §6.10). */
 export const createProject = async (userId: string, body: CreateProjectBody) => {
   const organizationId = await resolveWebsiteOrganization(userId, body.organizationId);
-  const slug = await uniqueProjectSlug(body.name);
-  return prisma.$transaction(async (tx) => {
-    // Serialises with removal and demotion, and refuses a fenced (being deleted
-    // or needing repair) organization; the role is re-read under the lock.
-    const org = await lockOrganization(tx, organizationId);
-    const actor = await tx.member.findUnique({ where: { organizationId_userId: { organizationId, userId } }, select: { orgRole: true } });
-    if (!actor) throw notFound('organization');
-    if (!isOrgAdmin(actor.orgRole)) throw forbidden('Only organization owners and admins can create websites.');
-    // Project.dataTenantId gets an independent cuid from the Prisma default.
-    const project = await tx.project.create({
-      data: {
-        organizationId: org.id,
-        name: body.name,
-        slug,
-        ...(body.description ? { description: body.description } : {}),
-        ...(body.icon ? { icon: body.icon } : {}),
-        config: projectConfigWithAddons(
-          { theme: starterThemeConfig() },
-          addonDefinitions.map((definition) => ({ key: definition.id, enabled: definition.defaultEnabled, config: definition.defaultConfig })),
-        ) as Prisma.InputJsonValue,
-      },
+  const slug = body.slug ?? (await uniqueProjectSlug(body.name));
+  const slugConflict = async () =>
+    conflict('That site address is already in use.', { reason: 'slug_taken', slug, suggestedSlug: await uniqueProjectSlug(slug) });
+  if (body.slug && (await prisma.project.findFirst({ where: { slug }, select: { id: true } }))) throw await slugConflict();
+  const language = LANGUAGE_CATALOG.find((entry) => entry.code === (body.language ?? 'en'));
+  if (!language) throw badRequest('Unsupported content language.');
+  try {
+    return await prisma.$transaction(async (tx) => {
+      // Serialises with removal and demotion, and refuses a fenced (being deleted
+      // or needing repair) organization; the role is re-read under the lock.
+      const org = await lockOrganization(tx, organizationId);
+      const actor = await tx.member.findUnique({ where: { organizationId_userId: { organizationId, userId } }, select: { orgRole: true } });
+      if (!actor) throw notFound('organization');
+      if (!isOrgAdmin(actor.orgRole)) throw forbidden('Only organization owners and admins can create websites.');
+      // Project.dataTenantId gets an independent cuid from the Prisma default.
+      const project = await tx.project.create({
+        data: {
+          organizationId: org.id,
+          name: body.name,
+          slug,
+          ...(body.description ? { description: body.description } : {}),
+          ...(body.icon ? { icon: body.icon } : {}),
+          config: projectConfigWithAddons(
+            { theme: starterThemeConfig() },
+            addonDefinitions.map((definition) => ({ key: definition.id, enabled: definition.defaultEnabled, config: definition.defaultConfig })),
+          ) as Prisma.InputJsonValue,
+        },
+      });
+      const defaultAddons = defaultProjectAddonProvisioning(project.id, userId);
+      await tx.projectAddon.createMany({
+        data: defaultAddons.addons.map((addon) => ({ ...addon, config: addon.config as Prisma.InputJsonValue })),
+      });
+      await tx.projectAddonAuditEvent.createMany({
+        data: defaultAddons.auditEvents.map((event) => ({ ...event, nextConfig: event.nextConfig as Prisma.InputJsonValue })),
+      });
+      // Every project starts with a single default language that owns its page tree.
+      const defaultLanguage = await tx.language.create({
+        data: {
+          projectId: project.id,
+          code: language.code,
+          label: language.native,
+          direction: language.rtl ? 'RTL' : 'LTR',
+          isDefault: true,
+          position: 0,
+        },
+      });
+      const branch = await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, select: { id: true } });
+      // Older API callers omit starter and keep their existing empty-tree behavior.
+      const firstPageId = body.starter ? await createStarterPages(tx, project.id, branch.id, defaultLanguage.id, language.code, body.starter) : null;
+      return { ...project, firstPageId };
     });
-    const defaultAddons = defaultProjectAddonProvisioning(project.id, userId);
-    await tx.projectAddon.createMany({
-      data: defaultAddons.addons.map((addon) => ({ ...addon, config: addon.config as Prisma.InputJsonValue })),
-    });
-    await tx.projectAddonAuditEvent.createMany({
-      data: defaultAddons.auditEvents.map((event) => ({ ...event, nextConfig: event.nextConfig as Prisma.InputJsonValue })),
-    });
-    // Every project starts with a single default language that owns its page tree.
-    await tx.language.create({
-      data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
-    });
-    await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, select: { id: true } });
-    return project;
-  });
+  } catch (error) {
+    // Check the conflicting value after rollback: adapters report constraint metadata differently.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002' &&
+      (await prisma.project.findFirst({ where: { slug }, select: { id: true } }))
+    )
+      throw await slugConflict();
+    throw error;
+  }
 };
 
 /**

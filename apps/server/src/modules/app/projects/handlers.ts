@@ -1,8 +1,8 @@
-import { createProjectBody, themeImportBodySchema, updateProjectBody } from '@nibleaf/validators';
+import { createProjectBody, projectAvailabilityQuery, themeImportBodySchema, updateProjectBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { exportProjectMarkdown, exportProjectThemeRepository } from '@/actions/export';
-import { createProject, deleteProject, getProject, listProjects, updateProject } from '@/actions/projects';
+import { checkProjectAvailability, createProject, deleteProject, getProject, listProjects, updateProject } from '@/actions/projects';
 import { exportProjectTheme, getProjectThemeCatalog, importProjectTheme } from '@/actions/themes';
 import { badRequest } from '@/errors';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
@@ -17,6 +17,10 @@ const app = new Hono<HonoEnv>()
   .post('/', ...projectsRoutes.create, validator('json', createProjectBody), async (ctx) => {
     const user = getContextUserOrThrow();
     return ctx.json({ data: await createProject(user.id, ctx.req.valid('json')) }, 201);
+  })
+  .get('/availability', ...projectsRoutes.availability, validator('query', projectAvailabilityQuery), async (ctx) => {
+    const user = getContextUserOrThrow();
+    return ctx.json({ data: await checkProjectAvailability(user.id, ctx.req.valid('query')) }, 200);
   })
   .get('/:id', ...projectsRoutes.get, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

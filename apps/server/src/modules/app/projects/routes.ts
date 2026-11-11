@@ -12,6 +12,12 @@ const projectsRoutes = {
     description: 'List every documentation site the user can access.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
+  availability: createRouteConfig({
+    guard: isAuthenticated,
+    tags: ['projects'],
+    description: 'Check a site address and whether the user already has a site with this name.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
   create: createRouteConfig({
     // Organization Owner/Admin of the body's organizationId (checked in createProject:
     // the org comes from the body, not the path). Never creates an organization.

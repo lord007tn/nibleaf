@@ -2,6 +2,7 @@ import { aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MAX_ASSET_UPLOAD_BYTES } from '@nibleaf/shared/constants';
 import { isPublicEmailProvider } from '@nibleaf/shared/email-providers';
 import { normalizeEmailDomain } from '@nibleaf/shared/join-links';
+import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
 import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
@@ -520,9 +521,22 @@ export type PageConfig = z.infer<typeof pageConfigSchema>;
 
 // ─── Project ──────────────────────────────────────────────────────────────—
 
+export const projectSlug = z
+  .string()
+  .min(1)
+  .max(63)
+  .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.');
+
+export const projectAvailabilityQuery = z
+  .object({ organizationId: z.string().min(1).optional(), name: z.string().trim().min(1).max(120), slug: projectSlug.optional() })
+  .strict();
+
 export const createProjectBody = z
   .object({
-    name: z.string().min(1).max(120),
+    name: z.string().trim().min(1).max(120),
+    language: z.enum(LANGUAGE_CATALOG.map((language) => language.code)).optional(),
+    slug: projectSlug.optional(),
+    starter: z.enum(['blank', 'product-docs', 'help-center']).optional(),
     description: z.string().max(500).optional(),
     icon: z.string().max(64).optional(),
     /** The organization the website belongs to. Required by current dashboards;
@@ -535,12 +549,7 @@ export type CreateProjectBody = z.infer<typeof createProjectBody>;
 export const updateProjectBody = z
   .object({
     name: z.string().min(1).max(120).optional(),
-    slug: z
-      .string()
-      .min(1)
-      .max(63)
-      .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.')
-      .optional(),
+    slug: projectSlug.optional(),
     description: z.string().max(500).nullable().optional(),
     icon: z.string().max(64).nullable().optional(),
     config: projectConfigUpdateSchema.optional(),

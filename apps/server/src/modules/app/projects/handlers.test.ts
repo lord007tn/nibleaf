@@ -31,6 +31,7 @@ vi.mock('@/actions/projects', () => ({
     }
     return { project: { id: 'project', organizationId: 'org' }, organizationId: 'org', role: mocks.member.role };
   }),
+  checkProjectAvailability: vi.fn(async () => ({ slug: 'docs', available: true, suggestedSlug: 'docs', nameTaken: false })),
   createProject: vi.fn(),
   deleteProject: vi.fn(),
   getProject: vi.fn(),
@@ -101,5 +102,20 @@ describe('theme repository export permissions', () => {
 
     expect(response.status).toBe(404);
     expect(mocks.getProjectThemeCatalog).not.toHaveBeenCalled();
+  });
+});
+
+describe('project availability endpoint', () => {
+  it('requires authentication', async () => {
+    expect((await appFor(false).request('/projects/availability?name=Docs')).status).toBe(401);
+  });
+  it('checks availability before the dynamic project-id route', async () => {
+    const response = await appFor(true).request('/projects/availability?name=Docs');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ data: { slug: 'docs', available: true, suggestedSlug: 'docs', nameTaken: false } });
+  });
+  it('rejects invalid typed slugs and missing names', async () => {
+    expect((await appFor(true).request('/projects/availability?name=Docs&slug=Bad')).status).toBe(422);
+    expect((await appFor(true).request('/projects/availability')).status).toBe(422);
   });
 });
