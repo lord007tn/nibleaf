@@ -13,6 +13,8 @@ interface RateLimitOptions {
   max: number;
   /** Called on a refusal, at most once per client per window (so a flood can't
    *  amplify it), before the 429 is sent. Its failures are ignored. */
+  /** Override the default trusted client-IP bucket, e.g. for authenticated user limits. */
+  key?: (ctx: Context<HonoEnv>) => string;
   onLimited?: (ctx: Context<HonoEnv>) => Promise<void> | void;
 }
 
@@ -77,7 +79,7 @@ const resolveClientKey = (ctx: Context<HonoEnv>): string => {
  * own counters, so the effective limit scales with instance count. Use a
  * Redis-backed limiter for accurate enforcement across a multi-instance deployment.
  */
-export const rateLimit = ({ windowMs, max, onLimited }: RateLimitOptions): MiddlewareHandler<HonoEnv> => {
+export const rateLimit = ({ windowMs, max, onLimited, key: bucketKey = resolveClientKey }: RateLimitOptions): MiddlewareHandler<HonoEnv> => {
   const hits = new Map<string, number[]>();
   /** When each client's refusal was last reported to `onLimited`. */
   const reported = new Map<string, number>();
@@ -100,7 +102,7 @@ export const rateLimit = ({ windowMs, max, onLimited }: RateLimitOptions): Middl
   setInterval(sweep, Math.max(windowMs, 30_000)).unref();
 
   return async (ctx, next) => {
-    const key = resolveClientKey(ctx);
+    const key = bucketKey(ctx);
     const now = Date.now();
     const cutoff = now - windowMs;
 

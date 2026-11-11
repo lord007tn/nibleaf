@@ -18,6 +18,7 @@
     "./marketing": "./src/marketing.ts",
     "./locale-state": "./src/runtime.ts",
     "./messages": "./src/paraglide/messages.js",
+    "./messages/*": "./src/paraglide/messages/*.js",
     "./runtime": "./src/paraglide/runtime.js"
   },
   "scripts": {
