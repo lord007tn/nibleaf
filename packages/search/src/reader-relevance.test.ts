@@ -103,7 +103,7 @@ describe('published reader relevance', () => {
     expect(cleanSearchText('Intro.\n\n````js\nconst a = `x`;\n```\nstill code')).toBe('Intro. const a = `x`; ``` still code');
     expect(cleanSearchText('A lone ` backtick and ``a pair``.')).toBe('A lone ` backtick and a pair.');
     // Author text cannot forge a code placeholder.
-    expect(cleanSearchText('0 <b>x</b>')).toBe('0 x');
+    expect(cleanSearchText(`${String.fromCharCode(0xe0_00)}0${String.fromCharCode(0xe0_01)} <b>x</b>`)).toBe('0 x');
   });
 
   it('returns no fuzzy padding for nonsense or a missing password page', async () => {

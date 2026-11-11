@@ -31,9 +31,9 @@ const withoutComments = (value: string): string => {
 
 /** Private-use delimiters for code placeholders. Author text can't forge one:
  *  any occurrence in the input is replaced before placeholders are inserted. */
-const CODE_OPEN = '';
-const CODE_CLOSE = '';
-const CODE_PLACEHOLDER = /(\d+)/g;
+const CODE_OPEN = String.fromCharCode(0xe0_00);
+const CODE_CLOSE = String.fromCharCode(0xe0_01);
+const CODE_PLACEHOLDER = new RegExp(`${CODE_OPEN}([0-9]+)${CODE_CLOSE}`, 'g');
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 
 /**
