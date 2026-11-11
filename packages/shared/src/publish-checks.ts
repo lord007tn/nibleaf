@@ -381,6 +381,30 @@ export const pageContentFacts = (content: string, cache = true): PageContentFact
   return facts;
 };
 
+/** Facts per snapshot, by content. A site with more pages than the shared cache
+ *  holds would evict it in order on every scan, so a second pass (publish checks
+ *  read each page twice) or a repeat open re-parsed every page. Keyed by the
+ *  snapshot's pages array, like the page index in site-route, so the facts live
+ *  as long as the snapshot; the shared cache still carries facts across
+ *  snapshots of sites that fit in it. */
+const snapshotFacts = new WeakMap<readonly SnapshotPage[], Map<string, PageContentFacts>>();
+
+/** `pageContentFacts` for one snapshot's pages, parsed at most once per content. */
+export const snapshotContentFacts = (snapshot: SiteSnapshot): ((content: string) => PageContentFacts) => {
+  const memo = snapshotFacts.get(snapshot.pages) ?? new Map<string, PageContentFacts>();
+  snapshotFacts.set(snapshot.pages, memo);
+  // A scan larger than the shared cache reuses its entries but adds none.
+  const shared = snapshot.pages.length <= CACHE_LIMIT;
+  return (content) => {
+    let facts = memo.get(content);
+    if (!facts) {
+      facts = pageContentFacts(content, shared);
+      memo.set(content, facts);
+    }
+    return facts;
+  };
+};
+
 /* ------------------------------------------------------------------------ */
 /* Links, rendered and routed as the reader does                             */
 /* ------------------------------------------------------------------------ */
@@ -496,10 +520,11 @@ interface BrokenInternalLink {
 export function findBrokenInternalLinks(snapshot: SiteSnapshot): BrokenInternalLink[] {
   const served = new Set(publicLanguages(snapshot.project.languages).map((language) => language.code));
   const resolveLink = createLinkResolver(snapshot);
+  const factsOf = snapshotContentFacts(snapshot);
   const broken: BrokenInternalLink[] = [];
   for (const page of snapshot.pages) {
     if (page.kind !== 'PAGE' || page.hidden || !served.has(page.languageCode)) continue;
-    for (const href of new Set(pageContentFacts(page.content).links)) {
+    for (const href of new Set(factsOf(page.content).links)) {
       // Over-long links are rejected before any resolution work (the reader 404s them).
       if (sitePathTooLong(href)) broken.push({ page, href, reason: 'path-too-long' });
       else if (resolveLink(href, page) === false) broken.push({ page, href });
@@ -540,15 +565,13 @@ export function buildInboundPageLinkMap(snapshot: SiteSnapshot, trustedOrigins: 
   const byId = new Map(snapshot.pages.map((page) => [page.id, page]));
   const results = new Map<string, InboundPageLinks>(snapshot.pages.map((page) => [page.id, { pages: [], total: 0 }]));
   const resolveLink = createLinkResolver(snapshot);
-  // A scan larger than the facts cache must not evict it sequentially. Reuse
-  // any existing facts, but don't insert misses; the branch map caches this scan.
-  const cacheFacts = snapshot.pages.length <= CACHE_LIMIT;
+  const factsOf = snapshotContentFacts(snapshot);
   for (const page of snapshot.pages) {
     if (page.kind !== 'PAGE') continue;
     const ancestors = new Set<string>();
     for (let id: string | undefined = page.id; id && !ancestors.has(id); id = byId.get(id)?.parentId ?? undefined) ancestors.add(id);
     const affected = new Set<string>();
-    for (const href of pageContentFacts(page.content, cacheFacts).links) {
+    for (const href of factsOf(page.content).links) {
       if (sitePathTooLong(href)) continue;
       const siteHref = stripSiteOrigin(href, hosts);
       // Full URLs already select their version/language. Unlike root-relative
