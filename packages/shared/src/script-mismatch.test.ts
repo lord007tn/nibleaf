@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectScriptMismatch } from './script-mismatch';
+import { detectScriptMismatch, sampleForScript } from './script-mismatch';
 
 const ARABIC_REFUND = 'خطوات إسترداد مبلغ على نظام إدارة الفنادق، ابدأ من قائمة الحجوزات ثم اختر الحجز المطلوب واضغط على زر الاسترداد.';
 const ENGLISH_RESERVATION = 'To add a new reservation, open the front desk calendar, choose the room and the dates, then confirm the guest details.';
@@ -102,20 +102,46 @@ describe('detectScriptMismatch', () => {
     );
   });
 
-  it('stays fast on adversarial input', () => {
-    const inputs = [
-      `${'a'.repeat(40_000)}@${'b'.repeat(40_000)}`,
-      'a@'.repeat(20_000),
-      'a.b@c.'.repeat(8000),
-      '<a'.repeat(20_000),
-      '<!--'.repeat(10_000),
-      `https://${'x'.repeat(40_000)}`,
-      '`'.repeat(20_000),
-    ];
-    for (const input of inputs) {
-      const started = performance.now();
-      detectScriptMismatch(input, 'en');
-      expect(performance.now() - started, input.slice(0, 12)).toBeLessThan(750);
-    }
+  // Publish checks run this on every page, so hostile input must never block.
+  // These inputs either lose their giant tokens in the linear pre-pass or take
+  // the linear prose scan. Locally each takes about 1–3 ms.
+  it.each([
+    ['an 80k-character email', `${'a'.repeat(40_000)}@${'b'.repeat(40_000)}`],
+    ['one 80k-letter word', 'a'.repeat(80_000)],
+    ['a@ repeated', 'a@'.repeat(20_000)],
+    ['dotted emails', 'a.b@c.'.repeat(8000)],
+    ['an <a flood', '<a'.repeat(20_000)],
+    ['a comment flood', '<!--'.repeat(10_000)],
+    ['a 40k-character URL', `https://${'x'.repeat(40_000)}`],
+    ['a backtick flood', '`'.repeat(20_000)],
+    ['emphasis markers', '*a '.repeat(30_000)],
+    ['brackets', '[a]('.repeat(20_000)],
+  ])('stays fast on %s', (_, input) => {
+    detectScriptMismatch('Warm up with a short English sentence here.', 'en');
+    const started = performance.now();
+    detectScriptMismatch(`${input}${Math.random()}`, 'en');
+    expect(performance.now() - started).toBeLessThan(50);
+  });
+
+  // A long, realistic page still goes through the Markdown parser, but only on
+  // a bounded sample (16 KB at most). About 5–15 ms locally. The bound leaves room
+  // for slow CI runners while still catching a superlinear path.
+  it('stays bounded on a long, ordinary page', () => {
+    const page = Array.from(
+      { length: 400 },
+      (_, index) => `## Step ${index}\n\nOpen **Settings** and choose [Users](/users) to add a guest. Run \`npm install\` first.\n`,
+    ).join('\n');
+    detectScriptMismatch('Warm up with a short English sentence here.', 'en');
+    const started = performance.now();
+    expect(detectScriptMismatch(page, 'en').mismatch).toBe(false);
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
+  it('samples a bounded window from long pages and still finds a mismatch', () => {
+    const arabic = 'هذه صفحة مكتوبة باللغة العربية لكنها منشورة تحت اللغة الإنجليزية. ';
+    const page = `${arabic.repeat(800)}`;
+    expect(page.length).toBeGreaterThan(40_000);
+    expect(sampleForScript(page).length).toBeLessThanOrEqual(16_384 + 4);
+    expect(detectScriptMismatch(page, 'en')).toMatchObject({ mismatch: true, dominantScript: 'arabic' });
   });
 });

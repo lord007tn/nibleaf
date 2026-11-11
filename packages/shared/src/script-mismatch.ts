@@ -30,7 +30,12 @@ const LETTER = /\p{L}/u;
 const UPPER = /\p{Lu}/u;
 const DIGIT = /\p{Nd}/u;
 
-const scriptOf = (char: string): WritingScript => SCRIPT_PATTERNS.find(([, pattern]) => pattern.test(char))?.[0] ?? 'other';
+const scriptOf = (char: string): WritingScript => {
+  // Fast path: ASCII letters are Latin, without running the Unicode script regexes.
+  const code = char.charCodeAt(0);
+  if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) return 'latin';
+  return SCRIPT_PATTERNS.find(([, pattern]) => pattern.test(char))?.[0] ?? 'other';
+};
 
 /** Scripts a language's prose is expected to be written in, by primary subtag. */
 const LANGUAGE_SCRIPTS: Record<string, readonly WritingScript[]> = {
@@ -167,6 +172,98 @@ function proseRuns(markdown: string): string[] {
   return runs;
 }
 
+// ─── Cost bounds ─────────────────────────────────────────────────────────────
+// This runs at publish time on every page, so it must never block: script
+// detection needs a representative sample, not the whole document.
+
+/** First window plus middle and end windows, each cut at a line boundary. */
+const SAMPLE_WINDOWS = [8192, 4096, 4096] as const;
+/** A whitespace-free token this long is a URL, email, hash or junk, never a prose word. */
+const MAX_TOKEN = 64;
+/** Above this many Markdown markers in the sample, micromark can go superlinear
+ *  (as #453 found), so prose is extracted with a linear scan instead. */
+const MAX_MARKERS = 400;
+const MARKERS = new Set(['*', '_', '[', ']', '<', '>', '{', '}', '`', '!', '~', '|']);
+const WHITESPACE = new Set([' ', '\n', '\t', '\r']);
+
+const lineCut = (value: string, start: number, size: number): string => {
+  if (start >= value.length) return '';
+  const begin = start <= 0 ? 0 : value.indexOf('\n', start) + 1 || value.length;
+  const end = Math.min(value.length, begin + size);
+  const lastBreak = value.lastIndexOf('\n', end);
+  return value.slice(begin, end === value.length || lastBreak <= begin ? end : lastBreak);
+};
+
+/** Replaces whitespace-free runs longer than MAX_TOKEN with a space, in one pass. */
+const dropLongTokens = (value: string): string => {
+  let output = '';
+  let tokenStart = 0;
+  for (let index = 0; index <= value.length; index += 1) {
+    const char = value[index];
+    if (char === undefined || WHITESPACE.has(char)) {
+      const token = value.slice(tokenStart, index);
+      output += token.length > MAX_TOKEN ? ' ' : token;
+      if (char !== undefined) output += char;
+      tokenStart = index + 1;
+    }
+  }
+  return output;
+};
+
+/** A bounded, linear-time sample of the page: first, middle and last windows. */
+export const sampleForScript = (markdown: string): string => {
+  const [first, middle, last] = SAMPLE_WINDOWS;
+  if (markdown.length <= first + middle + last) return dropLongTokens(markdown);
+  const windows = [
+    lineCut(markdown, 0, first),
+    lineCut(markdown, Math.floor(markdown.length / 2 - middle / 2), middle),
+    lineCut(markdown, markdown.length - last, last),
+  ];
+  return dropLongTokens(windows.join('\n\n'));
+};
+
+const markerCount = (value: string): number => {
+  let markers = 0;
+  for (const char of value) if (MARKERS.has(char)) markers += 1;
+  return markers;
+};
+
+/** Linear fallback for marker-dense samples: drop fenced and indented code,
+ *  tags and inline code, then treat each line as a run. Never parses. */
+const linearProseRuns = (markdown: string): string[] => {
+  const runs: string[] = [];
+  let fence: string | null = null;
+  for (const line of markdown.split('\n')) {
+    const marker = /^\s*(`{3,}|~{3,})/u.exec(line)?.[1];
+    if (marker && (!fence || marker.startsWith(fence))) {
+      fence = fence ? null : marker;
+      continue;
+    }
+    if (fence || /^(?: {4}|\t)/u.test(line)) continue;
+    let text = '';
+    let inCode = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index] ?? '';
+      if (char === '`') {
+        inCode = !inCode;
+        continue;
+      }
+      if (inCode) continue;
+      if (char === '<') {
+        const end = line.indexOf('>', index + 1);
+        if (end !== -1) {
+          text += ' ';
+          index = end;
+          continue;
+        }
+      }
+      text += MARKERS.has(char) || char === '#' ? ' ' : char;
+    }
+    if (text.trim()) runs.push(text);
+  }
+  return runs;
+};
+
 /** Sentences: names inside a sentence are judged against that sentence's words. */
 const SENTENCE_END = /[.!?؟。！？]+(?=\s|$)|[\n\r]+/u;
 
@@ -228,7 +325,9 @@ export function detectScriptMismatch(markdown: string, languageCode: string, opt
   const { minLetters = 20, threshold = 0.6 } = options;
   const counts = new Map<WritingScript, number>();
   let counted = 0;
-  for (const run of proseRuns(markdown)) {
+  const sample = sampleForScript(markdown);
+  const runs = markerCount(sample) > MAX_MARKERS ? linearProseRuns(sample) : proseRuns(sample);
+  for (const run of runs) {
     for (const sentence of run.split(SENTENCE_END)) {
       const words = sentence
         .split(/\s+/)
