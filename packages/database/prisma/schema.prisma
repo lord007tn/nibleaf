@@ -21,6 +21,9 @@ model User {
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
+  /// Recorded only when the person accepts during account creation; legacy/exempt accounts remain null.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
   /// Platform role for the internal admin panel (apps/admin): "user" | "admin".
   /// Separate from per-workspace Member roles; managed via the grant-admin script.
   role          String    @default("user")
@@ -42,6 +45,7 @@ model User {
   joinLinksCreated JoinLink[]    @relation("JoinLinkCreator")
   joinLinkUses     JoinLinkUse[]
   comments        Comment[]
+  pagesTrashed    PageTrash[]      @relation("PageTrashDeletedBy")
   exportJobs      ExportJob[]      @relation("ExportJobCreator")
   exportSchedules ExportSchedule[] @relation("ExportScheduleCreator")
   apiKeysCreated  ApiKey[]         @relation("ApiKeyCreator")
@@ -53,6 +57,8 @@ model User {
   siteMemberSessions SiteMemberSession[]
   preference      UserPreference?
   joinLinkRedemptions JoinLinkRedemption[]
+  pageRevisions PageRevision[]
+  pageRevisionStates PageRevisionState[]
 
   @@map("user")
 }
@@ -782,7 +788,10 @@ model Project {
   languages       Language[]
   translations    ProjectTranslation[]
   branches        Branch[]
+  pageRevisions   PageRevision[]
+  pageRevisionStates PageRevisionState[]
   pages           Page[]
+  pageTrash       PageTrash[]
   deployments     Deployment[]
   domains         Domain[]
   apiKeys         ApiKey[]
@@ -917,6 +926,7 @@ model Branch {
   forkBaseline Json?
 
   pages Page[]
+  pageTrash PageTrash[]
 
   @@unique([projectId, name])
   @@index([projectId])
@@ -1271,6 +1281,7 @@ model Language {
   updatedAt DateTime      @updatedAt
 
   pages               Page[]
+  pageTrash           PageTrash[]
   projectTranslations ProjectTranslation[]
 
   @@unique([projectId, code])
@@ -1331,6 +1342,8 @@ model Page {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  revisions      PageRevision[]
+  revisionStates PageRevisionState[]
   comments       Comment[]
   audienceGrants AudienceGrant[]
   gitImportSource PageGitImportSource?
@@ -1341,6 +1354,45 @@ model Page {
   @@index([languageId])
   @@index([branchId])
   @@map("page")
+}
+
+/// A deleted page subtree, kept for 30 days so it can be restored (AUTH-12).
+/// Deliberately a separate table, not a `deletedAt` on Page: the reader
+/// snapshot, publish, MCP, Git sync, search, export and slug checks read only
+/// `page`, so a trashed page can never leak to readers. `payload` holds the
+/// subtree's Page rows with their Comment, AudienceGrant and
+/// PageGitImportSource rows, tagged with a `schemaVersion`; restore validates
+/// it and fills defaults for columns added since. Purged lazily once
+/// `expiresAt` passes, and with its website, branch or language.
+model PageTrash {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  languageId  String
+  language    Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  /// The deleted page or group; restore re-inserts it with this id.
+  rootPageId  String
+  /// Where the root sat before it was deleted.
+  parentId    String?
+  position    Int
+  title       String
+  kind        PageKind @default(PAGE)
+  /// Pages in the subtree, the root included.
+  pageCount   Int      @default(1)
+  deletedById String?
+  deletedBy   User?    @relation("PageTrashDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  deletedAt   DateTime @default(now())
+  expiresAt   DateTime
+  payload     Json
+
+  @@index([projectId, branchId, deletedAt])
+  @@index([projectId, expiresAt])
+  @@index([branchId])
+  @@index([languageId])
+  @@index([deletedById])
+  @@map("page_trash")
 }
 
 /// Which repository file a one-way Git import created a page from. Re-imports
@@ -1636,6 +1688,7 @@ model Deployment {
 
   @@unique([projectId, version])
   @@index([projectId, status])
+  @@index([projectId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("deployment")
 }
 
@@ -2099,4 +2152,47 @@ model OrgMergeJournal {
 
   @@index([runId, groupKey])
   @@map("org_merge_journal")
+}
+
+/// Private draft history. A missing author resolves to the localized fallback.
+model PageRevision {
+  id String @id @default(cuid())
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pageId String
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  title String
+  content String
+  description String?
+  icon String?
+  hidden Boolean @default(false)
+  config Json?
+  /// UTF-8 bytes of title, content and serialized recoverable settings.
+  contentBytes Int
+  reason String
+
+  @@index([projectId, pageId, createdAt(sort: Desc), id])
+  @@index([userId])
+  @@map("page_revision")
+}
+
+/// Persistent per-author throttle: shared by tabs/processes, independent of
+/// retention. Serialized by the page row lock in the normal save transaction.
+model PageRevisionState {
+  projectId String
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pageId String
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSavedAt DateTime
+  lastSnapshotAt DateTime?
+
+  @@id([pageId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("page_revision_state")
 }

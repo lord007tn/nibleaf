@@ -219,8 +219,10 @@ describe('fallback article direction', () => {
   it('wraps an English fallback article inside an Arabic shell in its own language and direction', async () => {
     const html = await renderPage(page(), arabicShell, 'ar');
     expect(html).toMatch(/<article\b[^>]*lang="en"[^>]*dir="ltr"/);
-    // The date is isolated, so it cannot reorder the meta line around it.
-    expect(html).toMatch(/<bdi><time dateTime="2026-10-17T00:00:00.000Z">Oct 17, 2026<\/time><\/bdi>/);
+    // The date reads in the reader's language and is isolated, so it cannot
+    // reorder the meta line around it.
+    const date = new Intl.DateTimeFormat('ar-u-nu-latn', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date('2026-10-17T00:00:00.000Z'));
+    expect(html).toContain(`<bdi><time dateTime="2026-10-17T00:00:00.000Z">${date}</time></bdi>`);
     // Breadcrumbs and the title follow their own script.
     expect(html).toMatch(/<a\b[^>]*dir="auto"[^>]*>المدونة<\/a>/);
     expect(html).toMatch(/<h1\b[^>]*dir="auto"[^>]*>Add a new reservation<\/h1>/);
@@ -256,6 +258,14 @@ describe('navigation labels', () => {
     children,
   });
 
+  /** The `dir` of the label element holding exactly this text, whatever its styling classes. */
+  const labelDirection = (html: string, text: string): string | undefined => {
+    for (const match of html.matchAll(/<span([^>]*)>([^<]*)<\/span>/g)) {
+      if (match[2] === text) return /(?:^|\s)dir="([^"]*)"/.exec(match[1] ?? '')?.[1];
+    }
+    return undefined;
+  };
+
   it('isolate sidebar labels in their own direction', () => {
     const html = renderToStaticMarkup(
       <SiteNav
@@ -265,16 +275,16 @@ describe('navigation labels', () => {
         toggleLabel="Toggle"
       />,
     );
-    expect(html).toContain('<span class="truncate" dir="auto">الأدلة</span>');
-    expect(html).toContain('<span class="truncate" dir="auto">خطوات إسترداد مبلغ على نظام PMS</span>');
-    expect(html).toContain('<span class="truncate" dir="auto">Setup</span>');
+    expect(labelDirection(html, 'الأدلة')).toBe('auto');
+    expect(labelDirection(html, 'خطوات إسترداد مبلغ على نظام PMS')).toBe('auto');
+    expect(labelDirection(html, 'Setup')).toBe('auto');
   });
 
   it('keeps an Arabic label right to left when it opens with a Latin token', () => {
     const html = renderToStaticMarkup(
       <SiteNav nodes={[node('refund', 'PMS خطوات إسترداد مبلغ')]} projectId="docs" currentPath="" toggleLabel="Toggle" />,
     );
-    expect(html).toContain('<span class="truncate" dir="rtl">PMS خطوات إسترداد مبلغ</span>');
+    expect(labelDirection(html, 'PMS خطوات إسترداد مبلغ')).toBe('rtl');
   });
 
   it('isolate table of contents entries in their own direction', () => {

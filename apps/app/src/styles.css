@@ -2,6 +2,8 @@
 /* Document typography for rendered Markdown (published sites, preview, editor
  * parity). See the header of typeset.css for provenance and the variable API. */
 @import "./typeset.css";
+/* Tables, code blocks and task lists, shared with the editor (see the header). */
+@import "./content-blocks.css";
 
 /* Published documentation theme contract. Components use semantic variables;
  * preset/layout choices are expressed with data attributes so search and future
@@ -631,7 +633,15 @@
     border-color: color-mix(in oklab, var(--theme-accent) 35%, transparent);
   }
 
-  /* Tables: lines (rules), rows (zebra), cards (each row a raised strip). */
+  /* Tables: lines (rules), rows (zebra), cards (each row a raised strip).
+   * Lines is content-blocks.css as it is; rows drops the column rules; cards
+   * drops the frame, header tint and column rules, since every row draws its
+   * own. */
+  .nibleaf-site-chrome[data-theme-tables="cards"] .typeset .typeset-scroll {
+    border: 0;
+    border-radius: 0;
+  }
+
   .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table {
     border-collapse: separate;
     border-spacing: 0 0.375rem;
@@ -639,10 +649,13 @@
   }
 
   .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table :is(th, td) {
+    border-inline: 0;
     padding-inline: 0.85em;
   }
 
   .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table thead th {
+    border: 0;
+    background: transparent;
     padding-block: 0.25em 0.5em;
   }
 

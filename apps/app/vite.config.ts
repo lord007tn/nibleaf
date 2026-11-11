@@ -13,6 +13,7 @@ import { defineConfig, loadEnv } from 'vite';
 import { z } from 'zod';
 import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
 import { DASHBOARD_PRELOADS_CACHE_CONTROL, dashboardPreloadPlugin } from './scripts/dashboard-preload-plugin.ts';
+import { readerIconGroups } from './scripts/reader-icons.ts';
 
 // Baseline browser hardening for every dashboard, marketing, and published-site
 // response. The custom server entry adds the per-response nonce-based CSP to
@@ -108,6 +109,9 @@ export default defineConfig(({ mode }) => {
                         id.replaceAll('\\', '/'),
                       ),
                   },
+                  // The icons a docs page renders, in two chunks instead of ~45 one-icon files
+                  // (scripts/reader-icons.ts).
+                  ...readerIconGroups(import.meta.dirname),
                   {
                     name: 'standalone-i18n',
                     test: (id) =>
@@ -170,6 +174,9 @@ export default defineConfig(({ mode }) => {
       // better-auth session cookies stay first-party. All /api/** → the Nibleaf API.
       // Custom-domain serving is handled in src/server.ts (request URL rewrite).
       nitro({
+        // Files under /assets/ are served before any route; this answers the rest
+        // with a 404 that is never cached (see the handler for why it throws).
+        handlers: [{ route: '/assets/**', handler: './src/lib/asset-not-found.server.ts' }],
         routeRules: {
           '/**': { headers: SECURITY_HEADERS },
           // Marks static build output for the custom-domain edge, which shares one

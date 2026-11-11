@@ -1,7 +1,9 @@
 import { MemberRole } from '@nibleaf/shared/constants';
 import { errorResponses } from '@/errors/utils';
+import { getContextUserOrThrow } from '@/lib/hono/context';
 import { createRouteConfig } from '@/lib/hono/route-config';
 import { isAuthenticated, requireProjectMember, requireProjectOrgRole, requireProjectRole } from '@/middlewares/guard';
+import { rateLimit } from '@/middlewares/rate-limit';
 
 // The projects module mounts these at the top level, so the project id arrives
 // as `:id` (not `:projectId`) — point the project-org guards at that param.
@@ -10,6 +12,16 @@ const projectsRoutes = {
     guard: isAuthenticated,
     tags: ['projects'],
     description: 'List every documentation site the user can access.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
+  availability: createRouteConfig({
+    guard: [
+      isAuthenticated,
+      rateLimit({ windowMs: 60_000, max: 30 }),
+      rateLimit({ windowMs: 60_000, max: 20, key: () => getContextUserOrThrow().id }),
+    ],
+    tags: ['projects'],
+    description: 'Check whether a site address is available.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
   create: createRouteConfig({

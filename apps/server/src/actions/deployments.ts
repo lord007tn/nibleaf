@@ -7,6 +7,7 @@ import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/sh
 import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
 import { AppError, badRequest, notFound } from '@/errors';
+import { collectPublishChecks, type PublishCheck } from '@/lib/publish-checks';
 import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
 import { logPlatformEvent } from './platform-events';
 import { assertProjectInOrg } from './projects';
@@ -64,6 +65,9 @@ export interface PendingChanges {
   changes: PendingChange[];
   /** Blocking redirect issues for the exact draft snapshot being previewed. */
   redirectIssues: RedirectValidationIssue[];
+  /** Quality checks for the same snapshot. Warnings leave publishing allowed;
+   *  an `error` is something the publish worker would reject. */
+  checks: PublishCheck[];
 }
 
 interface DeploymentDiffLine {
@@ -380,6 +384,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
       lastPublishedAt: null,
       changes: [...current.map((p) => pageSummary(p, 'added')), ...(firstSpecChange ? [firstSpecChange] : [])],
       redirectIssues: validation.issues,
+      checks: collectPublishChecks(currentSnapshot),
     };
   }
 
@@ -411,6 +416,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
     lastPublishedAt: latest.completedAt?.toISOString() ?? null,
     changes,
     redirectIssues: validation.issues,
+    checks: collectPublishChecks(currentSnapshot),
   };
 };
 
