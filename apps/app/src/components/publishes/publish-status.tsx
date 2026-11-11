@@ -10,7 +10,10 @@ import type { Deployment, DeploymentStatus } from '@/hooks/api/types';
 export type PublishState = 'live' | 'superseded' | 'failed' | 'building' | 'queued';
 
 export const publishState = (status: DeploymentStatus, isLive: boolean): PublishState => {
-  if (status === 'READY') return isLive ? 'live' : 'superseded';
+  // The live marker can come from the polled publish list, which sees a version
+  // go live before the history is read again: that row is live, not "Building".
+  if (isLive) return 'live';
+  if (status === 'READY') return 'superseded';
   if (status === 'FAILED') return 'failed';
   return status === 'BUILDING' ? 'building' : 'queued';
 };
