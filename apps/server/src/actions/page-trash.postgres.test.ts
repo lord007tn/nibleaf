@@ -460,7 +460,7 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
   describe('page history goes to Trash and comes back (#492)', () => {
     /** Revisions oldest first, a day apart, with `size` bytes of content each. */
     const addRevisions = async (f: Awaited<ReturnType<typeof fixture>>, pageId: string, authors: Array<string | null>, size = 10, firstDay = 1) => {
-      const rows = [];
+      const rows: Array<Awaited<ReturnType<typeof db.prisma.pageRevision.create>>> = [];
       for (const [index, userId] of authors.entries()) {
         rows.push(
           await db.prisma.pageRevision.create({
