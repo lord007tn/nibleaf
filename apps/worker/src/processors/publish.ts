@@ -10,6 +10,7 @@ import {
 import { type Deployment, Prisma, type Project, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
+import { brokenLinkCheckEnabled, findBrokenInternalLinks } from '@nibleaf/shared/publish-checks';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
@@ -72,18 +73,6 @@ const logPlatformEvent = (type: string, data: { userId?: string | null; projectI
     })
     .catch(() => undefined);
 
-type ProjectWithConfig = { config: unknown };
-type PublishPage = {
-  id: string;
-  title: string;
-  kind: string;
-  path: string;
-  content: string;
-  hidden?: boolean | null;
-  languageCode: string;
-  branchId: string;
-};
-
 /** One structured check failure, persisted as `Deployment.errorDetails` JSON so
  *  the dashboard can render a per-page failure list. */
 interface PublishIssue {
@@ -109,53 +98,6 @@ const objectValue = (value: unknown): Record<string, unknown> =>
   Object.prototype.toString.call(value) === '[object Object]' ? (value as Record<string, unknown>) : {};
 
 const normalizedPagePath = (path: string): string => path.replace(/^\/+|\/+$/g, '').replace(/\.(mdx?|html)$/i, '');
-
-const hasAssetExtension = (path: string): boolean => /\.[a-z0-9]{2,8}$/i.test(path) && !/\.(mdx?|html)$/i.test(path);
-
-const internalLinkTarget = (href: string, currentPath: string): string | null => {
-  const trimmed = href.trim();
-  if (!trimmed || trimmed.startsWith('#') || /^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('//') || trimmed.startsWith('{')) {
-    return null;
-  }
-
-  const withoutHash = trimmed.split('#')[0]?.split('?')[0]?.trim() ?? '';
-  if (!withoutHash || withoutHash === '/') {
-    return null;
-  }
-  if (hasAssetExtension(withoutHash)) {
-    return null;
-  }
-
-  const base = currentPath.includes('/') ? currentPath.split('/').slice(0, -1) : [];
-  const parts = withoutHash.startsWith('/') ? [] : [...base];
-  for (const segment of withoutHash.replace(/^\/+/, '').split('/')) {
-    if (!segment || segment === '.') {
-      continue;
-    }
-    if (segment === '..') {
-      parts.pop();
-      continue;
-    }
-    parts.push(segment);
-  }
-
-  return normalizedPagePath(parts.join('/'));
-};
-
-const markdownLinks = (content: string): string[] => {
-  const links: string[] = [];
-  for (const match of content.matchAll(/(?<!!)\[[^\]]*]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g)) {
-    if (match[1]) {
-      links.push(match[1]);
-    }
-  }
-  for (const match of content.matchAll(/\bhref=["']([^"']+)["']/g)) {
-    if (match[1]) {
-      links.push(match[1]);
-    }
-  }
-  return links;
-};
 
 const stripCodeForCopyChecks = (content: string): string =>
   content
@@ -192,59 +134,33 @@ const grammarIssues = (content: string): string[] => {
  * Returns structured issues instead of throwing so the caller can persist them
  * as `Deployment.errorDetails`. Broken links ALWAYS block (when enabled);
  * `skipGrammarChecks` lets a user publish past the grammar linter only.
+ *
+ * Broken links come from `@nibleaf/shared/publish-checks`, the resolver the
+ * publish dialog's preflight uses, so the dialog and this gate always agree:
+ * redirects, `?lang=` and `/ar/…` language prefixes, group paths, reserved
+ * routes and the API reference resolve as the reader serves them, and links
+ * inside code are ignored.
  */
-export function collectPublishIssues(
-  project: ProjectWithConfig,
-  pages: PublishPage[],
-  options: { skipGrammarChecks?: boolean } = {},
-): PublishIssue[] {
-  const addons = objectValue(objectValue(project.config).addons);
+export function collectPublishIssues(snapshot: SiteSnapshot, options: { skipGrammarChecks?: boolean } = {}): PublishIssue[] {
+  const addons = objectValue(objectValue(snapshot.project.config).addons);
   if (addons.ciChecks === false) {
     return [];
   }
   const issues: PublishIssue[] = [];
 
-  if (addons.brokenLinks !== false) {
-    const pathsByScope = new Map<string, Set<string>>();
-    for (const page of pages) {
-      if (page.kind !== 'PAGE' || page.hidden) {
-        continue;
-      }
-      const scope = `${page.languageCode}:${page.branchId}`;
-      const set = pathsByScope.get(scope) ?? new Set<string>();
-      set.add(normalizedPagePath(page.path));
-      pathsByScope.set(scope, set);
-    }
-
-    for (const page of pages) {
-      if (page.kind !== 'PAGE' || page.hidden) {
-        continue;
-      }
-      const currentPath = normalizedPagePath(page.path);
-      for (const href of markdownLinks(page.content)) {
-        const target = internalLinkTarget(href, currentPath);
-        if (!target || target === 'changelog') {
-          continue;
-        }
-        const languages = new URLSearchParams(href.split('#')[0]?.split('?')[1] ?? '').getAll('lang');
-        const targetLanguage = languages.length === 0 ? page.languageCode : languages.length === 1 ? languages[0] : '';
-        // Only an existing visible target in this same project/branch can
-        // satisfy a locale switch. Unknown/ambiguous locales remain broken.
-        const scopePaths = pathsByScope.get(`${targetLanguage}:${page.branchId}`) ?? new Set<string>();
-        if (!scopePaths.has(target)) {
-          issues.push({
-            type: 'broken-link',
-            pageTitle: page.title,
-            pagePath: currentPath || '/',
-            detail: `Link to "${href}" does not match any page.`,
-          });
-        }
-      }
+  if (brokenLinkCheckEnabled(snapshot.project.config)) {
+    for (const { page, href } of findBrokenInternalLinks(snapshot)) {
+      issues.push({
+        type: 'broken-link',
+        pageTitle: page.title,
+        pagePath: normalizedPagePath(page.path) || '/',
+        detail: `Link to "${href}" does not match any page.`,
+      });
     }
   }
 
   if (addons.grammarLinter === true && options.skipGrammarChecks !== true) {
-    for (const page of pages) {
+    for (const page of snapshot.pages) {
       if (page.kind !== 'PAGE' || page.hidden) {
         continue;
       }
@@ -465,11 +381,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
         pageRows,
         new Date().toISOString(),
       );
-    const issues = collectPublishIssues(
-      draftSnapshot.project,
-      draftSnapshot.pages.map((page) => ({ ...page, branchId: page.versionId })),
-      { skipGrammarChecks: skipGrammarChecks === true },
-    );
+    const issues = collectPublishIssues(draftSnapshot, { skipGrammarChecks: skipGrammarChecks === true });
     if (issues.length > 0) {
       throw new PublishChecksError(summarizeIssues(issues), issues);
     }
