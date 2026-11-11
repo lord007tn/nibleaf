@@ -102,6 +102,8 @@
   "publish_checking": "تبدیلیوں کی جانچ ہو رہی ہے…",
   "publish_none": "آخری اشاعت کے بعد سے کوئی تبدیلی نہیں ہوئی۔",
   "publish_nonehint": "پچھلی اشاعت کے بعد کسی مضمون میں تبدیلی نہیں ہوئی۔ ری ڈائریکٹس جیسی ترتیبات کی تبدیلیاں لاگو کرنے کے لیے آپ پھر بھی شائع کر سکتے ہیں۔",
+  "publish_addpagefirst": "شائع کرنے سے پہلے ایک صفحہ شامل کریں۔",
+  "publish_uptodate": "اس سائٹ کی ہر چیز پہلے ہی لائیو ہے۔",
   "publish_sinceversion": "شائع شدہ نسخہ {version}",
   "publish_firstpublish": "پہلے شائع کریں۔",
   "publish_firstpublishhint": "آپ کی سائٹ کو پہلی بار شائع کرنا۔",
@@ -500,6 +502,16 @@
   "editor_deletegroup": "گروپ حذف کریں",
   "editor_deletegroupconfirm": "گروپ “{title}” کو ردی میں منتقل کریں؟ یہ وہاں 30 دن تک رہے گا، اس لیے آپ اسے بحال کر سکتے ہیں۔",
   "editor_deletegroupwithchildrenconfirm": "گروپ “{title}” اور اس کے اندر کے صفحات ({count}) ردی میں منتقل کریں؟ ان صفحات کو درخت میں رکھنے کے لیے پہلے انہیں گروپ سے باہر گھسیٹیں۔ سب کچھ 30 دن تک ردی میں رہے گا۔",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ یہاں لنک کرتا ہے",
+        "form=*": "{count} صفحات یہاں لنک کرتے ہیں"
+      }
+    }
+  ],
   "editor_deleted": "“{title}” ردی میں منتقل ہو گیا",
   "editor_deletefailed": "صفحہ حذف نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
   "editor_trash_button": "ردی ({count})",
@@ -2095,11 +2107,13 @@
   "deploy_step_live": "جیو",
   "deploy_deploying": "شائع ہو رہا ہے…",
   "deploy_deployed": "آپ کی تبدیلیاں شائع ہو گئی ہیں",
+  "deploy_firstlive": "آپ کی سائٹ لائیو ہے",
   "deploy_failed": "اشاعت مکمل نہیں ہوئی",
   "deploy_faileddetails": "کیا مسئلہ ہوا",
   "deploy_published": "شائع ہوا — آپ کی سائٹ لائیو ہے۔",
   "deploy_viewsite": "سائٹ دیکھیں",
   "deploy_viewsitearrow": "سائٹ دیکھیں →",
+  "deploy_copyaddress": "پتہ کاپی کریں",
   "deploy_done": "ہو گیا",
   "deploy_close": "بند",
   "deploy_rollback": "پچھلا نسخہ بحال کریں",
@@ -4765,5 +4779,14 @@
   "editor_history_snapshottoolarge": "موجودہ مسودہ یا منتخب اندراج محفوظ بحالی کے لیے بہت بڑا ہے۔",
   "editor_history_restored": "صفحہ بحال ہو گیا",
   "editor_history_added": "شامل کیا گیا",
-  "editor_history_removed": "حذف کیا گیا"
+  "editor_history_removed": "حذف کیا گیا",
+  "publishes_title": "اشاعتیں",
+  "publishes_superseded": "تبدیل شدہ",
+  "publishes_restore": "یہ نسخہ بحال کریں",
+  "publishes_changessince": "نسخہ {version} کے بعد کی تبدیلیاں",
+  "publishes_settingschanged": "اس نسخے میں سائٹ کی ترتیبات بھی تبدیل ہوئیں۔",
+  "publishes_truncated": "{total} تبدیل شدہ صفحات میں سے پہلے {shown} دکھائے جا رہے ہیں۔",
+  "overview_activity_viewall": "سب دیکھیں",
+  "publishes_toolarge": "یہ نسخہ یہاں موازنے کے لیے بہت بڑا ہے۔",
+  "publishes_nosnapshot": "اس نسخے کی شائع شدہ کاپی اب محفوظ نہیں، اس لیے نہ اس کا موازنہ ہو سکتا ہے اور نہ اسے بحال کیا جا سکتا ہے۔"
 }

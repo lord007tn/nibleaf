@@ -88,6 +88,34 @@ const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean
   return { lines: out, fenced: outFenced };
 };
 
+/** An inline code span (kept as written) or an MDX comment `{/* … *\/}` (removed),
+ *  whichever starts first, so a comment containing backticks is still one comment
+ *  and a comment shown inside inline code stays an example. */
+const CODE_OR_MDX_COMMENT = /(`+)[\s\S]*?\1|\{\s*\/\*[\s\S]*?\*\/\s*\}/g;
+
+/** MDX comments are authoring notes: MDX drops them, so the reader must not show
+ *  them (or any link inside them). Fenced code and inline code keep them as written;
+ *  an indented line is not code in MDX, so a comment there is dropped too. A comment
+ *  may span lines; an unclosed `{/*` is left as text. */
+const stripMdxComments = (lines: readonly string[], fenced: readonly boolean[]): string[] => {
+  const out: string[] = [];
+  let start = 0;
+  for (let index = 1; index <= lines.length; index += 1) {
+    if (index < lines.length && Boolean(fenced[index]) === Boolean(fenced[start])) continue;
+    const run = lines.slice(start, index);
+    if (fenced[start]) out.push(...run);
+    else
+      out.push(
+        ...run
+          .join('\n')
+          .replace(CODE_OR_MDX_COMMENT, (match, code: string | undefined) => (code ? match : ''))
+          .split('\n'),
+      );
+    start = index;
+  }
+  return out;
+};
+
 /** Ensure block component tags are separated from their inner content by a blank
  *  line, so CommonMark parses the children as Markdown. Without this, content
  *  directly after `<Note>` is captured as a raw HTML block and inline Markdown
@@ -107,7 +135,8 @@ export function normalizeMdxBlocks(src: string): string {
     return [`${indent}<${tag}${attributes}>`, '', ...expand(body.trim()), '', `${indent}</${tag}>`];
   };
   // Code samples are never rewritten: every step below skips fenced lines.
-  const source = src.split('\n');
+  const authoredSource = src.split('\n');
+  const source = stripMdxComments(authoredSource, fencedMarkdownLines(authoredSource));
   const { lines: authored, fenced: authoredFences } = joinMultilineOpeners(source, fencedMarkdownLines(source));
   const lines = authored.flatMap((line, index) => (authoredFences[index] ? [line] : expand(line)));
   const fenced = fencedMarkdownLines(lines);

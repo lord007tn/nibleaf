@@ -21,14 +21,27 @@ vi.mock('@tanstack/react-router', () => ({
     children,
     className,
     search,
+    to,
+    params,
     'aria-label': ariaLabel,
+    'data-testid': testId,
   }: {
     children?: ReactNode;
     className?: string;
     search?: { section?: string };
+    to?: string;
+    params?: Record<string, string>;
     'aria-label'?: string;
+    'data-testid'?: string;
   }) => (
-    <a aria-label={ariaLabel} className={className} href={search?.section ? `/settings?section=${search.section}` : '/link'}>
+    <a
+      aria-label={ariaLabel}
+      className={className}
+      data-params={params ? JSON.stringify(params) : undefined}
+      data-testid={testId}
+      data-to={to}
+      href={search?.section ? `/settings?section=${search.section}` : '/link'}
+    >
       {children}
     </a>
   ),
@@ -359,6 +372,23 @@ describe('site overview when something fails or is still connecting', () => {
       expect(failedRow?.querySelector('[data-slot="badge"]')).not.toBeNull();
       expect(readyRow?.textContent).toContain('overview.activity.publish');
       expect(readyRow?.querySelector('[data-slot="badge"]')).toBeNull();
+    });
+
+    it('links each Activity line to its version and offers the full publish history', async () => {
+      Object.assign(queries, {
+        project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 1 }),
+        deployments: loaded([{ ...readyDeployment, id: 'dep-f', version: 4, status: 'FAILED' }, readyDeployment]),
+      });
+      await act(async () => root.render(<SiteOverviewPage />));
+      const rows = [...container.querySelectorAll('[data-testid="activity-row"]')];
+      expect(rows.map((row) => [row.getAttribute('data-to'), JSON.parse(row.getAttribute('data-params') ?? '{}')])).toEqual([
+        ['/app/projects/$projectId/publishes/$deploymentId', { projectId: 'project-1', deploymentId: 'dep-f' }],
+        ['/app/projects/$projectId/publishes/$deploymentId', { projectId: 'project-1', deploymentId: readyDeployment.id }],
+      ]);
+      expect(rows[0]?.textContent).toContain('v4');
+      const viewAll = container.querySelector('[data-testid="activity-view-all"]');
+      expect(viewAll?.getAttribute('data-to')).toBe('/app/projects/$projectId/publishes');
+      expect(viewAll?.textContent).toBe('overview.activity.viewAll');
     });
 
     it('shows a publish that just went live before the site is read again', async () => {
