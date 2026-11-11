@@ -81,6 +81,16 @@ describe('copying an answer', () => {
   });
 });
 
+describe('citations in copied HTML', () => {
+  it('puts one space before a run of citations, as in plain text', () => {
+    const { sections } = answerSources([source('S1', 'Add your domain'), source('S2', 'Wait')]);
+    const answer = document.createElement('div');
+    answer.innerHTML =
+      '<p>Add it. <button data-citation="1">1</button><button data-citation="2">2</button> Then wait<button data-citation="2">2</button></p>';
+    expect(htmlCopy(answer, sections, link, labels)).toContain('<p>Add it. [1][2] Then wait [2]</p>');
+  });
+});
+
 describe('writing to the clipboard', () => {
   afterEach(() => {
     vi.unstubAllGlobals();

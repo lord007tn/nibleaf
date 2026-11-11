@@ -91,7 +91,16 @@ export function htmlCopy(answer: HTMLElement, sections: readonly CitedSection[],
   const direction = answer.closest('[dir]')?.getAttribute('dir');
   if (direction) root.setAttribute('dir', direction);
   const body = answer.cloneNode(true) as HTMLElement;
-  for (const citation of body.querySelectorAll('[data-citation]')) citation.replaceWith(` [${citation.getAttribute('data-citation')}]`);
+  // One space before a run of citations (`[1][2]`, as in plain text), whether or
+  // not the text before it already ends in one.
+  const numbers = new WeakSet<Node>();
+  for (const citation of body.querySelectorAll('[data-citation]')) {
+    const before = citation.previousSibling;
+    const joined = before !== null && (numbers.has(before) || /\s$/.test(before.textContent ?? ''));
+    const number = document.createTextNode(`${joined ? '' : ' '}[${citation.getAttribute('data-citation')}]`);
+    numbers.add(number);
+    citation.replaceWith(number);
+  }
   for (const element of [body, ...body.querySelectorAll('*')]) {
     for (const { name } of [...element.attributes]) if (name !== 'dir') element.removeAttribute(name);
   }
