@@ -5,11 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageNode } from '@/hooks/api/types';
 import { PageSettingsDialog } from './page-settings-dialog';
 
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
-const mocks = vi.hoisted(() => ({ reorder: vi.fn(), confirm: vi.fn() }));
+vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.translate }));
+const mocks = vi.hoisted(() => ({ reorder: vi.fn(), confirm: vi.fn(), update: vi.fn(), success: vi.fn(), translate: vi.fn((key: string) => key) }));
+vi.mock('sonner', () => ({ toast: { success: mocks.success, error: vi.fn() } }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: () => 'error',
-  useUpdatePage: () => ({ isPending: false, mutate: vi.fn() }),
+  useUpdatePage: () => ({ isPending: false, mutate: mocks.update }),
   useReorderPages: () => ({ isPending: false, mutate: mocks.reorder }),
 }));
 vi.mock('@nibleaf/design-system/components/ui/select', () => ({
@@ -68,6 +69,22 @@ describe('page settings draft', () => {
     expect(document.querySelector<HTMLInputElement>('#page-title')?.value).toBe('Unsaved dialog title');
     await act(async () => render({ ...page, id: 'page-b', title: 'Other page' }));
     expect(document.querySelector<HTMLInputElement>('#page-title')?.value).toBe('Other page');
+  });
+
+  it.each([
+    [{ addressChanged: true, redirectsAdded: 1, linksUpdated: 2 }, 'editor.pageSettings.addressChanged'],
+    [{ addressChanged: false, redirectsAdded: 0, linksUpdated: 0 }, 'editor.pageSettings.saved'],
+  ])('shows the server address-change feedback after saving: %s', async (result, message) => {
+    const close = vi.fn();
+    await act(async () => root.render(<PageSettingsDialog onOpenChange={close} open page={page} projectId="project-a" />));
+    const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
+    if (!save) throw new Error('Save button was not rendered');
+    await act(async () => save.click());
+    const options = mocks.update.mock.calls.at(-1)?.[1] as { onSuccess: (data: typeof result) => void };
+    await act(async () => options.onSuccess(result));
+    expect(mocks.success).toHaveBeenLastCalledWith(message);
+    if (result.addressChanged) expect(mocks.translate).toHaveBeenCalledWith(message, { path: '\u2066/original\u2069', redirects: 1, links: 2 });
+    expect(close).toHaveBeenLastCalledWith(false);
   });
 
   it('moves the page and its subtree to the chosen language after confirming', async () => {

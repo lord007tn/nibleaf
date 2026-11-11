@@ -28,6 +28,7 @@ export interface ServerSnapshot extends DraftSnapshot {
 }
 
 export interface DraftState {
+  conflicted?: boolean;
   /** Server copy the draft mirrors (hydrated from / last saved as); null before the first load. */
   synced: ServerSnapshot | null;
   draft: DraftSnapshot;
@@ -72,6 +73,7 @@ export function nextHydration(state: DraftState, page: ServerSnapshot | null | u
     return null;
   }
   const { synced } = state;
+  if (state.conflicted && synced?.id === page.id) return null;
   // A different page (first load, page switch, a freshly created page, another
   // language): always load its own server copy, whatever the draft holds.
   if (!synced || synced.id !== page.id) {
@@ -93,6 +95,7 @@ export function nextHydration(state: DraftState, page: ServerSnapshot | null | u
  * The draft is only ever saved to the page it was hydrated from.
  */
 export function shouldAutosave(state: DraftState, page: Pick<ServerSnapshot, 'id'> | null | undefined): boolean {
+  if (state.conflicted) return false;
   const { synced } = state;
   if (!page || !synced || synced.id !== page.id) {
     return false;
@@ -104,6 +107,9 @@ export function shouldAutosave(state: DraftState, page: Pick<ServerSnapshot, 'id
   // cannot distinguish a load race from a deliberate Select All → Delete.
   return true;
 }
+
+export const isEditorRevisionConflict = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:revision_conflict';
 
 /** A pending older write can make a currently clean draft dirty on the server. */
 export function shouldFlushDraft(
