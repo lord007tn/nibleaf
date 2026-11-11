@@ -642,6 +642,38 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
       expect(await db.prisma.pageTrash.count({ where: { id: expiring.trashId } })).toBe(0);
       expect(await revisionsOf([f.setup.id, f.deep.id, f.last.id])).toEqual([]);
     });
+
+    it('makes an account delete wait for a restore that brings back its history, then nulls the author', async () => {
+      const f = await fixture();
+      // An author with history on the page and no comments.
+      const historian = await person();
+      const [revision] = await addRevisions(f, f.setup.id, [historian.id]);
+      const deleted = await trash.deletePage(f.project.id, f.setup.id, f.author.id);
+      let accountDelete: Promise<unknown> | undefined;
+      let waited = false;
+      await expect(
+        trash.restorePageTrashItem(
+          f.project.id,
+          deleted.trashId,
+          {},
+          {
+            afterAuthorsLocked: async () => {
+              accountDelete = db.prisma.user.delete({ where: { id: historian.id } });
+              const settled = await Promise.race([
+                accountDelete.then(() => 'done'),
+                new Promise((resolve) => setTimeout(() => resolve('waiting'), 500)),
+              ]);
+              waited = settled === 'waiting';
+            },
+          },
+        ),
+      ).resolves.toBeDefined();
+      expect(waited).toBe(true);
+      await accountDelete;
+      expect(await db.prisma.user.count({ where: { id: historian.id } })).toBe(0);
+      const restored = await revisionsOf([f.setup.id]);
+      expect(restored.map((row) => [row.id, row.userId])).toEqual([[revision?.id, null]]);
+    });
   });
 
   describe('erasure leaves no Trash behind', () => {

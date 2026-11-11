@@ -118,7 +118,7 @@ export const trashedRevisionSchema = z.object({
   hidden: z.boolean().default(false),
   config: jsonValue,
   contentBytes: z.number().int().nonnegative().default(0),
-  reason: z.string().min(1).default('autosave'),
+  reason: z.enum(['autosave', 'before-restore']).default('autosave'),
 });
 
 const revisionCountSchema = z.object({ total: z.number().int().nonnegative(), kept: z.number().int().nonnegative() });
@@ -363,7 +363,8 @@ export const deletePage = async (projectId: string, id: string, deletedById?: st
           hidden: revision.hidden,
           config: revision.config,
           contentBytes: revision.contentBytes,
-          reason: revision.reason,
+          // The database CHECK allows only these two values.
+          reason: revision.reason === 'before-restore' ? ('before-restore' as const) : ('autosave' as const),
         })),
         limit,
       );
@@ -449,7 +450,17 @@ export const purgePageTrashItem = async (projectId: string, trashId: string) =>
  * level. A root address another page took meanwhile gets a suffix (`intro` →
  * `intro-2`) and the subtree's paths are recomputed.
  */
-export const restorePageTrashItem = async (projectId: string, trashId: string, body: RestorePageTrashBody = {}) =>
+interface RestorePageTrashOptions {
+  /** Tests only: runs once the comment and revision authors are locked. */
+  afterAuthorsLocked?: () => Promise<void>;
+}
+
+export const restorePageTrashItem = async (
+  projectId: string,
+  trashId: string,
+  body: RestorePageTrashBody = {},
+  options: RestorePageTrashOptions = {},
+) =>
   prisma.$transaction(
     async (tx) => {
       await lockProjectTree(tx, projectId);
@@ -538,11 +549,11 @@ export const restorePageTrashItem = async (projectId: string, trashId: string, b
           ...payload.revisions.flatMap((revision) => (revision.userId ? [revision.userId] : [])),
         ]),
       ];
-      const users = new Set(
-        (await Promise.all(chunks(userIds).map((chunk) => tx.user.findMany({ where: { id: { in: chunk } }, select: { id: true } }))))
-          .flat()
-          .map((user) => user.id),
-      );
+      // Locked like the trash write's authors: an account deleted from here on
+      // waits for this restore (and its SET NULL / cascade then applies), so no
+      // insert below can reference a user that is gone.
+      const users = await lockLiveAuthors(tx, userIds);
+      await options.afterAuthorsLocked?.();
       const comments = payload.comments.filter((comment) => ids.has(comment.pageId) && users.has(comment.userId));
       if (comments.length > 0) {
         await tx.comment.createMany({

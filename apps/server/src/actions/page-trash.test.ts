@@ -49,7 +49,7 @@ describe('fitRevisions', () => {
     hidden: false,
     config: null,
     contentBytes: size,
-    reason: 'autosave',
+    reason: 'autosave' as const,
   });
   // Oldest to newest across two pages.
   const revisions = [revision('r1', 'a', 1, 400), revision('r2', 'b', 2, 400), revision('r3', 'a', 3, 400), revision('r4', 'b', 4, 400)];
@@ -124,6 +124,14 @@ describe('parsePageTrashPayload', () => {
     ['a root that is not in the payload', { schemaVersion: 1, pages: [{ ...page, id: 'other' }] }],
     ['a child outside the subtree', { schemaVersion: 1, pages: [page, { id: 'child', parentId: 'elsewhere', title: 'C', slug: 'c' }] }],
     ['duplicate ids', { schemaVersion: 1, pages: [page, page] }],
+    [
+      'a revision with an unknown reason',
+      {
+        schemaVersion: 2,
+        pages: [page],
+        revisions: [{ id: 'r', pageId: 'root', title: 'T', createdAt: '2026-11-01T00:00:00.000Z', reason: 'manual' }],
+      },
+    ],
     ['not an object', 'garbage'],
   ])('refuses %s', (_label, raw) => {
     expect(() => parsePageTrashPayload('t', 'root', raw)).toThrow(
