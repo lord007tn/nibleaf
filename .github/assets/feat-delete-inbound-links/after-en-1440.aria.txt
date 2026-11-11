@@ -1,0 +1,24 @@
+- dialog "Delete page":
+  - heading "Delete page" [level=2]
+  - paragraph: Move “Setup” to Trash? Readers will stop seeing it after your next publish. It stays in Trash for 30 days, so you can restore it.
+  - status:
+    - text: 8 pages link here
+    - list:
+      - listitem:
+        - link "Quick start":
+          - /url: /app/projects/fixture-site/editor?page=source-0
+      - listitem:
+        - link "Installation guide":
+          - /url: /app/projects/fixture-site/editor?page=source-1
+      - listitem:
+        - link "Account setup":
+          - /url: /app/projects/fixture-site/editor?page=source-2
+      - listitem:
+        - link "API reference":
+          - /url: /app/projects/fixture-site/editor?page=source-3
+      - listitem:
+        - link "Frequently asked questions":
+          - /url: /app/projects/fixture-site/editor?page=source-4
+    - paragraph: +3 more
+  - button "Cancel"
+  - button "Delete page"
