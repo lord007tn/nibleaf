@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { excerpt, markdownToPlainText, pageDescription, pageExcerpt } from './markdown-text';
+import { excerpt, markdownToPlainText, pageDescription, pageDescriptionText, pageExcerpt } from './markdown-text';
 import { truncateText } from './utils';
 
 describe('excerpt', () => {
@@ -200,6 +200,20 @@ describe('pageDescription', () => {
   it('keeps paragraphs inside callouts and quotes, in order', () => {
     const content = '> [!NOTE]\n> Back up the database first.\n\n<Note>\nUse a strong password.\n</Note>\n\n## Steps\n\n- Ignored list item';
     expect(pageDescription(page(content))).toBe('Back up the database first. Use a strong password.');
+  });
+
+  it('keeps the prose found in a shorter prefix when a longer one has unclosed raw HTML', () => {
+    // Under 200 characters of prose in the first 1.5 KB, then an unclosed comment in the 4 KB prefix.
+    const content = `# Install\n\nRun the installer, then sign in.\n\n${'- step\n'.repeat(260)}\n<!-- draft notes`;
+    expect(content.length).toBeGreaterThan(1536);
+    expect(pageDescription(page(content))).toBe('Run the installer, then sign in.');
+  });
+
+  it('gives the editor the full text, and search the same text cut at about 155 characters', () => {
+    const long = page(`${'Configure the reservation calendar for each property. '.repeat(6)}`);
+    expect(pageDescriptionText(long)).toBe('Configure the reservation calendar for each property. '.repeat(6).trim());
+    expect(pageDescriptionText(long).endsWith('…')).toBe(false);
+    expect(pageDescription(long)).toBe(truncateText(pageDescriptionText(long), 155));
   });
 
   it('falls back to all visible text when a page has no paragraphs', () => {

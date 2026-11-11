@@ -265,7 +265,8 @@ const extract = (source: string, proseOnly = false): string => {
   const body = stripFrontmatter(source);
   let text = '';
   for (const size of PREFIXES) {
-    text = extractPrefix(body.slice(0, size), proseOnly);
+    // A larger prefix the guards turn away ('' on the prose path) keeps the prose already found.
+    text = extractPrefix(body.slice(0, size), proseOnly) || text;
     if (text.length >= ENOUGH_TEXT || body.length <= size) break;
   }
   return text;
@@ -310,10 +311,16 @@ export const excerpt = (source: string, max = 160): string => truncateText(markd
  *  llms.txt, exports), never shown as a visible lede. */
 export const pageExcerpt = (page: Pick<SnapshotPage, 'content'>, max = 160): string => excerpt(page.content, max);
 
-/** One-line description: the author's SEO override, then their summary, then the
- *  body's paragraphs (not its headings, lists, tables or code). */
-export const pageDescription = (page: Pick<SnapshotPage, 'description' | 'content'> & { config?: SnapshotPageConfig | null }): string => {
+type DescribedPage = Pick<SnapshotPage, 'description' | 'content'> & { config?: SnapshotPageConfig | null };
+
+/** The page's description in full, before it is cut to search length: the author's
+ *  SEO override, then their summary, then the body's paragraphs (not its headings,
+ *  lists, tables or code). For the editor, which shows the cut itself and lets the
+ *  author start from the whole text. */
+export const pageDescriptionText = (page: DescribedPage): string => {
   const authored = page.config?.seo?.metaDescription?.trim() || explicitPageDescription(page);
-  const text = authored ? markdownToPlainText(authored) : markdownToProse(page.content);
-  return truncateText(tidyPunctuation(text), DESCRIPTION_LENGTH);
+  return tidyPunctuation(authored ? markdownToPlainText(authored) : markdownToProse(page.content));
 };
+
+/** One-line description, cut where search results cut it (see pageDescriptionText). */
+export const pageDescription = (page: DescribedPage): string => truncateText(pageDescriptionText(page), DESCRIPTION_LENGTH);

@@ -3,7 +3,7 @@ import { Prisma, prisma } from '@nibleaf/database';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
-import { pageDescription } from '@nibleaf/shared/markdown-text';
+import { pageDescriptionText } from '@nibleaf/shared/markdown-text';
 import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
 import { interpolateVariablesWithin, variablesFromConfig } from '@nibleaf/shared/site';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
@@ -55,7 +55,7 @@ export const getPage = async (projectId: string, id: string) => {
 };
 
 /** How much of the body the generated description is built from, before and
- *  after variables. `pageDescription` reads at most the first 4 KB after the
+ *  after variables. `pageDescriptionText` reads at most the first 4 KB after the
  *  frontmatter, so 8 KB always covers it. */
 export const SEARCH_DESCRIPTION_SOURCE_LIMIT = 8192;
 const SEARCH_DESCRIPTION_CACHE_LIMIT = 500;
@@ -109,7 +109,8 @@ export const getPageSearchDescription = async (projectId: string, id: string) =>
   const revision = page.updatedAt.toISOString();
   const source = withoutFrontmatter(page.content).slice(0, SEARCH_DESCRIPTION_SOURCE_LIMIT);
   const content = interpolateVariablesWithin(source, variablesFromConfig(project?.config), SEARCH_DESCRIPTION_SOURCE_LIMIT);
-  const description = pageDescription({ content, description: null });
+  // In full: the editor shows the search-length cut itself, and "Write your own" starts from the whole text.
+  const description = pageDescriptionText({ content, description: null });
   searchDescriptionCache.set(cacheKey(revision), description);
   if (searchDescriptionCache.size > SEARCH_DESCRIPTION_CACHE_LIMIT) {
     searchDescriptionCache.delete(searchDescriptionCache.keys().next().value as string);
