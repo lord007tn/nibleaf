@@ -4596,5 +4596,51 @@
   "newsite_starter_faq_title": "अक्सर पूछे जाने वाले सवाल",
   "newsite_starter_faq_content": "## आम सवाल\n\nकिसी असली सवाल का जवाब कुछ वाक्यों में दें।\n\n- बताएँ कि खाता सेटिंग कहाँ मिलती हैं।\n- पाठकों को टीम से संपर्क करने का तरीका बताएँ।\n",
   "newsite_addresslatinhint": "साइट के पते में लैटिन अक्षर इस्तेमाल होते हैं। आसानी से पढ़ा जाने वाला पता चुनें, जैसे help-center।",
-  "newsite_addressunavailable": "यह पता आरक्षित है या उपलब्ध नहीं है। कोई दूसरा पता चुनें।"
+  "newsite_addressunavailable": "यह पता आरक्षित है या उपलब्ध नहीं है। कोई दूसरा पता चुनें।",
+  "publish_checks_title": "जाँचें",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} त्रुटि",
+        "form=*": "{count} त्रुटियाँ"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} चेतावनी",
+        "form=*": "{count} चेतावनियाँ"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "प्रकाशित करना अब भी संभव है",
+  "publish_checks_mustfix": "प्रकाशित करने के लिए त्रुटियाँ ठीक करें",
+  "publish_checks_allclear": "सभी जाँचें पास हो गईं",
+  "publish_checks_allclearhint": "कोई टूटा लिंक, बिना वैकल्पिक टेक्स्ट वाली इमेज, बिना शीर्षक वाला पेज या बचे हुए अक्षर नहीं हैं।",
+  "publish_checks_fix": "ठीक करें",
+  "publish_checks_fixlabel": "एडिटर में {title} ठीक करें",
+  "publish_checks_blockedreason": "प्रकाशित करने से पहले जाँचें में दी गई त्रुटियाँ ठीक करें।",
+  "publish_checks_error": "त्रुटि",
+  "publish_checks_warning": "चेतावनी",
+  "publish_checks_duplicateof": "{path} जैसा ही शीर्षक",
+  "publish_checks_pathtoolong": "लिंक का पता बहुत लंबा है (2048 से अधिक वर्ण)",
+  "publish_checks_brokenlink": "टूटे लिंक",
+  "publish_checks_brokenlinkhint": "ये लिंक ऐसे पेज पर ले जाते हैं जो प्रकाशित साइट पर मौजूद नहीं होगा।",
+  "publish_checks_missingalt": "बिना वैकल्पिक टेक्स्ट वाली इमेज",
+  "publish_checks_missingalthint": "स्क्रीन रीडर इन इमेज का वर्णन नहीं कर सकते। हर इमेज में वैकल्पिक टेक्स्ट जोड़ें।",
+  "publish_checks_untitledpage": "बिना शीर्षक वाले पेज",
+  "publish_checks_untitledpagehint": "इन पेजों को असली शीर्षक दें ताकि पाठक उन्हें ढूँढ सकें।",
+  "publish_checks_straycharacters": "बचे हुए अक्षर",
+  "publish_checks_straycharactershint": "अकेला / या शाब्दिक --- पेज पर टेक्स्ट के रूप में दिखता है।",
+  "publish_checks_unreadableslug": "पढ़ने में कठिन वेब पते",
+  "publish_checks_unreadableslughint": "शब्दों से बना छोटा पता इस्तेमाल करें, ताकि लिंक पढ़ना और शेयर करना आसान हो।",
+  "publish_checks_emptypage": "खाली पेज",
+  "publish_checks_emptypagehint": "इन पेजों में अभी कोई सामग्री नहीं है, इसलिए पाठकों को खाली पेज दिखेगा।",
+  "publish_checks_duplicatetitle": "दोहराए गए शीर्षक",
+  "publish_checks_duplicatetitlehint": "एक ही सेक्शन के पेजों का शीर्षक एक जैसा है, इसलिए पाठक उनमें फ़र्क नहीं कर पाते।"
 }

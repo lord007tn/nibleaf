@@ -4652,5 +4652,51 @@
   "newsite_starter_faq_title": "اکثر پوچھے جانے والے سوالات",
   "newsite_starter_faq_content": "## عام سوالات\n\nکسی حقیقی سوال کا جواب چند جملوں میں دیں۔\n\n- بتائیں کہ اکاؤنٹ کی ترتیبات کہاں ملتی ہیں۔\n- قارئین کو اپنی ٹیم سے رابطے کا طریقہ بتائیں۔\n",
   "newsite_addresslatinhint": "سائٹ کے پتوں میں لاطینی حروف استعمال ہوتے ہیں۔ آسانی سے پڑھا جانے والا پتہ منتخب کریں، مثلاً help-center۔",
-  "newsite_addressunavailable": "یہ پتہ محفوظ ہے یا دستیاب نہیں ہے۔ کوئی دوسرا پتہ منتخب کریں۔"
+  "newsite_addressunavailable": "یہ پتہ محفوظ ہے یا دستیاب نہیں ہے۔ کوئی دوسرا پتہ منتخب کریں۔",
+  "publish_checks_title": "جانچ",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} خرابی",
+        "form=*": "{count} خرابیاں"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} انتباہ",
+        "form=*": "{count} انتباہات"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "شائع کرنا اب بھی ممکن ہے",
+  "publish_checks_mustfix": "شائع کرنے کے لیے خرابیاں ٹھیک کریں",
+  "publish_checks_allclear": "تمام جانچ کامیاب رہی",
+  "publish_checks_allclearhint": "کوئی ٹوٹا ہوا لنک، متبادل متن کے بغیر تصویر، بغیر عنوان کا صفحہ یا فالتو حروف نہیں ہیں۔",
+  "publish_checks_fix": "ٹھیک کریں",
+  "publish_checks_fixlabel": "ایڈیٹر میں {title} ٹھیک کریں",
+  "publish_checks_blockedreason": "شائع کرنے سے پہلے جانچ میں دی گئی خرابیاں ٹھیک کریں۔",
+  "publish_checks_error": "خرابی",
+  "publish_checks_warning": "انتباہ",
+  "publish_checks_duplicateof": "{path} جیسا ہی عنوان",
+  "publish_checks_pathtoolong": "لنک کا پتہ بہت لمبا ہے (2048 حروف سے زیادہ)",
+  "publish_checks_brokenlink": "ٹوٹے ہوئے لنکس",
+  "publish_checks_brokenlinkhint": "یہ لنکس ایسے صفحے پر لے جاتے ہیں جو شائع شدہ سائٹ پر موجود نہیں ہوگا۔",
+  "publish_checks_missingalt": "متبادل متن کے بغیر تصاویر",
+  "publish_checks_missingalthint": "اسکرین ریڈر ان تصاویر کو بیان نہیں کر سکتے۔ ہر تصویر میں متبادل متن شامل کریں۔",
+  "publish_checks_untitledpage": "بغیر عنوان کے صفحات",
+  "publish_checks_untitledpagehint": "ان صفحات کو اصل عنوان دیں تاکہ قارئین انہیں تلاش کر سکیں۔",
+  "publish_checks_straycharacters": "فالتو حروف",
+  "publish_checks_straycharactershint": "اکیلا / یا لفظی --- صفحے پر متن کے طور پر نظر آتا ہے۔",
+  "publish_checks_unreadableslug": "پڑھنے میں مشکل ویب پتے",
+  "publish_checks_unreadableslughint": "الفاظ پر مشتمل مختصر پتہ استعمال کریں تاکہ لنک پڑھنا اور شیئر کرنا آسان ہو۔",
+  "publish_checks_emptypage": "خالی صفحات",
+  "publish_checks_emptypagehint": "ان صفحات میں ابھی کوئی مواد نہیں، اس لیے قارئین کو خالی صفحہ نظر آئے گا۔",
+  "publish_checks_duplicatetitle": "دہرائے گئے عنوانات",
+  "publish_checks_duplicatetitlehint": "ایک ہی حصے کے صفحات کا عنوان ایک جیسا ہے، اس لیے قارئین ان میں فرق نہیں کر سکتے۔"
 }

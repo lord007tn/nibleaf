@@ -4661,5 +4661,51 @@
   "newsite_starter_faq_title": "Häufige Fragen",
   "newsite_starter_faq_content": "## Typische Fragen\n\nBeantworten Sie eine echte Frage in wenigen Sätzen.\n\n- Erklären Sie, wo die Kontoeinstellungen zu finden sind.\n- Sagen Sie den Lesern, wie sie Ihr Team erreichen.\n",
   "newsite_addresslatinhint": "Website-Adressen verwenden lateinische Buchstaben. Wählen Sie eine gut lesbare Adresse, z. B. help-center.",
-  "newsite_addressunavailable": "Diese Adresse ist reserviert oder nicht verfügbar. Wählen Sie eine andere Adresse."
+  "newsite_addressunavailable": "Diese Adresse ist reserviert oder nicht verfügbar. Wählen Sie eine andere Adresse.",
+  "publish_checks_title": "Prüfungen",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Fehler",
+        "form=*": "{count} Fehler"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Warnung",
+        "form=*": "{count} Warnungen"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "Veröffentlichen ist weiterhin möglich",
+  "publish_checks_mustfix": "Fehler beheben, um zu veröffentlichen",
+  "publish_checks_allclear": "Alle Prüfungen bestanden",
+  "publish_checks_allclearhint": "Keine defekten Links, Bilder ohne Alternativtext, Seiten ohne Titel oder übrig gebliebenen Zeichen.",
+  "publish_checks_fix": "Beheben",
+  "publish_checks_fixlabel": "{title} im Editor beheben",
+  "publish_checks_blockedreason": "Beheben Sie die Fehler unter „Prüfungen“, bevor Sie veröffentlichen.",
+  "publish_checks_error": "Fehler",
+  "publish_checks_warning": "Warnung",
+  "publish_checks_duplicateof": "Gleicher Titel wie {path}",
+  "publish_checks_pathtoolong": "Linkadresse zu lang (über 2.048 Zeichen)",
+  "publish_checks_brokenlink": "Defekte Links",
+  "publish_checks_brokenlinkhint": "Diese Links führen zu einer Seite, die es auf der veröffentlichten Website nicht geben wird.",
+  "publish_checks_missingalt": "Bilder ohne Alternativtext",
+  "publish_checks_missingalthint": "Screenreader können diese Bilder nicht beschreiben. Fügen Sie jedem Bild einen Alternativtext hinzu.",
+  "publish_checks_untitledpage": "Seiten ohne Titel",
+  "publish_checks_untitledpagehint": "Geben Sie diesen Seiten einen echten Titel, damit Leser sie finden.",
+  "publish_checks_straycharacters": "Übrig gebliebene Zeichen",
+  "publish_checks_straycharactershint": "Ein einzelnes / oder ein wörtliches --- erscheint als Text auf der Seite.",
+  "publish_checks_unreadableslug": "Schwer lesbare Webadressen",
+  "publish_checks_unreadableslughint": "Verwenden Sie eine kurze Adresse aus Wörtern, damit sich der Link leicht lesen und teilen lässt.",
+  "publish_checks_emptypage": "Leere Seiten",
+  "publish_checks_emptypagehint": "Diese Seiten haben noch keinen Inhalt, Leser sähen also eine leere Seite.",
+  "publish_checks_duplicatetitle": "Doppelte Titel",
+  "publish_checks_duplicatetitlehint": "Seiten im selben Bereich haben denselben Titel, sodass Leser sie nicht unterscheiden können."
 }
