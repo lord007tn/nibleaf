@@ -154,6 +154,39 @@ describe('writer clipboard fixtures', () => {
     );
   });
 
+  it('keeps a break between a paragraph and following prose when there is no child list', () => {
+    const instance = editor();
+    instance.view.pasteHTML('<ul><li><p>First</p><br>continued</li></ul>', new Event('paste') as ClipboardEvent);
+    const item = JSON.stringify(tree(instance.state.doc.firstChild?.firstChild as PMNode));
+    // The hard break before "continued" survives, as it does without cleaning.
+    expect(item).toContain('"hardBreak"');
+    expect(item.indexOf('"hardBreak"')).toBeLessThan(item.indexOf('continued'));
+    expect(item).toContain('First');
+  });
+
+  it('keeps a soft break inside an item whose child list follows later', () => {
+    const instance = editor();
+    instance.view.pasteHTML('<ul><li>First<br>continued<br><ul><li>Child</li></ul></li></ul>', new Event('paste') as ClipboardEvent);
+    expect(tree(instance.state.doc.firstChild?.firstChild as PMNode)).toEqual(
+      node(
+        'listItem',
+        paragraph(text('First'), node('hardBreak'), text('continued')),
+        node('bulletList', node('listItem', paragraph(text('Child')))),
+      ),
+    );
+  });
+
+  it('cleans a very long run of breaks in one pass, in linear time', () => {
+    // 4,000 breaks took 10.7 s on the previous per-break rescan; one pass is milliseconds.
+    const html = `<ul><li>First${'<br> '.repeat(20_000)}last<ul><li>Child</li></ul></li></ul>`;
+    const started = performance.now();
+    const cleaned = cleanPastedHTML(html);
+    const elapsed = performance.now() - started;
+    expect(cleaned).toContain('last');
+    expect(cleaned.match(/<br>/g)?.length).toBe(20_000);
+    expect(elapsed).toBeLessThan(2000);
+  });
+
   it('removes a run of filler breaks before a nested list without dropping inline text', () => {
     const instance = editor();
     instance.view.pasteHTML('<ul><li>Parent<br> <br>\n<ul><li>Child</li></ul></li></ul>', new Event('paste') as ClipboardEvent);

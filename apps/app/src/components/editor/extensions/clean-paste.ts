@@ -238,18 +238,7 @@ export function cleanPasteDOM(root: HTMLElement, fallbackDir: 'ltr' | 'rtl' = 'l
     if (!paragraph.textContent?.replace(/[\s\u00a0]/g, '') && !paragraph.querySelector('img,hr')) paragraph.remove();
   }
   for (const item of root.querySelectorAll('li')) {
-    // A break between a paragraph and a child list becomes its own empty
-    // paragraph in ProseMirror. Keep breaks inside the item's actual prose.
-    for (const child of Array.from(item.children)) {
-      if (child.localName !== 'br') continue;
-      let previous = child.previousSibling;
-      let next = child.nextSibling;
-      while (previous && ((previous.nodeType === 3 && !previous.textContent?.trim()) || previous.nodeName === 'BR'))
-        previous = previous.previousSibling;
-      while (next && ((next.nodeType === 3 && !next.textContent?.trim()) || next.nodeName === 'BR')) next = next.nextSibling;
-      if ((previous?.nodeType === 1 && (previous as Element).matches('p,ul,ol')) || (next?.nodeType === 1 && (next as Element).matches('p,ul,ol')))
-        child.remove();
-    }
+    removeBreaksBeforeChildLists(item);
     const paragraph = item.firstElementChild;
     if (
       paragraph?.localName === 'p' &&
@@ -263,6 +252,41 @@ export function cleanPasteDOM(root: HTMLElement, fallbackDir: 'ltr' | 'rtl' = 'l
       paragraph.replaceWith(...paragraph.childNodes);
   }
   return root;
+}
+
+const isBreakOrSpace = (node: ChildNode) => node.nodeName === 'BR' || (node.nodeType === 3 && !node.textContent?.trim());
+const isElement = (node: ChildNode | null, names: readonly string[]): boolean => node?.nodeType === 1 && names.includes((node as Element).localName);
+
+/**
+ * Filler breaks around an item's child list become their own empty paragraph
+ * in ProseMirror: the gap under a list item. Remove a run of breaks only when
+ * - its next content is a child list (`Parent<br><ul>…`, `<p>…</p><br><ul>…`), or
+ * - it ends the item right after a block (`<p>…</p><br></li>`), which is how
+ *   Google Docs closes an item whose nested list follows as a sibling.
+ * A break followed by more of the item's prose, or trailing after bare prose,
+ * is a real soft break and stays. One pass over the item's children: each run
+ * of breaks and whitespace is classified once, by the content around it.
+ */
+function removeBreaksBeforeChildLists(item: Element) {
+  let before: ChildNode | null = null;
+  let run: ChildNode[] = [];
+  const settle = (after: ChildNode | null) => {
+    const beforeList = isElement(after, ['ul', 'ol']);
+    const endsAfterBlock = after === null && isElement(before, ['p', 'ul', 'ol']);
+    if (run.length > 0 && (beforeList || endsAfterBlock)) {
+      for (const node of run) if (node.nodeName === 'BR') node.remove();
+    }
+    run = [];
+  };
+  for (const node of Array.from(item.childNodes)) {
+    if (isBreakOrSpace(node)) {
+      run.push(node);
+      continue;
+    }
+    settle(node);
+    before = node;
+  }
+  settle(null);
 }
 
 export function cleanPastedHTML(html: string): string {
