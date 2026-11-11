@@ -1,16 +1,18 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { PageContainer } from '@nibleaf/design-system/components/ui/page-container';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   Archive,
+  ArrowLeftRight,
   Blocks,
   Bot,
   Braces,
   ChartNoAxesCombined,
+  ChevronLeft,
+  ChevronRight,
   CirclePlus,
   GitBranch,
   Globe2,
@@ -22,12 +24,13 @@ import {
   Palette,
   Plug,
   Search,
+  SearchCheck,
   TriangleAlert,
   Users,
+  Variable,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { useEffect } from 'react';
-import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { ConfigSection, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AuthenticationSection } from '@/components/project-settings/authentication-section';
 import { DangerSection } from '@/components/project-settings/danger-section';
@@ -35,7 +38,6 @@ import { DomainSection } from '@/components/project-settings/domain-section';
 import { ExportsSection } from '@/components/project-settings/exports-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { LanguagesSection } from '@/components/project-settings/languages-section';
-import { MembersSection } from '@/components/project-settings/members-section';
 import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { SearchSection } from '@/components/project-settings/search-section';
 import {
@@ -52,6 +54,16 @@ import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
+import { SiteTeamPage } from '@/features/people/components/site-team-page';
+import {
+  APPEARANCE_SECTION_IDS,
+  type AppearanceSectionId,
+  isMovedSectionId,
+  type MovedSectionId,
+  parseSettingsSearch,
+  type SectionId,
+} from '@/features/site-settings/model/ids';
+import { type SettingsAccess, sectionAllowed, sectionLabelKey, settingsNav, WIDE_SECTIONS } from '@/features/site-settings/model/sections';
 import type { Project } from '@/hooks/api';
 import { type SwitcherOrganization, useOrganizationOfProject, useProject, useProjectMembers } from '@/hooks/api';
 import {
@@ -76,105 +88,39 @@ import {
   workspaceSettingsQueryOptions,
 } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
-import { navFromIds } from '@/lib/section-nav';
 import { useSession } from '@/services/auth-client';
 
-// Site settings = the ADMIN/operational slice. The docs-website appearance
-// (branding, styling, navbar, footer, banner, SEO, search, redirects, variables)
-// lives in the editor's Configuration tab — Mintlify keeps the two separate.
-type SettingsGroupId = 'website' | 'publishing' | 'team' | 'usage' | 'advanced';
-
-// Section ids alone, in nav order. `validateSearch` is part of the router's
-// eager chunk, which published docs pages load, so it checks ids here instead
-// of reading SECTIONS and pulling in every section icon.
-const SECTION_IDS = [
-  'general',
-  'appearance',
-  'languages',
-  'domain',
-  'authentication',
-  'search',
-  'addons',
-  'git',
-  'openapi',
-  'contentImport',
-  'members',
-  'apiKeys',
-  'usage',
-  'integrations',
-  'smartAi',
-  'exports',
-  'danger',
-] as const;
-
-// Plan and Notifications moved to the organization (§5.2). Old links still
-// open a one-line pointer to where they live now; they are not in the nav.
-const MOVED_SECTION_IDS = ['plan', 'notifications'] as const;
-type MovedSectionId = (typeof MOVED_SECTION_IDS)[number];
-const isMovedSectionId = (value: unknown): value is MovedSectionId => (MOVED_SECTION_IDS as readonly unknown[]).includes(value);
-
-type SectionId = (typeof SECTION_IDS)[number];
-
-const GROUPS = [
-  { id: 'website', labelKey: 'settings.group.website' },
-  { id: 'publishing', labelKey: 'settings.group.publishing' },
-  { id: 'team', labelKey: 'settings.group.team' },
-  { id: 'usage', labelKey: 'settings.group.usage' },
-  { id: 'advanced', labelKey: 'settings.group.advanced' },
-] as const satisfies ReadonlyArray<{ id: SettingsGroupId; labelKey: MessageKey }>;
-
-// Keyed by SECTION_IDS, so a section added to one list and not the other fails typecheck.
-const SECTIONS = navFromIds<SectionId, { group: SettingsGroupId; icon: LucideIcon }>(SECTION_IDS, {
-  general: { group: 'website', icon: CirclePlus },
-  appearance: { group: 'website', icon: Palette },
-  languages: { group: 'website', icon: Languages },
-  domain: { group: 'website', icon: Globe2 },
-  authentication: { group: 'website', icon: LockKeyhole },
-  search: { group: 'website', icon: Search },
-  addons: { group: 'website', icon: Blocks },
-  git: { group: 'publishing', icon: GitBranch },
-  openapi: { group: 'publishing', icon: Braces },
-  contentImport: { group: 'publishing', icon: Import },
-  members: { group: 'team', icon: Users },
-  apiKeys: { group: 'team', icon: KeyRound },
-  usage: { group: 'usage', icon: ChartNoAxesCombined },
-  integrations: { group: 'advanced', icon: Plug },
-  smartAi: { group: 'advanced', icon: Bot },
-  exports: { group: 'advanced', icon: Archive },
-  danger: { group: 'advanced', icon: TriangleAlert },
-});
-
-const sectionLabelKey = (id: SectionId): MessageKey => (id === 'appearance' ? 'settings.tab.appearance' : `settings.${id}`);
-
-const isSectionId = (value: unknown): value is SectionId => (SECTION_IDS as readonly unknown[]).includes(value);
-const APPEARANCE_SECTION_IDS = [
-  'branding',
-  'themes',
-  'styling',
-  'typography',
-  'navbar',
-  'footer',
-  'banner',
-  'seo',
-  'search',
-  'variables',
-  'redirects',
-] as const satisfies readonly ConfigSectionId[];
-const isAppearanceSectionId = (value: unknown): value is ConfigSectionId => (APPEARANCE_SECTION_IDS as readonly unknown[]).includes(value);
-// Content languages, team visibility, usage and one-time exports are available
-// to editors. The other sections write operational settings guarded by ADMIN.
-const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports', 'apiKeys']);
-// Viewers see the same sections read-only, except API keys: a key carries the
-// creator's write access, and the server refuses Viewers the key list.
-const VIEWER_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports']);
+// Site settings (operations/ui-overhaul.md §5.7): two levels, the app sidebar
+// and one settings nav whose every item is a page. Ids and URL parsing live in
+// features/site-settings/model (the router's eager chunk loads them); the
+// icons stay here, with the page.
+const SECTION_ICONS: Record<SectionId, LucideIcon> = {
+  general: CirclePlus,
+  appearance: Palette,
+  languages: Languages,
+  domain: Globe2,
+  authentication: LockKeyhole,
+  addons: Blocks,
+  seo: SearchCheck,
+  redirects: ArrowLeftRight,
+  variables: Variable,
+  search: Search,
+  git: GitBranch,
+  openapi: Braces,
+  contentImport: Import,
+  exports: Archive,
+  smartAi: Bot,
+  apiKeys: KeyRound,
+  integrations: Plug,
+  members: Users,
+  usage: ChartNoAxesCombined,
+  danger: TriangleAlert,
+};
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
-  validateSearch: (search: Record<string, unknown>): { section?: SectionId | MovedSectionId; appearanceSection?: ConfigSectionId } => ({
-    // Analytics moved under Integrations — keep old ?section=analytics links working.
-    section:
-      isSectionId(search.section) || isMovedSectionId(search.section) ? search.section : search.section === 'analytics' ? 'integrations' : undefined,
-    ...(search.section === 'appearance' && isAppearanceSectionId(search.appearanceSection) ? { appearanceSection: search.appearanceSection } : {}),
-  }),
+  // Old links keep working: Analytics opens Integrations, and Appearance's former
+  // SEO, Redirects, Variables and Search subsections open their own pages.
+  validateSearch: parseSettingsSearch,
   loaderDeps: ({ search }) => ({ section: search.section }),
   loader: ({ context: { queryClient }, params: { projectId }, deps: { section } }) => {
     prefetchRouteData(queryClient, projectQueryOptions(projectId));
@@ -252,8 +198,6 @@ function ProjectSettingsPage() {
   // Plan and Notifications moved to the organization: an old link shows a pointer under Usage.
   const movedSection = isMovedSectionId(requestedOrMoved) ? requestedOrMoved : undefined;
   const requestedSection = isMovedSectionId(requestedOrMoved) ? 'usage' : requestedOrMoved;
-  const section: SectionId = requestedSection ?? 'general';
-  const navigate = useNavigate({ from: Route.fullPath });
   const {
     data: project,
     isPending: projectPending,
@@ -272,27 +216,52 @@ function ProjectSettingsPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const t = useT();
   const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
-  const canManage = canAdminister(currentMember?.role ?? '');
-  const canEditContent = canEdit(currentMember?.role ?? '');
-  const roleSections = canEditContent ? EDITOR_SECTIONS : VIEWER_SECTIONS;
-  // Deleting a website is for the organization's Owner and Admins only (§4.2), not site Admins.
   const { organization } = useOrganizationOfProject(project?.organizationId);
-  const orgAdmin = organization ? organization.orgRole !== 'member' : false;
-  const availableSections = SECTIONS.filter((item) => (item.id === 'danger' ? orgAdmin : canManage || roleSections.has(item.id)));
-  const sectionItems = availableSections.map((item) => ({
-    value: item.id,
-    label: t(sectionLabelKey(item.id)),
-  }));
-  const sectionAllowed = canManage || roleSections.has(section);
+  const access: SettingsAccess = {
+    canManage: canAdminister(currentMember?.role ?? ''),
+    canEditContent: canEdit(currentMember?.role ?? ''),
+    orgAdmin: organization ? organization.orgRole !== 'member' : false,
+  };
+  const nav = settingsNav(access);
+  const firstAllowed = nav[0]?.sections[0];
+  // Only the default entry picks a page by role. An explicit link to a page
+  // this person can't open keeps its explanation instead of changing page.
+  const section: SectionId = requestedSection ?? (sectionAllowed('general', access) ? 'general' : (firstAllowed ?? 'general'));
+  const allowed = sectionAllowed(section, access);
+  // On a phone, /settings with no page is the list of pages; each page links back to it.
+  const listPage = !requestedSection;
+  // Where the person is: the list or a page they opened. It changes only when
+  // they navigate, never when permissions resolve the default entry's page.
+  const place = requestedSection ?? 'list';
 
-  // Only the default entry chooses a section by role. Explicit locked links
-  // retain their permission explanation instead of silently changing destination.
-  const redirectSection = availableSections[0]?.id;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const navHeadingRef = useRef<HTMLHeadingElement>(null);
+  const shownPlace = useRef(place);
   useEffect(() => {
-    if (!membersPending && !membersUnavailable && !sessionPending && currentMember && !requestedSection && !sectionAllowed && redirectSection) {
-      void navigate({ search: { section: redirectSection }, replace: true });
-    }
-  }, [membersPending, membersUnavailable, sessionPending, currentMember, sectionAllowed, redirectSection, requestedSection, navigate]);
+    if (shownPlace.current === place) return;
+    shownPlace.current = place;
+    // Moving to a page focuses its heading, and back to the list focuses the
+    // list's heading, so keyboard and screen reader users start at the top of
+    // what they opened. A page's heading can mount after its data loads.
+    const target = () => (place === 'list' ? navHeadingRef.current : contentRef.current?.querySelector<HTMLElement>('h1, h2'));
+    const focus = () => {
+      const heading = target();
+      if (!heading) return false;
+      if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+      heading.focus();
+      return true;
+    };
+    if (focus() || !contentRef.current) return;
+    const observer = new MutationObserver(() => {
+      if (focus()) observer.disconnect();
+    });
+    observer.observe(contentRef.current, { childList: true, subtree: true });
+    const stop = setTimeout(() => observer.disconnect(), 10_000);
+    return () => {
+      observer.disconnect();
+      clearTimeout(stop);
+    };
+  }, [place]);
 
   if (membersUnavailable) {
     return (
@@ -302,7 +271,7 @@ function ProjectSettingsPage() {
     );
   }
 
-  if (membersPending || sessionPending || (currentMember && !requestedSection && !sectionAllowed)) {
+  if (membersPending || sessionPending) {
     return (
       <div className="p-6">
         <SettingsFormSkeleton />
@@ -312,112 +281,115 @@ function ProjectSettingsPage() {
 
   return (
     <ConfigDirtyProvider report={reportDirty}>
-      <div className="flex h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden bg-background md:flex-row">
-        <div className="shrink-0 border-border border-b bg-card px-4 py-3 md:hidden">
-          <label
-            className="mb-1.5 block font-semibold text-[10.5px] text-muted-foreground uppercase tracking-wider"
-            htmlFor="mobile-settings-section"
-          >
-            {t('settings.heading')}
-          </label>
-          <Select
-            items={sectionItems}
-            onValueChange={(next) => navigate({ search: { section: (next ?? section) as SectionId }, replace: true })}
-            value={sectionAllowed ? section : ''}
-          >
-            <SelectTrigger aria-label={t('settings.heading')} className="h-10 w-full rounded-lg font-medium" id="mobile-settings-section">
-              <SelectValue placeholder={t('settings.heading')} />
-            </SelectTrigger>
-            <SelectContent>
-              {GROUPS.filter((group) => availableSections.some((item) => item.group === group.id)).map((group) => (
-                <SelectGroup key={group.id}>
-                  <SelectLabel>{t(group.labelKey)}</SelectLabel>
-                  {availableSections
-                    .filter((item) => item.group === group.id)
-                    .map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {t(sectionLabelKey(item.id))}
-                      </SelectItem>
-                    ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <aside className="hidden w-[238px] shrink-0 overflow-y-auto border-border border-e bg-card px-3 py-4.5 md:block">
-          <div className="px-3 pt-1 pb-2.5 font-bold text-[11px] text-muted-foreground uppercase tracking-wider">{t('settings.heading')}</div>
-          <nav className="flex flex-col gap-0.5">
-            {GROUPS.filter((group) => availableSections.some((item) => item.group === group.id)).map((group) => (
-              <div key={group.id} className="mt-3 first:mt-0">
-                <div className="px-3 pb-1 font-semibold text-[10.5px] text-muted-foreground/70 uppercase tracking-wider">{t(group.labelKey)}</div>
-                {availableSections
-                  .filter((item) => item.group === group.id)
-                  .map((item) => {
-                    const active = item.id === section;
-                    const Icon = item.icon;
+      <div className="flex min-w-0 flex-col bg-background md:min-h-[calc(100dvh-3rem)] md:flex-row">
+        {/* The column runs the page's full height; the nav inside it sticks below the 3rem site header and is
+            at most the viewport less the header and the inset layout's 0.5rem bottom margin, so it never
+            slides under the header at the end of the page. */}
+        <div className={cn('w-full shrink-0 bg-card md:w-60 md:border-border md:border-e', !listPage && 'hidden md:block')}>
+          <nav aria-label={t('settings.title')} className="px-3 py-4 md:sticky md:top-12 md:max-h-[calc(100dvh-3.5rem)] md:overflow-y-auto">
+            <h2 className="px-3 pb-3 font-semibold text-base outline-none md:text-sm" ref={navHeadingRef}>
+              {t('settings.title')}
+            </h2>
+            {nav.map((group) => (
+              <div className="mt-4 first-of-type:mt-0" key={group.id}>
+                {group.labelKey ? (
+                  <h3 className="px-3 pb-1 font-medium text-muted-foreground text-xs">{t(group.labelKey)}</h3>
+                ) : (
+                  <div aria-hidden className="mx-3 mb-3 border-border border-t" />
+                )}
+                <ul className="flex flex-col gap-0.5">
+                  {group.sections.map((id) => {
+                    const active = id === section;
+                    const Icon = SECTION_ICONS[id];
                     return (
-                      <Button
-                        aria-current={active ? 'page' : undefined}
-                        className={cn(
-                          'h-9 w-full justify-start gap-2 rounded-lg px-3 text-[13.5px]',
-                          active ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary' : 'text-muted-foreground',
-                        )}
-                        key={item.id}
-                        onClick={() => navigate({ search: { section: item.id }, replace: true })}
-                        type="button"
-                        variant="ghost"
-                      >
-                        <Icon aria-hidden className="size-4 shrink-0" />
-                        {t(sectionLabelKey(item.id))}
-                      </Button>
+                      <li key={id}>
+                        <Link
+                          aria-current={active ? 'page' : undefined}
+                          className={cn(
+                            'flex h-11 items-center gap-2.5 rounded-lg px-3 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 md:h-9',
+                            active
+                              ? // The list page on a phone shows no current page; the desktop nav does.
+                                listPage
+                                ? 'text-muted-foreground hover:text-foreground md:bg-primary/10 md:font-medium md:text-primary'
+                                : 'bg-primary/10 font-medium text-primary hover:bg-primary/10'
+                              : 'text-muted-foreground hover:text-foreground',
+                            id === 'danger' && 'text-destructive hover:text-destructive',
+                          )}
+                          params={{ projectId }}
+                          search={{ section: id }}
+                          to="/app/projects/$projectId/settings"
+                        >
+                          <Icon aria-hidden className="size-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">{t(sectionLabelKey(id))}</span>
+                          <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground md:hidden rtl:rotate-180" />
+                        </Link>
+                      </li>
                     );
                   })}
+                </ul>
               </div>
             ))}
           </nav>
-        </aside>
+        </div>
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
+        <div className={cn('min-w-0 flex-1 outline-none', listPage && 'hidden md:block')} ref={contentRef} tabIndex={-1}>
+          <PageContainer width={WIDE_SECTIONS.has(section) ? 'wide' : 'default'}>
+            <Link
+              className="-ms-1 -mb-4 inline-flex items-center gap-1 self-start rounded-md px-1 py-1 text-muted-foreground text-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:hidden"
+              params={{ projectId }}
+              search={{}}
+              to="/app/projects/$projectId/settings"
+            >
+              <ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />
+              {t('settings.backToAll')}
+            </Link>
             {projectPending ? (
               <SettingsFormSkeleton />
             ) : projectError || !project ? (
               <QueryErrorState onRetry={() => void retryProject()} retrying={projectFetching} />
-            ) : !sectionAllowed ? (
+            ) : !allowed ? (
               <div className="rounded-xl border border-border bg-card p-6" role="status">
                 <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
                 <p className="mt-2 text-muted-foreground text-sm">
-                  {t(canEditContent ? 'settings.permissions.body' : 'settings.permissions.viewerBody')}
+                  {t(
+                    // Deleting the website is the organization's call, whatever the site role (§4.2).
+                    section === 'danger'
+                      ? 'settings.permissions.dangerBody'
+                      : access.canEditContent
+                        ? 'settings.permissions.body'
+                        : 'settings.permissions.viewerBody',
+                  )}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button
                     nativeButton={false}
-                    render={
-                      <Link params={{ projectId }} search={{ section: redirectSection ?? 'languages' }} to="/app/projects/$projectId/settings" />
-                    }
+                    render={<Link params={{ projectId }} search={{ section: firstAllowed ?? 'languages' }} to="/app/projects/$projectId/settings" />}
                     variant="outline"
                   >
-                    {t(sectionLabelKey(redirectSection ?? 'languages'))}
+                    {t(sectionLabelKey(firstAllowed ?? 'languages'))}
                   </Button>
                   <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />}>
-                    {t(canEditContent ? 'project.editor' : 'overview.viewPages')}
+                    {t(access.canEditContent ? 'project.editor' : 'overview.viewPages')}
                   </Button>
                 </div>
               </div>
             ) : (
               <ActiveSection
-                canCreateExports={canEditContent}
-                canManageSchedules={canManage}
-                projectId={projectId}
-                project={project}
-                role={currentMember?.role ?? ''}
                 appearanceSection={appearanceSection}
+                // Entering the list (or another page) starts the page afresh, so a
+                // draft discarded on the way out is really gone.
+                key={place}
+                canCreateExports={access.canEditContent}
+                canManageSchedules={access.canManage}
                 movedSection={movedSection}
                 organization={organization}
+                project={project}
+                projectId={projectId}
+                role={currentMember?.role ?? ''}
                 section={section}
               />
             )}
-          </div>
+          </PageContainer>
         </div>
       </div>
     </ConfigDirtyProvider>
@@ -443,7 +415,7 @@ function ActiveSection({
   canManageSchedules: boolean;
   canCreateExports: boolean;
   role: string;
-  appearanceSection?: ConfigSectionId;
+  appearanceSection?: AppearanceSectionId;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
@@ -453,11 +425,14 @@ function ActiveSection({
     domain: <DomainSection key={`domain-${projectId}`} project={project} />,
     authentication: <AuthenticationSection key={`authentication-${project.id}`} project={project} />,
     search: <SearchSection key={`search-${project.id}`} project={project} />,
+    seo: <ConfigPage key={`seo-${project.id}`} project={project} section="seo" />,
+    redirects: <ConfigPage key={`redirects-${project.id}`} project={project} section="redirects" />,
+    variables: <ConfigPage key={`variables-${project.id}`} project={project} section="variables" />,
     addons: <AddonsSection key={`addons-${project.id}`} projectId={project.id} />,
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
-    members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
+    members: <SiteTeamPage key={`members-${projectId}`} organization={organization} projectId={projectId} siteName={project.name} />,
     apiKeys: <ApiKeysTab role={role} key={`api-keys-${projectId}`} projectId={projectId} />,
     usage: (
       <>
@@ -476,8 +451,7 @@ function ActiveSection({
     ),
     danger: <DangerSection organization={organization} project={project} />,
   };
-  const wideSection = section === 'general' || section === 'usage' || section === 'integrations' || section === 'exports';
-  return <div className={cn('w-full', wideSection ? 'max-w-6xl' : 'max-w-4xl')}>{sections[section]}</div>;
+  return <div className="w-full min-w-0">{sections[section]}</div>;
 }
 
 /** Where Plan and Notifications went (§5.2): a one-line pointer for old links and habits. */
@@ -506,7 +480,20 @@ function MovedSectionNotice({ section, organization }: { section: MovedSectionId
   );
 }
 
-function SiteAppearance({ project, section }: { project: Project; section: ConfigSectionId }) {
+/** A page that edits one part of the site's configuration (SEO, Redirects, Variables), as the editor's Configuration tab does. */
+function ConfigPage({ project, section }: { project: Project; section: 'seo' | 'redirects' | 'variables' }) {
+  const { sources, report } = useDirtySources();
+  return (
+    <>
+      <DirtyStateReporter dirty={sources.size > 0} />
+      <ConfigDirtyProvider report={report}>
+        <ConfigSection project={project} section={section} />
+      </ConfigDirtyProvider>
+    </>
+  );
+}
+
+function SiteAppearance({ project, section }: { project: Project; section: AppearanceSectionId }) {
   const navigate = useNavigate({ from: Route.fullPath });
   // Subsection navigation uses the route's existing unsaved-change guard.
   const { sources, report } = useDirtySources();
@@ -518,8 +505,9 @@ function SiteAppearance({ project, section }: { project: Project; section: Confi
           active={section}
           onSelect={(next) => {
             if (next === section) return;
-            void navigate({ search: { section: 'appearance', appearanceSection: next } });
+            void navigate({ search: { section: 'appearance', appearanceSection: next as AppearanceSectionId } });
           }}
+          only={APPEARANCE_SECTION_IDS}
         />
       </div>
       <ConfigDirtyProvider report={report}>

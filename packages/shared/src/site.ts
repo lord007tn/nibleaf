@@ -1,7 +1,7 @@
 import GithubSlugger from 'github-slugger';
 import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
 import { fencedMarkdownLines } from './markdown-code';
-import { excerpt, stripMarkdownLinks } from './utils';
+import { stripMarkdownLinks } from './utils';
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
  *  `pageConfigSchema` in @nibleaf/validators (kept inline to avoid a dep). */
@@ -131,12 +131,44 @@ export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
   return defaults[0];
 };
 
+/**
+ * `code`'s name in `locale`, or null when the platform has no data for that
+ * locale. `new Intl.DisplayNames([locale])` never fails for a valid but
+ * unsupported locale: it silently falls back to the default (`la` resolves to
+ * en-US and names itself "Latin"), so support is checked first.
+ */
+export const languageNameIn = (locale: string, code: string): string | null => {
+  try {
+    if (Intl.DisplayNames.supportedLocalesOf([locale]).length === 0) return null;
+    const name = new Intl.DisplayNames([locale], { type: 'language', fallback: 'none' }).of(code);
+    return name && name !== code ? name : null;
+  } catch {
+    // An invalid tag (`x-klingon`).
+    return null;
+  }
+};
+
+/**
+ * A language's own name in its own script ("العربية", "Français", "Deutsch"),
+ * capitalized as a menu label. Null when the platform can't name it in its own
+ * locale (a private-use tag, or a locale without data such as `la`), so the
+ * caller keeps the stored label ("Latina").
+ */
+export const languageEndonym = (code: string): string | null => {
+  const name = languageNameIn(code, code);
+  return name ? name.charAt(0).toLocaleUpperCase(code) + name.slice(1) : null;
+};
+
 /** The languages a published site serves: enabled ones. The default language
  *  always serves (it is every visitor's fallback), even if a stale flag says
  *  otherwise. Disabled languages stay editable in the dashboard but disappear
- *  from every public surface. */
+ *  from every public surface. Each one is labeled with its endonym (READER-19),
+ *  so every site's switcher reads the same way ("العربية", never "Arabic" on one
+ *  site and "العربية" on another); a code with no known name keeps its label. */
 export const publicLanguages = (languages: SnapshotLanguage[]): SnapshotLanguage[] =>
-  languages.filter((language) => language.isDefault || language.enabled !== false);
+  languages
+    .filter((language) => language.isDefault || language.enabled !== false)
+    .map((language) => ({ ...language, label: languageEndonym(language.code) ?? language.label }));
 
 /** Match a page to the same logical page in another language. Explicit
  * translation keys take precedence so localized slugs can differ; older pages
@@ -469,25 +501,6 @@ export const extractHeadings = (markdown: string): Heading[] => {
  *  one, or a page without a description repeats its own first paragraph. */
 export const explicitPageDescription = (page: Pick<SnapshotPage, 'description'>): string | null => page.description?.trim() || null;
 
-/** A summary derived from the page body for machine surfaces (SEO/social meta,
- *  llms.txt, exports). Truncation lands on a word boundary and ends with an
- *  ellipsis so a cut summary never stops mid-word ("…in about t…"). */
-export const pageExcerpt = (page: Pick<SnapshotPage, 'content'>, max = 160): string => {
-  const text = excerpt(page.content, Number.POSITIVE_INFINITY);
-  if (text.length <= max) {
-    return text;
-  }
-  const cut = text.slice(0, max - 1);
-  const boundary = cut.lastIndexOf(' ');
-  // Only back up to the previous word when that keeps a useful amount of text;
-  // a single very long token is cut as-is rather than reduced to nothing.
-  const head = boundary >= Math.floor(max / 2) ? cut.slice(0, boundary) : cut;
-  return `${head.replace(/[\s,;:،؛]+$/u, '')}…`;
-};
-
-/** Build a one-line description for a page (its own, or derived from content). */
-export const pageDescription = (page: Pick<SnapshotPage, 'description' | 'content'>): string => explicitPageDescription(page) ?? pageExcerpt(page);
-
 /** Replace Mintlify-style `{{ key }}` content variables with their configured
  *  values at snapshot-build time. Tokens whose key isn't defined are left intact
  *  (rather than failing the build) so a typo never blanks out content. Dotted and
@@ -499,8 +512,26 @@ export const interpolateVariables = (text: string, variables: Record<string, str
   return text.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, key: string) => (Object.hasOwn(variables, key) ? (variables[key] ?? whole) : whole));
 };
 
+/** `interpolateVariables` for a preview that only needs the start of the text:
+ *  substitution stops once the output reaches `maxLength`, so a body full of
+ *  `{{ key }}` tokens with long values can't expand without bound. The result
+ *  is at most `maxLength` characters. */
+export const interpolateVariablesWithin = (text: string, variables: Record<string, string>, maxLength: number): string => {
+  const limit = Math.max(0, Math.floor(maxLength));
+  const pattern = /\{\{\s*([\w.-]+)\s*\}\}/g;
+  let output = '';
+  let cursor = 0;
+  for (let match = pattern.exec(text); match && output.length < limit; match = pattern.exec(text)) {
+    const [whole, key = ''] = match;
+    output += text.slice(cursor, match.index) + (Object.hasOwn(variables, key) ? (variables[key] ?? whole) : whole);
+    cursor = match.index + whole.length;
+  }
+  if (output.length < limit) output += text.slice(cursor, cursor + limit - output.length);
+  return output.slice(0, limit);
+};
+
 /** Extract a `{ key: value }` map from a project config's `variables` array. */
-const variablesFromConfig = (config: unknown): Record<string, string> => {
+export const variablesFromConfig = (config: unknown): Record<string, string> => {
   const list = (config as { variables?: Array<{ key?: unknown; value?: unknown }> } | null)?.variables;
   const map: Record<string, string> = {};
   if (Array.isArray(list)) {

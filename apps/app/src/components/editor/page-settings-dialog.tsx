@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import {
@@ -13,17 +14,22 @@ import {
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
+import { joinPath, slugifyUnicode, truncateText } from '@nibleaf/shared/utils';
+import { useStore } from '@tanstack/react-form';
 import { ChevronRight, CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck, TriangleAlert } from 'lucide-react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
 import { friendlyErrorMessage, useReorderPages, useUpdatePage } from '@/hooks/api';
+import { usePageSearchDescription } from '@/hooks/api/page-search-description';
+import { deepEqual } from '@/lib/forms/server-draft';
+import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 
 type PageMode = 'default' | 'wide' | 'center';
 type PageSettingsSection = 'general' | 'seo' | 'behaviour';
@@ -35,6 +41,107 @@ const PAGE_SETTINGS_SECTIONS = [
 ] as const satisfies ReadonlyArray<{ id: PageSettingsSection; labelKey: MessageKey; icon: LucideIcon }>;
 
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
+
+/** The dialog's editable values: what the fields hold, as text and flags. */
+type PageSettingsValues = {
+  title: string;
+  slug: string;
+  icon: string;
+  description: string;
+  hidden: boolean;
+  sidebarTitle: string;
+  tag: string;
+  tags: string;
+  category: string;
+  categoryIcon: string;
+  categoryOrder: string;
+  metaTitle: string;
+  metaDescription: string;
+  ogImage: string;
+  canonicalUrl: string;
+  noindex: boolean;
+  translationKey: string;
+  mode: PageMode;
+  hideToc: boolean;
+};
+
+const pageSettingsValues = (page: PageNode): PageSettingsValues => ({
+  title: page.title,
+  slug: page.slug,
+  icon: page.icon ?? '',
+  description: page.description ?? '',
+  hidden: page.hidden,
+  sidebarTitle: page.config?.sidebarTitle ?? '',
+  tag: page.config?.tag ?? '',
+  tags: (page.config?.tags ?? []).join(', '),
+  category: page.config?.category ?? '',
+  categoryIcon: page.config?.categoryIcon ?? '',
+  categoryOrder: page.config?.categoryOrder?.toString() ?? '',
+  metaTitle: page.config?.seo?.metaTitle ?? '',
+  metaDescription: page.config?.seo?.metaDescription ?? '',
+  ogImage: page.config?.seo?.ogImage ?? '',
+  canonicalUrl: page.config?.seo?.canonicalUrl ?? '',
+  noindex: page.config?.seo?.noindex ?? false,
+  translationKey: page.translationKey ?? '',
+  mode: page.config?.mode ?? 'default',
+  hideToc: page.config?.hideToc ?? false,
+});
+
+/** The update request for a set of values. A complete config object, so the
+ *  server merge replaces every managed key (empty strings/false read as "no
+ *  override" via the SEO fallback chain, and blanking a field clears it). When
+ *  nothing is overridden it sends null, so the page's config stays null instead
+ *  of bloating with an empty object. */
+const pageSettingsBody = (values: PageSettingsValues) => {
+  const { title, slug, icon, description, hidden, sidebarTitle, tag, tags, category, categoryIcon, categoryOrder } = values;
+  const { metaTitle, metaDescription, ogImage, canonicalUrl, noindex, translationKey, mode, hideToc } = values;
+  const parsedTags = [
+    ...new Set(
+      tags
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 10);
+  const parsedCategoryOrder = categoryOrder.trim() === '' ? undefined : Number(categoryOrder);
+  const config: PageConfig = {
+    sidebarTitle: sidebarTitle.trim(),
+    tag: tag.trim(),
+    tags: parsedTags,
+    category: category.trim(),
+    categoryIcon: categoryIcon.trim(),
+    ...(Number.isInteger(parsedCategoryOrder) ? { categoryOrder: parsedCategoryOrder } : {}),
+    mode,
+    hideToc,
+    seo: {
+      metaTitle: metaTitle.trim(),
+      metaDescription: metaDescription.trim(),
+      ogImage: ogImage.trim(),
+      canonicalUrl: canonicalUrl.trim(),
+      noindex,
+    },
+  };
+  const hasOverride =
+    sidebarTitle.trim() !== '' ||
+    tag.trim() !== '' ||
+    parsedTags.length > 0 ||
+    category.trim() !== '' ||
+    categoryIcon.trim() !== '' ||
+    Number.isInteger(parsedCategoryOrder) ||
+    mode !== 'default' ||
+    hideToc ||
+    [metaTitle, metaDescription, ogImage, canonicalUrl].some((v) => v.trim() !== '') ||
+    noindex;
+  return {
+    title: title.trim(),
+    slug: slug.trim() || title.trim(),
+    icon: icon.trim() || null,
+    description: description.trim() || null,
+    hidden,
+    translationKey: translationKey.trim() || null,
+    config: hasOverride ? config : null,
+  };
+};
 
 /** Per-page settings — General (nav metadata), SEO override, and Behaviour
  *  (layout). The SEO + behaviour fields persist to `page.config`, layered over
@@ -65,29 +172,7 @@ export function PageSettingsDialog({
   const confirm = useConfirm();
   const isGroup = page.kind === 'GROUP';
 
-  // General
-  const [title, setTitle] = useState(page.title);
-  const [slug, setSlug] = useState(page.slug);
   const [slugTouched, setSlugTouched] = useState(false);
-  const [icon, setIcon] = useState(page.icon ?? '');
-  const [description, setDescription] = useState(page.description ?? '');
-  const [hidden, setHidden] = useState(page.hidden);
-  const [sidebarTitle, setSidebarTitle] = useState(page.config?.sidebarTitle ?? '');
-  const [tag, setTag] = useState(page.config?.tag ?? '');
-  const [tags, setTags] = useState((page.config?.tags ?? []).join(', '));
-  const [category, setCategory] = useState(page.config?.category ?? '');
-  const [categoryIcon, setCategoryIcon] = useState(page.config?.categoryIcon ?? '');
-  const [categoryOrder, setCategoryOrder] = useState(page.config?.categoryOrder?.toString() ?? '');
-  // SEO
-  const [metaTitle, setMetaTitle] = useState(page.config?.seo?.metaTitle ?? '');
-  const [metaDescription, setMetaDescription] = useState(page.config?.seo?.metaDescription ?? '');
-  const [ogImage, setOgImage] = useState(page.config?.seo?.ogImage ?? '');
-  const [canonicalUrl, setCanonicalUrl] = useState(page.config?.seo?.canonicalUrl ?? '');
-  const [noindex, setNoindex] = useState(page.config?.seo?.noindex ?? false);
-  const [translationKey, setTranslationKey] = useState(page.translationKey ?? '');
-  // Behaviour
-  const [mode, setMode] = useState<PageMode>(page.config?.mode ?? 'default');
-  const [hideToc, setHideToc] = useState(page.config?.hideToc ?? false);
   const [section, setSection] = useState<PageSettingsSection>('general');
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
   const modeOptions = [
@@ -96,39 +181,71 @@ export function PageSettingsDialog({
     { value: 'center', label: t('editor.pageSettings.mode.center') },
   ] as const satisfies ReadonlyArray<{ value: PageMode; label: string }>;
 
-  const pageRef = useRef(page);
-  useLayoutEffect(() => {
-    pageRef.current = page;
-  }, [page]);
+  // The settings are a draft over the saved page (operations/ui-overhaul.md §8.3):
+  // opening or selecting another page starts over, a refetch (an autosave, the
+  // list) only updates fields the author hasn't touched, and an edit made while a
+  // save is in flight survives it.
+  const source = useMemo(() => pageSettingsValues(page), [page]);
+  const { form, ...draft } = useServerDraftForm<PageSettingsValues>({
+    identity: [page.id, open ? 'open' : 'closed'],
+    source,
+    onSubmit: async (value, outcome) => {
+      try {
+        const result = await update.mutateAsync({ pageId: page.id, body: pageSettingsBody(value) });
+        outcome.succeeded();
+        // The dialog moved on (closed, another page) while saving: report nothing to it.
+        if (!outcome.isCurrent()) return 'saved';
+        toast.success(
+          result.addressChanged
+            ? // The path is isolated left-to-right so it reads /getting-started, not getting-started/, in Arabic.
+              t('editor.pageSettings.addressChanged', {
+                path: `⁦/${page.path}⁩`,
+                redirects: result.redirectsAdded,
+                links: result.linksUpdated,
+              })
+            : t('editor.pageSettings.saved'),
+        );
+        if (result.documentsSkipped) toast.warning(t('editor.pageSettings.linksSkipped', { count: result.documentsSkipped }));
+        // Close only when nothing newer than what was saved remains. An edit made
+        // during the save stays as an unsaved draft, so it is never thrown away.
+        if (deepEqual(form.state.values, value)) onOpenChange(false);
+        return 'saved';
+      } catch (error) {
+        outcome.failed();
+        if (outcome.isCurrent()) toast.error(friendlyErrorMessage(t, error, 'editor.pageSettings.saveError'));
+        return 'failed';
+      }
+    },
+  });
+  const values = useStore(form.store, (state) => state.values);
+  const {
+    title,
+    slug,
+    icon,
+    description,
+    hidden,
+    sidebarTitle,
+    tag,
+    tags,
+    category,
+    categoryIcon,
+    categoryOrder,
+    metaTitle,
+    metaDescription,
+    ogImage,
+    canonicalUrl,
+    noindex,
+    translationKey,
+    mode,
+    hideToc,
+  } = values;
+  const set = <K extends keyof PageSettingsValues>(key: K, value: PageSettingsValues[K]) =>
+    (form.setFieldValue as (field: K, value: PageSettingsValues[K]) => void)(key, value);
+
   const pageId = page.id;
-  // Seed only when opening or selecting another page. An autosave/list refetch
-  // must not erase settings the author is currently typing.
-  useEffect(() => {
-    const page = pageRef.current;
-    if (!open || page.id !== pageId) {
-      return;
-    }
-    setTitle(page.title);
-    setSlug(page.slug);
-    setSlugTouched(false);
-    setIcon(page.icon ?? '');
-    setDescription(page.description ?? '');
-    setHidden(page.hidden);
-    setSidebarTitle(page.config?.sidebarTitle ?? '');
-    setTag(page.config?.tag ?? '');
-    setTags((page.config?.tags ?? []).join(', '));
-    setCategory(page.config?.category ?? '');
-    setCategoryIcon(page.config?.categoryIcon ?? '');
-    setCategoryOrder(page.config?.categoryOrder?.toString() ?? '');
-    setMetaTitle(page.config?.seo?.metaTitle ?? '');
-    setMetaDescription(page.config?.seo?.metaDescription ?? '');
-    setOgImage(page.config?.seo?.ogImage ?? '');
-    setCanonicalUrl(page.config?.seo?.canonicalUrl ?? '');
-    setNoindex(page.config?.seo?.noindex ?? false);
-    setTranslationKey(page.translationKey ?? '');
-    setMode(page.config?.mode ?? 'default');
-    setHideToc(page.config?.hideToc ?? false);
-  }, [open, pageId]);
+  // The address follows the title again on another page or a fresh open.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the draft's identity changes.
+  useEffect(() => setSlugTouched(false), [open, pageId]);
 
   const languageOptions = languages.map((language) => ({ value: language.id, label: language.label }));
   // Moving to another language is its own step (the same move as dragging the
@@ -167,77 +284,13 @@ export function PageSettingsDialog({
             // A clash in the target language gives the page a numbered address, and a
             // translation key that language already uses is cleared. Show both, so a
             // later Save can't put the old address or a duplicate key back.
-            if (!slugEditedAtStart) setSlug((current) => (current === slugAtStart ? moved.slug : current));
-            setTranslationKey((current) => (current === keyAtStart ? (moved.translationKey ?? '') : current));
+            const current = form.state.values;
+            if (!slugEditedAtStart && current.slug === slugAtStart) set('slug', moved.slug);
+            if (current.translationKey === keyAtStart) set('translationKey', moved.translationKey ?? '');
           }
           toast.success(t('editor.pageSettings.moveLanguage.done', { language: target.label }));
         },
         onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.pageSettings.moveLanguage.error')),
-      },
-    );
-  };
-
-  const save = () => {
-    // A complete config object so the server merge replaces every managed key
-    // (empty strings/false read as "no override" via the SEO fallback chain, and
-    // blanking a field clears it). When nothing is overridden, send null so the
-    // page's config stays null instead of bloating with an empty object.
-    const parsedTags = [
-      ...new Set(
-        tags
-          .split(',')
-          .map((value) => value.trim())
-          .filter(Boolean),
-      ),
-    ].slice(0, 10);
-    const parsedCategoryOrder = categoryOrder.trim() === '' ? undefined : Number(categoryOrder);
-    const config: PageConfig = {
-      sidebarTitle: sidebarTitle.trim(),
-      tag: tag.trim(),
-      tags: parsedTags,
-      category: category.trim(),
-      categoryIcon: categoryIcon.trim(),
-      ...(Number.isInteger(parsedCategoryOrder) ? { categoryOrder: parsedCategoryOrder } : {}),
-      mode,
-      hideToc,
-      seo: {
-        metaTitle: metaTitle.trim(),
-        metaDescription: metaDescription.trim(),
-        ogImage: ogImage.trim(),
-        canonicalUrl: canonicalUrl.trim(),
-        noindex,
-      },
-    };
-    const hasOverride =
-      sidebarTitle.trim() !== '' ||
-      tag.trim() !== '' ||
-      parsedTags.length > 0 ||
-      category.trim() !== '' ||
-      categoryIcon.trim() !== '' ||
-      Number.isInteger(parsedCategoryOrder) ||
-      mode !== 'default' ||
-      hideToc ||
-      [metaTitle, metaDescription, ogImage, canonicalUrl].some((v) => v.trim() !== '') ||
-      noindex;
-    update.mutate(
-      {
-        pageId: page.id,
-        body: {
-          title: title.trim(),
-          slug: slug.trim() || title.trim(),
-          icon: icon.trim() || null,
-          description: description.trim() || null,
-          hidden,
-          translationKey: translationKey.trim() || null,
-          config: hasOverride ? config : null,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success(t('editor.pageSettings.saved'));
-          onOpenChange(false);
-        },
-        onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.pageSettings.saveError')),
       },
     );
   };
@@ -284,9 +337,9 @@ export function PageSettingsDialog({
                       value={title}
                       onChange={(e) => {
                         const nextTitle = e.target.value;
-                        setTitle(nextTitle);
+                        set('title', nextTitle);
                         if (!slugTouched && PLACEHOLDER_SLUG_RE.test(slug)) {
-                          setSlug(slugifyUnicode(nextTitle));
+                          set('slug', slugifyUnicode(nextTitle));
                         }
                       }}
                       placeholder={page.title}
@@ -299,7 +352,7 @@ export function PageSettingsDialog({
                       value={slug}
                       onChange={(e) => {
                         setSlugTouched(true);
-                        setSlug(e.target.value);
+                        set('slug', e.target.value);
                       }}
                       placeholder="getting-started"
                     />
@@ -341,7 +394,7 @@ export function PageSettingsDialog({
                     <Textarea
                       id="page-desc"
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      onChange={(e) => set('description', e.target.value)}
                       rows={3}
                       placeholder={t('editor.pageSettings.descriptionPlaceholder')}
                     />
@@ -351,7 +404,7 @@ export function PageSettingsDialog({
                     hint={t('editor.pageSettings.hiddenHint')}
                     id="page-hidden"
                     checked={hidden}
-                    onCheckedChange={setHidden}
+                    onCheckedChange={(checked) => set('hidden', checked)}
                   />
                   {/* Rarely needed fields stay out of the way until asked for. */}
                   <Collapsible className="border-border border-t pt-3" defaultOpen={hasMoreOptions(page)}>
@@ -361,17 +414,27 @@ export function PageSettingsDialog({
                     </CollapsibleTrigger>
                     <CollapsibleContent className="flex flex-col gap-4 pt-3">
                       <Field label={t('editor.pageSettings.sidebarTitle')} hint={t('editor.pageSettings.sidebarTitleHint')} htmlFor="page-sidebar">
-                        <Input id="page-sidebar" value={sidebarTitle} onChange={(e) => setSidebarTitle(e.target.value)} placeholder={page.title} />
+                        <Input
+                          id="page-sidebar"
+                          value={sidebarTitle}
+                          onChange={(e) => set('sidebarTitle', e.target.value)}
+                          placeholder={page.title}
+                        />
                       </Field>
                       <Field label={t('editor.pageSettings.tag')} hint={t('editor.pageSettings.tagHint')} htmlFor="page-tag">
-                        <Input id="page-tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="New" maxLength={20} />
+                        <Input id="page-tag" value={tag} onChange={(e) => set('tag', e.target.value)} placeholder="New" maxLength={20} />
                       </Field>
                       <Field label={t('editor.pageSettings.tags')} hint={t('editor.pageSettings.tagsHint')} htmlFor="page-tags">
-                        <Input id="page-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Getting started, Guide" />
+                        <Input id="page-tags" value={tags} onChange={(e) => set('tags', e.target.value)} placeholder="Getting started, Guide" />
                       </Field>
                       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
                         <Field label={t('editor.pageSettings.category')} hint={t('editor.pageSettings.categoryHint')} htmlFor="page-category">
-                          <Input id="page-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Getting started" />
+                          <Input
+                            id="page-category"
+                            value={category}
+                            onChange={(e) => set('category', e.target.value)}
+                            placeholder="Getting started"
+                          />
                         </Field>
                         <Field label={t('editor.pageSettings.categoryOrder')} htmlFor="page-category-order">
                           <Input
@@ -380,7 +443,7 @@ export function PageSettingsDialog({
                             min={0}
                             max={999}
                             value={categoryOrder}
-                            onChange={(e) => setCategoryOrder(e.target.value)}
+                            onChange={(e) => set('categoryOrder', e.target.value)}
                             placeholder="0"
                           />
                         </Field>
@@ -390,10 +453,15 @@ export function PageSettingsDialog({
                         hint={t('editor.pageSettings.categoryIconHint')}
                         htmlFor="page-category-icon"
                       >
-                        <Input id="page-category-icon" value={categoryIcon} onChange={(e) => setCategoryIcon(e.target.value)} placeholder="rocket" />
+                        <Input
+                          id="page-category-icon"
+                          value={categoryIcon}
+                          onChange={(e) => set('categoryIcon', e.target.value)}
+                          placeholder="rocket"
+                        />
                       </Field>
                       <Field label={t('editor.pageSettings.icon')} htmlFor="page-icon">
-                        <Input id="page-icon" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="rocket" />
+                        <Input id="page-icon" value={icon} onChange={(e) => set('icon', e.target.value)} placeholder="rocket" />
                       </Field>
                     </CollapsibleContent>
                   </Collapsible>
@@ -403,33 +471,31 @@ export function PageSettingsDialog({
               {section === 'seo' ? (
                 <div className="flex flex-col gap-4">
                   <Field label={t('editor.pageSettings.metaTitle')} hint={t('editor.pageSettings.metaTitleHint')} htmlFor="page-meta-title">
-                    <Input id="page-meta-title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={page.title} />
+                    <Input id="page-meta-title" value={metaTitle} onChange={(e) => set('metaTitle', e.target.value)} placeholder={page.title} />
                   </Field>
-                  <Field
-                    label={t('editor.pageSettings.metaDescription')}
-                    hint={t('editor.pageSettings.metaDescriptionHint')}
-                    htmlFor="page-meta-desc"
-                  >
-                    <Textarea
-                      id="page-meta-desc"
-                      value={metaDescription}
-                      onChange={(e) => setMetaDescription(e.target.value)}
-                      rows={2}
-                      placeholder={page.description ?? undefined}
-                    />
-                  </Field>
+                  <MetaDescriptionField
+                    projectId={projectId}
+                    pageId={page.id}
+                    revision={page.updatedAt}
+                    value={metaDescription}
+                    onChange={(next) => set('metaDescription', next)}
+                    summary={description}
+                    // A group has no page of its own on the published site.
+                    generated={open && !isGroup}
+                    placeholder={page.description ?? undefined}
+                  />
                   <Field label={t('editor.pageSettings.ogImage')} hint={t('editor.pageSettings.ogImageHint')} htmlFor="page-og">
-                    <Input id="page-og" value={ogImage} onChange={(e) => setOgImage(e.target.value)} placeholder="https://…/cover.png" />
+                    <Input id="page-og" value={ogImage} onChange={(e) => set('ogImage', e.target.value)} placeholder="https://…/cover.png" />
                   </Field>
                   <Field label={t('editor.pageSettings.canonicalUrl')} hint={t('editor.pageSettings.canonicalUrlHint')} htmlFor="page-canonical">
-                    <Input id="page-canonical" value={canonicalUrl} onChange={(e) => setCanonicalUrl(e.target.value)} placeholder="https://…" />
+                    <Input id="page-canonical" value={canonicalUrl} onChange={(e) => set('canonicalUrl', e.target.value)} placeholder="https://…" />
                   </Field>
                   <Toggle
                     label={t('editor.pageSettings.noindex')}
                     hint={t('editor.pageSettings.noindexHint')}
                     id="page-noindex"
                     checked={noindex}
-                    onCheckedChange={setNoindex}
+                    onCheckedChange={(checked) => set('noindex', checked)}
                   />
                   <Field
                     label={t('editor.pageSettings.translationKey')}
@@ -439,7 +505,7 @@ export function PageSettingsDialog({
                     <Input
                       id="page-translation-key"
                       value={translationKey}
-                      onChange={(e) => setTranslationKey(e.target.value)}
+                      onChange={(e) => set('translationKey', e.target.value)}
                       placeholder="getting-started"
                     />
                   </Field>
@@ -449,7 +515,7 @@ export function PageSettingsDialog({
               {section === 'behaviour' ? (
                 <div className="flex flex-col gap-4">
                   <Field label={t('editor.pageSettings.mode')} hint={t('editor.pageSettings.modeHint')} htmlFor="page-mode">
-                    <Select items={modeOptions} value={mode} onValueChange={(v) => setMode(v ?? 'default')}>
+                    <Select items={modeOptions} value={mode} onValueChange={(v) => set('mode', v ?? 'default')}>
                       <SelectTrigger id="page-mode" className="w-full">
                         <SelectValue>{modeOptions.find((option) => option.value === mode)?.label}</SelectValue>
                       </SelectTrigger>
@@ -467,7 +533,7 @@ export function PageSettingsDialog({
                     hint={t('editor.pageSettings.hideTocHint')}
                     id="page-hidetoc"
                     checked={hideToc}
-                    onCheckedChange={setHideToc}
+                    onCheckedChange={(checked) => set('hideToc', checked)}
                     disabled={mode !== 'default'}
                   />
                 </div>
@@ -476,7 +542,7 @@ export function PageSettingsDialog({
 
             <DialogFooter className="border-border border-t px-6 py-3">
               <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
-              <Button type="button" onClick={save} loading={update.isPending} loadingText={t('common.saving')}>
+              <Button type="button" onClick={() => void draft.submit()} loading={draft.isSaving} loadingText={t('common.saving')}>
                 {t('editor.pageSettings.save')}
               </Button>
             </DialogFooter>
@@ -532,6 +598,86 @@ function Field({ label, hint, htmlFor, children }: { label: string; hint?: strin
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
       {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
+    </div>
+  );
+}
+
+/** Search engines show about this many characters of a description. */
+const SEARCH_SNIPPET_LENGTH = 155;
+
+/** The SEO description. With neither it nor the page summary written, the
+ *  published site generates one from the page's text: show that text and offer
+ *  to start from it. */
+function MetaDescriptionField({
+  projectId,
+  pageId,
+  revision,
+  value,
+  onChange,
+  summary,
+  generated,
+  placeholder,
+}: {
+  projectId: string;
+  pageId: string;
+  /** The saved page revision the dialog shows (`updatedAt`). */
+  revision: string;
+  value: string;
+  onChange: (value: string) => void;
+  /** The page summary as currently typed; search engines use it when there is no SEO description. */
+  summary: string;
+  /** Whether the page gets a generated description at all. */
+  generated: boolean;
+  placeholder?: string;
+}) {
+  const t = useT();
+  const input = useRef<HTMLTextAreaElement>(null);
+  const automatic = generated && value.trim() === '' && summary.trim() === '';
+  const search = usePageSearchDescription(projectId, pageId, { enabled: automatic });
+  // Only an answer computed from the saved page as it is now (or later) is
+  // shown: a cached one for an older body counts as loading until the refetch
+  // brings the new one. It can be adopted only once no refetch is running.
+  const answer = search.data;
+  const current = answer && !search.isError && answer.revision >= revision ? answer : undefined;
+  const adoptable = current && !search.isFetching ? current : undefined;
+  const text = current?.description ?? '';
+  const writeOwn = () => {
+    if (!adoptable) return;
+    onChange(adoptable.description);
+    input.current?.focus();
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      <Field label={t('editor.pageSettings.metaDescription')} hint={t('editor.pageSettings.metaDescriptionHint')} htmlFor="page-meta-desc">
+        <Textarea id="page-meta-desc" ref={input} value={value} onChange={(e) => onChange(e.target.value)} rows={2} placeholder={placeholder} />
+      </Field>
+      {automatic ? (
+        <Callout
+          data-testid="search-description-preview"
+          icon={<SearchCheck />}
+          // Without the generated text (it failed to load) only the prompt is left.
+          title={search.isError ? undefined : t('editor.pageSettings.searchPreview.label')}
+          action={
+            <Button type="button" size="sm" variant="outline" onClick={writeOwn} disabled={!adoptable}>
+              {t('editor.pageSettings.searchPreview.writeOwn')}
+            </Button>
+          }
+        >
+          {search.isError ? null : !current ? (
+            <div className="mb-2 flex flex-col gap-1.5" aria-hidden data-slot="search-description-loading">
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3.5 w-2/3" />
+            </div>
+          ) : text ? (
+            <p dir="auto" className="text-start text-muted-foreground" data-slot="search-description">
+              {truncateText(text, SEARCH_SNIPPET_LENGTH)}
+            </p>
+          ) : (
+            <p className="text-start">{t('editor.pageSettings.searchPreview.empty')}</p>
+          )}
+          <p className="text-start text-foreground">{t('editor.pageSettings.searchPreview.prompt')}</p>
+        </Callout>
+      ) : null}
     </div>
   );
 }

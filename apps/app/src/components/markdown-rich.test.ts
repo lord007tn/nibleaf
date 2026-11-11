@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { needsRichMarkdown } from './markdown';
+import { needsRichMarkdown } from '@/lib/reader-hydration-modules';
 import RichMarkdown from './markdown-rich';
 
 describe('conditional Markdown renderer', () => {

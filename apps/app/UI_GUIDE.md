@@ -77,10 +77,40 @@ A toggle or select that saves on its own needs no save bar. Its mutation:
 - is optimistic only when the outcome is predictable and touches nothing else (`operations/ui-overhaul.md` §8.2);
 - rolls back on failure and toasts a plain-language message.
 
+## Choices
+
+Use the design system's `Checkbox` / `CheckboxField` and `RadioGroup` / `RadioField`, never a native
+`<input type="checkbox|radio">`:
+
+- `CheckboxField` and `RadioField` render the label and an optional description and wire them up; the whole row is
+  the click target. A bare `Checkbox` needs a wrapping `<label>`, `aria-label`, or `id` with `<label htmlFor>`.
+- `RadioGroup` takes `label` and `description` for the group (or `aria-labelledby`). It is one tab stop, and arrow
+  keys move and choose, following the reading direction in RTL.
+- A parent of some ticked items is `indeterminate` (read as "mixed").
+- `disabledReason` announces the control as unavailable and reads the reason as its description; the field
+  components also show it under the label. A checkbox stays focusable. Arrow keys pass over an unavailable radio, so its
+  reason is also part of the group's description.
+- The name of a field is its label alone; the description and the reason are read as its description.
+
+## Permissions
+
+Read `useSiteAccess(projectId)` from `features/site-access/api/use-site-access` and use the pure model's
+`decide(access, action)` in feature models:
+
+```ts
+const edit = decide(access, { type: 'site.content.edit' });
+const remove = decide(access, { type: 'site.member.remove', member });
+```
+
+`allowed` enables the control; `locked` disables it without permission copy while access is unknown.
+`denied` carries a `MessageKey` to translate into a visible reason. Show one retry at the section top for
+`unavailable`. Cached `ready` access remains usable when `stale`. Keep role checks out of components;
+the server still authorizes every write.
+
 ## Disabled, unavailable, empty
 
-- **Disabled controls say why.** Use `disabledReason` on `SettingsRow`, `Button`, `TooltipButton` and
-  `RowActionsItem`. The reason comes from the model.
+- **Disabled controls say why.** Use `disabledReason` on `SettingsRow`, `Button`, `TooltipButton`,
+  `RowActionsItem`, `Checkbox` and `RadioGroupItem`. The reason comes from the model.
 - **A feature that can't be used here** (not configured, not on the plan) renders one `FeatureUnavailable` instead of
   its body. Never a dead form under a notice, and no operator wording on Cloud.
 - **Lists:** `DataList` with `RowActions`, whose trigger is named after the row. `EmptyState` when there's nothing to

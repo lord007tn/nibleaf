@@ -34,6 +34,11 @@ export interface SwitcherWebsite {
   live: boolean;
 }
 
+/** A row of one organization's switcher list, with the caller's effective role there. */
+export interface OrganizationSwitcherWebsite extends SwitcherWebsite {
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+}
+
 export interface RecentWebsite extends SwitcherWebsite {
   organization: { id: string; slug: string; name: string };
 }
@@ -67,6 +72,8 @@ export interface OrganizationMember {
   userId: string;
   orgRole: OrgRole;
   createdAt: string;
+  /** When they last used Nibleaf (their newest session); null if never signed in. */
+  lastActiveAt: string | null;
   user: { id: string; name: string; email: string; image: string | null };
   projectGrants: Array<{ projectId: string; role: string; project: { id: string; name: string } }>;
 }
@@ -115,7 +122,7 @@ export const organizationSwitcherProjectsQueryOptions = (organizationId: string 
     queryKey: organizationKeys.organizations.projects(organizationId ?? '', 'switcher'),
     queryFn: organizationId
       ? async () =>
-          getData<SwitcherWebsite[]>(
+          getData<OrganizationSwitcherWebsite[]>(
             await api.app.organizations[':organizationId'].projects.$get({ param: { organizationId }, query: { view: 'switcher' } }),
             'websites',
           )
@@ -142,6 +149,9 @@ export const organizationMembersQueryOptions = (organizationId: string | undefin
       ? async () =>
           getData<OrganizationMember[]>(await api.app.organizations[':organizationId'].members.$get({ param: { organizationId } }), 'members')
       : skipToken,
+    // Joins and accepted invitations happen elsewhere: keep the list current (#421).
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
   });
 
 export const organizationUsageQueryOptions = (organizationId: string | undefined) =>

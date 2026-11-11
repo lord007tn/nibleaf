@@ -67,6 +67,56 @@ include that chunk. So:
 - Keep `validateSearch` and `beforeLoad` small: check ids against a plain list,
   not a list of icons and labels, and import anything larger lazily.
 - Loaders import only i18n-free factory modules (`DATA_LOADING.md`).
+- Code-split content that the server renders on reader pages is a hydration
+  module rendered in a `HydrationIsland`
+  (both in `src/lib/hydration-modules.tsx`), not `React.lazy`. A lazy component
+  suspends while hydrating even when its chunk is cached, and a re-render above
+  it then swaps the server HTML for the fallback (READER-03: a blank article and
+  0.33 CLS). An island never suspends in the browser: until its module loads,
+  hydrating keeps the server HTML as sent, a client navigation shows its pending
+  and failed states (never the route's error page), and the module retries a
+  bounded number of times, from an effect.
+  - The article and rich (HTML/math) renderers, declared in
+    `src/lib/reader-hydration-modules.ts`, also load before hydration: their
+    islands carry `data-hydration-module`, and the router's `hydrate` hook
+    loads the ones it finds. They stay out of the first-load preloads and load
+    only on pages that render them. The reader's loaders import the
+    declarations lazily, because the loaders sit in the eager chunk.
+  - Code in a language outside the article renderer's core highlight.js
+    grammars (`CORE_HIGHLIGHT_GRAMMARS` in
+    `src/components/site/reader-highlight.ts`: Bash/shell, JS/TS, JSON,
+    HTML/XML, CSS, Python, YAML, SQL, Markdown, diff, GraphQL, plain text)
+    loads that grammar per article, one chunk each
+    (`src/components/site/highlight-grammars.ts`). `lazyHighlightLanguages`
+    (`src/lib/highlight-languages.ts`) finds them in the content; the article's
+    island lists their keys (`hljs-rust`, space-separated) so the router's hook
+    loads them before hydrating, and the server waits for them. Together the
+    two sets are exactly lowlight's `common` set, which rehype-highlight used,
+    and `reader-highlight.test.ts` checks the output matches rehype-highlight's
+    for every language.
+  - The rich renderer's check (`needsRichMarkdown`) ignores fenced code and
+    single-line inline code: a `<div>` or `$HOME` in a code sample used to load
+    parse5 and KaTeX.
+  - The Ask AI launcher and card keep their server markup until a reader
+    reaches for them (`loadOnIntent`: pointer, touch or focus), and a click
+    that comes first is replayed once the chat loads. A search hand-off, an
+    `?ask=` link or a site that asks for analytics consent (whose launcher
+    isn't in the server markup) loads it at once. A router import of the chat
+    would let Rolldown re-split the consent modules it shares with the reader
+    (about 250 B gzip).
+- Controls whose code only matters once opened render a static trigger with
+  the same markup and load on intent (`src/lib/intent-module.ts`): the header's
+  language and version menus (`header-menus.tsx`), the phone drawer
+  (`mobile-nav-drawer.tsx`) and the search dialog (on pointer, touch, focus or
+  the shortcut; never on idle). A click before the code has loaded opens the
+  control once it has. Don't import a Base UI popup (menu, dialog, sheet,
+  select, popover, scroll area) from reader code that renders on first paint:
+  their floating-ui positioning and focus management are about 60 KiB gzip.
+- The reader's first-paint Lucide icons are two chunks, not one per icon:
+  `site-icons` and `site-shared-icons` (the icons marketing also uses), built
+  by `readerIconGroups` (`scripts/reader-icons.ts`) from the imports of the
+  files in `READER_ICON_SOURCES`. Add a file there when a new first-paint
+  reader module imports icons.
 
 - Marketing code doesn't import a Lucide icon the reader also uses. Rolldown
   groups shared modules by the chunks that import them, so a new importer
@@ -90,7 +140,7 @@ include that chunk. So:
   listed (`leakedDashboardPreloads` in `scripts/bundle-boundaries.mjs`; it
   needs the `BUNDLE_ANALYZE=true` report, like the module check).
 - Dashboard navigations get their preloads from the dashboard instead. The
-  client build writes `assets/dashboard-preloads.json`: for each dashboard
+  client build writes `dashboard-preloads.json` (site root): for each dashboard
   route id, every chunk its split parts load (each chunk and its static
   imports, minus what the entry already loads). The signed-in shell
   (`routes/app/route.tsx`) calls `useDashboardIntentPreload`
@@ -107,13 +157,34 @@ include that chunk. So:
 
 ## Budget history
 
+### 345,100 bytes, unchanged: reader first load trimmed (READER-05)
+
+Measured on production builds with `BUNDLE_ANALYZE=true` (gzip level 9), main@d2f24ee4:
+
+| Build | public-docs | public-docs-index | JS files (all modulepreloads) | article renderer before hydrating |
+| --- | --- | --- | --- | --- |
+| main@d2f24ee4 | 335.44 KiB | 334.27 KiB | 108, 42 of them single icons | +12 files, 115.88 KiB |
+| this change | 265.92 KiB | 265.16 KiB | 52, 2 icon chunks | +13 files, 88.91 KiB |
+
+- **Header menus and the phone drawer, about 60 KiB.** Base UI's menu, dialog
+  and scroll area with floating-ui load on intent behind static triggers.
+- **Icons, about 6 KiB and 40 requests.** Two icon chunks instead of one per icon.
+- **highlight.js, about 27 KiB of the article renderer.** 14 core grammars up
+  front; the other 23 of lowlight's common set load per article.
+- **Off the load entirely:** the search dialog (was idle-preloaded, now on
+  intent), the chat UI (now on intent), parse5 and KaTeX on pages whose only
+  HTML or `$` is in code, and mermaid until a diagram is near the viewport.
+
+The budget stays at 345,100 bytes, leaving about 71 KiB of headroom.
+
 ### 348,200 → 345,100 bytes: dashboard preload lists out of the eager chunk (#393)
 
 The router's eager `index` chunk carried `__vite__mapDeps`: the dependency
 chunk names of every lazy route, dashboard routes included (343 entries, ~11 KB
 raw). Dashboard routes now get no preload list there
 (`scripts/dashboard-preload-plugin.ts`), and the signed-in shell preloads a
-route's chunks on hover or focus from `assets/dashboard-preloads.json`.
+route's chunks on hover or focus from `/dashboard-preloads.json`. It is rewritten by every build under the same
+name, so it is served outside the immutable `/assets/` with `public, max-age=60, must-revalidate`.
 
 Measured against main@bae70857 (analyzed builds, gzip level 9):
 

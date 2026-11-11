@@ -3,6 +3,7 @@ import { eraseOrganization, TenantErasureManifestMismatchError, TenantUsageDelet
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { assignDefaultUsagePlan, type Invitation, Prisma, prisma } from '@nibleaf/database';
 import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
+import { logger } from '@nibleaf/logger';
 import { generateJoinLinkToken, hashJoinLinkToken } from '@nibleaf/shared/crypto';
 import { joinLinkPath, joinLinkStatus } from '@nibleaf/shared/join-links';
 import { isValidOrganizationHandle, organizationHandleCandidates } from '@nibleaf/shared/organization-handles';
@@ -13,6 +14,7 @@ import { assertUsableAccount } from '@/lib/access';
 import { applyAdmission, lockOrganization } from './admissions';
 import { syncLegacyMembership } from './legacy-membership';
 import { notificationEnabled } from './notifications';
+import { invalidateOrganizationPublishedConfig } from './sites';
 
 type Tx = Prisma.TransactionClient;
 const userSelect = { id: true, name: true, email: true, image: true } as const;
@@ -44,10 +46,6 @@ export async function withOrganization<T>(
   });
 }
 
-/** PR 1 keeps one website per organization, and the previous release reads any
- * membership as site access, so an org member always holds at least one grant
- * (design §10.1). Removing the last grant removes the membership instead. */
-const noWebsites = () => conflict('Choose at least one website, or remove this person instead.');
 export async function validateOrganizationGrants(tx: Tx, organizationId: string, grants: AdmissionGrant[]) {
   if (grants.some((g) => !['admin', 'member', 'viewer'].includes(g.role))) throw forbidden('Invalid website role.');
   if (new Set(grants.map((g) => g.projectId)).size !== grants.length) throw conflict('Each website may appear only once.');
@@ -110,7 +108,7 @@ const MAX_HANDLE_ATTEMPTS = 1000;
 export const createOrganization = async (userId: string, name: string) => {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await prisma.$transaction(async (tx) => {
+      const created = await prisma.$transaction(async (tx) => {
         await assertUsableAccount(userId, tx);
         const org = await tx.organization.create({ data: { name }, select: { id: true } });
         let slug: string | undefined;
@@ -130,6 +128,9 @@ export const createOrganization = async (userId: string, name: string) => {
         await tx.userPreference.upsert({ where: { userId }, create: { userId, lastOrganizationId: org.id }, update: { lastOrganizationId: org.id } });
         return orgDto(created, 'owner');
       });
+      // The transaction assigned the organization's plan: no website may keep stale add-ons.
+      await invalidateOrganizationPublishedConfig(created.id);
+      return created;
     } catch (error) {
       if (attempt < 2 && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') continue;
       throw error;
@@ -213,12 +214,84 @@ export const updateOrganization = (
         throw conflict('This organization handle is already taken.');
       throw error;
     });
-export const listOrganizationMembers = async (organizationId: string) =>
-  prisma.member.findMany({
+/** When each person last used Nibleaf: their most recently refreshed session (sessions refresh daily while in use). */
+export const lastActiveByUser = async (userIds: string[]) => {
+  if (!userIds.length) return new Map<string, Date>();
+  const rows = await prisma.session.groupBy({ by: ['userId'], where: { userId: { in: userIds } }, _max: { updatedAt: true } });
+  return new Map(rows.flatMap((row) => (row._max.updatedAt ? [[row.userId, row._max.updatedAt] as const] : [])));
+};
+export const listOrganizationMembers = async (organizationId: string) => {
+  const members = await prisma.member.findMany({
     where: { organizationId },
     select: { id: true, userId: true, orgRole: true, createdAt: true, user: { select: userSelect }, projectGrants: { include: grantsInclude } },
     orderBy: { createdAt: 'asc' },
   });
+  const lastActive = await lastActiveByUser(members.map((member) => member.userId));
+  return members.map((member) => ({ ...member, lastActiveAt: lastActive.get(member.userId) ?? null }));
+};
+
+/** Pending invitations of the organization, newest first, with their whole scope (org Owner/Admin view, design §5.1). */
+export const listOrganizationInvitations = async (organizationId: string) =>
+  prisma.invitation.findMany({
+    where: { organizationId, status: 'pending', kind: 'member' },
+    select: {
+      id: true,
+      email: true,
+      orgRole: true,
+      createdAt: true,
+      expiresAt: true,
+      inviter: { select: { id: true, name: true, email: true } },
+      grants: { select: { projectId: true, role: true, project: { select: { name: true } } } },
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+  });
+
+const INVITATION_DAYS = 7;
+/**
+ * Send a pending invitation again: a fresh 7-day expiry (an expired one comes
+ * back only through this explicit action) and a new email when the
+ * organization sends invitation emails. On the org path the caller is an org
+ * Owner/Admin; on the website path a site Admin of a website the invitation
+ * grants, who must still be able to grant all of it.
+ */
+export const resendOrganizationInvitation = async (
+  organizationId: string,
+  actorId: string,
+  id: string,
+  options: { siteProjectId?: string; language?: EmailLanguage } = {},
+) => {
+  const invitation = await withOrganization(
+    organizationId,
+    actorId,
+    async (tx) => {
+      // Scope first: from a website, an invitation that doesn't grant it is "not found" whatever its
+      // status, so a site Admin can't learn whether another website's invitation was accepted.
+      const current = await tx.invitation.findFirst({
+        where: { id, organizationId, kind: 'member', ...(options.siteProjectId ? { grants: { some: { projectId: options.siteProjectId } } } : {}) },
+        include: { grants: true },
+      });
+      if (!current) throw notFound('invitation');
+      assertRevocable(current);
+      if (options.siteProjectId && !(await issuerAuthorizes(tx, organizationId, actorId, current.orgRole, current.grants)))
+        throw forbidden('Ask an organization admin to resend this invitation.');
+      return tx.invitation.update({
+        where: { id },
+        data: { expiresAt: new Date(Date.now() + INVITATION_DAYS * 86_400_000) },
+        include: { grants: true },
+      });
+    },
+    !options.siteProjectId,
+  );
+  const deliveries = await sendOrganizationInvitations(
+    organizationId,
+    invitation.inviterId,
+    [invitation],
+    { orgRole: invitation.orgRole, grants: invitation.grants.map(({ projectId, role }) => ({ projectId, role })) },
+    { language: options.language },
+  );
+  const delivery = deliveries[invitation.id] ?? 'disabled';
+  return { id: invitation.id, expiresAt: invitation.expiresAt, delivery, emailed: delivery === 'queued' };
+};
 
 export const inviteOrganizationMembers = async (
   organizationId: string,
@@ -231,7 +304,6 @@ export const inviteOrganizationMembers = async (
     actorId,
     async (tx) => {
       await validateOrganizationGrants(tx, organizationId, body.grants);
-      if (body.orgRole === 'member' && !body.grants.length) throw noWebsites();
       if (options.siteProjectId && (body.orgRole !== 'member' || body.grants.length !== 1 || body.grants[0]?.projectId !== options.siteProjectId))
         throw forbidden('Invite from the organization to grant additional access.');
       if (!(await issuerAuthorizes(tx, organizationId, actorId, body.orgRole, body.grants))) throw forbidden('You cannot grant this access.');
@@ -255,7 +327,7 @@ export const inviteOrganizationMembers = async (
               role: 'viewer',
               kind: 'member',
               status: 'pending',
-              expiresAt: new Date(Date.now() + 7 * 86_400_000),
+              expiresAt: new Date(Date.now() + INVITATION_DAYS * 86_400_000),
               grants: { create: body.grants.map(({ projectId, role }) => ({ projectId, role })) },
             },
           });
@@ -266,41 +338,59 @@ export const inviteOrganizationMembers = async (
     },
     !options.siteProjectId,
   );
-  await sendOrganizationInvitations(organizationId, actorId, result.invitations, body, options);
-  return result;
+  const deliveries = await sendOrganizationInvitations(organizationId, actorId, result.invitations, body, options);
+  const invitations = result.invitations.map((invitation) => ({ ...invitation, delivery: deliveries[invitation.id] ?? ('disabled' as const) }));
+  // `emailed` stays for older clients: true only when every new invitation's email was queued.
+  return { ...result, invitations, emailed: invitations.length > 0 && invitations.every((invitation) => invitation.delivery === 'queued') };
 };
 
+/**
+ * What happened to one invitation's email: `queued` for delivery (not yet
+ * sent: the worker sends it), `failed` to queue (the invitation still exists;
+ * copy its link or retry), or `disabled` (the organization sends no
+ * invitation emails, or the caller asked for none).
+ */
+export type InvitationDelivery = 'queued' | 'failed' | 'disabled';
+
+/** Queues one email per invitation and reports the outcome per invitation id; a failure never hides behind success. */
 export async function sendOrganizationInvitations(
   organizationId: string,
   actorId: string,
   invitations: Array<{ id: string; email: string }>,
   body: { orgRole: string; grants: AdmissionGrant[] },
   options: { sendEmail?: boolean; language?: EmailLanguage },
-) {
-  if (options.sendEmail !== false && invitations.length) {
-    const [org, inviter, projects] = await Promise.all([
-      prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true, metadata: true } }),
-      prisma.user.findUniqueOrThrow({ where: { id: actorId }, select: { name: true } }),
-      prisma.project.findMany({ where: { organizationId, id: { in: body.grants.map((g) => g.projectId) } }, select: { id: true, name: true } }),
-    ]);
-    if (notificationEnabled(org.metadata, 'member_invited'))
-      for (const invitation of invitations) {
-        const message = await renderMemberInvitationEmail({
-          acceptUrl: `${env.APP_URL}/accept-invite/${invitation.id}`,
-          days: 7,
-          inviterName: inviter.name,
-          organizationName: org.name,
-          role: body.orgRole,
-          organizationRole: true,
-          grants: body.grants.map((grant) => ({ name: projects.find((p) => p.id === grant.projectId)?.name ?? '', role: grant.role })),
-          language: options.language,
-        });
-        await createJob(QueueNames.EMAIL, {
-          name: 'send-email',
-          data: { to: invitation.email, ...message },
-        }).catch(() => undefined);
-      }
+): Promise<Record<string, InvitationDelivery>> {
+  const outcome: Record<string, InvitationDelivery> = Object.fromEntries(invitations.map((invitation) => [invitation.id, 'disabled' as const]));
+  if (options.sendEmail === false || !invitations.length) return outcome;
+  const [org, inviter, projects] = await Promise.all([
+    prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true, metadata: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: actorId }, select: { name: true } }),
+    prisma.project.findMany({ where: { organizationId, id: { in: body.grants.map((g) => g.projectId) } }, select: { id: true, name: true } }),
+  ]);
+  if (!notificationEnabled(org.metadata, 'member_invited')) return outcome;
+  for (const invitation of invitations) {
+    try {
+      const message = await renderMemberInvitationEmail({
+        acceptUrl: `${env.APP_URL}/accept-invite/${invitation.id}`,
+        days: INVITATION_DAYS,
+        inviterName: inviter.name,
+        organizationName: org.name,
+        role: body.orgRole,
+        organizationRole: true,
+        grants: body.grants.map((grant) => ({ name: projects.find((p) => p.id === grant.projectId)?.name ?? '', role: grant.role })),
+        language: options.language,
+      });
+      await createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: invitation.email, ...message } });
+      outcome[invitation.id] = 'queued';
+    } catch (error) {
+      logger.warn(
+        { organizationId, invitationId: invitation.id, error: error instanceof Error ? error.message : String(error) },
+        'invitation email could not be queued',
+      );
+      outcome[invitation.id] = 'failed';
+    }
   }
+  return outcome;
 }
 
 /** Only a pending invitation can be revoked. An accepted one already made a
@@ -338,9 +428,10 @@ export const updateOrganizationMember = (
 ) =>
   withOrganization(organizationId, actorId, async (tx) => {
     const member = await targetMember(tx, organizationId, id);
-    if (member.orgRole === 'admin' && body.orgRole === 'member' && !body.grants?.length) throw noWebsites();
     if (body.grants) await validateOrganizationGrants(tx, organizationId, body.grants);
-    if (member.orgRole === 'admin' && body.orgRole === 'member') await replaceGrants(tx, organizationId, member.userId, body.grants ?? [], actorId);
+    // Admin → Member writes exactly the chosen websites (none is allowed); without a list the dormant grants stay (§6.6).
+    if (member.orgRole === 'admin' && body.orgRole === 'member' && body.grants)
+      await replaceGrants(tx, organizationId, member.userId, body.grants, actorId);
     const result = await tx.member.update({ where: { id }, data: { orgRole: body.orgRole, role: body.orgRole === 'member' ? 'viewer' : 'admin' } });
     await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, body.orgRole);
     await syncLegacyMembership(tx, organizationId, member.userId);
@@ -351,7 +442,6 @@ export const replaceOrganizationMemberAccess = (organizationId: string, actorId:
     await validateOrganizationGrants(tx, organizationId, grants);
     const member = await targetMember(tx, organizationId, id);
     if (member.orgRole !== 'member') throw forbidden('Organization admins have access via the organization.');
-    if (!grants.length) throw noWebsites();
     await replaceGrants(tx, organizationId, member.userId, grants, actorId);
     await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, 'member');
     await syncLegacyMembership(tx, organizationId, member.userId);
@@ -417,7 +507,8 @@ const presentLink = (link: Prisma.JoinLinkGetPayload<{ select: typeof linkSelect
 });
 export const listOrganizationJoinLinks = async (organizationId: string, projectId?: string) => {
   const links = await prisma.joinLink.findMany({
-    where: { organizationId, ...(projectId ? { grants: { some: { projectId }, every: { projectId } } } : {}) },
+    // Deleted links are tombstones: kept (with who joined) for audit, never listed.
+    where: { organizationId, deletedAt: null, ...(projectId ? { grants: { some: { projectId }, every: { projectId } } } : {}) },
     select: linkSelect,
     orderBy: { createdAt: 'desc' },
   });
@@ -485,7 +576,7 @@ export function changeOrganizationJoinLink(organizationId: string, actorId: stri
     organizationId,
     actorId,
     async (tx, _org, actor) => {
-      const link = await tx.joinLink.findFirst({ where: { id, organizationId }, include: { grants: true } });
+      const link = await tx.joinLink.findFirst({ where: { id, organizationId, deletedAt: null }, include: { grants: true } });
       if (!link || (siteProjectId && (link.grants.length !== 1 || link.grants[0]?.projectId !== siteProjectId))) throw notFound('join_link');
       if (!isAdmin(actor.orgRole) && !(await issuerAuthorizes(tx, organizationId, actorId, 'member', link.grants)))
         throw forbidden('You cannot manage this access.');
@@ -501,3 +592,40 @@ export function changeOrganizationJoinLink(organizationId: string, actorId: stri
     !siteProjectId,
   );
 }
+
+/**
+ * Delete a join link that no longer admits anyone (disabled, expired, used up,
+ * or its creator lost the authority). An active link must be disabled first,
+ * so one click can't silently end a live link.
+ *
+ * Deletion is a tombstone, never a row delete: `join_link_use` (who joined
+ * through it) cascades from the link, and that admission history must
+ * survive. The same UPDATE records who deleted it, from where (`organization`
+ * or `website:<id>`) and when, and makes sure it is revoked, so even the PR 1
+ * floor never admits anyone through it.
+ */
+export const deleteOrganizationJoinLink = (organizationId: string, actorId: string, id: string, siteProjectId?: string) =>
+  withOrganization(
+    organizationId,
+    actorId,
+    async (tx, _org, actor) => {
+      const link = await tx.joinLink.findFirst({ where: { id, organizationId, deletedAt: null }, include: { grants: true } });
+      if (!link || (siteProjectId && (link.grants.length !== 1 || link.grants[0]?.projectId !== siteProjectId))) throw notFound('join_link');
+      if (!isAdmin(actor.orgRole) && !(await issuerAuthorizes(tx, organizationId, actorId, 'member', link.grants)))
+        throw forbidden('You cannot manage this access.');
+      const usable = joinLinkStatus(link) === 'active' && (await issuerAuthorizes(tx, organizationId, link.createdById, 'member', link.grants));
+      if (usable) throw conflict('Disable this link before deleting it.', { reason: 'join_link_active' });
+      const now = new Date();
+      await tx.joinLink.update({
+        where: { id },
+        data: {
+          deletedAt: now,
+          deletedById: actorId,
+          deletedScope: siteProjectId ? `website:${siteProjectId}` : 'organization',
+          revokedAt: link.revokedAt ?? now,
+        },
+      });
+      return { id };
+    },
+    !siteProjectId,
+  );

@@ -12,7 +12,8 @@ import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { defineConfig, loadEnv } from 'vite';
 import { z } from 'zod';
 import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
-import { dashboardPreloadPlugin } from './scripts/dashboard-preload-plugin.ts';
+import { DASHBOARD_PRELOADS_CACHE_CONTROL, dashboardPreloadPlugin } from './scripts/dashboard-preload-plugin.ts';
+import { readerIconGroups } from './scripts/reader-icons.ts';
 
 // Baseline browser hardening for every dashboard, marketing, and published-site
 // response. The custom server entry adds the per-response nonce-based CSP to
@@ -108,6 +109,9 @@ export default defineConfig(({ mode }) => {
                         id.replaceAll('\\', '/'),
                       ),
                   },
+                  // The icons a docs page renders, in two chunks instead of ~45 one-icon files
+                  // (scripts/reader-icons.ts).
+                  ...readerIconGroups(import.meta.dirname),
                   {
                     name: 'standalone-i18n',
                     test: (id) =>
@@ -179,6 +183,9 @@ export default defineConfig(({ mode }) => {
           // cache entry per content-hashed `/assets/*` file across every hostname
           // and requires this marker (apps/custom-domain-edge/src/index.ts).
           '/assets/**': { headers: { 'x-nibleaf-static-build': '1' } },
+          // Rewritten by every build under the same name (scripts/dashboard-preload-plugin.ts),
+          // so it lives outside the immutable, content-hashed `/assets/` and is revalidated.
+          '/dashboard-preloads.json': { headers: { 'cache-control': DASHBOARD_PRELOADS_CACHE_CONTROL } },
           // Nitro otherwise treats dotted asset keys as app/static paths before
           // the broad API proxy, leaving imported images as published-site 404s.
           '/api/public/assets/**': { proxy: `${apiTarget}/api/public/assets/**` },

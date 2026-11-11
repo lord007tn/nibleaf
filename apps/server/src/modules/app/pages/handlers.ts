@@ -1,6 +1,15 @@
 import { createPageBody, listPagesQuery, reorderPagesBody, updatePageBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { createPage, deletePage, getPage, listPages, reorderPages, updatePage } from '@/actions/pages';
+import {
+  createPage,
+  deletePage,
+  getPage,
+  getPageSearchDescription,
+  listPages,
+  pageStructureRevision,
+  reorderPages,
+  updatePage,
+} from '@/actions/pages';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -17,7 +26,9 @@ const app = new Hono<HonoEnv>()
   .get('/', ...pagesRoutes.list, validator('query', listPagesQuery), async (ctx) => {
     const projectId = await projectScope(ctx);
     const { languageId, branchId } = ctx.req.valid('query');
-    return ctx.json({ data: await listPages(projectId, languageId, branchId) }, 200);
+    const pages = await listPages(projectId, languageId, branchId);
+    if (!languageId) ctx.header('x-page-structure-revision', pageStructureRevision(pages));
+    return ctx.json({ data: pages }, 200);
   })
   .post('/', ...pagesRoutes.create, validator('json', createPageBody), async (ctx) => {
     const projectId = await projectScope(ctx);
@@ -31,6 +42,10 @@ const app = new Hono<HonoEnv>()
   .get('/:id', ...pagesRoutes.get, async (ctx) => {
     const projectId = await projectScope(ctx);
     return ctx.json({ data: await getPage(projectId, ctx.req.param('id')) }, 200);
+  })
+  .get('/:id/search-description', ...pagesRoutes.searchDescription, async (ctx) => {
+    const projectId = await projectScope(ctx);
+    return ctx.json({ data: await getPageSearchDescription(projectId, ctx.req.param('id')) }, 200);
   })
   .patch('/:id', ...pagesRoutes.update, validator('json', updatePageBody), async (ctx) => {
     const projectId = await projectScope(ctx);

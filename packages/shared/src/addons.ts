@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type EffectivePlan, evaluateCapability, type PlanAssignmentState, type PlanPolicy, resolveEffectivePlan } from './plan-policy';
 
 export const ADDON_GROUPS = ['engagement', 'privacy', 'publishing'] as const;
 export type AddonGroup = 'engagement' | 'privacy' | 'publishing';
@@ -224,59 +225,37 @@ export interface ProjectAddonProjectionRow {
   config: unknown;
 }
 
-export interface AddonDeliveryPlanAssignment {
-  status: string;
-  effectiveAt: Date | string;
-  expiresAt: Date | string | null;
-  plan: {
-    key: string;
-    active: boolean;
-    entitlements: readonly {
-      capabilityKey: string;
-      enabled: boolean;
-      meter: { active: boolean } | null;
-    }[];
-  };
-}
+export type AddonDeliveryPlan = PlanPolicy;
+export type AddonDeliveryPlanAssignment = PlanAssignmentState<AddonDeliveryPlan>;
 
-const validInstant = (value: Date | string): number | null => {
-  const timestamp = new Date(value).getTime();
-  return Number.isFinite(timestamp) ? timestamp : null;
-};
+/** Whether the effective plan grants an add-on (the shared capability rule). */
+export const addonGrantedBy = (effective: EffectivePlan, availability: AddonDefinition['availability']): boolean =>
+  evaluateCapability(effective, {
+    capabilityKey: availability.entitlement,
+    eligiblePlanKeys: availability.plans,
+    comingSoon: availability.state === 'coming_soon',
+  }).decision === 'enabled';
 
 /** Resolve the add-ons that may reach public delivery or publish execution.
- * Durable enabled state remains the user's preference, while the current plan
- * and capability state are a separate fail-closed gate. Meter quantities and
- * limits are intentionally absent: usage enforcement is advisory. */
+ * Durable enabled state (a ProjectAddon row, else the add-on's default) is the
+ * user's preference; the effective plan (`resolveEffectivePlan`: the org's
+ * active assignment, else the canonical free plan as configured, else
+ * nothing) is a separate gate, evaluated with the same rule as settings and
+ * MCP (`evaluateCapability`). Meter quantities and limits are intentionally
+ * absent: usage enforcement is advisory. */
 export const projectAddonRowsForDelivery = (
   rows: readonly { key: string; enabled: boolean; config: unknown }[],
   assignment: AddonDeliveryPlanAssignment | null | undefined,
+  defaultPlan: AddonDeliveryPlan | null | undefined,
   now = new Date(),
 ): ProjectAddonProjectionRow[] => {
   const byId = new Map(rows.flatMap((row) => (isAddonId(row.key) ? [[row.key, row] as const] : [])));
-  const nowAt = now.getTime();
-  const effectiveAt = assignment ? validInstant(assignment.effectiveAt) : null;
-  const expiresAt = assignment?.expiresAt ? validInstant(assignment.expiresAt) : null;
-  const activePlan =
-    assignment?.status === 'active' &&
-    assignment.plan.active &&
-    effectiveAt !== null &&
-    effectiveAt <= nowAt &&
-    (assignment.expiresAt === null || (expiresAt !== null && expiresAt > nowAt));
-
+  const effective = resolveEffectivePlan(assignment, defaultPlan, now);
   return addonDefinitions.map((definition) => {
     const row = byId.get(definition.id);
-    const availability: AddonDefinition['availability'] = definition.availability;
-    const entitlement = assignment?.plan.entitlements.find((item) => item.capabilityKey === definition.availability.entitlement);
-    const capabilityAvailable =
-      activePlan &&
-      availability.state !== 'coming_soon' &&
-      availability.plans.some((planKey) => planKey === assignment.plan.key) &&
-      entitlement?.enabled === true &&
-      (entitlement.meter?.active ?? true);
     return {
       key: definition.id,
-      enabled: (row?.enabled ?? definition.defaultEnabled) && capabilityAvailable,
+      enabled: (row?.enabled ?? definition.defaultEnabled) && addonGrantedBy(effective, definition.availability),
       config: row?.config ?? definition.defaultConfig,
     };
   });

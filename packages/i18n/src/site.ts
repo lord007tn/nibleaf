@@ -8,6 +8,7 @@ import { site_analyticsconsentmanage } from './paraglide/messages/site_analytics
 import { site_analyticsconsentprivacy } from './paraglide/messages/site_analyticsconsentprivacy.js';
 import { site_analyticsconsenttitle } from './paraglide/messages/site_analyticsconsenttitle.js';
 import { site_articledetails } from './paraglide/messages/site_articledetails.js';
+import { site_articleloadfailed } from './paraglide/messages/site_articleloadfailed.js';
 import { site_blog } from './paraglide/messages/site_blog.js';
 import { site_breadcrumb } from './paraglide/messages/site_breadcrumb.js';
 import { site_changelanguage } from './paraglide/messages/site_changelanguage.js';
@@ -17,6 +18,7 @@ import { site_changelogpagecount } from './paraglide/messages/site_changelogpage
 import { site_changelogrelease } from './paraglide/messages/site_changelogrelease.js';
 import { site_changelogsubtitle } from './paraglide/messages/site_changelogsubtitle.js';
 import { site_changeversion } from './paraglide/messages/site_changeversion.js';
+import { site_controlloadfailed } from './paraglide/messages/site_controlloadfailed.js';
 import { site_copymarkdown } from './paraglide/messages/site_copymarkdown.js';
 import { site_darkmode } from './paraglide/messages/site_darkmode.js';
 import { site_defaultversion } from './paraglide/messages/site_defaultversion.js';
@@ -36,6 +38,8 @@ import { site_importblog } from './paraglide/messages/site_importblog.js';
 import { site_importpages } from './paraglide/messages/site_importpages.js';
 import { site_language } from './paraglide/messages/site_language.js';
 import { site_languagecurrent } from './paraglide/messages/site_languagecurrent.js';
+import { site_languagefallbacknotice } from './paraglide/messages/site_languagefallbacknotice.js';
+import { site_languagefallbackview } from './paraglide/messages/site_languagefallbackview.js';
 import { site_loading } from './paraglide/messages/site_loading.js';
 import { site_loadingapireference } from './paraglide/messages/site_loadingapireference.js';
 import { site_logo } from './paraglide/messages/site_logo.js';
@@ -79,7 +83,7 @@ import { site_versioncurrent } from './paraglide/messages/site_versioncurrent.js
 import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 import type { SiteAccessMessageKey } from './site-access';
-import type { SiteChatMessageKey } from './site-chat';
+import type { SiteChatMessageKey, SiteChatPluralKey } from './site-chat';
 import type { SiteContentMessageKey } from './site-content';
 import type { SiteSearchMessageKey } from './site-search';
 
@@ -87,6 +91,8 @@ import type { SiteSearchMessageKey } from './site-search';
  * that forgets a variable fails to compile instead of rendering "{query}". */
 const siteVariableMessages = {
   languageCurrent: site_languagecurrent,
+  languageFallbackNotice: site_languagefallbacknotice,
+  languageFallbackView: site_languagefallbackview,
   versionCurrent: site_versioncurrent,
 };
 
@@ -109,6 +115,8 @@ const siteMessages = {
   searchPlaceholder: site_searchplaceholder,
   searchEmpty: site_searchempty,
   loading: site_loading,
+  articleLoadFailed: site_articleloadfailed,
+  controlLoadFailed: site_controlloadfailed,
   previous: site_previous,
   next: site_next,
   onThisPage: site_onthispage,
@@ -183,7 +191,7 @@ type SiteMarketingHeadKey = `arabic${'Landing' | 'Platforms'}${string}`;
  * and private-site screen (./site-access). */
 export type SiteMessageKey = Exclude<
   SiteContractKey extends `site.${infer Key}` ? Key : never,
-  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey | SiteAccessMessageKey | SiteMarketingHeadKey
+  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey | SiteChatPluralKey | SiteAccessMessageKey | SiteMarketingHeadKey
 >;
 type SiteVariableKey = keyof typeof siteVariableMessages;
 type SitePluralKey = keyof typeof sitePluralMessages;

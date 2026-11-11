@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { pageDescription, pageExcerpt } from './markdown-text';
 import {
   buildNavTree,
   buildSnapshot,
@@ -6,10 +7,11 @@ import {
   explicitPageDescription,
   extractHeadings,
   interpolateVariables,
+  interpolateVariablesWithin,
   isPageTranslation,
+  languageEndonym,
+  languageNameIn,
   mergeLanguageChrome,
-  pageDescription,
-  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
@@ -369,6 +371,23 @@ describe('interpolateVariables', () => {
   });
 });
 
+describe('interpolateVariablesWithin', () => {
+  it('substitutes like interpolateVariables when the text fits', () => {
+    const text = '{{ a }} and {{b}} and {{c}}';
+    expect(interpolateVariablesWithin(text, { a: '1', b: '2' }, 100)).toBe(interpolateVariables(text, { a: '1', b: '2' }));
+    expect(interpolateVariablesWithin('plain text', {}, 5)).toBe('plain');
+  });
+  it('stops expanding at the limit, so long values cannot amplify a large body', () => {
+    const text = '{{x}}'.repeat(200_000);
+    const value = 'v'.repeat(500);
+    const started = performance.now();
+    const result = interpolateVariablesWithin(text, { x: value }, 8192);
+    expect(performance.now() - started).toBeLessThan(50);
+    expect(result).toHaveLength(8192);
+    expect(result).toBe(value.repeat(17).slice(0, 8192));
+  });
+});
+
 describe('pageDescription and defaultLanguage', () => {
   const proj = (languages: SnapshotLanguage[]): SnapshotProject => ({ languages }) as unknown as SnapshotProject;
 
@@ -426,6 +445,26 @@ describe('publicLanguages', () => {
   it('always serves the default language, even with a stale disabled flag', () => {
     const served = publicLanguages([lang({ code: 'en', isDefault: true, enabled: false }), lang({ code: 'ar', enabled: false })]);
     expect(served.map((l) => l.code)).toEqual(['en']);
+  });
+  // READER-19: one site showed "Arabic", another "العربية", from what each owner typed.
+  it('labels every language with its own name, whatever label was stored', () => {
+    const served = publicLanguages([
+      lang({ code: 'en', isDefault: true, label: 'English (US)' }),
+      lang({ code: 'ar', label: 'Arabic' }),
+      lang({ code: 'fr', label: 'French' }),
+      lang({ code: 'pt-BR', label: 'Portuguese' }),
+    ]);
+    expect(served.map((l) => l.label)).toEqual(['English', 'العربية', 'Français', 'Português (Brasil)']);
+  });
+  it('keeps the stored label for a code the platform cannot name', () => {
+    expect(languageEndonym('x-klingon')).toBeNull();
+    // `la` is a valid tag the platform has no locale data for: DisplayNames would
+    // quietly answer in en-US ("Latin"), so the stored label is kept.
+    expect(languageEndonym('la')).toBeNull();
+    expect(languageNameIn('la', 'en')).toBeNull();
+    expect(languageNameIn('ar', 'en')).toBe('الإنجليزية');
+    expect(publicLanguages([lang({ code: 'la', isDefault: true, label: 'Latina' })])[0]?.label).toBe('Latina');
+    expect(publicLanguages([lang({ code: 'x-klingon', isDefault: true, label: 'Klingon' })])[0]?.label).toBe('Klingon');
   });
 });
 
