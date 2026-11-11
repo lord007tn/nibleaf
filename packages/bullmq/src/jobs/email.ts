@@ -9,7 +9,12 @@ export interface SendEmailJobData {
   html: string;
   text?: string;
   /** Absolute verification deadline, preserved across queue waits and retries. */
-  auth?: { purpose: 'otp'; expiresAt: number /** Closed-instance sign-in: decide eligibility only in the worker. */; existingUserOnly?: boolean };
+  auth?: {
+    purpose: 'otp';
+    expiresAt: number;
+    /** Closed-instance sign-in: decide eligibility only in the worker. */
+    existingUserOnly?: boolean;
+  };
   /** Team-event mail is reauthorized after queue waits and retries. */
   teamAccess?: { userId: string; projectId: string; minimumRole: 'viewer' | 'admin'; notificationId?: string };
 }

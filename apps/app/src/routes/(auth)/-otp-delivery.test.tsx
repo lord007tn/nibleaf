@@ -167,6 +167,21 @@ describe('required auth email delivery feedback', () => {
     expect(container.querySelector('input[type="email"]')).not.toBeNull();
   });
 
+  it.each([
+    ['sign-in', signIn],
+    ['sign-up', signUp],
+  ])('%s explains a verified code on a closed instance', async (_label, Page) => {
+    mocks.locale = 'en';
+    mocks.send.mockResolvedValue({ error: null });
+    mocks.verify.mockResolvedValue({ error: { code: 'SIGNUP_CLOSED' } });
+    await render(Page);
+    await submit();
+    await enter('[data-input-otp]', '123456');
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      'New account registration is closed on this instance. Contact your administrator for access.',
+    );
+  });
+
   it('the installed OTP input completes after rendering the latest sixth digit', async () => {
     mocks.send.mockResolvedValue({ error: null });
     await render(signIn);

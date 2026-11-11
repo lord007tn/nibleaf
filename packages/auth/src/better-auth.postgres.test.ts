@@ -420,7 +420,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
     mocks.googleIdToken = `${encode({ alg: 'RS256' })}.${encode({ sub: email, email, email_verified: true, name: 'Synthetic', aud: GOOGLE_CLIENT_ID, iss: 'https://accounts.google.com', exp: Math.floor(Date.now() / 1000) + 3600 })}.signature`;
     const started = await send('/sign-in/social', { body: { provider: 'google', callbackURL: '/app', additionalData: { acceptTerms: true } } });
-    const { url } = await started.json() as { url: string };
+    const { url } = (await started.json()) as { url: string };
     const state = new URL(url).searchParams.get('state') as string;
     const cookie = setCookiePairs(started).join('; ');
     const tampered = await send(`/callback/google?code=synthetic&state=${state}tampered`, { cookie });
