@@ -199,11 +199,20 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     const { organization } = await fixture();
     const rows: Member[] = [];
     for (let index = 0; index < 3; index++) {
-      const user = await db.prisma.user.create({ data: { name: 'Synthetic member', email: `integrity-${randomUUID()}@example.invalid` } });
+      const user = await db.prisma.user.create({
+        data: { name: 'Synthetic member', email: `integrity-${randomUUID()}@example.invalid`, emailVerified: true },
+      });
       userIds.push(user.id);
       rows.push(
         await db.prisma.member.create({
-          data: { organizationId: organization.id, userId: user.id, role: index === 0 || (legacyOwners && index === 1) ? 'owner' : 'admin' },
+          data: {
+            organizationId: organization.id,
+            userId: user.id,
+            role: index === 0 || (legacyOwners && index === 1) ? 'owner' : 'admin',
+            // Ownership transfer now targets organization admins. The legacy
+            // demote/remove cases below deliberately keep their old writers.
+            ...(!legacyOwners ? { orgRole: index === 0 ? 'owner' : 'admin' } : {}),
+          },
         }),
       );
     }

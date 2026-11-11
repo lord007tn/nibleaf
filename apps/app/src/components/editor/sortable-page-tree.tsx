@@ -289,7 +289,7 @@ export function buildMove(full: TreeItem[], activeId: string, overId: string, pr
 
 /** Only the user's intent crosses the network. Other pages in buildMove are a
  * local projection, not authority to overwrite a collaborator's structure. */
-export function buildMoveOperation(full: TreeItem[], activeId: string, overId: string, projection: Projection): MovePageBody | null {
+function buildMoveOperation(full: TreeItem[], activeId: string, overId: string, projection: Projection): MovePageBody | null {
   const items = buildMove(full, activeId, overId, projection);
   const moved = items.find((item) => item.id === activeId);
   const source = full.find((item): item is Flat => !isMarker(item) && item.id === activeId);
