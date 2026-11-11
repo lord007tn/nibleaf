@@ -92,8 +92,12 @@ it('loads an intent island only when the reader reaches for it, then replays the
       {() => null}
     </HydrationIsland>,
   );
-  const id = container.firstElementChild?.getAttribute('data-hydration-island');
-  container.innerHTML = `<div data-hydration-island="${id}"><aside><p>Ask about this page</p><button type="button">Ask 0</button></aside></div>`;
+  const id = container.firstElementChild?.getAttribute('data-hydration-island') ?? '';
+  // Built with DOM APIs, so the island id is never parsed as HTML.
+  const island = document.createElement('div');
+  island.setAttribute('data-hydration-island', id);
+  island.innerHTML = '<aside><p>Ask about this page</p><button type="button">Ask 0</button></aside>';
+  container.replaceChildren(island);
   document.body.append(container);
 
   await act(async () => {
