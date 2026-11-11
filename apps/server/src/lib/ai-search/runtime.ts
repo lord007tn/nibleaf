@@ -6,6 +6,7 @@ import {
   type GroundedAnswer,
   generateGroundedAnswer,
   type HybridChunkHit,
+  questionLanguage,
   rerankHybridChunks,
   retrievalConfidence,
   type SearchChunk,
@@ -16,6 +17,7 @@ import {
   sparseVectorForQuery,
 } from '@nibleaf/search';
 import { resolveWorkspaceAi, type WorkspaceAiRuntime, workspaceAnswerProvider, workspaceEmbeddingProvider } from '@nibleaf/search/workspace';
+import { isPageTranslation, type SnapshotPage } from '@nibleaf/shared/site';
 import { z } from 'zod';
 import { env } from '@/env';
 import { TtlCache } from '@/lib/lru';
@@ -295,6 +297,8 @@ export interface ChatRetrieval {
   chunks: SearchChunk[];
   hits: HybridChunkHit[];
   confidence: number;
+  /** Main-query confidence before the reader's current page receives a boost. */
+  searchConfidence?: number;
   /** The main retrieval lane was served from the in-process cache. */
   cacheHit: boolean;
 }
@@ -354,6 +358,71 @@ type HybridSearch = (
   runtime?: WorkspaceAiRuntime,
 ) => Promise<RetrievalResult>;
 
+export interface ChatLanguageContext {
+  /** Enabled languages from the server-resolved publication, never the body. */
+  languages: string[];
+  /** Version pages already restricted to the reader's grants. */
+  pages: Pick<SnapshotPage, 'id' | 'title' | 'path' | 'translationKey' | 'languageCode' | 'kind' | 'hidden'>[];
+}
+
+/** Search the question's language before trying other published languages.
+ * Every lane retains the same tenant, deployment, version and page grants. */
+export const retrieveChatLanguages = async (
+  scope: SearchScope,
+  query: string,
+  runtime: WorkspaceAiRuntime,
+  context: ChatLanguageContext,
+  options: { language: string; page?: { id: string; title: string }; signal?: AbortSignal },
+  search: HybridSearch = retrieveHybrid,
+): Promise<ChatRetrieval> => {
+  const preferred =
+    context.languages.find((language) => language === options.language) ??
+    context.languages.find((language) => language.split('-')[0] === options.language.split('-')[0]);
+  const primaryLanguage = preferred ?? scope.language;
+  const primaryScope = { ...scope, language: primaryLanguage };
+  const readable = context.pages.filter(
+    (page) => page.kind === 'PAGE' && !page.hidden && (scope.allowedPageIds === null || scope.allowedPageIds.has(page.id)),
+  );
+  const currentPage = readable.find((page) => page.id === options.page?.id);
+  const translatedPage = currentPage && readable.find((page) => page.languageCode === primaryLanguage && isPageTranslation(currentPage, page));
+  const primary = await retrieveChatContext(
+    primaryScope,
+    query,
+    runtime,
+    {
+      signal: options.signal,
+      page: translatedPage ? { id: translatedPage.id, title: translatedPage.title } : undefined,
+    },
+    search,
+  );
+  if (primary.chunks.length && (primary.searchConfidence ?? primary.confidence) >= env.SEARCH_ANSWER_MIN_CONFIDENCE) return primary;
+
+  const fallbackLanguages = [...new Set(context.languages)].filter((language) => language !== primaryLanguage);
+  const fallbacks = await Promise.all(
+    fallbackLanguages.map((language) => retrieveChatContext({ ...scope, language }, query, runtime, { signal: options.signal }, search)),
+  );
+  const best =
+    [primary, ...fallbacks].sort((left, right) => (right.searchConfidence ?? right.confidence) - (left.searchConfidence ?? left.confidence))[0] ??
+    primary;
+  if (best === primary || best.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE) return best;
+
+  // A cross-language hit may identify a translated guide that the original
+  // wording missed. Read that actual translation, rather than relabeling a hit.
+  const translations = new Map<string, { id: string; title: string }>();
+  for (const { chunk } of best.hits.slice(0, WIDEN_FROM_TOP)) {
+    const source = readable.find((page) => page.id === chunk.pageId);
+    const translated = source && readable.find((page) => page.languageCode === preferred && isPageTranslation(source, page));
+    if (translated) translations.set(source.id, { id: translated.id, title: translated.title });
+  }
+  const translatedHits = new Map<string, HybridChunkHit[]>();
+  for (const [sourceId, page] of translations) {
+    const lane = await search({ ...primaryScope, allowedPageIds: new Set([page.id]) }, `${page.title} ${query}`, 6, options.signal, runtime);
+    if (lane.chunks.length) translatedHits.set(sourceId, lane.chunks);
+  }
+  const hits = best.hits.flatMap((hit) => translatedHits.get(hit.chunk.pageId) ?? [hit]);
+  return { ...best, hits, chunks: selectAnswerChunks(hits), cacheHit: false };
+};
+
 /** Retrieval for one chat turn. The optional page lane narrows the same
  * server-derived scope to a single page — it can never widen the reader's
  * grants: a page outside `allowedPageIds` is simply not searched. Without page
@@ -374,7 +443,13 @@ export const retrieveChatContext = async (
   const widen = page || main.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE ? [] : pagesToWiden(main.chunks);
   const widened = await Promise.all(widen.map(async (target) => ({ target, lane: await pageSearch(target) })));
   if (!asked?.chunks.length && !widened.some(({ lane }) => lane.chunks.length)) {
-    return { chunks: selectAnswerChunks(main.chunks), hits: main.chunks, confidence: main.confidence, cacheHit: main.cacheHit };
+    return {
+      chunks: selectAnswerChunks(main.chunks),
+      hits: main.chunks,
+      confidence: main.confidence,
+      searchConfidence: main.confidence,
+      cacheHit: main.cacheHit,
+    };
   }
   const merged = new Map<string, HybridChunkHit>();
   const add = (hit: HybridChunkHit) => {
@@ -403,6 +478,7 @@ export const retrieveChatContext = async (
     // Asked from the page, its passages are relevant by the reader's choice; a
     // widened page keeps the confidence of the search that found it.
     confidence: page ? Math.max(retrievalConfidence(hits), PAGE_CONTEXT_MIN_CONFIDENCE) : main.confidence,
+    searchConfidence: main.confidence,
     cacheHit: main.cacheHit,
   };
 };
@@ -418,24 +494,28 @@ export const answerPublishedSearch = async (
   scope: SearchScope,
   query: string,
   signal?: AbortSignal,
+  context?: ChatLanguageContext,
 ): Promise<GroundedAnswer & { cacheHit: boolean }> => {
   const runtime = await resolveWorkspaceAi(scope.projectId);
   if (!qdrant || !runtime?.answersEnabled || !(await configuredIndexServing())) throw new Error('AI answers are not configured.');
   const cacheKey = searchCacheKey(
     scope,
     query,
-    `answer-v3-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}`,
+    `answer-v4-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}-${context?.languages.join(',')}`,
   );
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
-  const retrieval = await retrieveHybrid(scope, query, 12, signal, runtime);
+  const language = questionLanguage(query, scope.language);
+  const retrieval = context
+    ? await retrieveChatLanguages(scope, query, runtime, context, { language, signal })
+    : await retrieveChatContext(scope, query, runtime, { signal });
   const provider = workspaceAnswerProvider(runtime);
   const answer = await generateGroundedAnswer(
     provider,
     query,
-    selectAnswerChunks(retrieval.chunks),
+    retrieval.chunks,
     retrieval.confidence,
-    scope.language,
+    language,
     signal,
     env.SEARCH_ANSWER_MIN_CONFIDENCE,
   );

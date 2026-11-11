@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@nibleaf/database';
-import { siteT } from '@nibleaf/i18n/site';
 import { createLogger } from '@nibleaf/logger';
 import {
   boundChatHistory,
@@ -20,9 +19,10 @@ import {
   fitChatContext,
   fitChatSources,
   type GroundedChatResult,
+  noAnswer as groundedNoAnswer,
+  questionLanguage,
   type SearchChunk,
   streamGroundedChat,
-  suggestedArticles,
   suggestFollowUps,
 } from '@nibleaf/search';
 import { type ChatCostSink, knownChatCost, workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
@@ -50,9 +50,10 @@ import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-
 import { recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
-import { type ChatRetrieval, resolveChatRuntime, retrieveChatContext } from '@/lib/ai-search/runtime';
+import { type ChatRetrieval, resolveChatRuntime, retrieveChatLanguages } from '@/lib/ai-search/runtime';
 import { envExtras } from '@/lib/env-extras';
 import type { HonoEnv } from '@/lib/hono/context';
+import { resolvePublishedSearchLanguages } from '@/lib/search-configuration';
 import { trackProjectEvent } from './analytics';
 import { type AiChatServerEvent, type ChatEventContext, recordAiChatEvents } from './site-chat-events';
 import { deviceFromUserAgent, resolvePublishedAnswerContext } from './sites';
@@ -314,8 +315,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const threadId = body.conversationId;
   const runId = randomUUID();
   const turnId = randomUUID();
-  const language = context.scope.language;
-  const t = siteT(language);
+  const language = questionLanguage(body.question, context.scope.language);
   const fail = (code: AiChatErrorCode): StreamChunk[] => [
     custom(AI_CHAT_EVENT.error, { code }),
     { type: EventType.RUN_ERROR, message: ERROR_MESSAGES[code], code, threadId, runId, timestamp: Date.now() },
@@ -423,7 +423,16 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     else outcome.usage = condensed.usage;
     outcome.rewrittenQuery = condensed.rewritten ? condensed.query : undefined;
     phase = 'retrieval';
-    const retrieval = await retrieveChatContext(context.scope, condensed.query, runtime, { page, signal });
+    const retrieval = await retrieveChatLanguages(
+      context.scope,
+      condensed.query,
+      runtime,
+      {
+        languages: resolvePublishedSearchLanguages(context.snapshot),
+        pages: context.versionPages,
+      },
+      { language, page, signal },
+    );
     outcome.retrieval = retrieval;
     // The sources the answer reads: the best matches that fit the context, and
     // only as many as the budgets have room for. The least of them was reserved
@@ -451,12 +460,12 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       answer,
       noAnswerReason,
       citations: [],
-      suggestions: anchored(suggestedArticles(retrieval.chunks, condensed.query)),
+      suggestions: [],
       ...(supportUrl ? { supportUrl } : {}),
     });
     if (!sources.length) {
       // Nothing relevant enough: never let the model improvise.
-      const answer = t('noAnswerGrounded');
+      const answer = groundedNoAnswer(language).answer;
       firstText();
       yield { type: EventType.TEXT_MESSAGE_CONTENT, messageId: turnId, delta: answer, timestamp: Date.now() };
       Object.assign(outcome, { status: 'no_answer', noAnswerReason: 'low_confidence', answer });
@@ -684,7 +693,6 @@ const finishTurn = async ({
   const tenantId = await tenant;
   if (!tenantId) return;
   const citations = outcome.result?.status === 'answered' ? outcome.result.citations : [];
-  const suggestions = outcome.status === 'no_answer' && outcome.retrieval ? suggestedArticles(outcome.retrieval.chunks, body.question) : [];
   await recordAiChatTurn({
     tenantId,
     ...(analytics?.userAgent ? { userAgent: analytics.userAgent } : {}),
@@ -708,7 +716,7 @@ const finishTurn = async ({
     ...(outcome.rewrittenQuery ? { rewrittenQuery: outcome.rewrittenQuery } : {}),
     ...(outcome.answer ? { answer: outcome.answer } : {}),
     citations: citations.map((citation) => ({ id: citation.id, pageId: citation.pageId, title: citation.title, path: citation.path })),
-    suggestions: suggestions.map((suggestion) => ({ pageId: suggestion.pageId, title: suggestion.title, path: suggestion.path })),
+    suggestions: [],
     provider: runtime.providerId,
     model: base.model,
     promptVersion: CHAT_PROMPT_VERSION,
