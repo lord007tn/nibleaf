@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { constantGrowthLimit, growthMs, linearGrowthLimit } from './growth';
+import { constantGrowthLimit, growthMs, growthMsAsync, linearGrowthLimit } from './growth';
 
 /** Work proportional to the input's length. */
 const linear = (input: string) => {
@@ -54,6 +54,22 @@ describe('growth calibration', () => {
     const [small, large] = growthMs(speedsUp, 'a', 'aaaa', { minMs: 4 });
     expect(small).toBeGreaterThanOrEqual(4);
     expect(large).toBeGreaterThan(0);
+  });
+
+  it('holds the same guarantee for async work', async () => {
+    let calls = 0;
+    const speedsUp = async (input: string) => {
+      calls += 1;
+      return spin(calls <= 6 ? 6 : 0.3) + input.length;
+    };
+    const [small] = await growthMsAsync(speedsUp, 'a', 'aaaa', { minMs: 4 });
+    expect(small).toBeGreaterThanOrEqual(4);
+    let vanishingCalls = 0;
+    const vanishes = async (input: string) => {
+      vanishingCalls += 1;
+      return vanishingCalls <= 6 ? spin(6) : input.length;
+    };
+    await expect(growthMsAsync(vanishes, 'a', 'aaaa', { minMs: 4 })).rejects.toThrow(/calibration failed/);
   });
 
   it('throws instead of returning a pair that cannot tell growth apart', () => {

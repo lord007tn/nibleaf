@@ -68,37 +68,48 @@ export const growthMs = <T>(run: (input: T) => unknown, small: T, large: T, { mi
 };
 
 /** `growthMs` for async work (index building, a model call through a fake adapter):
- *  the same measurement, awaiting each run. */
+ *  the same measurement and guarantees, awaiting each run. */
 export const growthMsAsync = async <T>(
   run: (input: T) => Promise<unknown>,
   small: T,
   large: T,
-  { minMs = 4 }: { minMs?: number } = {},
+  { minMs = 4, vary }: GrowthOptions<T> = {},
 ): Promise<[number, number]> => {
   let repeat = 1;
+  let rep = 0;
   let sink: unknown;
   const time = async (input: T) => {
     const started = performance.now();
-    for (let index = 0; index < repeat; index += 1) sink = await run(input);
+    for (let index = 0; index < repeat; index += 1) {
+      rep += 1;
+      sink = await run(vary ? vary(input, rep) : input);
+    }
     return performance.now() - started;
   };
+  const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
   await time(small);
   await time(large);
-  while ((await time(small)) < minMs && repeat < 1 << 24) repeat *= 2;
-  await time(large);
-  const times: [number[], number[]] = [[], []];
-  for (let round = 0; round < 3; round += 1) {
-    if (round % 2 === 0) {
-      times[0].push(await time(small));
-      times[1].push(await time(large));
-    } else {
-      times[1].push(await time(large));
-      times[0].push(await time(small));
+  while ((await time(small)) < minMs && repeat < MAX_REPEAT) repeat *= 2;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    await time(large);
+    const times: [number[], number[]] = [[], []];
+    for (let round = 0; round < 3; round += 1) {
+      if (round % 2 === 0) {
+        times[0].push(await time(small));
+        times[1].push(await time(large));
+      } else {
+        times[1].push(await time(large));
+        times[0].push(await time(small));
+      }
     }
+    if (sink === UNREACHABLE) throw new Error('unreachable');
+    const result: [number, number] = [median(times[0]), median(times[1])];
+    if (result[0] >= minMs) return result;
+    repeat = Math.min(repeat * 2, MAX_REPEAT);
   }
-  if (sink === UNREACHABLE) throw new Error('unreachable');
-  const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
-  return [median(times[0]), median(times[1])];
+  throw new Error(
+    `growthMsAsync calibration failed: the small input stayed under ${minMs} ms after ${MAX_ATTEMPTS} attempts at up to ${repeat} repeats`,
+  );
 };
 
 /** The most a 4x larger input may cost when the work is linear: 8x, plus 20 ms
