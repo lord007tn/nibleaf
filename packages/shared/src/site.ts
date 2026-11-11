@@ -131,12 +131,31 @@ export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
   return defaults[0];
 };
 
+/**
+ * A language's own name in its own script ("العربية", "Français", "Deutsch"),
+ * capitalized as a menu label. Null when the platform can't name the code (a
+ * private-use tag such as `x-klingon`), so the caller keeps the stored label.
+ */
+export const languageEndonym = (code: string): string | null => {
+  try {
+    const name = new Intl.DisplayNames([code], { type: 'language', fallback: 'none' }).of(code);
+    if (!name) return null;
+    return name.charAt(0).toLocaleUpperCase(code) + name.slice(1);
+  } catch {
+    return null;
+  }
+};
+
 /** The languages a published site serves: enabled ones. The default language
  *  always serves (it is every visitor's fallback), even if a stale flag says
  *  otherwise. Disabled languages stay editable in the dashboard but disappear
- *  from every public surface. */
+ *  from every public surface. Each one is labeled with its endonym (READER-19),
+ *  so every site's switcher reads the same way ("العربية", never "Arabic" on one
+ *  site and "العربية" on another); a code with no known name keeps its label. */
 export const publicLanguages = (languages: SnapshotLanguage[]): SnapshotLanguage[] =>
-  languages.filter((language) => language.isDefault || language.enabled !== false);
+  languages
+    .filter((language) => language.isDefault || language.enabled !== false)
+    .map((language) => ({ ...language, label: languageEndonym(language.code) ?? language.label }));
 
 /** Match a page to the same logical page in another language. Explicit
  * translation keys take precedence so localized slugs can differ; older pages

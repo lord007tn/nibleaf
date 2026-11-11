@@ -8,6 +8,7 @@ import {
   extractHeadings,
   interpolateVariables,
   isPageTranslation,
+  languageEndonym,
   mergeLanguageChrome,
   projectSlugFromSubdomainHost,
   publicLanguages,
@@ -425,6 +426,20 @@ describe('publicLanguages', () => {
   it('always serves the default language, even with a stale disabled flag', () => {
     const served = publicLanguages([lang({ code: 'en', isDefault: true, enabled: false }), lang({ code: 'ar', enabled: false })]);
     expect(served.map((l) => l.code)).toEqual(['en']);
+  });
+  // READER-19: one site showed "Arabic", another "العربية", from what each owner typed.
+  it('labels every language with its own name, whatever label was stored', () => {
+    const served = publicLanguages([
+      lang({ code: 'en', isDefault: true, label: 'English (US)' }),
+      lang({ code: 'ar', label: 'Arabic' }),
+      lang({ code: 'fr', label: 'French' }),
+      lang({ code: 'pt-BR', label: 'Portuguese' }),
+    ]);
+    expect(served.map((l) => l.label)).toEqual(['English', 'العربية', 'Français', 'Português (Brasil)']);
+  });
+  it('keeps the stored label for a code the platform cannot name', () => {
+    expect(languageEndonym('x-klingon')).toBeNull();
+    expect(publicLanguages([lang({ code: 'x-klingon', isDefault: true, label: 'Klingon' })])[0]?.label).toBe('Klingon');
   });
 });
 

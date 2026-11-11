@@ -195,11 +195,9 @@
   "preview_privatebody": "Only members of this site can open its pull request previews. Log in with your team account and you'll come back here.",
   "editor_previewsaveerror": "Could not save the latest draft before opening preview.",
   "editor_previewpopupblocked": "Allow pop-ups to open the draft preview in a new tab.",
-  "settings_heading": "Site configurations",
   "settings_group_site": "Site",
   "settings_group_deployment": "Import & sync",
   "settings_group_workspace": "Workspace",
-  "settings_group_advanced": "Advanced",
   "settings_general": "General",
   "settings_branding": "Branding",
   "settings_styling": "Styling",
@@ -1431,13 +1429,17 @@
   "auth_google_signup": "Create account with Google",
   "auth_google_submitting": "Opening Google…",
   "auth_divider_or": "or",
-  "auth_legal_agreeprefix": "I agree to the ",
-  "auth_legal_terms": "Terms of Service",
+  "auth_legal_continueprefix": "By continuing, you agree to the",
+  "auth_legal_signupclosed": "New account registration is closed on this instance. Contact your administrator for access.",
+  "auth_legal_termsrequired": "Accept the terms, then request a new code.",
+  "auth_name_title": "What should we call you?",
+  "auth_name_description": "Add your name to continue to your workspace.",
+  "auth_name_required": "Enter your name.",
+  "auth_name_continue": "Save and continue",
+  "auth_legal_terms": "Terms",
   "auth_legal_and": " and the ",
   "auth_legal_privacy": "Privacy Policy",
   "auth_legal_agreesuffix": ".",
-  "auth_legal_agreefirst": "Please accept the Terms of Service and Privacy Policy to continue.",
-  "auth_legal_socialnoticeprefix": "By continuing, you agree to the ",
   "auth_legal_signupdisabled": "Sign-ups are currently disabled on this instance.",
   "auth_signup_subtitle": "Create your account",
   "auth_signup_submit": "Create account",
@@ -2220,6 +2222,7 @@
   "site_results": "Results",
   "site_loading": "Loading…",
   "site_articleloadfailed": "This page couldn't load. Try again",
+  "site_controlloadfailed": "Couldn't open. Select it again to try again.",
   "site_previous": "Previous",
   "site_next": "Next",
   "site_onthispage": "On this page",
@@ -3807,7 +3810,7 @@
   "dashboard_ai_answerrate": "{rate} answer rate",
   "dashboard_ai_votes": "{up} helpful / {down} not helpful",
   "site_ai_title": "Ask AI",
-  "site_ai_subtitle": "Answers come from these docs",
+  "site_ai_subtitle": "Answers use these docs and link to their sources.",
   "site_ai_new": "New chat",
   "site_ai_close": "Close",
   "site_ai_intro": "What would you like to know? Ask a question about these docs.",
@@ -3830,7 +3833,16 @@
   "site_ai_stopped": "You stopped this answer before it was finished.",
   "site_ai_suggestions_added": "Suggested next questions added.",
   "site_ai_caution": "AI can make mistakes — check the sources.",
-  "site_ai_privacy": "Questions are saved to help improve these docs. Please don't include personal details.",
+  "site_ai_saved": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "Questions are kept for {count} day to help improve these docs. Please don't include personal details.",
+        "form=*": "Questions are kept for {count} days to help improve these docs. Please don't include personal details."
+      }
+    }
+  ],
   "site_ai_searching": "Looking through the docs…",
   "site_ai_writing": "Writing an answer…",
   "site_ai_checking": "Checking the sources…",
@@ -3854,6 +3866,7 @@
   "site_ai_unavailable": "The assistant isn't available right now.",
   "site_ai_invalid": "Please ask a question between 2 and 500 characters.",
   "site_ai_failed": "Something went wrong. Please try again.",
+  "site_ai_policy_changed": "How this chat handles questions changed while this page was open. Check the notes below, then send your question again.",
   "site_ai_offline": "You're offline. Check your connection and try again.",
   "site_ai_incorrect": "Incorrect",
   "site_ai_incomplete": "Incomplete",
@@ -3995,6 +4008,7 @@
   "editor_viewonly_grouphint": "Groups keep related pages together in the sidebar. Open a page in this group to read it.",
   "editor_comments_viewonly": "You can read comments. Viewers can't add or resolve them.",
   "settings_permissions_viewerbody": "Ask a site owner or Admin to update these settings. As a Viewer you can read the site and the sections available to your role.",
+  "settings_permissions_dangerbody": "Only the organization's Owner and Admins can delete this website. Ask one of them if it needs to go.",
   "overview_viewpages": "View pages",
   "join_title": "Join {site}",
   "join_subtitle": "Join a documentation site on Nibleaf.",
@@ -4276,6 +4290,8 @@
   "settings_group_publishing": "Publishing",
   "settings_group_team": "Team & access",
   "settings_group_usage": "Usage",
+  "settings_group_content": "Content",
+  "settings_group_ai": "AI",
   "settings_moved_plan": "Plan and billing are managed by the organization:",
   "settings_moved_notifications": "Email notifications are personal now.",
   "settings_moved_notificationslink": "Account settings → Email notifications",
@@ -4326,6 +4342,7 @@
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
   "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "settings_backtoall": "All settings",
   "people_orgrole_owner": "Owner",
   "people_orgrole_admin": "Admin",
   "people_orgrole_member": "Member",
@@ -4661,5 +4678,51 @@
   "newsite_starter_faq_title": "Frequently asked questions",
   "newsite_starter_faq_content": "## Common questions\n\nAnswer a real question in a few sentences.\n\n- Explain where to find account settings.\n- Tell readers how to contact your team.\n",
   "newsite_addresslatinhint": "Site addresses use Latin letters. Choose one that reads well, e.g. help-center.",
-  "newsite_addressunavailable": "This address is reserved or unavailable. Choose another address."
+  "newsite_addressunavailable": "This address is reserved or unavailable. Choose another address.",
+  "publish_checks_title": "Checks",
+  "publish_checks_errorcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} error",
+        "form=*": "{count} errors"
+      }
+    }
+  ],
+  "publish_checks_warningcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} warning",
+        "form=*": "{count} warnings"
+      }
+    }
+  ],
+  "publish_checks_stillallowed": "publishing is still allowed",
+  "publish_checks_mustfix": "fix the errors to publish",
+  "publish_checks_allclear": "All checks passed",
+  "publish_checks_allclearhint": "No broken links, images without alt text, untitled pages or leftover characters.",
+  "publish_checks_fix": "Fix",
+  "publish_checks_fixlabel": "Fix {title} in the editor",
+  "publish_checks_blockedreason": "Fix the errors under Checks before publishing.",
+  "publish_checks_error": "Error",
+  "publish_checks_warning": "Warning",
+  "publish_checks_duplicateof": "Same title as {path}",
+  "publish_checks_pathtoolong": "Link address too long (over 2,048 characters)",
+  "publish_checks_brokenlink": "Broken links",
+  "publish_checks_brokenlinkhint": "These links lead to a page that won't exist on the live site.",
+  "publish_checks_missingalt": "Images without alt text",
+  "publish_checks_missingalthint": "Screen readers can't describe these images. Add alt text to each one.",
+  "publish_checks_untitledpage": "Untitled pages",
+  "publish_checks_untitledpagehint": "Give these pages a real title so readers can find them.",
+  "publish_checks_straycharacters": "Stray characters",
+  "publish_checks_straycharactershint": "A lone / or a literal --- shows on the page as text.",
+  "publish_checks_unreadableslug": "Hard-to-read web addresses",
+  "publish_checks_unreadableslughint": "Use a short address made of words, so the link is easy to read and share.",
+  "publish_checks_emptypage": "Empty pages",
+  "publish_checks_emptypagehint": "These pages have no content yet, so readers would see a blank page.",
+  "publish_checks_duplicatetitle": "Duplicate titles",
+  "publish_checks_duplicatetitlehint": "Pages in the same section share a title, so readers can't tell them apart."
 }

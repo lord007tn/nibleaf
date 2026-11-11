@@ -8,3 +8,15 @@
 # component templates (a drift check), not credentials. Later commits store a short
 # hash prefix instead; this fingerprint only covers the #320 commit that added them.
 912329bd34993a80ac55b02eb72f1960dcdbc26f:packages/shared/src/theme-repository-templates/component-templates.test.ts:generic-api-key:42
+
+# False positives: PR #464's first commit accidentally included Paraglide's compile
+# cache, a one-line JSON of per-message content hashes that read as API keys (and as
+# Discord tokens next to the discord_* message names).
+# The file is removed and its directory ignored; this fingerprint only covers that commit.
+3a2880ec7ebcce84a6f86fbda6db26e57f0e0416:packages/i18n/project.inlang/cache/paraglide-js/65382940747e0b60.json:generic-api-key:1
+3a2880ec7ebcce84a6f86fbda6db26e57f0e0416:packages/i18n/project.inlang/cache/paraglide-js/65382940747e0b60.json:discord-api-token:1
+
+# False positive: a made-up nanoid-style page slug in the unreadable-slug test fixtures
+# (PR #435), labelled "random token". Later commits assemble it at runtime; this
+# fingerprint only covers the commit that added it.
+d8cebd20b108bed388db5f522e18334efcbcbb74:apps/server/src/lib/publish-checks.test.ts:generic-api-key:247
