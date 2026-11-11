@@ -611,7 +611,7 @@ const reorderPagesAttempt = async (projectId: string, request: ReorderPagesBody)
         throw new AppError({ code: 'page:address_conflict', details: { reason: 'address_raced' } });
       }
       const { byPage, body, nextTree, moved, proposed, moveBranchId } = plan;
-      if (prepared.size) await assertAddressLinkRevisions(projectId, prepared, tx);
+      if (prepared.size) await assertAddressLinkRevisions(projectId, prepared, tx, 'rewritten');
       for (const id of moved) {
         const page = nextTree.get(id);
         const before = byPage.get(id);

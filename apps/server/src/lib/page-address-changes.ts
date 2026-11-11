@@ -27,9 +27,14 @@ export const prepareAddressLinks = async (projectId: string, override?: { id: st
 };
 type PreparedAddressLinks = Awaited<ReturnType<typeof prepareAddressLinks>>;
 
-export const assertAddressLinkRevisions = async (projectId: string, prepared: PreparedAddressLinks, tx: Prisma.TransactionClient) => {
+export const assertAddressLinkRevisions = async (
+  projectId: string,
+  prepared: PreparedAddressLinks,
+  tx: Prisma.TransactionClient,
+  scope: 'project' | 'rewritten' = 'project',
+) => {
   const pages = await tx.page.findMany({
-    where: { projectId, id: { in: [...prepared.keys()] } },
+    where: { projectId, ...(scope === 'rewritten' ? { id: { in: [...prepared.keys()] } } : {}) },
     select: { id: true, content: true, updatedAt: true },
   });
   if (
