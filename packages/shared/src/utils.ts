@@ -73,27 +73,30 @@ export const joinPath = (parentPath: string | null | undefined, slug: string): s
 
 /** Strip Markdown links to their labels and remove Markdown images. This
  * single-pass parser handles balanced inline destinations; malformed
- * markup is preserved instead of inviting regex backtracking on user content. */
+ * markup is preserved instead of inviting regex backtracking on user content.
+ * Text between links is copied as whole slices: building it one character at a
+ * time is quadratic in V8 on long runs (hundreds of KB). */
 export const stripMarkdownLinks = (value: string): string => {
-  let output = '';
+  const parts: string[] = [];
   let cursor = 0;
   while (cursor < value.length) {
-    const image = value[cursor] === '!' && value[cursor + 1] === '[';
-    const link = value[cursor] === '[';
-    if (!image && !link) {
-      output += value[cursor];
-      cursor += 1;
-      continue;
+    const bracket = value.indexOf('[', cursor);
+    if (bracket < 0) {
+      parts.push(value.slice(cursor));
+      break;
     }
-
-    const markerStart = cursor;
+    // `![` starts an image, as long as its `!` is past what was already read.
+    const image = bracket > cursor && value[bracket - 1] === '!';
+    const markerStart = image ? bracket - 1 : bracket;
+    parts.push(value.slice(cursor, markerStart));
+    cursor = markerStart;
     const labelStart = cursor + (image ? 2 : 1);
     let labelEnd = labelStart;
     while (labelEnd < value.length && value[labelEnd] !== ']') {
       labelEnd += 1;
     }
     if (labelEnd >= value.length || value[labelEnd + 1] !== '(') {
-      output += value.slice(markerStart, Math.min(labelEnd + 1, value.length));
+      parts.push(value.slice(markerStart, Math.min(labelEnd + 1, value.length)));
       cursor = Math.min(labelEnd + 1, value.length);
       continue;
     }
@@ -111,16 +114,16 @@ export const stripMarkdownLinks = (value: string): string => {
       destinationEnd += 1;
     }
     if (destinationEnd >= value.length) {
-      output += value.slice(markerStart);
+      parts.push(value.slice(markerStart));
       break;
     }
 
     if (!image) {
-      output += value.slice(labelStart, labelEnd);
+      parts.push(value.slice(labelStart, labelEnd));
     }
     cursor = destinationEnd + 1;
   }
-  return output;
+  return parts.join('');
 };
 
 /** Word-boundary truncation of text that is ALREADY plain (whitespace collapsed),
