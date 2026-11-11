@@ -38,7 +38,8 @@ function DataList({
  *
  * `trailingLayout="inline"` (default) keeps compact trailing controls (icon
  * buttons, `RowActions`) on the title line at every width, so actions stay
- * next to the thing they act on. `"stack"` is for wide trailing controls (a
+ * next to the thing they act on, aligned with the title even when the row
+ * grows (expanded details). `"stack"` is for wide trailing controls (a
  * role select plus buttons): below ~30rem of row width they move under the
  * content instead of squeezing it.
  */
@@ -72,7 +73,7 @@ function DataListItem({
         className={cn(
           "flex min-w-0 gap-3",
           trailingLayout === "inline"
-            ? "flex-row items-start @min-[30rem]/item:items-center"
+            ? "flex-row items-start"
             : "flex-col @min-[30rem]/item:flex-row @min-[30rem]/item:items-center"
         )}
       >
