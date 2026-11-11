@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { type ComponentProps, lazy, Suspense, useMemo } from 'react';
+import { type ComponentProps, Suspense, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeHighlight from 'rehype-highlight';
@@ -19,6 +19,8 @@ import {
 import { MermaidBlock } from '@/components/site/mermaid-block';
 import { Pre } from '@/components/site/reader-code-block';
 import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
+import type { HydrationModule } from '@/lib/hydration-modules';
+import { needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -37,12 +39,15 @@ export interface MarkdownProps {
   site?: SiteLinkContext;
 }
 
-const RichMarkdown = lazy(() => import('./markdown-rich'));
+/** The rich renderer's chunk (see richMarkdownModule). */
+export const loadRichMarkdown = () => import('./markdown-rich').then((module) => module.default);
 
-/** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
- * detection conservative—false positives only load the richer renderer, while
- * false negatives could change output. */
-export const needsRichMarkdown = (content: string): boolean => /<\/?[A-Za-z][^>]*>/.test(content) || /(^|[^\\])\$\$?[\s\S]*?\$\$?/m.test(content);
+/** The rich renderer, rendered in the same pass whenever its chunk has loaded
+ *  (always the case while hydrating a page whose server HTML used it). */
+function RichMarkdown(props: MarkdownProps) {
+  const Rich = richMarkdownModule.useModule();
+  return <Rich {...props} />;
+}
 
 /** Rewrite a root-relative internal doc link to the site base. External URLs,
  *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
@@ -120,6 +125,9 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
  *  Pass `site` on a published site so internal links resolve to the site base. */
 export function Markdown({ content, className, site }: MarkdownProps) {
   if (needsRichMarkdown(content)) {
+    // Never suspends while hydrating: the chunk loads before hydration (and in
+    // the reader's loaders before navigating). The fallback only shows when a
+    // page needs the chunk before it has loaded, and it keeps the text in place.
     return (
       <Suspense fallback={<MarkdownRenderer content={content} className={className} site={site} />}>
         <RichMarkdown content={content} className={className} site={site} />
@@ -137,6 +145,7 @@ export function MarkdownRenderer({
   extraRehypePlugins = [],
   afterSanitizePlugins = [],
   mdxComponents,
+  hydrationMarker,
 }: MarkdownProps & {
   extraRemarkPlugins?: NonNullable<ReactMarkdownOptions['remarkPlugins']>;
   extraRehypePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
@@ -144,6 +153,9 @@ export function MarkdownRenderer({
   afterSanitizePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
   /** Renderers for authored component tags, supplied by the rich renderer. */
   mdxComponents?: Components;
+  /** Marks a render by a code-split renderer, so the browser loads that
+   *  renderer before hydrating this markup (see lib/hydration-modules.ts). */
+  hydrationMarker?: HydrationModule<unknown>['marker'];
 }) {
   const components = useMemo(() => {
     const mergedComponents: Components = {
@@ -182,7 +194,7 @@ export function MarkdownRenderer({
     return mergedComponents;
   }, [site, mdxComponents]);
   return (
-    <div className={cn('typeset', className)}>
+    <div className={cn('typeset', className)} {...hydrationMarker}>
       <ReactMarkdown
         components={components}
         remarkPlugins={[remarkGfm, ...extraRemarkPlugins, remarkCallouts, remarkCodeMeta]}

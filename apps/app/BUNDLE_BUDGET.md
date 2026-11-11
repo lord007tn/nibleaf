@@ -67,6 +67,17 @@ include that chunk. So:
 - Keep `validateSearch` and `beforeLoad` small: check ids against a plain list,
   not a list of icons and labels, and import anything larger lazily.
 - Loaders import only i18n-free factory modules (`DATA_LOADING.md`).
+- Code-split content that the server renders on reader pages (the article
+  renderer, the rich HTML/math renderer, the Ask AI card) is a hydration module
+  (`src/lib/hydration-modules.ts`, declared in
+  `src/lib/reader-hydration-modules.ts`), not `React.lazy`. A lazy component
+  suspends while hydrating even when its chunk is cached, and a re-render above
+  it then swaps the server HTML for the fallback (READER-03: a blank article and
+  0.33 CLS). Its markup carries `data-hydration-module`, and the router's
+  `hydrate` hook loads the modules it finds before React hydrates, so each one
+  stays out of the first-load preloads and loads only on pages that render it.
+  The reader's loaders import the declarations lazily, because they sit in the
+  eager chunk.
 
 - Marketing code doesn't import a Lucide icon the reader also uses. Rolldown
   groups shared modules by the chunks that import them, so a new importer

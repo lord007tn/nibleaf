@@ -1,13 +1,21 @@
 import type { AiChatOpenSource } from '@nibleaf/validators';
-import { type ComponentProps, createContext, lazy, type ReactNode, Suspense, useContext, useState } from 'react';
+import { type ComponentProps, createContext, type ReactNode, Suspense, useContext, useState } from 'react';
 import { DocumentationReaderLayout } from '@/components/site/documentation-theme-provider';
 import type { ProjectConfig } from '@/hooks/api/types';
+import { siteChatUiModule } from '@/lib/reader-hydration-modules';
 
 // The chat's launcher, panel, state and strings load on demand from one module,
 // so the public docs bundle carries only this context (see load-chat-ui.ts).
-const chatUi = () => import('./load-chat-ui').then((loader) => loader.loadChatUi());
-const ChatRoot = lazy(() => chatUi().then((ui) => ({ default: ui.ChatRoot })));
-const PageAction = lazy(() => chatUi().then((ui) => ({ default: ui.PageAction })));
+// Their server markup loads that module before hydrating, so neither suspends
+// and drops its server HTML then (see lib/hydration-modules.ts).
+function ChatRoot(props: ComponentProps<typeof import('./chat-ui').ChatRoot>) {
+  const ui = siteChatUiModule.useModule();
+  return <ui.ChatRoot {...props} />;
+}
+function PageAction(props: ComponentProps<typeof import('./chat-ui').PageAction>) {
+  const ui = siteChatUiModule.useModule();
+  return <ui.PageAction {...props} />;
+}
 
 export type PageContext = { title: string; path: string };
 /** Where the reader opened the chat from, for the `chat_opened` event. */

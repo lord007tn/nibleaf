@@ -7,6 +7,7 @@ import { PageLoader } from '@/components/page-loader';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { reloadOnceOnChunkLoadFailure } from '@/lib/chunk-reload';
 import { hydratedCustomDomainProjectId, rewriteCustomDomainInput, rewriteCustomDomainOutput } from '@/lib/custom-domain-rewrite';
+import { loadServerRenderedModules } from '@/lib/hydration-modules';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { routeTree } from './routeTree.gen';
 
@@ -59,6 +60,11 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
+    // Runs in the browser before React hydrates: load the code-split renderers
+    // the server HTML was rendered with, so hydrating never suspends them and
+    // never swaps their content for a fallback. Pages without them load nothing.
+    hydrate: () =>
+      loadServerRenderedModules(document, () => import('@/lib/reader-hydration-modules').then((module) => module.readerHydrationModules)),
     rewrite: customDomainProjectId
       ? {
           input: ({ url }) => rewriteCustomDomainInput(url, customDomainProjectId),

@@ -4,6 +4,7 @@ import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { useRouter } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import { lazy, type Ref, Suspense, useEffect, useRef, useState } from 'react';
+import { siteChatUiModule } from '@/lib/reader-hydration-modules';
 import type { ChatRequest, ChatRootOptions, OpenChat } from './provider';
 
 /*
@@ -99,7 +100,12 @@ function Launcher({
   }, [consentBanner, bannerTitle]);
   if (consentBanner && bannerVisible) return null;
   return (
-    <Button ref={ref} className="fixed end-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 rounded-full shadow-lg" onClick={onOpen}>
+    <Button
+      {...siteChatUiModule.marker}
+      ref={ref}
+      className="fixed end-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 rounded-full shadow-lg"
+      onClick={onOpen}
+    >
       <Sparkles aria-hidden className="size-4" />
       {t('aiTitle')}
     </Button>
@@ -112,6 +118,7 @@ export function PageAction({ lang, onOpen }: { lang?: string; onOpen: () => void
   const t = siteChatT(lang);
   return (
     <aside
+      {...siteChatUiModule.marker}
       data-theme-surface="ai"
       aria-label={t('aiPage')}
       className="not-prose my-10 flex flex-col gap-4 rounded-2xl border p-5 shadow-sm sm:flex-row sm:items-center"

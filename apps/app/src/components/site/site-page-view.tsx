@@ -2,17 +2,26 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { lazy, Suspense, startTransition, useEffect, useState } from 'react';
+import { type ComponentProps, Suspense, startTransition, useEffect, useState } from 'react';
 import { SiteChatPageAction } from '@/components/site/ai-chat/provider';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
+import { ArticleBodySkeleton } from '@/components/site/site-article-skeleton';
 import { MobileTableOfContents, TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
+import { articleMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
-const Markdown = lazy(() => import('@/components/markdown').then((module) => ({ default: module.Markdown })));
+/** The article body. Its renderer loads with the page's code, never inside
+ *  hydration: the router loads it before hydrating a page whose server HTML has
+ *  an article, and the reader's loaders before navigating to one. A body that
+ *  suspended while hydrating lost its server HTML to the fallback (READER-03). */
+function ArticleBody(props: ComponentProps<typeof import('@/components/markdown').Markdown>) {
+  const Markdown = articleMarkdownModule.useModule();
+  return <Markdown {...props} />;
+}
 
 const applyUrlTemplate = (template: string | undefined, path: string, fallbackUrl: string): string | null => {
   const trimmed = template?.trim();
@@ -247,9 +256,10 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           <MobileTableOfContents headings={page.headings} label={tArticle('onThisPage')} />
         </div>
       ) : null}
-      <div className="mt-8">
-        <Suspense fallback={null}>
-          <Markdown content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
+      <div className="mt-8" {...articleMarkdownModule.marker}>
+        {/* Only if the renderer failed to load: a body-shaped placeholder, never nothing. */}
+        <Suspense fallback={<ArticleBodySkeleton />}>
+          <ArticleBody content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
         </Suspense>
       </div>
 
