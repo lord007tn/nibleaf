@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   locale: 'en',
   navigate: vi.fn(),
   prefetch: vi.fn(),
+  schedule: vi.fn(),
   pages: [] as Array<Record<string, unknown>>,
   page: undefined as Record<string, unknown> | undefined,
   capability: { isPending: false, data: undefined } as {
@@ -31,7 +32,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to: _to, params: _params, ...props }: { children: ReactNode; to: string; params: unknown }) => <a {...props}>{children}</a>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
-vi.mock('@tanstack/react-pacer', () => ({ useDebouncer: () => ({ maybeExecute: vi.fn(), cancel: vi.fn() }) }));
+vi.mock('@tanstack/react-pacer', () => ({ useDebouncer: () => ({ maybeExecute: mocks.schedule, cancel: vi.fn() }) }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
 vi.mock('@/hooks/api', () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Test site', config: {} } }),
@@ -88,7 +89,11 @@ vi.mock('@/components/editor/sortable-page-tree', () => ({
   PageTreeDndProvider: ({ children }: { children: ReactNode }) => children,
   LanguageDropTarget: ({ children }: { children: ReactNode }) => children,
 }));
-vi.mock('@/components/editor/tiptap-editor', () => ({ TiptapEditor: () => null }));
+vi.mock('@/components/editor/tiptap-editor', () => ({
+  TiptapEditor: ({ onChange }: { onChange: (content: string) => void }) => (
+    <textarea aria-label="Test document" onChange={(event) => onChange(event.target.value)} />
+  ),
+}));
 vi.mock('@/components/editor/save-status', () => ({ NeverPublishedBanner: () => null, PagePublishStateBar: () => null, SaveStatus: () => null }));
 
 import { Route } from './editor';
@@ -211,6 +216,22 @@ describe('editor AI assist availability', () => {
   const render = () => act(async () => root.render(<Editor />));
   const aiTab = () => [...container.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === 'editor.ai');
   const railToggle = () => container.querySelector<HTMLButtonElement>('button[title="editor.hideRail"], button[title="editor.hideComments"]');
+
+  it('council: autosave carries the editor base revision while a remote rename refresh arrives', async () => {
+    mocks.page = { ...page, updatedAt: '2026-11-01T00:00:00.000Z' };
+    await render();
+    const input = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    if (!input) throw new Error('Editor document was not rendered');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(input, '[link](/old)\nUnsaved text');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    mocks.page = { ...page, content: '[link](/new)', updatedAt: '2026-11-02T00:00:00.000Z' };
+    await render();
+    expect(mocks.schedule).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: '[link](/old)\nUnsaved text', expectedUpdatedAt: '2026-11-01T00:00:00.000Z' }),
+    );
+  });
 
   beforeEach(() => {
     mocks.role = 'member';

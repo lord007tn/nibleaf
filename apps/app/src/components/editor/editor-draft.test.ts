@@ -176,6 +176,12 @@ more`,
 });
 
 describe('aiAssistState', () => {
+  it('council: a conflicted draft never hydrates from a refreshed server copy or autosaves', () => {
+    const state = { synced: snapshotOf(pageA), draft: { title: pageA.title, content: pageA.content }, conflicted: true };
+    const remote = { ...pageA, content: '[link](/new)', updatedAt: '2099-01-01T00:00:00Z' };
+    expect(nextHydration(state, remote)).toBeNull();
+    expect(shouldAutosave({ ...state, draft: { ...state.draft, content: 'keep my text' } }, remote)).toBe(false);
+  });
   const settled = { isPending: false, isError: false };
 
   it('hides AI assist for Viewers and sites with no way to draft', () => {
