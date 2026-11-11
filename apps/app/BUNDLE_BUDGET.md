@@ -67,21 +67,24 @@ include that chunk. So:
 - Keep `validateSearch` and `beforeLoad` small: check ids against a plain list,
   not a list of icons and labels, and import anything larger lazily.
 - Loaders import only i18n-free factory modules (`DATA_LOADING.md`).
-- Code-split content that the server renders on reader pages (the article
-  renderer, the rich HTML/math renderer, the Ask AI card) is a hydration module
-  (`src/lib/hydration-modules.ts`, declared in
-  `src/lib/reader-hydration-modules.ts`), not `React.lazy`. A lazy component
+- Code-split content that the server renders on reader pages is a hydration
+  module rendered in a `HydrationIsland`
+  (both in `src/lib/hydration-modules.tsx`), not `React.lazy`. A lazy component
   suspends while hydrating even when its chunk is cached, and a re-render above
   it then swaps the server HTML for the fallback (READER-03: a blank article and
-  0.33 CLS). Its markup carries `data-hydration-module`, and the router's
-  `hydrate` hook loads the modules it finds before React hydrates, so each one
-  stays out of the first-load preloads and loads only on pages that render it.
-  Render it in a `HydrationIsland` (`src/components/hydration-island.tsx`):
-  if the module can't load, hydrating keeps the server HTML as sent, a client
-  navigation shows the island's pending and failed states instead of the
-  route's error page, and the module retries a bounded number of times (never
-  during render). The reader's loaders import the declarations lazily, because
-  they sit in the eager chunk.
+  0.33 CLS). An island never suspends in the browser: until its module loads,
+  hydrating keeps the server HTML as sent, a client navigation shows its pending
+  and failed states (never the route's error page), and the module retries a
+  bounded number of times, from an effect.
+  - The article and rich (HTML/math) renderers, declared in
+    `src/lib/reader-hydration-modules.ts`, also load before hydration: their
+    islands carry `data-hydration-module`, and the router's `hydrate` hook
+    loads the ones it finds. They stay out of the first-load preloads and load
+    only on pages that render them. The reader's loaders import the
+    declarations lazily, because the loaders sit in the eager chunk.
+  - The Ask AI launcher and card load after hydration, keeping their server
+    markup until then. A router import of the chat would let Rolldown re-split
+    the consent modules it shares with the reader (about 250 B gzip).
 
 - Marketing code doesn't import a Lucide icon the reader also uses. Rolldown
   groups shared modules by the chunks that import them, so a new importer

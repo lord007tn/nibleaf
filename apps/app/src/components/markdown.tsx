@@ -6,7 +6,6 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
-import { HydrationIsland } from '@/components/hydration-island';
 import { Callout } from '@/components/site/mdx/callout';
 import { type DocumentationComponents, str } from '@/components/site/mdx/props';
 import {
@@ -20,7 +19,7 @@ import {
 import { MermaidBlock } from '@/components/site/mermaid-block';
 import { Pre } from '@/components/site/reader-code-block';
 import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
-import type { HydrationModule } from '@/lib/hydration-modules';
+import { HydrationIsland } from '@/lib/hydration-modules';
 import { needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
@@ -129,7 +128,7 @@ export function Markdown({ content, className, site }: MarkdownProps) {
     const plain = <MarkdownRenderer content={content} className={className} site={site} />;
     return (
       <Suspense fallback={plain}>
-        <HydrationIsland className="contents" modules={RICH_MODULES} pending={plain} failed={() => plain}>
+        <HydrationIsland className="contents" {...richMarkdownModule.marker} modules={RICH_MODULES} pending={plain} failed={() => plain}>
           {() => {
             const Rich = richMarkdownModule.read();
             return <Rich content={content} className={className} site={site} />;
@@ -149,7 +148,6 @@ export function MarkdownRenderer({
   extraRehypePlugins = [],
   afterSanitizePlugins = [],
   mdxComponents,
-  hydrationMarker,
 }: MarkdownProps & {
   extraRemarkPlugins?: NonNullable<ReactMarkdownOptions['remarkPlugins']>;
   extraRehypePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
@@ -157,9 +155,6 @@ export function MarkdownRenderer({
   afterSanitizePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
   /** Renderers for authored component tags, supplied by the rich renderer. */
   mdxComponents?: Components;
-  /** Marks a render by a code-split renderer, so the browser loads that
-   *  renderer before hydrating this markup (see lib/hydration-modules.ts). */
-  hydrationMarker?: HydrationModule<unknown>['marker'];
 }) {
   const components = useMemo(() => {
     const mergedComponents: Components = {
@@ -198,7 +193,7 @@ export function MarkdownRenderer({
     return mergedComponents;
   }, [site, mdxComponents]);
   return (
-    <div className={cn('typeset', className)} {...hydrationMarker}>
+    <div className={cn('typeset', className)}>
       <ReactMarkdown
         components={components}
         remarkPlugins={[remarkGfm, ...extraRemarkPlugins, remarkCallouts, remarkCodeMeta]}

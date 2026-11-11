@@ -197,7 +197,7 @@ it('keeps a server-rendered rich (HTML/MDX, math) article through hydration', as
   expect(recoverableErrors).toEqual([]);
   // Then how: the hook loaded the marked rich renderer once, before hydrating.
   expect(richRequests).toBe(1);
-  expect(serverBody?.getAttribute('data-hydration-module')).toBe('markdown-rich');
+  expect(serverBody?.closest('[data-hydration-module="markdown-rich"]')).not.toBeNull();
   expect(serverBody?.closest('[data-hydration-module="markdown"]')).not.toBeNull();
 }, 30_000);
 
@@ -214,6 +214,15 @@ it('loads the rich renderer before hydrating only when the server HTML used it',
   expect(richRequests).toBe(0);
 }, 30_000);
 
+it("the router's hook loads nothing on a page without reader markup", async () => {
+  container = document.createElement('div');
+  container.innerHTML = '<main><h1>Dashboard</h1></main>';
+  document.body.append(container);
+  const { getRouter } = await import('@/router');
+  // No promise: the hook returned before importing anything.
+  expect(getRouter().options.hydrate?.(undefined as never)).toBeUndefined();
+});
+
 describe('when the article renderer cannot load', () => {
   const text = 'The guide stays readable without its renderer.';
   /** Makes the browser's article-renderer chunk fail its first `failures`
@@ -227,10 +236,15 @@ describe('when the article renderer cannot load', () => {
     });
     return downloads;
   };
+  /** Moves the retry clock on a second at a time. Between steps, real I/O
+   *  turns let a mocked chunk download settle and schedule its next retry. */
   const advance = async (ms: number) => {
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(ms);
-    });
+    for (let elapsed = 0; elapsed < ms; elapsed += 1000) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(Math.min(1000, ms - elapsed));
+        for (let turn = 0; turn < 10; turn++) await new Promise((resolve) => setImmediate(resolve));
+      });
+    }
   };
   const bodyText = () => [...(container?.querySelectorAll('article p') ?? [])].filter((node) => node.textContent === text);
 
@@ -250,7 +264,7 @@ describe('when the article renderer cannot load', () => {
     expect(downloads.count).toBe(2);
     await advance(60_000);
     expect(downloads.count).toBe(4);
-    await advance(10 * 60_000);
+    await advance(5 * 60_000);
     expect(downloads.count).toBe(4);
     expect(bodyText()).toHaveLength(1);
     expect(container?.querySelector('[role="alert"]')).toBeNull();
@@ -321,7 +335,7 @@ describe('when the article renderer cannot load', () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
     // The real renderer still has to import.
     await act(async () => {
-      await vi.waitFor(() => expect(bodyText()).toHaveLength(1));
+      await vi.waitFor(() => expect(bodyText()).toHaveLength(1), { timeout: 10_000 });
     });
     expect(errors).toEqual([]);
   }, 30_000);

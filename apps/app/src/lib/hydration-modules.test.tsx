@@ -2,7 +2,7 @@
 
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HydrationIsland } from '@/components/hydration-island';
+import { HydrationIsland } from '@/lib/hydration-modules';
 import { HYDRATION_MODULE_ATTRIBUTE, HYDRATION_RETRY_DELAYS_MS, hydrationModule, loadServerRenderedModules } from './hydration-modules';
 
 const markup = (html: string) => {
@@ -38,7 +38,7 @@ describe('hydration modules', () => {
   it('loads only the modules the server HTML was rendered with', async () => {
     const used = vi.fn(async () => 'used');
     const unused = vi.fn(async () => 'unused');
-    await loadServerRenderedModules(markup(`<div ${HYDRATION_MODULE_ATTRIBUTE}="used"></div>`), async () => [
+    await loadServerRenderedModules(markup(`<div ${HYDRATION_MODULE_ATTRIBUTE}="used"></div>`), [
       hydrationModule('used', used),
       hydrationModule('unused', unused),
     ]);
@@ -46,15 +46,15 @@ describe('hydration modules', () => {
     expect(unused).not.toHaveBeenCalled();
   });
 
-  it('does not load the declarations for a page without marked markup', async () => {
-    const declarations = vi.fn(async () => []);
-    await loadServerRenderedModules(markup('<main><p>Dashboard</p></main>'), declarations);
-    expect(declarations).not.toHaveBeenCalled();
+  it('loads nothing for a page without marked markup', async () => {
+    const importer = vi.fn(async () => 'module');
+    await loadServerRenderedModules(markup('<main><p>Dashboard</p></main>'), [hydrationModule('module', importer)]);
+    expect(importer).not.toHaveBeenCalled();
   });
 
   it('lets hydration go ahead when a download fails, leaving the module to retry', async () => {
     const flaky = hydrationModule('flaky', vi.fn<() => Promise<string>>().mockRejectedValue(new Error('chunk failed')));
-    await expect(loadServerRenderedModules(markup(`<p ${HYDRATION_MODULE_ATTRIBUTE}="flaky"></p>`), async () => [flaky])).resolves.toBeUndefined();
+    await expect(loadServerRenderedModules(markup(`<p ${HYDRATION_MODULE_ATTRIBUTE}="flaky"></p>`), [flaky])).resolves.toBeUndefined();
     expect(flaky.status()).toBe('idle');
   });
 
