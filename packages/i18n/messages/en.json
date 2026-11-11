@@ -482,6 +482,8 @@
   "editor_format_underline": "Underline",
   "editor_format_subscript": "Subscript",
   "editor_format_superscript": "Superscript",
+  "editor_format_turninto": "Turn into",
+  "editor_format_toolbar": "Text formatting",
   "editor_link_save": "Save link",
   "editor_link_open": "Open in new tab",
   "editor_link_openrelativehint": "Relative links open on your published site",
