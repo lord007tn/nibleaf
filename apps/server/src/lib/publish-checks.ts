@@ -131,12 +131,10 @@ const strayParagraphs = (lines: readonly string[]): string[] => {
   return stray;
 };
 
-/** Body text once comments and whitespace are gone; empty means no body. */
-const hasBody = (content: string): boolean =>
-  content
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-    .trim().length > 0;
+/** Whether anything but HTML/MDX comments and whitespace is left. Splits on
+ *  the comments instead of stripping them: nothing here is rendered, it only
+ *  decides whether a page is empty. */
+const hasBody = (content: string): boolean => content.split(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/).some((part) => part.trim().length > 0);
 
 const SEVERITY_ORDER = { error: 0, warning: 1 } as const;
 
