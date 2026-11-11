@@ -208,6 +208,12 @@ jobs:
           DATA_PARTITION_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-partition.postgres.test.ts
 
+      - name: Verify site slug races and starter rollback
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          CREATE_SITE_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/projects.postgres.test.ts --maxWorkers=1
+
       - name: Verify transactional organization admissions
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
