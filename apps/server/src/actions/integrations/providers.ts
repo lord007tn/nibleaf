@@ -1,5 +1,5 @@
 import type { Locale } from '@nibleaf/i18n/locales';
-import { settings_integrations_testmessage } from '@nibleaf/i18n/messages';
+import { settings_integrations_testmessage } from '@nibleaf/i18n/messages/settings_integrations_testmessage';
 import { createLogger } from '@nibleaf/logger';
 import { IncomingWebhook } from '@slack/webhook';
 import got from 'got';

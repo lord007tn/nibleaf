@@ -1,5 +1,6 @@
 import type { Prisma } from '@nibleaf/database';
-import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
+import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
+import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => ({
