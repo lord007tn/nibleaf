@@ -563,6 +563,40 @@ describe('advanced access', () => {
     expect(region()).toBeNull();
   });
 
+  // Council #456: the save bar showed "Saving…" behind the confirmation.
+  it('keeps the save bar idle while it asks, and saves only once confirmed', async () => {
+    const pending = deferred<undefined>();
+    mocks.m.saveJwt.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await openAdvanced();
+    await type(field('settings.visibility.jwt.audience'), 'docs-v2');
+    await saveBar();
+    expect(dialog()?.textContent).toContain('settings.visibility.jwt.impact.audience');
+    // Its Save button is not busy: nothing is being saved yet.
+    expect(region()?.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(mocks.m.saveJwt.mutateAsync).not.toHaveBeenCalled();
+
+    await confirmDialog();
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledOnce();
+    expect(region()?.querySelector('[aria-busy="true"]')).not.toBeNull();
+    await act(async () => pending.resolve(undefined));
+    expect(region()).toBeNull();
+    expect(mocks.toast.success).toHaveBeenCalledWith('settings.authentication.reader.jwtSaved');
+  });
+
+  it('saves the other reader settings while the JWT change waits for an answer', async () => {
+    mocks.m.saveDomains.mutateAsync.mockResolvedValue({ domains: ['partner.example'] });
+    await render();
+    await openAdvanced();
+    await type(field('settings.visibility.jwt.issuer'), 'https://login.acme.example');
+    await type(field('settings.visibility.domains.label'), 'partner.example');
+    await saveBar();
+    expect(mocks.m.saveDomains.mutateAsync).toHaveBeenCalledWith({ domains: ['partner.example'] });
+    expect(dialog()?.textContent).toContain('settings.visibility.jwt.impact.issuer');
+    // Nothing claims "Saved" while the JWT change is still unanswered.
+    expect(region()?.textContent).not.toContain('common.saved');
+  });
+
   it('names a new issuer and key set in the confirmation, and keeps a failure in the dialog', async () => {
     mocks.m.saveJwt.mutateAsync.mockRejectedValueOnce(new Error('boom'));
     await render();
