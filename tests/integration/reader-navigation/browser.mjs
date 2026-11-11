@@ -270,6 +270,30 @@ await scenario('a link to a missing page shows the not-found page after one requ
   await context.close();
 });
 
+await scenario('server functions answer same-origin requests only', async () => {
+  // A real page-data request, as the reader sends it.
+  const { context, page, trace } = await reader();
+  await page.goto(pageUrl(START), { waitUntil: 'load' });
+  await hydrated(page);
+  await link(page, TARGET).focus();
+  await page.waitForTimeout(500);
+  await context.close();
+  const url = trace.pageLoads.find((entry) => entry.includes(TARGET));
+  assert.ok(url, 'captured a page-data request');
+  const send = (headers, init = {}) =>
+    fetch(new URL(url.slice(url.indexOf('/_serverFn/')), APP), { headers: { 'x-tsr-serverfn': 'true', ...headers }, redirect: 'manual', ...init });
+  const sameOrigin = await send({ 'Sec-Fetch-Site': 'same-origin', Origin: new URL(APP).origin });
+  assert.equal(sameOrigin.status, 200, 'a same-origin request is answered');
+  for (const headers of [{ 'Sec-Fetch-Site': 'cross-site' }, { Origin: 'https://elsewhere.example' }]) {
+    assert.equal((await send(headers)).status, 403, `refused: ${JSON.stringify(headers)}`);
+  }
+  const crossSitePost = await send(
+    { Origin: 'https://elsewhere.example', 'Content-Type': 'text/plain; x=application/json' },
+    { method: 'POST', body: '{}' },
+  );
+  assert.equal(crossSitePost.status, 403, 'a cross-site POST is refused');
+});
+
 // On the private site every navigation asks the server again (nothing is cached),
 // so the second attempt below really fails a second time.
 await scenario('a gateway failure loads that page from the server once; failing again keeps the error page', async () => {
