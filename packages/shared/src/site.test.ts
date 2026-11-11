@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { pageDescription, pageExcerpt } from './markdown-text';
 import {
   buildNavTree,
   buildSnapshot,
@@ -8,8 +9,6 @@ import {
   interpolateVariables,
   isPageTranslation,
   mergeLanguageChrome,
-  pageDescription,
-  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,

@@ -6,6 +6,7 @@ export const MAX_REDIRECT_CHAIN_LENGTH = 10;
 export const MAX_REDIRECT_RULES = 100;
 
 export interface RedirectPair {
+  generated?: boolean;
   from: string;
   to: string;
 }
@@ -60,7 +61,7 @@ export interface RedirectGraphResult {
 type ParsedInternal = { kind: 'internal'; path: string; query: string; fragment: string; href: string; language: string | null };
 type ParsedExternal = { kind: 'external'; href: string };
 type ParsedDestination = ParsedInternal | ParsedExternal;
-type ParsedRule = { index: number; from: string; target: ParsedDestination };
+type ParsedRule = { index: number; from: string; target: ParsedDestination; generated?: boolean };
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const ENCODED_SEPARATOR = /%(?:2f|5c)/i;
@@ -261,7 +262,7 @@ export function validateRedirectGraph(redirects: readonly RedirectPair[], option
       continue;
     }
 
-    const current: ParsedRule = { index, from, target };
+    const current: ParsedRule = { index, from, target, generated: redirect.generated === true };
     const duplicate = bySource.get(from);
     if (duplicate) {
       const qualifier = duplicate.target.href === target.href ? 'Duplicate' : 'Conflicting';
@@ -381,7 +382,7 @@ export function validateRedirectGraph(redirects: readonly RedirectPair[], option
       continue;
     }
     if (finalTarget.kind === 'external') {
-      flattened.push({ from: displayPath(start.from), to: finalTarget.href });
+      flattened.push({ from: displayPath(start.from), to: finalTarget.href, ...(start.generated ? { generated: true } : {}) });
       continue;
     }
 
@@ -417,6 +418,7 @@ export function validateRedirectGraph(redirects: readonly RedirectPair[], option
     }
     flattened.push({
       from: displayPath(start.from),
+      ...(start.generated ? { generated: true } : {}),
       to: `${displayPath(finalPath)}${finalTarget.query ? `?${finalTarget.query}` : ''}${finalTarget.fragment ? `#${finalTarget.fragment}` : ''}`,
     });
   }
@@ -453,10 +455,8 @@ export interface SnapshotRedirectValidation extends RedirectGraphResult {
   snapshot: SiteSnapshot;
 }
 
-/** Build the effective locale/version/base-path route manifest and validate the
- * redirects stored in a publish snapshot. Successful snapshots contain only
- * normalized direct redirects; failures return the original snapshot untouched. */
-export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedirectValidation {
+/** The reader's effective locale/version route manifest, including group aliases. */
+export function snapshotRedirectOptions(snapshot: SiteSnapshot): RedirectGraphOptions {
   const languages = publicLanguages(snapshot.project.languages);
   const defaultLanguage = languages.find((language) => language.isDefault)?.code;
   const routes: RedirectRoute[] = [];
@@ -517,6 +517,17 @@ export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedir
     }
   }
 
+  return {
+    routes,
+    defaultLanguage,
+    enabledLanguages: languages.map((language) => language.code),
+    reservedPaths: reserved,
+    routeCollisions: [...routeCollisions],
+  };
+}
+
+/** Validate against the same effective routes used by the reader. */
+export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedirectValidation {
   const config = snapshot.project.config ?? {};
   const raw = (config as { redirects?: unknown }).redirects;
   const redirects = Array.isArray(raw)
@@ -527,16 +538,11 @@ export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedir
         return {
           from: typeof record.from === 'string' ? record.from : `[invalid redirect row ${index + 1}]`,
           to: typeof record.to === 'string' ? record.to : '',
+          ...(record.generated === true ? { generated: true } : {}),
         };
       })
     : [];
-  const result = validateRedirectGraph(redirects, {
-    routes,
-    defaultLanguage,
-    enabledLanguages: languages.map((language) => language.code),
-    reservedPaths: reserved,
-    routeCollisions: [...routeCollisions],
-  });
+  const result = validateRedirectGraph(redirects, snapshotRedirectOptions(snapshot));
   if (raw !== undefined && !Array.isArray(raw)) {
     result.issues.unshift(issue('malformed-source', 'Stored redirect configuration must be an array of source/destination rules.', [], [], 'from'));
     result.redirects = [];

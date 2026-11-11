@@ -1,6 +1,7 @@
 import { keys as clickHouseKeys, queryUsageMeterTotals, UsageHistoryUnavailableError, type UsageMeterTotal } from '@nibleaf/clickhouse';
 import { Prisma, prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
+import { DEFAULT_PLAN_KEY, evaluateCapability, resolveEffectivePlan } from '@nibleaf/shared/plan-policy';
 import {
   capabilityKeySchema,
   evaluateLimit,
@@ -84,40 +85,39 @@ const resolveProjectScope = async (ctx: Context<HonoEnv>, projectId: string, req
   return authorized;
 };
 
+const planSelect = {
+  key: true,
+  active: true,
+  meters: {
+    select: { behavior: true, limit: true, warningRatio: true, meter: { select: { key: true, unit: true, active: true } } },
+  },
+  entitlements: {
+    select: { capabilityKey: true, enabled: true, limit: true, behavior: true, meter: { select: { key: true, active: true } } },
+  },
+} satisfies Prisma.UsagePlanSelect;
+
 const getPlanConfiguration = async (organizationId: string) =>
   prisma.organizationUsagePlan.findUnique({
     where: { organizationId },
-    select: {
-      status: true,
-      effectiveAt: true,
-      expiresAt: true,
-      plan: {
-        select: {
-          key: true,
-          active: true,
-          meters: {
-            select: { behavior: true, limit: true, warningRatio: true, meter: { select: { key: true, unit: true, active: true } } },
-          },
-          entitlements: {
-            select: { capabilityKey: true, enabled: true, limit: true, behavior: true, meter: { select: { key: true, active: true } } },
-          },
-        },
-      },
-    },
+    select: { status: true, effectiveAt: true, expiresAt: true, plan: { select: planSelect } },
   });
 
+/**
+ * The plan that governs an organization, through the shared resolver
+ * (`@nibleaf/shared/plan-policy`) that publish, public delivery, the worker,
+ * settings and MCP all use: the active assignment, else the canonical free
+ * plan as configured, else none. `source` says which; `reason` why the
+ * assignment itself does not apply.
+ */
 const getEffectivePlanConfiguration = async (organizationId: string, now = new Date()) => {
-  const configured = await getPlanConfiguration(organizationId);
-  if (!configured) return { availability: 'unavailable' as const, configured: null, reason: 'missing' as const };
-  if (
-    configured.status !== 'active' ||
-    !configured.plan.active ||
-    configured.effectiveAt > now ||
-    (configured.expiresAt !== null && configured.expiresAt <= now)
-  ) {
-    return { availability: 'unavailable' as const, configured: null, reason: 'inactive' as const };
-  }
-  return { availability: 'complete' as const, configured, reason: null };
+  const [assigned, defaultPlan] = await Promise.all([
+    getPlanConfiguration(organizationId),
+    prisma.usagePlan.findUnique({ where: { key: DEFAULT_PLAN_KEY }, select: planSelect }),
+  ]);
+  const effective = resolveEffectivePlan(assigned, defaultPlan, now);
+  const reason = effective.assignment === 'active' ? null : effective.assignment;
+  if (!effective.plan) return { availability: 'unavailable' as const, configured: null, effective, reason, source: effective.source };
+  return { availability: 'complete' as const, configured: { plan: effective.plan }, effective, reason, source: effective.source };
 };
 
 /** One org seat per active author, even when they hold grants on many sites:
@@ -182,7 +182,7 @@ const getProjectUsageSummaryForOrganization = async (
   const [planState, snapshots, pendingCheckpoint] = await Promise.all([
     includeBilling
       ? getEffectivePlanConfiguration(organizationId)
-      : Promise.resolve({ configured: null, availability: 'unavailable' as const, reason: 'missing' as const }),
+      : Promise.resolve({ configured: null, availability: 'unavailable' as const, reason: 'missing' as const, source: 'none' as const }),
     getSnapshotQuantities(organizationId, projectId, includeBilling),
     prisma.usageIngestCheckpoint.findFirst({
       where: {
@@ -270,12 +270,15 @@ const getProjectUsageSummaryForOrganization = async (
     plan: includeBilling
       ? {
           key: plan?.plan.key ?? null,
+          // `default`: no active assignment; the org runs on the free plan.
           status:
-            planState.availability === 'complete'
+            planState.source === 'assignment'
               ? ('active' as const)
-              : planState.reason === 'inactive'
-                ? ('inactive' as const)
-                : ('unknown' as const),
+              : planState.source === 'default'
+                ? ('default' as const)
+                : planState.reason === 'inactive'
+                  ? ('inactive' as const)
+                  : ('unknown' as const),
         }
       : undefined,
     meters: includeBilling ? meters : meters.map((meter) => ({ ...meter, limit: undefined, behavior: undefined, enforcement: undefined })),
@@ -397,17 +400,6 @@ const capabilityInputSchema = z.object({
   capabilityKey: capabilityKeySchema,
   eligiblePlanKeys: z.array(planKeySchema).max(50),
 });
-const compatibilityAvailabilitySchema = z
-  .object({
-    plan: planKeySchema,
-    entitlements: z.record(capabilityKeySchema, z.boolean()).default({}),
-  })
-  .passthrough();
-
-/** Internal entitlement evaluator for already-authorized product actions such
- * as add-ons. It rechecks project membership/API-key allowlisting but does not
- * impose an unrelated entitlements scope. Relational assignments are the only
- * authority once present; metadata is a one-way migration fallback. */
 export const resolveProjectCapability = async (
   ctx: Context<HonoEnv>,
   projectId: string,
@@ -417,97 +409,20 @@ export const resolveProjectCapability = async (
   if (!inputResult.success) throw new AppError({ code: 'validation:failed', message: 'Capability policy is invalid.' });
   const parsed = inputResult.data;
   const { organizationId } = await resolveProjectAuthorization(ctx, projectId);
-  const assigned = await getPlanConfiguration(organizationId);
-  if (assigned) {
-    const state = await getEffectivePlanConfiguration(organizationId);
-    if (!state.configured) {
-      return {
-        schemaVersion: 1 as const,
-        projectId,
-        capabilityKey: parsed.capabilityKey,
-        availability: 'unavailable' as const,
-        decision: 'unknown' as const,
-        planKey: assigned.plan.key,
-        source: 'plan' as const,
-        limit: null,
-        meterKey: null,
-        behavior: 'observe' as const,
-        enforcement: 'advisory' as const,
-      };
-    }
-    const entitlement = state.configured.plan.entitlements.find((item) => item.capabilityKey === parsed.capabilityKey);
-    if (entitlement?.meter && !entitlement.meter.active) {
-      return {
-        schemaVersion: 1 as const,
-        projectId,
-        capabilityKey: parsed.capabilityKey,
-        availability: 'unavailable' as const,
-        decision: 'unknown' as const,
-        planKey: state.configured.plan.key,
-        source: 'plan' as const,
-        limit: null,
-        meterKey: null,
-        behavior: 'observe' as const,
-        enforcement: 'advisory' as const,
-      };
-    }
-    const enabled = entitlement
-      ? entitlement.enabled && (entitlement.meter?.active ?? true)
-      : parsed.eligiblePlanKeys.includes(state.configured.plan.key);
-    return {
-      schemaVersion: 1 as const,
-      projectId,
-      capabilityKey: parsed.capabilityKey,
-      availability: 'complete' as const,
-      decision: enabled ? ('enabled' as const) : ('disabled' as const),
-      planKey: state.configured.plan.key,
-      source: 'plan' as const,
-      limit: entitlement?.limit?.toString() ?? null,
-      meterKey: entitlement?.meter?.key ?? null,
-      behavior: entitlement?.behavior === 'block' || entitlement?.behavior === 'warn' ? entitlement.behavior : ('observe' as const),
-      enforcement: 'advisory' as const,
-    };
-  }
-
-  const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
-  if (!organization) throw notFound('project', { id: projectId });
-  const compatibility = (() => {
-    if (!organization.metadata || organization.metadata.length > 65_536) return null;
-    try {
-      const result = compatibilityAvailabilitySchema.safeParse(JSON.parse(organization.metadata));
-      return result.success ? result.data : null;
-    } catch {
-      return null;
-    }
-  })();
-  if (!compatibility) {
-    return {
-      schemaVersion: 1 as const,
-      projectId,
-      capabilityKey: parsed.capabilityKey,
-      availability: 'unavailable' as const,
-      decision: 'unknown' as const,
-      planKey: null,
-      source: null,
-      limit: null,
-      meterKey: null,
-      behavior: 'observe' as const,
-      enforcement: 'advisory' as const,
-    };
-  }
-  const override = compatibility.entitlements[parsed.capabilityKey];
-  const enabled = override ?? parsed.eligiblePlanKeys.includes(compatibility.plan);
+  const planState = await getEffectivePlanConfiguration(organizationId);
+  const result = evaluateCapability(planState.effective, { capabilityKey: parsed.capabilityKey, eligiblePlanKeys: parsed.eligiblePlanKeys });
+  const entitlement = result.availability === 'complete' ? result.entitlement : null;
   return {
     schemaVersion: 1 as const,
     projectId,
     capabilityKey: parsed.capabilityKey,
-    availability: 'complete' as const,
-    decision: enabled ? ('enabled' as const) : ('disabled' as const),
-    planKey: compatibility.plan,
-    source: 'compatibility' as const,
-    limit: null,
-    meterKey: null,
-    behavior: 'observe' as const,
+    availability: result.availability,
+    decision: result.decision,
+    planKey: result.planKey,
+    source: planState.source === 'none' ? null : ('plan' as const),
+    limit: entitlement?.limit?.toString() ?? null,
+    meterKey: entitlement?.meter?.key ?? null,
+    behavior: entitlement?.behavior === 'block' || entitlement?.behavior === 'warn' ? entitlement.behavior : ('observe' as const),
     enforcement: 'advisory' as const,
   };
 };

@@ -1,11 +1,11 @@
 import path from 'node:path';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
+import { pageDescription } from '@nibleaf/shared/markdown-text';
 import { isSafeLinkDestination, normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
 import {
   defaultLanguage,
   extractHeadings,
   isPageTranslation,
-  pageDescription,
   publicLanguages,
   type SiteSnapshot,
   type SnapshotLanguage,

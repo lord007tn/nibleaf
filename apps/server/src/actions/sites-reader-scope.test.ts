@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@nibleaf/logger', () => ({ logger: { warn: mocks.warn, info: vi.fn(), debug: vi.fn(), error: vi.fn() } }));
 
 vi.mock('@nibleaf/database', () => ({
+  // The canonical free plan as seeded in production: no entitlement rows.
+  deliveryPlanSelect: {},
+  loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
   Prisma: { DbNull: null },
   prisma: {
     project: { findUnique: mocks.projectFindUnique },
