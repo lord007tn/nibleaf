@@ -12,6 +12,7 @@ export function PageTitleField({
   onChange,
   onEnter,
   label,
+  placeholder,
   lang,
   textareaRef,
   className,
@@ -22,6 +23,7 @@ export function PageTitleField({
   /** Called on Enter — the editor moves focus to the start of the body. */
   onEnter: () => void;
   label: string;
+  placeholder: string;
   lang?: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   className?: string;
@@ -44,7 +46,7 @@ export function PageTitleField({
       aria-label={label}
       data-page-title=""
       className={cn(
-        'block w-full min-w-0 resize-none overflow-hidden rounded-sm border-0 bg-transparent font-semibold text-3xl leading-[1.2] tracking-tight outline-none [field-sizing:content] placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40 sm:text-[2.1rem]',
+        'pl-page-title block w-full min-w-0 resize-none overflow-hidden rounded-sm border-0 bg-transparent outline-0 [field-sizing:content] placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-4',
         className,
       )}
       dir="auto"
@@ -56,9 +58,10 @@ export function PageTitleField({
           onEnter();
         }
       }}
-      placeholder={label}
+      placeholder={placeholder}
       readOnly={readOnly}
       rows={1}
+      wrap="soft"
       value={value}
     />
   );

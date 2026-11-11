@@ -226,18 +226,39 @@ export function cleanPasteDOM(root: HTMLElement, fallbackDir: 'ltr' | 'rtl' = 'l
       const paragraph = doc.createElement('p');
       paragraph.append(...element.childNodes);
       element.replaceWith(paragraph);
-    } else if (!semanticTags.has(element.localName) || normalBold || (insideLink && element.localName === 'u'))
+    } else if (
+      !semanticTags.has(element.localName) ||
+      normalBold ||
+      (insideLink && element.localName === 'u') ||
+      (element.localName === 'a' && !element.childNodes.length)
+    )
       element.replaceWith(...element.childNodes);
   }
   for (const paragraph of root.querySelectorAll('p')) {
     if (!paragraph.textContent?.replace(/[\s\u00a0]/g, '') && !paragraph.querySelector('img,hr')) paragraph.remove();
   }
   for (const item of root.querySelectorAll('li')) {
+    // A break between a paragraph and a child list becomes its own empty
+    // paragraph in ProseMirror. Keep breaks inside the item's actual prose.
+    for (const child of Array.from(item.children)) {
+      if (child.localName !== 'br') continue;
+      let previous = child.previousSibling;
+      let next = child.nextSibling;
+      while (previous && ((previous.nodeType === 3 && !previous.textContent?.trim()) || previous.nodeName === 'BR'))
+        previous = previous.previousSibling;
+      while (next && ((next.nodeType === 3 && !next.textContent?.trim()) || next.nodeName === 'BR')) next = next.nextSibling;
+      if ((previous?.nodeType === 1 && (previous as Element).matches('p,ul,ol')) || (next?.nodeType === 1 && (next as Element).matches('p,ul,ol')))
+        child.remove();
+    }
     const paragraph = item.firstElementChild;
     if (
-      item.children.length === 1 &&
       paragraph?.localName === 'p' &&
-      Array.from(item.childNodes).every((node) => node === paragraph || (node.nodeType === 3 && !node.textContent?.trim()))
+      Array.from(item.childNodes).every(
+        (node) =>
+          node === paragraph ||
+          (node.nodeType === 1 && ['ul', 'ol'].includes((node as Element).localName)) ||
+          (node.nodeType === 3 && !node.textContent?.trim()),
+      )
     )
       paragraph.replaceWith(...paragraph.childNodes);
   }

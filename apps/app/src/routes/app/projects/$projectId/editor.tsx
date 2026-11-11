@@ -918,6 +918,7 @@ function EditorPage() {
   const pageTitleInput = (
     <PageTitleField
       label={t('editor.pageTitlePlaceholder')}
+      placeholder={t('editor.untitled')}
       lang={activeLanguage?.code}
       onChange={canEditContent ? setTitle : ignoreEdit}
       readOnly={!canEditContent}
