@@ -494,7 +494,27 @@ describe('site creation language, starters and address availability', () => {
     for (const candidate of candidates.slice(1)) expect(candidate).toMatch(/^taken-[a-f0-9]{8}$/);
   });
 
-  it.each(['www', 'docs', 'dashboard', 'xn--homoglyph'])('never generates a reserved address from %s', async (name) => {
+  it.each([
+    'www',
+    'admin',
+    'api',
+    'app',
+    'docs',
+    'storage',
+    'cname',
+    'status',
+    'mail',
+    'dashboard',
+    'gateway',
+    'console',
+    'sites',
+    'ingress',
+    'uploads',
+    'assets',
+    'login',
+    'objects',
+    'xn--homoglyph',
+  ])('never generates a reserved address from %s', async (name) => {
     mocks.projectFindMany.mockResolvedValue([]);
     await createProject('user-1', { name });
     const slug = mocks.tx.project.create.mock.calls[0]?.[0].data.slug;
@@ -502,7 +522,7 @@ describe('site creation language, starters and address availability', () => {
     expect(slug).not.toMatch(/^xn--/);
   });
 
-  it.each(['en', 'ar'])('stores the exact %s catalog title and body for every starter page', async (language) => {
+  it.each(['en', 'ar'] as const)('stores the exact %s catalog title and body for every starter page', async (language) => {
     const catalog = JSON.parse(readFileSync(new URL(`../../../../packages/i18n/messages/${language}.json`, import.meta.url), 'utf8'));
     const messageFor: Record<string, string> = {
       welcome: 'welcome',
