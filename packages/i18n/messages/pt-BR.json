@@ -3578,6 +3578,7 @@
   "admin_operations_gitkind_push": "Push",
   "editor_saveerror": "Não foi possível salvar as alterações. Tente novamente antes de sair.",
   "editor_retrysave": "Tentar salvar novamente",
+  "editor_pagetoolarge": "Esta página é grande demais (máximo de 2 MB). Divida-a em páginas menores.",
   "dashboard_search_noresults": "Nenhum site corresponde à sua busca.",
   "dashboard_search_clear": "Limpar busca",
   "auth_invite_switchaccount": "Entrar com a conta convidada",

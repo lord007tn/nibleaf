@@ -1,3 +1,4 @@
+import { MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { Octokit, RequestError } from 'octokit';
 import { badRequest, ImportError } from '@/errors';
 
@@ -107,7 +108,8 @@ export const getGitHubTextFile = async (owner: string, repo: string, branch: str
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > 2 * 1024 * 1024) throw new ImportError({ code: 'import:limit', message: 'Repository text file exceeds 2 MiB; import stopped.' });
+      if (total > MAX_PAGE_CONTENT_BYTES)
+        throw new ImportError({ code: 'import:limit', message: 'Repository text file exceeds 2 MiB; import stopped.' });
       chunks.push(value);
     }
     return Buffer.concat(chunks).toString('utf8');

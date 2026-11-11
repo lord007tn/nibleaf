@@ -3577,6 +3577,7 @@
   "admin_operations_gitkind_push": "Push",
   "editor_saveerror": "Les modifications n’ont pas pu être enregistrées. Réessayez avant de quitter la page.",
   "editor_retrysave": "Réessayer l’enregistrement",
+  "editor_pagetoolarge": "Cette page est trop volumineuse (2 Mo maximum). Divisez-la en pages plus petites.",
   "dashboard_search_noresults": "Aucun site ne correspond à votre recherche.",
   "dashboard_search_clear": "Effacer la recherche",
   "auth_invite_switchaccount": "Se connecter avec le compte invité",

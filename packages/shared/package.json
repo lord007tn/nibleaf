@@ -49,6 +49,7 @@
     "./markdown-text": "./src/markdown-text.ts",
     "./markdown-code-usage": "./src/markdown-code-usage.ts",
     "./page-history": "./src/page-history.ts",
+    "./page-limits": "./src/page-limits.ts",
     "./uuid": "./src/uuid.ts"
   },
   "scripts": {

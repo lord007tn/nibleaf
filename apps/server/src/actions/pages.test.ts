@@ -37,7 +37,9 @@ vi.mock('@nibleaf/database', () => ({
 }));
 
 import { reorderPagesBody } from '@nibleaf/validators';
-import { reorderPages, updatePage } from './pages';
+import { Hono } from 'hono';
+import { errorMiddleware } from '@/errors/handler';
+import { createPage, reorderPages, updatePage } from './pages';
 
 type Row = {
   id: string;
@@ -516,5 +518,70 @@ describe('updatePage revision precondition', () => {
       ).rejects.toMatchObject({ code: 'http:bad_request' });
       expect(database.updateMany).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('page content size cap', () => {
+  const MiB = 1024 * 1024;
+  const limit = 2 * MiB;
+
+  beforeEach(() => {
+    for (const mock of Object.values(database)) mock.mockReset();
+    recordEdit.mockClear();
+  });
+
+  it('refuses a create over the cap with a 413 before opening a transaction', async () => {
+    const app = new Hono()
+      .post('/pages', async (ctx) => ctx.json(await createPage('project-1', { title: 'Huge', content: 'x'.repeat(limit + 1) })))
+      .onError(errorMiddleware({ isDevelopment: false }));
+    const response = await app.request('/pages', { method: 'POST' });
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'page:too_large',
+        message: 'This page is too large (2 MB maximum). Split it into smaller pages.',
+        details: { bytes: limit + 1, limit },
+      },
+    });
+    // Multibyte text is measured in UTF-8 bytes: 1 MiB + 1 Arabic letters is 2 MiB + 2 bytes.
+    await expect(createPage('project-1', { title: 'Arabic', content: 'ع'.repeat(MiB + 1) })).rejects.toMatchObject({
+      status: 413,
+      details: { bytes: limit + 2, limit },
+    });
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
+
+  it('saves an update under the cap', async () => {
+    seed(row());
+    await updatePage('project-1', 'page-1', { content: 'x'.repeat(limit) }, 'author-1');
+    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ content: 'x'.repeat(limit) }) }));
+  });
+
+  it('refuses an update over the cap that grows the page, before writing', async () => {
+    seed(row());
+    await expect(updatePage('project-1', 'page-1', { content: 'x'.repeat(limit + 1) }, 'author-1')).rejects.toMatchObject({
+      status: 413,
+      code: 'page:too_large',
+      details: { bytes: limit + 1, limit },
+    });
+    seed(row({ content: 'x'.repeat(3 * MiB) }));
+    await expect(updatePage('project-1', 'page-1', { content: 'x'.repeat(3 * MiB + 1) }, 'author-1')).rejects.toMatchObject({
+      code: 'page:too_large',
+      details: { bytes: 3 * MiB + 1, limit },
+    });
+    expect(database.update).not.toHaveBeenCalled();
+    expect(recordEdit).not.toHaveBeenCalled();
+  });
+
+  it('saves an edit that shrinks a page already over the cap, even while it stays over', async () => {
+    seed(row({ content: 'x'.repeat(3 * MiB) }));
+    const shrunk = 'x'.repeat(2.5 * MiB);
+    const updated = await updatePage('project-1', 'page-1', { content: shrunk }, 'author-1');
+    expect(updated.content).toBe(shrunk);
+    // Same size, different text: not growing, so it saves too.
+    await updatePage('project-1', 'page-1', { content: 'y'.repeat(2.5 * MiB) }, 'author-1');
+    // Metadata-only edits never measure content.
+    await updatePage('project-1', 'page-1', { hidden: true }, 'author-1');
+    expect(database.update).toHaveBeenCalledTimes(3);
   });
 });

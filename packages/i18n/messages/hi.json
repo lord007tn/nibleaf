@@ -3512,6 +3512,7 @@
   "admin_operations_gitkind_push": "पुश",
   "editor_saveerror": "बदलाव सहेजे नहीं जा सके। जाने से पहले फिर कोशिश करें।",
   "editor_retrysave": "सहेजने का फिर प्रयास करें",
+  "editor_pagetoolarge": "यह पेज बहुत बड़ा है (अधिकतम 2 MB)। इसे छोटे पेजों में बाँटें।",
   "dashboard_search_noresults": "आपकी खोज से कोई साइट मेल नहीं खाती।",
   "dashboard_search_clear": "खोज साफ़ करें",
   "auth_invite_switchaccount": "आमंत्रित खाते से लॉग इन करें",

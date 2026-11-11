@@ -3512,6 +3512,7 @@
   "admin_operations_gitkind_push": "Push",
   "editor_saveerror": "Perubahan tidak dapat disimpan. Coba lagi sebelum meninggalkan halaman.",
   "editor_retrysave": "Coba simpan lagi",
+  "editor_pagetoolarge": "Halaman ini terlalu besar (maksimum 2 MB). Bagi menjadi beberapa halaman yang lebih kecil.",
   "dashboard_search_noresults": "Tidak ada situs yang cocok dengan pencarian Anda.",
   "dashboard_search_clear": "Hapus pencarian",
   "auth_invite_switchaccount": "Masuk dengan akun yang diundang",

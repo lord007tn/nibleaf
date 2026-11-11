@@ -1,9 +1,10 @@
 import { STARTER_GETTING_STARTED_CONTENT, STARTER_GETTING_STARTED_ICON, STARTER_GETTING_STARTED_TITLE } from '@nibleaf/auth/starter-content';
 import { Prisma, prisma } from '@nibleaf/database';
+import { exceedsUtf8Bytes, MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { type PageConfig, pageConfigSchema } from '@nibleaf/validators';
 import { getDefaultBranch } from '../branches';
 import { getDefaultLanguage } from '../languages';
-import { createPage } from '../pages';
+import { assertPageContentFits, createPage } from '../pages';
 import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './cleanup-locks';
 
 /**
@@ -187,6 +188,12 @@ export const upsertPage = async (target: ImportTarget, page: ImportedPage): Prom
     select: { id: true, config: true },
   });
   if (found) {
+    // Re-imports follow the editor's rule: a page over the cap may not grow.
+    // The stored body is only read when the new one is over the cap.
+    if (exceedsUtf8Bytes(page.content, MAX_PAGE_CONTENT_BYTES)) {
+      const stored = await prisma.page.findUniqueOrThrow({ where: { id: found.id }, select: { content: true } });
+      assertPageContentFits(page.content, stored.content);
+    }
     const parsedConfig = pageConfigSchema.safeParse(found.config);
     const existingConfig: PageConfig = parsedConfig.success ? parsedConfig.data : {};
     await prisma.page.update({
