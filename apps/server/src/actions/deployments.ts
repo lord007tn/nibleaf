@@ -60,6 +60,9 @@ export interface PendingChanges {
   reviewedStateHash: string;
   /** false = never published, so everything counts as new. */
   hasBaseline: boolean;
+  /** true = a publish now would put out exactly what is live: no page, settings,
+   *  navigation, redirect or API reference change. Only with a baseline. */
+  upToDate: boolean;
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
@@ -380,6 +383,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
     return {
       reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
       hasBaseline: false,
+      upToDate: false,
       lastVersion: null,
       lastPublishedAt: null,
       changes: [...current.map((p) => pageSummary(p, 'added')), ...(firstSpecChange ? [firstSpecChange] : [])],
@@ -409,9 +413,14 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const specChange = openApiSummary(currentSnapshot.openapi, snap.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
   if (specChange) changes.push(specChange);
 
+  const reviewedStateHash = reviewedSnapshotDigest(currentSnapshot);
   return {
-    reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
+    reviewedStateHash,
     hasBaseline: true,
+    // The page list only compares pages; settings, redirects and languages also
+    // ship with a publish. The live snapshot is the reviewed input the worker
+    // stored, so equal output digests mean nothing at all would change.
+    upToDate: changes.length === 0 && reviewedSnapshotDigest(snap) === reviewedStateHash,
     lastVersion: latest.version,
     lastPublishedAt: latest.completedAt?.toISOString() ?? null,
     changes,

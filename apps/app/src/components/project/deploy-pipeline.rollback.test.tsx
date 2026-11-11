@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { translateFn } from '@nibleaf/i18n';
+import { computeAccessibleName, getRole, isInaccessible } from 'dom-accessibility-api';
 import type { ReactNode } from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -17,7 +18,14 @@ const mocks = vi.hoisted(() => ({
   deployments: { data: [] as Deployment[] },
   domains: { data: [] as object[] },
   live: { data: [] as Deployment[], isFetching: false, isError: false },
+  adminStatus: 'admin' as string,
 }));
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, params, search, ...props }: { to: string; params: { projectId: string }; search: Record<string, string>; children: ReactNode }) => (
+    <a {...props} href={`${to.replace('$projectId', params.projectId)}?${new URLSearchParams(search)}`} />
+  ),
+}));
+vi.mock('@/hooks/use-project-admin-status', () => ({ useProjectAdminStatus: () => ({ status: mocks.adminStatus }) }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('@nibleaf/design-system/components/ui/dialog', () => ({
   Dialog: ({ children, open }: { children: ReactNode; open: boolean }) => (open ? <div>{children}</div> : null),
@@ -82,6 +90,7 @@ describe('rollback progress', () => {
     mocks.live.data = [];
     mocks.live.isFetching = false;
     mocks.live.isError = false;
+    mocks.adminStatus = 'admin';
     mocks.mutate.mockImplementation((_id, options) => {
       const queued = deployment('restore-4', 4, 'PENDING');
       mocks.deployments.data = [queued, ...mocks.deployments.data];
@@ -158,12 +167,12 @@ describe('rollback progress', () => {
     mocks.live.isError = true;
     const rollbackButton = () => [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('deploy.rollback'));
 
-    // The polled list has no older live version: no target, not the stale v3.
+    // The polled list has no older live version: no target (so no offer), not the stale v3.
     mocks.deployments.data = [deployment('live-60', 60, 'READY'), ...failures];
     await act(async () =>
       root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
     );
-    expect(rollbackButton()?.hasAttribute('disabled')).toBe(true);
+    expect(rollbackButton()).toBeUndefined();
 
     // It lists v59: that is the right target.
     mocks.deployments.data = [deployment('live-60', 60, 'READY'), deployment('v59', 59, 'READY'), ...failures];
@@ -308,6 +317,98 @@ describe('rollback progress', () => {
     await act(async () => retry?.click());
     expect(retryDraft).not.toHaveBeenCalled();
     expect(mocks.mutate).toHaveBeenLastCalledWith('old-2', expect.any(Object));
+  });
+
+  describe('first publish', () => {
+    /** Accessible controls by role and name, as a screen reader lists them. */
+    const controls = (role: string) =>
+      [...container.querySelectorAll<HTMLElement>('a, button')]
+        .filter((element) => getRole(element) === role && !isInaccessible(element))
+        .map((element) => computeAccessibleName(element));
+    const renderFirst = (open = true) =>
+      act(async () => root.render(<DeployPipeline project={project} open={open} onOpenChange={close} trackedDeploymentId="first-1" />));
+    beforeEach(() => {
+      mocks.deployments.data = [deployment('first-1', 1, 'READY'), deployment('failed-0', 0, 'FAILED')];
+      mocks.live.data = [deployment('first-1', 1, 'READY')];
+    });
+
+    it('offers next steps instead of restoring a previous version that does not exist', async () => {
+      await renderFirst();
+      expect(container.querySelector('h1')?.textContent).toBe('deploy.firstLive');
+      expect(container.textContent).not.toContain('deploy.rollback');
+      expect(container.querySelector('details')).toBeNull();
+      expect(controls('button')).toEqual(expect.arrayContaining(['deploy.copyAddress', 'deploy.viewSite', 'deploy.done']));
+      const domain = container.querySelector<HTMLAnchorElement>('a[href="/app/projects/project/settings?section=domain"]');
+      expect(domain && computeAccessibleName(domain)).toBe('settings.general.customDomain.link');
+      await act(async () => domain?.click());
+      expect(close).toHaveBeenCalledWith(false);
+    });
+
+    it('leaves the domain step to Admins and to sites without a working custom domain', async () => {
+      mocks.adminStatus = 'notAdmin';
+      await renderFirst();
+      expect(controls('link')).not.toContain('settings.general.customDomain.link');
+      expect(controls('button')).toContain('deploy.copyAddress');
+      mocks.adminStatus = 'admin';
+      mocks.domains.data = [
+        { id: 'domain-1', domain: 'docs.example.com', verified: true, isPrimary: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' },
+      ];
+      await renderFirst();
+      expect(controls('link')).not.toContain('settings.general.customDomain.link');
+    });
+
+    it('still offers a restore on a republish with an earlier live version', async () => {
+      mocks.deployments.data = [deployment('second-2', 2, 'READY'), deployment('first-1', 1, 'READY')];
+      mocks.live.data = [...mocks.deployments.data];
+      await act(async () => root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="second-2" />));
+      expect(container.querySelector('h1')?.textContent).toBe('deploy.deployed');
+      expect(controls('button')).toContain('deploy.rollback');
+      expect(controls('button')).not.toContain('deploy.copyAddress');
+    });
+
+    it('says the outcome in the open dialog only, without a toast on top', async () => {
+      mocks.deployments.data = [deployment('first-1', 1, 'BUILDING')];
+      await renderFirst();
+      mocks.deployments.data = [deployment('first-1', 1, 'READY')];
+      await renderFirst();
+      expect(mocks.success).not.toHaveBeenCalled();
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('deploy.firstLive');
+      // Closing afterwards doesn't replay it as a toast.
+      await renderFirst(false);
+      expect(mocks.success).not.toHaveBeenCalled();
+    });
+
+    it('toasts a publish that finishes while the dialog is closed', async () => {
+      mocks.deployments.data = [deployment('first-1', 1, 'BUILDING')];
+      await renderFirst(false);
+      mocks.deployments.data = [deployment('first-1', 1, 'READY')];
+      await renderFirst(false);
+      expect(mocks.success).toHaveBeenCalledOnce();
+      expect(mocks.success).toHaveBeenCalledWith('deploy.published', expect.objectContaining({ action: expect.anything() }));
+    });
+
+    it('toasts a publish that fails while the dialog is closed, exactly once', async () => {
+      mocks.deployments.data = [deployment('first-1', 1, 'BUILDING')];
+      await renderFirst(false);
+      // A terminal failure (a FAILED row without completedAt is still retrying).
+      mocks.deployments.data = [{ ...deployment('first-1', 1, 'FAILED'), completedAt: '2026-11-07T00:05:00Z' }];
+      await renderFirst(false);
+      await renderFirst(false);
+      expect(mocks.error).toHaveBeenCalledOnce();
+      expect(mocks.error).toHaveBeenCalledWith('deploy.failed');
+      expect(mocks.success).not.toHaveBeenCalled();
+    });
+
+    it('says a failed publish in the open dialog only, and does not replay it on close', async () => {
+      mocks.deployments.data = [deployment('first-1', 1, 'BUILDING')];
+      await renderFirst();
+      // A terminal failure (a FAILED row without completedAt is still retrying).
+      mocks.deployments.data = [{ ...deployment('first-1', 1, 'FAILED'), completedAt: '2026-11-07T00:05:00Z' }];
+      await renderFirst();
+      expect(container.querySelector('[role="status"]')?.textContent).toBe('deploy.failed');
+      await renderFirst(false);
+      expect(mocks.error).not.toHaveBeenCalled();
+    });
   });
 
   it('keeps an untracked legacy failure with no completion time visible as failed', async () => {

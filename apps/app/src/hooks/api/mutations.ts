@@ -32,7 +32,7 @@ import { putAsset } from '@/lib/upload-asset-put';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
-import { applyPageReorder, applyPageReorderToList, isPageListKey, rollbackPageReorder } from './page-cache';
+import { applyPageReorder, applyPageReorderToList, isNewerRevision, isPageListKey, newerRevision, rollbackPageReorder } from './page-cache';
 import { acquirePageMove } from './page-move-queue';
 import { queryKeys } from './query-keys';
 import type {
@@ -236,9 +236,12 @@ export const useDeleteOpenApi = (projectId: string) => {
   });
 };
 
-export const useCreatePage = (projectId: string) => {
+export const useCreatePage = (projectId: string, options?: { reportErrors?: boolean }) => {
   const qc = useQueryClient();
+  const t = useT();
   return useMutation({
+    networkMode: 'always',
+    meta: options?.reportErrors === false ? undefined : { errorMessage: (error) => friendlyErrorMessage(t, error, 'editor.createFailed') },
     mutationFn: async (body: CreatePageBody) =>
       mutateData<Page>(await api.app.projects[':projectId'].pages.$post({ param: { projectId }, json: body }), 'Could not create the page.'),
     onSuccess: (created) => {
@@ -254,6 +257,9 @@ export const useCreatePage = (projectId: string) => {
 export const useUpdatePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
+    // Let failed offline requests settle rather than pause forever as pending.
+    networkMode: 'always',
+    onMutate: ({ pageId }) => qc.cancelQueries({ queryKey: queryKeys.pages.detail(projectId, pageId), exact: true }),
     mutationFn: async ({ pageId, body }: { pageId: string; body: UpdatePageBody }) =>
       mutateData<
         Page & {
@@ -264,16 +270,36 @@ export const useUpdatePage = (projectId: string) => {
           historySnapshot: 'stored' | 'unchanged' | 'throttled' | 'too-large';
         }
       >(await api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }), 'Could not save the page.'),
-    onError: (_error, { pageId }) => {
-      void qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
-    },
-    onSuccess: (data, { pageId }) => {
-      if (data.addressChanged) {
-        qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+    onSuccess: (data, { pageId, body }) => {
+      // Saves can resolve out of order (an autosave and a rename from the tree),
+      // so a response never replaces a newer revision already in the cache.
+      qc.setQueryData<Page>(queryKeys.pages.detail(projectId, pageId), (cached) => newerRevision(cached, data));
+      const structural = data.addressChanged || body.slug !== undefined || body.parentId !== undefined;
+      if (structural) {
+        void qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+        if (data.addressChanged) void qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+      } else {
+        qc.setQueriesData<PageNode[]>(
+          { queryKey: queryKeys.pages.allForProject(projectId), predicate: (query) => isPageListKey(query.queryKey) },
+          (pages) =>
+            pages?.map((page) =>
+              page.id === pageId && !isNewerRevision(page, data)
+                ? {
+                    ...page,
+                    title: data.title,
+                    description: data.description,
+                    icon: data.icon,
+                    config: data.config,
+                    hidden: data.hidden,
+                    translationKey: data.translationKey,
+                    updatedAt: data.updatedAt,
+                  }
+                : page,
+            ),
+        );
       }
-      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+      // Publish readiness includes content changes even when the tree does not.
+      void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
     },
   });
 };

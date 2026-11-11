@@ -1,0 +1,62 @@
+[
+  {
+    "phase": "after",
+    "locale": "en",
+    "width": 1440,
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/app/projects/PROJECT/pages/PAGE"
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/PROJECT/deployments/changes"
+      }
+    ]
+  },
+  {
+    "phase": "after",
+    "locale": "en",
+    "width": 390,
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/app/projects/PROJECT/pages/PAGE"
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/PROJECT/deployments/changes"
+      }
+    ]
+  },
+  {
+    "phase": "after",
+    "locale": "ar",
+    "width": 1440,
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/app/projects/PROJECT/pages/PAGE"
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/PROJECT/deployments/changes"
+      }
+    ]
+  },
+  {
+    "phase": "after",
+    "locale": "ar",
+    "width": 390,
+    "requests": [
+      {
+        "method": "PATCH",
+        "path": "/api/app/projects/PROJECT/pages/PAGE"
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/PROJECT/deployments/changes"
+      }
+    ]
+  }
+]
