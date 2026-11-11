@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { QueryClientProvider, QueryObserver } from '@tanstack/react-query';
+import { onlineManager, QueryClientProvider, QueryObserver } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -94,4 +94,20 @@ it('AUTH-07: failed creation reports a localized error without phantom rows or p
   expect(probe.client.getQueryData(queryKeys.pages.all('p'))).toEqual([page]);
   await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('editor.createFailed'));
   probe.close();
+});
+
+it('AUTH-16: offline autosaves reject instead of remaining paused and pending', async () => {
+  const probe = await mount();
+  onlineManager.setOnline(false);
+  mocks.patch.mockRejectedValue(new TypeError('Failed to fetch'));
+  try {
+    await act(async () => {
+      await expect(probe.hooks().update.mutateAsync({ pageId: 'a', body: { content: 'offline draft' } })).rejects.toThrow('Failed to fetch');
+    });
+    await vi.waitFor(() => expect(probe.hooks().update.isPending).toBe(false));
+    expect(probe.hooks().update.isPaused).toBe(false);
+  } finally {
+    onlineManager.setOnline(true);
+    probe.close();
+  }
 });
