@@ -248,6 +248,20 @@ describe.skipIf(process.env.PUBLISH_HISTORY_INTEGRATION !== '1')('publish histor
     expect(failedDetail).toMatchObject({ deployment: { status: 'FAILED', version: 4 }, summary: null });
   });
 
+  it('notices a settings-only change on a site published without pages', async () => {
+    const { project } = await site();
+    await deployment(project.id, 1, 'READY', { snapshot: snapshot(project.id, [], { theme: 'light' }) });
+    const v2 = await deployment(project.id, 2, 'READY', { snapshot: snapshot(project.id, [], { theme: 'dark' }) });
+    const v3 = await deployment(project.id, 3, 'READY', { snapshot: snapshot(project.id, [], { theme: 'dark' }) });
+    expect(await history.summarizePublishChanges(project.id, v2.id)).toMatchObject({
+      totals: { added: 0, modified: 0, removed: 0 },
+      changes: [],
+      truncated: false,
+      settingsChanged: true,
+    });
+    expect((await history.summarizePublishChanges(project.id, v3.id)).settingsChanged).toBe(false);
+  });
+
   it('caps the listed changes and still counts every one, per kind', async () => {
     const { project, team } = await site();
     const page = (id: string): Page => ({ id, title: `Page ${id}`, path: `p/${id}`, content: `Body ${id}` });

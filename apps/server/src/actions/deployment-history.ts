@@ -114,11 +114,16 @@ type ChangeRow = PublishChange & { total: number | null; side: 'change' | 'total
 /**
  * What a READY version changed against the READY version before it.
  *
- * Each snapshot's pages are unnested once (`jsonb_array_elements`) and reduced
- * to a digest of the page without its timestamps, so a re-save that changed
- * nothing doesn't count, and only ids, titles, paths and digests leave the
- * scan. Settings compare a digest of the snapshot's `project` and its API
- * reference metadata (the document itself is covered by `contentHash`).
+ * Each snapshot is read (detoasted) once: `snapshot || '{}'` makes one
+ * in-memory copy per row (the `OFFSET 0` subqueries stop the planner from
+ * inlining it back into every use), and every later extraction works on that
+ * copy. Its pages are unnested and reduced to a digest of the page without
+ * its timestamps, so a re-save that changed nothing doesn't count, and only
+ * ids, titles, paths and digests leave the scan. Settings compare a digest of
+ * the snapshot's `project` and its API reference metadata (the document itself
+ * is covered by `contentHash`). The listed changes stop at
+ * {@link HISTORY_CHANGES_LIMIT}; totals count all of them. The PR that added
+ * this (AUTH-13) has the plan on a 300-page site with ~3.6 MB snapshots.
  */
 export const summarizePublishChanges = async (projectId: string, deploymentId: string): Promise<PublishChangeSummary> => {
   const [previous] = await prisma.$queryRaw<LiveVersion[]>`
@@ -131,30 +136,31 @@ export const summarizePublishChanges = async (projectId: string, deploymentId: s
   const previousId = previous?.id ?? null;
   const rows = await prisma.$queryRaw<ChangeRow[]>`
     WITH pages AS MATERIALIZED (
-      SELECT d.id = ${deploymentId} AS current, e->>'id' AS id, e->>'title' AS title, e->>'path' AS path,
+      SELECT d.id = ${deploymentId} AS current, x.settings, e->>'id' AS id, e->>'title' AS title, e->>'path' AS path,
         e->>'languageCode' AS "languageCode", e->>'kind' AS kind,
         md5((e - 'updatedAt' - 'createdAt')::text) AS digest
-      FROM deployment d CROSS JOIN LATERAL jsonb_array_elements(d.snapshot->'pages') e
-      WHERE d."projectId" = ${projectId} AND d.id IN (${deploymentId}, ${previousId ?? deploymentId})
-        AND jsonb_typeof(d.snapshot->'pages') = 'array'
+      FROM deployment d
+      CROSS JOIN LATERAL (SELECT d.snapshot || '{}'::jsonb AS s OFFSET 0) snap
+      CROSS JOIN LATERAL (
+        SELECT md5(jsonb_build_array(
+          snap.s->'project',
+          CASE WHEN jsonb_typeof(snap.s->'openapi') = 'object' THEN (snap.s->'openapi') - 'document' - 'updatedAt' END
+        )::text) AS settings
+        OFFSET 0
+      ) x
+      -- A site published with no pages still yields its settings row.
+      LEFT JOIN LATERAL jsonb_path_query(snap.s, '$.pages[*]') e ON true
+      WHERE d."projectId" = ${projectId} AND d.id IN (${deploymentId}, ${previousId ?? deploymentId}) AND d.snapshot IS NOT NULL
     ), changes AS (
       SELECT COALESCE(c.id, p.id) AS id, COALESCE(c.title, p.title) AS title, COALESCE(c.path, p.path) AS path,
         COALESCE(c."languageCode", p."languageCode") AS "languageCode", COALESCE(c.kind, p.kind) AS kind,
         CASE WHEN p.id IS NULL THEN 'added' WHEN c.id IS NULL THEN 'removed' ELSE 'modified' END AS status
-      FROM (SELECT * FROM pages WHERE current) c
-      FULL JOIN (SELECT * FROM pages WHERE NOT current AND ${previousId !== null}) p ON p.id = c.id
+      FROM (SELECT * FROM pages WHERE current AND id IS NOT NULL) c
+      FULL JOIN (SELECT * FROM pages WHERE NOT current AND id IS NOT NULL AND ${previousId !== null}) p ON p.id = c.id
       WHERE c.id IS NULL OR p.id IS NULL OR c.digest <> p.digest
     ), ranked AS (
       SELECT *, row_number() OVER (ORDER BY CASE status WHEN 'added' THEN 0 WHEN 'modified' THEN 1 ELSE 2 END, "languageCode", path, id) AS rank
       FROM changes
-    ), settings AS (
-      SELECT d.id = ${deploymentId} AS current,
-        md5(jsonb_build_array(
-          d.snapshot->'project',
-          CASE WHEN jsonb_typeof(d.snapshot->'openapi') = 'object' THEN (d.snapshot->'openapi') - 'document' - 'updatedAt' END
-        )::text) AS digest
-      FROM deployment d
-      WHERE d."projectId" = ${projectId} AND d.id IN (${deploymentId}, ${previousId ?? deploymentId}) AND ${previousId !== null}
     )
     SELECT 'change' AS side, id, title, path, "languageCode", kind, status, NULL::int AS total
     FROM ranked WHERE rank <= ${HISTORY_CHANGES_LIMIT}
@@ -162,8 +168,8 @@ export const summarizePublishChanges = async (projectId: string, deploymentId: s
     SELECT 'total', NULL, NULL, NULL, NULL, NULL, status, count(*)::int FROM changes GROUP BY status
     UNION ALL
     SELECT 'settings', NULL, NULL, NULL, NULL, NULL,
-      CASE WHEN count(DISTINCT digest) > 1 THEN 'modified' ELSE 'unchanged' END, count(*)::int
-    FROM settings
+      CASE WHEN count(DISTINCT settings) > 1 THEN 'modified' ELSE 'unchanged' END, NULL
+    FROM pages WHERE ${previousId !== null}
   `;
   const totals = { added: 0, modified: 0, removed: 0 };
   const changes: PublishChange[] = [];
