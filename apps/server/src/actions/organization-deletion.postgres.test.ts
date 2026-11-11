@@ -70,6 +70,25 @@ describe.skipIf(process.env.ORG_SHELL_INTEGRATION !== '1')('organization deletio
     const adminMember = await db.prisma.member.create({ data: { organizationId: org.id, userId: admin.id, orgRole: 'admin', role: 'admin' } });
     const a = await projects.createProject(owner.id, { name: `A ${randomUUID().slice(0, 8)}`, organizationId: org.id });
     const b = await projects.createProject(owner.id, { name: `B ${randomUUID().slice(0, 8)}`, organizationId: org.id });
+    for (const project of [a, b]) {
+      const branch = await db.prisma.branch.findFirstOrThrow({ where: { projectId: project.id, isDefault: true } });
+      const language = await db.prisma.language.findFirstOrThrow({ where: { projectId: project.id, isDefault: true } });
+      const page = await db.prisma.page.create({
+        data: { projectId: project.id, branchId: branch.id, languageId: language.id, title: 'Private', slug: 'private', path: 'private' },
+      });
+      await db.prisma.pageRevision.create({
+        data: {
+          projectId: project.id,
+          pageId: page.id,
+          userId: owner.id,
+          title: 'Private draft',
+          content: 'Erase this history',
+          contentBytes: 31,
+          reason: 'autosave',
+        },
+      });
+      await db.prisma.pageRevisionState.create({ data: { projectId: project.id, pageId: page.id, userId: owner.id, lastSavedAt: new Date() } });
+    }
     const name = (await db.prisma.organization.findUniqueOrThrow({ where: { id: org.id } })).name;
     const [first, second] = [a, b].sort((x, y) => x.id.localeCompare(y.id));
     return { owner, admin, adminMember, org, name, first: first ?? a, second: second ?? b };
@@ -102,6 +121,8 @@ describe.skipIf(process.env.ORG_SHELL_INTEGRATION !== '1')('organization deletio
     await expect(orgs.deleteOrganization(f.org.id, f.owner.id, f.name)).resolves.toEqual({ id: f.org.id });
     expect(racers.map((result) => result.status)).toEqual(['rejected', 'rejected']);
     for (const result of racers) expect((result as PromiseRejectedResult).reason).toMatchObject({ status: 409 });
+    expect(await db.prisma.pageRevision.count({ where: { projectId: { in: [f.first.id, f.second.id] } } })).toBe(0);
+    expect(await db.prisma.pageRevisionState.count({ where: { projectId: { in: [f.first.id, f.second.id] } } })).toBe(0);
     expect(await db.prisma.organization.count({ where: { id: f.org.id } })).toBe(0);
     expect(await db.prisma.project.count({ where: { organizationId: f.org.id } })).toBe(0);
   });
@@ -116,6 +137,9 @@ describe.skipIf(process.env.ORG_SHELL_INTEGRATION !== '1')('organization deletio
     const fenced = await db.prisma.organization.findUniqueOrThrow({ where: { id: f.org.id } });
     expect(fenced.deletionStartedAt).toBeInstanceOf(Date);
     expect([...fenced.deletionWebsiteIds].sort()).toEqual([f.first.id, f.second.id].sort());
+    expect(await db.prisma.pageRevision.count({ where: { projectId: f.first.id } })).toBe(0);
+    expect(await db.prisma.pageRevisionState.count({ where: { projectId: f.first.id } })).toBe(0);
+    expect(await db.prisma.pageRevision.count({ where: { projectId: f.second.id } })).toBe(1);
     expect(await db.prisma.project.count({ where: { id: f.first.id } })).toBe(0);
     expect(await db.prisma.project.count({ where: { id: f.second.id } })).toBe(1);
     // Fenced: ordinary changes stay refused; only the deletion resumes.
@@ -123,7 +147,17 @@ describe.skipIf(process.env.ORG_SHELL_INTEGRATION !== '1')('organization deletio
     await expect(orgs.deleteOrganization(f.org.id, f.admin.id, f.name)).rejects.toMatchObject({ status: 403 });
     await db.prisma.usageIngestCheckpoint.update({ where: { id: pending.id }, data: { writtenAt: new Date() } });
     await expect(orgs.deleteOrganization(f.org.id, f.owner.id, f.name)).resolves.toEqual({ id: f.org.id });
+    expect(await db.prisma.pageRevision.count({ where: { projectId: { in: [f.first.id, f.second.id] } } })).toBe(0);
+    expect(await db.prisma.pageRevisionState.count({ where: { projectId: { in: [f.first.id, f.second.id] } } })).toBe(0);
     expect(await db.prisma.organization.count({ where: { id: f.org.id } })).toBe(0);
+  });
+
+  it('website deletion erases history and throttle rows while preserving its sibling', async () => {
+    const f = await fixture();
+    await projects.deleteProject(f.owner.id, f.org.id, f.first.id);
+    expect(await db.prisma.pageRevision.count({ where: { projectId: f.first.id } })).toBe(0);
+    expect(await db.prisma.pageRevisionState.count({ where: { projectId: f.first.id } })).toBe(0);
+    expect(await db.prisma.pageRevision.count({ where: { projectId: f.second.id } })).toBe(1);
   });
 
   it('never erases a website that is not on the deletion list', async () => {

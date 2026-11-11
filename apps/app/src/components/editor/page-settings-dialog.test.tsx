@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { pageDescription } from '@nibleaf/shared/markdown-text';
+import { pageDescriptionText } from '@nibleaf/shared/markdown-text';
 import { truncateText } from '@nibleaf/shared/utils';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -223,7 +223,7 @@ describe('page settings draft', () => {
   describe('the generated search description', () => {
     /** What the server answers: the description generated from the saved content, for the page's current revision. */
     const serve = (content: string, { revision = page.updatedAt, isFetching = false } = {}) => {
-      const generated = pageDescription({ ...page, content });
+      const generated = pageDescriptionText({ ...page, content });
       mocks.searchDescription.mockReturnValue({ data: { description: generated, revision }, isPending: false, isFetching, isError: false });
       return generated;
     };
@@ -269,6 +269,16 @@ describe('page settings draft', () => {
       expect(document.activeElement).toBe(field);
       // The author's text is now the description: the prompt is gone.
       expect(preview()).toBeNull();
+    });
+
+    it('"Write your own" never starts from a shortened text', async () => {
+      const generated = serve(LONG_CONTENT);
+      expect(generated.length).toBeGreaterThan(155);
+      await openSeo();
+      expect(previewText()?.textContent?.endsWith('…')).toBe(true);
+      await act(async () => writeOwn()?.click());
+      expect(metaField()?.value).toBe(generated);
+      expect(metaField()?.value.endsWith('…')).toBe(false);
     });
 
     it.each([

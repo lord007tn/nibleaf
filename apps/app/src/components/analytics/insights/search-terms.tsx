@@ -247,7 +247,7 @@ export function WriteArticleButton({
 }) {
   const t = useT();
   const navigate = useNavigate();
-  const createPage = useCreatePage(projectId);
+  const createPage = useCreatePage(projectId, { reportErrors: false });
   const languagesQuery = useLanguages(languageCode ? projectId : undefined);
   const languageId = languageCode ? languagesQuery.data?.find((language) => language.code === languageCode)?.id : undefined;
   // With a content language asked for, wait until the site's languages are known: submitting
@@ -278,8 +278,7 @@ export function WriteArticleButton({
               create(fresh.data?.find((language) => language.code === languageCode)?.id, true);
               return;
             }
-            // Plain language, never the server's raw message. (useCreatePage is shared with
-            // the editor, which reports its own failures, so no `meta.errorMessage` there.)
+            // This flow reports errors after its one language-refresh retry.
             toast.error(t('analytics.search.write.failed'));
             inFlight.current = false;
           },

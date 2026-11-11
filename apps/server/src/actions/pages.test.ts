@@ -18,6 +18,7 @@ vi.mock('@/lib/page-address-changes', () => ({
   assertAddressLinkRevisions: async () => undefined,
   preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 }),
 }));
+vi.mock('@/lib/page-history', () => ({ snapshotPage: vi.fn(async () => 'throttled') }));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: recordEdit }));
 vi.mock('./branches', () => ({ assertBranchInProject: async () => ({ id: 'branch-1' }), getDefaultBranch: async () => ({ id: 'branch-1' }) }));
 

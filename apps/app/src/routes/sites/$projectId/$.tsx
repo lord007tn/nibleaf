@@ -9,6 +9,7 @@ import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
 import type { SitePage } from '@/hooks/api/types';
+import { isPublicReaderSite } from '@/lib/reader-site-access';
 import { resolveLanguagePathRedirect } from '@/lib/site-language-path';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite } from '@/lib/site-paths';
@@ -29,6 +30,13 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   // full-screen loader.
   pendingComponent: SiteArticleSkeleton,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
+  // On a public site, a page shown in the last 30 s (the page query's stale time)
+  // is still fresh: Back and Forward reuse it instead of running the loader
+  // again. That matters most for the first page, whose data came with the server
+  // HTML and is not in the browser's query cache. Private and reader-only sites
+  // always load again, so access is checked on every navigation.
+  staleTime: 30_000,
+  shouldReload: ({ params }) => (isPublicReaderSite(params.projectId) ? undefined : true),
   // Server-fetch the page so its content + per-page SEO tags are in the HTML.
   loader: async ({ params, deps, location, context: { queryClient } }) => {
     const path = params._splat ?? '';
@@ -37,7 +45,9 @@ export const Route = createFileRoute('/sites/$projectId/$')({
     try {
       // A page preloaded on link hover (or read moments ago) comes from the query
       // cache; once it is stale, the loader waits for the published version again.
-      page = await queryClient.query(sitePageQueryOptions(params.projectId, path, deps.lang, version));
+      page = await queryClient.query(
+        sitePageQueryOptions(params.projectId, path, deps.lang, version, { fresh: isPublicReaderSite(params.projectId) }),
+      );
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
         throw error;

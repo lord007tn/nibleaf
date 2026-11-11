@@ -26,6 +26,7 @@ import members from './members/handlers';
 import notifications from './notifications/handlers';
 import openapi from './openapi/handlers';
 import organizations from './organizations/handlers';
+import pageTrash from './page-trash/handlers';
 import pages from './pages/handlers';
 import people from './people/handlers';
 import projectMembers from './project-members/handlers';
@@ -47,6 +48,7 @@ const app = new Hono<HonoEnv>()
   .route('/activation-events', activationEvents)
   .route('/projects', projects)
   .route('/projects/:projectId/pages', pages)
+  .route('/projects/:projectId/page-trash', pageTrash)
   .route('/projects/:projectId/addons', addons)
   .route('/projects/:projectId/languages', languages)
   .route('/projects/:projectId/branches', branches)

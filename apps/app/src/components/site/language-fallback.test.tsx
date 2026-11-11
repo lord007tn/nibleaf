@@ -236,6 +236,13 @@ const fakeIntl = (tag: string, { supports = true } = {}) => {
 };
 
 describe('reader text formatted on the server', () => {
+  // The article renderer's first import is cold (Markdown, highlighting) and, on
+  // a loaded runner, took longer than a test's 5 s on its own. Load it once here,
+  // outside the tests' time budget; each test's own load below is then cached.
+  beforeAll(async () => {
+    await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(page().page.content);
+  }, 60_000);
+
   it.each([
     ['has locale data for the reader', true],
     ['has no locale data for the reader (labels are used)', false],

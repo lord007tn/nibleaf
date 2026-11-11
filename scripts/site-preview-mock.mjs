@@ -10,6 +10,7 @@
  *   preview-manuscript  theme preset "manuscript"
  *   preview-signal      theme preset "signal"
  *   preview-legacy      no `theme` config (legacy palette branch)
+ *   preview-private     "harbor", private, read by a signed-in reader
  *
  * Endpoints (mirroring apps/server/src/modules/public/sites/handlers.ts):
  *   GET  /api/public/sites/:id?lang=&version=            -> { data: SiteShell }
@@ -18,6 +19,10 @@
  *   GET  /api/public/sites/:id/changelog                 -> { data: [] }
  *   GET  /api/public/assets/*                            -> a generated SVG (the sample image)
  *   ANY  /api/**                                         -> 204 (events, analytics, anything else)
+ *
+ * Test control (not under /api, so the app never proxies it):
+ *   POST /__mock/control {"revoked": true}   -> preview-private answers 403 from now on
+ *   POST /__mock/control {}                  -> reset
  *
  * Usage: node scripts/site-preview-mock.mjs [--port 4311]
  * Then:  cd apps/app && pnpm dev   # proxies /api/** to http://localhost:4311
@@ -69,6 +74,8 @@ const GROUPS = [
   { slug: 'reference', icon: 'braces', title: { en: 'Reference', ar: 'المرجع' } },
 ];
 
+const FENCE = '```';
+
 const CURL_SHIPMENT = `\`\`\`bash
 curl https://api.tidewater.dev/v1/shipments \\
   -H "Authorization: Bearer tw_live_9f3c…" \\
@@ -99,6 +106,8 @@ const PAGES = [
       title: 'Introduction',
       description: 'Tidewater is a shipping API for booking, tracking, and settling container freight from one integration.',
       content: `Tidewater gives your product a single, well-documented surface for the messy world of ocean freight. You create a **shipment**, we negotiate with carriers, and you receive \`shipment.updated\` webhooks as the containers move.
+
+{/* Reviewer note: link the [draft pricing page](/guides/pricing-draft) once legal signs off. MDX drops comments, so readers never see this. */}
 
 ## What you can build
 
@@ -377,6 +386,55 @@ ${CURL_SHIPMENT}
 </Tip>
 
 > تُمسح بيانات البيئة التجريبية كل يوم أحد في الساعة 02:00 بالتوقيت العالمي. أي شيء تحتاج إلى الاحتفاظ به ينبغي أن يعيد إعداد الاختبار إنشاءه.`,
+    },
+  },
+  {
+    // The blocks the editor and the reader share one stylesheet for (AUTH-26):
+    // a table, a code block, and a task list.
+    group: 'getting-started',
+    slug: 'checklist',
+    icon: 'check',
+    en: {
+      title: 'Launch checklist',
+      description: 'Everything to confirm before you switch from sandbox to live keys.',
+      content: `Run through this list before your first live shipment.
+
+| Step | Environment | Owner |
+| --- | --- | --- |
+| Create a live key | live | Admin |
+| Register webhooks | sandbox | Developer |
+| Verify signatures | live | Developer |
+
+${FENCE}bash
+export TIDEWATER_KEY=tw_live_9f3c
+npx tidewater verify --env live
+${FENCE}
+
+- [x] Sandbox shipment booked
+- [x] Webhook endpoint registered
+- [ ] Live key rotated into the vault
+- [ ] On-call rota updated`,
+    },
+    ar: {
+      title: 'قائمة الإطلاق',
+      description: 'كل ما يجب التأكد منه قبل الانتقال من المفاتيح التجريبية إلى مفاتيح الإنتاج.',
+      content: `راجع هذه القائمة قبل أول شحنة حقيقية.
+
+| الخطوة | البيئة | المسؤول |
+| --- | --- | --- |
+| إنشاء مفتاح إنتاج | live | المسؤول |
+| تسجيل إشعارات الويب | sandbox | المطوّر |
+| التحقق من التواقيع | live | المطوّر |
+
+${FENCE}bash
+export TIDEWATER_KEY=tw_live_9f3c
+npx tidewater verify --env live
+${FENCE}
+
+- [x] حُجزت شحنة تجريبية
+- [x] سُجّلت نقطة نهاية إشعارات الويب
+- [ ] نُقل مفتاح الإنتاج إلى الخزنة
+- [ ] حُدّث جدول المناوبة`,
     },
   },
   {
@@ -905,10 +963,15 @@ const PROJECTS = {
   'preview-manuscript': { preset: 'manuscript' },
   'preview-signal': { preset: 'signal' },
   'preview-legacy': { preset: null },
+  // A private site whose reader is signed in; access can be revoked mid-session.
+  'preview-private': { preset: 'harbor', visibility: 'private' },
 };
 
-const projectConfig = (preset) => {
-  const config = baseConfig();
+/** Mutable test state, set through POST /__mock/control. */
+const control = { revoked: false };
+
+const projectConfig = (preset, visibility = 'public') => {
+  const config = { ...baseConfig(), visibility };
   if (preset) {
     config.theme = { version: 1, preset, metadata: THEME_META[preset] };
   } else {
@@ -1068,7 +1131,7 @@ const findPage = (path) => {
 
 const projectPayload = (id, preset, language) => {
   const languageConfig = LANGUAGE_CONFIG[language.code];
-  const config = projectConfig(preset);
+  const config = projectConfig(preset, PROJECTS[id]?.visibility);
   return {
     id,
     name: SITE_NAME.en,
@@ -1093,6 +1156,7 @@ const siteShell = (id, preset, query) => {
     version: 1,
     generatedAt: GENERATED_AT,
     openapi: null,
+    ...(PROJECTS[id]?.visibility === 'private' ? { signedIn: true } : {}),
   };
 };
 
@@ -1154,12 +1218,35 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (pathname === '/__mock/control' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      let next = {};
+      try {
+        next = JSON.parse(body || '{}');
+      } catch {
+        json(res, 400, { error: { code: 'bad_request', message: 'Expected JSON.' } });
+        return;
+      }
+      control.revoked = next.revoked === true;
+      json(res, 200, { data: control });
+    });
+    return;
+  }
+
   const match = SITE_ROUTE.exec(pathname);
   if (match && req.method === 'GET') {
     const [, id, rest = ''] = match;
     const project = PROJECTS[id];
     if (!project) {
       json(res, 404, { error: { code: 'not_found', message: 'Site not found.' } });
+      return;
+    }
+    if (project.visibility === 'private' && control.revoked) {
+      json(res, 403, { error: { code: 'forbidden', message: 'You no longer have access to this site.' } });
       return;
     }
     if (rest === '') {

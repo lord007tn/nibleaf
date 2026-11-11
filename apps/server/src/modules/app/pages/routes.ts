@@ -20,6 +20,12 @@ const pagesRoutes = {
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
   get: createRouteConfig({ guard: [...member], tags: ['pages'], description: 'Retrieve a page (with content).', responses: ok }),
+  inboundLinks: createRouteConfig({
+    guard: [searchDescriptionLimit, ...member],
+    tags: ['pages'],
+    description: 'Other draft pages on the same branch linking into this page or its descendants (first 20 and total).',
+    responses: ok,
+  }),
   searchDescription: createRouteConfig({
     guard: [searchDescriptionLimit, ...member],
     tags: ['pages'],
@@ -27,7 +33,12 @@ const pagesRoutes = {
     responses: ok,
   }),
   update: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Update a page.', responses: ok }),
-  remove: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Delete a page (and its children).', responses: ok }),
+  remove: createRouteConfig({
+    guard: [...editor],
+    tags: ['pages'],
+    description: 'Move a page (and its children) to Trash for 30 days.',
+    responses: ok,
+  }),
   reorder: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Reorder / re-parent pages.', responses: ok }),
 };
 

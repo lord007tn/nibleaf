@@ -1,15 +1,18 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { CopyButton } from '@nibleaf/design-system/components/ui/copy-button';
 import { Dialog, DialogContent, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { Check, ExternalLink, Globe2, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage, useDeployments, useDomains, useLiveDeployments, useRollback } from '@/hooks/api';
-import { rollbackTarget } from '@/hooks/api/deployment-cache';
+import { isPublishRetrying, rollbackTarget } from '@/hooks/api/deployment-cache';
 import { pickLiveDomain } from '@/hooks/api/domain-state';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { completeFirstPublishAttribution, type FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { canonicalSiteBase, type SiteUrlOptions, sitePageUrl } from '@/lib/site-seo';
 
@@ -46,6 +49,9 @@ interface DeployPipelineProps {
   onOpenChange: (open: boolean) => void;
   trackedAttribution?: FirstPublishAttribution | null;
   trackedDeploymentId?: string | null;
+  /** The tracked deployment restores this published version (started outside the
+   *  dialog, e.g. from the Publishes page): progress, outcome and retry read as a restore. */
+  restoring?: { targetId: string; version: number } | null;
 }
 
 const STEP_KEYS = ['deploy.step.queued', 'deploy.step.building', 'deploy.step.indexing', 'deploy.step.live'] as const;
@@ -76,12 +82,22 @@ function activeStep(status: DeploymentStatus | undefined): number {
 type StepState = 'done' | 'active' | 'failed' | 'pending';
 
 /** Live deploy progress. Polls the deployments list while building. Faithful to design lines 2143-2178. */
-export function DeployPipeline({ project, open, onOpenChange, trackedAttribution, trackedDeploymentId, onRetry, currentPage }: DeployPipelineProps) {
+export function DeployPipeline({
+  project,
+  open,
+  onOpenChange,
+  trackedAttribution,
+  trackedDeploymentId,
+  onRetry,
+  currentPage,
+  restoring,
+}: DeployPipelineProps) {
   const domains = useDomains(project.id);
+  const liveDomain = domains.data ? pickLiveDomain(domains.data)?.domain : undefined;
   const siteOptions: SiteUrlOptions = {
     slug: project.slug,
     // Only a domain readers can open (ownership, DNS and HTTPS), as on the site overview.
-    primaryDomain: domains.data ? pickLiveDomain(domains.data)?.domain : undefined,
+    primaryDomain: liveDomain,
   };
   const siteUrl = canonicalSiteBase(project.id, siteOptions);
   const livePage = currentPage;
@@ -97,7 +113,12 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     projectId: string;
     sourceId: string | null | undefined;
   } | null>(null);
-  const restoration = restoreRequest?.projectId === project.id && restoreRequest.sourceId === trackedDeploymentId ? restoreRequest : null;
+  const restoration =
+    restoreRequest?.projectId === project.id && restoreRequest.sourceId === trackedDeploymentId
+      ? restoreRequest
+      : restoring && trackedDeploymentId
+        ? { ...restoring, id: trackedDeploymentId, projectId: project.id, sourceId: trackedDeploymentId }
+        : null;
   const observedDeploymentId = restoration?.id ?? trackedDeploymentId;
   const deployments = useDeployments(project.id, {
     enabled: open || Boolean(observedDeploymentId),
@@ -107,7 +128,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
 
   const deployment = observedDeploymentId ? deployments.data?.find((item) => item.id === observedDeploymentId) : deployments.data?.[0];
   const status = deployment?.status;
-  const retrying = Boolean(observedDeploymentId) && status === 'FAILED' && deployment?.completedAt === null;
+  const retrying = Boolean(observedDeploymentId) && isPublishRetrying(deployment);
   const running = status === 'PENDING' || status === 'BUILDING' || retrying;
   const done = status === 'READY';
   const failed = status === 'FAILED' && !retrying;
@@ -126,7 +147,36 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   // and pick an older target. The polled list still answers — a live version
   // older than this one that it lists is the right target.
   const trustedLive = liveDeployments.isError ? undefined : liveDeployments.data;
-  const previousReady = liveDeployments.isFetching ? undefined : rollbackTarget(deployments.data, trustedLive, deployment);
+  const rollbackCandidate = rollbackTarget(deployments.data, trustedLive, deployment);
+  const previousReady = liveDeployments.isFetching ? undefined : rollbackCandidate;
+  // Restoring is only offered when an earlier version went live. A re-read keeps
+  // the offer on screen (busy) rather than hiding and re-showing it.
+  const canRollBack = Boolean(rollbackCandidate) && !superseded;
+  // The site's first live version: nothing went live before it, by either list
+  // once the live-only list has answered. Restorations are never a first publish.
+  const firstPublish =
+    done &&
+    !restoration &&
+    !superseded &&
+    !rollbackCandidate &&
+    liveDeployments.data !== undefined &&
+    !liveDeployments.isFetching &&
+    !liveDeployments.isError;
+  // Domains are set up by Admins; skip the step once a custom domain serves the site.
+  const canAddDomain = useProjectAdminStatus(project.id).status === 'admin' && !liveDomain;
+  const outcomeTitle = superseded
+    ? t('deploy.rollback.supersededTitle')
+    : done
+      ? restoration
+        ? t('deploy.rollback.success', { version: restoration.version })
+        : firstPublish
+          ? t('deploy.firstLive')
+          : t('deploy.deployed')
+      : failed
+        ? t('deploy.failed')
+        : restoration
+          ? t('deploy.rollback.restoring', { version: restoration.version })
+          : t('deploy.deploying');
 
   // Keep polling the exact mutation result after the dialog closes. The
   // worker owns the READY receipt; the client consumes local attribution only
@@ -139,12 +189,15 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     }
   }, [deployment, done, trackedAttribution, trackedDeploymentId]);
 
-  // Announce each tracked outcome once, including after the dialog closes.
+  // Announce each tracked outcome once, including after the dialog closes. One
+  // surface at a time: an open dialog already says it (and announces it, below),
+  // so the toast is only for an outcome that arrives while the dialog is closed.
   const announced = useRef(new Set<string>());
   useEffect(() => {
     const outcome = superseded ? 'superseded' : 'ready';
     if (done && deployment && (open || deployment.id === observedDeploymentId) && !announced.current.has(`${deployment.id}:${outcome}`)) {
       announced.current.add(`${deployment.id}:${outcome}`);
+      if (open) return;
       if (superseded) {
         toast.info(t('deploy.rollback.superseded'));
       } else {
@@ -159,6 +212,11 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     if (failed && restoration && deployment?.id === restoration.id && !announced.current.has(`${deployment.id}:failed`)) {
       announced.current.add(`${deployment.id}:failed`);
       toast.error(t('deploy.rollback.error'));
+    } else if (failed && deployment && (open || deployment.id === observedDeploymentId) && !announced.current.has(`${deployment.id}:failed`)) {
+      // A publish that fails is announced once too: in the open dialog (its title
+      // and status line), or as a toast when it fails after the dialog closed.
+      announced.current.add(`${deployment.id}:failed`);
+      if (!open) toast.error(t('deploy.failed'));
     }
   }, [open, done, failed, deployment, siteUrl, t, observedDeploymentId, restoration, superseded]);
 
@@ -213,17 +271,12 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
               </span>
             )}
             <div className="min-w-0 leading-snug">
-              <DialogTitle className="font-semibold text-base tracking-tight">
-                {superseded
-                  ? t('deploy.rollback.supersededTitle')
-                  : done
-                    ? t('deploy.deployed')
-                    : failed
-                      ? t('deploy.failed')
-                      : restoration
-                        ? t('deploy.rollback.restoring', { version: restoration.version })
-                        : t('deploy.deploying')}
-              </DialogTitle>
+              <DialogTitle className="font-semibold text-base tracking-tight">{outcomeTitle}</DialogTitle>
+              {/* The dialog is the only success surface while it is open (no toast),
+                  so the outcome is announced here when it arrives. */}
+              <span className="sr-only" role="status">
+                {done || failed ? outcomeTitle : ''}
+              </span>
               {superseded ? <p className="mt-1 text-muted-foreground text-sm">{t('deploy.rollback.superseded')}</p> : null}
               <div className="truncate font-mono text-[12.5px] text-muted-foreground" dir="ltr">
                 {siteUrl}
@@ -282,7 +335,38 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
                 {livePage?.title}
               </a>
             ) : null}
-            {!superseded ? (
+            {firstPublish ? (
+              // What to do with a brand-new site: share its address, give it a domain, open it.
+              <div className="flex w-full flex-wrap gap-2" data-testid="first-publish-next-steps">
+                <CopyButton
+                  copiedLabel={t('settings.git.webhook.copied')}
+                  failedLabel={t('settings.git.webhook.copyError')}
+                  label={t('deploy.copyAddress')}
+                  size="default"
+                  value={siteUrl}
+                  variant="outline"
+                >
+                  {t('deploy.copyAddress')}
+                </CopyButton>
+                {canAddDomain ? (
+                  <Button
+                    nativeButton={false}
+                    render={
+                      <Link
+                        onClick={() => onOpenChange(false)}
+                        params={{ projectId: project.id }}
+                        search={{ section: 'domain' }}
+                        to="/app/projects/$projectId/settings"
+                      />
+                    }
+                    variant="outline"
+                  >
+                    <Globe2 aria-hidden className="size-3.5" />
+                    {t('settings.general.customDomain.link')}
+                  </Button>
+                ) : null}
+              </div>
+            ) : canRollBack ? (
               <details className="w-full text-sm text-muted-foreground">
                 <summary className="cursor-pointer">{t('deploy.rollback')}</summary>
                 <Button variant="outline" disabled={!previousReady} loading={rollback.isPending || liveDeployments.isFetching} onClick={doRollback}>
@@ -292,10 +376,23 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
               </details>
             ) : null}
             <span className="flex-1" />
-            <Button variant="outline" onClick={viewSite}>
-              {t('deploy.viewSite')} <ExternalLink className="size-3.5" />
-            </Button>
-            <Button onClick={() => onOpenChange(false)}>{t('deploy.done')}</Button>
+            {firstPublish ? (
+              <>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  {t('deploy.done')}
+                </Button>
+                <Button onClick={viewSite}>
+                  {t('deploy.viewSite')} <ExternalLink className="size-3.5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={viewSite}>
+                  {t('deploy.viewSite')} <ExternalLink className="size-3.5" />
+                </Button>
+                <Button onClick={() => onOpenChange(false)}>{t('deploy.done')}</Button>
+              </>
+            )}
           </div>
         ) : failed ? (
           <div className="flex justify-end gap-2 px-6 pt-3.5 pb-5">

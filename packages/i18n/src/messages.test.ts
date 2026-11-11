@@ -23,6 +23,17 @@ const placeholders = (value: string) => [...new Set([...value.matchAll(/\{([A-Za
 describe('Paraglide message catalogs', () => {
   const english = loadCatalog('en');
   const orderedKeys = Object.keys(english).filter((key) => key !== '$schema');
+
+  it('localizes the counted inbound-link warning in every catalog using plural variants', () => {
+    expect(MESSAGE_IDS['editor.deleteInboundLinks']).toBe('editor_deleteinboundlinks');
+    for (const { code } of INTERFACE_LOCALES) {
+      const catalog = JSON.parse(readFileSync(resolve(messagesDirectory, `${code}.json`), 'utf8'));
+      const [message] = catalog.editor_deleteinboundlinks as VariantMessage;
+      expect(message?.match['form=*']).toContain('{count}');
+      expect(messageText(catalog.editor_deleteinboundlinks)).not.toContain('?');
+      if (code !== 'en') expect(messageText(catalog.editor_deleteinboundlinks)).not.toBe(english.editor_deleteinboundlinks);
+    }
+  });
   const expectedKeys = [...orderedKeys].sort();
 
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s localizes shell recovery and accessible names', (locale) => {

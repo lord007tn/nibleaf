@@ -2,14 +2,30 @@ import { MemberRole } from '@nibleaf/shared/constants';
 import { errorResponses } from '@/errors/utils';
 import { createRouteConfig } from '@/lib/hono/route-config';
 import { isAuthenticated, requireProjectMember, requireProjectRole } from '@/middlewares/guard';
+import { rateLimit } from '@/middlewares/rate-limit';
 
 const ok = { 200: { description: 'ok' }, ...errorResponses };
 const member = [isAuthenticated, requireProjectMember()] as const;
+// One version's change summary compares two snapshots: the same limit as the
+// pages search-description read, so a client can't make the server re-run it in a loop.
+const historyDetailLimit = rateLimit({ windowMs: 60_000, max: 60 });
 
 const deploymentsRoutes = {
   list: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'List deployments for a project.', responses: ok }),
   latest: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Get the latest READY deployment.', responses: ok }),
   changes: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Pending changes vs. the last publish.', responses: ok }),
+  history: createRouteConfig({
+    guard: [...member],
+    tags: ['deployments'],
+    description: 'Publish history, newest first, paginated by version (`cursor`), with the live version.',
+    responses: ok,
+  }),
+  historyDetail: createRouteConfig({
+    guard: [historyDetailLimit, ...member],
+    tags: ['deployments'],
+    description: 'One version of the publish history and, when it went live, a bounded summary of what it changed.',
+    responses: ok,
+  }),
   diff: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Page and content diff for a deployment.', responses: ok }),
   publish: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.MEMBER)],

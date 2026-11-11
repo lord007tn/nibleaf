@@ -1,0 +1,5 @@
+- dialog "Delete page":
+  - heading "Delete page" [level=2]
+  - paragraph: Move “Setup” to Trash? Readers will stop seeing it after your next publish. It stays in Trash for 30 days, so you can restore it.
+  - button "Cancel"
+  - button "Delete page"
