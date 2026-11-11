@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { growthMs, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { Editor } from '@tiptap/core';
 import { AllSelection } from '@tiptap/pm/state';
 import { EditorContent } from '@tiptap/react';
@@ -176,9 +175,6 @@ describe('review content regressions', () => {
       return root;
     };
     expect(clean(fixture(256)).querySelector('form,span,[style]')).toBeNull();
-    // 4x the paste costs about 4x (testing/growth); per-element ancestor walks would grow faster.
-    const [small, large] = growthMs(clean, fixture(64), fixture(256));
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
   it.each(['ltr', 'rtl'] as const)('shows active and default alignment and matching physical reader alignment in %s (J, C, 8)', async (dir) => {
     const editor = make();

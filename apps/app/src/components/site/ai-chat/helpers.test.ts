@@ -1,4 +1,3 @@
-import { growthMs, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import type { AiChatFinalEvent } from '@nibleaf/validators';
 import { describe, expect, it } from 'vitest';
 import { answerText, buildHistory, citationParts, deriveConsent, errorKey, errorSse, upstreamError } from './helpers';
@@ -37,20 +36,11 @@ describe('reader chat boundaries', () => {
     for (const piece of ['[', '[S', '[S6', '[S6,', '[S6, ', '[S6, S', '[S6, S2', '[S6]']) expect(answerText(`Run it ${piece}`)).toBe('Run it');
     expect(answerText('نعم [S1، S2] تم [S3،')).toBe('نعم تم');
     expect(answerText('نعم [S1؛ S2] تم [S3؛')).toBe('نعم تم');
-    // Hostile input stays linear (CodeQL: no backtracking on "[S, , , ..."): each
-    // shape at 4x the size costs about 4x (testing/growth).
+    // Hostile input (CodeQL: no backtracking on "[S, , , ..."); its cost is bounded in helpers.growth.test.ts.
     expect(answerText(`x [S${', '.repeat(50_000)}y`)).toBe(`x [S${', '.repeat(50_000)}y`);
     expect(answerText(`x [S${', '.repeat(15)}`)).toBe('x');
     expect(answerText(`x${' '.repeat(50_000)}y`)).toBe(`x${' '.repeat(50_000)}y`);
     expect(answerText(`x [S1${', S1'.repeat(10_000)}`)).toBe(`x [S1${', S1'.repeat(10_000)}`);
-    for (const hostile of [
-      (n: number) => `x [S${', '.repeat(n)}y`,
-      (n: number) => `x${' '.repeat(n)}y`,
-      (n: number) => `x [S1${', S1'.repeat(n / 5)}`,
-    ]) {
-      const [small, large] = growthMs(answerText, hostile(12_500), hostile(50_000));
-      expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
-    }
     // Only an unfinished marker at the very end is held back.
     expect(answerText('Use items[0] here')).toBe('Use items[0] here');
   });
