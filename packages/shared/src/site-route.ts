@@ -18,6 +18,25 @@
 import { normalizeRedirectPath, type RedirectPair, resolveRedirectTarget } from './redirects';
 import { buildNavTree, defaultLanguage, type NavNode, publicLanguages, type SiteSnapshot, type SnapshotPage, type SnapshotVersion } from './site';
 
+const SLASH = 47;
+
+/** `value` without leading and trailing `/`, in one linear pass. A regex such
+ *  as `^\/+|\/+$` backtracks polynomially on long runs of slashes, and this
+ *  runs on every reader request and on authored links at publish time. */
+export const trimSlashes = (value: string): string => {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value.charCodeAt(start) === SLASH) start++;
+  while (end > start && value.charCodeAt(end - 1) === SLASH) end--;
+  return value.slice(start, end);
+};
+
+const trimLeadingSlashes = (value: string): string => {
+  let start = 0;
+  while (start < value.length && value.charCodeAt(start) === SLASH) start++;
+  return value.slice(start);
+};
+
 /** Depth-first order of renderable pages — for prev/next links. */
 export const flattenNav = (nav: NavNode[]): NavNode[] =>
   nav.flatMap((node) => (node.kind === 'PAGE' ? [node, ...flattenNav(node.children)] : flattenNav(node.children)));
@@ -94,9 +113,9 @@ export interface ResolvedSitePage {
  *  `version` names a published version and the path starts with it. */
 export const sitePathWithinVersion = (snapshot: SiteSnapshot, path: string, version?: string): string => {
   const explicitVersion = matchingVersion(snapshot, version);
-  const normalized = path.replace(/^\/+|\/+$/g, '');
+  const normalized = trimSlashes(path);
   if (explicitVersion && (normalized === explicitVersion.slug || normalized.startsWith(`${explicitVersion.slug}/`))) {
-    return normalized.slice(explicitVersion.slug.length).replace(/^\/+/, '');
+    return trimLeadingSlashes(normalized.slice(explicitVersion.slug.length));
   }
   return normalized;
 };
@@ -235,7 +254,7 @@ const storedRedirects = (snapshot: SiteSnapshot): RedirectPair[] => {
  * included) with `?lang=` set to `lang`, in the page route's order.
  */
 export function resolveSiteRoute(snapshot: SiteSnapshot, path: string, options: { lang?: string } = {}): SiteRoute {
-  const splat = path.replace(/^\/+|\/+$/g, '');
+  const splat = trimSlashes(path);
   // The page route passes the first segment as the version; the lookup only
   // treats it as one when a published version has that slug.
   const version = splat ? splat.split('/')[0] : undefined;
@@ -243,7 +262,7 @@ export function resolveSiteRoute(snapshot: SiteSnapshot, path: string, options: 
   if (resolved) {
     return { kind: 'page', page: resolved.page, resolved };
   }
-  if (snapshot.openapi && splat === snapshot.openapi.path.replace(/^\/+|\/+$/g, '')) {
+  if (snapshot.openapi && splat === trimSlashes(snapshot.openapi.path)) {
     return { kind: 'openapi' };
   }
   let from: string | null = null;
