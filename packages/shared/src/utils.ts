@@ -1,3 +1,5 @@
+import { fencedMarkdownLines } from './markdown-code';
+
 /** Longest slug we emit. Page titles are capped at 200 characters, so anything
  *  longer can only come from pathological input (import paths joined with '-'). */
 const MAX_SLUG_LENGTH = 200;
@@ -72,7 +74,7 @@ export const joinPath = (parentPath: string | null | undefined, slug: string): s
 };
 
 /** Strip Markdown links to their labels and remove Markdown images. This
- * single-pass parser intentionally handles the common inline form only; malformed
+ * single-pass parser handles balanced inline destinations; malformed
  * markup is preserved instead of inviting regex backtracking on user content. */
 export const stripMarkdownLinks = (value: string): string => {
   let output = '';
@@ -99,7 +101,15 @@ export const stripMarkdownLinks = (value: string): string => {
     }
 
     let destinationEnd = labelEnd + 2;
-    while (destinationEnd < value.length && value[destinationEnd] !== ')') {
+    let depth = 1;
+    while (destinationEnd < value.length) {
+      if (value[destinationEnd] === '\\') {
+        destinationEnd += 2;
+        continue;
+      }
+      if (value[destinationEnd] === '(') depth += 1;
+      if (value[destinationEnd] === ')') depth -= 1;
+      if (depth === 0) break;
       destinationEnd += 1;
     }
     if (destinationEnd >= value.length) {
@@ -115,16 +125,55 @@ export const stripMarkdownLinks = (value: string): string => {
   return output;
 };
 
-/** First non-empty line of markdown, stripped of common markup — used for excerpts. */
-export const excerpt = (markdown: string, max = 160): string => {
-  const text = stripMarkdownLinks(markdown)
-    .replace(/```[\s\S]*?```/g, ' ') // fenced code
-    .replace(/<\/?[A-Za-z][^>]*>/g, ' ') // HTML / MDX component tags (<Note>, <Card …>)
-    .replace(/\[!\w+\]/gi, ' ') // admonition markers ([!NOTE])
-    .replace(/[#>*_`~-]+/g, ' ') // markdown punctuation
+/** Shared plain text for reader metadata, structured data and AI summaries. */
+export const markdownToPlainText = (markdown: string): string => {
+  const lines = markdown.split(/\r?\n/u);
+  const code = fencedMarkdownLines(lines);
+  const prose = lines.filter((line, index) => !code[index] && !(line.includes('---') && /^[\s:|-]+$/u.test(line))).join('\n');
+  return stripMarkdownLinks(
+    prose
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ')
+      .replace(/^\s*\[[^\]\n]+\]:\s+\S+.*$/gm, ' ')
+      .replace(/!\[[^\]\n]*\]\[[^\]\n]*\]/g, ' ')
+      .replace(/\[([^\]\n]+)\]\[[^\]\n]*\]/g, '$1'),
+  )
+    .replace(/<\/?[A-Za-z][^>]*>/g, ' ')
+    .replace(/\[!\w+\]/gi, ' ')
+    .replace(/!\[[^\]\n]*\]/g, ' ')
+    .replace(/\[([^\]\n]+)\]/g, '$1')
+    .replace(/\\([-+*.])/g, '$1')
+    .replace(/^\s*(?:>\s*)*(?:#{1,6}\s+|[-+*]\s*\d+-\s*|[-+*]\s+|\d+[.)]\s+)/gm, '')
+    .replace(/[*`~]/g, '')
+    .replace(/(?<![\p{L}\p{N}])_+|_+(?![\p{L}\p{N}])/gu, '')
+    .replace(/[|>]/g, ' ')
+    .replace(
+      /&(?:amp|lt|gt|quot|apos|nbsp);/g,
+      (entity) => ({ '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'", '&nbsp;': ' ' })[entity] ?? entity,
+    )
     .replace(/\s+/g, ' ')
     .trim();
-  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+};
+
+/** Word-boundary summary, counting graphemes so Arabic marks and emoji stay whole. */
+export const excerpt = (markdown: string, max = 160): string => {
+  const text = markdownToPlainText(markdown);
+  if (!Number.isFinite(max)) return text;
+  if (max <= 0) return '';
+  const graphemes: string[] = [];
+  let truncated = false;
+  for (const { segment } of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)) {
+    if (graphemes.length >= max) {
+      truncated = true;
+      break;
+    }
+    graphemes.push(segment);
+  }
+  if (!truncated) return text;
+  const cut = graphemes.slice(0, max - 1).join('');
+  const boundary = cut.lastIndexOf(' ');
+  const head = boundary >= cut.length / 2 ? cut.slice(0, boundary) : cut;
+  return `${head.replace(/[\s,;:،؛]+$/u, '')}…`;
 };
 
 /** Pluralise a noun against a count. */

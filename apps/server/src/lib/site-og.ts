@@ -1,0 +1,165 @@
+import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { prisma } from '@nibleaf/database';
+import { excerpt } from '@nibleaf/shared/utils';
+import { getObjectStream } from '@nibleaf/storage';
+import { Resvg, renderAsync } from '@resvg/resvg-js';
+import { imageSize } from 'image-size';
+import { fetchPublicImage } from '@/actions/importers/ghost-assets';
+import { LruCache } from './lru';
+
+export interface SiteOgData {
+  projectId: string;
+  deploymentId: string;
+  title: string;
+  siteName: string;
+  brandColor: string;
+  logo: string | null;
+  rtl: boolean;
+}
+
+const fontDirectory = new URL(import.meta.url.endsWith('.ts') ? '../assets/og/' : './assets/og/', import.meta.url);
+const font = {
+  fontFiles: [fileURLToPath(new URL('NotoSansArabic.ttf', fontDirectory))],
+  loadSystemFonts: false,
+  defaultFontFamily: 'Noto Sans Arabic',
+};
+const MAX_LOGO_BYTES = 512 * 1024;
+const images = new LruCache<string, Buffer>(16 * 1024 * 1024, (image) => image.byteLength);
+const pending = new Map<string, Promise<Buffer>>();
+let generationWindow = 0;
+let generations = 0;
+
+export const siteOgEtag = (data: SiteOgData): string =>
+  `"${createHash('sha256')
+    .update(JSON.stringify([data, process.env.NIBLEAF_REVISION ?? 'development', 'og-v1']))
+    .digest('hex')}"`;
+
+const xml = (text: string): string =>
+  text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[char] ?? char);
+
+// This resvg release does not implement SVG's direction attribute. A Unicode
+// RTL embedding gives its bidi engine the correct base for mixed Arabic/Latin.
+const svgText = (text: string, rtl: boolean): string => (rtl ? `&#x202b;${xml(text)}&#x202c;` : xml(text));
+
+/** Only embed small raster images. No SVG subresources, filesystem paths or
+ * remote URLs ever reach the native renderer. External fetches use the existing
+ * DNS-pinned public-image downloader (including every redirect). */
+const logoData = async (data: SiteOgData): Promise<string | null> => {
+  if (!data.logo) return null;
+  try {
+    const url = new URL(data.logo, 'https://og.invalid');
+    let bytes: Uint8Array;
+    if (url.pathname.startsWith('/api/public/assets/')) {
+      const key = decodeURIComponent(url.pathname.slice('/api/public/assets/'.length));
+      if (
+        !key.startsWith(`projects/${data.projectId}/assets/`) ||
+        key.split('/').some((part) => !part || part === '.' || part === '..') ||
+        key.includes('\\')
+      )
+        return null;
+      const asset = await prisma.asset.findUnique({ where: { key }, select: { projectId: true, size: true } });
+      if (asset?.projectId !== data.projectId || Number(asset.size) > MAX_LOGO_BYTES) return null;
+      const stream = await getObjectStream(key, undefined, AbortSignal.timeout(3000));
+      const chunks: Buffer[] = [];
+      let size = 0;
+      try {
+        for await (const chunk of stream) {
+          const buffer = Buffer.from(chunk);
+          size += buffer.byteLength;
+          if (size > MAX_LOGO_BYTES) return null;
+          chunks.push(buffer);
+        }
+      } finally {
+        stream.destroy();
+      }
+      bytes = Buffer.concat(chunks);
+    } else {
+      if (url.hostname === 'og.invalid') return null;
+      bytes = (await fetchPublicImage(url.href, MAX_LOGO_BYTES, 1500)).bytes;
+    }
+    const dimensions = imageSize(bytes);
+    if (!['png', 'jpg', 'gif', 'webp'].includes(dimensions.type ?? '') || dimensions.width > 2048 || dimensions.height > 2048) return null;
+    const type = dimensions.type === 'jpg' ? 'jpeg' : dimensions.type;
+    return `data:image/${type};base64,${Buffer.from(bytes).toString('base64')}`;
+  } catch {
+    // Optional branding failure must not prevent a title card from unfurling.
+    return null;
+  }
+};
+
+/** Wrap on words and graphemes before passing complete logical lines to
+ * resvg's bidi/shaping engine. Arabic is never reversed or split into letters. */
+const titleLines = (title: string): string[] => {
+  const text = excerpt(title, 120);
+  const lines: string[] = [];
+  let line = '';
+  for (const { segment } of new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)) {
+    const units = Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(segment), (item) => item.segment);
+    if (Array.from(line).length + units.length > 30 && line.trim()) {
+      lines.push(line.trim());
+      line = '';
+    }
+    for (const unit of units) {
+      if (Array.from(line).length >= 30) {
+        lines.push(line.trim());
+        line = '';
+      }
+      line += unit;
+    }
+  }
+  if (line.trim()) lines.push(line.trim());
+  return lines.length > 4 ? [...lines.slice(0, 3), excerpt(lines.slice(3).join(' '), 30)] : lines;
+};
+
+export const renderSiteOg = async (data: SiteOgData): Promise<Buffer> => {
+  const logo = await logoData(data);
+  const color = /^#[\da-f]{6}$/iu.test(data.brandColor) ? data.brandColor : '#2563eb';
+  const x = data.rtl ? 1120 : 80;
+  const anchor = data.rtl ? 'end' : 'start';
+  const lines = titleLines(data.title);
+  const text = lines
+    .map((line, index) => `<text x="${x}" y="${240 + index * 78}" text-anchor="${anchor}">${svgText(line, data.rtl)}</text>`)
+    .join('');
+  // Measure using the same bundled font/shaper so wide Latin titles fit too.
+  const measured = new Resvg(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><g font-family="Noto Sans Arabic" font-size="64">${text}</g></svg>`,
+    { font },
+  ).innerBBox();
+  const size = Math.min(64, (64 * 1040) / Math.max(1, measured?.width ?? 1040));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+    <rect width="1200" height="630" fill="#101827"/>
+    <rect width="1200" height="18" fill="${color}"/>
+    <circle cx="1160" cy="650" r="230" fill="${color}" opacity="0.18"/>
+    ${logo ? `<image href="${logo}" x="${data.rtl ? 1040 : 80}" y="62" width="80" height="80" preserveAspectRatio="xMidYMid meet"/>` : ''}
+    <g fill="#ffffff" font-family="Noto Sans Arabic" font-size="${size}">${text}</g>
+    <text x="${x}" y="570" text-anchor="${anchor}" fill="#cbd5e1" font-family="Noto Sans Arabic" font-size="28">${svgText(excerpt(data.siteName, 55), data.rtl)}</text>
+  </svg>`;
+  return (await renderAsync(svg, { font })).asPng();
+};
+
+/** Per-process limits: 16 MiB LRU, two in-flight renders (same-key coalesced),
+ * 30 cold generations/minute across all clients. Admission happens before any
+ * logo I/O; a random-path flood cannot create an unbounded queue. */
+export const cachedSiteOg = (data: SiteOgData): Promise<Buffer> | null => {
+  const key = siteOgEtag(data);
+  const cached = images.get(key);
+  if (cached) return Promise.resolve(cached);
+  const running = pending.get(key);
+  if (running) return running;
+  const now = Date.now();
+  if (now - generationWindow >= 60_000) {
+    generationWindow = now;
+    generations = 0;
+  }
+  if (pending.size >= 2 || generations >= 30) return null;
+  generations += 1;
+  const result = renderSiteOg(data)
+    .then((image) => {
+      images.set(key, image);
+      return image;
+    })
+    .finally(() => pending.delete(key));
+  pending.set(key, result);
+  return result;
+};

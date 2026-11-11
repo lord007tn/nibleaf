@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
+import { excerpt } from '@nibleaf/shared/utils';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
 import { hydratedCustomDomainProjectId } from '@/lib/custom-domain-rewrite';
 
@@ -211,14 +212,39 @@ const hasMarkdownAlternate = (data: SitePage, requestedLanguage?: string): boole
 export const pageMarkdownHeaders = (data: SitePage | null | undefined, requestedLanguage?: string): Record<string, string> | undefined =>
   data && hasMarkdownAlternate(data, requestedLanguage) ? { [SITE_MARKDOWN_ALTERNATE_HEADER]: '1' } : undefined;
 
-/** An empty icon: stops the browser falling back to the origin's
- *  /favicon.ico, which is Nibleaf's on the app origin. */
-const EMPTY_ICON = 'data:,';
+/** Emoji are text, never image URLs. Encoding the SVG also escapes XML markup. */
+export const siteEmoji = (value?: string | null): string | undefined => {
+  const text = value?.trim();
+  return text &&
+    /(?:\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3)/u.test(text) &&
+    Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)).length === 1
+    ? text
+    : undefined;
+};
 
-/** A published site's tab and home-screen icon: its favicon, else its logo,
- *  else nothing (never Nibleaf's icon). */
-export const siteIconHref = (config: ProjectConfig | null | undefined): string =>
-  config?.branding?.favicon?.trim() || config?.branding?.logoLight?.trim() || EMPTY_ICON;
+export const siteIconHref = (config: ProjectConfig | null | undefined, icon?: string | null, projectId?: string): string => {
+  const branding = config?.branding;
+  for (const candidate of [branding?.favicon, branding?.logoLight, branding?.logoDark, icon]) {
+    const value = candidate?.trim();
+    if (!value) continue;
+    const emoji = siteEmoji(value);
+    if (emoji)
+      return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><text x="32" y="50" text-anchor="middle" font-size="52">${emoji}</text></svg>`)}`;
+    try {
+      const url = new URL(value, publicOrigin());
+      if (!['http:', 'https:'].includes(url.protocol)) continue;
+      if (config?.visibility === 'private' && url.pathname.startsWith('/api/public/assets/')) {
+        // Only configured branding assets are anonymously served at the private sign-in gate.
+        if (![branding?.favicon, branding?.logoLight, branding?.logoDark].includes(candidate)) continue;
+        if (!projectId || !decodeURIComponent(url.pathname).startsWith(`/api/public/assets/projects/${projectId}/assets/`)) continue;
+      }
+      if (value.startsWith('/') || /^https?:\/\//u.test(value)) return value;
+    } catch {
+      // Invalid author URLs fall through to the next icon.
+    }
+  }
+  return '/favicon.svg';
+};
 
 /**
  * Site-level <head>: favicon, og:site_name and theme-color. Per-page head()
@@ -243,13 +269,12 @@ export function siteHead(site: SiteShell | null | undefined, requestOrigin?: str
     slug: site.project.slug,
     requestOrigin,
   });
-  const icon = siteIconHref(config);
+  const icon = siteIconHref(config, site.project.icon, site.project.id);
   const links: Tag[] = [
-    // The site's own icon. The root route leaves Nibleaf's icons, manifest and
-    // theme color off reader pages, so a customer site never carries them.
+    // Prefer site branding; unbranded sites use the bundled Nibleaf icon.
     { rel: 'icon', href: icon },
     // iOS ignores an SVG home-screen icon, so only a raster one is offered.
-    ...(icon === EMPTY_ICON || /\.svg(?:[?#]|$)/iu.test(icon) ? [] : [{ rel: 'apple-touch-icon', href: icon }]),
+    ...(icon.startsWith('data:image/svg+xml,') || /\.svg(?:[?#]|$)/iu.test(icon) ? [] : [{ rel: 'apple-touch-icon', href: icon }]),
     { rel: 'sitemap', type: 'application/xml', href: `${canonicalBase}/sitemap.xml` },
     ...fontLinks(config),
   ];
@@ -283,7 +308,7 @@ export function unavailableSiteHead(reason: 'private' | undefined, lang?: string
   const t = siteT(lang);
   return {
     meta: [{ title: t(reason === 'private' ? 'privateTitle' : 'notPublishedTitle') }, { name: 'robots', content: 'noindex,nofollow' }],
-    links: [{ rel: 'icon', href: EMPTY_ICON }],
+    links: [{ rel: 'icon', href: '/favicon.svg' }],
   };
 }
 
@@ -333,15 +358,16 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // next, then the excerpt derived from its body, so a project/language default
   // cannot stamp the same description onto every URL. Site-wide descriptions are
   // fallbacks for pages with no body text at all.
-  const description =
-    pageSeo?.metaDescription ||
-    data.page.description ||
-    data.page.excerpt ||
-    langSeo?.metaDescription ||
-    config?.seo?.metaDescription ||
-    langCfg?.description ||
-    data.project.description ||
-    '';
+  const description = excerpt(
+    pageSeo?.metaDescription?.trim() ||
+      data.page.description ||
+      data.page.excerpt ||
+      langSeo?.metaDescription ||
+      config?.seo?.metaDescription ||
+      langCfg?.description ||
+      data.project.description ||
+      '',
+  );
   const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalLang, urlOptions);
 
   const meta: Tag[] = [{ title }];
@@ -359,16 +385,27 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
     { property: 'og:title', content: ogTitle },
     { property: 'og:type', content: 'article' },
     { property: 'og:url', content: url },
-    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:card', content: config?.visibility === 'private' ? 'summary' : 'summary_large_image' },
     { name: 'twitter:title', content: ogTitle },
   );
   if (description) {
     meta.push({ property: 'og:description', content: description }, { name: 'twitter:description', content: description });
   }
-  // Prefer the page card, then the language card, site card, or configured logo.
-  const ogImage = pageSeo?.ogImage || langSeo?.socialImage || config?.seo?.socialImage || config?.branding?.logoLight;
+  const generatedImage = sitePageUrl(projectId, `og/${versionedPath(data.page.path)}.png`, canonicalLang, urlOptions);
+  const ogImage =
+    config?.visibility === 'private' ? undefined : pageSeo?.ogImage || langSeo?.socialImage || config?.seo?.socialImage || generatedImage;
   if (ogImage) {
-    meta.push({ property: 'og:image', content: ogImage }, { name: 'twitter:image', content: ogImage });
+    meta.push(
+      { property: 'og:image', content: ogImage },
+      ...(ogImage === generatedImage
+        ? [
+            { property: 'og:image:width', content: '1200' },
+            { property: 'og:image:height', content: '630' },
+          ]
+        : []),
+      { property: 'og:image:alt', content: `${ogTitle} — ${siteName}` },
+      { name: 'twitter:image', content: ogImage },
+    );
   }
   // Advertise the page's locale + the other translations' locales (og:locale).
   const locale = ogLocale(activeLang);

@@ -64,6 +64,39 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
 });
 
 describe('pageHead SEO cascade', () => {
+  it('cleans descriptions consistently across metadata and JSON-LD, preferring the author SEO override', () => {
+    const head = pageHead(
+      base({ page: { ...base().page, config: { seo: { metaDescription: '> [!NOTE]\n**Clean** [summary](/docs) `here`' } } } }),
+      'p1',
+    );
+    for (const tag of ['description', 'og:description', 'twitter:description']) expect(meta(head, tag)).toBe('Clean summary here');
+    expect(JSON.parse(head.scripts?.[0]?.children ?? '{}').description).toBe('Clean summary here');
+  });
+
+  it('emits a per-page image with dimensions, alt and the custom-domain, language and version URL', () => {
+    const data = base();
+    data.project.config = { visibility: 'public', seo: { metaTitle: 'Acme' } };
+    data.project.primaryDomain = 'docs.acme.com';
+    data.activeLanguage = 'ar';
+    data.activeVersion = 'v2';
+    data.versions.push({ id: 'v2', slug: 'v2', name: 'v2', isDefault: false });
+    const head = pageHead(data, 'p1');
+    expect(meta(head, 'og:image')).toBe('https://docs.acme.com/og/v2/quickstart.png?lang=ar');
+    expect(meta(head, 'twitter:image')).toBe(meta(head, 'og:image'));
+    expect(meta(head, 'og:image:width')).toBe('1200');
+    expect(meta(head, 'og:image:height')).toBe('630');
+    expect(meta(head, 'og:image:alt')).toBe('Quickstart — Acme');
+  });
+
+  it('never emits images for private or refused pages, including JSON-LD', () => {
+    const data = base();
+    data.project.config = { visibility: 'private', seo: { socialImage: 'https://cdn/private.png' } };
+    const head = pageHead(data, 'p1');
+    expect(head.meta?.filter((tag) => (tag.property ?? tag.name ?? '').includes('image'))).toEqual([]);
+    expect(JSON.parse(head.scripts?.[0]?.children ?? '{}').image).toBeUndefined();
+    expect(meta(pageHead(null, 'p1'), 'og:image')).toBeUndefined();
+    expect(meta(unavailableSiteHead(undefined), 'og:image')).toBeUndefined();
+  });
   it('uses the page-authored description before the project-wide default', () => {
     const head = pageHead(base(), 'p1');
     expect(title(head)).toBe('Quickstart — Acme');
@@ -418,7 +451,7 @@ describe('siteHead analytics scripts', () => {
     expect(siteRobotsHeaders(shell(null))).toBeUndefined();
   });
 
-  it('carries the site’s own icon and never Nibleaf’s', () => {
+  it('uses configured favicon, then logo, then project icon, then Nibleaf', () => {
     const icons = (head: ReturnType<typeof siteHead>) => head.links?.filter((link) => link.rel === 'icon' || link.rel === 'apple-touch-icon');
     expect(icons(siteHead(shell({ branding: { favicon: '/acme.png' } })))).toEqual([
       { rel: 'icon', href: '/acme.png' },
@@ -426,9 +459,21 @@ describe('siteHead analytics scripts', () => {
     ]);
     // A logo stands in; an SVG is not offered as a home-screen icon.
     expect(icons(siteHead(shell({ branding: { logoLight: '/acme.svg' } })))).toEqual([{ rel: 'icon', href: '/acme.svg' }]);
-    // No branding: an empty icon, so the browser never shows the origin's Nibleaf favicon.
-    expect(siteIconHref(null)).toBe('data:,');
-    expect(JSON.stringify(siteHead(shell(null)))).not.toMatch(/favicon\.svg|site\.webmanifest|apple-touch-icon\.png/);
+    expect(siteIconHref({ branding: { favicon: '/favicon.png', logoLight: '/logo.png' } }, '📘')).toBe('/favicon.png');
+    expect(siteIconHref(null, '/icon.png')).toBe('/icon.png');
+    expect(siteIconHref(null)).toBe('/favicon.svg');
+    const emoji = siteIconHref(null, '📘');
+    expect(decodeURIComponent(emoji)).toContain('<text');
+    expect(decodeURIComponent(emoji)).toContain('📘');
+    expect(icons(siteHead({ ...shell(null), project: { ...shell(null).project, icon: '📘' } }))).toEqual([{ rel: 'icon', href: emoji }]);
+  });
+
+  it('uses only anonymously fetchable private branding assets, never a gated project icon', () => {
+    const asset = '/api/public/assets/projects/p1/assets/brand.png';
+    expect(siteIconHref({ visibility: 'private', branding: { favicon: asset } }, null, 'p1')).toBe(asset);
+    expect(siteIconHref({ visibility: 'private' }, asset, 'p1')).toBe('/favicon.svg');
+    expect(siteIconHref({ visibility: 'private', branding: { favicon: asset } }, null, 'other')).toBe('/favicon.svg');
+    expect(siteIconHref({ branding: { favicon: 'javascript:alert(1)' } })).toBe('/favicon.svg');
   });
 
   it('titles a private or unpublished site in the requested language, never indexed', () => {

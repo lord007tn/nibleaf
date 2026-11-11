@@ -594,8 +594,34 @@ const flattenNav = (nav: NavNode[]): NavNode[] =>
 
 /** A single published page with TOC, breadcrumbs, and prev/next neighbours.
  *  Scoped to the active language, falling back to the default language. */
-export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) => {
-  const { snapshot } = await getPublished(identifier);
+export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) =>
+  publishedPage(await getPublished(identifier), path, lang, version);
+
+/** Public cards use the same viewer gate and frozen page resolution as HTML,
+ * but never accept an authenticated view of WORKSPACE/READERS content. */
+export const getSiteOgData = async (identifier: string, path: string, lang?: string, version?: string) => {
+  const published = await getPublished(identifier);
+  if ((published.snapshot.project as PublicSnapshotProject).accessMode !== 'PUBLIC' || published.viewer.kind !== 'public') {
+    throw notFound('site');
+  }
+  const data = publishedPage(published, path, lang, version);
+  const config = data.project.config as {
+    seo?: { metaTitle?: string };
+    styling?: { primaryColor?: string };
+    branding?: { logoLight?: string };
+  } | null;
+  return {
+    projectId: data.project.id,
+    deploymentId: published.deploymentId,
+    title: data.page.config?.seo?.metaTitle?.trim() || data.page.title,
+    siteName: data.languageConfig?.seo?.metaTitle || config?.seo?.metaTitle || data.languageConfig?.name || data.project.name,
+    brandColor: config?.styling?.primaryColor || '#2563eb',
+    logo: config?.branding?.logoLight || null,
+    rtl: data.project.languages.find((language) => language.code === data.activeLanguage)?.direction === 'RTL',
+  };
+};
+
+const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string, version?: string) => {
   const explicitVersion = matchingVersion(snapshot, version);
   let normalized = path.replace(/^\/+|\/+$/g, '');
   if (explicitVersion && (normalized === explicitVersion.slug || normalized.startsWith(`${explicitVersion.slug}/`))) {

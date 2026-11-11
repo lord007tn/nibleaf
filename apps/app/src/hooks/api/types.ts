@@ -387,6 +387,7 @@ export interface NavNode {
 
 export interface SiteShell {
   project: {
+    icon?: string | null;
     id: string;
     name: string;
     slug: string;

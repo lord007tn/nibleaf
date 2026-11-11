@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { excerpt, joinPath, plural, slugify, slugifyUnicode, stripMarkdownLinks } from './utils';
+import { excerpt, joinPath, markdownToPlainText, plural, slugify, slugifyUnicode, stripMarkdownLinks } from './utils';
 
 describe('slugify', () => {
   it('lowercases and dashes non-alphanumerics', () => {
@@ -106,6 +106,25 @@ describe('stripMarkdownLinks', () => {
 });
 
 describe('excerpt', () => {
+  it('cleans tables, emphasis, callouts, escaped lists, links, images, headings and HTML', () => {
+    const markdown =
+      '# **Guide**\n> [!IMPORTANT]\n\n| Name | Value |\n| :--- | ---: |\n| *Token* | `secret` |\n\n\\-1- [Read me](/guide)\n![Diagram](/image.png)\n<b>Finish</b>';
+    expect(markdownToPlainText(markdown)).toBe('Guide Name Value Token secret Read me Finish');
+    expect(excerpt(markdown)).toBe('Guide Name Value Token secret Read me Finish');
+  });
+  it('keeps Arabic vocalization and grapheme clusters intact while truncating', () => {
+    const source = 'مَرْحَبًا بِكُمْ في دَلِيلِ الاستخدام والتوثيق';
+    expect(excerpt(source)).toBe(source);
+    expect(excerpt(source, 14)).toBe('مَرْحَبًا بِكُمْ في…');
+    expect(excerpt('أَ'.repeat(200), 8)).toBe(`${'أَ'.repeat(7)}…`);
+    expect(excerpt('👨‍👩‍👧‍👦'.repeat(20), 4)).toBe('👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦…');
+  });
+  it('truncates at a whole word and removes reference-link syntax', () => {
+    expect(excerpt('A useful introduction to authentication', 25)).toBe('A useful introduction…');
+    expect(excerpt('[Read me][docs]\n\n[docs]: https://example.com\n\n![hidden][image]')).toBe('Read me');
+    expect(excerpt('Use `api_key` with _care_ and **attention**.')).toBe('Use api_key with care and attention.');
+    expect(excerpt('[Read more](https://example.com/docs_(intro))')).toBe('Read more');
+  });
   it('strips fenced code, links, and markdown punctuation', () => {
     const md = '# Title\n\nSee [the docs](https://x) for `code`.\n\n```js\nconst a = 1;\n```';
     const out = excerpt(md);

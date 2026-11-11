@@ -1,4 +1,5 @@
 import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
+import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -22,6 +23,8 @@ vi.mock('@nibleaf/search', async (importOriginal) => ({
 }));
 vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: { headers: new Headers() } } }) }));
 vi.mock('@/env', () => ({ env: {} }));
+vi.mock('@nibleaf/storage', () => ({ getObjectStream: vi.fn() }));
+vi.mock('@/actions/importers/ghost-assets', () => ({ fetchPublicImage: vi.fn() }));
 vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
 vi.mock('@/lib/ai-search/runtime', () => ({
   answerPublishedSearch: vi.fn(),
@@ -33,6 +36,7 @@ vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn(), trackProjectEvents: 
 vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() }));
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
+import og from '@/modules/public/sites/og';
 import { resolveViewerAccess } from './reader-access';
 import { getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
 
@@ -77,6 +81,8 @@ const snapshot: SiteSnapshot = {
 describe('getSitePage lede vs excerpt', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    invalidatePublishedSiteConfig('project-1');
+    vi.mocked(resolveViewerAccess).mockReset().mockResolvedValue({ kind: 'public', allowedPageIds: null });
     mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
       'name' in select
         ? {
@@ -96,6 +102,56 @@ describe('getSitePage lede vs excerpt', () => {
     mocks.deploymentFindFirst.mockResolvedValue({ id: `deployment-${Math.random()}`, version: 1 });
     mocks.deploymentFindUnique.mockResolvedValue({ snapshot });
   });
+
+  it('serves a real 1200×630 public PNG, revalidates it and changes ETag with the published title', async () => {
+    const app = new Hono().route('/sites', og);
+    const response = await app.request('/sites/project-1/og/authentication.png');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/png');
+    expect(response.headers.get('cache-control')).toBe('public, max-age=86400');
+    const bytes = Buffer.from(await response.arrayBuffer());
+    expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([1200, 630]);
+    const etag = response.headers.get('etag') ?? '';
+    const unchanged = await app.request('/sites/project-1/og/authentication.png', { headers: { 'if-none-match': etag } });
+    expect(unchanged.status).toBe(304);
+    expect(await unchanged.text()).toBe('');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-new-title', version: 2 });
+    mocks.deploymentFindUnique.mockResolvedValue({ snapshot: { ...snapshot, pages: [{ ...snapshot.pages[0], title: 'New title' }] } });
+    const changed = await app.request('/sites/project-1/og/authentication.png', { headers: { 'if-none-match': etag } });
+    expect(changed.status).toBe(200);
+    expect(changed.headers.get('etag')).not.toBe(etag);
+  });
+
+  it.each(['WORKSPACE', 'READERS', 'takedown', 'unpublished', 'missing-page'])(
+    'returns 404/no-store for %s, even after a cached public card',
+    async (state) => {
+      const app = new Hono().route('/sites', og);
+      const publicResponse = await app.request('/sites/project-1/og/authentication.png');
+      expect(publicResponse.status).toBe(200);
+      const lookup = mocks.projectFindUnique.getMockImplementation();
+      mocks.projectFindUnique.mockImplementation(async (query) => {
+        const result = await lookup?.(query);
+        return 'name' in query.select
+          ? {
+              ...result,
+              accessMode: ['WORKSPACE', 'READERS'].includes(state) ? state : 'PUBLIC',
+              takedownAt: state === 'takedown' ? new Date() : null,
+            }
+          : result;
+      });
+      // An authenticated reader is still forbidden from publishing a private card.
+      vi.mocked(resolveViewerAccess).mockResolvedValueOnce({ kind: 'workspace', allowedPageIds: null });
+      if (state === 'unpublished') mocks.deploymentFindFirst.mockResolvedValue(null);
+      invalidatePublishedSiteConfig('project-1');
+      const response = await app.request(`/sites/project-1/og/${state === 'missing-page' ? 'missing' : 'authentication'}.png`, {
+        headers: { 'if-none-match': publicResponse.headers.get('etag') ?? '' },
+      });
+      expect(response.status).toBe(404);
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+      expect(await response.text()).toBe('');
+    },
+  );
 
   it('serves the trimmed author-written description as the lede alongside the excerpt', async () => {
     const result = await getSitePage('project-1', 'authentication');

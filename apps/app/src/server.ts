@@ -35,6 +35,7 @@ import {
   preferredRepresentation,
 } from '@/lib/request-negotiation';
 import { renderSelfHostInstaller } from '@/lib/self-host-release';
+import { proxySiteOg } from '@/lib/site-og-proxy.server';
 import { SITE_MARKDOWN_ALTERNATE_HEADER } from '@/lib/site-seo';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { apiOrigin } from '@/services/api-origin';
@@ -796,6 +797,16 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
   };
 
   const serve = async (): Promise<Response> => {
+    // Binary OG cards share the API's public-only gate on both URL surfaces.
+    if (isGetLike) {
+      const card = (isCustomDomain ? /^\/og\/(.*\.png)$/u : /^\/sites\/([^/]+)\/og\/(.*\.png)$/u).exec(url.pathname);
+      if (card) {
+        const projectId = isCustomDomain ? await resolveHost(bare) : card[1];
+        if (!projectId) return new Response(null, { status: 404, headers: { 'cache-control': 'private, no-store' } });
+        const suffix = isCustomDomain ? card[1] : card[2];
+        return proxySiteOg(SELF, projectId, suffix ?? '', request, internalRequestHeaders());
+      }
+    }
     if (!isCustomDomain) {
       if (isGetLike) {
         const artifact = serveSelfHostingArtifact(url.pathname, bare);

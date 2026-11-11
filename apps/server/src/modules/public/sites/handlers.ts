@@ -26,6 +26,7 @@ import { deliveryCacheHeaders } from '@/lib/delivery-cache';
 import type { HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import { crawlerBatchSchema, enqueueCrawlerHit, hasInternalAnalyticsProof } from './crawler-hits';
+import og from './og';
 import sitesRoutes from './routes';
 
 const siteQuery = z.object({ lang: z.string().optional(), version: z.string().optional() });
@@ -63,6 +64,7 @@ const textDocument = (ctx: Context<HonoEnv>, doc: SiteTextDocument, contentType:
   });
 
 const app = new Hono<HonoEnv>()
+  .route('/', og)
   .post(
     '/_crawler-hits',
     async (ctx, next) => {
