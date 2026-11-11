@@ -424,11 +424,13 @@ export interface SiteShell {
   generatedAt: string;
   /** Validated OpenAPI document metadata frozen in the current deployment. */
   openapi?: PublishedOpenApi | null;
-  /** `answer`: the site enables AI answers and the instance can serve them.
-   *  Optional because a response from an older API omits it; treat as off. */
   /** Signed in on the site itself (a reader, or a team member signed in with an email code), so it can offer Sign out. */
   signedIn?: boolean;
-  capabilities?: { answer: boolean };
+  /** `answer`: the site enables AI answers and the instance can serve them.
+   *  `storesQuestions`: the chat keeps question text (the site's setting is on
+   *  and the instance can encrypt it), for `questionRetentionDays` days.
+   *  Optional because a response from an older API omits them; treat as off. */
+  capabilities?: { answer: boolean; storesQuestions?: boolean; questionRetentionDays?: number | null };
 }
 
 interface Heading {
