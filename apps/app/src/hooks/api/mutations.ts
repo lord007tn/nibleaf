@@ -1,4 +1,5 @@
 import { useT } from '@nibleaf/i18n/react';
+import { resolvePageMove } from '@nibleaf/shared/page-moves';
 import type { ResolvedTheme, ThemeConfigChange, ThemeTemplateV1 } from '@nibleaf/shared/themes';
 import type {
   AiDraftBody,
@@ -22,7 +23,7 @@ import type {
   UpsertOpenApiBody,
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
-import type { QueryClient } from '@tanstack/react-query';
+import { type QueryClient, useIsMutating } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { organizationKeys } from '@/hooks/api/organization-keys';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
@@ -31,7 +32,8 @@ import { putAsset } from '@/lib/upload-asset-put';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
-import { applyPageReorder, applyPageReorderToList, isPageListKey } from './page-cache';
+import { applyPageReorder, applyPageReorderToList, isPageListKey, rollbackPageReorder } from './page-cache';
+import { acquirePageMove } from './page-move-queue';
 import { queryKeys } from './query-keys';
 import type {
   ApiKey,
@@ -87,7 +89,8 @@ export const useCreateProject = () => {
   const qc = useQueryClient();
   return useMutation({
     // Websites are always created inside an organization (`organizationId`).
-    mutationFn: async (body: CreateProjectBody) => mutateData<Project>(await api.app.projects.$post({ json: body }), 'Could not create the site.'),
+    mutationFn: async (body: CreateProjectBody) =>
+      mutateData<Project & { firstPageId: string | null }>(await api.app.projects.$post({ json: body }), 'Could not create the site.'),
     onSuccess: () =>
       Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
@@ -252,10 +255,15 @@ export const useUpdatePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ pageId, body }: { pageId: string; body: UpdatePageBody }) =>
-      mutateData<Page & { addressChanged: boolean; redirectsAdded: number; linksUpdated: number; documentsSkipped: number }>(
-        await api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }),
-        'Could not save the page.',
-      ),
+      mutateData<
+        Page & {
+          addressChanged: boolean;
+          redirectsAdded: number;
+          linksUpdated: number;
+          documentsSkipped: number;
+          historySnapshot: 'stored' | 'unchanged' | 'throttled' | 'too-large';
+        }
+      >(await api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }), 'Could not save the page.'),
     onError: (_error, { pageId }) => {
       void qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
     },
@@ -287,38 +295,73 @@ export const useDeletePage = (projectId: string) => {
  *  back if the server rejects it (the caller shows the error). */
 export const useReorderPages = (projectId: string) => {
   const qc = useQueryClient();
+  const mutationKey = ['page-reorder', projectId];
   const listFilter = {
     queryKey: queryKeys.pages.allForProject(projectId),
     predicate: (query: { queryKey: readonly unknown[] }) => isPageListKey(query.queryKey),
   };
-  return useMutation({
+  const mutation = useMutation({
+    mutationKey,
+    scope: { id: `page-reorder:${projectId}` },
     mutationFn: async (body: ReorderPagesBody) =>
-      mutateData(await api.app.projects[':projectId'].pages.reorder.$post({ param: { projectId }, json: body }), 'Could not reorder pages.'),
+      mutateData<PageNode[]>(
+        await api.app.projects[':projectId'].pages.reorder.$post({ param: { projectId }, json: body }),
+        'Could not reorder pages.',
+      ),
     onMutate: async (body) => {
-      await qc.cancelQueries(listFilter);
-      const previous = qc.getQueriesData<PageNode[]>(listFilter);
-      // Every cached page after the move, so a list filtered to one language can
-      // take in the pages that moved into it from another language.
-      const known = new Map<string, PageNode>();
-      for (const [, pages] of previous) {
-        if (Array.isArray(pages)) for (const page of applyPageReorder(pages, body.items)) known.set(page.id, page);
+      const release = await acquirePageMove(qc, projectId, body);
+      let unsubscribe: () => void = () => undefined;
+      try {
+        await qc.cancelQueries(listFilter);
+        const previous = qc.getQueriesData<PageNode[]>(listFilter);
+        // Every cached page after the move, so a list filtered to one language can
+        // take in the pages that moved into it from another language.
+        const known = new Map<string, PageNode>();
+        for (const [, pages] of previous) {
+          if (Array.isArray(pages)) for (const page of pages) known.set(page.id, page);
+        }
+        const items = 'items' in body ? body.items : (resolvePageMove([...known.values()], body) ?? []);
+        for (const page of applyPageReorder([...known.values()], items)) known.set(page.id, page);
+        const refetched = new Set<string>();
+        const watched = new Set(previous.map(([key]) => qc.getQueryCache().find({ queryKey: key, exact: true })?.queryHash));
+        unsubscribe = qc.getQueryCache().subscribe((event) => {
+          if (event.type === 'updated' && event.action.type === 'success' && !event.action.manual && watched.has(event.query.queryHash))
+            refetched.add(event.query.queryHash);
+        });
+        const snapshots: Array<{ key: readonly unknown[]; before: PageNode[]; optimistic: PageNode[] }> = [];
+        for (const [key, pages] of previous) {
+          if (!Array.isArray(pages)) continue;
+          const scope = { languageId: typeof key[2] === 'string' ? key[2] : null, branchId: typeof key[3] === 'string' ? key[3] : null };
+          qc.setQueryData<PageNode[]>(key, applyPageReorderToList(pages, items, scope, known));
+          snapshots.push({ key, before: pages, optimistic: qc.getQueryData<PageNode[]>(key) ?? [] });
+        }
+        return { snapshots, refetched, release, unsubscribe };
+      } catch (error) {
+        unsubscribe();
+        release();
+        throw error;
       }
-      for (const [key, pages] of previous) {
-        if (!Array.isArray(pages)) continue;
-        const scope = { languageId: typeof key[2] === 'string' ? key[2] : null, branchId: typeof key[3] === 'string' ? key[3] : null };
-        qc.setQueryData<PageNode[]>(key, applyPageReorderToList(pages, body.items, scope, known));
-      }
-      return { previous };
     },
     onError: (_error, _body, context) => {
-      for (const [key, pages] of context?.previous ?? []) qc.setQueryData(key, pages);
+      for (const { key, before, optimistic } of context?.snapshots ?? []) {
+        const query = qc.getQueryCache().find({ queryKey: key, exact: true });
+        if (!query || context?.refetched.has(query.queryHash)) continue;
+        qc.setQueryData<PageNode[]>(key, (current) => (Array.isArray(current) ? rollbackPageReorder(current, before, optimistic) : current));
+      }
     },
-    onSettled: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
-      void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-      return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+    onSettled: async (_data, _error, _body, context) => {
+      try {
+        void qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+        void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+        await qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+      } finally {
+        context?.unsubscribe();
+        context?.release();
+      }
     },
   });
+  const pending = useIsMutating({ mutationKey }) > 0;
+  return { ...mutation, isPending: pending };
 };
 
 /** Every read a publish or rollback changes: the publish list, the live version,

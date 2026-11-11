@@ -1,10 +1,11 @@
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { resolveAiConversationKey, resolveAiConversationTransportKey, sealAiConversation } from '@nibleaf/bullmq/jobs/ai-conversations';
 import { aiFeedbackRowSchema, aiTurnRowSchema, classifyUserAgent, keys, redactConversationText, redactReaderText } from '@nibleaf/clickhouse';
 import { markAnalyticsStoragePending } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { normalizeArabicSearchText } from '@nibleaf/search';
+import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import type { AiChatConsent, AiConversationTurnStatus } from '@nibleaf/validators';
 import { env } from '@/env';
 
@@ -70,12 +71,43 @@ export interface ChatFeedbackCapture extends CapturePolicy {
   language?: string;
   visibility: 'public' | 'private';
 }
-export const aiConversationCaptureReady = (): boolean => {
+/** Every piece of configuration the archive needs, checked in one place, so
+ * what readers are told and what is written can never disagree:
+ *  - `rows`: any row at all. Analytics writes are on and the hash salt is set
+ *    (each row's job id and question key are salted hashes, and a metadata-only
+ *    row is sealed with a key derived from the salt).
+ *  - `questionText`: rows, plus a key that encrypts the question text. */
+const archiveReadiness = (): { rows: boolean; questionText: boolean } => {
   try {
-    return keys().ANALYTICS_MODE !== 'disabled' && Boolean(resolveAiConversationKey(env));
+    const { ANALYTICS_MODE, ANALYTICS_HASH_SALT } = keys();
+    const rows = ANALYTICS_MODE !== 'disabled' && Boolean(ANALYTICS_HASH_SALT);
+    return { rows, questionText: rows && Boolean(resolveAiConversationKey(env)) };
   } catch {
-    return false;
+    return { rows: false, questionText: false };
   }
+};
+/** This instance can archive question text. The reader's disclosure and the
+ * archive itself both use it. */
+export const aiConversationCaptureReady = (): boolean => archiveReadiness().questionText;
+/** What the reader's chat may say about storing questions. Question text is kept
+ * only when the site's capture setting is on and this instance can encrypt and
+ * write it; each reader's consent then applies on top (see below). */
+export const readerQuestionStorage = (captureSetting: boolean) => {
+  const storesQuestions = captureSetting && aiConversationCaptureReady();
+  return { storesQuestions, questionRetentionDays: storesQuestions ? env.AI_CONVERSATION_RETENTION_DAYS : null };
+};
+/** The capture policy a reader's chat discloses, with a short revision of it.
+ * Each chat turn carries the revision its reader was shown; the server refuses
+ * a turn whose revision is no longer current, so a page left open while capture
+ * or consent changed can never send a question under terms it did not show. */
+export const readerChatPolicy = (config: unknown, captureSetting: boolean) => {
+  const storage = readerQuestionStorage(captureSetting);
+  const consent = analyticsConsentPolicy(config);
+  const revision = createHash('sha256')
+    .update(JSON.stringify(['chat-policy:v1', storage.storesQuestions, storage.questionRetentionDays, consent]))
+    .digest('hex')
+    .slice(0, 16);
+  return { ...storage, consent, revision };
 };
 export const aiConversationContentAllowed = (policy: CapturePolicy): boolean =>
   policy.captureSetting && aiConversationCaptureReady() && (policy.consentRequired ? policy.consent === 'granted' : policy.consent !== 'denied');
@@ -175,7 +207,8 @@ export const buildAiFeedbackRow = (c: ChatFeedbackCapture) => {
 };
 const record = async (c: ChatFeedbackCapture | ChatTurnCapture, kind: 'ai-conversation-turn' | 'ai-conversation-feedback') => {
   try {
-    if (keys().ANALYTICS_MODE === 'disabled') return;
+    // Nothing is queued unless every row can be written (see archiveReadiness).
+    if (!archiveReadiness().rows) return;
     const marker = await markAnalyticsStoragePending(c.tenantId, c.projectId);
     if (!marker.accepted) return;
     const key = resolveAiConversationTransportKey({ ...env, ANALYTICS_HASH_SALT: keys().ANALYTICS_HASH_SALT });

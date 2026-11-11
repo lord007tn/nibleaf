@@ -1,3 +1,4 @@
+import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import type { AiChatOpenSource } from '@nibleaf/validators';
 import { type ComponentProps, createContext, type ReactNode, Suspense, useContext, useState } from 'react';
 import { DocumentationReaderLayout } from '@/components/site/documentation-theme-provider';
@@ -10,13 +11,17 @@ import { HydrationIsland, hydrationModule } from '@/lib/hydration-modules';
 // markup, live (see lib/hydration-modules.tsx). It isn't loaded before
 // hydrating, as the article is: nothing here is reading content, and the
 // router importing it would re-split the chunks the chat shares with the
-// reader. If it can't load, the markup goes after the retries: a launcher
-// without its code does nothing.
+// reader. It loads when a reader reaches for the launcher or the card (a click
+// before then is replayed), or at once for a request (search's hand-off, the
+// `?ask=` link) and on sites that ask for analytics consent, whose launcher
+// isn't in the server markup until the banner is gone. If it can't load, the
+// markup goes after the retries: a launcher without its code does nothing.
 const siteChatUiModule = hydrationModule('site-chat-ui', () => import('./load-chat-ui').then((loader) => loader.loadChatUi()));
 const CHAT_MODULES = [siteChatUiModule];
 function ChatRoot(props: ComponentProps<typeof import('./chat-ui').ChatRoot>) {
+  const waitForReader = !props.request && !props.ask && analyticsConsentPolicy(props.config) === 'not_required';
   return (
-    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} modules={CHAT_MODULES}>
+    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} loadOnIntent={waitForReader} modules={CHAT_MODULES}>
       {() => {
         const ui = siteChatUiModule.read();
         return <ui.ChatRoot {...props} />;
@@ -26,7 +31,7 @@ function ChatRoot(props: ComponentProps<typeof import('./chat-ui').ChatRoot>) {
 }
 function PageAction(props: ComponentProps<typeof import('./chat-ui').PageAction>) {
   return (
-    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} modules={CHAT_MODULES}>
+    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} loadOnIntent modules={CHAT_MODULES}>
       {() => {
         const ui = siteChatUiModule.read();
         return <ui.PageAction {...props} />;
@@ -50,6 +55,10 @@ export type ChatOptions = {
   defaultLanguage?: string;
   direction: 'ltr' | 'rtl';
   config: ProjectConfig | null;
+  /** How many days the server keeps question text for this site; null or
+   * missing when it keeps none (the site's setting is off, or the instance can't
+   * encrypt it). From the site shell, so the chat never claims storage that isn't there. */
+  questionRetentionDays?: number | null;
 };
 /** The reader layout's chat settings, plus its `?ask=` deep link. */
 export type ChatRootOptions = ChatOptions & { ask?: string };

@@ -58,26 +58,61 @@ describe('markdownToPlainText on adversarial input (ReDoS, CodeQL js/polynomial-
     ['dense emphasis (16 KB of *a)', '*a'.repeat(8192)],
     ['dense underscores', '_a'.repeat(8192)],
   ];
-  // Every dense case above takes the linear strip: under 50 ms even on CI.
-  it.each(cases)('stays fast on %s', (_, input) => {
+  /** Calibrated timing: the same machine's time for a plain linear pass over the
+   *  same input. A slow CI core slows both equally, so the ratio stays meaningful,
+   *  while superlinear growth (hundreds of times slower at this size) is still caught. */
+  const plainStripMs = (input: string): number => {
+    const runs: number[] = [];
+    for (let round = 0; round < 3; round += 1) {
+      const started = performance.now();
+      let letters = 0;
+      for (let index = 0; index < input.length; index += 1) if (/\p{L}/u.test(input[index] ?? '')) letters += 1;
+      if (letters < 0) throw new Error('unreachable');
+      runs.push(performance.now() - started);
+    }
+    return runs.sort((a, b) => a - b)[1] ?? 0;
+  };
+  /** Median of three extractions. A unique suffix bypasses the per-content cache,
+   *  so each run measures extraction, not a cache hit. */
+  const extractionMs = (input: string): number => {
     markdownToPlainText('<!-- warm up --> <b>x</b> [a](b) *y*');
-    const started = performance.now();
-    // A unique suffix bypasses the per-content cache, so this measures extraction.
-    markdownToPlainText(`${input}${Math.random()}`);
-    expect(performance.now() - started).toBeLessThan(50);
+    const runs: number[] = [];
+    for (let round = 0; round < 3; round += 1) {
+      const started = performance.now();
+      markdownToPlainText(`${input}${Math.random()}`);
+      runs.push(performance.now() - started);
+    }
+    return runs.sort((a, b) => a - b)[1] ?? 0;
+  };
+
+  // Every dense case above takes the linear strip: calibrated against a linear pass.
+  it.each(cases)('stays linear on %s', (_, input) => {
+    expect(extractionMs(input)).toBeLessThanOrEqual(10 * plainStripMs(input) + 20);
   });
 
-  // Just under the 200-marker guard the parser still runs. Its cost there is
-  // bounded (tens of ms on CI) and paid once per content, thanks to the cache.
-  // The 250 ms bound proves no superlinear blow-up, which takes seconds on CI.
+  // Just under the 200-marker guard the parser legitimately runs, on the 1.5 KB
+  // prefix. Calibrated like against like: the same function parsing an ordinary
+  // prose page of the same size, which takes the same parser and prefix.
+  // Superlinear growth still shows as a large multiple of normal parsing, and a
+  // slow core slows both sides equally.
+  const ordinaryPage = (size: number): string => {
+    const sentence = 'Open the **Settings** page, then add a guest to the booking and save it. ';
+    return sentence.repeat(Math.ceil(size / sentence.length)).slice(0, size);
+  };
   it.each([
     ['emphasis just under the marker guard', '*aaaaaaa'.repeat(192)],
     ['tags just under the marker guard', `<b>${'a'.repeat(13)}`.repeat(96)],
   ])('stays bounded on %s', (_, input) => {
-    markdownToPlainText('<!-- warm up --> <b>x</b> [a](b) *y*');
-    const started = performance.now();
-    markdownToPlainText(`${input}${Math.random()}`);
-    expect(performance.now() - started).toBeLessThan(250);
+    const ordinary = ordinaryPage(input.length);
+    // About 85 markers and no raw HTML: under the guard, so it takes the parser.
+    expect(markdownToPlainText(ordinary)).toContain('Settings page');
+    expect(extractionMs(input)).toBeLessThanOrEqual(5 * extractionMs(ordinary) + 20);
+  });
+
+  it('strips unclosed raw HTML linearly instead of parsing it', () => {
+    expect(markdownToPlainText('Intro text. <script>const secret = 1;')).not.toContain('secret');
+    expect(markdownToPlainText('Intro text. <!-- unfinished internal note')).toBe('Intro text.');
+    expect(markdownToPlainText('Intro text. <style>p { color: red }')).not.toContain('color');
   });
 
   it('the linear fallback still gives a clean description for a marker-heavy page', () => {

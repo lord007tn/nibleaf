@@ -1,5 +1,6 @@
 import type { Prisma } from '@nibleaf/database';
-import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
+import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
+import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => ({
@@ -17,6 +18,7 @@ vi.mock('@/lib/page-address-changes', () => ({
   assertAddressLinkRevisions: async () => undefined,
   preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 }),
 }));
+vi.mock('@/lib/page-history', () => ({ snapshotPage: vi.fn(async () => 'throttled') }));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: recordEdit }));
 vi.mock('./branches', () => ({ assertBranchInProject: async () => ({ id: 'branch-1' }), getDefaultBranch: async () => ({ id: 'branch-1' }) }));
 
