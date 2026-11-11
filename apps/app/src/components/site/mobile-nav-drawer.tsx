@@ -1,5 +1,6 @@
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@nibleaf/design-system/components/ui/sheet';
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import { ExternalLink } from 'lucide-react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { type MobileNavProps, mobileNavTriggerProps } from '@/components/site/mobile-nav';
@@ -81,7 +82,7 @@ export function MobileNavDrawer({
                         link.active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
-                      {link.label}
+                      <span dir={blockDirection(link.label)}>{link.label}</span>
                       {link.external ? <ExternalLink className="size-3" aria-hidden /> : null}
                     </a>
                   </li>

@@ -29,12 +29,36 @@ export type RichMdxComponents = Omit<DocumentationComponents, 'callout' | 'merma
  */
 export function readerMdxComponents(site: SiteLinkContext | undefined): RichMdxComponents {
   return {
-    note: ({ children }) => <Callout type="note">{children}</Callout>,
-    info: ({ children }) => <Callout type="info">{children}</Callout>,
-    tip: ({ children }) => <Callout type="tip">{children}</Callout>,
-    check: ({ children }) => <Callout type="check">{children}</Callout>,
-    warning: ({ children }) => <Callout type="warning">{children}</Callout>,
-    danger: ({ children }) => <Callout type="danger">{children}</Callout>,
+    note: ({ dir, children }) => (
+      <Callout type="note" dir={str(dir)}>
+        {children}
+      </Callout>
+    ),
+    info: ({ dir, children }) => (
+      <Callout type="info" dir={str(dir)}>
+        {children}
+      </Callout>
+    ),
+    tip: ({ dir, children }) => (
+      <Callout type="tip" dir={str(dir)}>
+        {children}
+      </Callout>
+    ),
+    check: ({ dir, children }) => (
+      <Callout type="check" dir={str(dir)}>
+        {children}
+      </Callout>
+    ),
+    warning: ({ dir, children }) => (
+      <Callout type="warning" dir={str(dir)}>
+        {children}
+      </Callout>
+    ),
+    danger: ({ dir, children }) => (
+      <Callout type="danger" dir={str(dir)}>
+        {children}
+      </Callout>
+    ),
     // Card links are internal doc targets too — rewrite them to the site base.
     card: ({ title, href, icon, children }: MdxProps) => (
       <Card title={str(title)} href={resolveDocHref(str(href), site)} icon={str(icon)}>
