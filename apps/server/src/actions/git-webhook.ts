@@ -3,7 +3,6 @@ import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
 import { logger } from '@nibleaf/logger';
-import { MemberRole } from '@nibleaf/shared/constants';
 import type { GitConfigStored } from '@nibleaf/validators';
 import { z } from 'zod';
 import { badRequest } from '@/errors';
@@ -78,16 +77,22 @@ const MAX_VERSION_RETRIES = 5;
  * (`createdById` is nullable, so a missing owner does not block). `auto: true`
  * keeps system publishes out of the activation funnel's manual-publish count.
  */
+/**
+ * Who a push-triggered publish is attributed to: the organization's Owner by
+ * `orgRole` (one per org, enforced by a partial unique index). The legacy
+ * `role` column can hold several `owner` rows (legacy data, or merged orgs'
+ * former owners), so it never decides this. No Owner (an org needing repair)
+ * means no author; the publish still runs.
+ */
+export const webhookPublishAuthor = (organizationId: string) =>
+  prisma.member.findFirst({ where: { organizationId, orgRole: 'owner' }, select: { userId: true } });
+
 const enqueueWebhookPublish = async (organizationId: string, projectId: string, branch: string): Promise<void> => {
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { takedownAt: true } });
   if (project?.takedownAt) {
     throw badRequest('This site has been taken down by the platform moderators and cannot be published.', { projectId });
   }
-  const owner = await prisma.member.findFirst({
-    where: { organizationId, role: MemberRole.OWNER },
-    orderBy: { createdAt: 'asc' },
-    select: { userId: true },
-  });
+  const owner = await webhookPublishAuthor(organizationId);
 
   // max(version)+1 then create is a read-then-write race; the unique
   // (projectId, version) constraint turns collisions into P2002s we retry.
