@@ -1,6 +1,6 @@
 # AI and integrations, from the site owner's side
 
-Status: **proposal, for the master's review.** No code changes yet.
+Status: **plan of record.** Owner decisions recorded in §9 (2026-11-11). Implementation follows the PR plan in §8.
 Scope: Site settings → Integrations, Smart AI, and the AI part of Search. Assets live in
 [`ai-and-integrations/`](ai-and-integrations/): screenshots in `shots/`, low-fi mockups as `mockup-*.png`, and their
 source in `mockups.html`.
@@ -291,7 +291,9 @@ Analytics, Plausible), **Notifications** (Slack, Discord), and **Automation** (Z
   line, or a single action button ("Connect" or "Set up"). There is no "Available", "Not configured" or "Unavailable".
 - **The open integration lives in the URL** (`?section=integrations&integration=slack`, push), so Back closes it and a
   link can point at it (ui-overhaul §8.4). Today it is component state.
-- **Notifications must actually notify.** See decision D1: no publish or comment event is ever delivered today.
+- **Notifications must actually notify.** No publish or comment event is ever delivered today. Until PR 7 ships, Slack,
+  Discord and Zapier show as **"Coming soon"** (decision D1): visible, not connectable, with one line saying what they
+  will do. A site that already stored a connection sees it as "Not sending yet", with **Remove** as the only action.
 
 ### 4.5 Server status: operator infrastructure, read-only, for server admins
 
@@ -407,7 +409,9 @@ to replace this site's stored key" checkbox.
 | Loading | Skeleton: 4 group headings × 2 cards, shaped like the hub |
 | Load error | `Callout tone=danger`: "Integrations didn't load. Your connections weren't changed." + "Try again" |
 | Search, no match | "No integration called “{query}”." + "Looking for an AI key? Open AI answers." when the query looks like AI |
-| Card, not set up | name + one-line benefit + button "Connect" (Slack, Discord, Zapier) or "Set up" (Git, analytics) |
+| Card, not set up | name + one-line benefit + button "Connect" (Slack, Discord, Zapier, once PR 7 ships) or "Set up" (Git, analytics) |
+| Card, coming soon (Slack, Discord, Zapier until PR 7) | badge "Coming soon" + "Posts when your site is published, coming soon." No connect path |
+| Card, stored connection, coming soon | badge "Not sending yet" + the same line; the detail offers only **Remove** (no Send test, no edit) |
 | Card, connected | badge "Connected" + live line: "Syncing {repo} · {branch} · {time}", "Tracking with {id}", "Posts to {label}" |
 | Card, paused | badge "Paused" + "Not posting. Turn it back on in Slack's settings." |
 | Card, not working | badge "Not working" + reason: "Last message didn't arrive: Slack says the link was removed." |
@@ -446,7 +450,8 @@ Guide. The rows are in mockup J. A "Not set up" row with consequences for site o
 ## 7. Mockups
 
 Low fidelity on purpose: they fix order, states and words, not visuals. The source is
-[`mockups.html`](ai-and-integrations/mockups.html). Purple notes name the primitive or the rule behind an element.
+[`mockups.html`](ai-and-integrations/mockups.html). Purple notes name the primitive or the rule behind an element. Mockups F and G show Slack, Discord and Zapier as they will be once PR 7 ships; until
+then they are "Coming soon" (D1).
 
 | | |
 |---|---|
@@ -465,35 +470,34 @@ before push.
 
 | # | PR | Content | Acceptance checks |
 |---|---|---|---|
-| 1 | `fix(integrations): label the AI providers' link and stop showing "Active" for AI that is off` | Hot fixes that need no IA: the detail button for `settingsSection: 'smartAi'` says "Open Smart AI" with the right icon. The operator OpenRouter entry no longer reports `status: active` unless this site actually uses it. Smart AI's "Turn off AI" is disabled with a reason when AI is already off. | No "Open Git settings" on AI pages · OpenRouter card status matches Smart AI's badge in all 4 combinations (operator key ± site on) · test per combination |
+| 1 | `fix(integrations): label the AI providers' link and stop showing "Active" for AI that is off` | Hot fixes that need no IA: the detail button for `settingsSection: 'smartAi'` says "Open Smart AI" with the right icon. The operator OpenRouter entry no longer reports `status: active` unless this site actually uses it. Smart AI's "Turn off AI" is disabled with a reason when AI is already off. Slack, Discord and Zapier show as "Coming soon" (D1); a stored connection is "Not sending yet" and remove-only. | No "Open Git settings" on AI pages · OpenRouter card status matches Smart AI's badge in all 4 combinations (operator key ± site on) · test per combination · no connect path for the three webhook providers · a stored connection offers only Remove |
 | 2 | `feat(ai): site AI capabilities and status` (server + `features/site-ai/{api,model}`) | `GET /projects/:id/ai` returns `capabilities` + `status` (§4.6) with model labels, `keyHint` (new column, filled on next save), today's answer count; `aiPageState`, `sourceOptions`, `switchDecision`, `checklist` pure + table tests. No UI change. | Table tests cover every row of §5.1 · no secret or key prefix in any response or log (test) · no `isCloud`/edition branch (grep check in test) · old `/workspace-ai` route still served |
 | 3 | `feat(ai): one AI answers page` | New page on the PR 2 model: switch, source radio cards, checklist, `FeatureUnavailable` (created here if B4 hasn't landed it), loader prefetch; nav rename and `smartAi → ai` redirect; Search's AI switch becomes the read-only row. | Exactly one control in the app writes `aiAnswers` (test) · all §5.1 states rendered in a story/test · `?section=smartAi` opens the page · screenshots for both server types |
 | 4 | `feat(ai): add your own key in one step` | `ActionDialog` add/replace/remove for OpenAI and OpenRouter; server `saveAndSelect` endpoint (check → save → select atomically, revision-checked); auto model load; friendly labels. Removes the five-step card. | Key never in URL, query cache, logs or error text (tests) · refusal shown inline under the field · keyboard: Enter submits, Esc cancels, focus returns to "Add key" · replace keeps the old key on failure |
 | 5 | `refactor(search): move reader AI options to AI answers` | Suggested questions, "Still need help?" link and conversation capture move to the AI page; Search shows the link row. | Values unchanged after the move (migration-free: same config keys) · Search page has no AI fields · both pages' save regions work independently |
 | 6 | `refactor(integrations): only what site owners connect` | Server catalog `audience`; site endpoint returns site entries only; AI providers removed (pointer row instead); hub grouped by job; plain card states; URL state for the open integration; analytics merged into one detail. | No infrastructure provider appears for any site role · search "openai" finds the pointer · Back closes a detail · `?section=analytics` still lands on analytics · `?integration=<unknown>` falls back to the hub |
-| 7 | `feat(integrations): post publish results to Slack, Discord and Zapier` | Worker emits `publish.succeeded` / `publish.failed` to active connections through the existing `IntegrationWebhookDelivery` ledger (idempotent, retried, bounded); per-connection event choice; "Recent messages" on the detail. | A publish posts exactly once per connection (idempotency test) · failures mark the card "Not working" with the reason · paused connections receive nothing · no webhook URL in logs |
+| 7 | `feat(integrations): post publish results to Slack, Discord and Zapier` | Flips the D1 "Coming soon" cards to live. Worker emits `publish.succeeded` / `publish.failed` to active connections through the existing `IntegrationWebhookDelivery` ledger (idempotent, retried, bounded); per-connection event choice; "Recent messages" on the detail. | A publish posts exactly once per connection (idempotency test) · failures mark the card "Not working" with the reason · paused connections receive nothing · no webhook URL in logs |
 | 8 | `feat(account): server status for platform admins` | Read-only page (§4.5), platform-admin gated on the server; links to self-hosting guide anchors. | 403 for non-admins (test) · no secrets, hosts or connection strings in the payload (test) · every row has "Used for" text |
 | 9 | `chore(i18n): AI and integrations copy in every locale` | Remove dead keys (`settings_integrations_*` for removed screens, `smartAi.step.*`), add the new ones in all 12 locales; Arabic review per §6. | `pnpm --filter @nibleaf/i18n run setup` clean · no unused keys (knip) · ar screenshots reviewed |
 
-Order: 1 → 2 → (3, 6 in parallel) → 4 → 5 → 7 → 8 → 9. PR 1 can ship today. PR 7 depends on decision D1. PRs 3–6
+Order: 1 → 2 → (3, 6 in parallel) → 4 → 5 → 7 → 8 → 9. PRs land one at a time, each merged before the next starts. PRs 3–6
 belong to ui-overhaul B4 ("AI assistants, integrations, Smart AI, exports") and replace its Smart AI and integrations
 part.
 
-## 9. Decisions for the owner
+## 9. Decisions (made by the owner, 2026-11-11)
 
-| # | Decision | Options | Recommendation |
-|---|---|---|---|
-| D1 | **Slack/Discord/Zapier deliver nothing today.** What do we show until PR 7 ships? | (a) hide the Notifications and Automation groups behind a server capability `integrations.events` until delivery exists; (b) keep the cards with "Coming soon"; (c) leave as is | **(a) now, then build PR 7** (publish finished/failed only). A card that connects but never posts is worse than no card. Comment events can come later. |
-| D2 | **Rename "Smart AI" to "AI answers"** (ar «إجابات الذكاء الاصطناعي») | keep "Smart AI" / "AI answers" / "Ask AI" | **"AI answers"**: it names what readers get, matches the reader's "Ask AI" button, and fixes the Arabic. |
-| D3 | **Move reader AI options** (suggested questions, support link, save conversations) from Search to AI answers | move / keep in Search | **Move.** Search keeps a read-only status row linking to AI answers. One home per feature. |
-| D4 | **Where Integrations goes** once it leaves the AI group | Website group / own "Connections" group / Publishing | **Website group**, after Add-ons. Both extend the site, and it avoids a one-item group. |
-| D5 | **Where operators see infrastructure** | (a) a platform-admin-only "Server status" page in the dashboard; (b) the admin app only (opt-in profile in `docker-compose.prod.yml`, absent from the self-host `docker-compose.yml`); (c) both | **(a)**: most self-hosters never run the admin profile. Mirror it in the admin app later if wanted. |
-| D6 | **Can site owners pick the model on Nibleaf AI?** | operator-fixed model / curated short list | **Operator-fixed for now**, shown by name. Revisit with pricing. |
-| D7 | **Store a key hint** (last 4 characters) and the date added | store / don't | **Store.** It's the only way an owner can tell which key is in use, and 4 characters of an API key are not a usable secret. |
-| D8 | **What do we say about cost on Nibleaf AI?** | "Included in your plan" / "Up to {limit} answers a day" / nothing | **"Up to {limit} answers a day"** plus the meter, with no money claims until Cloud billing for AI is final. The owner should confirm whether Nibleaf AI is included in every plan. |
-| D9 | **On Cloud, offer "Your own key"?** | depends on Ops setting the encryption key | **Let the capability decide.** Once Ops sets `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` on Cloud, the option appears with no code change. Until then it isn't drawn (no "ask your administrator"). Ops should confirm the key is planned. |
-| D10 | **What does "Let readers ask AI" do while docs are still being prepared?** | switch on immediately and show "Preparing…" / block the switch until ready | **Switch on immediately**, start preparing automatically, and show "Preparing your docs for AI" until ready. The owner's intent is recorded, and they don't have to come back. |
-
+| # | Decision | Options | Recommendation | Owner decision (2026-11-11) |
+|---|---|---|---|---|
+| D1 | **Slack/Discord/Zapier deliver nothing today.** What do we show until PR 7 ships? | (a) hide the Notifications and Automation groups behind a server capability `integrations.events` until delivery exists; (b) keep the cards with "Coming soon"; (c) leave as is | **(a) now, then build PR 7** (publish finished/failed only). A card that connects but never posts is worse than no card. Comment events can come later. | **Show "Coming soon"**, not hidden: visible and not connectable, with "Posts when your site is published, coming soon." A stored connection shows "Not sending yet", remove-only (no Send test, no edit). Ships in PR 1; PR 7 flips them live. |
+| D2 | **Rename "Smart AI" to "AI answers"** (ar «إجابات الذكاء الاصطناعي») | keep "Smart AI" / "AI answers" / "Ask AI" | **"AI answers"**: it names what readers get, matches the reader's "Ask AI" button, and fixes the Arabic. | Approved as recommended. |
+| D3 | **Move reader AI options** (suggested questions, support link, save conversations) from Search to AI answers | move / keep in Search | **Move.** Search keeps a read-only status row linking to AI answers. One home per feature. | Approved as recommended. |
+| D4 | **Where Integrations goes** once it leaves the AI group | Website group / own "Connections" group / Publishing | **Website group**, after Add-ons. Both extend the site, and it avoids a one-item group. | Approved as recommended. |
+| D5 | **Where operators see infrastructure** | (a) a platform-admin-only "Server status" page in the dashboard; (b) the admin app only (opt-in profile in `docker-compose.prod.yml`, absent from the self-host `docker-compose.yml`); (c) both | **(a)**: most self-hosters never run the admin profile. Mirror it in the admin app later if wanted. | Approved as recommended. |
+| D6 | **Can site owners pick the model on Nibleaf AI?** | operator-fixed model / curated short list | **Operator-fixed for now**, shown by name. Revisit with pricing. | Approved as recommended. |
+| D7 | **Store a key hint** (last 4 characters) and the date added | store / don't | **Store.** It's the only way an owner can tell which key is in use, and 4 characters of an API key are not a usable secret. | Approved as recommended. |
+| D8 | **What do we say about cost on Nibleaf AI?** | "Included in your plan" / "Up to {limit} answers a day" / nothing | **"Up to {limit} answers a day"** plus the meter, with no money claims until Cloud billing for AI is final. The owner should confirm whether Nibleaf AI is included in every plan. | **"Up to {limit} answers a day" plus the meter**, no money claims. |
+| D9 | **On Cloud, offer "Your own key"?** | depends on Ops setting the encryption key | **Let the capability decide.** Once Ops sets `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` on Cloud, the option appears with no code change. Until then it isn't drawn (no "ask your administrator"). Ops should confirm the key is planned. | **Own key appears on Cloud through the capability** once the encryption key is set; no code branch for Cloud. |
+| D10 | **What does "Let readers ask AI" do while docs are still being prepared?** | switch on immediately and show "Preparing…" / block the switch until ready | **Switch on immediately**, start preparing automatically, and show "Preparing your docs for AI" until ready. The owner's intent is recorded, and they don't have to come back. | Approved as recommended. |
 ## 10. Out of scope, and risks
 
 - The editor's AI drafting (`AI_DRAFT_MODEL`) and the dashboard "AI assistant" page (reader conversations) aren't
