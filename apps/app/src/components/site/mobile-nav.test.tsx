@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { MobileNav } from './mobile-nav';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
+
+// Transform the drawer's code up front so a cold import can't outlast `act`.
+beforeAll(async () => {
+  await Promise.all([import('./mobile-nav-drawer'), import('./mobile-nav-settings')]);
+});
 
 beforeEach(() => {
   Element.prototype.getAnimations = vi.fn(() => []);
@@ -45,8 +50,16 @@ it.each([false, true])('keeps configured reader destinations and the CTA availab
       />,
     ),
   );
+  // The drawer loads on the first click (or on hover or focus), replaces the
+  // static button with its own trigger, and opens.
+  await act(async () => container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]')?.click());
+  await vi.waitFor(async () => {
+    await act(async () => {
+      await vi.dynamicImportSettled();
+    });
+    expect(document.querySelector('[data-slot="sheet-content"]')).not.toBeNull();
+  });
   const trigger = container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]');
-  await act(async () => trigger?.click());
   let drawer = document.querySelector('[data-slot="sheet-content"]');
   expect(drawer?.getAttribute('dir')).toBe(isRtl ? 'rtl' : 'ltr');
   expect(drawer?.getAttribute('data-side')).toBe(isRtl ? 'right' : 'left');
@@ -113,7 +126,10 @@ it('offers language and version as labelled drawer settings showing the current 
   expect(trigger?.getAttribute('aria-label')).toBe('Open menu');
   expect(trigger?.className).toContain('size-11');
   await act(async () => trigger?.click());
-  // Language and version choices load with the open drawer.
+  // The drawer, then its language and version choices, load on demand.
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   await act(async () => {
     await vi.dynamicImportSettled();
   });

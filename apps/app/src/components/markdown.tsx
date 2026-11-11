@@ -1,8 +1,8 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { LanguageFn } from 'highlight.js';
 import { type ComponentProps, Suspense, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
-import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
@@ -19,8 +19,10 @@ import {
 import { MermaidBlock } from '@/components/site/mermaid-block';
 import { Pre } from '@/components/site/reader-code-block';
 import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
-import { HydrationIsland } from '@/lib/hydration-modules';
-import { needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
+import { CORE_HIGHLIGHT_GRAMMARS, rehypeReaderHighlight } from '@/components/site/reader-highlight';
+import { lazyHighlightLanguages } from '@/lib/highlight-languages';
+import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
+import { highlightLanguageModule, needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -37,6 +39,8 @@ export interface MarkdownProps {
   content: string;
   className?: string;
   site?: SiteLinkContext;
+  /** Grammars beyond the core set, loaded for this content (see `Markdown`). */
+  highlightGrammars?: Readonly<Record<string, LanguageFn>>;
 }
 
 /** The rich renderer's chunk (see richMarkdownModule). */
@@ -118,32 +122,51 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
 /** Render Markdown + MDX-style components (Cards, Tabs, Steps, Callouts…) with
  *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting.
  *  Pass `site` on a published site so internal links resolve to the site base. */
-export function Markdown({ content, className, site }: MarkdownProps) {
+export function Markdown(props: MarkdownProps) {
+  const languages = lazyHighlightLanguages(props.content);
+  if (languages.length === 0) return <MarkdownBody {...props} />;
+  // Code in a language outside the core grammars: its grammars load like the
+  // rich renderer (before hydrating, and in the reader's loaders), and until
+  // they have, the plain body keeps those blocks readable, unhighlighted.
+  const modules = languages.map(highlightLanguageModule);
+  const plain = <MarkdownBody {...props} />;
+  const marker = { [HYDRATION_MODULE_ATTRIBUTE]: modules.map((module) => module.key).join(' ') };
+  return (
+    <Suspense fallback={plain}>
+      <HydrationIsland className="contents" {...marker} modules={modules} pending={plain} failed={() => plain}>
+        {() => <MarkdownBody {...props} highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))} />}
+      </HydrationIsland>
+    </Suspense>
+  );
+}
+
+function MarkdownBody({ content, className, site, highlightGrammars }: MarkdownProps) {
   if (needsRichMarkdown(content)) {
     // The router loads the rich chunk before hydrating markup it rendered, and
     // the reader's loaders before navigating. Until it loads, hydrating keeps
     // the server's markup and a client render shows the plain renderer, which
     // keeps the text readable; so does a chunk that never loads. Only the
     // server render suspends, waiting for the chunk.
-    const plain = <MarkdownRenderer content={content} className={className} site={site} />;
+    const plain = <MarkdownRenderer content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
     return (
       <Suspense fallback={plain}>
         <HydrationIsland className="contents" {...richMarkdownModule.marker} modules={RICH_MODULES} pending={plain} failed={() => plain}>
           {() => {
             const Rich = richMarkdownModule.read();
-            return <Rich content={content} className={className} site={site} />;
+            return <Rich content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
           }}
         </HydrationIsland>
       </Suspense>
     );
   }
-  return <MarkdownRenderer content={content} className={className} site={site} />;
+  return <MarkdownRenderer content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
 }
 
 export function MarkdownRenderer({
   content,
   className,
   site,
+  highlightGrammars,
   extraRemarkPlugins = [],
   extraRehypePlugins = [],
   afterSanitizePlugins = [],
@@ -207,7 +230,7 @@ export function MarkdownRenderer({
           // `heading-anchor` class lets the anchor renderer keep heading styling
           // (not link color/underline); tabIndex -1 keeps it out of the tab order.
           [rehypeAutolinkHeadings, { behavior: 'wrap', properties: { className: 'heading-anchor', tabIndex: -1 } }],
-          rehypeHighlight,
+          [rehypeReaderHighlight, { grammars: highlightGrammars ? { ...CORE_HIGHLIGHT_GRAMMARS, ...highlightGrammars } : CORE_HIGHLIGHT_GRAMMARS }],
         ]}
       >
         {normalizeMdxBlocks(content)}

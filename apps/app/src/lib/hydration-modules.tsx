@@ -1,4 +1,4 @@
-import { type ComponentProps, type ReactNode, use, useEffect, useId, useState, useSyncExternalStore } from 'react';
+import { type ComponentProps, type ReactNode, type SyntheticEvent, use, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 
 /*
  * Code-split modules that server-rendered markup depends on.
@@ -134,17 +134,32 @@ export function hydrationModule<T>(key: string, importer: () => Promise<T>): Hyd
 }
 
 /** Loads each of `modules` whose markup is in the server HTML under `root`.
+ *  An island that needs several modules lists their keys, space-separated.
  *  Never rejects: a module that fails to load leaves its server HTML in place,
  *  and its island retries. */
 export async function loadServerRenderedModules(root: ParentNode, modules: ReadonlyArray<HydrationModule<unknown>>): Promise<void> {
   await Promise.all(
     modules
-      .filter((module) => root.querySelector(`[${HYDRATION_MODULE_ATTRIBUTE}="${module.key}"]`))
+      .filter((module) => root.querySelector(`[${HYDRATION_MODULE_ATTRIBUTE}~="${module.key}"]`))
       .map((module) => module.load().catch(() => undefined)),
   );
 }
 
 const ISLAND_ATTRIBUTE = 'data-hydration-island';
+
+/** Child-element indexes from the island to the control an event reached. */
+const pathWithin = (event: SyntheticEvent): number[] | undefined => {
+  const island = event.currentTarget;
+  let node = event.target instanceof Element ? (event.target.closest('a, button, input, select, textarea, [tabindex]') ?? event.target) : null;
+  const path: number[] = [];
+  while (node && node !== island) {
+    const parent: Element | null = node.parentElement;
+    if (!parent) return undefined;
+    path.unshift([...parent.children].indexOf(node));
+    node = parent;
+  }
+  return node ? path : undefined;
+};
 
 /** `loaded` once every module has, `failed` once any gave up. */
 const combinedStatus = (modules: ReadonlyArray<HydrationModule<unknown>>): HydrationModuleStatus => {
@@ -176,6 +191,11 @@ const serverHtmlOf = (id: string): string | null => {
  *   ran out. Neither reaches the route's error boundary.
  * Either way the modules retry with a bounded backoff, from an effect.
  * On the server the island waits for its modules, so the HTML has the content.
+ *
+ * With `loadOnIntent`, hydrated server HTML waits for the reader instead: the
+ * modules load when a pointer, touch or focus reaches it, and a click that
+ * comes before they have loaded is replayed on the same element once the live
+ * markup replaces the server's (focus moves along too).
  */
 export function HydrationIsland({
   modules,
@@ -183,6 +203,7 @@ export function HydrationIsland({
   pending = null,
   failed = () => null,
   keepServerHtmlOnFailure = true,
+  loadOnIntent = false,
   ...props
 }: Omit<ComponentProps<'div'>, 'children'> & {
   modules: ReadonlyArray<HydrationModule<unknown>>;
@@ -193,6 +214,9 @@ export function HydrationIsland({
   /** Whether server HTML stays once the retries ran out (content), or gives way
    *  to `failed` (controls that do nothing without their code). */
   keepServerHtmlOnFailure?: boolean;
+  /** Controls, not content: hydrated server HTML loads its modules only when
+   *  the reader reaches for it. */
+  loadOnIntent?: boolean;
 }) {
   // Nothing here is worth memoizing (callers pass module-level module lists),
   // and the compiler's cache would double this reader-critical chunk.
@@ -214,24 +238,48 @@ export function HydrationIsland({
   // that isn't hydrating finds nothing.
   const [serverHtml] = useState(() => (status === 'loaded' || typeof document === 'undefined' ? null : serverHtmlOf(id)));
 
+  // What the reader did to the server HTML before the modules loaded.
+  const [intent, setIntent] = useState<{ click?: number[]; focus?: number[] }>();
+  const waitsForReader = loadOnIntent && serverHtml !== null && intent === undefined;
   useEffect(() => {
-    if (status === 'idle') {
+    if (status === 'idle' && !waitsForReader) {
       for (const module of modules) void module.retry();
     }
-  }, [status, modules]);
+  }, [status, modules, waitsForReader]);
+
+  const live = useRef<HTMLDivElement>(null);
+  const replayed = useRef(false);
+  useEffect(() => {
+    if (status !== 'loaded' || !intent || replayed.current || !live.current) return;
+    replayed.current = true;
+    const at = (path: number[] | undefined) =>
+      path ? path.reduce<Element | undefined>((node, index) => node?.children[index], live.current ?? undefined) : undefined;
+    const focus = at(intent.focus);
+    if (focus instanceof HTMLElement) focus.focus();
+    const click = at(intent.click);
+    if (click instanceof HTMLElement) click.click();
+  }, [status, intent]);
 
   const island = { ...props, [ISLAND_ATTRIBUTE]: id };
   if (status === 'loaded') {
     return (
-      <div key="live" {...island}>
+      <div key="live" ref={live} {...island}>
         {children()}
       </div>
     );
   }
   if (serverHtml !== null && (status !== 'failed' || keepServerHtmlOnFailure)) {
     // The exact markup React would hydrate, set as HTML: React leaves it as is.
+    const reach = loadOnIntent
+      ? {
+          onPointerOver: () => setIntent((current) => current ?? {}),
+          onTouchStart: () => setIntent((current) => current ?? {}),
+          onFocus: (event: SyntheticEvent) => setIntent((current) => ({ ...current, focus: pathWithin(event) })),
+          onClick: (event: SyntheticEvent) => setIntent((current) => ({ ...current, click: pathWithin(event) })),
+        }
+      : undefined;
     // biome-ignore lint/security/noDangerouslySetInnerHtml: the server's own rendered (sanitized) markup, read back from this element unchanged.
-    return <div key="server" {...island} dangerouslySetInnerHTML={{ __html: serverHtml }} suppressHydrationWarning />;
+    return <div key="server" {...island} {...reach} dangerouslySetInnerHTML={{ __html: serverHtml }} suppressHydrationWarning />;
   }
   const retry = () => {
     for (const module of modules) void module.retry({ again: true });

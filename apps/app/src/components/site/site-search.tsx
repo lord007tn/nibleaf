@@ -7,8 +7,10 @@ import { resolveReaderDirection } from '@/lib/text-direction';
 const loadSiteSearchDialog = () => import('./site-search-dialog');
 const SiteSearchDialog = lazy(loadSiteSearchDialog);
 
-/** Fetch the search dialog's code ahead of the first open (idle time, or when a
- * reader points at / focuses the search trigger). */
+/** Fetch the search dialog's code ahead of the first open, when a reader points
+ * at, touches or focuses a search trigger, or presses the shortcut. It stays
+ * off the first load (about 50 KiB gzip with its command menu and select);
+ * `SearchShell` keeps what the reader types while it downloads. */
 export const preloadSiteSearch = (): void => {
   void loadSiteSearchDialog();
 };
@@ -116,14 +118,6 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
     document.addEventListener('focusin', remember);
     return () => document.removeEventListener('focusin', remember);
   }, [open]);
-
-  useEffect(() => {
-    // Warm the chunk once the page is idle so the first open is usually instant.
-    const idle = window.requestIdleCallback ?? ((callback: () => void) => window.setTimeout(callback, 2000));
-    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
-    const handle = idle(() => preloadSiteSearch());
-    return () => cancel(handle);
-  }, []);
 
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null): boolean => {
