@@ -4199,5 +4199,12 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "editor_tree_search": "Filter halaman berdasarkan judul atau alamat",
+  "editor_tree_noresults": "Tidak ada halaman yang cocok",
+  "editor_tree_filterreason": "Hapus filter untuk memindahkan halaman.",
+  "editor_tree_label": "Halaman",
+  "editor_tree_instructions": "Gunakan tombol panah untuk menavigasi, Enter untuk membuka, F2 untuk mengganti nama, Shift+F10 untuk tindakan, dan Alt+D untuk gagang seret. Pada gagang, tekan Spasi untuk memindahkan, panah untuk memilih tujuan, Spasi untuk meletakkan, atau Escape untuk membatalkan.",
+  "editor_tree_movedinside": "{title} dipindahkan ke dalam {parent}, posisi {position} dari {total}.",
+  "editor_tree_movedroot": "{title} dipindahkan ke {language}, posisi {position} dari {total}."
 }

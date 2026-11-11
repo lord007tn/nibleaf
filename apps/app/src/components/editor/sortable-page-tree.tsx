@@ -31,12 +31,28 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
+import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
+import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { ChevronRight, CornerDownRight, FileText, Folder, GripVertical, MoreHorizontal, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
-import { createContext, type ReactNode, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  type KeyboardEvent,
+  memo,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import type { PageNode } from '@/hooks/api';
+import { filterPageIds, normalizePageSearch, pageMatchRanges } from './page-tree-utils';
 
 /**
  * A Notion-style page tree for every language of a site with @dnd-kit: drag the
@@ -297,6 +313,10 @@ export interface TreeLanguage {
 
 interface TreeDndState {
   readOnly: boolean;
+  filter: string;
+  focusedId: string | null;
+  setFocusedId: (id: string) => void;
+  instructionId: string;
   draggingId: string | null;
   projection: Projection | null;
   rowsFor: (languageId: string) => Flat[];
@@ -336,6 +356,19 @@ export function PageTreeDndProvider({
   children: ReactNode;
 }) {
   const t = useT();
+  const [filter, setFilter] = useState('');
+  const filtering = filter.trim().length > 0;
+  const instructionId = useId();
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
+  const typeahead = useRef({ text: '', time: 0 });
+  const [announcement, setAnnouncement] = useState('');
+  const finalAnnouncement = useRef('');
+  useEffect(() => {
+    if (!announcement) return;
+    const timeout = setTimeout(() => setAnnouncement(''), 1500);
+    return () => clearTimeout(timeout);
+  }, [announcement]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
@@ -353,28 +386,34 @@ export function PageTreeDndProvider({
   const flatByLanguage = useMemo(() => {
     const byLanguage = new Map<string, PageNode[]>();
     for (const page of pages) {
-      byLanguage.set(page.languageId, [...(byLanguage.get(page.languageId) ?? []), page]);
+      const list = byLanguage.get(page.languageId) ?? [];
+      list.push(page);
+      byLanguage.set(page.languageId, list);
     }
     return new Map(languages.map((language) => [language.id, flatten(byLanguage.get(language.id) ?? [])]));
   }, [pages, languages]);
 
-  const toggleCollapse = (id: string) => {
-    const next = new Set(collapsed);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    for (const [languageId, rows] of flatByLanguage) {
+      try {
+        const ids = rows.map((item) => item.id).filter((id) => collapsed.has(id));
+        window.localStorage.setItem(collapsedStoreKey(languageId), JSON.stringify(ids));
+      } catch {
+        // ignore storage failures (private mode etc.)
+      }
     }
-    setCollapsed(next);
-    const languageId = pages.find((page) => page.id === id)?.languageId;
-    if (!languageId) return;
-    try {
-      const ids = (flatByLanguage.get(languageId) ?? []).map((item) => item.id).filter((itemId) => next.has(itemId));
-      window.localStorage.setItem(collapsedStoreKey(languageId), JSON.stringify(ids));
-    } catch {
-      // ignore storage failures (private mode etc.)
-    }
-  };
+  }, [collapsed, flatByLanguage]);
 
   // Every page in display order, each language led by its marker.
   const full = useMemo<TreeItem[]>(
@@ -387,17 +426,25 @@ export function PageTreeDndProvider({
   );
   // What is on screen: folded sections and collapsed rows hide their pages,
   // and the dragged subtree travels hidden under its root.
+  const included = useMemo(() => (filtering ? filterPageIds(pages, filter) : null), [pages, filter, filtering]);
   const visible = useMemo<TreeItem[]>(() => {
     const shown = languages.flatMap((language) => [
       { id: languageMarkerId(language.id), languageId: language.id, marker: true as const } satisfies LanguageMarker,
-      ...(language.collapsed ? [] : hideCollapsed(flatByLanguage.get(language.id) ?? [], collapsed)),
+      ...(included
+        ? (flatByLanguage.get(language.id) ?? []).filter((item) => included.has(item.id))
+        : language.collapsed
+          ? []
+          : hideCollapsed(flatByLanguage.get(language.id) ?? [], collapsed)),
     ]);
     return draggingId ? removeDescendants(shown, draggingId) : shown;
-  }, [languages, flatByLanguage, collapsed, draggingId]);
+  }, [languages, flatByLanguage, collapsed, draggingId, included]);
 
   const sortingStrategy = useMemo(() => treeSortingStrategy(visible), [visible]);
   const parentIds = useMemo(() => new Set(pages.flatMap((page) => (page.parentId ? [page.parentId] : []))), [pages]);
-  const projection = draggingId && overId ? getProjection(visible, draggingId, overId, dragOffset, INDENT) : null;
+  const projection = useMemo(
+    () => (draggingId && overId ? getProjection(visible, draggingId, overId, dragOffset, INDENT) : null),
+    [visible, draggingId, overId, dragOffset],
+  );
   const pageById = useMemo(() => new Map(pages.map((page) => [page.id, page])), [pages]);
   const sourceLanguageId = draggingId ? (pageById.get(draggingId)?.languageId ?? null) : null;
   const languageLabel = (id: string) => languages.find((language) => language.id === id)?.label ?? '';
@@ -426,10 +473,31 @@ export function PageTreeDndProvider({
     setDraggingId(String(active.id));
     setOverId(String(active.id));
   };
-  const onDragMove = ({ delta }: DragMoveEvent) => setDragOffset(inlineDragOffset(delta.x, dir));
+  const moveFeedback = (active: string, over: string, projected: Projection) => {
+    const items = buildMove(full, active, over, projected);
+    const moved = items.find((item) => item.id === active);
+    const parent = projected.parentId ? pageById.get(projected.parentId) : undefined;
+    const variables = {
+      title: titleOf(active),
+      parent: parent ? rowName(parent).label : '',
+      language: languageLabel(projected.languageId),
+      position: (moved?.position ?? 0) + 1,
+      total: items.filter((item) => item.languageId === projected.languageId && item.parentId === projected.parentId).length,
+    };
+    return parent ? t('editor.tree.movedInside', variables) : t('editor.tree.movedRoot', variables);
+  };
+  const onDragMove = ({ delta }: DragMoveEvent) => {
+    const offset = inlineDragOffset(delta.x, dir);
+    setDragOffset(offset);
+    if (draggingId && overId) setAnnouncement(moveFeedback(draggingId, overId, getProjection(visible, draggingId, overId, offset, INDENT)));
+  };
   const onDragOver = ({ over }: DragOverEvent) => setOverId(over ? String(over.id) : null);
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    const finalProjection = projection;
+  const onDragEnd = ({ active, over, delta }: DragEndEvent) => {
+    const finalProjection = over ? getProjection(visible, String(active.id), String(over.id), inlineDragOffset(delta.x, dir), INDENT) : null;
+    finalAnnouncement.current =
+      finalProjection && over
+        ? moveFeedback(String(active.id), String(over.id), finalProjection)
+        : t('editor.dnd.cancelled', { title: titleOf(active.id) });
     reset();
     if (!finalProjection || !over) {
       return;
@@ -453,45 +521,120 @@ export function PageTreeDndProvider({
     return node ? rowName(node).label : '';
   };
   const announcements: Announcements = {
-    onDragStart: ({ active }) => t('editor.dnd.pickedUp', { title: titleOf(active.id) }),
-    onDragOver: ({ active, over }) =>
-      over && over.id !== active.id
-        ? t('editor.dnd.over', { title: titleOf(active.id), target: titleOf(over.id) })
-        : t('editor.dnd.notOver', { title: titleOf(active.id) }),
-    onDragEnd: ({ active, over }) =>
-      over
-        ? t('editor.dnd.dropped', { title: titleOf(active.id), target: titleOf(over.id) })
-        : t('editor.dnd.cancelled', { title: titleOf(active.id) }),
-    onDragCancel: ({ active }) => t('editor.dnd.cancelled', { title: titleOf(active.id) }),
+    // Own the live text so it expires instead of leaving stale moves in the DOM.
+    onDragStart: ({ active }) => {
+      setAnnouncement(t('editor.dnd.pickedUp', { title: titleOf(active.id) }));
+    },
+    onDragOver: ({ active, over }) => {
+      if (over)
+        setAnnouncement(
+          moveFeedback(String(active.id), String(over.id), getProjection(visible, String(active.id), String(over.id), dragOffset, INDENT)),
+        );
+    },
+    onDragEnd: () => {
+      setAnnouncement(finalAnnouncement.current);
+    },
+    onDragCancel: ({ active }) => {
+      setAnnouncement(t('editor.dnd.cancelled', { title: titleOf(active.id) }));
+    },
   };
 
   const visibleRows = useMemo(() => {
     const byLanguage = new Map<string, Flat[]>();
     for (const item of visible) {
       if (isMarker(item)) continue;
-      byLanguage.set(item.languageId, [...(byLanguage.get(item.languageId) ?? []), item]);
+      const list = byLanguage.get(item.languageId) ?? [];
+      list.push(item);
+      byLanguage.set(item.languageId, list);
     }
     return byLanguage;
   }, [visible]);
 
   const state: TreeDndState = {
     readOnly,
+    filter,
+    focusedId: visible.some((item) => item.id === focusedId) ? focusedId : (visible.find((item) => !isMarker(item))?.id ?? null),
+    setFocusedId,
+    instructionId,
     draggingId,
     projection,
     rowsFor: (languageId) => visibleRows.get(languageId) ?? [],
     depthOf: (item) => (item.id === draggingId && projection ? projection.depth : item.depth),
     parentIds,
-    collapsed,
+    collapsed: filtering ? new Set() : collapsed,
     toggleCollapse,
     dropHint,
     sourceLanguageId,
   };
 
   const draggingNode = draggingId ? pageById.get(draggingId) : null;
+  const navigate = (event: KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const row = target.closest<HTMLElement>('[role="treeitem"]');
+    if (!row || target !== row || draggingId) return;
+    const rows = visible.filter((item): item is Flat => !isMarker(item));
+    const index = rows.findIndex((item) => item.id === row.dataset.pageId);
+    const item = rows[index];
+    if (!item) return;
+    let next: Flat | undefined;
+    const forward = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+    const back = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+    if (event.key === 'ArrowDown') next = rows[Math.min(index + 1, rows.length - 1)];
+    else if (event.key === 'ArrowUp') next = rows[Math.max(0, index - 1)];
+    else if (event.key === 'Home') next = rows[0];
+    else if (event.key === 'End') next = rows[rows.length - 1];
+    else if (event.key === forward) {
+      if (parentIds.has(item.id) && collapsed.has(item.id) && !filtering) toggleCollapse(item.id);
+      else if (rows[index + 1]?.parentId === item.id) next = rows[index + 1];
+    } else if (event.key === back) {
+      if (parentIds.has(item.id) && !collapsed.has(item.id) && !filtering) toggleCollapse(item.id);
+      else next = rows.find((candidate) => candidate.id === item.parentId);
+    } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey && event.key !== ' ') {
+      const now = Date.now();
+      const letter = normalizePageSearch(event.key);
+      const previous = now - typeahead.current.time < 700 ? typeahead.current.text : '';
+      const text = previous === letter ? letter : previous + letter;
+      typeahead.current = { text, time: now };
+      next = [...rows.slice(index + 1), ...rows.slice(0, index + 1)].find((candidate) =>
+        normalizePageSearch(rowName(candidate.node).label).startsWith(text),
+      );
+    } else return;
+    event.preventDefault();
+    if (next) {
+      setFocusedId(next.id);
+      treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]').forEach((element) => {
+        if (element.dataset.pageId === next.id) element.focus();
+      });
+    }
+  };
   return (
     <TreeDndContext value={state}>
+      <div dir={dir} className="mb-2 space-y-1">
+        <Input
+          type="search"
+          density="compact"
+          aria-label={t('editor.tree.search')}
+          placeholder={t('editor.tree.search')}
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && filter) {
+              event.preventDefault();
+              event.stopPropagation();
+              setFilter('');
+            }
+          }}
+        />
+        {filtering ? <p className="text-xs text-muted-foreground">{t('editor.tree.filterReason')}</p> : null}
+      </div>
+      <p id={instructionId} className="sr-only">
+        {t('editor.tree.instructions')}
+      </p>
+      <div role="status" aria-live="assertive" aria-atomic="true" className="sr-only" data-tree-announcement>
+        {announcement}
+      </div>
       <DndContext
-        accessibility={{ announcements, screenReaderInstructions: { draggable: t('editor.dnd.instructions') } }}
+        accessibility={{ announcements, screenReaderInstructions: { draggable: '' } }}
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={onDragStart}
@@ -501,7 +644,22 @@ export function PageTreeDndProvider({
         onDragCancel={reset}
       >
         <SortableContext items={visible.map((item) => item.id)} strategy={sortingStrategy}>
-          {children}
+          {/* Own the page groups in the accessibility tree while language
+              settings and add controls keep their independent toolbar focus. */}
+          {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions lint/a11y/noStaticElementInteractions: delegates key events only from the owned treeitems. */}
+          <div ref={treeRef} dir={dir} onKeyDown={navigate}>
+            <div
+              role="tree"
+              aria-label={t('editor.tree.label')}
+              aria-describedby={instructionId}
+              aria-owns={languages
+                .filter((language) => (flatByLanguage.get(language.id)?.length ?? 0) > 0)
+                .map((language) => `${instructionId}-${language.id}`)
+                .join(' ')}
+            />
+            {children}
+          </div>
+          {filtering && !visible.some((item) => !isMarker(item)) ? <EmptyState title={t('editor.tree.noResults')} /> : null}
         </SortableContext>
         <DragOverlay>{draggingNode ? <RowPresentation node={draggingNode} depth={0} overlay hint={dropHint ?? undefined} /> : null}</DragOverlay>
       </DndContext>
@@ -513,10 +671,10 @@ export function PageTreeDndProvider({
  *  dragging and takes a drop as "top of this language". Highlighted when the
  *  dragged page would land in this language from another one. */
 export function LanguageDropTarget({ languageId, className, children }: { languageId: string; className?: string; children: ReactNode }) {
-  const { readOnly, projection, sourceLanguageId } = useTreeDnd();
+  const { readOnly, filter, projection, sourceLanguageId } = useTreeDnd();
   const { setNodeRef, transform, transition } = useSortable({
     id: languageMarkerId(languageId),
-    disabled: { draggable: true, droppable: readOnly },
+    disabled: { draggable: true, droppable: readOnly || Boolean(filter.trim()) },
   });
   const target = Boolean(projection && sourceLanguageId && projection.languageId === languageId && projection.languageId !== sourceLanguageId);
   return (
@@ -549,62 +707,130 @@ export function SortablePageTree({
   onRename?: (id: string, title: string, field: RenameField) => void;
   onDelete?: (id: string) => void;
 }) {
-  const { readOnly, rowsFor, depthOf, parentIds, collapsed, toggleCollapse, projection, draggingId, dropHint } = useTreeDnd();
+  const {
+    readOnly,
+    filter,
+    focusedId,
+    setFocusedId,
+    instructionId,
+    rowsFor,
+    depthOf,
+    parentIds,
+    collapsed,
+    toggleCollapse,
+    projection,
+    draggingId,
+    dropHint,
+  } = useTreeDnd();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const rows = rowsFor(languageId);
+  const finishRename = useCallback(
+    (id: string, title: string | null, field: RenameField) => {
+      setRenamingId(null);
+      if (title !== null) onRename?.(id, title, field);
+    },
+    [onRename],
+  );
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string | null, Flat[]>();
+    for (const row of rows) {
+      const list = map.get(row.parentId) ?? [];
+      list.push(row);
+      map.set(row.parentId, list);
+    }
+    return map;
+  }, [rows]);
+  const renderGroup = (parentId: string | null): ReactNode => {
+    const siblings = childrenByParent.get(parentId) ?? [];
+    return siblings.map((item, index) => (
+      <SortableRow
+        key={item.id}
+        id={item.id}
+        node={item.node}
+        depth={depthOf(item)}
+        active={activeId === item.id}
+        dropParent={Boolean(projection?.parentId && projection.parentId === item.id)}
+        dropHint={item.id === draggingId ? dropHint : null}
+        hasChildren={parentIds.has(item.id)}
+        collapsed={collapsed.has(item.id)}
+        onToggleCollapse={toggleCollapse}
+        onSelect={onSelect}
+        onAddChild={readOnly ? undefined : onAddChild}
+        onSettings={readOnly ? undefined : onSettings}
+        onDelete={readOnly ? undefined : onDelete}
+        readOnly={readOnly}
+        dragDisabled={Boolean(filter.trim())}
+        filter={filter}
+        focused={focusedId === item.id}
+        onFocusRow={setFocusedId}
+        instructionId={instructionId}
+        setSize={siblings.length}
+        posInSet={index + 1}
+        renaming={renamingId === item.id}
+        onStartRename={onRename && !readOnly ? setRenamingId : undefined}
+        onRename={finishRename}
+      >
+        {childrenByParent.has(item.id) ? (
+          // biome-ignore lint/a11y/useSemanticElements: ARIA tree groups are not form fieldsets.
+          <div role="group">{renderGroup(item.id)}</div>
+        ) : null}
+      </SortableRow>
+    ));
+  };
   return (
-    <div>
-      {rows.map((item) => (
-        <SortableRow
-          key={item.id}
-          id={item.id}
-          node={item.node}
-          depth={depthOf(item)}
-          active={activeId === item.id}
-          dropParent={Boolean(projection?.parentId && projection.parentId === item.id)}
-          dropHint={item.id === draggingId ? dropHint : null}
-          hasChildren={parentIds.has(item.id)}
-          collapsed={collapsed.has(item.id)}
-          onToggleCollapse={toggleCollapse}
-          onSelect={onSelect}
-          onAddChild={readOnly ? undefined : onAddChild}
-          onSettings={readOnly ? undefined : onSettings}
-          onDelete={readOnly ? undefined : onDelete}
-          readOnly={readOnly}
-          renaming={renamingId === item.id}
-          onStartRename={onRename && !readOnly ? setRenamingId : undefined}
-          onRename={(title) => {
-            setRenamingId(null);
-            if (title !== null) onRename?.(item.id, title, rowName(item.node).field);
-          }}
-        />
-      ))}
+    // biome-ignore lint/a11y/useSemanticElements: ARIA tree groups are not form fieldsets.
+    <div role="group" id={`${instructionId}-${languageId}`}>
+      {renderGroup(null)}
     </div>
   );
 }
 
-function SortableRow({
+const SortableRow = memo(function SortableRow({
   id,
   readOnly,
+  dragDisabled,
   renaming,
   dropHint,
+  children,
   ...row
-}: Omit<RowProps, 'handleProps' | 'overlay' | 'placeholder'> & { id: string; readOnly: boolean; dropHint: string | null }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: renaming || readOnly });
-  const style = { transform: CSS.Translate.toString(transform), transition };
-  return (
-    <div ref={setNodeRef} style={style}>
-      <RowPresentation
-        {...row}
-        renaming={renaming}
-        placeholder={isDragging ? (dropHint ?? '') : undefined}
-        handleProps={readOnly ? undefined : { ...attributes, ...listeners }}
-      />
-    </div>
+}: Omit<RowProps, 'handleProps' | 'overlay' | 'placeholder'> & { id: string; readOnly: boolean; dragDisabled: boolean; dropHint: string | null }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: renaming || readOnly || dragDisabled,
+  });
+  const transformStyle = CSS.Translate.toString(transform);
+  const style = useMemo(() => ({ transform: transformStyle, transition }), [transformStyle, transition]);
+  const handleProps = useMemo(
+    () =>
+      readOnly || dragDisabled
+        ? undefined
+        : { ...attributes, ...listeners, ref: setActivatorNodeRef, tabIndex: -1, 'aria-describedby': row.instructionId },
+    [readOnly, dragDisabled, attributes, listeners, setActivatorNodeRef, row.instructionId],
   );
-}
+  return (
+    <RowPresentation
+      {...row}
+      rowRef={setNodeRef}
+      rowStyle={style}
+      renaming={renaming}
+      placeholder={isDragging ? (dropHint ?? '') : undefined}
+      handleProps={handleProps}
+    >
+      {children}
+    </RowPresentation>
+  );
+});
 
 interface RowProps {
+  children?: ReactNode;
+  rowRef?: (element: HTMLDivElement | null) => void;
+  rowStyle?: React.CSSProperties;
+  filter?: string;
+  focused?: boolean;
+  onFocusRow?: (id: string) => void;
+  instructionId?: string;
+  setSize?: number;
+  posInSet?: number;
   node: PageNode;
   depth: number;
   active?: boolean;
@@ -624,11 +850,19 @@ interface RowProps {
   onDelete?: (id: string) => void;
   renaming?: boolean;
   onStartRename?: (id: string) => void;
-  onRename?: (title: string | null) => void;
+  onRename?: (id: string, title: string | null, field: RenameField) => void;
   handleProps?: Record<string, unknown>;
 }
 
-function RowPresentation({
+const RowPresentation = memo(function RowPresentation({
+  children,
+  rowRef,
+  rowStyle,
+  filter = '',
+  focused,
+  onFocusRow,
+  setSize,
+  posInSet,
   node,
   depth,
   active,
@@ -662,187 +896,279 @@ function RowPresentation({
   // chosen until the rename ends, the menu restores focus nowhere, through its
   // whole close and unmount, and the field focuses itself.
   const holdMenuFocus = useRef(false);
+  // Most rows never open a menu. Mount its focus/portal machinery on demand.
+  const [menuMounted, setMenuMounted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
     if (!renaming) holdMenuFocus.current = false;
   }, [renaming]);
   return (
     <div
-      className={cn(
-        'group/row relative flex items-center gap-1 rounded-md pe-1',
-        overlay && 'bg-card shadow-lg ring-1 ring-border',
-        dragging && 'bg-primary/5 text-foreground',
-        dropParent && 'bg-primary/10 text-foreground',
-        !overlay && !dragging && !dropParent && active && 'bg-primary/10 font-medium text-primary',
-        !overlay && !dragging && !dropParent && !active && 'text-foreground/80 hover:bg-muted hover:text-foreground',
-      )}
-      style={dragging ? DROP_SLOT : dropParent ? DROP_RING : undefined}
-      data-depth={depth}
-      data-drop-parent={dropParent ? '' : undefined}
+      aria-hidden={overlay || undefined}
+      role="treeitem"
+      tabIndex={overlay ? undefined : focused ? 0 : -1}
+      aria-label={label}
+      aria-level={overlay ? undefined : depth + 1}
+      aria-expanded={!overlay && hasChildren ? !collapsed : undefined}
+      aria-selected={overlay ? undefined : Boolean(active)}
+      aria-setsize={setSize}
+      aria-posinset={posInSet}
+      data-page-id={node.id}
+      className="outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-md"
+      onFocus={(event) => {
+        if ((event.target as HTMLElement).closest('[role="treeitem"]') === event.currentTarget) onFocusRow?.(node.id);
+      }}
+      onKeyDown={(event) => {
+        if ((event.target as HTMLElement).closest('[role="treeitem"]') !== event.currentTarget) return;
+        if (event.target !== event.currentTarget) {
+          if (event.key === 'Escape' && !(event.target instanceof HTMLInputElement)) {
+            event.currentTarget.focus();
+          }
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          onSelect?.(node.id);
+        } else if (event.key === 'F2' && onStartRename) {
+          event.preventDefault();
+          onStartRename(node.id);
+        } else if ((event.key === 'F10' && event.shiftKey) || event.key === 'ContextMenu') {
+          event.preventDefault();
+          event.currentTarget.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.click();
+        } else if (event.altKey && event.key.toLowerCase() === 'd') {
+          event.preventDefault();
+          event.currentTarget.querySelector<HTMLButtonElement>('[data-drag-handle]')?.focus();
+        }
+      }}
     >
-      {handleProps || overlay ? (
-        <button
-          type="button"
-          aria-label={t('editor.dragToReorder')}
-          className={cn(
-            'flex size-5 shrink-0 cursor-grab items-center justify-center rounded-sm text-muted-foreground/50 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:cursor-grabbing pointer-coarse:size-7',
-            !dragging && ROW_ACTION,
-          )}
-          {...handleProps}
-        >
-          <GripVertical className="size-3.5" />
-        </button>
-      ) : (
-        // A read-only tree has nothing to drag; keep the rows aligned.
-        <span aria-hidden className="size-5 shrink-0" />
-      )}
-      {/* The indent, with a guide line per ancestor level under that ancestor's chevron. */}
-      <span aria-hidden className="relative shrink-0" style={{ width: depth * INDENT, alignSelf: 'stretch' }}>
-        {Array.from({ length: depth }, (_, level) => (
-          <span
-            // biome-ignore lint/suspicious/noArrayIndexKey: one guide per level; the level is the identity.
-            key={level}
-            className="pointer-events-none absolute inset-y-0 w-px bg-border"
-            style={{ insetInlineStart: level * INDENT + GUIDE_OFFSET }}
-          />
-        ))}
-      </span>
-      {/* Collapse chevron for any row with children; a spacer otherwise so every
-          row's icon stays aligned. */}
-      {collapsible ? (
-        <button
-          type="button"
-          aria-label={collapsed ? t('editor.expand') : t('editor.collapse')}
-          aria-expanded={!collapsed}
-          className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleCollapse?.(node.id);
-          }}
-        >
-          {/* expanded → points down (both dirs); collapsed → points to the inline
-              end (right in an LTR dashboard, left in RTL). */}
-          <ChevronRight className={cn('size-3.5 transition-transform', collapsed ? 'rtl:rotate-180' : 'rotate-90')} />
-        </button>
-      ) : (
-        <span className="size-4 shrink-0" aria-hidden />
-      )}
-      {renaming ? (
-        <RenameInput
-          initialValue={label}
-          label={nameField === 'sidebarTitle' ? t('editor.pageSettings.sidebarTitle') : t('editor.rename')}
-          onDone={(title) => onRename?.(title)}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => onSelect?.(node.id)}
-          onDoubleClick={onStartRename ? () => onStartRename(node.id) : undefined}
-          className={cn(
-            'flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm pointer-coarse:py-2.5',
-            isGroup && 'font-semibold text-[11px] uppercase tracking-wide',
-          )}
-        >
-          {isGroup ? (
-            <Folder className={iconClass} />
-          ) : hasIcon(node.icon) ? (
-            <PageIcon name={node.icon} className={iconClass} />
-          ) : (
-            <FileText className={iconClass} />
-          )}
-          {/* Only the title follows its own script's direction. */}
-          <span className="truncate" dir="auto">
-            {label}
-          </span>
-        </button>
-      )}
-      {(dragging && placeholder) || (overlay && hint) ? (
-        <span
-          className={cn(
-            'flex items-center gap-1 rounded px-1.5 py-0.5 font-medium text-[10.5px] text-primary',
-            // On the floating row the hint hangs just below it, so it never squeezes the title.
-            overlay ? 'absolute start-4 top-full mt-1 max-w-full bg-card shadow-sm ring-1 ring-border' : 'min-w-0 bg-primary/10',
-          )}
-        >
-          <CornerDownRight aria-hidden className="size-3 shrink-0 rtl:-scale-x-100" />
-          <span className="truncate" dir="auto">
-            {overlay ? hint : placeholder}
-          </span>
-        </span>
-      ) : null}
-      {!overlay && !dragging && !renaming && onSettings ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                className={cn('shrink-0 cursor-pointer', ROW_ACTION)}
-                title={t('editor.pageActions', { title: label })}
-                aria-label={t('editor.pageActions', { title: label })}
-              />
-            }
+      <div
+        ref={rowRef}
+        className={cn(
+          'group/row relative flex items-center gap-1 rounded-md pe-1',
+          overlay && 'bg-card shadow-lg ring-1 ring-border',
+          dragging && 'bg-primary/5 text-foreground',
+          dropParent && 'bg-primary/10 text-foreground',
+          !overlay && !dragging && !dropParent && active && 'bg-primary/10 font-medium text-primary',
+          !overlay && !dragging && !dropParent && !active && 'text-foreground/80 hover:bg-muted hover:text-foreground',
+        )}
+        style={{ ...rowStyle, ...(dragging ? DROP_SLOT : dropParent ? DROP_RING : {}) }}
+        data-sortable-page-id={node.id}
+        data-depth={depth}
+        data-drop-parent={dropParent ? '' : undefined}
+      >
+        {handleProps || overlay ? (
+          <button
+            type="button"
+            tabIndex={-1}
+            data-drag-handle=""
+            aria-label={t('editor.dragToReorder')}
+            className={cn(
+              'flex size-5 shrink-0 cursor-grab items-center justify-center rounded-sm text-muted-foreground/50 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:cursor-grabbing pointer-coarse:size-7',
+              !dragging && ROW_ACTION,
+            )}
+            {...handleProps}
           >
-            <MoreHorizontal className="size-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52" finalFocus={() => !holdMenuFocus.current}>
-            {onStartRename ? (
-              <DropdownMenuItem
-                onClick={() => {
-                  holdMenuFocus.current = true;
-                  onStartRename(node.id);
-                }}
+            <GripVertical className="size-3.5" />
+          </button>
+        ) : (
+          // A read-only tree has nothing to drag; keep the rows aligned.
+          <span aria-hidden className="size-5 shrink-0" />
+        )}
+        {/* The indent, with a guide line per ancestor level under that ancestor's chevron. */}
+        <span aria-hidden className="relative shrink-0" style={{ width: depth * INDENT, alignSelf: 'stretch' }}>
+          {Array.from({ length: depth }, (_, level) => (
+            <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: one guide per level; the level is the identity.
+              key={level}
+              className="pointer-events-none absolute inset-y-0 w-px bg-border"
+              style={{ insetInlineStart: level * INDENT + GUIDE_OFFSET }}
+            />
+          ))}
+        </span>
+        {/* Collapse chevron for any row with children; a spacer otherwise so every
+          row's icon stays aligned. */}
+        {collapsible ? (
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={collapsed ? t('editor.expand') : t('editor.collapse')}
+            aria-expanded={!collapsed}
+            className="flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+            onClick={(event) => {
+              event.stopPropagation();
+              event.currentTarget.closest<HTMLElement>('[role="treeitem"]')?.focus();
+              onToggleCollapse?.(node.id);
+            }}
+          >
+            {/* expanded → points down (both dirs); collapsed → points to the inline
+              end (right in an LTR dashboard, left in RTL). */}
+            <ChevronRight className={cn('size-3.5 transition-transform', collapsed ? 'rtl:rotate-180' : 'rotate-90')} />
+          </button>
+        ) : (
+          <span className="size-4 shrink-0" aria-hidden />
+        )}
+        {renaming ? (
+          <RenameInput
+            initialValue={label}
+            label={nameField === 'sidebarTitle' ? t('editor.pageSettings.sidebarTitle') : t('editor.rename')}
+            onDone={(title) => onRename?.(node.id, title, nameField)}
+          />
+        ) : (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={(event) => {
+              event.currentTarget.closest<HTMLElement>('[role="treeitem"]')?.focus();
+              onSelect?.(node.id);
+            }}
+            onDoubleClick={onStartRename ? () => onStartRename(node.id) : undefined}
+            className={cn(
+              'flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm pointer-coarse:py-2.5',
+              isGroup && 'font-semibold text-[11px] uppercase tracking-wide',
+            )}
+          >
+            {isGroup ? (
+              <Folder className={iconClass} />
+            ) : hasIcon(node.icon) ? (
+              <PageIcon name={node.icon} className={iconClass} />
+            ) : (
+              <FileText className={iconClass} />
+            )}
+            {/* Only the title follows its own script's direction. */}
+            <span className="truncate" dir="auto">
+              <MatchText text={label} query={filter} />
+            </span>
+            {filter && pageMatchRanges(node.path, filter).length > 0 ? (
+              <span className="truncate text-xs text-muted-foreground" dir="auto">
+                <MatchText text={node.path} query={filter} />
+              </span>
+            ) : null}
+          </button>
+        )}
+        {(dragging && placeholder) || (overlay && hint) ? (
+          <span
+            className={cn(
+              'flex items-center gap-1 rounded px-1.5 py-0.5 font-medium text-[10.5px] text-primary',
+              // On the floating row the hint hangs just below it, so it never squeezes the title.
+              overlay ? 'absolute start-4 top-full mt-1 max-w-full bg-card shadow-sm ring-1 ring-border' : 'min-w-0 bg-primary/10',
+            )}
+          >
+            <CornerDownRight aria-hidden className="size-3 shrink-0 rtl:-scale-x-100" />
+            <span className="truncate" dir="auto">
+              {overlay ? hint : placeholder}
+            </span>
+          </span>
+        ) : null}
+        {!overlay && !dragging && !renaming && onSettings ? (
+          menuMounted ? (
+            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    tabIndex={-1}
+                    className={cn('shrink-0 cursor-pointer', ROW_ACTION)}
+                    title={t('editor.pageActions', { title: label })}
+                    aria-label={t('editor.pageActions', { title: label })}
+                  />
+                }
               >
-                <Pencil /> {t('editor.rename')}
-              </DropdownMenuItem>
-            ) : null}
-            {isGroup && onAddChild ? (
-              <DropdownMenuItem onClick={() => onAddChild(node.id)}>
-                <Plus /> {t('editor.addPageInside')}
-              </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem onClick={() => onSettings(node.id)}>
-              <Settings2 /> {isGroup ? t('editor.groupSettings') : t('editor.pageSettings.title')}
-            </DropdownMenuItem>
-            {onDelete ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onClick={() => onDelete(node.id)}>
-                  <Trash2 /> {isGroup ? t('editor.deleteGroup') : t('editor.deletePage')}
+                <MoreHorizontal className="size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52" finalFocus={() => !holdMenuFocus.current}>
+                {onStartRename ? (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      holdMenuFocus.current = true;
+                      setMenuOpen(false);
+                      onStartRename(node.id);
+                    }}
+                  >
+                    <Pencil /> {t('editor.rename')}
+                  </DropdownMenuItem>
+                ) : null}
+                {isGroup && onAddChild ? (
+                  <DropdownMenuItem onClick={() => onAddChild(node.id)}>
+                    <Plus /> {t('editor.addPageInside')}
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem onClick={() => onSettings(node.id)}>
+                  <Settings2 /> {isGroup ? t('editor.groupSettings') : t('editor.pageSettings.title')}
                 </DropdownMenuItem>
-              </>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
-      {isGroup && onAddChild && !renaming && !dragging ? (
-        <Button
-          size="icon-xs"
-          variant="ghost"
-          className={cn('shrink-0 cursor-pointer pointer-coarse:hidden', ROW_ACTION)}
-          onClick={() => onAddChild(node.id)}
-          title={t('editor.addPageInside')}
-          aria-label={t('editor.addPageInside')}
-        >
-          <Plus className="size-3" />
-        </Button>
-      ) : null}
+                {onDelete ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => onDelete(node.id)}>
+                      <Trash2 /> {isGroup ? t('editor.deleteGroup') : t('editor.deletePage')}
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              tabIndex={-1}
+              className={cn('shrink-0 cursor-pointer', ROW_ACTION)}
+              title={t('editor.pageActions', { title: label })}
+              aria-label={t('editor.pageActions', { title: label })}
+              aria-haspopup="menu"
+              onClick={() => {
+                setMenuMounted(true);
+                setMenuOpen(true);
+              }}
+            >
+              <MoreHorizontal className="size-3.5" />
+            </Button>
+          )
+        ) : null}
+        {isGroup && onAddChild && !renaming && !dragging ? (
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            tabIndex={-1}
+            className={cn('shrink-0 cursor-pointer pointer-coarse:hidden', ROW_ACTION)}
+            onClick={() => onAddChild(node.id)}
+            title={t('editor.addPageInside')}
+            aria-label={t('editor.addPageInside')}
+          >
+            <Plus className="size-3" />
+          </Button>
+        ) : null}
+      </div>
+      {children}
     </div>
   );
+});
+
+function MatchText({ text, query }: { text: string; query: string }) {
+  const ranges = pageMatchRanges(text, query);
+  if (!ranges.length) return text;
+  let end = 0;
+  const parts: ReactNode[] = [];
+  for (const [start, stop] of ranges) {
+    parts.push(text.slice(end, start), <mark key={start}>{text.slice(start, stop)}</mark>);
+    end = stop;
+  }
+  parts.push(text.slice(end));
+  return parts;
 }
 
 /** Inline title editor for a tree row: Enter or leaving the field saves,
  *  Escape cancels. */
 function RenameInput({ initialValue, label, onDone }: { initialValue: string; label: string; onDone: (title: string | null) => void }) {
   const [value, setValue] = useState(initialValue);
-  const [done, setDone] = useState(false);
+  const done = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // Focus as soon as the field is in the document, before any keystroke can land elsewhere.
   useLayoutEffect(() => {
     inputRef.current?.focus();
   }, []);
   const finish = (save: boolean) => {
-    if (done) return;
-    setDone(true);
+    if (done.current) return;
+    done.current = true;
     const title = value.trim();
     onDone(save && title && title !== initialValue ? title : null);
   };
@@ -859,11 +1185,15 @@ function RenameInput({ initialValue, label, onDone }: { initialValue: string; la
       onKeyDown={(event) => {
         if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
           event.preventDefault();
+          const row = event.currentTarget.closest<HTMLElement>('[role="treeitem"]');
           finish(true);
+          queueMicrotask(() => row?.focus());
         } else if (event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
+          const row = event.currentTarget.closest<HTMLElement>('[role="treeitem"]');
           finish(false);
+          queueMicrotask(() => row?.focus());
         }
       }}
       value={value}

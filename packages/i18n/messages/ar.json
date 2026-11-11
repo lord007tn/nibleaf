@@ -4303,5 +4303,12 @@
   "settings_usage_reason_catchingUp": "ما زال الاستخدام الأخير قيد الاحتساب. سيُحدَّث هذا المجموع خلال دقائق.",
   "settings_usage_reason_tokensIncomplete": "لم تُبلغ بعض إجابات الذكاء الاصطناعي عن عدد رموزها بعد، لذا سيكون هذا المجموع أقل من الحقيقي.",
   "settings_usage_reason_notMeasured": "لم يُقَس هذا بعد. يُحدَّث بعد الاحتساب اليومي التالي.",
-  "settings_usage_reason_seatsUnavailable": "تعذّر احتساب مقاعد المحررين الآن. أعد التحميل للمحاولة مجددًا."
+  "settings_usage_reason_seatsUnavailable": "تعذّر احتساب مقاعد المحررين الآن. أعد التحميل للمحاولة مجددًا.",
+  "editor_tree_search": "تصفية الصفحات حسب العنوان أو العنوان الإلكتروني",
+  "editor_tree_noresults": "لا توجد صفحات مطابقة",
+  "editor_tree_filterreason": "امسح التصفية لنقل الصفحات.",
+  "editor_tree_label": "الصفحات",
+  "editor_tree_instructions": "استخدم الأسهم للتنقل، وEnter للفتح، وF2 لإعادة التسمية، وShift+F10 للإجراءات، وAlt+D للوصول إلى مقبض السحب. عند المقبض، اضغط مسافة لبدء النقل، والأسهم لاختيار الوجهة، ومسافة للإفلات، أو Escape للإلغاء.",
+  "editor_tree_movedinside": "تم نقل {title} داخل {parent}، في الموضع {position} من {total}.",
+  "editor_tree_movedroot": "تم نقل {title} إلى {language}، في الموضع {position} من {total}."
 }

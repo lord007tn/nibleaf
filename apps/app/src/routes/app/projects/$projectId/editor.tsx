@@ -1270,7 +1270,7 @@ function EditorPage() {
 
                           {/* This language's page tree — Notion-style drag-and-drop. Its rows follow
                               the dashboard's direction; only each title follows its own script. */}
-                          {langCollapsed || langPages.length === 0 ? null : (
+                          {langPages.length === 0 ? null : (
                             <SortablePageTree
                               languageId={lang.id}
                               activeId={activeTreeId}

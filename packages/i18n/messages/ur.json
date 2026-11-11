@@ -4255,5 +4255,12 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "editor_tree_search": "عنوان یا پتے سے صفحات چھانٹیں",
+  "editor_tree_noresults": "کوئی مماثل صفحہ نہیں",
+  "editor_tree_filterreason": "صفحات منتقل کرنے کے لیے فلٹر صاف کریں۔",
+  "editor_tree_label": "صفحات",
+  "editor_tree_instructions": "حرکت کے لیے تیر، کھولنے کے لیے Enter، نام بدلنے کے لیے F2، کارروائیوں کے لیے Shift+F10 اور ڈریگ ہینڈل کے لیے Alt+D دبائیں۔ ہینڈل پر منتقلی شروع کرنے کے لیے اسپیس، منزل چننے کے لیے تیر، چھوڑنے کے لیے اسپیس یا منسوخ کرنے کے لیے Escape دبائیں۔",
+  "editor_tree_movedinside": "{title} کو {parent} کے اندر منتقل کیا گیا، مقام {position} از {total}۔",
+  "editor_tree_movedroot": "{title} کو {language} میں منتقل کیا گیا، مقام {position} از {total}۔"
 }

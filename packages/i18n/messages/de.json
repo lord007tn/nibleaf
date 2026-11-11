@@ -4264,5 +4264,12 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "editor_tree_search": "Seiten nach Titel oder Adresse filtern",
+  "editor_tree_noresults": "Keine passenden Seiten",
+  "editor_tree_filterreason": "Filter löschen, um Seiten zu verschieben.",
+  "editor_tree_label": "Seiten",
+  "editor_tree_instructions": "Mit Pfeiltasten navigieren, mit Enter öffnen, mit F2 umbenennen, mit Umschalt+F10 Aktionen öffnen und mit Alt+D den Ziehgriff fokussieren. Am Griff: Leertaste zum Verschieben, Pfeiltasten für das Ziel, Leertaste zum Ablegen, Escape zum Abbrechen.",
+  "editor_tree_movedinside": "{title} in {parent} verschoben, Position {position} von {total}.",
+  "editor_tree_movedroot": "{title} nach {language} verschoben, Position {position} von {total}."
 }

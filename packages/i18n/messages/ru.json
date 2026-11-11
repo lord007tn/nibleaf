@@ -4285,5 +4285,12 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "editor_tree_search": "Фильтр страниц по заголовку или адресу",
+  "editor_tree_noresults": "Совпадающих страниц нет",
+  "editor_tree_filterreason": "Сбросьте фильтр, чтобы перемещать страницы.",
+  "editor_tree_label": "Страницы",
+  "editor_tree_instructions": "Стрелки — навигация, Enter — открыть, F2 — переименовать, Shift+F10 — действия, Alt+D — ручка перетаскивания. На ручке нажмите пробел для перемещения, стрелки для выбора места, пробел для завершения или Escape для отмены.",
+  "editor_tree_movedinside": "Страница «{title}» перемещена в «{parent}», позиция {position} из {total}.",
+  "editor_tree_movedroot": "Страница «{title}» перемещена в «{language}», позиция {position} из {total}."
 }

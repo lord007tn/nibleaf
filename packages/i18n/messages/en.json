@@ -4264,5 +4264,12 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "editor_tree_search": "Filter pages by title or address",
+  "editor_tree_noresults": "No matching pages",
+  "editor_tree_filterreason": "Clear the filter to move pages.",
+  "editor_tree_label": "Pages",
+  "editor_tree_instructions": "Use arrows to navigate, Enter to open, F2 to rename, Shift+F10 for actions, and Alt+D for the drag handle. On the handle, press Space to move, arrows to choose a destination, Space to drop, or Escape to cancel.",
+  "editor_tree_movedinside": "{title} moved inside {parent}, position {position} of {total}.",
+  "editor_tree_movedroot": "{title} moved to {language}, position {position} of {total}."
 }

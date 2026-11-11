@@ -4199,5 +4199,12 @@
   "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
   "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
   "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
-  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again.",
+  "editor_tree_search": "শিরোনাম বা ঠিকানা দিয়ে পৃষ্ঠা খুঁজুন",
+  "editor_tree_noresults": "কোনো মিল পাওয়া যায়নি",
+  "editor_tree_filterreason": "পৃষ্ঠা সরাতে ফিল্টার মুছুন।",
+  "editor_tree_label": "পৃষ্ঠাসমূহ",
+  "editor_tree_instructions": "নেভিগেট করতে তীরচিহ্ন, খুলতে Enter, নাম বদলাতে F2, কাজের মেনুর জন্য Shift+F10 এবং ড্র্যাগ হ্যান্ডেলের জন্য Alt+D চাপুন। হ্যান্ডেলে সরানো শুরু করতে স্পেস, গন্তব্য বাছতে তীরচিহ্ন, রাখতে স্পেস বা বাতিল করতে Escape চাপুন।",
+  "editor_tree_movedinside": "{title} পৃষ্ঠাটি {parent}-এর ভিতরে সরানো হয়েছে, অবস্থান {position}, মোট {total}।",
+  "editor_tree_movedroot": "{title} পৃষ্ঠাটি {language}-এ সরানো হয়েছে, অবস্থান {position}, মোট {total}।"
 }
