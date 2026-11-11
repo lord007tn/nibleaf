@@ -540,6 +540,20 @@
   "editor_deletegroup": "حذف المجموعة",
   "editor_deletegroupconfirm": "نقل المجموعة «{title}» إلى سلة المحذوفات؟ ستبقى هناك 30 يومًا، ويمكنك استعادتها خلالها.",
   "editor_deletegroupwithchildrenconfirm": "نقل المجموعة «{title}» والصفحات الموجودة داخلها ({count}) إلى سلة المحذوفات؟ للإبقاء على هذه الصفحات في الشجرة، اسحبها خارج المجموعة أولًا. يبقى كل شيء في السلة 30 يومًا.",
+  "editor_deleteinboundlinks": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا توجد صفحات ترتبط هنا",
+        "form=one": "صفحة واحدة ترتبط هنا",
+        "form=two": "صفحتان ترتبطان هنا",
+        "form=few": "{count} صفحات ترتبط هنا",
+        "form=many": "{count} صفحة ترتبط هنا",
+        "form=*": "{count} صفحة ترتبط هنا"
+      }
+    }
+  ],
   "editor_deleted": "نُقلت «{title}» إلى سلة المحذوفات",
   "editor_deletefailed": "تعذّر حذف الصفحة. حاول مجددًا.",
   "editor_trash_button": "سلة المحذوفات ({count})",

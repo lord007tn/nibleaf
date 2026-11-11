@@ -8,6 +8,7 @@ import { Label } from './label';
 interface ConfirmOptions {
   title: string;
   description?: string;
+  children?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
@@ -129,6 +130,7 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
               <DialogTitle>{c?.title}</DialogTitle>
               {c?.description ? <DialogDescription>{c.description}</DialogDescription> : null}
             </DialogHeader>
+            {c?.children}
             <DialogFooter>
               <Button autoFocus={c?.destructive} onClick={() => settleConfirm(false)} variant="outline">
                 {c?.cancelLabel ?? labels?.cancel ?? 'Cancel'}

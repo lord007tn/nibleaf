@@ -20,6 +20,12 @@ const pagesRoutes = {
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
   get: createRouteConfig({ guard: [...member], tags: ['pages'], description: 'Retrieve a page (with content).', responses: ok }),
+  inboundLinks: createRouteConfig({
+    guard: [searchDescriptionLimit, ...member],
+    tags: ['pages'],
+    description: 'Other draft pages on the same branch linking into this page or its descendants (first 20 and total).',
+    responses: ok,
+  }),
   searchDescription: createRouteConfig({
     guard: [searchDescriptionLimit, ...member],
     tags: ['pages'],
