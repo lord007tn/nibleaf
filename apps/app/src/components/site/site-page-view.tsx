@@ -5,15 +5,17 @@ import { blockDirection } from '@nibleaf/shared/script-direction';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type ComponentProps, Suspense, startTransition, useEffect, useState } from 'react';
 import { SiteChatPageAction } from '@/components/site/ai-chat/provider';
-import { useContentLanguageAttributes } from '@/components/site/content-language';
+import { chromeLanguageAttributes, contentLanguageAttributes } from '@/components/site/content-language';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
+import { LanguageFallbackNotice } from '@/components/site/language-fallback-notice';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { ArticleBodySkeleton } from '@/components/site/site-article-skeleton';
+import { useSiteReader } from '@/components/site/site-reader-context';
 import { MobileTableOfContents, TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
-import { localeTag } from '@/lib/format';
 import { HydrationIsland } from '@/lib/hydration-modules';
 import { articleMarkdownModule } from '@/lib/reader-hydration-modules';
+import { formatUpdated } from '@/lib/reader-text';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
@@ -194,8 +196,12 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const { page, breadcrumbs, prev, next } = data;
   const language = data.activeLanguage ?? lang;
   // A fallback page (English shown for a missing Arabic translation) reads in
-  // its own language and direction inside the shell's.
-  const contentLanguage = useContentLanguageAttributes(language);
+  // its own language and direction inside the shell's, while the chrome placed
+  // in it (the fallback notice, the meta line) keeps the reader's.
+  const reader = useSiteReader();
+  const contentLanguage = contentLanguageAttributes(language, reader);
+  const chromeLanguage = chromeLanguageAttributes(language, reader);
+  const readerLanguage = chromeLanguage.lang ?? language;
   // Build links with the RESOLVED version, not the raw first-path-segment
   // candidate the route passes in: for a page like `getting-started/quickstart`
   // that candidate is a content segment, and prefixing it onto sibling links
@@ -207,6 +213,8 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   // Article-level chrome strings follow the page's RESOLVED language (which can
   // differ from the URL param on fallback pages) so labels match the content.
   const tArticle = siteT(language);
+  // The meta line describes the article to the reader, in the reader's language.
+  const tReader = siteT(readerLanguage);
   // Per-page layout behaviour (Mintlify-style `mode`/`hideToc`): `wide` drops the
   // TOC and fills the width, `center` narrows + centers the column.
   const mode = page.config?.mode ?? 'default';
@@ -228,17 +236,27 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b[^>]*>/gi) ?? []).filter(
     (image) => !isDarkModeTwin(image),
   ).length;
-  // A UTC calendar day, so the server render and a reader in any timezone show
-  // the same date and hydration matches.
-  const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium', timeZone: 'UTC' }).format(
-    new Date(page.updatedAt),
-  );
+  // Formatted on the server (getSitePageFn) and rendered verbatim, so a browser
+  // whose ICU words the date differently can't cause a hydration mismatch. Pages
+  // that didn't come through that function format it here.
+  const readerText = data.readerText?.language === readerLanguage ? data.readerText : undefined;
+  const updatedLabel = readerText?.updated ?? formatUpdated(readerLanguage, page.updatedAt);
   const article = (
     <article
       className={cn('w-full min-w-0', mode === 'wide' ? '' : mode === 'center' ? 'mx-auto max-w-[42rem]' : 'mx-auto max-w-[46rem]')}
       data-theme-region="article"
       {...contentLanguage}
     >
+      {chromeLanguage.lang ? (
+        <LanguageFallbackNotice
+          requested={chromeLanguage.lang}
+          shown={language}
+          href={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix })}
+          attributes={chromeLanguage}
+          languages={reader?.languages}
+          text={readerText}
+        />
+      ) : null}
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
       {ancestors.length > 0 ? (
         <nav className="mb-3" aria-label={tArticle('breadcrumb')}>
@@ -270,17 +288,21 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           {page.description}
         </p>
       ) : null}
-      <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs" aria-label={tArticle('articleDetails')}>
+      <ul
+        className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs"
+        aria-label={tReader('articleDetails')}
+        {...chromeLanguage}
+      >
         <li className="inline-flex items-center gap-1.5">
-          <Clock3 className="size-3.5" aria-hidden /> {tArticle('minReadCount', { count: readingMinutes })}
+          <Clock3 className="size-3.5" aria-hidden /> {tReader('minReadCount', { count: readingMinutes })}
         </li>
         {imageCount > 0 ? (
           <li className="inline-flex items-center gap-1.5">
-            <Image className="size-3.5" aria-hidden /> {tArticle('screenshotCount', { count: imageCount })}
+            <Image className="size-3.5" aria-hidden /> {tReader('screenshotCount', { count: imageCount })}
           </li>
         ) : null}
         <li className="inline-flex items-center gap-1.5">
-          <CalendarClock className="size-3.5" aria-hidden /> {tArticle('updated')}{' '}
+          <CalendarClock className="size-3.5" aria-hidden /> {tReader('updated')}{' '}
           <bdi>
             <time dateTime={page.updatedAt}>{updatedLabel}</time>
           </bdi>

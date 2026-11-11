@@ -8,6 +8,7 @@
     "dev": "vite dev --port 4310",
     "build": "vite build",
     "bundle:check": "node ./scripts/check-bundle-budget.mjs --check",
+    "bench:page-tree": "vitest run --config vitest.bench.config.ts",
     "bundle:report": "node ./scripts/check-bundle-budget.mjs",
     "check:type-scale": "node ./scripts/check-type-scale.mjs",
     "docs:markdown-check": "node ./scripts/check-markdown-parity.mjs",
