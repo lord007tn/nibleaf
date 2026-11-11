@@ -3,7 +3,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { ChatRoot } from './chat-ui';
 import type { ChatRequest } from './provider';
@@ -116,47 +116,213 @@ describe('ChatRoot', () => {
 });
 
 describe('launcher on phones', () => {
+  // A 390×844 phone. The launcher's box sits 16px in from the inline end and
+  // 16px up, 48px square, as `end-4` and its offset place it.
+  const VIEW = { width: 390, height: 844 };
+  const boxes = new WeakMap<Element, { left: number; top: number; width: number; height: number }>();
+  const rect = ({ left, top, width, height }: { left: number; top: number; width: number; height: number }) =>
+    ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
+  const launcherBox = () => ({
+    left: document.documentElement.dir === 'rtl' ? 16 : VIEW.width - 16 - 48,
+    top: VIEW.height - 16 - 48,
+    width: 48,
+    height: 48,
+  });
+  /** Places an element on screen, or off it after a scroll. */
+  const place = (element: Element, box: { left: number; top: number; width: number; height: number }) => boxes.set(element, box);
+
+  /** IntersectionObserver as browsers run it for these options: the viewport,
+   * shrunk by `rootMargin`, against each target's box. */
+  class FakeIntersectionObserver {
+    static live = new Set<FakeIntersectionObserver>();
+    readonly targets = new Map<Element, boolean | undefined>();
+    constructor(
+      private readonly callback: IntersectionObserverCallback,
+      private readonly options: IntersectionObserverInit = {},
+    ) {
+      FakeIntersectionObserver.live.add(this);
+    }
+    observe(target: Element) {
+      this.targets.set(target, undefined);
+      this.check();
+    }
+    unobserve(target: Element) {
+      this.targets.delete(target);
+    }
+    disconnect() {
+      this.targets.clear();
+      FakeIntersectionObserver.live.delete(this);
+    }
+    takeRecords() {
+      return [];
+    }
+    check() {
+      const [top = 0, right = 0, bottom = 0, left = 0] = (this.options.rootMargin ?? '0px').split(' ').map((side) => -Number.parseFloat(side));
+      const root = { left, top, right: VIEW.width - right, bottom: VIEW.height - bottom };
+      const entries: IntersectionObserverEntry[] = [];
+      for (const [target, was] of this.targets) {
+        const box = target.getBoundingClientRect();
+        const isIntersecting =
+          box.width > 0 && box.height > 0 && box.left < root.right && box.right > root.left && box.top < root.bottom && box.bottom > root.top;
+        if (isIntersecting === was) continue;
+        this.targets.set(target, isIntersecting);
+        entries.push({ target, isIntersecting } as IntersectionObserverEntry);
+      }
+      if (entries.length) this.callback(entries, this as unknown as IntersectionObserver);
+    }
+  }
+  /** The browser re-checks every observed control as the page scrolls. */
+  const scrollControls = () =>
+    act(async () => {
+      for (const observer of FakeIntersectionObserver.live) observer.check();
+    });
   const scrollTo = (y: number) =>
     act(async () => {
       Object.defineProperty(window, 'scrollY', { configurable: true, value: y });
       window.dispatchEvent(new Event('scroll'));
     });
-  afterEach(() => Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 }));
+  let phone = true;
+  let page: HTMLElement;
+  beforeEach(() => {
+    phone = true;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: VIEW.width });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: VIEW.height });
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+    window.matchMedia = vi.fn(
+      (query: string) =>
+        ({
+          matches: phone && query.includes('max-width: 767px'),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return rect(this.matches('[data-chat-launcher]') ? launcherBox() : (boxes.get(this) ?? { left: 0, top: 0, width: 0, height: 0 }));
+    });
+    // The article: a screenshot with its zoom button, and the pager.
+    page = document.createElement('main');
+    page.innerHTML =
+      '<figure><img alt=""><button type="button">Zoom</button></figure><nav><a href="/prev">Previous</a><a href="/next">Next</a></nav>';
+    document.body.append(page);
+  });
+  afterEach(() => {
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+    document.documentElement.dir = '';
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    FakeIntersectionObserver.live.clear();
+  });
+  const control = (name: string) => [...page.querySelectorAll('a, button')].find((element) => element.textContent === name) as HTMLElement;
+  const away = () => launcher()?.hasAttribute('data-away');
 
-  it('is a round icon button below md, its name kept for screen readers', async () => {
+  it('is named "Ask AI" for screen readers, with its icon hidden from them', async () => {
     await mount(<ChatRoot {...options} openChat={vi.fn()} />);
-    const button = launcher();
-    expect(button?.className).toContain('size-12');
-    expect(button?.className).toContain('md:size-auto');
-    const name = button?.querySelector('span');
-    expect(name?.textContent).toBe('Ask AI');
-    expect(name?.className).toBe('max-md:sr-only');
-    // Without a consent banner it sits 1rem up; with one, above its Manage button.
-    expect(button?.className).toContain('bottom-[calc(1rem+env(safe-area-inset-bottom))]');
+    expect(launcher()?.textContent).toBe('Ask AI');
+    expect(launcher()?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(away()).toBe(false);
+  });
+
+  it('stays away while a screenshot zoom button is under it, and returns once it scrolls clear', async () => {
+    // Under the launcher's corner.
+    place(control('Zoom'), { left: 330, top: 784, width: 40, height: 40 });
+    // The pager's other end is not.
+    place(control('Previous'), { left: 16, top: 790, width: 120, height: 40 });
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    expect(away()).toBe(true);
+    place(control('Zoom'), { left: 330, top: 300, width: 40, height: 40 });
+    await scrollControls();
+    expect(away()).toBe(false);
+  });
+
+  it('does not come back on scroll up while a control is under it', async () => {
+    Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 5000 });
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    await scrollTo(400);
+    expect(away()).toBe(true);
+    // The pager's Next link scrolls in under it as the reader scrolls back up.
+    place(control('Next'), { left: 300, top: 770, width: 80, height: 44 });
+    await scrollControls();
+    await scrollTo(300);
+    expect(away()).toBe(true);
+    place(control('Next'), { left: 300, top: 600, width: 80, height: 44 });
+    await scrollControls();
+    expect(away()).toBe(false);
+  });
+
+  it('counts a control just next to it, which is as hard to tap', async () => {
+    // 4px left of the launcher's box.
+    place(control('Zoom'), { left: 290, top: 790, width: 32, height: 32 });
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    expect(away()).toBe(true);
+  });
+
+  it('watches the inline-start corner in a right-to-left page', async () => {
+    document.documentElement.dir = 'rtl';
+    // The pager's first link sits at the bottom left, where the launcher is in RTL.
+    place(control('Previous'), { left: 20, top: 786, width: 120, height: 40 });
+    place(control('Zoom'), { left: 330, top: 784, width: 40, height: 40 });
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    expect(away()).toBe(true);
+    place(control('Previous'), { left: 20, top: 200, width: 120, height: 40 });
+    await scrollControls();
+    // The zoom button at the right is clear of it.
+    expect(away()).toBe(false);
+  });
+
+  it('notices controls a client navigation adds under it', async () => {
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    expect(away()).toBe(false);
+    const copy = document.createElement('button');
+    copy.textContent = 'Copy';
+    place(copy, { left: 334, top: 790, width: 36, height: 36 });
+    await act(async () => {
+      page.append(copy);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(away()).toBe(true);
+  });
+
+  it('comes back for keyboard focus, even over a control', async () => {
+    place(control('Zoom'), { left: 330, top: 784, width: 40, height: 40 });
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    expect(away()).toBe(true);
+    await act(async () => launcher()?.focus());
+    expect(away()).toBe(false);
+    await act(async () => launcher()?.blur());
+    expect(away()).toBe(true);
+  });
+
+  it('never steps aside for controls on wider screens, where it is a labelled pill', async () => {
+    phone = false;
+    place(control('Zoom'), { left: 330, top: 784, width: 40, height: 40 });
+    await mount(<ChatRoot {...options} openChat={vi.fn()} />);
+    expect(away()).toBe(false);
   });
 
   it('slides away while the reader scrolls down and comes back on scroll up', async () => {
     Object.defineProperty(document.documentElement, 'scrollHeight', { configurable: true, value: 5000 });
     await mount(<ChatRoot {...options} openChat={vi.fn()} />);
-    expect(launcher()?.hasAttribute('data-away')).toBe(false);
+    expect(away()).toBe(false);
     await scrollTo(400);
-    expect(launcher()?.hasAttribute('data-away')).toBe(true);
-    expect(launcher()?.className).toContain('max-md:data-away:not-focus-visible:opacity-0');
+    expect(away()).toBe(true);
     await scrollTo(395);
     // A jitter of a few pixels changes nothing.
-    expect(launcher()?.hasAttribute('data-away')).toBe(true);
+    expect(away()).toBe(true);
     await scrollTo(300);
-    expect(launcher()?.hasAttribute('data-away')).toBe(false);
+    expect(away()).toBe(false);
   });
 
-  it('reserves room at the end of the page for the launcher and the safe area', async () => {
+  it('reserves room at the end of the page for its offset, its 3rem and the safe area', async () => {
     const view = await mount(<ChatRoot {...options} openChat={vi.fn()} />);
-    const space = view.container.querySelector('[data-chat-launcher-space]');
-    // Its 1rem offset plus its 3rem height, plus the safe-area inset.
-    expect(space?.className).toBe('h-[calc(4rem+env(safe-area-inset-bottom))]');
-    // Above the consent "Manage" button: 4.5rem plus 3rem.
+    const offset = () => (view.container.querySelector<HTMLElement>('[data-chat-launcher]')?.style.bottom ?? '').match(/^calc\((.+) \+ env/u)?.[1];
+    const room = () => view.container.querySelector<HTMLElement>('[data-chat-launcher-space]')?.style.height;
+    expect(offset()).toBe('1rem');
+    expect(room()).toBe(`calc(${offset()} + 3rem + env(safe-area-inset-bottom))`);
+    // Above the consent "Manage" button when the site asks for consent.
     const consent = { analytics: { cookieConsent: true } } as ProjectConfig;
     await view.render(<ChatRoot {...options} config={consent} openChat={vi.fn()} />);
-    expect(view.container.querySelector('[data-chat-launcher-space]')?.className).toBe('h-[calc(7.5rem+env(safe-area-inset-bottom))]');
+    expect(offset()).toBe('4.5rem');
+    expect(room()).toBe(`calc(${offset()} + 3rem + env(safe-area-inset-bottom))`);
   });
 });

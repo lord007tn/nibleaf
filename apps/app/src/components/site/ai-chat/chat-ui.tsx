@@ -4,7 +4,7 @@ import { siteChatT } from '@nibleaf/i18n/site-chat';
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { useRouter } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
-import { lazy, type Ref, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, type Ref, type RefObject, Suspense, useEffect, useRef, useState } from 'react';
 import type { ChatRequest, ChatRootOptions, OpenChat } from './provider';
 
 /*
@@ -16,6 +16,11 @@ import type { ChatRequest, ChatRootOptions, OpenChat } from './provider';
  */
 
 const Panel = lazy(() => import('./panel'));
+
+/** How far up from the bottom the launcher rests: above the consent "Manage"
+ * button when the site asks for consent. Its 3rem height and the safe-area
+ * inset come on top; the page keeps that much room at its end. */
+const launcherOffset = (consentBanner: boolean) => (consentBanner ? '4.5rem' : '1rem');
 
 /** Opens the panel for each new request, follows the `?ask=` deep link, and
  * returns focus to where the reader was when the panel closes. */
@@ -53,7 +58,7 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
       <div
         aria-hidden
         data-chat-launcher-space=""
-        className={requiresConsent ? 'h-[calc(7.5rem+env(safe-area-inset-bottom))]' : 'h-[calc(4rem+env(safe-area-inset-bottom))]'}
+        style={{ height: `calc(${launcherOffset(requiresConsent)} + 3rem + env(safe-area-inset-bottom))` }}
       />
       <Launcher ref={launcher} lang={options.lang} consentBanner={requiresConsent} onOpen={() => openChat({ source: 'launcher' })} />
       {request && (
@@ -81,6 +86,76 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
   );
 }
 
+/** Reader controls the launcher must never sit on: links, buttons (a
+ * screenshot's zoom button, a code block's copy button), fields, the pager. */
+const CONTROLS = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"]';
+/** Where the page's own controls live: the article and pager (`main`) and the
+ * footer, never a dialog (the chat panel's footer included). */
+const readerRegions = () => [...document.querySelectorAll('main, footer')].filter((region) => !region.closest('[role="dialog"]'));
+const readerControls = () =>
+  readerRegions()
+    .flatMap((region) => [...region.querySelectorAll(CONTROLS)])
+    .filter((control) => !control.closest('[data-chat-launcher]'));
+
+/** True while a reader control lies under the launcher's resting box on a
+ * phone. An IntersectionObserver whose root is shrunk to that box reports the
+ * controls inside it as the page scrolls; it is rebuilt when the viewport
+ * resizes or the page's content changes. */
+function useCoversControls(box: RefObject<HTMLElement | null>, shown: boolean) {
+  const [covers, setCovers] = useState(false);
+  useEffect(() => {
+    const anchor = box.current;
+    if (!shown || !anchor || typeof IntersectionObserver === 'undefined') return;
+    const phone = window.matchMedia('(max-width: 767px)');
+    const under = new Set<Element>();
+    let observer: IntersectionObserver | undefined;
+    let frame = 0;
+    const build = () => {
+      frame = 0;
+      observer?.disconnect();
+      under.clear();
+      // The new observer reports what is under the launcher now.
+      setCovers(false);
+      const rect = anchor.getBoundingClientRect();
+      if (!phone.matches || !rect.width || !rect.height) return;
+      // A little slack around the button: a control right at its edge is as hard to tap.
+      const slack = 8;
+      const inset = [rect.top, window.innerWidth - rect.right, window.innerHeight - rect.bottom, rect.left];
+      const rootMargin = inset.map((side) => `${-Math.max(0, Math.round(side - slack))}px`).join(' ');
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) under.add(entry.target);
+            else under.delete(entry.target);
+          }
+          setCovers(under.size > 0);
+        },
+        { rootMargin },
+      );
+      for (const control of readerControls()) observer.observe(control);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(build);
+    };
+    // Client navigation, expanding sections and lazy content add or move
+    // controls. Only the page's regions: an answer streaming into the chat
+    // panel rebuilds nothing.
+    const content = new MutationObserver(schedule);
+    for (const region of readerRegions()) content.observe(region, { childList: true, subtree: true });
+    window.addEventListener('resize', schedule);
+    phone.addEventListener('change', schedule);
+    build();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      content.disconnect();
+      window.removeEventListener('resize', schedule);
+      phone.removeEventListener('change', schedule);
+    };
+  }, [box, shown]);
+  return covers;
+}
+
 /** True while the reader scrolls down the page, past its top and short of its
  * end; false again as soon as they scroll up. Small jitters don't count. */
 function useScrollingDown() {
@@ -102,9 +177,11 @@ function useScrollingDown() {
 
 /** The floating "Ask AI" button. It steps aside while the analytics consent
  * banner holds the same corner. On phones it is a round icon button (its name
- * stays for screen readers) that slides away while the reader scrolls down, so
- * it never sits on screenshots or their zoom buttons; the page keeps room for
- * it at the end (see ChatRoot). */
+ * stays for screen readers) that slides away while the reader scrolls down, and
+ * stays away while a link or button of the page (a screenshot's zoom button, a
+ * code block's copy button, the pager) is under it, so it never covers one; the
+ * page keeps room for it at the end (see ChatRoot). Keyboard focus always
+ * brings it back. */
 function Launcher({
   lang,
   consentBanner,
@@ -128,25 +205,39 @@ function Launcher({
     update();
     return () => observer.disconnect();
   }, [consentBanner, bannerTitle]);
-  const away = useScrollingDown();
-  if (consentBanner && bannerVisible) return null;
+  // Where the launcher rests. It never moves, so the button can slide away
+  // inside it while the box still marks the spot it would cover.
+  const box = useRef<HTMLDivElement>(null);
+  const scrollingDown = useScrollingDown();
+  const hidden = consentBanner && bannerVisible;
+  const covers = useCoversControls(box, !hidden);
+  // Focus (a keyboard reaching it, or focus returning from the panel) always shows it.
+  const [focused, setFocused] = useState(false);
+  const away = !focused && (scrollingDown || covers);
+  if (hidden) return null;
   return (
-    <Button
-      ref={ref}
-      data-away={away ? '' : undefined}
-      className={cn(
-        'fixed end-4 z-40 size-12 rounded-full p-0 shadow-lg transition-[translate,opacity] duration-200 motion-reduce:transition-none md:size-auto md:h-12 md:px-5',
-        // Above the consent "Manage" button when the site asks for consent. The
-        // page keeps room for offset + 3rem (see ChatRoot).
-        consentBanner ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(1rem+env(safe-area-inset-bottom))]',
-        // Phones only; keyboard focus brings it back.
-        'max-md:data-away:not-focus-visible:pointer-events-none max-md:data-away:not-focus-visible:translate-y-[calc(100%+5rem)] max-md:data-away:not-focus-visible:opacity-0',
-      )}
-      onClick={onOpen}
+    <div
+      ref={box}
+      data-chat-launcher=""
+      className="pointer-events-none fixed end-4 z-40 flex"
+      style={{ bottom: `calc(${launcherOffset(consentBanner)} + env(safe-area-inset-bottom))` }}
     >
-      <Sparkles aria-hidden className="size-5 md:size-4" />
-      <span className="max-md:sr-only">{t('aiTitle')}</span>
-    </Button>
+      <Button
+        ref={ref}
+        data-away={away ? '' : undefined}
+        className={cn(
+          'pointer-events-auto size-12 rounded-full p-0 shadow-lg transition-[translate,opacity] duration-200 motion-reduce:transition-none md:size-auto md:h-12 md:px-5',
+          // Phones only.
+          'max-md:data-away:pointer-events-none max-md:data-away:translate-y-[calc(100%+5rem)] max-md:data-away:opacity-0',
+        )}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onClick={onOpen}
+      >
+        <Sparkles aria-hidden className="size-5 md:size-4" />
+        <span className="max-md:sr-only">{t('aiTitle')}</span>
+      </Button>
+    </div>
   );
 }
 

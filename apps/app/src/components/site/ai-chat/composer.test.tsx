@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, createRef } from 'react';
+import { act, createRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Composer } from './composer';
@@ -12,79 +12,131 @@ afterEach(async () => {
   for (const unmount of roots.splice(0)) await unmount();
   document.body.replaceChildren();
 });
-const mount = async (props: { busy: boolean; value?: string; lang?: string }) => {
+
+/** The composer with its text in state, as the panel holds it. */
+function Harness({
+  initial,
+  ...props
+}: {
+  initial: string;
+  busy: boolean;
+  lang: string;
+  send: (q: string) => boolean | Promise<boolean>;
+  stop: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  return <Composer {...props} value={value} setValue={setValue} field={createRef<HTMLTextAreaElement>()} />;
+}
+const mount = async (props: { busy?: boolean; value?: string; lang?: string; send?: (q: string) => boolean | Promise<boolean> }) => {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
   roots.push(() => act(async () => root.unmount()));
-  const send = vi.fn();
+  const send = vi.fn(props.send ?? (() => true));
   const stop = vi.fn();
-  await act(async () =>
-    root.render(
-      <Composer
-        lang={props.lang ?? 'en'}
-        busy={props.busy}
-        value={props.value ?? ''}
-        setValue={vi.fn()}
-        field={createRef<HTMLTextAreaElement>()}
-        send={send}
-        stop={stop}
-      />,
-    ),
-  );
-  return { send, stop, form: container.querySelector('form') as HTMLFormElement };
+  const render = (busy: boolean) =>
+    act(async () => root.render(<Harness initial={props.value ?? ''} busy={busy} lang={props.lang ?? 'en'} send={send} stop={stop} />));
+  await render(props.busy ?? false);
+  const field = () => container.querySelector('textarea') as HTMLTextAreaElement;
+  /** The form's one button, by its accessible name. */
+  const action = () => container.querySelector('form button') as HTMLButtonElement;
+  const type = (text: string) =>
+    act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(field(), text);
+      field().dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  const press = (init: KeyboardEventInit & { isComposing?: boolean }) =>
+    act(async () => {
+      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      field().dispatchEvent(event);
+      // A key the composer leaves alone types as usual (a newline for Shift+Enter).
+      if (!event.defaultPrevented && init.key === 'Enter') {
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(field(), `${field().value}\n`);
+        field().dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  return { send, stop, field, action, type, press, render, form: container.querySelector('form') as HTMLFormElement };
 };
 
 describe('composer', () => {
-  it('puts the send icon button inline at the end of the field, named for screen readers', async () => {
-    const { form, send } = await mount({ busy: false, value: 'How do I export?' });
-    // One row: the field, then the button beside it.
-    expect(form.className).toContain('flex');
-    expect(form.className).not.toContain('space-y');
-    const [field, button] = [...form.children];
-    expect(field?.querySelector('textarea')).not.toBeNull();
-    expect(button?.tagName).toBe('BUTTON');
-    expect(button?.getAttribute('type')).toBe('submit');
-    expect(button?.textContent).toBe('Send');
-    expect(button?.querySelector('.sr-only')?.textContent).toBe('Send');
-    // The arrow follows the reading direction.
-    expect(button?.querySelector('svg')?.getAttribute('class')).toContain('rtl:-scale-x-100');
-    await act(async () => (button as HTMLButtonElement).click());
-    expect(send).toHaveBeenCalledWith('How do I export?');
+  it('sends with its inline Send button, named for screen readers, right after the field', async () => {
+    const { send, field, action, form } = await mount({ value: 'How do I export?' });
+    expect(action().textContent).toBe('Send');
+    expect(action().querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    // The field and the button share one row: the button follows the field directly.
+    expect(form.lastElementChild).toBe(action());
+    expect(form.firstElementChild?.contains(field())).toBe(true);
+    await act(async () => action().click());
+    expect(send).toHaveBeenCalledExactlyOnceWith('How do I export?');
+    expect(field().value).toBe('');
   });
 
-  it('keeps send disabled until there is a question to send', async () => {
-    const { form } = await mount({ busy: false, value: ' a ' });
-    expect(form.querySelector('button')?.disabled).toBe(true);
+  it('keeps Send disabled until there is a question to send', async () => {
+    const { action, type } = await mount({ value: ' a ' });
+    expect(action().disabled).toBe(true);
+    await type('How?');
+    expect(action().disabled).toBe(false);
   });
 
-  it('shows a busy Stop button with a spinner in the same fixed-size slot while answering', async () => {
-    const idle = await mount({ busy: false, value: 'Hi there' });
-    const sendClass = idle.form.querySelector('button')?.className ?? '';
-    document.body.replaceChildren();
-    const { form, stop, send } = await mount({ busy: true, value: 'Next question' });
-    const buttons = form.querySelectorAll('button');
-    expect(buttons).toHaveLength(1);
-    const button = buttons[0] as HTMLButtonElement;
-    expect(button.getAttribute('aria-busy')).toBe('true');
-    expect(button.getAttribute('type')).toBe('button');
-    expect(button.textContent).toBe('Stop generating');
-    expect(button.querySelector('svg.animate-spin')).not.toBeNull();
-    // Same size as Send, so nothing moves when an answer starts or ends.
-    for (const size of ['size-(--control-size-large)', 'shrink-0', 'rounded-full']) {
-      expect(button.className).toContain(size);
-      expect(sendClass).toContain(size);
-    }
-    // Enter does not send a second question while one is being answered.
-    await act(async () => form.querySelector('textarea')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+  it('sends on Enter and adds a line on Shift+Enter', async () => {
+    const { send, field, press } = await mount({ value: 'First line' });
+    await press({ key: 'Enter', shiftKey: true });
     expect(send).not.toHaveBeenCalled();
-    await act(async () => button.click());
+    expect(field().value).toBe('First line\n');
+    await press({ key: 'Enter' });
+    expect(send).toHaveBeenCalledExactlyOnceWith('First line');
+  });
+
+  it('never sends on the Enter that confirms an input method composition', async () => {
+    const { send, field, press } = await mount({ value: 'كيف' });
+    await press({ key: 'Enter', isComposing: true });
+    expect(send).not.toHaveBeenCalled();
+    expect(field().value.startsWith('كيف')).toBe(true);
+  });
+
+  it('gives the question back when it could not be sent', async () => {
+    const { send, field, action } = await mount({ value: 'How do I export?', send: async () => false });
+    await act(async () => action().click());
+    expect(send).toHaveBeenCalledOnce();
+    expect(field().value).toBe('How do I export?');
+  });
+
+  it('gives the question back when sending throws, but keeps a new draft typed meanwhile', async () => {
+    let fail: (reason: Error) => void = () => undefined;
+    const { field, action, type } = await mount({
+      value: 'How do I export?',
+      send: () =>
+        new Promise<boolean>((_, reject) => {
+          fail = reject;
+        }),
+    });
+    await act(async () => action().click());
+    expect(field().value).toBe('');
+    await type('Another question');
+    await act(async () => fail(new Error('offline')));
+    expect(field().value).toBe('Another question');
+  });
+
+  it('holds Stop, busy, in the same slot while answering, and sends nothing then', async () => {
+    const { send, stop, action, press, render, form } = await mount({ value: 'Next question' });
+    const slot = action();
+    expect(form.lastElementChild).toBe(slot);
+    await render(true);
+    expect(form.querySelectorAll('button')).toHaveLength(1);
+    expect(form.lastElementChild).toBe(action());
+    expect(action().textContent).toBe('Stop generating');
+    expect(action().getAttribute('aria-busy')).toBe('true');
+    // Stop is the way out of the wait, so it stays usable.
+    expect(action().disabled).toBe(false);
+    await press({ key: 'Enter' });
+    expect(send).not.toHaveBeenCalled();
+    await act(async () => action().click());
     expect(stop).toHaveBeenCalledOnce();
   });
 
   it('uses the Arabic labels in an Arabic chat', async () => {
-    const { form } = await mount({ busy: false, lang: 'ar', value: 'كيف أبدأ؟' });
-    expect(form.querySelector('button')?.textContent).toBe('إرسال');
-    expect(form.querySelector('textarea')?.getAttribute('aria-label')).toBeTruthy();
+    const { action, field } = await mount({ lang: 'ar', value: 'كيف أبدأ؟' });
+    expect(action().textContent).toBe('إرسال');
+    expect(field().getAttribute('aria-label')).toBeTruthy();
   });
 });

@@ -2,11 +2,12 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
 import { Loader2Icon, SendHorizontal, Square } from 'lucide-react';
-import type { RefObject } from 'react';
+import type { Dispatch, RefObject, SetStateAction } from 'react';
 
 /** The question field, with its send button inline at the end. While an answer
  * is on its way the same slot holds Stop, with a spinner, so nothing moves.
- * Its text is the panel's, so it survives the panel closing. */
+ * Its text is the panel's, so it survives the panel closing. A question that
+ * could not be sent (offline, say) goes back into the field. */
 export function Composer({
   lang,
   busy,
@@ -19,22 +20,26 @@ export function Composer({
   lang?: string;
   busy: boolean;
   value: string;
-  setValue: (value: string) => void;
+  setValue: Dispatch<SetStateAction<string>>;
   field: RefObject<HTMLTextAreaElement | null>;
-  send: (question: string) => void;
+  /** Resolves false when the question was not sent. */
+  send: (question: string) => boolean | Promise<boolean>;
   stop: () => void;
 }) {
   const t = siteChatT(lang);
-  const submit = () => {
+  const submit = async () => {
     if (busy || value.trim().length < 2) return;
-    send(value.trim());
+    const draft = value;
     setValue('');
+    const sent = await Promise.resolve(send(draft.trim())).catch(() => false);
+    // Not sent: the draft comes back, unless the reader has started a new one.
+    if (!sent) setValue((current) => current || draft);
   };
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        submit();
+        void submit();
       }}
       className="flex items-end gap-2"
     >
@@ -51,7 +56,7 @@ export function Composer({
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();
-              submit();
+              void submit();
             }
           }}
         />
