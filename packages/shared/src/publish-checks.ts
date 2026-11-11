@@ -8,10 +8,12 @@
  * import it; it imports only `./site-route`, which holds the route logic both
  * sides share.
  *
- * - Content is read from the parsed tree, not by scanning lines: a link counts
- *   only when it renders as one. Code, comments, MDX expressions and discarded
- *   HTML contexts render no link. Only literal hrefs on JSX/HTML elements the
- *   reader renders as links count as attribute destinations.
+ * - Links are read the way the reader renders the page: its own source
+ *   normalization (`normalizeMdxBlocks`), then CommonMark + GFM, then raw HTML
+ *   through parse5 (rehype-raw). A link counts only when it renders as one:
+ *   code, comments, text that merely looks like a tag, and discarded HTML
+ *   contexts render no link. Attribute destinations come from `<a>` and the
+ *   components whose reader contract declares an `href`.
  *   Reference links resolve through their definition (CommonMark: the first
  *   definition of a label wins); a definition nothing uses renders nothing.
  * - A link is rendered as the reader renders it (relative to the page URL, or
@@ -27,6 +29,8 @@ import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+import { documentationComponentContractEntries, documentationReaderTag } from './documentation-component-contract';
+import { normalizeMdxBlocks } from './reader-markdown';
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
 import { resolveSiteRoute, sitePathTooLong } from './site-route';
@@ -81,6 +85,7 @@ type MarkdownNode = {
   attributes?: JsxAttribute[];
   children?: MarkdownNode[];
   position?: { start: { offset?: number }; end: { offset?: number } };
+  data?: { hProperties?: Record<string, unknown> };
 };
 
 /** What one page renders that the checks look at. */
@@ -102,17 +107,26 @@ const mdxParser = unified().use(remarkParse).use(remarkMdx);
 // included, which MDX disables) comes from this parse, and invalid MDX is read
 // with it entirely, where JSX and comments are raw HTML.
 const markdownParser = unified().use(remarkParse);
-// Fallback links use the reader's CommonMark/GFM -> HAST -> parse5 pipeline.
-const htmlParser = unified().use(remarkParse).use(remarkGfm).use(remarkRehype, { allowDangerousHtml: true }).use(rehypeRaw);
+// Invalid MDX is read for images and stray text as the reader reads it.
+const htmlParser = unified().use(remarkParse).use(remarkGfm);
+// Links use the reader's CommonMark -> HAST -> parse5 (rehype-raw) pipeline.
+// GFM is left out for speed: of what it adds, only footnotes render links, and
+// those are in-page (their labels are filtered below); table cells, task lists
+// and strikethrough parse links the same, and its autolink literals are external.
+const readerLinkParser = unified().use(remarkParse).use(remarkRehype, { allowDangerousHtml: true }).use(rehypeRaw);
 /** Without GFM a footnote (`[^1]` with `[^1]: text`) parses as a reference
  *  link; the reader renders it as an in-page footnote, never a page link. */
 const isFootnoteLabel = (identifier: string | undefined): boolean => identifier?.startsWith('^') === true;
 
-/** Excluded from the MDX walk; fallback HTML links are collected separately. */
+/** Excluded from the MDX walk (images and stray text); links are collected separately. */
 const SILENT = new Set(['code', 'inlineCode', 'html', 'mdxFlowExpression', 'mdxTextExpression', 'mdxjsEsm', 'yaml', 'toml']);
-// `site/mdx/component-map.tsx` renders these components as anchors, alongside
-// the reader's plain <a>. HTML parsing makes tag/attribute names case-insensitive.
-const LINK_ELEMENTS = new Set(['a', 'card', 'button', 'relatedcard']);
+// The reader's plain <a>, plus every component whose reader contract declares
+// an `href` (the same contract mdx-config's sanitizer and component map use),
+// by the lowercase tag name the HTML parser gives it.
+const LINK_ELEMENTS = new Set([
+  'a',
+  ...documentationComponentContractEntries().flatMap(([tag, component]) => ('href' in component.attributes ? [documentationReaderTag(tag)] : [])),
+]);
 const NON_LINK_CONTEXTS = new Set(['script', 'textarea', 'template', 'style', 'noscript', 'iframe', 'title']);
 const STRAY = /^(?:\/|-{3,})$/;
 const HTML_IMAGE = /<img\b[^>]*>/gi;
@@ -132,20 +146,25 @@ type HtmlNode = {
 };
 
 /** CommonMark may end a raw HTML node at a blank line inside e.g. <title>.
- * Keep the source HTML context even if rehype-raw reparents generated nodes. */
+ * Keep the source HTML context even if rehype-raw reparents generated nodes.
+ * Only the raw HTML nodes CommonMark found are parsed (everything else is
+ * blanked), so Markdown text that looks like a tag (`\<script>`) opens no context. */
 const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: number }[] => {
-  const masked = content.split('');
-  const maskCode = (node: MarkdownNode) => {
+  // UTF-16 units, matching the offsets of both parsers.
+  const masked: string[] = content.split('').map((char) => (char === '\n' ? char : ' '));
+  const keepHtml = (node: MarkdownNode) => {
     const start = node.position?.start.offset;
     const end = node.position?.end.offset;
-    if ((node.type === 'code' || node.type === 'inlineCode') && start !== undefined && end !== undefined) masked.fill(' ', start, end);
-    else for (const child of node.children ?? []) maskCode(child);
+    if (node.type === 'html' && start !== undefined && end !== undefined) {
+      for (let index = start; index < end; index++) masked[index] = content[index] ?? ' ';
+    } else for (const child of node.children ?? []) keepHtml(child);
   };
-  maskCode(tree);
+  keepHtml(tree);
   const ranges: { start: number; end: number }[] = [];
   const visit = (node: DefaultTreeAdapterTypes.ChildNode) => {
     if ('tagName' in node && NON_LINK_CONTEXTS.has(node.tagName) && node.sourceCodeLocation) {
-      ranges.push({ start: node.sourceCodeLocation.startOffset, end: node.sourceCodeLocation.endOffset });
+      // An unclosed context runs to the end of the page.
+      ranges.push({ start: node.sourceCodeLocation.startOffset, end: node.sourceCodeLocation.endOffset ?? content.length });
       return;
     }
     if ('childNodes' in node) for (const child of node.childNodes) visit(child);
@@ -154,24 +173,79 @@ const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: n
   return ranges;
 };
 
+/** A raw HTML node that may open one of the NON_LINK_CONTEXTS (it can span later nodes). */
+const NON_LINK_TAG = new RegExp(`<(?:${[...NON_LINK_CONTEXTS].join('|')})(?![a-z0-9-])`, 'i');
+
+/** HAST property holding a Markdown link's destination as authored. */
+const AUTHORED_HREF = 'dataAuthoredHref';
+
 /** Link destinations after HTML parsing, never text that merely looks like a tag. */
 const htmlLinks = (tree: Root, content: string): string[] => {
   const links: string[] = [];
-  const suppressed = htmlNonLinkRanges(tree, content);
+  // CommonMark: the first definition of a label wins.
+  const definitions = new Map<string, string>();
+  let hasHtml = false;
+  let hasNonLinkContext = false;
+  const survey = (node: MarkdownNode) => {
+    if (
+      node.type === 'definition' &&
+      node.identifier &&
+      !isFootnoteLabel(node.identifier) &&
+      node.url !== undefined &&
+      !definitions.has(node.identifier)
+    ) {
+      definitions.set(node.identifier, node.url);
+    }
+    if (node.type === 'html') {
+      hasHtml = true;
+      if (NON_LINK_TAG.test(node.value ?? '')) hasNonLinkContext = true;
+    }
+    for (const child of node.children ?? []) survey(child);
+  };
+  survey(tree as MarkdownNode);
+  // Without raw HTML, the rendered links are exactly the Markdown links
+  // (a reference renders as a link only when its label is defined).
+  if (!hasHtml) {
+    const markdownLinks = (node: MarkdownNode) => {
+      const url = node.type === 'link' ? node.url : node.type === 'linkReference' && node.identifier ? definitions.get(node.identifier) : undefined;
+      if (url) links.push(url);
+      for (const child of node.children ?? []) markdownLinks(child);
+    };
+    markdownLinks(tree as MarkdownNode);
+    return links;
+  }
+  const suppressed = hasNonLinkContext ? htmlNonLinkRanges(tree, content) : [];
+  // HAST percent-encodes Markdown destinations (`/دليل` → `/%D8%AF…`). Carry the
+  // authored one through, so the checks report what the author wrote.
+  const markAuthored = (node: MarkdownNode) => {
+    // A footnote reference is in-page: marked empty, so it is never checked.
+    const authored =
+      node.type === 'link'
+        ? node.url
+        : node.type === 'linkReference' && node.identifier
+          ? isFootnoteLabel(node.identifier)
+            ? ''
+            : definitions.get(node.identifier)
+          : undefined;
+    if (authored !== undefined) node.data = { ...node.data, hProperties: { ...node.data?.hProperties, [AUTHORED_HREF]: authored } };
+    for (const child of node.children ?? []) markAuthored(child);
+  };
+  markAuthored(tree as MarkdownNode);
   const visit = (node: HtmlNode) => {
     if (node.tagName && NON_LINK_CONTEXTS.has(node.tagName)) return;
     if (node.tagName && LINK_ELEMENTS.has(node.tagName)) {
       const offset = node.position?.start.offset;
       if (offset !== undefined && suppressed.some((range) => offset >= range.start && offset < range.end)) return;
-      const properties = node.properties ?? {};
-      const href = properties.href;
-      // In fallback HTML, parse5 retains an authored JSX spread as an attribute.
-      const spread = Object.keys(properties).some((name) => name.startsWith('{'));
-      if (!spread && typeof href === 'string' && !href.trimStart().startsWith('{')) links.push(href);
+      // An element exists here only when the reader parses it as HTML. A JSX
+      // spread on its own line is text to CommonMark and never gets this far;
+      // inside a raw HTML block it is an unknown attribute the sanitizer drops,
+      // and the element still renders its href.
+      const href = node.properties?.[AUTHORED_HREF] ?? node.properties?.href;
+      if (typeof href === 'string' && href && !href.trimStart().startsWith('{')) links.push(href);
     }
     for (const child of node.children ?? []) visit(child);
   };
-  visit(htmlParser.runSync(tree));
+  visit(readerLinkParser.runSync(tree));
   return links;
 };
 
@@ -233,9 +307,7 @@ const collectFacts = (content: string): PageContentFacts => {
   collectDefinitions(tree);
 
   const facts: PageContentFacts = { links: [], imagesWithoutAlt: [], strayText: [] };
-  // Inside a lowercase JSX element (`<div>`, `<p>`), as #426: the reader renders
-  // it as raw HTML, where Markdown links are not links.
-  const visit = (node: MarkdownNode, linksRender: boolean) => {
+  const visit = (node: MarkdownNode) => {
     if (inCode(node) || NON_LINK_CONTEXTS.has(node.name?.toLowerCase() ?? '')) return;
     if (SILENT.has(node.type)) {
       if (node.type === 'html' && !node.value?.trimStart().startsWith('<!--')) {
@@ -245,14 +317,6 @@ const collectFacts = (content: string): PageContentFacts => {
       return;
     }
     switch (node.type) {
-      case 'link':
-        if (linksRender && node.url) facts.links.push(node.url);
-        break;
-      case 'linkReference': {
-        const url = node.identifier ? definitions.get(node.identifier) : undefined;
-        if (linksRender && url) facts.links.push(url);
-        break;
-      }
       case 'image':
         if (!node.alt?.trim()) facts.imagesWithoutAlt.push(node.url ?? '');
         break;
@@ -269,13 +333,6 @@ const collectFacts = (content: string): PageContentFacts => {
       }
       case 'mdxJsxFlowElement':
       case 'mdxJsxTextElement': {
-        if (
-          LINK_ELEMENTS.has(node.name?.toLowerCase() ?? '') &&
-          !node.attributes?.some((attribute) => attribute.type === 'mdxJsxExpressionAttribute')
-        ) {
-          const href = node.attributes?.find((attribute) => attribute.type === 'mdxJsxAttribute' && attribute.name?.toLowerCase() === 'href')?.value;
-          if (typeof href === 'string') facts.links.push(href);
-        }
         if (node.name === 'img') {
           const alt = jsxAttribute(node, 'alt');
           // `alt={expression}` is authored on purpose; only a missing or blank alt is flagged.
@@ -285,17 +342,18 @@ const collectFacts = (content: string): PageContentFacts => {
             facts.imagesWithoutAlt.push(typeof src === 'string' ? src : '');
           }
         }
-        const lowercase = Boolean(node.name && /^[a-z]/.test(node.name));
-        for (const child of node.children ?? []) visit(child, linksRender && !lowercase);
+        for (const child of node.children ?? []) visit(child);
         return;
       }
       default:
         break;
     }
-    for (const child of node.children ?? []) visit(child, linksRender);
+    for (const child of node.children ?? []) visit(child);
   };
-  visit(tree, true);
-  if (!isMdx) facts.links = htmlLinks(tree as Root, content);
+  visit(tree);
+  // Links as the reader renders them: its normalized source, through its pipeline.
+  const readerSource = normalizeMdxBlocks(content);
+  facts.links = htmlLinks(readerLinkParser.parse(readerSource) as Root, readerSource);
   return facts;
 };
 

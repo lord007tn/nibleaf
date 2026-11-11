@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { documentationComponentContractEntries } from './documentation-component-contract';
 import { findBrokenInternalLinks } from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 
@@ -61,9 +62,13 @@ describe('code boundaries come from the parsed tree', () => {
     expect(broken('````md\n```\n[a](/missing)\n```\n````\n\n[b](/gone)')).toEqual(['/gone']);
   });
 
-  it('ignores links in comments, MDX expressions and non-link JSX attributes', () => {
+  it('ignores links in HTML comments and non-link JSX attributes', () => {
     expect(broken('<!-- [a](/in-comment) -->\n\nText.')).toEqual([]);
-    expect(broken('{/* [a](/in-expression) */}\n\n<Card title="[Next](/in-attribute)" />')).toEqual([]);
+    expect(broken('<Card title="[Next](/in-attribute)" />')).toEqual([]);
+  });
+
+  it('checks a link in an MDX comment, which the reader renders as text with a live link', () => {
+    expect(broken('{/* [a](/in-expression) */}')).toEqual(['/in-expression']);
   });
 
   it('reports a link inside an MDX component body', () => {
@@ -77,6 +82,16 @@ describe('code boundaries come from the parsed tree', () => {
 });
 
 describe('literal hrefs on elements the reader renders as links', () => {
+  // The link components come from the reader's component contract, the source
+  // mdx-config's sanitizer and the component map are built from.
+  const hrefComponents = documentationComponentContractEntries().flatMap(([tag, component]) => ('href' in component.attributes ? [tag] : []));
+  it('takes link components from the reader contract', () => {
+    expect([...hrefComponents].sort()).toEqual(['Button', 'Card', 'RelatedCard']);
+  });
+  it.each(hrefComponents)('checks every contract component with an href: %s', (tag) => {
+    expect(broken(`<${tag} href="/missing">Next</${tag}>`)).toEqual(['/missing']);
+  });
+
   it.each(['Card', 'Button', 'RelatedCard', 'a'])('checks %s literals and ignores expressions', (tag) => {
     expect(broken(`<${tag} href="/missing">Next</${tag}>`)).toEqual(['/missing']);
     expect(broken(`<${tag} href='/exists'>Next</${tag}>`)).toEqual([]);

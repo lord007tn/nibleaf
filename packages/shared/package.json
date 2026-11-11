@@ -11,6 +11,7 @@
     "./addons": "./src/addons.ts",
     "./ai": "./src/ai.ts",
     "./callouts": "./src/callouts.ts",
+    "./reader-markdown": "./src/reader-markdown.ts",
     "./client-ip": "./src/client-ip.ts",
     "./legal": "./src/legal.ts",
     "./languages": "./src/languages.ts",
