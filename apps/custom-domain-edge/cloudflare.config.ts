@@ -9,6 +9,10 @@ export default defineConfig({
     previewUrls: false,
     observability: { enabled: true, headSamplingRate: 0.1 },
     // Preserve variables and secrets managed outside this repository on uploads.
+    // That includes EDGE_CACHE_MODE and ORIGIN_TIMEOUT_MS, which are deliberately
+    // NOT declared here. Declaring them would override production on every
+    // upload. An inherited EDGE_CACHE_MODE other than `off` must stop a release:
+    // see the "Edge cache gate" in .github/custom-domain-edge-release.md.
     unsafe: { metadata: { keep_bindings: ['plain_text', 'json', 'secret_text'] } },
     env: {
       APP_ORIGIN: bindings.text('https://nibleaf.com'),
