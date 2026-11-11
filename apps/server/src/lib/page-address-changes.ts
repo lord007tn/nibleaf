@@ -12,15 +12,29 @@ import { AppError, notFound } from '@/errors';
 import { preparePageLinks } from './rewrite-page-links';
 
 /** Parsing happens before entering the structural transaction. */
-export const prepareAddressLinks = async (projectId: string, override?: { id: string; content?: string }) => {
-  const pages = await prisma.page.findMany({ where: { projectId }, select: { id: true, content: true, updatedAt: true } });
+export const prepareAddressLinks = async (
+  projectId: string,
+  override?: { id: string; content?: string },
+  reorderItems?: { id: string; parentId: string | null; languageId?: string }[],
+) => {
+  const pages = await prisma.page.findMany({
+    where: { projectId },
+    select: { id: true, content: true, updatedAt: true, parentId: true, languageId: true },
+  });
+  const byId = new Map(pages.map((page) => [page.id, page]));
+  const parse =
+    !reorderItems ||
+    reorderItems.some((item) => {
+      const page = byId.get(item.id);
+      return !page || page.parentId !== item.parentId || (item.languageId !== undefined && item.languageId !== page.languageId);
+    });
   return new Map(
     pages.map((page) => [
       page.id,
       {
         content: page.content,
         updatedAt: page.updatedAt,
-        links: preparePageLinks(override?.id === page.id && override.content !== undefined ? override.content : page.content),
+        links: parse ? preparePageLinks(override?.id === page.id && override.content !== undefined ? override.content : page.content) : undefined,
       },
     ]),
   );
@@ -243,7 +257,7 @@ export const preservePageAddresses = async (
     const sourceLanguage = (previousLanguageId ? languages.get(previousLanguageId)?.code : undefined) ?? page.language.code;
     const oldPath = changes.find((change) => change.id === page.id)?.old ?? page.path;
     const document = prepared.get(page.id);
-    if (!document) throw new AppError({ code: 'page:address_conflict', details: { reason: 'address_raced' } });
+    if (!document?.links) throw new AppError({ code: 'page:address_conflict', details: { reason: 'address_raced' } });
     const result = document.links.rewrite((href) => {
       if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\?)/i.test(href)) return href;
       if (href.startsWith('/')) return rewriteHref(href, sourceLanguage, page.branchId);

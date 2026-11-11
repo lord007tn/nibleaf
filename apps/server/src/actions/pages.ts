@@ -381,7 +381,7 @@ const settleLanguageMoves = (tree: Map<string, ReorderRow>, before: Map<string, 
 };
 
 export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
-  const prepared = await prepareAddressLinks(projectId);
+  const prepared = await prepareAddressLinks(projectId, undefined, body.items);
   const branchId = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
