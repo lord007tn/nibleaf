@@ -1,4 +1,5 @@
 import type { GroundedCitation } from './answer';
+import { normalizeArabicSearchText } from './arabic';
 import { type SearchChunk, searchChunkSnippet } from './hybrid';
 
 export type CitationPolicy = 'strict' | 'chat';
@@ -19,6 +20,7 @@ export const citationFor = (id: string, chunks: SearchChunk[], query: string): G
     heading: chunk.heading || undefined,
     snippet: searchChunkSnippet(chunk, query, 260),
     direction: chunk.direction,
+    language: chunk.language,
   };
 };
 
@@ -47,6 +49,18 @@ const markdownBlocks = (text: string): string[] => {
 export const validateCitedAnswer = (answer: string, chunks: SearchChunk[], query: string, policy: CitationPolicy): CitedAnswerValidation => {
   let text = answer.trim();
   if (!text) return { status: 'no_answer', reason: 'empty' };
+  // Some providers ignore the decline sentinel and attach a source to a refusal.
+  // Only a standalone refusal is caught here; a supported partial answer stays.
+  const prose = normalizeArabicSearchText(text.replace(/\[S\d+\]/g, '')).trim();
+  if (
+    !prose.includes('\n') &&
+    prose.length < 350 &&
+    !/\b(?:but|however|instead)\b|لكن|يمكنك/iu.test(prose) &&
+    /^(?:I (?:couldn['’]t|could not|can['’]t|cannot) (?:verify|find|answer)|(?:The supplied documentation|The documentation|The docs) (?:does not|do not|doesn['’]t|don['’]t) (?:state|mention|cover|describe)|لم اجد (?:اجابه|اجابة|معلومات)|لا (?:اجد|يمكنني تاكيد))/iu.test(
+      prose,
+    )
+  )
+    return { status: 'no_answer', reason: 'uncited' };
   if (policy === 'chat')
     text = text.replace(/\[(S\d+(?:\s*[,;،؛]\s*S\d+)+)\]/g, (_, group: string) =>
       group

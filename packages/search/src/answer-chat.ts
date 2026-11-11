@@ -2,9 +2,10 @@ import { type AnyTextAdapter, chat, type TokenUsage } from '@tanstack/ai';
 import { answerUserPrompt, type GroundedCitation, noAnswer, SOURCE_FIELD_CHARS } from './answer';
 import { type CitationPolicy, validateCitedAnswer } from './answer-validation';
 import { type SearchChunk, searchChunkSnippet } from './hybrid';
+import { questionLanguage } from './language';
 import type { ChatUsage } from './providers';
 
-export const CHAT_PROMPT_VERSION = 'chat-v6';
+export const CHAT_PROMPT_VERSION = 'chat-v7';
 export const NO_ANSWER_SENTINEL = '[[NO_ANSWER]]';
 export type ChatHistoryMessage = { role: 'user' | 'assistant'; content: string };
 // Wire-compatible with validators' AiChatSource, without a new dependency edge.
@@ -61,6 +62,7 @@ How to answer:
 - For a task, give numbered steps, one action per step, using the exact button, menu and setting names from the sources.
 - Put commands, code and configuration in fenced code blocks; keep identifiers exactly as written.
 - Keep paragraphs short (at most three sentences). Use plain words and explain jargon briefly.
+- Speak naturally to the reader. Avoid phrases like "the supplied documentation does not state".
 - Put the [S#] marker of the most specific source section at the end of EVERY paragraph and list item that states a fact.
 - If the question does not say which thing it is about (for example "how do I set it up?" or "how do I change it?" with no earlier turn naming it) and the sources describe two or more different things it could mean, do not pick one: ask ONE short clarifying question that lists those options, with an [S#] marker after each option.
 - A question is answered when the sources answer it in other words. Steps done from an open item (a notebook, a page, a project) are how to do it for that one item. Never say the documentation does not cover what the sources answer.
@@ -88,6 +90,10 @@ const languageName = (code: string) => {
  * script rather than left to the model, which can drift into the language of
  * the prompt's examples. Mixed Arabic/English questions get Arabic prose. */
 export const replyLanguage = (question: string, siteLanguage: string): string => {
+  const detected = questionLanguage(question, siteLanguage);
+  if (detected === 'ar' || detected === 'en') {
+    return `${languageName(detected)}${detected === 'ar' && /[A-Za-z]/.test(question) ? ' (keep the English names and terms the reader used)' : ''}`;
+  }
   const arabic = question.match(ARABIC_SCRIPT)?.length ?? 0;
   const latin = question.match(LATIN_SCRIPT)?.length ?? 0;
   const site = siteLanguage.split('-')[0]?.toLowerCase() ?? siteLanguage;
@@ -650,7 +656,7 @@ export const streamGroundedChat = ({
         validationFailure?: GroundedChatResult['validationFailure'],
       ): GroundedChatResult => ({
         status: 'no_answer',
-        answer: noAnswer(language).answer,
+        answer: noAnswer(questionLanguage(question, language)).answer,
         citations: [],
         droppedParagraphs: 0,
         noAnswerReason,
