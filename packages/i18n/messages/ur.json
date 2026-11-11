@@ -1394,7 +1394,7 @@
   "auth_name_required": "اپنا نام درج کریں۔",
   "auth_name_continue": "محفوظ کریں اور جاری رکھیں",
   "auth_legal_terms": "سروس کی شرائط",
-  "auth_legal_and": "اور",
+  "auth_legal_and": " اور ",
   "auth_legal_privacy": "رازداری کی پالیسی",
   "auth_legal_agreesuffix": ".",
   "auth_legal_signupdisabled": "سائن اپ فی الحال اس مثال پر غیر فعال ہیں۔",

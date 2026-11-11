@@ -1349,7 +1349,7 @@
   "auth_name_required": "আপনার নাম লিখুন।",
   "auth_name_continue": "সংরক্ষণ করে এগিয়ে যান",
   "auth_legal_terms": "পরিষেবার শর্তাবলী",
-  "auth_legal_and": "এবং",
+  "auth_legal_and": " এবং ",
   "auth_legal_privacy": "গোপনীয়তা নীতি",
   "auth_legal_agreesuffix": ".",
   "auth_legal_signupdisabled": "সাইন-আপগুলি বর্তমানে এই উদাহরণে অক্ষম করা হয়েছে৷",

@@ -1403,7 +1403,7 @@
   "auth_name_required": "Digite seu nome.",
   "auth_name_continue": "Salvar e continuar",
   "auth_legal_terms": "Termos de Serviço",
-  "auth_legal_and": "e o",
+  "auth_legal_and": " e a ",
   "auth_legal_privacy": "Política de Privacidade",
   "auth_legal_agreesuffix": ".",
   "auth_legal_signupdisabled": "As inscrições estão atualmente desativadas nesta instância.",

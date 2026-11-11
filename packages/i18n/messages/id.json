@@ -1349,7 +1349,7 @@
   "auth_name_required": "Masukkan nama Anda.",
   "auth_name_continue": "Simpan dan lanjutkan",
   "auth_legal_terms": "Ketentuan Layanan",
-  "auth_legal_and": "dan itu",
+  "auth_legal_and": " dan ",
   "auth_legal_privacy": "Kebijakan Privasi",
   "auth_legal_agreesuffix": ".",
   "auth_legal_signupdisabled": "Pendaftaran saat ini dinonaktifkan pada contoh ini.",

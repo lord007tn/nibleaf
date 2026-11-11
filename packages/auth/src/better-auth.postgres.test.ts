@@ -77,8 +77,9 @@ interface SessionBody {
   user: { email: string; id: string; role: string };
 }
 
-// Explicit opt-in: CI supplies its disposable migrated PostgreSQL service. The
-// real auth instance runs against it; only email, queues, and Google are stubbed.
+// Explicit opt-in: CI supplies its disposable migrated PostgreSQL service.
+// The real auth instance runs against it; only email, queues, and Google are stubbed.
+// Synthetic fixture users inserted directly by tests are exempt from consent.
 describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL', () => {
   let auth: typeof import('./server')['auth'];
 
@@ -302,6 +303,26 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
       vi.unstubAllEnvs();
       vi.resetModules();
     }
+  });
+
+  it('leaves operator-created and requestless demo identities exempt, with consent null', async () => {
+    const operator = await prisma.user.create({
+      data: { email: addressFor('terms-operator'), name: 'Operator', role: 'admin', emailVerified: true },
+    });
+    const cookie = sessionCookie(await signInWithCode(operator.email, ADMIN_ORIGIN));
+    const email = addressFor('terms-operator-created');
+    const response = await send('/admin/create-user', { cookie, origin: ADMIN_ORIGIN, body: { email, name: 'Managed user' } });
+    expect(response.status).toBe(200);
+    expect(await prisma.user.findUniqueOrThrow({ where: { email } })).toMatchObject({ termsAcceptedAt: null, termsVersion: null });
+
+    const demoEmail = addressFor('terms-demo');
+    await (await auth.$context).internalAdapter.createUser(
+      { email: demoEmail, name: 'Synthetic demo', emailVerified: true },
+      { method: 'email-otp' },
+    );
+    const demo = await prisma.user.findUniqueOrThrow({ where: { email: demoEmail } });
+    expect(demo).toMatchObject({ termsAcceptedAt: null, termsVersion: null });
+    expect(await prisma.member.count({ where: { userId: demo.id, role: 'owner' } })).toBe(1);
   });
 
   it('passes Better Auth schema validation on the generated client and the migrated database', async () => {

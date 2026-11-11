@@ -1403,7 +1403,7 @@
   "auth_name_required": "Introduce tu nombre.",
   "auth_name_continue": "Guardar y continuar",
   "auth_legal_terms": "Términos de servicio",
-  "auth_legal_and": "y el",
+  "auth_legal_and": " y la ",
   "auth_legal_privacy": "Política de privacidad",
   "auth_legal_agreesuffix": ".",
   "auth_legal_signupdisabled": "Los registros están actualmente deshabilitados en esta instancia.",

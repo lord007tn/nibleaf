@@ -1423,7 +1423,7 @@
   "auth_name_description": "Add your name to continue to your workspace.",
   "auth_name_required": "Enter your name.",
   "auth_name_continue": "Save and continue",
-  "auth_legal_terms": "Terms of Service",
+  "auth_legal_terms": "Terms",
   "auth_legal_and": " and the ",
   "auth_legal_privacy": "Privacy Policy",
   "auth_legal_agreesuffix": ".",

@@ -1349,7 +1349,7 @@
   "auth_name_required": "अपना नाम दर्ज करें।",
   "auth_name_continue": "सहेजें और जारी रखें",
   "auth_legal_terms": "सेवा की शर्तें",
-  "auth_legal_and": "और",
+  "auth_legal_and": " और ",
   "auth_legal_privacy": "गोपनीयता नीति",
   "auth_legal_agreesuffix": ".",
   "auth_legal_signupdisabled": "इस उदाहरण पर साइन-अप वर्तमान में अक्षम हैं।",
