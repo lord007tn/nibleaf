@@ -4646,5 +4646,16 @@
   "people_invite_retryfor": "إعادة محاولة البريد إلى {email}",
   "people_invite_recipients": "الأشخاص المدعوون",
   "people_invitations_resendnotqueued": "دعوة {email} صالحة 7 أيام أخرى، لكن تعذّر إدراج بريدها للإرسال. انسخ الرابط بدلًا من ذلك.",
-  "people_site_invitedfailed": "دعوة {email} موجودة، لكن تعذّر إدراج بريدها للإرسال. انسخ الرابط أو أعد المحاولة."
+  "people_site_invitedfailed": "دعوة {email} موجودة، لكن تعذّر إدراج بريدها للإرسال. انسخ الرابط أو أعد المحاولة.",
+  "account_menu_help": "المساعدة والتوثيق",
+  "account_menu_whatsNew": "ما الجديد",
+  "account_menu_shortcuts": "اختصارات لوحة المفاتيح",
+  "account_menu_reportProblem": "الإبلاغ عن مشكلة",
+  "shortcuts_title": "اختصارات لوحة المفاتيح",
+  "shortcuts_description": "اعمل بسرعة أكبر في لوحة التحكم. تعمل اختصارات الأحرف عندما لا تكتب في حقل.",
+  "shortcuts_commandPalette": "البحث وتنفيذ الأوامر",
+  "shortcuts_switchOrganization": "تبديل المؤسسة",
+  "shortcuts_switchWebsite": "تبديل الموقع",
+  "shortcuts_close": "إغلاق قائمة أو نافذة",
+  "shortcuts_then": "ثم"
 }
