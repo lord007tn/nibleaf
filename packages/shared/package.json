@@ -18,6 +18,7 @@
     "./integrations": "./src/integrations.ts",
     "./join-links": "./src/join-links.ts",
     "./mcp": "./src/mcp.ts",
+    "./plan-policy": "./src/plan-policy.ts",
     "./markdown-discovery": "./src/markdown-discovery.ts",
     "./markdown-code": "./src/markdown-code.ts",
     "./public-markdown": "./src/public-markdown.ts",
@@ -33,7 +34,8 @@
     "./theme-repository": "./src/theme-repository.ts",
     "./theme-repository-templates": "./src/theme-repository-templates/index.ts",
     "./export-schedule": "./src/export-schedule.ts",
-    "./utils": "./src/utils.ts"
+    "./utils": "./src/utils.ts",
+    "./organization-handles": "./src/organization-handles.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   projectFindUnique: vi.fn(),
   planFindUnique: vi.fn(),
+  defaultPlanFindUnique: vi.fn(),
   organizationFindUnique: vi.fn(),
   deploymentFindFirst: vi.fn(),
   queryRaw: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('@nibleaf/database', () => ({
     project: { findUnique: mocks.projectFindUnique, findMany: mocks.projectFindMany },
     member: { findUnique: mocks.memberFindUnique },
     organizationUsagePlan: { findUnique: mocks.planFindUnique },
+    usagePlan: { findUnique: mocks.defaultPlanFindUnique },
     organization: { findUnique: mocks.organizationFindUnique },
     deployment: { findFirst: mocks.deploymentFindFirst },
     usageIngestCheckpoint: { findFirst: mocks.pendingFindFirst },
@@ -69,6 +71,7 @@ describe('usage authorization and entitlement policy', () => {
     mocks.memberFindUnique.mockResolvedValue({ role: 'owner', orgRole: 'owner' });
     mocks.organizationFindUnique.mockResolvedValue({ metadata: null });
     mocks.planFindUnique.mockResolvedValue(activePlan());
+    mocks.defaultPlanFindUnique.mockResolvedValue(null);
     mocks.deploymentFindFirst.mockResolvedValue({ pagesCount: 12 });
     mocks.queryRaw
       .mockResolvedValueOnce([{ quantity: 2n }])
@@ -128,7 +131,13 @@ describe('usage authorization and entitlement policy', () => {
     mocks.planFindUnique.mockResolvedValue({ ...activePlan(), expiresAt: new Date('2026-02-01T00:00:00Z') });
     await expect(
       resolveProjectCapability(apiContext('project-a'), 'project-a', { capabilityKey: 'addons.feedback', eligiblePlanKeys: ['pro'] }),
-    ).resolves.toMatchObject({ availability: 'unavailable', decision: 'unknown', source: 'plan' });
+    ).resolves.toMatchObject({ availability: 'unavailable', decision: 'unknown', source: null });
+    // With the canonical free plan configured, an expired paid plan falls back to
+    // free (its real policy), never keeping a pro-only capability.
+    mocks.defaultPlanFindUnique.mockResolvedValue({ key: 'free', active: true, meters: [], entitlements: [] });
+    await expect(
+      resolveProjectCapability(apiContext('project-a'), 'project-a', { capabilityKey: 'addons.feedback', eligiblePlanKeys: ['pro'] }),
+    ).resolves.toMatchObject({ availability: 'complete', decision: 'disabled', planKey: 'free', source: 'plan' });
   });
 
   it('treats oversized compatibility metadata as unknown without parsing it', async () => {
@@ -177,6 +186,37 @@ describe('usage authorization and entitlement policy', () => {
     expect(unavailable.availability).toBe('unavailable');
     expect(unavailable.meters.every((meter) => meter.quantity === null)).toBe(true);
     expect(JSON.stringify(unavailable)).not.toContain('private clickhouse');
+  });
+
+  it('names why every missing number is missing (audit WORKSPACE-19)', async () => {
+    const reason = (summary: Awaited<ReturnType<typeof getProjectUsageSummary>>, key: string) =>
+      summary.meters.find((meter) => meter.key === key)?.unavailableReason;
+    mocks.analyticsMode = 'postgres';
+    const disabled = await getProjectUsageSummary(sessionContext(), 'project-a');
+    expect(reason(disabled, 'public_page_view')).toBe('metering_disabled');
+    expect(disabled.meters.filter((meter) => meter.quantity === null).every((meter) => meter.unavailableReason)).toBe(true);
+    expect(disabled.meters.filter((meter) => meter.quantity !== null).every((meter) => meter.unavailableReason === null)).toBe(true);
+
+    mocks.analyticsMode = 'clickhouse';
+    setSnapshots();
+    mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows.filter((row) => !row.meterKey.includes('token')));
+    const tokens = await getProjectUsageSummary(sessionContext(), 'project-a');
+    expect(reason(tokens, 'ai_input_token')).toBe('tokens_incomplete');
+    expect(reason(tokens, 'public_page_view')).toBeNull();
+
+    setSnapshots({ members: null, assets: null, domains: null, pages: null });
+    mocks.queryUsageMeterTotals.mockRejectedValue(new Error('private clickhouse endpoint and credentials'));
+    const failed = await getProjectUsageSummary(sessionContext(), 'project-a');
+    expect(reason(failed, 'search_query')).toBe('query_failed');
+    expect(reason(failed, 'published_page')).toBe('not_measured');
+
+    setSnapshots();
+    mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows);
+    mocks.pendingFindFirst.mockResolvedValueOnce({ enqueuedAt: new Date() });
+    expect(reason(await getProjectUsageSummary(sessionContext(), 'project-a'), 'search_query')).toBe('catching_up');
+    setSnapshots();
+    mocks.pendingFindFirst.mockResolvedValueOnce({ enqueuedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) });
+    expect(reason(await getProjectUsageSummary(sessionContext(), 'project-a'), 'search_query')).toBe('delayed');
   });
 
   it('reports overlapping durable ingestion as partial and stale pending work as unavailable', async () => {
@@ -319,5 +359,8 @@ describe('usage authorization and entitlement policy', () => {
     const incomplete = await getOrganizationUsageSummary('user-a', 'org-a');
     expect(incomplete.incomplete).toBe(true);
     expect(incomplete.meters.find((meter) => meter.key === 'public_page_view')?.quantity).toBeNull();
+    // The org total names the website's reason instead of a bare "Unknown".
+    expect(incomplete.meters.find((meter) => meter.key === 'public_page_view')?.unavailableReason).toBe('catching_up');
+    expect(complete.meters.every((meter) => meter.unavailableReason === null)).toBe(true);
   });
 });

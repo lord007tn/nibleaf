@@ -11,11 +11,14 @@ export type AdmissionResult = { organizationId: string; landing: { projectId: st
 export const invalidJoinLink = () => new AppError({ code: 'join:invalid', message: 'This join link is not valid.' });
 const invalidInvitation = () => notFound('invitation');
 
-export async function lockOrganization(tx: Prisma.TransactionClient, organizationId: string, bootstrap = false) {
+/** Lock the org row for the transaction. A fenced org (deletion started) or
+ *  one needing repair refuses every change, except `resumeDeletion`, which
+ *  only the deletion itself passes so an interrupted deletion can finish. */
+export async function lockOrganization(tx: Prisma.TransactionClient, organizationId: string, bootstrap = false, resumeDeletion = false) {
   await tx.$queryRaw`SELECT id FROM organization WHERE id = ${organizationId} FOR NO KEY UPDATE`;
   const org = await tx.organization.findUnique({ where: { id: organizationId } });
   if (!org) throw notFound('organization');
-  if (org.deletionStartedAt || (org.needsRepair && !bootstrap)) throw conflict('This organization cannot be changed right now.');
+  if ((org.deletionStartedAt && !resumeDeletion) || (org.needsRepair && !bootstrap)) throw conflict('This organization cannot be changed right now.');
   return org;
 }
 
@@ -101,6 +104,7 @@ export const admit = async (userId: string, source: { invitationId: string } | {
         link?.orgRole !== 'member' ||
         !grants.length ||
         link.revokedAt ||
+        link.deletedAt ||
         (link.expiresAt && link.expiresAt <= new Date()) ||
         !(await issuerAuthorizes(tx, org.id, issuerId, 'member', grants))
       )

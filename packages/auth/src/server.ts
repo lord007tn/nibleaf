@@ -457,11 +457,10 @@ async function createStarterProject(organizationId: string, actorUserId: string)
       const slug = attempt < 4 ? await uniqueStarterSlug() : `docs-${Date.now().toString(36)}`;
       try {
         return await prisma.$transaction(async (tx) => {
-          // PR 1: the website partition stays equal to its 1:1 org (rollback compatibility).
+          // Project.dataTenantId gets an independent cuid from the Prisma default (§3).
           const project = await tx.project.create({
             data: {
               organizationId,
-              dataTenantId: organizationId,
               name: 'Documentation',
               slug,
               description: 'Your first documentation site.',

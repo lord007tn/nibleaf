@@ -1,22 +1,31 @@
 import { MemberRole } from '@nibleaf/shared/constants';
+import { analyticsQuery } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { getWorkspaceAnalytics } from '@/actions/analytics';
 import {
   cancelOrganizationInvitation,
   changeOrganizationJoinLink,
+  createOrganization,
   createOrganizationJoinLink,
+  deleteOrganization,
+  deleteOrganizationJoinLink,
   getOrganization,
   inviteOrganizationMembers,
+  listOrganizationInvitations,
   listOrganizationJoinLinks,
   listOrganizationMembers,
   listOrganizations,
   organizationBySlug,
   removeOrganizationMember,
   replaceOrganizationMemberAccess,
+  resendOrganizationInvitation,
   transferOrganizationOwnership,
   updateOrganization,
   updateOrganizationMember,
 } from '@/actions/organizations';
+import { listOrganizationProjects, listOrganizationSwitcherProjects } from '@/actions/projects';
+import { getOrganizationUsageSummary } from '@/actions/usage';
 import { getContextLocale, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import { isAuthenticated, requireOrgRole } from '@/middlewares/guard';
@@ -41,10 +50,16 @@ const link = z.object({
 const member = [isAuthenticated, requireOrgRole(MemberRole.MEMBER)] as const;
 const admin = [isAuthenticated, requireOrgRole(MemberRole.ADMIN)] as const;
 const owner = [isAuthenticated, requireOrgRole(MemberRole.OWNER)] as const;
+/** Deleting passes a fenced org so the Owner can resume an interrupted deletion. */
+const ownerDeleting = [isAuthenticated, requireOrgRole(MemberRole.OWNER, 'organizationId', { resumeDeletion: true })] as const;
 const userId = () => getContextUserOrThrow().id;
 
 const app = new Hono<HonoEnv>()
   .get('/', isAuthenticated, async (ctx) => ctx.json({ data: await listOrganizations(userId()) }))
+  // Any signed-in person may start an organization; they become its Owner.
+  .post('/', isAuthenticated, validator('json', z.object({ name: z.string().trim().min(1).max(100) }).strict()), async (ctx) =>
+    ctx.json({ data: await createOrganization(userId(), ctx.req.valid('json').name) }, 201),
+  )
   .get('/by-slug/:slug', isAuthenticated, async (ctx) => ctx.json({ data: await organizationBySlug(userId(), ctx.req.param('slug')) }))
   .get('/:organizationId', ...member, async (ctx) => ctx.json({ data: await getOrganization(userId(), ctx.req.param('organizationId')) }))
   .patch(
@@ -62,10 +77,27 @@ const app = new Hono<HonoEnv>()
             .max(80)
             .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
             .optional(),
+          sendInvitationEmails: z.boolean().optional(),
         })
         .strict(),
     ),
     async (ctx) => ctx.json({ data: await updateOrganization(ctx.req.param('organizationId'), userId(), ctx.req.valid('json')) }),
+  )
+  .delete('/:organizationId', ...ownerDeleting, validator('json', z.object({ confirmName: z.string().max(200) }).strict()), async (ctx) =>
+    ctx.json({ data: await deleteOrganization(ctx.req.param('organizationId'), userId(), ctx.req.valid('json').confirmName) }),
+  )
+  // Every member lists the websites they can open; `view=switcher` is the compact switcher row.
+  .get('/:organizationId/projects', ...member, validator('query', z.object({ view: z.literal('switcher').optional() })), async (ctx) =>
+    ctx.req.valid('query').view === 'switcher'
+      ? ctx.json({ data: await listOrganizationSwitcherProjects(userId(), ctx.req.param('organizationId')) })
+      : ctx.json({ data: await listOrganizationProjects(userId(), ctx.req.param('organizationId')) }),
+  )
+  .get('/:organizationId/analytics', ...member, validator('query', analyticsQuery), async (ctx) => {
+    const { range, timezone } = ctx.req.valid('query');
+    return ctx.json({ data: await getWorkspaceAnalytics(userId(), range, timezone, ctx.req.param('organizationId')) });
+  })
+  .get('/:organizationId/usage', ...admin, async (ctx) =>
+    ctx.json({ data: await getOrganizationUsageSummary(userId(), ctx.req.param('organizationId')) }),
   )
   .get('/:organizationId/members', ...admin, async (ctx) => ctx.json({ data: await listOrganizationMembers(ctx.req.param('organizationId')) }))
   .post('/:organizationId/invitations', ...admin, validator('json', invitation), async (ctx) =>
@@ -73,6 +105,14 @@ const app = new Hono<HonoEnv>()
       { data: await inviteOrganizationMembers(ctx.req.param('organizationId'), userId(), ctx.req.valid('json'), { language: getContextLocale() }) },
       201,
     ),
+  )
+  .get('/:organizationId/invitations', ...admin, async (ctx) =>
+    ctx.json({ data: await listOrganizationInvitations(ctx.req.param('organizationId')) }),
+  )
+  .post('/:organizationId/invitations/:id/resend', ...admin, async (ctx) =>
+    ctx.json({
+      data: await resendOrganizationInvitation(ctx.req.param('organizationId'), userId(), ctx.req.param('id'), { language: getContextLocale() }),
+    }),
   )
   .delete('/:organizationId/invitations/:id', ...admin, async (ctx) =>
     ctx.json({ data: await cancelOrganizationInvitation(ctx.req.param('organizationId'), userId(), ctx.req.param('id')) }),
@@ -102,8 +142,15 @@ const app = new Hono<HonoEnv>()
   .post('/:organizationId/join-links', ...admin, validator('json', link), async (ctx) =>
     ctx.json({ data: await createOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.valid('json')) }, 201),
   )
-  .delete('/:organizationId/join-links/:id', ...admin, async (ctx) =>
-    ctx.json({ data: (await changeOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.param('id'), false)).link }),
+  // Disables a link; `?permanent=true` deletes a link that no longer admits anyone.
+  .delete(
+    '/:organizationId/join-links/:id',
+    ...admin,
+    validator('query', z.object({ permanent: z.enum(['true', 'false']).optional() })),
+    async (ctx) =>
+      ctx.req.valid('query').permanent === 'true'
+        ? ctx.json({ data: await deleteOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.param('id')) })
+        : ctx.json({ data: (await changeOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.param('id'), false)).link }),
   )
   .post('/:organizationId/join-links/:id/regenerate', ...admin, async (ctx) =>
     ctx.json({ data: await changeOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.param('id'), true) }),

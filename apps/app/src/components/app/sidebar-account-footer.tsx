@@ -14,7 +14,7 @@ import { INTERFACE_LOCALES } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { ChevronsUpDown, Languages, LogOut, Moon, Sun } from 'lucide-react';
+import { ChevronsUpDown, Languages, LogOut, Moon, Sun, UserRound } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
@@ -95,6 +95,11 @@ export function SidebarAccountFooter() {
                   </span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {/* Account settings are personal and reached only from here (§5.4.4). */}
+                <DropdownMenuItem onClick={() => void navigate({ to: '/app/settings', search: { tab: 'account' } })}>
+                  <UserRound className="size-4" />
+                  {t('command.accountSettings')}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
                   {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
                   {resolvedTheme === 'dark' ? t('account.lightMode') : t('account.darkMode')}

@@ -22,7 +22,7 @@ export const isAuthenticated: MiddlewareHandler<HonoEnv> = async (ctx, next) => 
 
 /** Organization authorization always reads the organization from the path. */
 export const requireOrgRole =
-  (required: MemberRole, param = 'organizationId'): MiddlewareHandler<HonoEnv> =>
+  (required: MemberRole, param = 'organizationId', options: { resumeDeletion?: boolean } = {}): MiddlewareHandler<HonoEnv> =>
   async (ctx, next) => {
     const user = ctx.get('user');
     const organizationId = ctx.req.param(param);
@@ -39,7 +39,9 @@ export const requireOrgRole =
         where: { id: organizationId },
         select: { needsRepair: true, deletionStartedAt: true },
       });
-      if (organization.needsRepair || organization.deletionStartedAt) throw conflict('This organization cannot be changed right now.');
+      // Only the deletion route itself may continue a started (interrupted) deletion.
+      if (organization.needsRepair || (organization.deletionStartedAt && !options.resumeDeletion))
+        throw conflict('This organization cannot be changed right now.');
     }
     ctx.set('membership', { organizationId, role });
     ctx.set('organizationId', organizationId);

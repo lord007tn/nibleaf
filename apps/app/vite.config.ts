@@ -12,7 +12,7 @@ import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { defineConfig, loadEnv } from 'vite';
 import { z } from 'zod';
 import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
-import { dashboardPreloadPlugin } from './scripts/dashboard-preload-plugin.ts';
+import { DASHBOARD_PRELOADS_CACHE_CONTROL, dashboardPreloadPlugin } from './scripts/dashboard-preload-plugin.ts';
 
 // Baseline browser hardening for every dashboard, marketing, and published-site
 // response. The custom server entry adds the per-response nonce-based CSP to
@@ -96,6 +96,19 @@ export default defineConfig(({ mode }) => {
                     },
                   },
                   {
+                    // Small modules every page needs (button, icon factory, brand mark, a few
+                    // Base UI hooks, the standalone translator). Without a group Rolldown splits
+                    // each into its own chunk once the dashboard shell shares them, and eight
+                    // tiny files gzip ~4 KiB worse than one for every published docs page.
+                    name: 'shell-ui',
+                    priority: 50,
+                    minSize: 0,
+                    test: (id) =>
+                      /\/(?:packages\/design-system\/src\/(?:components\/ui\/button|brand\/)|node_modules\/lucide-react\/dist\/esm\/(?:createLucideIcon|Icon|defaultAttributes|shared\/)|node_modules\/@base-ui\/(?:utils\/(?:useOpenChangeComplete|useValueChanged|useTimeout)|react\/direction-provider\/DirectionContext)|packages\/i18n\/src\/standalone\.ts$)/.test(
+                        id.replaceAll('\\', '/'),
+                      ),
+                  },
+                  {
                     name: 'standalone-i18n',
                     test: (id) =>
                       /\/packages\/i18n\/src\/paraglide\/messages\/(?:common_loading|error_(?:backhome|badge|title|tryagain|unexpected)|notfound_(?:backhome|badge|body|title))\.js$/.test(
@@ -159,6 +172,13 @@ export default defineConfig(({ mode }) => {
       nitro({
         routeRules: {
           '/**': { headers: SECURITY_HEADERS },
+          // Marks static build output for the custom-domain edge, which shares one
+          // cache entry per content-hashed `/assets/*` file across every hostname
+          // and requires this marker (apps/custom-domain-edge/src/index.ts).
+          '/assets/**': { headers: { 'x-nibleaf-static-build': '1' } },
+          // Rewritten by every build under the same name (scripts/dashboard-preload-plugin.ts),
+          // so it lives outside the immutable, content-hashed `/assets/` and is revalidated.
+          '/dashboard-preloads.json': { headers: { 'cache-control': DASHBOARD_PRELOADS_CACHE_CONTROL } },
           // Nitro otherwise treats dotted asset keys as app/static paths before
           // the broad API proxy, leaving imported images as published-site 404s.
           '/api/public/assets/**': { proxy: `${apiTarget}/api/public/assets/**` },

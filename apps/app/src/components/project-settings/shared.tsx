@@ -2,7 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { SegmentedControl, SegmentedControlItem } from '@nibleaf/design-system/components/ui/segmented-control';
-import { Skeleton, SkeletonListRow, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
+import { Skeleton, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
@@ -472,26 +472,6 @@ export function SettingsFormSkeleton() {
           <Skeleton className="h-10 w-full" />
         </div>
       ))}
-    </div>
-  );
-}
-
-export function SettingsListSkeleton() {
-  const t = useT();
-  return (
-    <div aria-busy="true" className="space-y-4">
-      <p className="sr-only" role="status">
-        {t('common.loading')}
-      </p>
-      <div aria-hidden>
-        <Skeleton className="mb-2 h-7 w-40" />
-        <SkeletonText lines={2} />
-      </div>
-      <div className="divide-y divide-border">
-        <SkeletonListRow />
-        <SkeletonListRow />
-        <SkeletonListRow />
-      </div>
     </div>
   );
 }

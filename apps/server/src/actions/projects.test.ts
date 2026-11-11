@@ -10,9 +10,12 @@ const mocks = vi.hoisted(() => ({
   deploymentFindFirst: vi.fn(),
   deploymentFindMany: vi.fn(),
   deploymentCount: vi.fn(),
+  resolveOrgAccess: vi.fn(),
+  preferenceFindUnique: vi.fn(),
+  lockOrganization: vi.fn(),
   tx: {
     organization: { create: vi.fn() },
-    member: { create: vi.fn() },
+    member: { create: vi.fn(), findUnique: vi.fn() },
     project: { create: vi.fn() },
     projectAddon: { createMany: vi.fn() },
     projectAddonAuditEvent: { createMany: vi.fn() },
@@ -24,10 +27,14 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/access', () => ({
   accessibleProjectIds: async () =>
     (await mocks.memberFindMany()).map((m: { organizationId: string }) => m.organizationId.replace('org-', 'project-')),
+  accessibleProjectRoles: vi.fn(),
+  resolveOrgAccess: mocks.resolveOrgAccess,
 }));
+vi.mock('@/lib/site-host', () => ({ siteHosts: async () => new Map() }));
+vi.mock('./admissions', () => ({ lockOrganization: mocks.lockOrganization }));
 
 vi.mock('@nibleaf/auth/tenant-erasure', () => ({
-  eraseProjectOrganization: vi.fn(),
+  eraseProject: vi.fn(),
   TenantUsageDeletionPendingError: class extends Error {},
   TenantErasureProjectNotFoundError: class extends Error {},
 }));
@@ -36,6 +43,7 @@ vi.mock('@nibleaf/database', () => ({
   Prisma: { DbNull: 'DbNull' },
   prisma: {
     member: { findMany: mocks.memberFindMany },
+    userPreference: { findUnique: mocks.preferenceFindUnique },
     project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst },
     deployment: {
       groupBy: mocks.deploymentGroupBy,
@@ -227,12 +235,64 @@ describe('createProject', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.projectFindFirst.mockResolvedValue(null);
-    mocks.tx.organization.create.mockResolvedValue({ id: 'org-new' });
+    mocks.resolveOrgAccess.mockResolvedValue({ organizationId: 'org-a', orgRole: 'admin' });
+    mocks.lockOrganization.mockResolvedValue({ id: 'org-a' });
+    mocks.tx.member.findUnique.mockResolvedValue({ orgRole: 'admin' });
     mocks.tx.project.create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ id: 'project-new', ...data }));
   });
 
+  it('creates the website inside the given organization and never a new organization', async () => {
+    await createProject('user-1', { name: 'Acme Docs', organizationId: 'org-a' });
+
+    expect(mocks.resolveOrgAccess).toHaveBeenCalledWith('user-1', 'org-a');
+    expect(mocks.lockOrganization).toHaveBeenCalledWith(mocks.tx, 'org-a');
+    expect(mocks.tx.organization.create).not.toHaveBeenCalled();
+    expect(mocks.tx.member.create).not.toHaveBeenCalled();
+    expect(mocks.tx.project.create).toHaveBeenCalledWith({ data: expect.objectContaining({ organizationId: 'org-a', name: 'Acme Docs' }) });
+  });
+
+  it('refuses an organization Member before writing anything', async () => {
+    mocks.resolveOrgAccess.mockResolvedValue({ organizationId: 'org-a', orgRole: 'member' });
+
+    await expect(createProject('user-1', { name: 'Acme Docs', organizationId: 'org-a' })).rejects.toMatchObject({
+      code: 'auth:insufficient_role',
+    });
+    expect(mocks.lockOrganization).not.toHaveBeenCalled();
+    expect(mocks.tx.project.create).not.toHaveBeenCalled();
+  });
+
+  it('re-reads the role under the organization lock', async () => {
+    mocks.tx.member.findUnique.mockResolvedValue({ orgRole: 'member' });
+
+    await expect(createProject('user-1', { name: 'Acme Docs', organizationId: 'org-a' })).rejects.toMatchObject({
+      code: 'auth:insufficient_role',
+    });
+    expect(mocks.tx.project.create).not.toHaveBeenCalled();
+  });
+
+  it('places an org-less request from an old dashboard in the landing org the caller administers', async () => {
+    mocks.preferenceFindUnique.mockResolvedValue({ lastOrganizationId: 'org-b' });
+    mocks.memberFindMany.mockResolvedValue([
+      { organizationId: 'org-a', orgRole: 'owner' },
+      { organizationId: 'org-b', orgRole: 'admin' },
+    ]);
+
+    await createProject('user-1', { name: 'Acme Docs' });
+
+    expect(mocks.resolveOrgAccess).not.toHaveBeenCalled();
+    expect(mocks.lockOrganization).toHaveBeenCalledWith(mocks.tx, 'org-b');
+  });
+
+  it('refuses an org-less request from someone who administers no organization', async () => {
+    mocks.preferenceFindUnique.mockResolvedValue(null);
+    mocks.memberFindMany.mockResolvedValue([]);
+
+    await expect(createProject('user-1', { name: 'Acme Docs' })).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+    expect(mocks.tx.organization.create).not.toHaveBeenCalled();
+  });
+
   it('seeds the curated Harbor preset so a new site never renders the legacy palette', async () => {
-    await createProject('user-1', { name: 'Acme Docs' } as CreateProjectBody);
+    await createProject('user-1', { name: 'Acme Docs', organizationId: 'org-a' } as CreateProjectBody);
 
     const config = createdConfig();
     expect(config.theme).toEqual({ version: 1, preset: 'harbor', metadata: THEME_PRESETS.harbor.metadata });
@@ -242,7 +302,7 @@ describe('createProject', () => {
   });
 
   it('keeps add-on provisioning intact next to the seeded theme', async () => {
-    await createProject('user-1', { name: 'Acme Docs' } as CreateProjectBody);
+    await createProject('user-1', { name: 'Acme Docs', organizationId: 'org-a' } as CreateProjectBody);
 
     const config = createdConfig();
     expect(config.addons).toMatchObject({ feedback: expect.any(Boolean) });

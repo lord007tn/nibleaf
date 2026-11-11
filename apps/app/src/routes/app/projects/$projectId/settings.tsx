@@ -7,13 +7,11 @@ import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   Archive,
-  Bell,
   Blocks,
   Bot,
   Braces,
   ChartNoAxesCombined,
   CirclePlus,
-  Gem,
   GitBranch,
   Globe2,
   Import,
@@ -37,9 +35,7 @@ import { DomainSection } from '@/components/project-settings/domain-section';
 import { ExportsSection } from '@/components/project-settings/exports-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { LanguagesSection } from '@/components/project-settings/languages-section';
-import { MembersSection } from '@/components/project-settings/members-section';
 import { OpenApiSection } from '@/components/project-settings/openapi-section';
-import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
 import {
   ConfigDirtyProvider,
@@ -54,10 +50,10 @@ import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
-import { NotificationsTab } from '@/components/settings/notifications-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
+import { SiteTeamPage } from '@/features/people/components/site-team-page';
 import type { Project } from '@/hooks/api';
-import { useProject, useProjectMembers } from '@/hooks/api';
+import { type SwitcherOrganization, useOrganizationOfProject, useProject, useProjectMembers } from '@/hooks/api';
 import {
   apiKeysQueryOptions,
   branchesQueryOptions,
@@ -86,7 +82,7 @@ import { useSession } from '@/services/auth-client';
 // Site settings = the ADMIN/operational slice. The docs-website appearance
 // (branding, styling, navbar, footer, banner, SEO, search, redirects, variables)
 // lives in the editor's Configuration tab — Mintlify keeps the two separate.
-type SettingsGroupId = 'site' | 'deployment' | 'workspace' | 'advanced';
+type SettingsGroupId = 'website' | 'publishing' | 'team' | 'usage' | 'advanced';
 
 // Section ids alone, in nav order. `validateSearch` is part of the router's
 // eager chunk, which published docs pages load, so it checks ids here instead
@@ -104,43 +100,46 @@ const SECTION_IDS = [
   'contentImport',
   'members',
   'apiKeys',
-  'plan',
   'usage',
   'integrations',
   'smartAi',
-  'notifications',
   'exports',
   'danger',
 ] as const;
 
+// Plan and Notifications moved to the organization (§5.2). Old links still
+// open a one-line pointer to where they live now; they are not in the nav.
+const MOVED_SECTION_IDS = ['plan', 'notifications'] as const;
+type MovedSectionId = (typeof MOVED_SECTION_IDS)[number];
+const isMovedSectionId = (value: unknown): value is MovedSectionId => (MOVED_SECTION_IDS as readonly unknown[]).includes(value);
+
 type SectionId = (typeof SECTION_IDS)[number];
 
 const GROUPS = [
-  { id: 'site', labelKey: 'settings.group.site' },
-  { id: 'deployment', labelKey: 'settings.group.deployment' },
-  { id: 'workspace', labelKey: 'settings.group.workspace' },
+  { id: 'website', labelKey: 'settings.group.website' },
+  { id: 'publishing', labelKey: 'settings.group.publishing' },
+  { id: 'team', labelKey: 'settings.group.team' },
+  { id: 'usage', labelKey: 'settings.group.usage' },
   { id: 'advanced', labelKey: 'settings.group.advanced' },
 ] as const satisfies ReadonlyArray<{ id: SettingsGroupId; labelKey: MessageKey }>;
 
 // Keyed by SECTION_IDS, so a section added to one list and not the other fails typecheck.
 const SECTIONS = navFromIds<SectionId, { group: SettingsGroupId; icon: LucideIcon }>(SECTION_IDS, {
-  general: { group: 'site', icon: CirclePlus },
-  appearance: { group: 'site', icon: Palette },
-  languages: { group: 'site', icon: Languages },
-  domain: { group: 'site', icon: Globe2 },
-  authentication: { group: 'site', icon: LockKeyhole },
-  search: { group: 'site', icon: Search },
-  addons: { group: 'site', icon: Blocks },
-  git: { group: 'deployment', icon: GitBranch },
-  openapi: { group: 'deployment', icon: Braces },
-  contentImport: { group: 'deployment', icon: Import },
-  members: { group: 'workspace', icon: Users },
-  apiKeys: { group: 'workspace', icon: KeyRound },
-  plan: { group: 'workspace', icon: Gem },
-  usage: { group: 'workspace', icon: ChartNoAxesCombined },
-  integrations: { group: 'workspace', icon: Plug },
-  smartAi: { group: 'workspace', icon: Bot },
-  notifications: { group: 'workspace', icon: Bell },
+  general: { group: 'website', icon: CirclePlus },
+  appearance: { group: 'website', icon: Palette },
+  languages: { group: 'website', icon: Languages },
+  domain: { group: 'website', icon: Globe2 },
+  authentication: { group: 'website', icon: LockKeyhole },
+  search: { group: 'website', icon: Search },
+  addons: { group: 'website', icon: Blocks },
+  git: { group: 'publishing', icon: GitBranch },
+  openapi: { group: 'publishing', icon: Braces },
+  contentImport: { group: 'publishing', icon: Import },
+  members: { group: 'team', icon: Users },
+  apiKeys: { group: 'team', icon: KeyRound },
+  usage: { group: 'usage', icon: ChartNoAxesCombined },
+  integrations: { group: 'advanced', icon: Plug },
+  smartAi: { group: 'advanced', icon: Bot },
   exports: { group: 'advanced', icon: Archive },
   danger: { group: 'advanced', icon: TriangleAlert },
 });
@@ -170,9 +169,10 @@ const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'ex
 const VIEWER_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports']);
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
-  validateSearch: (search: Record<string, unknown>): { section?: SectionId; appearanceSection?: ConfigSectionId } => ({
+  validateSearch: (search: Record<string, unknown>): { section?: SectionId | MovedSectionId; appearanceSection?: ConfigSectionId } => ({
     // Analytics moved under Integrations — keep old ?section=analytics links working.
-    section: isSectionId(search.section) ? search.section : search.section === 'analytics' ? 'integrations' : undefined,
+    section:
+      isSectionId(search.section) || isMovedSectionId(search.section) ? search.section : search.section === 'analytics' ? 'integrations' : undefined,
     ...(search.section === 'appearance' && isAppearanceSectionId(search.appearanceSection) ? { appearanceSection: search.appearanceSection } : {}),
   }),
   loaderDeps: ({ search }) => ({ section: search.section }),
@@ -197,7 +197,6 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
       case 'usage':
         prefetchRouteData(queryClient, projectUsageQueryOptions(projectId));
         break;
-      case 'notifications':
       case 'contentImport':
         prefetchRouteData(queryClient, workspaceSettingsQueryOptions(projectId));
         break;
@@ -249,8 +248,11 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
 function ProjectSettingsPage() {
   const reportDirty = useSettingsDirtyGuard();
   const { projectId } = Route.useParams();
-  const { section: requestedSection, appearanceSection } = Route.useSearch();
-  const section = requestedSection ?? 'general';
+  const { section: requestedOrMoved, appearanceSection } = Route.useSearch();
+  // Plan and Notifications moved to the organization: an old link shows a pointer under Usage.
+  const movedSection = isMovedSectionId(requestedOrMoved) ? requestedOrMoved : undefined;
+  const requestedSection = isMovedSectionId(requestedOrMoved) ? 'usage' : requestedOrMoved;
+  const section: SectionId = requestedSection ?? 'general';
   const navigate = useNavigate({ from: Route.fullPath });
   const {
     data: project,
@@ -273,7 +275,10 @@ function ProjectSettingsPage() {
   const canManage = canAdminister(currentMember?.role ?? '');
   const canEditContent = canEdit(currentMember?.role ?? '');
   const roleSections = canEditContent ? EDITOR_SECTIONS : VIEWER_SECTIONS;
-  const availableSections = SECTIONS.filter((item) => canManage || roleSections.has(item.id));
+  // Deleting a website is for the organization's Owner and Admins only (§4.2), not site Admins.
+  const { organization } = useOrganizationOfProject(project?.organizationId);
+  const orgAdmin = organization ? organization.orgRole !== 'member' : false;
+  const availableSections = SECTIONS.filter((item) => (item.id === 'danger' ? orgAdmin : canManage || roleSections.has(item.id)));
   const sectionItems = availableSections.map((item) => ({
     value: item.id,
     label: t(sectionLabelKey(item.id)),
@@ -407,6 +412,8 @@ function ProjectSettingsPage() {
                 project={project}
                 role={currentMember?.role ?? ''}
                 appearanceSection={appearanceSection}
+                movedSection={movedSection}
+                organization={organization}
                 section={section}
               />
             )}
@@ -425,9 +432,13 @@ function ActiveSection({
   canCreateExports,
   role,
   appearanceSection,
+  movedSection,
+  organization,
 }: {
   project: Project;
   section: SectionId;
+  movedSection?: MovedSectionId;
+  organization?: SwitcherOrganization;
   projectId: string;
   canManageSchedules: boolean;
   canCreateExports: boolean;
@@ -446,20 +457,53 @@ function ActiveSection({
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
-    members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
+    members: <SiteTeamPage key={`members-${projectId}`} organization={organization} projectId={projectId} siteName={project.name} />,
     apiKeys: <ApiKeysTab role={role} key={`api-keys-${projectId}`} projectId={projectId} />,
-    plan: <PlanSection key={`plan-${project.id}`} project={project} />,
-    usage: <UsageTab key={`usage-${project.id}`} project={project} />,
+    usage: (
+      <>
+        {movedSection ? <MovedSectionNotice organization={organization} section={movedSection} /> : null}
+        <UsageTab
+          key={`usage-${project.id}`}
+          organization={organization ? { slug: organization.slug, name: organization.name, canManage: organization.orgRole !== 'member' } : undefined}
+          project={project}
+        />
+      </>
+    ),
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
     smartAi: <SmartAiSection key={`smart-ai-${projectId}`} project={project} />,
-    notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
     exports: (
       <ExportsSection canCreate={canCreateExports} canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />
     ),
-    danger: <DangerSection project={project} />,
+    danger: <DangerSection organization={organization} project={project} />,
   };
   const wideSection = section === 'general' || section === 'usage' || section === 'integrations' || section === 'exports';
   return <div className={cn('w-full', wideSection ? 'max-w-6xl' : 'max-w-4xl')}>{sections[section]}</div>;
+}
+
+/** Where Plan and Notifications went (§5.2): a one-line pointer for old links and habits. */
+function MovedSectionNotice({ section, organization }: { section: MovedSectionId; organization?: SwitcherOrganization }) {
+  const t = useT();
+  const canManage = organization ? organization.orgRole !== 'member' : false;
+  return (
+    <p className="mb-4 rounded-lg border border-border bg-muted/30 p-3 text-sm" data-moved-section={section} role="status">
+      {section === 'plan' ? t('settings.moved.plan') : t('settings.moved.notifications')}{' '}
+      {section === 'notifications' ? (
+        <Link className="font-medium text-primary underline-offset-4 hover:underline" search={{ tab: 'notifications' }} to="/app/settings">
+          {t('settings.moved.notificationsLink')}
+        </Link>
+      ) : organization && canManage ? (
+        <Link
+          className="font-medium text-primary underline-offset-4 hover:underline"
+          params={{ orgSlug: organization.slug }}
+          to="/app/o/$orgSlug/billing"
+        >
+          <bdi>{organization.name}</bdi>
+        </Link>
+      ) : organization ? (
+        <bdi className="font-medium">{organization.name}</bdi>
+      ) : null}
+    </p>
+  );
 }
 
 function SiteAppearance({ project, section }: { project: Project; section: ConfigSectionId }) {

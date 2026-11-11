@@ -93,14 +93,13 @@ describe.skipIf(process.env.ORG_ACCESS_INTEGRATION !== '1')('organization grants
     await db.prisma.organization.update({ where: { id: orgIds[0] }, data: { needsRepair: false } });
   });
 
-  it('enforces same-org grant parents, role checks, one owner and the org-deletion fence', async () => {
+  it('enforces same-org grant parents, role checks, one owner and deletion restriction', async () => {
     const base = { organizationId: orgIds[0], userId: userIds[5], projectId: siteIds[0] };
     await expect(db.prisma.projectMember.create({ data: { ...base, projectId: siteIds[2], role: 'viewer' } })).rejects.toThrow();
     await expect(db.prisma.projectMember.create({ data: { ...base, role: 'owner' } })).rejects.toThrow();
     await expect(db.prisma.member.update({ where: { id: userIds[5] }, data: { orgRole: 'viewer' } })).rejects.toThrow();
     await expect(db.prisma.member.update({ where: { id: userIds[5] }, data: { orgRole: 'owner' } })).rejects.toThrow();
-    // Cascade stays in PR 1 (§10.1); the fence predicate never deletes an org with websites.
-    expect((await db.prisma.organization.deleteMany({ where: { id: orgIds[0], projects: { none: {} } } })).count).toBe(0);
+    await expect(db.prisma.organization.delete({ where: { id: orgIds[0] } })).rejects.toThrow();
     const invitation = await db.prisma.invitation.create({
       data: { organizationId: orgIds[0], email: `${run}@nibleaf.test`, inviterId: userIds[0], expiresAt: new Date(Date.now() + 60_000) },
     });
