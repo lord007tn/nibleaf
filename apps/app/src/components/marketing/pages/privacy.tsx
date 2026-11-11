@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from '@nibleaf/shared/legal';
 import { MarketingShell } from '@/components/cloud-marketing';
 import { useMarketingData } from '@/components/marketing/page-data';
 import type { MarketingSeo } from '@/lib/marketing-seo';
@@ -71,7 +72,9 @@ function PrivacyPage() {
     <MarketingShell stars={stars}>
       <article className="mx-auto max-w-3xl px-6 py-20">
         <h1 className="font-semibold text-4xl tracking-tight">Privacy Policy</h1>
-        <p className="mt-2 text-muted-foreground text-sm">Last updated: {LAST_UPDATED}</p>
+        <p className="mt-2 text-muted-foreground text-sm">
+          Last updated: {LAST_UPDATED} · Terms version: {TERMS_VERSION}
+        </p>
         <div className="mt-10 space-y-8 text-muted-foreground leading-relaxed">
           {SECTIONS.map((section) => (
             <section key={section.heading}>

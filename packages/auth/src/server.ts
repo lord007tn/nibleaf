@@ -14,10 +14,11 @@ import { resolveRequestLocale } from '@nibleaf/i18n/locales';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { TERMS_VERSION } from '@nibleaf/shared/legal';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { APIError } from 'better-auth/api';
+import { APIError, addOAuthServerContext, createAuthMiddleware, getOAuthState } from 'better-auth/api';
 import { admin, emailOTP, organization } from 'better-auth/plugins';
 import { reassignOrDeleteOrgs } from './account-deletion';
 import { requireAuthEmailEnqueue, trackRequiredAuthEmail, withRequiredAuthEmailScope } from './auth-email-delivery';
@@ -36,6 +37,17 @@ import {
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
+const termsRequired = () => new APIError('BAD_REQUEST', { code: 'TERMS_REQUIRED', message: 'Accept the terms, then request a new code.' });
+
+const captureGoogleTerms = createAuthMiddleware(async (context) => {
+  if (context.path !== '/sign-in/social' || context.body?.provider !== 'google') return;
+  const accepted = context.body?.additionalData?.acceptTerms;
+  // Without acknowledgement an existing account can still log in. Only the
+  // verified identity at creation can distinguish a new account safely.
+  if (accepted === undefined || accepted === false) return;
+  if (accepted !== true) throw termsRequired();
+  await addOAuthServerContext({ termsVersion: TERMS_VERSION });
+});
 
 /** OAuth for MCP clients, or null when MCP is off or the public URL cannot
  *  host an OAuth 2.1 server (plain HTTP outside loopback). */
@@ -755,7 +767,7 @@ const authInstance = betterAuth({
   // Organization access and admissions use our resource-addressed APIs.
   // No plugin read or write may bypass those guards or expose organization metadata.
   disabledPaths: [...ORGANIZATION_DISABLED_PATHS, ...(mcpOAuth ? MCP_OAUTH_DISABLED_PATHS : [])],
-  hooks: { after: requireAuthEmailEnqueue },
+  hooks: { before: captureGoogleTerms, after: requireAuthEmailEnqueue },
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
   basePath: '/api/auth',
@@ -792,6 +804,10 @@ const authInstance = betterAuth({
     sendOnSignUp: false,
   },
   user: {
+    additionalFields: {
+      termsAcceptedAt: { type: 'date', required: false, input: false },
+      termsVersion: { type: 'string', required: false, input: false },
+    },
     changeEmail: {
       // Email changes use the email-OTP plugin below, not verification links.
       enabled: false,
@@ -815,7 +831,10 @@ const authInstance = betterAuth({
     emailOTP({
       // Customer sign-in doubles as passwordless sign-up. The API gateway adds
       // an admin-origin guard so this can never create an admin account.
-      disableSignUp: env.DISABLE_SIGNUP,
+      // Always queue sign-in codes, so the HTTP acknowledgement is independent
+      // of eligibility and provider latency/failure. The worker drops unknown
+      // recipients on closed instances; the creation hook checks verified OTPs.
+      disableSignUp: false,
       overrideDefaultEmailVerification: true,
       changeEmail: {
         enabled: true,
@@ -828,13 +847,28 @@ const authInstance = betterAuth({
       storeOTP: 'hashed',
       async sendVerificationOTP({ email, otp, type }, context) {
         await trackRequiredAuthEmail(context, async () => {
-          const queued = await deliverAuthOtpEmail({ email, otp, type }, context, (auth) =>
-            deliverRequiredAuthEmail(
-              email,
-              renderVerificationCodeEmail({ code: otp, purpose: type, language: resolveRequestLocale(context?.headers) }),
-              auth,
-            ),
-          );
+          const queued = await deliverAuthOtpEmail({ email, otp, type }, context, async (auth) => {
+            const message = renderVerificationCodeEmail({ code: otp, purpose: type, language: resolveRequestLocale(context?.headers) });
+            if (type === 'sign-in') {
+              // Only Redis acknowledgement is required here, equally for all
+              // addresses. Worker/provider failures are retried out of band.
+              await withTimeout(
+                createJob(QueueNames.EMAIL, {
+                  name: 'send-email',
+                  data: {
+                    to: email,
+                    ...(await message),
+                    auth: { ...auth, existingUserOnly: env.DISABLE_SIGNUP },
+                  },
+                }),
+                15_000,
+              );
+            } else {
+              // Authenticated verification/email-change operations retain their
+              // provider-confirmed delivery contract.
+              await deliverRequiredAuthEmail(email, message, auth);
+            }
+          });
           if (!queued) {
             log.info('superseded auth email skipped before enqueue');
           }
@@ -854,6 +888,37 @@ const authInstance = betterAuth({
   databaseHooks: {
     user: {
       create: {
+        before: async (user, context) => {
+          if (context?.path === '/sign-in/email-otp') {
+            // Better Auth verifies and consumes the OTP before invoking this
+            // hook. Never move this check to the send-code or before-verify path.
+            if (env.DISABLE_SIGNUP) {
+              throw new APIError('BAD_REQUEST', { code: 'SIGNUP_CLOSED', message: 'New account registration is closed on this instance.' });
+            }
+            if (context.body?.acceptTerms !== true) {
+              throw termsRequired();
+            }
+            return { data: { ...user, termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION } };
+          }
+          // Only protected server context, captured at flow initiation, can
+          // attest to consent across Google's redirect. Client additionalData
+          // is untrusted. ID-token creation has no redirect state of its own.
+          const googleCallback = context?.path?.startsWith('/callback/') && context.params?.id === 'google';
+          const googleToken = context?.path === '/sign-in/social' && context.body?.provider === 'google';
+          if (googleCallback || googleToken) {
+            const version = googleCallback
+              ? (await getOAuthState())?.serverContext?.termsVersion
+              : context?.body?.additionalData?.acceptTerms === true
+                ? TERMS_VERSION
+                : undefined;
+            if (typeof version !== 'string' || !version) throw termsRequired();
+            return { data: { ...user, termsAcceptedAt: new Date(), termsVersion: version } };
+          }
+          // Exempt: operator-created accounts (/admin/create-user), requestless
+          // demo seeding, and synthetic fixtures have no end-user consent event.
+          // Invitations/join links and MCP use the OTP/Google paths above.
+          return { data: user };
+        },
         after: (user, context) => provisionWorkspace(user, resolveRequestLocale(context?.headers), context?.headers ?? undefined),
       },
     },
