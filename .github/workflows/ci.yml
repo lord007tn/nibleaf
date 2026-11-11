@@ -169,6 +169,12 @@ jobs:
           BRANCH_PROMOTE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/branches.postgres.test.ts
 
+      - name: Verify page history bounds, restore conflicts and erasure
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PAGE_HISTORY_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/page-history.postgres.test.ts
+
       - name: Verify page address atomicity and parsing outside locks
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
