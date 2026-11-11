@@ -10,11 +10,8 @@ import type { SiteAi } from '../model/ai';
  * (operations/ui-overhaul.md §8.1).
  */
 
-/** The server's capabilities and the site's AI status, as the model takes them. */
-const selectSiteAi = (data: { capabilities: SiteAi['capabilities']; status: SiteAi['status'] }): SiteAi => ({
-  capabilities: data.capabilities,
-  status: data.status,
-});
+/** The server's capabilities, the site's AI status and the viewer's permissions, as the model takes them. */
+const selectSiteAi = (data: SiteAi): SiteAi => ({ capabilities: data.capabilities, status: data.status, viewer: data.viewer });
 
 /** While the docs are being prepared, the page follows the run. */
 const PREPARING_POLL_MS = 3000;

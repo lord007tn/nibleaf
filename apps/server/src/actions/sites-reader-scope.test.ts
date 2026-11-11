@@ -40,7 +40,7 @@ vi.mock('@nibleaf/search', async (importOriginal) => ({
 }));
 vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: { headers: new Headers() } } }) }));
 vi.mock('@/env', () => ({ env: { APP_URL: 'https://app.example.test' } }));
-vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
+vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn(), recordAnswerServed: vi.fn(async () => undefined) }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({
   readerQuestionStorage: (captureSetting: boolean) =>
     captureSetting && mocks.storageReady

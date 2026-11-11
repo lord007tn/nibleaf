@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { aiPageState, checklist, offeredSources, type SiteAi, sourceOptions, switchDecision } from './ai';
+import { aiAccess, aiPageState, checklist, offeredSources, type SiteAi, sourceOptions, switchDecision } from './ai';
 
 type Connection = SiteAi['status']['connections'][number];
 const key = (id: Connection['id'], state: Connection['state'] = 'ok'): Connection => ({
   id,
   state,
+  failure: null,
   keyHint: '4f2a',
   addedAt: '2026-11-10T09:00:00.000Z',
   model: { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
@@ -29,10 +30,11 @@ function siteAi(overrides: { capabilities?: Partial<SiteAi['capabilities']>; sta
       sourceReady: true,
       connections: [],
       published: { version: 12, at: '2026-11-11T08:00:00.000Z' },
-      preparation: { state: 'ready', pages: 128, at: '2026-11-11T08:05:00.000Z' },
+      preparation: { state: 'ready', pages: 128, expectedPages: 128, at: '2026-11-11T08:05:00.000Z' },
       usage: { answersToday: 37, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
       ...overrides.status,
     },
+    viewer: { canManage: true },
   };
 }
 const noManaged = { managed: { available: false, reason: 'noServerKey' as const, model: null, dailyAnswerLimit: 200 } };
@@ -79,7 +81,7 @@ describe('aiPageState', () => {
     { name: 'on with a working own key', ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai')] } }), state: { kind: 'on' } },
     {
       name: 'on while docs are being prepared',
-      ai: siteAi({ status: { ...on, preparation: { state: 'running', pages: 40, at: null } } }),
+      ai: siteAi({ status: { ...on, preparation: { state: 'running', pages: 40, expectedPages: 40, at: null } } }),
       state: { kind: 'preparing' },
     },
     {
@@ -103,6 +105,26 @@ describe('aiPageState', () => {
       state: { kind: 'notWorking', problem: 'keyUnreadable' },
     },
     {
+      name: 'provider unreachable',
+      ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'unreachable')] } }),
+      state: { kind: 'notWorking', problem: 'keyUnreachable' },
+    },
+    {
+      name: 'model withdrawn',
+      ai: siteAi({ status: { ...on, source: 'openrouter', connections: [key('openrouter', 'modelWithdrawn')] } }),
+      state: { kind: 'notWorking', problem: 'modelWithdrawn' },
+    },
+    {
+      name: 'some pages could not be prepared: the rest still answer',
+      ai: siteAi({ status: { ...on, preparation: { state: 'partial', pages: 125, expectedPages: 128, at: null } } }),
+      state: { kind: 'on' },
+    },
+    {
+      name: 'search serves another collection after an embedding change',
+      ai: siteAi({ capabilities: { answers: { available: false, reason: 'searchIndexSwitching' } }, status: on }),
+      state: { kind: 'unavailable' },
+    },
+    {
       name: 'Nibleaf AI selected but gone',
       ai: siteAi({ capabilities: noManaged, status: on }),
       state: { kind: 'notWorking', problem: 'managedUnavailable' },
@@ -110,12 +132,12 @@ describe('aiPageState', () => {
     { name: 'not published', ai: siteAi({ status: { ...on, published: null } }), state: { kind: 'notWorking', problem: 'notPublished' } },
     {
       name: 'never prepared',
-      ai: siteAi({ status: { ...on, preparation: { state: 'none', pages: 0, at: null } } }),
+      ai: siteAi({ status: { ...on, preparation: { state: 'none', pages: 0, expectedPages: 0, at: null } } }),
       state: { kind: 'notWorking', problem: 'notPrepared' },
     },
     {
       name: 'preparation failed',
-      ai: siteAi({ status: { ...on, preparation: { state: 'failed', pages: 0, at: null } } }),
+      ai: siteAi({ status: { ...on, preparation: { state: 'failed', pages: 0, expectedPages: 0, at: null } } }),
       state: { kind: 'notWorking', problem: 'preparationFailed' },
     },
     {
@@ -223,17 +245,17 @@ describe('checklist', () => {
     },
     {
       name: 'preparing',
-      ai: siteAi({ status: { ...on, preparation: { state: 'running', pages: 3, at: null } } }),
+      ai: siteAi({ status: { ...on, preparation: { state: 'running', pages: 3, expectedPages: 3, at: null } } }),
       expected: { prepared: 'working' },
     },
     {
       name: 'never prepared',
-      ai: siteAi({ status: { preparation: { state: 'none', pages: 0, at: null } } }),
+      ai: siteAi({ status: { preparation: { state: 'none', pages: 0, expectedPages: 0, at: null } } }),
       expected: { prepared: 'problem:prepare' },
     },
     {
       name: 'preparation failed',
-      ai: siteAi({ status: { preparation: { state: 'failed', pages: 0, at: null } } }),
+      ai: siteAi({ status: { preparation: { state: 'failed', pages: 0, expectedPages: 0, at: null } } }),
       expected: { prepared: 'problem:prepare' },
     },
     {
@@ -250,6 +272,21 @@ describe('checklist', () => {
       name: 'key needs a re-check',
       ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'needsRecheck')] } }),
       expected: { source: 'problem:checkKey' },
+    },
+    {
+      name: 'provider unreachable',
+      ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'unreachable')] } }),
+      expected: { source: 'problem:checkAgain' },
+    },
+    {
+      name: 'model withdrawn',
+      ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'modelWithdrawn')] } }),
+      expected: { source: 'problem:changeModel' },
+    },
+    {
+      name: 'partly prepared',
+      ai: siteAi({ status: { ...on, preparation: { state: 'partial', pages: 125, expectedPages: 128, at: null } } }),
+      expected: { prepared: 'warning:prepare', source: 'ok' },
     },
     {
       name: 'no key saved for the selected provider',
@@ -279,7 +316,32 @@ describe('checklist', () => {
 describe('no edition branch', () => {
   it('decides from capabilities only, never from a Cloud or edition flag', async () => {
     const { readFileSync } = await import('node:fs');
-    const source = readFileSync(new URL('./ai.ts', import.meta.url), 'utf8');
-    expect(source).not.toMatch(/\b(isCloud|IS_CLOUD|NIBLEAF_CLOUD|NIBLEAF_EDITION|edition|isSelfHosted|SELF_HOSTED)\b/);
+    // Code only (comments may explain the rule); any identifier or token that
+    // names a deployment kind fails: isCloud, NIBLEAF_EDITION, selfHosted, isHosted…
+    const tokens = (source: string) =>
+      source
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1')
+        .match(/[A-Za-z_$][\w$]*/g) ?? [];
+    const edition = /cloud|edition|ishosted|selfhost/i;
+    for (const file of ['./ai.ts', '../api/query-options.ts']) {
+      expect(tokens(readFileSync(new URL(file, import.meta.url), 'utf8')).filter((token) => edition.test(token))).toEqual([]);
+    }
+  });
+});
+
+describe('aiAccess', () => {
+  it.each([
+    { name: 'not loaded yet', ai: undefined, access: 'pending' },
+    { name: 'a site Admin', ai: siteAi(), access: 'admin' },
+    { name: 'an Editor or Viewer (read-only)', ai: { ...siteAi(), viewer: { canManage: false } }, access: 'notAdmin' },
+  ] as const)('$name → $access', ({ ai, access }) => {
+    expect(aiAccess(ai)).toBe(access);
+  });
+
+  it('locks every control for someone who may only read', () => {
+    const ai = { ...siteAi(), viewer: { canManage: false } };
+    expect(switchDecision(ai, aiAccess(ai)).decision).toEqual({ kind: 'locked' });
+    expect(sourceOptions(ai, aiAccess(ai)).every(({ decision }) => decision.kind === 'locked')).toBe(true);
   });
 });

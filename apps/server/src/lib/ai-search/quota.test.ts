@@ -70,20 +70,35 @@ describe("reading today's answers", () => {
     mocks.connect.mockResolvedValue(undefined);
   });
 
-  it('reads the UTC-day counter without spending an answer', async () => {
+  it('reads the UTC-day count of completed answers without spending one', async () => {
     mocks.get.mockResolvedValue('1');
     const { readAnswerQuota } = await import('./quota');
     await expect(readAnswerQuota('project-a', now)).resolves.toEqual({ answersToday: 1, limit: 2, resetsAt: '2026-11-12T00:00:00.000Z' });
-    expect(mocks.get).toHaveBeenCalledWith('{search-answer-quota}:project-a:2026-11-11');
+    // The completed-answers counter, not the spend counter, which also counts failed generations.
+    expect(mocks.get).toHaveBeenCalledWith('{search-answer-served}:project-a:2026-11-11');
     expect(mocks.eval).not.toHaveBeenCalled();
   });
 
-  it('counts a day with no answers as zero and refused requests as not served', async () => {
+  it('counts a day with no answers as zero', async () => {
     const { readAnswerQuota } = await import('./quota');
     mocks.get.mockResolvedValueOnce(null);
     expect((await readAnswerQuota('project-a', now)).answersToday).toBe(0);
-    mocks.get.mockResolvedValueOnce('9');
-    expect((await readAnswerQuota('project-a', now)).answersToday).toBe(2);
+  });
+
+  it('counts an answer only once it completed: a failed generation spends quota but is not counted', async () => {
+    const { consumeAnswerQuota, recordAnswerServed } = await import('./quota');
+    await consumeAnswerQuota('project-a', now);
+    expect(mocks.eval).toHaveBeenLastCalledWith(expect.any(String), 1, '{search-answer-quota}:project-a:2026-11-11');
+    // Generation failed: nothing recorded. Then one succeeds:
+    await recordAnswerServed('project-a', now);
+    expect(mocks.eval).toHaveBeenLastCalledWith(expect.stringContaining('INCR'), 1, '{search-answer-served}:project-a:2026-11-11');
+    expect(mocks.eval).toHaveBeenCalledTimes(2);
+  });
+
+  it('never fails an answer when the completed count cannot be recorded', async () => {
+    mocks.connect.mockRejectedValue(new Error('down'));
+    const { recordAnswerServed } = await import('./quota');
+    await expect(recordAnswerServed('project-a', now)).resolves.toBeUndefined();
   });
 
   it('reports an unknown count instead of failing when the counter cannot be read', async () => {

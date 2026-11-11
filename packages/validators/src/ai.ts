@@ -71,8 +71,12 @@ export const siteAiCapabilitiesSchema = z
         })
         .strict(),
     ),
-    /** Answers need the search index on this server. */
-    answers: z.object({ available: z.boolean(), reason: z.enum(['searchNotConfigured']).nullable() }).strict(),
+    /**
+     * Answers need search on this server, serving the collection built for its
+     * current embedding settings (after an embedding change it serves the old
+     * one until the operator reindexes and switches it: `searchIndexSwitching`).
+     */
+    answers: z.object({ available: z.boolean(), reason: z.enum(['searchNotConfigured', 'searchIndexSwitching']).nullable() }).strict(),
   })
   .strict();
 
@@ -89,7 +93,19 @@ export const siteAiStatusSchema = z
       z
         .object({
           id: aiProviderIdSchema,
-          state: z.enum(['ok', 'rejected', 'needsRecheck', 'unreadable']),
+          state: z.enum(['ok', 'rejected', 'unreachable', 'modelWithdrawn', 'needsRecheck', 'unreadable']),
+          /**
+           * Why the last check of this key failed, as a code (never provider
+           * error text, which can carry secrets), and when.
+           */
+          failure: z
+            .object({
+              reason: z.enum(['keyRefused', 'providerUnreachable', 'modelWithdrawn', 'checkFailed']),
+              checkedAt: z.iso.datetime().nullable(),
+            })
+            .strict()
+            .nullable(),
+          /** Last four characters, for site Admins only. */
           keyHint: z.string().max(4).nullable(),
           addedAt: z.iso.datetime(),
           model: aiModelRefSchema.nullable(),
@@ -99,8 +115,10 @@ export const siteAiStatusSchema = z
     published: z.object({ version: z.number().int(), at: z.iso.datetime().nullable() }).strict().nullable(),
     preparation: z
       .object({
-        state: z.enum(['none', 'running', 'ready', 'failed']),
+        /** `partial`: finished, but some pages could not be prepared; the rest answer. */
+        state: z.enum(['none', 'running', 'ready', 'partial', 'failed']),
         pages: z.number().int().nonnegative(),
+        expectedPages: z.number().int().nonnegative(),
         at: z.iso.datetime().nullable(),
       })
       .strict(),
@@ -121,6 +139,8 @@ export type SiteAiStatus = z.infer<typeof siteAiStatusSchema>;
 export const workspaceAiOverviewSchema = z
   .object({
     capabilities: siteAiCapabilitiesSchema,
+    /** What the person asking may change; everyone on the site may read. */
+    viewer: z.object({ canManage: z.boolean() }).strict(),
     status: siteAiStatusSchema,
     selectedProvider: aiSelectionSchema,
     answersEnabled: z.boolean(),

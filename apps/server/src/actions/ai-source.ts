@@ -14,7 +14,10 @@ import { decryptIntegrationSecret } from './integrations/crypto';
  */
 
 export type AiKeyProvider = 'openai' | 'openrouter';
-type StoredAiKey = Pick<ProjectIntegration, 'projectId' | 'status' | 'lastVerificationStatus' | 'config' | 'credentialEncrypted'>;
+type StoredAiKey = Pick<
+  ProjectIntegration,
+  'projectId' | 'status' | 'lastVerificationStatus' | 'lastVerificationCode' | 'config' | 'credentialEncrypted'
+>;
 
 const siteAiSelectionSchema = z.object({
   search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
@@ -39,14 +42,35 @@ const storedAiKeyReadable = (stored: Pick<StoredAiKey, 'projectId' | 'credential
   }
 };
 
+/** Why a key's last check failed, as a code: a provider's own error text can carry secrets and is never kept or shown. */
+export type StoredAiKeyFailure = 'keyRefused' | 'providerUnreachable' | 'modelWithdrawn' | 'checkFailed';
+
+const FAILURE_BY_CODE: Readonly<Record<string, StoredAiKeyFailure>> = {
+  'integration:credentials_invalid': 'keyRefused',
+  'integration:provider_unavailable': 'providerUnreachable',
+  'integration:model_unavailable': 'modelWithdrawn',
+};
+
+/** The failed last check of a stored key, if its last check failed. */
+export const storedAiKeyFailure = (stored: Pick<StoredAiKey, 'lastVerificationStatus' | 'lastVerificationCode'>): StoredAiKeyFailure | null =>
+  stored.lastVerificationStatus === 'UNHEALTHY' ? (FAILURE_BY_CODE[stored.lastVerificationCode ?? ''] ?? 'checkFailed') : null;
+
 /**
  * Whether a site's stored key can answer readers, by the reader's own checks:
- * - `rejected`: switched off, marked broken, or it failed its last check;
+ * - `rejected`: switched off, marked broken, or the provider refused it;
+ * - `unreachable`: its last check couldn't reach the provider;
+ * - `modelWithdrawn`: the provider no longer offers its model;
  * - `needsRecheck`: it was checked for another embedding model than the server uses now;
  * - `unreadable`: it can't be decrypted for this site with the current keyring;
  * - `ok`: usable.
  */
-export const storedAiKeyState = (stored: StoredAiKey, providerId: AiKeyProvider): 'ok' | 'rejected' | 'needsRecheck' | 'unreadable' => {
+export const storedAiKeyState = (
+  stored: StoredAiKey,
+  providerId: AiKeyProvider,
+): 'ok' | 'rejected' | 'unreachable' | 'modelWithdrawn' | 'needsRecheck' | 'unreadable' => {
+  const failure = storedAiKeyFailure(stored);
+  if (failure === 'providerUnreachable') return 'unreachable';
+  if (failure === 'modelWithdrawn') return 'modelWithdrawn';
   if (stored.status !== 'ACTIVE' || stored.lastVerificationStatus !== 'HEALTHY') return 'rejected';
   const embeddingModel = aiConnectionConfigSchema.safeParse(stored.config).data?.embeddingModel;
   if (embeddingModel !== searchKeys().SEARCH_EMBEDDING_MODEL || (providerId === 'openai' && !embeddingModel.startsWith('openai/'))) {

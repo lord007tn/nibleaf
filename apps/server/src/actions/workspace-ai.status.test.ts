@@ -15,7 +15,13 @@ const state = vi.hoisted(() => ({
   usage: { answersToday: 37 as number | null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
   connections: [] as Record<string, unknown>[],
   deployment: null as Record<string, unknown> | null,
+  /** The current deployment's run, built for the current settings unless it says otherwise. */
   run: null as Record<string, unknown> | null,
+  /** More runs, e.g. one built for another embedding model. */
+  otherRuns: [] as Record<string, unknown>[],
+  /** The search alias serves the collection for the current embedding settings. */
+  indexServing: true,
+  role: 'admin',
   created: [] as Record<string, unknown>[],
   updated: [] as Record<string, unknown>[],
 }));
@@ -27,7 +33,29 @@ const baseEnv = {
   SEARCH_EMBEDDING_MODEL: 'openai/text-embedding-3-large',
   INTEGRATION_CREDENTIAL_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64') as string | undefined,
   INTEGRATION_CREDENTIAL_PREVIOUS_KEYS: [] as string[],
+  QDRANT_COLLECTION_VERSION: 'v2',
+  SEARCH_EMBEDDING_DIMENSIONS: 3072,
 };
+
+/** Runs as the database would hold them: the current one gets the current settings by default. */
+const allRuns = () => [
+  ...(state.run
+    ? [
+        {
+          projectId: 'site',
+          deploymentId: 'deployment-12',
+          schemaVersion: state.env.QDRANT_COLLECTION_VERSION,
+          embeddingModel: state.env.SEARCH_EMBEDDING_MODEL,
+          vectorSize: state.env.SEARCH_EMBEDDING_DIMENSIONS,
+          expectedPages: 128,
+          failedChunks: 0,
+          createdAt: new Date('2026-11-11T08:00:00.000Z'),
+          ...state.run,
+        },
+      ]
+    : []),
+  ...state.otherRuns,
+];
 
 vi.mock('@/env', () => ({
   get env() {
@@ -39,6 +67,11 @@ vi.mock('@nibleaf/search/keys', () => ({
 }));
 vi.mock('@nibleaf/qdrant', () => ({ getQdrantClient: () => (state.qdrant ? {} : null) }));
 vi.mock('@/lib/ai-search/quota', () => ({ readAnswerQuota: vi.fn(async () => state.usage) }));
+// The real matching-run predicate; only the cached alias reading is stubbed.
+vi.mock('@/lib/ai-search/readiness', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/ai-search/readiness')>()),
+  configuredIndexServing: async () => state.indexServing,
+}));
 vi.mock('@nibleaf/database', () => ({
   Prisma: { PrismaClientKnownRequestError: class extends Error {} },
   prisma: {
@@ -48,7 +81,13 @@ vi.mock('@nibleaf/database', () => ({
         state.connections.find((row) => row.providerId === where.projectId_providerId.providerId) ?? null,
     },
     deployment: { findFirst: async () => state.deployment },
-    searchIndexRun: { findFirst: async () => state.run },
+    // Honours the query's where (equality on each field), newest first, like the database.
+    searchIndexRun: {
+      findFirst: async ({ where }: { where: Record<string, unknown> }) =>
+        allRuns()
+          .filter((run) => Object.entries(where).every(([field, value]) => (run as Record<string, unknown>)[field] === value))
+          .sort((a, b) => Number(b.createdAt) - Number(a.createdAt))[0] ?? null,
+    },
     $transaction: async (callback: (tx: unknown) => unknown) =>
       callback({
         projectIntegration: {
@@ -66,13 +105,13 @@ vi.mock('@nibleaf/database', () => ({
   },
 }));
 vi.mock('./projects', () => ({
-  assertProjectAccess: async () => ({ role: 'admin', organizationId: 'org', project: { id: 'site', config: state.config } }),
+  assertProjectAccess: async () => ({ role: state.role, organizationId: 'org', project: { id: 'site', config: state.config } }),
 }));
 vi.mock('./project-config', () => ({ updateProjectConfigSection: vi.fn() }));
 vi.mock('./sites', () => ({ invalidatePublishedSiteConfig: vi.fn() }));
 
 import { encryptIntegrationSecret } from './integrations/crypto';
-import { getWorkspaceAi, saveWorkspaceAiConnection } from './workspace-ai';
+import { getWorkspaceAi, saveWorkspaceAiConnection, selectWorkspaceAi } from './workspace-ai';
 
 const ctx = { get: (key: string) => (key === 'user' ? { id: 'admin-user' } : undefined) } as unknown as Context<HonoEnv>;
 const created = new Date('2026-11-10T09:00:00.000Z');
@@ -104,6 +143,9 @@ beforeEach(() => {
   state.connections = [];
   state.deployment = { id: 'deployment-12', version: 12, completedAt: new Date('2026-11-11T08:00:00.000Z') };
   state.run = { status: 'READY', errorCode: null, indexedPages: 128, indexedChunks: 900, completedAt: new Date('2026-11-11T08:05:00.000Z') };
+  state.otherRuns = [];
+  state.indexServing = true;
+  state.role = 'admin';
   state.created = [];
   state.updated = [];
 });
@@ -177,7 +219,7 @@ describe('status', () => {
       sourceReady: true,
       connections: [],
       published: { version: 12, at: '2026-11-11T08:00:00.000Z' },
-      preparation: { state: 'ready', pages: 128, at: '2026-11-11T08:05:00.000Z' },
+      preparation: { state: 'ready', pages: 128, expectedPages: 128, at: '2026-11-11T08:05:00.000Z' },
       usage: { answersToday: 37, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
     });
   });
@@ -188,7 +230,14 @@ describe('status', () => {
     const { status } = await getWorkspaceAi(ctx, 'site');
     expect(status).toMatchObject({ answersOn: true, source: 'openai', sourceReady: true });
     expect(status.connections).toEqual([
-      { id: 'openai', state: 'ok', keyHint: '4f2a', addedAt: '2026-11-10T09:00:00.000Z', model: { id: 'gpt-6-luna', label: 'GPT-6 Luna' } },
+      {
+        id: 'openai',
+        state: 'ok',
+        failure: null,
+        keyHint: '4f2a',
+        addedAt: '2026-11-10T09:00:00.000Z',
+        model: { id: 'gpt-6-luna', label: 'GPT-6 Luna' },
+      },
     ]);
   });
 
@@ -311,9 +360,176 @@ describe('the contract around it', () => {
 
   it('decides from runtime configuration, never from a Cloud or edition flag', async () => {
     const { readFileSync } = await import('node:fs');
-    const edition = /\b(isCloud|IS_CLOUD|NIBLEAF_CLOUD|NIBLEAF_EDITION|edition|isSelfHosted|SELF_HOSTED)\b/;
-    for (const file of ['./ai-source.ts', './workspace-ai.ts']) {
-      expect(readFileSync(new URL(file, import.meta.url), 'utf8')).not.toMatch(edition);
+    // Code only (comments may explain the rule); any identifier or token that
+    // names a deployment kind fails: isCloud, NIBLEAF_EDITION, selfHosted, isHosted…
+    const tokens = (source: string) =>
+      source
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1')
+        .match(/[A-Za-z_$][\w$]*/g) ?? [];
+    const edition = /cloud|edition|ishosted|selfhost/i;
+    for (const file of ['./ai-source.ts', './workspace-ai.ts', '../lib/ai-search/readiness.ts', '../lib/ai-search/quota.ts']) {
+      expect(tokens(readFileSync(new URL(file, import.meta.url), 'utf8')).filter((token) => edition.test(token))).toEqual([]);
     }
+  });
+});
+
+describe("the reader's readiness", () => {
+  it('ignores a run built for another embedding model, as the reader does', async () => {
+    state.run = null;
+    state.otherRuns = [
+      {
+        projectId: 'site',
+        deploymentId: 'deployment-12',
+        schemaVersion: 'v2',
+        embeddingModel: 'openai/text-embedding-3-small',
+        vectorSize: 1536,
+        status: 'READY',
+        indexedPages: 128,
+        indexedChunks: 900,
+        expectedPages: 128,
+        failedChunks: 0,
+        completedAt: new Date('2026-11-11T09:00:00.000Z'),
+        createdAt: new Date('2026-11-11T09:00:00.000Z'),
+      },
+    ];
+    state.config = { search: { aiAnswers: true } };
+    const overview = await getWorkspaceAi(ctx, 'site');
+    expect(overview.status.preparation.state).toBe('none');
+    // Smart AI reads the same run, so it can't say "ready" either.
+    expect(overview.index).toMatchObject({ status: null, chunks: 0 });
+  });
+
+  it('uses the current run even when a newer run was built for other settings', async () => {
+    state.otherRuns = [
+      {
+        projectId: 'site',
+        deploymentId: 'deployment-12',
+        schemaVersion: 'v2',
+        embeddingModel: 'openai/text-embedding-3-small',
+        vectorSize: 1536,
+        status: 'FAILED',
+        indexedPages: 0,
+        indexedChunks: 0,
+        expectedPages: 128,
+        failedChunks: 0,
+        completedAt: null,
+        createdAt: new Date('2026-11-11T10:00:00.000Z'),
+      },
+    ];
+    const { status } = await getWorkspaceAi(ctx, 'site');
+    expect(status.preparation).toMatchObject({ state: 'ready', pages: 128 });
+  });
+
+  it('reports answers unavailable while search serves a collection built for other settings', async () => {
+    state.indexServing = false;
+    const { capabilities } = await getWorkspaceAi(ctx, 'site');
+    expect(capabilities.answers).toEqual({ available: false, reason: 'searchIndexSwitching' });
+  });
+
+  it.each([
+    { name: 'some chunks failed', run: { failedChunks: 3 }, expected: 'partial' },
+    { name: 'fewer pages than expected', run: { indexedPages: 120 }, expected: 'partial' },
+    { name: 'everything prepared', run: {}, expected: 'ready' },
+  ])('marks preparation partial when $name', async ({ run, expected }) => {
+    state.run = { ...state.run, ...run };
+    const { status } = await getWorkspaceAi(ctx, 'site');
+    expect(status.preparation).toMatchObject({ state: expected, expectedPages: 128 });
+  });
+});
+
+describe('a key whose last check failed', () => {
+  it.each([
+    { code: 'integration:credentials_invalid', keyState: 'rejected', reason: 'keyRefused' },
+    { code: 'integration:provider_unavailable', keyState: 'unreachable', reason: 'providerUnreachable' },
+    { code: 'integration:model_unavailable', keyState: 'modelWithdrawn', reason: 'modelWithdrawn' },
+    { code: 'provider said: invalid key sk-live-leaked-1234', keyState: 'rejected', reason: 'checkFailed' },
+  ])('$code → $keyState ($reason), as a code with its time', async ({ code, keyState, reason }) => {
+    state.config = { search: { aiProvider: 'openai', aiAnswers: true } };
+    state.connections = [storedKey('openai', { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: code })];
+    const overview = await getWorkspaceAi(ctx, 'site');
+    expect(overview.status.connections[0]).toMatchObject({
+      state: keyState,
+      failure: { reason, checkedAt: '2026-11-10T09:00:00.000Z' },
+    });
+    expect(overview.status.sourceReady).toBe(false);
+    // Provider text is never passed through.
+    expect(JSON.stringify(overview)).not.toContain('leaked');
+  });
+});
+
+describe('the date a key was added', () => {
+  const models = () =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ data: [{ id: 'gpt-6-luna' }, { id: 'text-embedding-3-large' }] })),
+    );
+
+  it('is the date of the current key, not of the connection', async () => {
+    state.connections = [storedKey('openai', { credentialAddedAt: new Date('2026-11-11T12:00:00.000Z') })];
+    const { status } = await getWorkspaceAi(ctx, 'site');
+    expect(status.connections[0]?.addedAt).toBe('2026-11-11T12:00:00.000Z');
+  });
+
+  it('is set when a key is added or replaced, and kept on a model-only save', async () => {
+    models();
+    await saveWorkspaceAiConnection(ctx, 'site', {
+      providerId: 'openai',
+      apiKey: 'sk-proj-first-site-key-0001',
+      answerModel: 'gpt-6-luna',
+      expectedRevision: 0,
+    });
+    expect(state.created[0]?.credentialAddedAt).toBeInstanceOf(Date);
+
+    state.connections = [storedKey('openai')];
+    await saveWorkspaceAiConnection(ctx, 'site', {
+      providerId: 'openai',
+      apiKey: 'sk-proj-replacement-key-0002',
+      replaceCredential: true,
+      answerModel: 'gpt-6-luna',
+      expectedRevision: 1,
+    });
+    expect(state.updated[0]?.credentialAddedAt).toBeInstanceOf(Date);
+
+    await saveWorkspaceAiConnection(ctx, 'site', { providerId: 'openai', answerModel: 'gpt-6-luna', expectedRevision: 1 });
+    expect(state.updated[1]).not.toHaveProperty('credentialAddedAt');
+  });
+});
+
+describe('who may read and who may change', () => {
+  it.each([
+    { role: 'viewer', canManage: false },
+    { role: 'member', canManage: false },
+    { role: 'admin', canManage: true },
+    { role: 'owner', canManage: true },
+  ])('a site $role reads the overview (may change: $canManage)', async ({ role, canManage }) => {
+    state.role = role;
+    state.connections = [storedKey('openai')];
+    const overview = await getWorkspaceAi(ctx, 'site');
+    expect(overview.viewer).toEqual({ canManage });
+    // The key hint is for the people who manage keys.
+    expect(overview.status.connections[0]?.keyHint).toBe(canManage ? '4f2a' : null);
+  });
+
+  it.each(['viewer', 'member'])('a site %s cannot change AI settings or keys', async (role) => {
+    state.role = role;
+    await expect(selectWorkspaceAi(ctx, 'site', { providerId: 'disabled', answersEnabled: false })).rejects.toMatchObject({
+      code: 'auth:insufficient_role',
+    });
+    await expect(
+      saveWorkspaceAiConnection(ctx, 'site', {
+        providerId: 'openai',
+        apiKey: 'sk-proj-some-key-000001',
+        answerModel: 'gpt-6-luna',
+        expectedRevision: 0,
+      }),
+    ).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+  });
+
+  it('refuses API keys even for reading', async () => {
+    const apiKeyCtx = {
+      get: (key: string) => (key === 'apiKey' ? { id: 'key' } : key === 'user' ? { id: 'admin-user' } : undefined),
+    } as unknown as Context<HonoEnv>;
+    await expect(getWorkspaceAi(apiKeyCtx, 'site')).rejects.toMatchObject({ code: 'auth:insufficient_role' });
   });
 });

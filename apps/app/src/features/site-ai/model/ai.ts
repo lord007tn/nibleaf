@@ -13,19 +13,24 @@ import type { SiteAiCapabilities, SiteAiStatus } from '@nibleaf/validators';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 
 export type AiSource = 'managed' | 'openai' | 'openrouter';
-export type AiKeyProvider = Exclude<AiSource, 'managed'>;
+type AiKeyProvider = Exclude<AiSource, 'managed'>;
 
-/** The server's answer for one site: what it can offer and where the site stands. */
-export type SiteAi = { capabilities: SiteAiCapabilities; status: SiteAiStatus };
+/** The server's answer for one site: what it can offer, where the site stands, and what this person may change. */
+export type SiteAi = { capabilities: SiteAiCapabilities; status: SiteAiStatus; viewer: { canManage: boolean } };
+
+/** The page's access, from what the server says this person may change. Unknown until loaded. */
+export const aiAccess = (ai: SiteAi | undefined): SiteAdminState => (!ai ? 'pending' : ai.viewer.canManage ? 'admin' : 'notAdmin');
 
 /** Why a control can't be used. */
-export type AiBlockReason = 'serverUnavailable' | 'publishFirst' | 'addKeyFirst' | 'keyNotWorking';
+type AiBlockReason = 'serverUnavailable' | 'publishFirst' | 'addKeyFirst' | 'keyNotWorking';
 export type Decision = { kind: 'allowed' } | { kind: 'locked' } | { kind: 'denied'; reason: AiBlockReason };
 
 /** The one thing stopping answers, when they are on but readers get none. */
-export type AiProblem =
+type AiProblem =
   | 'keyMissing'
   | 'keyRejected'
+  | 'keyUnreachable'
+  | 'modelWithdrawn'
   | 'keyNeedsRecheck'
   | 'keyUnreadable'
   | 'managedUnavailable'
@@ -69,6 +74,8 @@ function sourceProblem(ai: SiteAi): AiProblem | null {
   const connection = connectionOf(ai, source);
   if (!connection) return 'keyMissing';
   if (connection.state === 'rejected') return 'keyRejected';
+  if (connection.state === 'unreachable') return 'keyUnreachable';
+  if (connection.state === 'modelWithdrawn') return 'modelWithdrawn';
   if (connection.state === 'needsRecheck') return 'keyNeedsRecheck';
   if (connection.state === 'unreadable') return 'keyUnreadable';
   return null;
@@ -131,13 +138,16 @@ export function switchDecision(ai: SiteAi, access: SiteAdminState): { decision: 
   return choice ? { decision: allowed, turnsOnWith: choice.id } : { decision: denied('addKeyFirst'), turnsOnWith: null };
 }
 
-export type ChecklistTone = 'ok' | 'working' | 'problem' | 'idle';
-export type ChecklistFix = 'publish' | 'prepare' | 'replaceKey' | 'checkKey' | 'addKey' | 'seeUsage';
+/** `warning`: answers work, but something needs a look (some pages couldn't be prepared). */
+type ChecklistTone = 'ok' | 'working' | 'warning' | 'problem' | 'idle';
+type ChecklistFix = 'publish' | 'prepare' | 'replaceKey' | 'checkKey' | 'checkAgain' | 'changeModel' | 'addKey' | 'seeUsage';
 export type ChecklistRow = { id: 'published' | 'prepared' | 'source' | 'usage'; tone: ChecklistTone; fix: ChecklistFix | null };
 
 const SOURCE_FIX: Partial<Record<AiProblem, ChecklistFix>> = {
   keyMissing: 'addKey',
   keyRejected: 'replaceKey',
+  keyUnreachable: 'checkAgain',
+  modelWithdrawn: 'changeModel',
   keyUnreadable: 'replaceKey',
   keyNeedsRecheck: 'checkKey',
 };
@@ -151,9 +161,11 @@ export function checklist(ai: SiteAi): ChecklistRow[] {
     ? { id: 'prepared', tone: 'idle', fix: null }
     : preparation === 'ready'
       ? { id: 'prepared', tone: 'ok', fix: null }
-      : preparation === 'running'
-        ? { id: 'prepared', tone: 'working', fix: null }
-        : { id: 'prepared', tone: 'problem', fix: 'prepare' };
+      : preparation === 'partial'
+        ? { id: 'prepared', tone: 'warning', fix: 'prepare' }
+        : preparation === 'running'
+          ? { id: 'prepared', tone: 'working', fix: null }
+          : { id: 'prepared', tone: 'problem', fix: 'prepare' };
   const problem = sourceProblem(ai);
   const source: ChecklistRow =
     status.source === null

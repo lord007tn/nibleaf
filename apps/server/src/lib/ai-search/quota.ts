@@ -50,12 +50,32 @@ export const consumeAnswerQuota = async (projectId: string, now = new Date()): P
   return { allowed: current <= limit, remaining: Math.max(0, limit - current) };
 };
 
+/** Completed answers per project and UTC day, for display only; spend is enforced by the quota key above. */
+const servedKey = (projectId: string, now: Date) => `{search-answer-served}:${projectId}:${day(now)}`;
+
 /**
- * Today's answers for a project, read without spending one, for the AI
- * answers page. `answersToday` counts served answers only (requests over the
- * limit still bump the counter but were refused), and is null when the
- * counter can't be read; it never fails the page. The day is UTC, matching
- * `consumeAnswerQuota`.
+ * Counts one answer that reached the reader (an answer, or a grounded "no
+ * answer"), after generation succeeded. The quota counter is spent before
+ * generating, so it also counts failures; this one doesn't. Best effort: a
+ * Redis hiccup never fails the reader's answer.
+ */
+export const recordAnswerServed = async (projectId: string, now = new Date()): Promise<void> => {
+  try {
+    const client = await aiSpendRedis();
+    await client.eval(
+      "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],172800) end; return n",
+      1,
+      servedKey(projectId, now),
+    );
+  } catch {
+    // Display only.
+  }
+};
+
+/**
+ * Today's completed answers for a project, for the AI answers page, read
+ * without spending one. Null when the counter can't be read; it never fails
+ * the page. The day is UTC, matching `consumeAnswerQuota`.
  */
 export const readAnswerQuota = async (
   projectId: string,
@@ -65,9 +85,9 @@ export const readAnswerQuota = async (
   const resetsAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString();
   try {
     const client = await aiSpendRedis();
-    const raw = await client.get(`{search-answer-quota}:${projectId}:${day(now)}`);
+    const raw = await client.get(servedKey(projectId, now));
     const counted = raw === null ? 0 : Number(raw);
-    return { answersToday: Number.isFinite(counted) && counted >= 0 ? Math.min(counted, limit) : null, limit, resetsAt };
+    return { answersToday: Number.isFinite(counted) && counted >= 0 ? counted : null, limit, resetsAt };
   } catch {
     return { answersToday: null, limit, resetsAt };
   }

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   release: vi.fn(),
   settle: vi.fn(),
   quota: vi.fn(),
+  served: vi.fn(async () => undefined),
   recordTurn: vi.fn(),
   recordFeedback: vi.fn(),
   // Whether this instance can archive question text (see readerChatPolicy below).
@@ -42,7 +43,7 @@ vi.mock('@/lib/ai-search/chat-budget', () => ({
   releaseChatTurn: mocks.release,
   settleChatSpend: mocks.settle,
 }));
-vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota }));
+vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota, recordAnswerServed: mocks.served }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({
   recordAiChatTurn: mocks.recordTurn,
   recordAiChatFeedback: mocks.recordFeedback,
@@ -324,6 +325,8 @@ describe('reader AI chat stream', () => {
     // The page the reader asked from is passed as a narrowing hint only.
     expect(mocks.retrieve.mock.calls[0]?.[4]).toMatchObject({ page: { id: 'page-1', title: 'Install' } });
     await settle();
+    // A completed answer counts toward today's answers shown on the AI answers page.
+    expect(mocks.served).toHaveBeenCalledWith('project-1');
     // The turn reserved the most it can read and write before it ran, measured
     // from the prompts it sends (the reader's page included), then settles to what
     // the answer and suggestion calls spent. One short source fits the least
@@ -1005,6 +1008,8 @@ describe('reader AI chat stream', () => {
     expect(mocks.recordTurn).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'generation' }));
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', outcome: 'failed' });
+    // A failed generation spent quota but is not a served answer.
+    expect(mocks.served).not.toHaveBeenCalled();
   });
 
   it('ignores a page context the reader cannot see', async () => {

@@ -2,7 +2,7 @@ import { Prisma, type ProjectIntegration, prisma } from '@nibleaf/database';
 import { getQdrantClient } from '@nibleaf/qdrant';
 import { aiConnectionConfigSchema, aiCredentialSchema, aiModelLabel, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MemberRole } from '@nibleaf/shared/constants';
-import { roleAtLeast } from '@nibleaf/shared/rbac';
+import { canView, roleAtLeast } from '@nibleaf/shared/rbac';
 import {
   type SaveWorkspaceAiConnectionBody,
   type SiteAiCapabilities,
@@ -19,8 +19,9 @@ import { z } from 'zod';
 import { env } from '@/env';
 import { AppError, conflict, forbidden } from '@/errors';
 import { readAnswerQuota } from '@/lib/ai-search/quota';
+import { configuredIndexServing, findCurrentIndexRun } from '@/lib/ai-search/readiness';
 import type { HonoEnv } from '@/lib/hono/context';
-import { managedAiServes, siteAiSelection, storedAiKeyState } from './ai-source';
+import { managedAiServes, siteAiSelection, storedAiKeyFailure, storedAiKeyState } from './ai-source';
 import { decryptIntegrationSecret, encryptIntegrationSecret } from './integrations/crypto';
 import { updateProjectConfigSection } from './project-config';
 import { assertProjectAccess } from './projects';
@@ -40,13 +41,22 @@ const selectionSchema = z.object({
   search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
 });
 
-const authorize = async (ctx: Context<HonoEnv>, projectId: string) => {
-  if (ctx.get('apiKey')) throw forbidden('AI credentials require a dashboard administrator session.');
+/** Anyone on the site may read where AI answers stand; API keys may not (dashboard only). */
+const authorizeRead = async (ctx: Context<HonoEnv>, projectId: string) => {
+  if (ctx.get('apiKey')) throw forbidden('AI settings require a dashboard session.');
   const user = ctx.get('user');
   if (!user) throw new AppError({ code: 'auth:no_user' });
   const access = await assertProjectAccess(user.id, projectId);
-  if (!roleAtLeast(access.role, MemberRole.ADMIN)) throw forbidden('Administrator access is required.');
-  return { ...access, actorId: user.id };
+  if (!canView(access.role)) throw forbidden('Site access is required.');
+  return { ...access, actorId: user.id, canManage: roleAtLeast(access.role, MemberRole.ADMIN) };
+};
+
+/** Changing AI settings, keys or models is for site Admins. */
+const authorize = async (ctx: Context<HonoEnv>, projectId: string) => {
+  if (ctx.get('apiKey')) throw forbidden('AI credentials require a dashboard administrator session.');
+  const access = await authorizeRead(ctx, projectId);
+  if (!access.canManage) throw forbidden('Administrator access is required.');
+  return access;
 };
 
 const readCredential = (projectId: string, providerId: z.infer<typeof aiProviderIdSchema>, ciphertext: string) => {
@@ -126,7 +136,7 @@ const savedAnswerModel = (config: unknown) => {
 };
 
 /** What this server can offer a site, from runtime configuration only (no Cloud or self-hosted branch). */
-const siteAiCapabilities = (): SiteAiCapabilities => {
+const siteAiCapabilities = (indexServing: boolean): SiteAiCapabilities => {
   const credentialStorage = Boolean(env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY);
   const openAiEmbeddings = env.SEARCH_EMBEDDING_MODEL.startsWith('openai/');
   return {
@@ -145,20 +155,50 @@ const siteAiCapabilities = (): SiteAiCapabilities => {
       },
       { id: 'openrouter', available: credentialStorage, reason: credentialStorage ? null : 'credentialStorageMissing' },
     ],
-    answers: { available: Boolean(getQdrantClient()), reason: getQdrantClient() ? null : 'searchNotConfigured' },
+    // The reader's own check: search exists and serves the collection built for the current embedding settings.
+    answers: !getQdrantClient()
+      ? { available: false, reason: 'searchNotConfigured' }
+      : indexServing
+        ? { available: true, reason: null }
+        : { available: false, reason: 'searchIndexSwitching' },
   };
 };
 
 const PREPARATION_STATE = { PENDING: 'running', RUNNING: 'running', FAILED: 'failed', DISABLED: 'none' } as const;
 
-/** Where the site's AI answers stand. Never carries a key: only its last four characters, stored at save time. */
+type CurrentRun = {
+  status: keyof typeof PREPARATION_STATE | 'READY';
+  indexedPages: number;
+  indexedChunks: number;
+  expectedPages: number;
+  failedChunks: number;
+  completedAt: Date | null;
+};
+
+/** How far the docs are prepared for AI, from the run that indexed the served collection (see `readiness.ts`). */
+const preparationOf = (run: CurrentRun | null): SiteAiStatus['preparation'] => {
+  const pages = run?.indexedPages ?? 0;
+  const expectedPages = Math.max(run?.expectedPages ?? 0, pages);
+  const at = run?.completedAt?.toISOString() ?? null;
+  if (!run) return { state: 'none', pages, expectedPages, at };
+  if (run.status !== 'READY') return { state: PREPARATION_STATE[run.status], pages, expectedPages, at };
+  if (run.indexedChunks === 0) return { state: 'none', pages, expectedPages, at };
+  return { state: run.failedChunks > 0 || pages < expectedPages ? 'partial' : 'ready', pages, expectedPages, at };
+};
+
+/**
+ * Where the site's AI answers stand. Never carries a key: Admins get its last
+ * four characters, stored at save time; a failed check is a code, never
+ * provider text.
+ */
 const siteAiStatus = (
   projectConfig: unknown,
   projectId: string,
   connections: ProjectIntegration[],
   deployment: { version: number; completedAt: Date | null } | null,
-  run: { status: keyof typeof PREPARATION_STATE | 'READY'; indexedPages: number; indexedChunks: number; completedAt: Date | null } | null,
+  run: CurrentRun | null,
   usage: SiteAiStatus['usage'],
+  canManage: boolean,
 ): SiteAiStatus => {
   const selection = siteAiSelection(projectConfig);
   const keys = connections.flatMap((connection) => {
@@ -167,11 +207,13 @@ const siteAiStatus = (
   });
   const stored = keys.map(({ id, connection }) => {
     const answerModel = aiConnectionConfigSchema.safeParse(connection.config).data?.answerModel;
+    const failure = storedAiKeyFailure(connection);
     return {
       id,
       state: storedAiKeyState(connection, id),
-      keyHint: connection.credentialHint ?? null,
-      addedAt: connection.createdAt.toISOString(),
+      failure: failure ? { reason: failure, checkedAt: connection.lastVerifiedAt?.toISOString() ?? null } : null,
+      keyHint: canManage ? (connection.credentialHint ?? null) : null,
+      addedAt: (connection.credentialAddedAt ?? connection.createdAt).toISOString(),
       model: answerModel ? { id: answerModel, label: aiModelLabel(answerModel) } : null,
     };
   });
@@ -182,17 +224,13 @@ const siteAiStatus = (
     sourceReady: source === 'managed' ? managedAiServes() : source ? stored.some((key) => key.id === source && key.state === 'ok') : false,
     connections: stored,
     published: deployment ? { version: deployment.version, at: deployment.completedAt?.toISOString() ?? null } : null,
-    preparation: {
-      state: !run ? 'none' : run.status === 'READY' ? (run.indexedChunks > 0 ? 'ready' : 'none') : PREPARATION_STATE[run.status],
-      pages: run?.indexedPages ?? 0,
-      at: run?.completedAt?.toISOString() ?? null,
-    },
+    preparation: preparationOf(run),
     usage,
   };
 };
 
 export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) => {
-  const { project } = await authorize(ctx, projectId);
+  const { project, canManage } = await authorizeRead(ctx, projectId);
   const [connections, deployment] = await Promise.all([
     prisma.projectIntegration.findMany({ where: { projectId, providerId: { in: ['openai', 'openrouter'] } } }),
     prisma.deployment.findFirst({
@@ -201,18 +239,27 @@ export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) =
       select: { id: true, version: true, completedAt: true },
     }),
   ]);
-  const run = deployment
-    ? await prisma.searchIndexRun.findFirst({
-        where: { projectId, deploymentId: deployment.id },
-        orderBy: { createdAt: 'desc' },
-        select: { status: true, errorCode: true, indexedPages: true, indexedChunks: true, completedAt: true },
-      })
-    : null;
+  // The same run and served-collection checks the reader uses before it answers.
+  const [run, indexServing, usage] = await Promise.all([
+    deployment
+      ? findCurrentIndexRun(projectId, deployment.id, {
+          status: true,
+          errorCode: true,
+          indexedPages: true,
+          indexedChunks: true,
+          expectedPages: true,
+          failedChunks: true,
+          completedAt: true,
+        })
+      : null,
+    configuredIndexServing(),
+    readAnswerQuota(projectId),
+  ]);
   const selection = selectionSchema.safeParse(project.config);
-  const usage = await readAnswerQuota(projectId);
   return workspaceAiOverviewSchema.parse({
-    capabilities: siteAiCapabilities(),
-    status: siteAiStatus(project.config, projectId, connections, deployment, run, usage),
+    capabilities: siteAiCapabilities(indexServing),
+    viewer: { canManage },
+    status: siteAiStatus(project.config, projectId, connections, deployment, run, usage, canManage),
     selectedProvider: selection.success ? (selection.data.search?.aiProvider ?? 'instance') : 'instance',
     answersEnabled: selection.success && selection.data.search?.aiAnswers === true,
     encryptionConfigured: Boolean(env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY),
@@ -287,7 +334,7 @@ export const saveWorkspaceAiConnection = async (ctx: Context<HonoEnv>, projectId
     await prisma.$transaction(async (tx) => {
       const data = {
         credentialEncrypted: ciphertext,
-        ...(body.apiKey ? { credentialHint: keyHint(body.apiKey) } : {}),
+        ...(body.apiKey ? { credentialHint: keyHint(body.apiKey), credentialAddedAt: new Date() } : {}),
         config: { answerModel: body.answerModel, embeddingModel: env.SEARCH_EMBEDDING_MODEL },
         status: 'ACTIVE',
         lastVerificationStatus: 'HEALTHY',

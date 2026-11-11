@@ -49,7 +49,7 @@ import { type ChatTurnHold, extendChatTurn, releaseChatTurn, reserveChatTurn, se
 import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
 import { readerChatPolicy, recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
-import { consumeAnswerQuota } from '@/lib/ai-search/quota';
+import { consumeAnswerQuota, recordAnswerServed } from '@/lib/ai-search/quota';
 import { type ChatRetrieval, resolveChatRuntime, retrieveChatLanguages } from '@/lib/ai-search/runtime';
 import { envExtras } from '@/lib/env-extras';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -658,6 +658,7 @@ const finishTurn = async ({
   await settleChatSpend(projectId, body.conversationId, reservation, chargedTokens).catch(() =>
     log.warn({ projectId }, 'AI chat spend could not be recorded'),
   );
+  if (outcome.status === 'answered' || outcome.status === 'no_answer') await recordAnswerServed(projectId);
 
   // Estimated totals stay out of analytics events, which carry reported facts
   // only, and they report the answer model's usage, the model they name.
