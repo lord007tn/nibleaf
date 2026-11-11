@@ -4,6 +4,13 @@ export function deriveConsent(required: boolean, stored: string | null): AiChatC
   if (!required) return 'not_required';
   return stored === 'accepted' ? 'granted' : stored === 'declined' ? 'denied' : 'unknown';
 }
+/** The days this reader's question text is kept, or null when it isn't: the
+ * server keeps questions for the site (`days`), and the reader's consent allows
+ * it, by the server's own rule (granted where consent is required, otherwise
+ * anything but denied, which the client reports as `not_required`). */
+export function questionRetention(days: number | null, consent: AiChatConsent): number | null {
+  return days !== null && (consent === 'granted' || consent === 'not_required') ? days : null;
+}
 export function buildHistory(turns: Array<{ question: string; final: AiChatFinalEvent }>): AiChatHistoryMessage[] {
   return turns
     .flatMap(({ question, final }): AiChatHistoryMessage[] => [
@@ -48,6 +55,7 @@ export const errorKey = (code: AiChatErrorCode | 'offline') =>
       unavailable: 'aiUnavailable',
       invalid_request: 'aiInvalid',
       failed: 'aiFailed',
+      policy_changed: 'aiPolicyChanged',
       offline: 'aiOffline',
     }) as const
   )[code];

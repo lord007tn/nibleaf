@@ -55,6 +55,10 @@ export type ChatOptions = {
   defaultLanguage?: string;
   direction: 'ltr' | 'rtl';
   config: ProjectConfig | null;
+  /** How many days the server keeps question text for this site; null or
+   * missing when it keeps none (the site's setting is off, or the instance can't
+   * encrypt it). From the site shell, so the chat never claims storage that isn't there. */
+  questionRetentionDays?: number | null;
 };
 /** The reader layout's chat settings, plus its `?ask=` deep link. */
 export type ChatRootOptions = ChatOptions & { ask?: string };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { siteT } from './site';
 import { siteAccessT } from './site-access';
+import { siteChatT } from './site-chat';
 
 describe('reader counts', () => {
   it('uses every Arabic plural form', () => {
@@ -24,5 +25,19 @@ describe('reader counts', () => {
   it('keeps the private-site copy out of siteT, in its own lazy translator', () => {
     expect(siteAccessT('ar')('privateSignIn')).toBe('تسجيل الدخول');
     expect(siteT('ar')('privateTitle')).toBe('هذا التوثيق خاص');
+  });
+
+  it('counts the chat retention period in days, in English and every Arabic form', () => {
+    expect([1, 90].map((count) => siteChatT('en')('aiSaved', { count }))).toEqual([
+      "Questions are kept for 1 day to help improve these docs. Please don't include personal details.",
+      "Questions are kept for 90 days to help improve these docs. Please don't include personal details.",
+    ]);
+    expect([1, 2, 7, 90, 100].map((count) => siteChatT('ar')('aiSaved', { count }).split(' للمساعدة')[0])).toEqual([
+      'تُحفظ الأسئلة لمدة يوم واحد',
+      'تُحفظ الأسئلة لمدة يومين',
+      'تُحفظ الأسئلة لمدة 7 أيام',
+      'تُحفظ الأسئلة لمدة 90 يومًا',
+      'تُحفظ الأسئلة لمدة 100 يوم',
+    ]);
   });
 });
