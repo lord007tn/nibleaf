@@ -45,6 +45,13 @@ describe('server-only OG renderer', () => {
     expect(siteOgEtag(data)).not.toBe(original);
   });
 
+  it('uses configured shorthand brand colours and rejects CSS injection', async () => {
+    expect(await renderSiteOg({ ...data, brandColor: '#abc' })).toEqual(await renderSiteOg({ ...data, brandColor: '#aabbcc' }));
+    expect(await renderSiteOg({ ...data, brandColor: '"><image href="file:///etc/passwd"/>' })).toEqual(
+      await renderSiteOg({ ...data, brandColor: '#2563eb' }),
+    );
+  });
+
   it('coalesces identical renders and refuses a third concurrent cold card', async () => {
     let release: (() => void) | undefined;
     const hold = new Promise<void>((resolve) => {

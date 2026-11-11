@@ -114,7 +114,7 @@ const titleLines = (title: string): string[] => {
 
 export const renderSiteOg = async (data: SiteOgData): Promise<Buffer> => {
   const logo = await logoData(data);
-  const color = /^#[\da-f]{6}$/iu.test(data.brandColor) ? data.brandColor : '#2563eb';
+  const color = /^#(?:[\da-f]{3}|[\da-f]{6})$/iu.test(data.brandColor) ? data.brandColor : '#2563eb';
   const x = data.rtl ? 1120 : 80;
   const anchor = data.rtl ? 'end' : 'start';
   const lines = titleLines(data.title);
