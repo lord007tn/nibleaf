@@ -86,7 +86,78 @@ describe('rendered Markdown blocks', () => {
     expect(openingTag(html, 'p', 'مرحبا')).toContain('dir="ltr"');
   });
 
-  it('renders the same attributes on every render, so hydration matches the server', async () => {
+  it('scopes an authored container direction: nothing inside it is inferred, except code', async () => {
+    const html = await markdown(
+      [
+        '<blockquote dir="ltr">',
+        '',
+        'مرحبا بالعالم',
+        '',
+        '<div dir="rtl">',
+        '',
+        '- Hello world',
+        '- Second item',
+        '',
+        'شغّل `pnpm install` الآن',
+        '',
+        '</div>',
+        '',
+        '</blockquote>',
+        '',
+        'خارج النطاق',
+      ].join('\n'),
+    );
+    expect(html).toMatch(/<blockquote dir="ltr">/);
+    expect(openingTag(html, 'p', 'مرحبا')).toBe('<p>');
+    expect(html).toMatch(/<div dir="rtl">/);
+    expect(html).toMatch(/<ul>/);
+    expect(openingTag(html, 'li', 'Hello')).toBe('<li>');
+    expect(openingTag(html, 'p', 'شغّل')).toBe('<p>');
+    expect(html).toMatch(/<code\b[^>]*dir="ltr"[^>]*>pnpm install<\/code>/);
+    // Outside the scope inference resumes.
+    expect(openingTag(html, 'p', 'خارج')).toContain('dir="auto"');
+  });
+
+  it('takes a table structure from its header row, not its data', async () => {
+    const html = await markdown(
+      ['| Product | Quantity |', '| --- | --- |', '| غرفة مزدوجة مطلة على البحر | 2 |', '| جناح عائلي كبير | 10 |', '| سرير إضافي | 1 |'].join('\n'),
+    );
+    expect(html).toMatch(/<table dir="ltr">/);
+    // Each cell still lays out by its own script.
+    expect(openingTag(html, 'td', 'غرفة')).toContain('dir="auto"');
+    // Numeric cells have no letters: no attribute, they follow their column.
+    expect(html).toMatch(/<td>2<\/td>/);
+  });
+
+  it('turns a table right to left from an Arabic header row', async () => {
+    const html = await markdown('| المنتج | الكمية |\n| --- | --- |\n| Double room | 2 |');
+    expect(html).toMatch(/<table dir="rtl">/);
+    expect(openingTag(html, 'td', 'Double')).toContain('dir="auto"');
+  });
+
+  it('keeps the page direction for a table whose header has no letters', async () => {
+    const html = await markdown('| 2025 | 2026 |\n| --- | --- |\n| غرفة مزدوجة | جناح عائلي |');
+    expect(html).toMatch(/<table>/);
+  });
+
+  it('reads the first row as the header of a raw table without <thead>', async () => {
+    const html = await markdown('<table><tr><th>Product</th><th>Quantity</th></tr><tr><td>غرفة مزدوجة مطلة</td><td>2</td></tr></table>');
+    expect(html).toMatch(/<table dir="ltr">/);
+  });
+
+  it('does not let inline formatting split a word', async () => {
+    const plain = await markdown('Nibleaf يتيح لك');
+    const formatted = await markdown('N**ible**af يتيح لك');
+    expect(openingTag(plain, 'p', 'Nibleaf')).toContain('dir="rtl"');
+    expect(formatted).toMatch(/<p dir="rtl">N<strong>ible<\/strong>af/);
+  });
+
+  it('does not let inline formatting split a word inside a container', async () => {
+    // Two words, "Nibleaf" and "يتيح": a tie, so the list keeps the page direction.
+    expect(await markdown('- N**ible**af\n- يتيح')).toMatch(/<ul>/);
+  });
+
+  it('renders identical attributes on every server render', async () => {
     const content = '# عنوان\n\nNibleaf يتيح لك.\n\n- one\n- اثنان ثلاثة';
     expect(await markdown(content)).toBe(await markdown(content));
   });

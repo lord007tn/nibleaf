@@ -47,7 +47,10 @@ describe('detectScriptMismatch', () => {
 
   describe('ignores code', () => {
     const cases: Array<[string, string]> = [
-      ['indented code', `${ARABIC_INTRO}\n\n    const server = createServer({ port: 3000, host: 'localhost' });\n    server.listen(() => console.log('listening on port'));\n`],
+      [
+        'indented code',
+        `${ARABIC_INTRO}\n\n    const server = createServer({ port: 3000, host: 'localhost' });\n    server.listen(() => console.log('listening on port'));\n`,
+      ],
       [
         'raw <pre><code>',
         `${ARABIC_INTRO}\n\n<pre><code>const server = createServer({ port: 3000, host: 'localhost' });\nserver.listen(() => console.log('listening'));</code></pre>\n`,
@@ -94,14 +97,16 @@ describe('detectScriptMismatch', () => {
   it('follows an explicit script subtag and multi-script languages', () => {
     expect(detectScriptMismatch(ENGLISH_RESERVATION, 'sr-Latn').mismatch).toBe(false);
     expect(detectScriptMismatch(ENGLISH_RESERVATION, 'sr').mismatch).toBe(false);
-    expect(detectScriptMismatch('東京の新しいホテルで予約を管理する方法を説明します。チェックインとチェックアウトの手順です。', 'ja').mismatch).toBe(false);
+    expect(detectScriptMismatch('東京の新しいホテルで予約を管理する方法を説明します。チェックインとチェックアウトの手順です。', 'ja').mismatch).toBe(
+      false,
+    );
   });
 
   it('stays fast on adversarial input', () => {
     const inputs = [
       `${'a'.repeat(40_000)}@${'b'.repeat(40_000)}`,
       'a@'.repeat(20_000),
-      'a.b@c.'.repeat(8_000),
+      'a.b@c.'.repeat(8000),
       '<a'.repeat(20_000),
       '<!--'.repeat(10_000),
       `https://${'x'.repeat(40_000)}`,

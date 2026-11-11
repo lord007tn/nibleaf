@@ -17,11 +17,11 @@ export type TextDirection = 'ltr' | 'rtl';
  * in them, assigned now or later, is right to left.
  */
 const RTL_BLOCKS: ReadonlyArray<readonly [number, number]> = [
-  [0x0590, 0x08ff], // Hebrew, Arabic, Syriac, Arabic Supplement, Thaana, NKo, Samaritan, Mandaic, Syriac Supplement, Arabic Extended-B/A
-  [0xfb1d, 0xfdff], // Hebrew presentation forms, Arabic Presentation Forms-A
-  [0xfe70, 0xfeff], // Arabic Presentation Forms-B
-  [0x10800, 0x10fff], // Cypriot … Hanifi Rohingya, Yezidi, Arabic Extended-C, Sogdian, Old Uyghur, Elymaic
-  [0x1e800, 0x1efff], // Mende Kikakui, Adlam, Indic/Ottoman Siyaq, Arabic Mathematical Alphabetic Symbols
+  [0x05_90, 0x08_ff], // Hebrew, Arabic, Syriac, Arabic Supplement, Thaana, NKo, Samaritan, Mandaic, Syriac Supplement, Arabic Extended-B/A
+  [0xfb_1d, 0xfd_ff], // Hebrew presentation forms, Arabic Presentation Forms-A
+  [0xfe_70, 0xfe_ff], // Arabic Presentation Forms-B
+  [0x1_08_00, 0x1_0f_ff], // Cypriot … Hanifi Rohingya, Yezidi, Arabic Extended-C, Sogdian, Old Uyghur, Elymaic
+  [0x1_e8_00, 0x1_ef_ff], // Mende Kikakui, Adlam, Indic/Ottoman Siyaq, Arabic Mathematical Alphabetic Symbols
 ];
 const LETTER = /\p{L}/u;
 const SPACE = /\s/u;

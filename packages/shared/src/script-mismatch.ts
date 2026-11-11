@@ -80,7 +80,9 @@ const expectedScripts = (languageCode: string): readonly WritingScript[] | undef
 const NON_PROSE_TAGS = new Set(['code', 'kbd', 'math', 'pre', 'samp', 'script', 'style', 'svg', 'textarea', 'var']);
 /** Raw HTML elements that end a run of prose. */
 const BLOCK_TAGS = new Set(
-  'address article aside blockquote br dd details div dl dt figcaption figure footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p section summary table td th tr ul'.split(' '),
+  'address article aside blockquote br dd details div dl dt figcaption figure footer h1 h2 h3 h4 h5 h6 header hr li main nav ol p section summary table td th tr ul'.split(
+    ' ',
+  ),
 );
 /** One HTML tag. `[^<>]*` stops at the next `<`, so scanning stays linear. */
 const HTML_TAG = /<(\/?)([A-Za-z][\w:-]*)[^<>]*>/y;
@@ -154,7 +156,8 @@ function proseRuns(markdown: string): string[] {
       default:
     }
     if (!('children' in node)) return;
-    const inline = node.type === 'emphasis' || node.type === 'strong' || node.type === 'delete' || node.type === 'link' || node.type === 'linkReference';
+    const inline =
+      node.type === 'emphasis' || node.type === 'strong' || node.type === 'delete' || node.type === 'link' || node.type === 'linkReference';
     if (!inline) flush();
     for (const child of (node as Parents).children) visit(child);
     if (!inline) flush();
