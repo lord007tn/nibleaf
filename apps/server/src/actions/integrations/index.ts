@@ -2,7 +2,7 @@ import { keys as clickHouseKeys } from '@nibleaf/clickhouse/keys';
 import { type IntegrationWebhookDelivery, Prisma, type ProjectIntegration, prisma } from '@nibleaf/database';
 import { keys as qdrantKeys } from '@nibleaf/qdrant/keys';
 import { keys as searchKeys } from '@nibleaf/search/keys';
-import { aiConnectionConfigSchema, aiProviderIdSchema } from '@nibleaf/shared/ai';
+import { aiConnectionConfigSchema, aiCredentialSchema, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MemberRole } from '@nibleaf/shared/constants';
 import {
   getIntegrationManifest,
@@ -189,7 +189,7 @@ const adapterConnection = (
   createdAt: Date,
   options?: {
     id?: string;
-    status?: 'active' | 'error';
+    status?: 'active' | 'inactive' | 'error';
     credentialConfigured?: boolean;
     healthCode?: string | null;
     ownership?: 'project' | 'instance';
@@ -213,6 +213,59 @@ const adapterConnection = (
     createdAt: createdAt.toISOString(),
     updatedAt: createdAt.toISOString(),
   };
+};
+
+/** The part of a site's config that says which AI serves its readers. */
+const siteAiSelectionSchema = z.object({
+  search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
+});
+
+/** Whether the reader could decrypt this stored key for this site and provider (never returns the key). */
+const storedAiKeyReadable = (stored: Pick<ProjectIntegration, 'projectId' | 'credentialEncrypted'>, providerId: 'openai' | 'openrouter') => {
+  try {
+    const credential = aiCredentialSchema.parse(JSON.parse(decryptIntegrationSecret(stored.credentialEncrypted)));
+    return credential.projectId === stored.projectId && credential.providerId === providerId;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * The one status rule for every AI provider card, the server's own provider
+ * ("instance") and a site's stored OpenAI or OpenRouter key alike. It follows
+ * the reader's resolver (`resolveWorkspaceAiConfiguration`,
+ * packages/search/src/workspace.ts):
+ * - `active` only while this site's readers get answers from that source: it
+ *   is the site's selected source (the instance provider by default), answers
+ *   are on, and the source can serve them (the server holds a key and allows
+ *   answers; a stored key is active, verified, built for the server's
+ *   embedding model and readable with the current keyring);
+ * - `error` when a stored key is selected and on but can't serve, or was
+ *   marked broken;
+ * - `inactive` otherwise, e.g. a key that is saved but not the selected
+ *   source, or AI answers turned off for the site.
+ * Holding a key never makes a source active on its own.
+ */
+const aiSourceStatus = (
+  source: 'instance' | 'openai' | 'openrouter',
+  projectConfig: unknown,
+  stored?: Pick<ProjectIntegration, 'projectId' | 'status' | 'lastVerificationStatus' | 'config' | 'credentialEncrypted'>,
+): 'active' | 'inactive' | 'error' => {
+  const search = siteAiSelectionSchema.safeParse(projectConfig).data?.search;
+  const selectedAndOn = (search?.aiProvider ?? 'instance') === source && search?.aiAnswers === true;
+  if (source === 'instance') {
+    return selectedAndOn && env.OPENROUTER_API_KEY && searchKeys().SEARCH_ANSWER_ENABLED ? 'active' : 'inactive';
+  }
+  if (stored?.status === 'ERROR') return 'error';
+  if (!selectedAndOn) return 'inactive';
+  const embeddingModel = aiConnectionConfigSchema.safeParse(stored?.config).data?.embeddingModel;
+  const canServe =
+    stored?.status === 'ACTIVE' &&
+    stored.lastVerificationStatus === 'HEALTHY' &&
+    embeddingModel === searchKeys().SEARCH_EMBEDDING_MODEL &&
+    (source !== 'openai' || embeddingModel.startsWith('openai/')) &&
+    storedAiKeyReadable(stored, source);
+  return canServe ? 'active' : 'error';
 };
 
 const storageProviderId = () => {
@@ -268,7 +321,10 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
     if (providerId.success) connections.set(providerId.data, projectConnectionSummary(connection, providerId.data));
     const ai = aiProviderIdSchema.safeParse(connection.providerId);
     if (ai.success && aiConnectionConfigSchema.safeParse(connection.config).success)
-      connections.set(ai.data, projectConnectionSummary(connection, ai.data));
+      connections.set(ai.data, {
+        ...projectConnectionSummary(connection, ai.data),
+        status: aiSourceStatus(ai.data, project.config, connection),
+      });
   }
 
   if (gitConnection) {
@@ -363,7 +419,7 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
           answerModel: searchKeys().SEARCH_ANSWER_MODEL,
         },
         project.createdAt,
-        { ownership: 'instance' },
+        { ownership: 'instance', status: aiSourceStatus('instance', project.config) },
       ),
     );
   }
@@ -401,8 +457,9 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
 
   return INTEGRATION_CATALOG.map((manifest) => ({
     ...manifest,
-    availability:
-      manifest.lifecycle !== 'managed' || connections.has(manifest.id)
+    availability: manifest.comingSoon
+      ? 'coming_soon'
+      : manifest.lifecycle !== 'managed' || connections.has(manifest.id)
         ? 'available'
         : ['openrouter', 'qdrant', 'clickhouse', 'postmark', 'smtp', 'cloudflare'].includes(manifest.id)
           ? 'not_configured'
@@ -428,6 +485,17 @@ const configurableManifest = (providerId: WebhookProviderId) => {
   if (manifest.lifecycle !== 'configurable') {
     throw integrationError('integration:provider_unsupported', 'This provider does not use the configurable connection lifecycle.');
   }
+  return manifest;
+};
+
+/** Refuses anything but removal for a provider that delivers nothing yet (`comingSoon`). */
+const assertConnectable = (manifest: { comingSoon: boolean }) => {
+  if (manifest.comingSoon) throw integrationError('integration:provider_unavailable', 'This integration is coming soon.');
+};
+
+const connectableManifest = (providerId: WebhookProviderId) => {
+  const manifest = configurableManifest(providerId);
+  assertConnectable(manifest);
   return manifest;
 };
 
@@ -504,7 +572,7 @@ const createIdempotencyRecord = async (
 export const createProjectIntegration = async (ctx: Context<HonoEnv>, projectId: string, body: CreateProjectIntegrationBody) => {
   const access = await authorizeIntegration(ctx, projectId, 'integrations:write', MemberRole.ADMIN);
   assertDashboardPrincipal(access);
-  configurableManifest(body.providerId);
+  connectableManifest(body.providerId);
   const requestValue = canonicalCreateRequest(body);
   const idempotencyDigest = digestIntegrationValue(body.idempotencyKey, 'idempotency-key');
   const requestDigest = digestIntegrationValue(requestValue, 'request');
@@ -554,7 +622,7 @@ export const updateProjectIntegration = async (
   const access = await authorizeIntegration(ctx, projectId, 'integrations:write', MemberRole.ADMIN);
   assertDashboardPrincipal(access);
   if (body.providerId !== providerId) throw integrationError('integration:invalid_configuration', 'The provider configuration is invalid.');
-  configurableManifest(providerId);
+  connectableManifest(providerId);
   const requestValue = canonicalUpdateRequest(providerId, body);
   const idempotencyDigest = digestIntegrationValue(body.idempotencyKey, 'idempotency-key');
   const requestDigest = digestIntegrationValue(requestValue, 'request');
@@ -605,7 +673,7 @@ const setProjectIntegrationStatus = async (
   status: 'ACTIVE' | 'INACTIVE',
 ) => {
   const access = await authorizeIntegration(ctx, projectId, 'integrations:write', MemberRole.ADMIN);
-  configurableManifest(providerId);
+  connectableManifest(providerId);
   const requestValue = canonicalStatusRequest(providerId, status, body.expectedRevision);
   const idempotencyDigest = digestIntegrationValue(body.idempotencyKey, 'idempotency-key');
   const requestDigest = digestIntegrationValue(requestValue, 'request');
@@ -676,6 +744,7 @@ export const verifyProjectIntegration = async (
   if (!(manifest.supportsPassiveVerification || manifest.verificationSideEffect)) {
     throw integrationError('integration:provider_unsupported', 'This provider does not expose project-level verification.');
   }
+  assertConnectable(manifest);
 
   if (body.providerId === 'github') {
     try {
