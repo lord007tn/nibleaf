@@ -46,12 +46,14 @@ export async function snapshotPage(
   // Unattributed internal updates do not create an unthrottled history stream.
   if (tooLarge) return 'too-large';
   if (!due) return 'throttled';
-  const latest = await tx.pageRevision.findFirst({
-    where: { projectId: page.projectId, pageId: page.id },
-    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    select: { title: true, content: true },
-  });
-  if (latest?.title === snapshot.title && latest.content === snapshot.content) return 'unchanged';
+  if (!beforeRestore) {
+    const latest = await tx.pageRevision.findFirst({
+      where: { projectId: page.projectId, pageId: page.id },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { title: true, content: true },
+    });
+    if (latest?.title === snapshot.title && latest.content === snapshot.content) return 'unchanged';
+  }
   await tx.pageRevision.create({
     data: {
       projectId: page.projectId,

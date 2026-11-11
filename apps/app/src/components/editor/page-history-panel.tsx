@@ -20,7 +20,7 @@ import { queryKeys } from '@/hooks/api/query-keys';
 import type { Page } from '@/hooks/api/types';
 import { isEditorRevisionConflict } from './editor-draft';
 
-export function PageHistoryPanel({
+export default function PageHistoryPanel({
   projectId,
   page,
   canRestore,

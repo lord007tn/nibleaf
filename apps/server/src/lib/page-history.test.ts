@@ -35,7 +35,7 @@ describe('snapshot policy under the page lock', () => {
     expect(tx.pageRevisionState.upsert).not.toHaveBeenCalled();
   });
 
-  it('bypasses throttling before a restore and reuses an identical latest safety copy', async () => {
+  it('always records a before-restore copy for a changed restore, bypassing throttling and deduplication', async () => {
     const { tx, client, page } = fixture();
     await snapshotPage(client, page, { title: 'Old title', content: 'Restored' }, 'author', true);
     expect(tx.pageRevisionState.findUnique).not.toHaveBeenCalled();
@@ -44,7 +44,9 @@ describe('snapshot policy under the page lock', () => {
     });
     tx.pageRevision.create.mockClear();
     tx.pageRevision.findFirst.mockResolvedValue({ title: 'Guide', content: 'Old' });
-    expect(await snapshotPage(client, page, { title: 'Guide', content: 'Restored' }, 'author', true)).toBe('unchanged');
-    expect(tx.pageRevision.create).not.toHaveBeenCalled();
+    expect(await snapshotPage(client, page, { title: 'Guide', content: 'Restored' }, 'author', true)).toBe('stored');
+    expect(tx.pageRevision.create).toHaveBeenCalledExactlyOnceWith({
+      data: expect.objectContaining({ content: 'Old', reason: 'before-restore' }),
+    });
   });
 });

@@ -72,7 +72,7 @@ const ready = async (url, child) => {
   for (let attempt = 0; attempt < 120; attempt++) {
     if (child.exitCode !== null) throw new Error(`Process ${child.pid} exited: ${child.exitCode}`);
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (response.ok) return;
     } catch {
       /* The listener has not bound yet. */
@@ -160,7 +160,7 @@ try {
   await ready(`${apiUrl}/health`, api);
   const app = start(
     'app',
-    [join(root, 'node_modules/vite/bin/vite.js'), 'dev', '--port', '4810', '--strictPort', '--host', '127.0.0.1'],
+    [join(root, 'node_modules/vite/bin/vite.js'), 'dev', '--force', '--port', '4810', '--strictPort', '--host', '127.0.0.1'],
     join(root, 'apps/app'),
   );
   await ready(appUrl, app);
@@ -236,6 +236,7 @@ try {
       assert.equal(await page.locator('html').getAttribute('dir'), locale === 'ar' ? 'rtl' : 'ltr');
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
       assert.equal(overflow, false, `${label} has no document overflow`);
+      assert.deepEqual(errors, [], `${label} has no page errors`);
       results.push({ locale, width, restored: true, undoCopy: true, errors });
       writeFileSync(join(framesRoot, `${label}.json`), JSON.stringify(frames));
     } catch (error) {

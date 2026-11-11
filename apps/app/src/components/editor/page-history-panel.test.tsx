@@ -4,7 +4,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Page } from '@/hooks/api/types';
-import { PageHistoryPanel } from './page-history-panel';
+import PageHistoryPanel from './page-history-panel';
 
 const mocks = vi.hoisted(() => ({ restore: vi.fn(), compare: vi.fn(), history: vi.fn(), toast: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));

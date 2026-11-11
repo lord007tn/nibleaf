@@ -110,7 +110,7 @@ import { resolveProjectEditAccess } from '@/lib/project-settings-access';
 import { typographyVars } from '@/lib/typography';
 import { useSession } from '@/services/auth-client';
 
-const PageHistoryPanel = lazy(() => import('@/components/editor/page-history-panel').then((module) => ({ default: module.PageHistoryPanel })));
+const PageHistoryPanel = lazy(() => import('@/components/editor/page-history-panel'));
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
