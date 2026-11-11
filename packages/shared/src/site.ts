@@ -480,6 +480,24 @@ export const interpolateVariables = (text: string, variables: Record<string, str
   return text.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, key: string) => (Object.hasOwn(variables, key) ? (variables[key] ?? whole) : whole));
 };
 
+/** `interpolateVariables` for a preview that only needs the start of the text:
+ *  substitution stops once the output reaches `maxLength`, so a body full of
+ *  `{{ key }}` tokens with long values can't expand without bound. The result
+ *  is at most `maxLength` characters. */
+export const interpolateVariablesWithin = (text: string, variables: Record<string, string>, maxLength: number): string => {
+  const limit = Math.max(0, Math.floor(maxLength));
+  const pattern = /\{\{\s*([\w.-]+)\s*\}\}/g;
+  let output = '';
+  let cursor = 0;
+  for (let match = pattern.exec(text); match && output.length < limit; match = pattern.exec(text)) {
+    const [whole, key = ''] = match;
+    output += text.slice(cursor, match.index) + (Object.hasOwn(variables, key) ? (variables[key] ?? whole) : whole);
+    cursor = match.index + whole.length;
+  }
+  if (output.length < limit) output += text.slice(cursor, cursor + limit - output.length);
+  return output.slice(0, limit);
+};
+
 /** Extract a `{ key: value }` map from a project config's `variables` array. */
 export const variablesFromConfig = (config: unknown): Record<string, string> => {
   const list = (config as { variables?: Array<{ key?: unknown; value?: unknown }> } | null)?.variables;

@@ -7,6 +7,7 @@ import {
   explicitPageDescription,
   extractHeadings,
   interpolateVariables,
+  interpolateVariablesWithin,
   isPageTranslation,
   mergeLanguageChrome,
   projectSlugFromSubdomainHost,
@@ -365,6 +366,23 @@ describe('interpolateVariables', () => {
   });
   it('is a no-op when there are no variables', () => {
     expect(interpolateVariables('{{ a }}', {})).toBe('{{ a }}');
+  });
+});
+
+describe('interpolateVariablesWithin', () => {
+  it('substitutes like interpolateVariables when the text fits', () => {
+    const text = '{{ a }} and {{b}} and {{c}}';
+    expect(interpolateVariablesWithin(text, { a: '1', b: '2' }, 100)).toBe(interpolateVariables(text, { a: '1', b: '2' }));
+    expect(interpolateVariablesWithin('plain text', {}, 5)).toBe('plain');
+  });
+  it('stops expanding at the limit, so long values cannot amplify a large body', () => {
+    const text = '{{x}}'.repeat(200_000);
+    const value = 'v'.repeat(500);
+    const started = performance.now();
+    const result = interpolateVariablesWithin(text, { x: value }, 8192);
+    expect(performance.now() - started).toBeLessThan(50);
+    expect(result).toHaveLength(8192);
+    expect(result).toBe(value.repeat(17).slice(0, 8192));
   });
 });
 

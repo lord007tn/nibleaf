@@ -10,7 +10,6 @@ const database = vi.hoisted(() => ({
   transaction: vi.fn(),
   queryRaw: vi.fn(),
   languages: vi.fn(),
-  projectFindUnique: vi.fn(),
 }));
 const recordEdit = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/page-address-changes', () => ({
@@ -31,14 +30,12 @@ vi.mock('@nibleaf/database', () => ({
       update: database.update,
       updateMany: database.updateMany,
     },
-    project: { findUnique: database.projectFindUnique },
     $transaction: database.transaction,
   },
 }));
 
-import { pageDescription } from '@nibleaf/shared/markdown-text';
 import { reorderPagesBody } from '@nibleaf/validators';
-import { getPageSearchDescription, reorderPages, updatePage } from './pages';
+import { reorderPages, updatePage } from './pages';
 
 type Row = {
   id: string;
@@ -517,26 +514,5 @@ describe('updatePage revision precondition', () => {
       ).rejects.toMatchObject({ code: 'http:bad_request' });
       expect(database.updateMany).not.toHaveBeenCalled();
     });
-  });
-});
-
-describe('getPageSearchDescription', () => {
-  beforeEach(() => {
-    for (const mock of Object.values(database)) mock.mockReset();
-  });
-
-  it("generates from the saved content with the project's variables resolved, ignoring the page's own descriptions", async () => {
-    database.findFirst.mockResolvedValue({ content: '# Setup\n\nInstall {{ product }} in a minute.' });
-    database.projectFindUnique.mockResolvedValue({ config: { variables: [{ key: 'product', value: 'Nibleaf' }] } });
-    const result = await getPageSearchDescription('project-1', 'page-1');
-    expect(result).toEqual({ description: pageDescription({ content: '# Setup\n\nInstall Nibleaf in a minute.', description: null }) });
-    expect(result.description).toContain('Install Nibleaf in a minute.');
-    expect(database.findFirst).toHaveBeenCalledWith({ where: { id: 'page-1', projectId: 'project-1' }, select: { content: true } });
-  });
-
-  it('is not found for a page outside the project', async () => {
-    database.findFirst.mockResolvedValue(null);
-    database.projectFindUnique.mockResolvedValue({ config: null });
-    await expect(getPageSearchDescription('project-1', 'other')).rejects.toMatchObject({ code: 'database:not_found' });
   });
 });
