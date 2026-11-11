@@ -6,6 +6,7 @@ import {
   type GroundedAnswer,
   generateGroundedAnswer,
   type HybridChunkHit,
+  oramaLanguageForCode,
   questionLanguage,
   readerRelevanceFloor,
   readerRelevanceScore,
@@ -316,10 +317,15 @@ export const runPublishedSearch = async (
     // A newly published deployment can be served before its async index job
     // finishes. Keep ordinary search working during that window and recovery.
     if (result.chunks.length === 0) return { hits: await legacy(), runtime: 'legacy-fallback' };
-    const terms = readerSearchTerms(query);
+    // Normalized like the keyword index for this language (accent folding included).
+    const language = oramaLanguageForCode(scope.language);
+    const terms = readerSearchTerms(query, language);
     const scored = result.chunks.map((hit) => ({
       ...hit,
-      score: readerRelevanceScore(terms, readerSearchFields({ ...hit.chunk, headings: [...hit.chunk.headingPath, hit.chunk.heading].join(' ') })),
+      score: readerRelevanceScore(
+        terms,
+        readerSearchFields({ ...hit.chunk, headings: [...hit.chunk.headingPath, hit.chunk.heading].join(' ') }, language),
+      ),
     }));
     const floor = readerRelevanceFloor(Math.max(0, ...scored.map((hit) => hit.score)));
     return {

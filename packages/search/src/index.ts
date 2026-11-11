@@ -3,6 +3,7 @@ import { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSea
 import { cleanSearchText } from './hybrid';
 import { keys } from './keys';
 import { readerRelevanceFloor, readerRelevanceScore, readerSearchFields, readerSearchTerms } from './reader-relevance';
+import { foldSearchText, oramaTokenizerConfig } from './tokenizer';
 
 export * from './analytics';
 export * from './answer';
@@ -13,6 +14,7 @@ export * from './hybrid';
 export { questionLanguage } from './language';
 export * from './providers';
 export * from './reader-relevance';
+export { foldSearchText, oramaTokenizerConfig, type SearchTokenizerLanguage } from './tokenizer';
 
 // Orama ships a built-in tokenizer (word splitter + optional stemmer) per
 // language. We map a project language CODE (BCP-47 primary subtag) to the Orama
@@ -127,14 +129,13 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
   const db = await create({
     schema: docSchema,
     components: {
-      // Orama stemming stays off. Arabic uses the deterministic light analyzer
-      // in this package; other languages retain their existing tokenization.
-      tokenizer: { language, stemming: false },
+      // The same configuration the reader relevance gate normalizes with.
+      tokenizer: oramaTokenizerConfig(language),
     },
   });
   indexLanguages.set(db, language);
   indexDocuments.set(db, new Map(docs.map((doc) => [doc.id, doc])));
-  readerDocuments.set(db, new Map(docs.map((doc) => [doc.id, { fields: readerSearchFields(doc), text: cleanSearchText(doc.content) }])));
+  readerDocuments.set(db, new Map(docs.map((doc) => [doc.id, { fields: readerSearchFields(doc, language), text: cleanSearchText(doc.content) }])));
   const searchable = (value: string) => (language === 'arabic' ? normalizeArabicSearchText(value) : value);
   const morphological = (value: string) => (language === 'arabic' ? normalizeArabicMorphologyText(value) : '');
   if (docs.length > 0) {
@@ -206,7 +207,15 @@ function sourceDoc(db: DocIndex, id: string): SearchDoc {
   return doc;
 }
 
-function toSearchHit(db: DocIndex, id: string, score: number, rawQuery: string, arabic: boolean, cleanContent?: string): SearchHit {
+function toSearchHit(
+  db: DocIndex,
+  id: string,
+  score: number,
+  rawQuery: string,
+  arabic: boolean,
+  cleanContent?: string,
+  language: OramaLanguage = 'english',
+): SearchHit {
   const doc = sourceDoc(db, id);
   return {
     id: String(doc.id),
@@ -214,7 +223,7 @@ function toSearchHit(db: DocIndex, id: string, score: number, rawQuery: string, 
     path: doc.path,
     description: doc.description,
     icon: doc.icon || undefined,
-    snippet: makeSnippet(cleanContent ?? doc.content, rawQuery, arabic, cleanContent !== undefined),
+    snippet: makeSnippet(cleanContent ?? doc.content, rawQuery, arabic, cleanContent !== undefined, language),
     score,
   };
 }
@@ -225,7 +234,8 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
   // callers cannot accidentally send an oversized reader query into Orama.
   if (options.relevance === 'reader' && term.length > 200) return [];
   const rawQuery = term.trim();
-  const arabic = indexLanguages.get(db) === 'arabic';
+  const language = indexLanguages.get(db) ?? 'english';
+  const arabic = language === 'arabic';
   const query = arabic ? normalizeArabicSearchText(rawQuery) : rawQuery;
   if (!query) {
     return [];
@@ -235,14 +245,14 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
   const candidateLimit = Math.min(Math.max(limit * 2, 24), 64);
   const directLimit = Math.max(limit, candidateLimit);
   const readerHits = (ids: string[]): SearchHit[] => {
-    const terms = readerSearchTerms(rawQuery);
+    const terms = readerSearchTerms(rawQuery, language);
     const candidates = ids.map((id) => ({ id, score: readerRelevanceScore(terms, readerDocuments.get(db)?.get(id)?.fields ?? []) }));
     const floor = readerRelevanceFloor(Math.max(0, ...candidates.map((hit) => hit.score)));
     return candidates
       .filter((hit) => hit.score >= floor)
       .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
       .slice(0, limit)
-      .map(({ id, score }) => toSearchHit(db, id, score, rawQuery, arabic, readerDocuments.get(db)?.get(id)?.text ?? ''));
+      .map(({ id, score }) => toSearchHit(db, id, score, rawQuery, arabic, readerDocuments.get(db)?.get(id)?.text ?? '', language));
   };
 
   // Preserve the single-channel behavior and scores for every non-Arabic
@@ -372,13 +382,14 @@ function snippetWindow(haystack: string, start: number, end: number, anchor: num
 }
 
 /** Build a short snippet centered on the first occurrence of the query. */
-function makeSnippet(content: string, query: string, arabic = false, clean = false): string {
+function makeSnippet(content: string, query: string, arabic = false, clean = false, language: OramaLanguage = 'english'): string {
   const haystack = clean ? content : stripMarkdown(content);
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   const normalizedText = normalizeArabicSearchText(haystack.toLowerCase());
+  const foldedText = foldSearchText(normalizedText, language);
   const firstTerm =
     terms
-      .map((value) => ({ value, index: normalizedText.indexOf(normalizeArabicSearchText(value)) }))
+      .map((value) => ({ value, index: foldedText.indexOf(foldSearchText(normalizeArabicSearchText(value), language)) }))
       .filter(({ index }) => index >= 0)
       .sort((left, right) => left.index - right.index)[0]?.value ??
     terms[0] ??
@@ -409,7 +420,9 @@ function makeSnippet(content: string, query: string, arabic = false, clean = fal
       }
     }
   }
-  const idx = haystack.toLowerCase().indexOf(firstTerm);
+  // Accent folding maps one UTF-16 unit to one, so the folded offset is the
+  // offset in the original text: `cafe` centers on `Café`, shown as written.
+  const idx = foldSearchText(haystack, language).indexOf(foldSearchText(firstTerm, language));
   if (idx === -1) {
     return snippetWindow(haystack, 0, Math.min(haystack.length, SNIPPET_RADIUS * 2), 0, 0);
   }

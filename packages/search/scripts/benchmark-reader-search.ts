@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks';
-import { createDocIndex, type SearchDoc, searchDocs } from '../src/index';
+import { cleanSearchText, createDocIndex, readerSearchTerms, type SearchDoc, searchDocs } from '../src/index';
 
 // Deterministic 300-page EN+AR deployment. No services, network or query cache.
 const topics = [
@@ -58,6 +58,31 @@ for (let round = 0; round < 12; round += 1) {
   }
 }
 samples.sort((a, b) => a - b);
+
+// Request-guard latency, measured here instead of asserted in unit tests: an
+// oversized query is refused before retrieval, and 100k-character hostile text
+// is normalized on the linear path.
+const timed = async (run: () => unknown): Promise<number> => {
+  await run();
+  const at = performance.now();
+  await run();
+  return performance.now() - at;
+};
+const hostile = {
+  spaces: `${' '.repeat(99_999)}x`,
+  comments: '<!--'.repeat(25_000),
+  backticks: '`a``'.repeat(25_000),
+  fences: '```\n'.repeat(25_000),
+};
+const guards: Record<string, number> = {
+  oversizedQueryMs: await timed(() => (indexes[0] ? searchDocs(indexes[0], 'invoice '.repeat(12_500), { relevance: 'reader' }) : undefined)),
+};
+for (const [name, input] of Object.entries(hostile)) {
+  guards[`${name}NormalizeMs`] = await timed(() => {
+    readerSearchTerms(input);
+    cleanSearchText(input);
+  });
+}
 process.stdout.write(
-  `${JSON.stringify({ pages: 300, bytes: Buffer.byteLength(snapshot), samples: samples.length, parseMs, buildMs, p50Ms: samples[Math.floor(samples.length * 0.5)], p95Ms: samples[Math.floor(samples.length * 0.95)], maxMs: samples.at(-1), counts }, null, 2)}\n`,
+  `${JSON.stringify({ pages: 300, bytes: Buffer.byteLength(snapshot), samples: samples.length, parseMs, buildMs, p50Ms: samples[Math.floor(samples.length * 0.5)], p95Ms: samples[Math.floor(samples.length * 0.95)], maxMs: samples.at(-1), counts, guards }, null, 2)}\n`,
 );

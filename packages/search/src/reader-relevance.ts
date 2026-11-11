@@ -1,24 +1,27 @@
 import { lightStemArabicToken, normalizeArabicSearchText } from './arabic';
 import { cleanSearchText } from './hybrid';
+import { foldSearchText, type SearchTokenizerLanguage } from './tokenizer';
 
 /** Whole normalized words only; edit-distance neighbors are not evidence that
- * a published page covers a keyword. Arabic inflections retain light stemming. */
-export const readerSearchTerms = (value: string): Set<string> => {
-  const words = new Set(
-    normalizeArabicSearchText(value)
-      .toLowerCase()
-      .match(/[\p{L}\p{M}\p{N}_]+/gu) ?? [],
-  );
+ * a published page covers a keyword. Arabic inflections retain light stemming.
+ * Words get the retrieval tokenizer's normalization (Orama's accent folding),
+ * so relevance accepts exactly the candidates retrieval matched: `cafe` finds
+ * `Café`. Only the term sets are folded; titles and snippets keep the original. */
+export const readerSearchTerms = (value: string, language?: SearchTokenizerLanguage): Set<string> => {
+  const words = new Set(foldSearchText(normalizeArabicSearchText(value), language).match(/[\p{L}\p{M}\p{N}_]+/gu) ?? []);
   return new Set([...words].map((term) => (/^[\u0621-\u063a\u0641-\u064a]+$/u.test(term) ? lightStemArabicToken(term) : term)));
 };
 
-export const readerSearchFields = (doc: { title: string; headings: string; description: string; content: string }) =>
+export const readerSearchFields = (
+  doc: { title: string; headings: string; description: string; content: string },
+  language?: SearchTokenizerLanguage,
+) =>
   [
     { value: doc.title, weight: 4 },
     { value: doc.headings, weight: 3 },
     { value: doc.description, weight: 1.5 },
     { value: doc.content, weight: 1 },
-  ].map(({ value, weight }) => ({ terms: readerSearchTerms(cleanSearchText(value)), weight }));
+  ].map(({ value, weight }) => ({ terms: readerSearchTerms(cleanSearchText(value), language), weight }));
 
 export const readerRelevanceScore = (query: ReadonlySet<string>, fields: ReturnType<typeof readerSearchFields>): number => {
   if (query.size === 0) return 0;

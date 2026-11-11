@@ -1,33 +1,111 @@
 import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
-import { cleanSearchText, createDocIndex, normalizeArabicSearchText, readerSearchTerms, type SearchDoc, searchDocs } from './index';
+import { cleanSearchText, createDocIndex, foldSearchText, normalizeArabicSearchText, readerSearchTerms, type SearchDoc, searchDocs } from './index';
 
 const doc = (id: string, title: string, content = ''): SearchDoc => ({ id, title, path: id, content, headings: '', description: '' });
 const reader = { relevance: 'reader' as const };
 
+/** Calibrated timing for the ReDoS cases: the same machine's time for a plain
+ *  linear pass over the same input. A slow CI core slows both sides equally,
+ *  while superlinear growth (hundreds of times slower at 100k) is still caught. */
+const linearPassMs = (input: string): number => {
+  const runs: number[] = [];
+  for (let round = 0; round < 3; round += 1) {
+    const started = performance.now();
+    let letters = 0;
+    for (let index = 0; index < input.length; index += 1) if (/\p{L}/u.test(input[index] ?? '')) letters += 1;
+    if (letters < 0) throw new Error('unreachable');
+    runs.push(performance.now() - started);
+  }
+  return runs.sort((a, b) => a - b)[1] ?? 0;
+};
+const medianMs = (run: () => void): number => {
+  run();
+  const runs: number[] = [];
+  for (let round = 0; round < 3; round += 1) {
+    const started = performance.now();
+    run();
+    runs.push(performance.now() - started);
+  }
+  return runs.sort((a, b) => a - b)[1] ?? 0;
+};
+
 describe('published reader relevance', () => {
-  it.each([`${' '.repeat(99_999)}x`, 'a '.repeat(50_000), '[('.repeat(50_000), '<!--'.repeat(25_000)])(
-    'handles a 100k-character adversarial query on the linear normalization path',
-    (query) => {
-      readerSearchTerms('warm up');
-      cleanSearchText('warm up');
-      const started = performance.now();
-      const terms = readerSearchTerms(query);
-      const text = cleanSearchText(query);
-      const elapsed = performance.now() - started;
-      expect(query).toHaveLength(100_000);
-      expect(terms.size).toBeLessThanOrEqual(1);
-      expect(text.length).toBeLessThanOrEqual(query.length);
-      expect(elapsed).toBeLessThan(50);
-    },
-  );
+  // ReDoS bounds (CodeQL js/polynomial-redos): untrusted queries and page bodies
+  // must stay linear. Steady-state latency lives in `pnpm bench:reader`.
+  it.each([
+    `${' '.repeat(99_999)}x`,
+    'a '.repeat(50_000),
+    '[('.repeat(50_000),
+    '<!--'.repeat(25_000),
+    '`'.repeat(100_000),
+    '`a``'.repeat(25_000),
+    '```\n'.repeat(25_000),
+    `${'<T>'.repeat(33_333)}x`,
+  ])('stays linear on a 100k-character adversarial input', (input) => {
+    expect(input.length).toBeGreaterThanOrEqual(99_999);
+    const terms = readerSearchTerms(input);
+    const text = cleanSearchText(input);
+    expect(terms.size).toBeLessThanOrEqual(2);
+    expect(text.length).toBeLessThanOrEqual(input.length + 2);
+    const elapsed = medianMs(() => {
+      readerSearchTerms(input);
+      cleanSearchText(input);
+    });
+    expect(elapsed).toBeLessThanOrEqual(10 * linearPassMs(input) + 20);
+  });
 
   it('rejects oversized reader queries before retrieval', async () => {
     const index = await createDocIndex([doc('invoice', 'Invoice')]);
-    const started = performance.now();
     expect(await searchDocs(index, 'invoice '.repeat(12_500), reader)).toEqual([]);
-    expect(performance.now() - started).toBeLessThan(50);
+    expect(await searchDocs(index, `${'invoice '.repeat(24)}invoice`, reader)).toEqual([expect.objectContaining({ id: 'invoice' })]);
   });
+
+  // Orama folds accents when it indexes and queries; relevance must fold the same
+  // way or it rejects what retrieval found. Display keeps the original text.
+  it.each([
+    ['cafe', 'Café', 'Order at the café counter.'],
+    ['resume', 'Résumé', 'Upload your résumé here.'],
+    ['café', 'Cafe', 'Order at the cafe counter.'],
+  ])('matches %s to %s through the retrieval tokenizer accent folding', async (query, title, body) => {
+    const index = await createDocIndex([doc('page', title, body), doc('other', 'Billing', 'Download your invoice.')]);
+    const hits = await searchDocs(index, query, reader);
+    expect(hits.map((hit) => hit.id)).toEqual(['page']);
+    expect(hits[0]?.title).toBe(title);
+    expect(hits[0]?.snippet).toBe(body);
+  });
+
+  it('folds accents in French indexes too and centers the snippet on the accented word', async () => {
+    const filler = 'Texte d’introduction sans rapport. '.repeat(12);
+    const index = await createDocIndex([doc('cv', 'Candidature', `${filler}Joignez votre Résumé au dossier.`)], 'french');
+    const [hit] = await searchDocs(index, 'resume', reader);
+    expect(hit?.id).toBe('cv');
+    expect(hit?.snippet).toContain('Résumé');
+  });
+
+  it('keeps identifiers from fenced and inline code searchable', async () => {
+    const index = await createDocIndex([
+      doc('button', 'Forms', 'Render a save button:\n\n```tsx\n<Button>Save</Button>\n```\n\nThen submit.'),
+      doc('generics', 'Collections', 'Use a typed `Map<T>` for lookups.'),
+      doc('other', 'Billing', 'Download your invoice.'),
+    ]);
+    expect((await searchDocs(index, 'Button', reader)).map((hit) => hit.id)).toEqual(['button']);
+    expect((await searchDocs(index, 'T', reader)).map((hit) => hit.id)).toEqual(['generics']);
+    expect(cleanSearchText('```tsx\n<Button>Save</Button>\n```')).toBe('<Button>Save</Button>');
+    expect(cleanSearchText('Use a typed `Map<T>` for lookups.')).toBe('Use a typed Map<T> for lookups.');
+  });
+
+  it('removes markup from prose only, keeping code literal', () => {
+    expect(cleanSearchText('<Callout>Use **care**</Callout> with `<Callout>` and\n~~~\n# not a heading\n~~~')).toBe(
+      'Use care with <Callout> and # not a heading',
+    );
+    // An unclosed fence runs to the end of the page; an unmatched backtick stays text.
+    expect(cleanSearchText('Intro.\n\n````js\nconst a = `x`;\n```\nstill code')).toBe('Intro. const a = `x`; ``` still code');
+    expect(cleanSearchText('A lone ` backtick and ``a pair``.')).toBe('A lone ` backtick and a pair.');
+    // Author text cannot forge a code placeholder.
+    expect(cleanSearchText('0 <b>x</b>')).toBe('0 x');
+  });
+
   it('returns no fuzzy padding for nonsense or a missing password page', async () => {
     const index = await createDocIndex([
       doc('invoice', 'Invoice', 'Download your invoice.'),
@@ -82,5 +160,15 @@ describe('published reader relevance', () => {
     expect(invoice?.snippet).not.toMatch(/\\-|jpg\)|\[!|---|<b>|\]\(/);
     expect(cleanSearchText(content)).toContain('To extend reservations use Settings. Save.');
     expect(cleanSearchText('<section><button>Invoice</button></section>')).toBe('Invoice');
+  });
+});
+
+describe('foldSearchText', () => {
+  it('folds page-sized text without overflowing the stack, unit for unit', () => {
+    const page = 'Café résumé naïve. '.repeat(200_000);
+    const folded = foldSearchText(page);
+    expect(folded).toHaveLength(page.length);
+    expect(folded.slice(0, 19)).toBe('cafe resume naive. ');
+    expect(folded.endsWith('cafe resume naive. ')).toBe(true);
   });
 });

@@ -154,6 +154,20 @@ describe('hybrid index recovery', () => {
     expect((await runPublishedSearch(scope, 'الفاتورة', 12, async () => [])).hits[0]?.id).toBe('invoice');
   });
 
+  // The keyword response's "AI ready" hint is cached for a few seconds. Answers
+  // and chat (resolvePublishedAnswerContext) gate on answerSearchAvailable, which
+  // reads live state, so a stale hint can never authorize unavailable AI.
+  it('refuses answers and chat while a stale hint still says AI is ready', async () => {
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(true);
+    expect(publishedSearchAnswerHint('project', 'deployment')).toBe(true);
+    // The owner turns AI off right after the hint was warmed.
+    doubles.resolveWorkspaceAi.mockResolvedValue(null);
+    expect(publishedSearchAnswerHint('project', 'deployment')).toBe(true);
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
+    await expect(answerPublishedSearch(scope, 'حجز')).rejects.toThrow('AI answers are not configured.');
+    expect(doubles.embed).not.toHaveBeenCalled();
+  });
+
   it('reports AI answers unavailable instead of failing the site when readiness cannot be read', async () => {
     doubles.resolveWorkspaceAi.mockRejectedValueOnce(new Error('database unavailable'));
     await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
