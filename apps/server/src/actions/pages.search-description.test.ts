@@ -11,10 +11,10 @@ vi.mock('./branches', () => ({}));
 // The real function, observed: the tests check how much text reaches the parser.
 vi.mock('@nibleaf/shared/markdown-text', async (importActual) => {
   const actual = await importActual<typeof import('@nibleaf/shared/markdown-text')>();
-  return { ...actual, pageDescription: vi.fn(actual.pageDescription) };
+  return { ...actual, pageDescriptionText: vi.fn(actual.pageDescriptionText) };
 });
 
-import { pageDescription } from '@nibleaf/shared/markdown-text';
+import { pageDescriptionText } from '@nibleaf/shared/markdown-text';
 import { getPageSearchDescription, SEARCH_DESCRIPTION_SOURCE_LIMIT } from './pages';
 
 const PAGE_REVISION = new Date('2026-11-10T08:00:00.000Z');
@@ -38,7 +38,7 @@ const contentReads = () => database.pageFindFirst.mock.calls.filter(([query]) =>
 beforeEach(() => {
   database.pageFindFirst.mockReset();
   database.projectFindUnique.mockReset();
-  vi.mocked(pageDescription).mockClear();
+  vi.mocked(pageDescriptionText).mockClear();
 });
 
 describe('getPageSearchDescription', () => {
@@ -46,7 +46,7 @@ describe('getPageSearchDescription', () => {
     const { id } = stored('# Setup\n\nInstall {{ product }} in a minute.', { variables: [{ key: 'product', value: 'Nibleaf' }] });
     const result = await getPageSearchDescription('project-1', id);
     expect(result).toEqual({
-      description: pageDescription({ content: '# Setup\n\nInstall Nibleaf in a minute.', description: null }),
+      description: pageDescriptionText({ content: '# Setup\n\nInstall Nibleaf in a minute.', description: null }),
       revision: PAGE_REVISION.toISOString(),
     });
     expect(result.description).toContain('Install Nibleaf in a minute.');
@@ -57,9 +57,10 @@ describe('getPageSearchDescription', () => {
     const started = performance.now();
     const result = await getPageSearchDescription('project-1', id);
     const elapsed = performance.now() - started;
-    const parsed = vi.mocked(pageDescription).mock.calls[0]?.[0].content ?? '';
+    const parsed = vi.mocked(pageDescriptionText).mock.calls[0]?.[0].content ?? '';
     expect(parsed.length).toBeLessThanOrEqual(SEARCH_DESCRIPTION_SOURCE_LIMIT);
-    expect(result.description.length).toBeLessThanOrEqual(160);
+    // The full generated text (the editor cuts the preview), bounded by the 4 KB the description is read from.
+    expect(result.description.length).toBeLessThanOrEqual(4096);
     expect(result.description.startsWith('word word')).toBe(true);
     // Unbounded, this expanded to 100 MB and took 140–176 ms; bounded it is a few ms.
     expect(elapsed).toBeLessThan(100);
@@ -75,7 +76,7 @@ describe('getPageSearchDescription', () => {
     expect((await getPageSearchDescription('project-1', id)).description).toBe('First version of the page.');
     expect((await getPageSearchDescription('project-1', id)).description).toBe('First version of the page.');
     expect(contentReads()).toBe(1);
-    expect(pageDescription).toHaveBeenCalledTimes(1);
+    expect(pageDescriptionText).toHaveBeenCalledTimes(1);
 
     // A save moves the revision: the new body is read and the new revision returned.
     row.content = 'Second version of the page.';
