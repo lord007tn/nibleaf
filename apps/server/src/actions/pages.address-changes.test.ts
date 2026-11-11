@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => ({
   page: { findFirst: vi.fn(), findMany: vi.fn() },
+  project: { findUnique: vi.fn() },
+  language: { findMany: vi.fn() },
   transaction: vi.fn(),
   inTransaction: false,
   parsesUnderLock: 0,
@@ -18,7 +20,10 @@ vi.mock('mdast-util-from-markdown', async (original) => {
     },
   };
 });
-vi.mock('@nibleaf/database', () => ({ Prisma: { JsonNull: null }, prisma: { page: database.page, $transaction: database.transaction } }));
+vi.mock('@nibleaf/database', () => ({
+  Prisma: { JsonNull: null },
+  prisma: { page: database.page, project: database.project, language: database.language, $transaction: database.transaction },
+}));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: vi.fn() }));
 vi.mock('./branches', () => ({
   getDefaultBranch: async () => ({ id: 'main' }),
@@ -89,7 +94,10 @@ const seed = (initial: Row[], published = true) => {
   let live = published ? snapshot() : null;
   const matches = (page: Row, where: Record<string, unknown>) =>
     Object.entries(where).every(([key, value]) => {
-      if (key === 'id' && value && typeof value === 'object' && 'not' in value) return page.id !== value.not;
+      if (key === 'id' && value && typeof value === 'object') {
+        if ('not' in value) return page.id !== value.not;
+        if ('in' in value) return (value.in as string[]).includes(page.id);
+      }
       return page[key as keyof Row] === value;
     });
   const findFirst = async ({ where }: { where: Record<string, unknown> }) => pages.find((page) => matches(page, where)) ?? null;
@@ -140,6 +148,8 @@ const seed = (initial: Row[], published = true) => {
     language: { findMany: vi.fn().mockResolvedValue([language('en'), language('ar')]) },
     deployment: { findFirst: vi.fn().mockImplementation(async () => (live ? { snapshot: structuredClone(live) } : null)) },
   };
+  database.project.findUnique.mockImplementation(tx.project.findUnique);
+  database.language.findMany.mockImplementation(tx.language.findMany);
   database.page.findFirst.mockImplementation(findFirst);
   database.page.findMany.mockImplementation(tx.page.findMany);
   database.transaction.mockImplementation(async (work) => {

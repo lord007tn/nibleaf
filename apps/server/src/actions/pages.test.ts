@@ -14,7 +14,8 @@ const database = vi.hoisted(() => ({
 }));
 const recordEdit = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/page-address-changes', () => ({
-  prepareAddressLinks: async () => undefined,
+  prepareAddressLinks: async () => new Map(),
+  prepareReorderAddressLinks: vi.fn(async () => new Map()),
   assertAddressLinkRevisions: async () => undefined,
   preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 }),
 }));
@@ -32,6 +33,7 @@ vi.mock('@nibleaf/database', () => ({
       update: database.update,
       updateMany: database.updateMany,
     },
+    language: { findMany: database.languages },
     $transaction: database.transaction,
   },
 }));
