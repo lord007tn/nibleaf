@@ -192,7 +192,23 @@ try {
             };
           });
           assert.ok(box.viewport <= 288 && box.area <= 290, `${name}: checks list bounded (${JSON.stringify(box)})`);
-          if (box.content > box.viewport) assert.ok(box.lastInside || box.content > box.viewport, `${name}: overflow scrolls`);
+          if (box.content > box.viewport) {
+            // Scrolling the list moves it, and brings its last warning into view inside the border.
+            const scrolled = await page.evaluate(() => {
+              const area = document.querySelector('[data-slot="scroll-area"]');
+              const viewport = area?.querySelector('[data-slot="scroll-area-viewport"]');
+              const last = viewport?.querySelector('.divide-y > :last-child');
+              if (!(area && viewport && last)) return null;
+              const before = viewport.scrollTop;
+              viewport.scrollTop = viewport.scrollHeight;
+              const bounds = area.getBoundingClientRect();
+              const row = last.getBoundingClientRect();
+              return { before, after: viewport.scrollTop, lastVisible: row.top >= bounds.top && row.bottom <= bounds.bottom + 1 };
+            });
+            assert.ok(scrolled && scrolled.after > scrolled.before, `${name}: the list scrolls (${JSON.stringify(scrolled)})`);
+            assert.ok(scrolled.lastVisible, `${name}: the last warning comes into view (${JSON.stringify(scrolled)})`);
+            await page.screenshot({ path: resolve(output, `checks-${name}-scrolled.png`), animations: 'disabled' });
+          }
         }
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${name}: no horizontal overflow`);
         assert.deepEqual(errors, [], `${name}: browser errors`);
