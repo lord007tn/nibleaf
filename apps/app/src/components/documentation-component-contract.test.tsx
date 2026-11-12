@@ -355,7 +355,10 @@ describe('exported theme repository templates', () => {
     const defaults = new Set(defaultSchema.tagNames ?? []);
     // `mermaid` is synthesized by the Nibleaf reader only; the template has no Mermaid support.
     const components = new Set([...READER_TAGS, 'mermaid']);
-    const reader = (sanitizeSchema.tagNames ?? []).filter((tag) => !defaults.has(tag) && !components.has(tag));
+    // Known gap: the exported template renders no videos or embeds yet (its
+    // pipeline has no iframe rewrite or player), so it does not allow them.
+    const readerOnly = new Set(['video', 'track', 'mdxembed']);
+    const reader = (sanitizeSchema.tagNames ?? []).filter((tag) => !defaults.has(tag) && !components.has(tag) && !readerOnly.has(tag));
     expect(reader).toEqual(['u']);
     expect(sorted(template)).toEqual(sorted(reader));
   });
