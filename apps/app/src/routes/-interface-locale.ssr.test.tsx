@@ -57,7 +57,7 @@ const readerRoute = createRoute({
 });
 
 async function serverRender(path: string, locale: Locale) {
-  return withInterfaceLocale(locale, 'https://app.nibleaf.test', async () => {
+  const render = async () => {
     const router = createRouter({
       routeTree: RootRoute.addChildren([productRoute, marketingRoute, readerRoute]),
       history: createMemoryHistory({ initialEntries: [path] }),
@@ -66,7 +66,11 @@ async function serverRender(path: string, locale: Locale) {
     });
     await router.load();
     return renderToString(<RouterProvider router={router} />);
-  });
+  };
+  // Like src/server.ts: marketing documents and published readers render
+  // outside the request's interface locale; every other request inside it.
+  const outsideLocale = path === '/pricing' || path.startsWith('/sites/');
+  return outsideLocale ? render() : withInterfaceLocale(locale, 'https://app.nibleaf.test', render);
 }
 
 const htmlTag = (html: string) => /<html[^>]*>/.exec(html)?.[0] ?? '';
@@ -85,7 +89,7 @@ describe('server-rendered interface language', () => {
     const html = await serverRender('/sign-in', 'en');
     expect(htmlTag(html)).toContain('lang="en"');
     expect(htmlTag(html)).toContain('dir="ltr"');
-    expect(htmlTag(html)).not.toContain('data-locale');
+    expect(htmlTag(html)).toContain('data-locale="en"');
     expect(html).toContain('Log in');
   });
 
@@ -93,12 +97,14 @@ describe('server-rendered interface language', () => {
     const html = await serverRender('/pricing', 'ar');
     expect(htmlTag(html)).toContain('lang="en"');
     expect(htmlTag(html)).toContain('dir="ltr"');
+    expect(htmlTag(html)).not.toContain('data-locale');
   });
 
   it('takes a published reader’s lang and dir from the page, not the visitor', async () => {
     const html = await serverRender('/sites/docs', 'ar');
     expect(htmlTag(html)).toContain('lang="en"');
     expect(htmlTag(html)).toContain('dir="ltr"');
+    expect(htmlTag(html)).not.toContain('data-locale');
   });
 });
 

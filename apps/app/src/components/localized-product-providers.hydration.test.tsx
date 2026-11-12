@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { setLanguage } from '@nibleaf/i18n/locale-state';
 import { useT } from '@nibleaf/i18n/react';
 import { cookieName } from '@nibleaf/i18n/runtime';
 import { act } from 'react';
@@ -62,6 +63,10 @@ async function hydrateArabicServerHtml() {
   await act(async () => {
     root = hydrateRoot(container as HTMLDivElement, page(), { onRecoverableError: (error) => errors.push(error) });
   });
+  // Let effects, subscriptions and any follow-up render settle.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
   observer.disconnect();
   documentObserver.disconnect();
   return { before, after: container.textContent, changes, documentChanges, errors };
@@ -88,4 +93,35 @@ it('hydrates against the server’s locale even when the browser alone would pic
   const result = await hydrateArabicServerHtml();
   expect(result.before).toBe('تسجيل الدخول');
   expect(result.errors).toEqual([]);
+});
+
+it('keeps the server’s Arabic after hydration settles, even when the browser alone would pick English', async () => {
+  vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US']);
+  const result = await hydrateArabicServerHtml();
+  expect(result.changes).toEqual([]);
+  expect(result.after).toBe('تسجيل الدخول');
+  expect(result.documentChanges).toEqual([]);
+  expect(document.documentElement.lang).toBe('ar');
+  expect(document.documentElement.dir).toBe('rtl');
+});
+
+it('keeps the server’s Arabic when the language cookie changed before hydration', async () => {
+  // biome-ignore lint/suspicious/noDocumentCookie: exercise the real Paraglide cookie resolver in isolated jsdom.
+  document.cookie = `${cookieName}=en; path=/`;
+  const result = await hydrateArabicServerHtml();
+  expect(result.changes).toEqual([]);
+  expect(result.after).toBe('تسجيل الدخول');
+  expect(document.documentElement.dir).toBe('rtl');
+});
+
+it('switches language only when the visitor picks one', async () => {
+  vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['ar']);
+  const result = await hydrateArabicServerHtml();
+  expect(result.after).toBe('تسجيل الدخول');
+  await act(async () => {
+    await setLanguage('en');
+  });
+  expect(container?.textContent).toBe('Log in');
+  expect(document.documentElement.dir).toBe('ltr');
+  expect(document.documentElement.lang).toBe('en');
 });

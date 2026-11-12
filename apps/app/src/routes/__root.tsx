@@ -1,9 +1,10 @@
 import { ThemeProvider } from '@nibleaf/design-system/theme';
-import { renderedLocale } from '@nibleaf/i18n/locale-state';
+import { documentInterfaceLocale } from '@nibleaf/i18n/locale-state';
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { RootMarketingAnalytics } from '@/components/root-marketing-analytics';
+import { useRememberMarketingLanguage } from '@/lib/remember-marketing-language';
 import { useRootDocument } from '@/lib/root-document';
 import { siteThemeNoFlashScript } from '@/lib/site-theme';
 import appCss from '@/styles.css?url';
@@ -52,11 +53,14 @@ function RootDocument({ children }: { children: ReactNode }) {
   const nonce = useRouter().options.ssr?.nonce;
   const { lang, dir, pathname, siteProjectId, siteThemeDefault } = useRootDocument();
   const siteThemeBootstrap = siteProjectId ? siteThemeNoFlashScript(siteProjectId, siteThemeDefault ?? 'light') : null;
-  // The interface locale of the server render, unchanged for the page's life:
-  // locale hooks hydrate against it (renderedLocale() reads data-locale).
-  const [serverLocale] = useState(renderedLocale);
+  // The interface locale of a product request's server render, unchanged for
+  // the page's life: locale hooks hydrate against it, and the browser keeps it
+  // until the visitor picks another language (@nibleaf/i18n runtime). Marketing
+  // and reader renders have none, so their HTML carries no attribute.
+  const [serverLocale] = useState(documentInterfaceLocale);
+  useRememberMarketingLanguage(pathname);
   return (
-    <html lang={lang} dir={dir} data-locale={serverLocale === 'en' ? undefined : serverLocale} suppressHydrationWarning>
+    <html lang={lang} dir={dir} data-locale={serverLocale} suppressHydrationWarning>
       <head>
         {nonce ? <meta property="csp-nonce" content={nonce} /> : null}
         {siteProjectId ? <meta name="nibleaf-site-project" content={siteProjectId} /> : null}
