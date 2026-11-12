@@ -1146,6 +1146,10 @@ model ProjectIntegration {
   status                 String    @default("ACTIVE")
   config                 Json?
   credentialEncrypted    String
+  /// Last four characters of a site's own AI key (D7), never the key itself.
+  credentialHint         String?
+  /// When the current key was added (set on create and on replace, kept on model-only saves).
+  credentialAddedAt      DateTime?
   revision               Int       @default(1)
   lastVerificationStatus String    @default("UNVERIFIED")
   lastVerificationCode   String?

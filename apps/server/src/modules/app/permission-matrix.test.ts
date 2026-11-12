@@ -128,7 +128,10 @@ const VIEWER_DENIED_READS = [
   'GET /projects/:projectId/reader-access',
   'GET /projects/:projectId/join-links',
   'GET /projects/:projectId/members/suggestions',
-  'GET /projects/:projectId/settings/ai',
+  // Not GET /projects/:projectId/settings/ai: everyone on the site reads where AI
+  // answers stand (operations/ux/ai-and-integrations.md §4.6). It carries no
+  // credential, ciphertext or provider error text, and key hints go to Admins
+  // only (workspace-ai.status.test.ts). Its writes stay Admin-only.
   'GET /projects/:projectId/ai/draft-capability',
   'GET /projects/:projectId/branches/:id/merge-preview',
 ];

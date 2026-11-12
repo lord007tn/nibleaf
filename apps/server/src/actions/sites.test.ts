@@ -28,7 +28,7 @@ vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: { head
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@nibleaf/storage', () => ({ getObjectStream: vi.fn() }));
 vi.mock('@/actions/importers/ghost-assets', () => ({ fetchPublicImage: vi.fn() }));
-vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
+vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn(), recordAnswerServed: vi.fn(async () => undefined) }));
 vi.mock('@/lib/ai-search/runtime', () => ({
   answerPublishedSearch: vi.fn(),
   answerSearchAvailable: vi.fn(),
