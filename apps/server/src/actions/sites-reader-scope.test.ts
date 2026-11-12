@@ -80,6 +80,7 @@ import {
   getSitePage,
   invalidatePublishedSiteConfig,
   resolvePublishedAnswerContext,
+  resolveSiteSlug,
   searchSite,
 } from './sites';
 
@@ -736,5 +737,51 @@ describe('completed AI answers', () => {
     });
     await answerSite('project-1', 'pricing');
     expect(mocks.recordAnswerServed).not.toHaveBeenCalled();
+  });
+});
+
+describe('a site address written with its slug', () => {
+  const slugProject = (accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS', takedownAt: Date | null = null) => ({
+    id: 'project-1',
+    accessMode,
+    takedownAt,
+  });
+  const lookup = { where: { slug: 'docs-site' }, select: { id: true, accessMode: true, takedownAt: true } };
+
+  /** What one lookup answers and costs: its result, and the queries it made. */
+  const probe = async (slug: string) => {
+    vi.clearAllMocks();
+    const result = await resolveSiteSlug(slug);
+    return { result, projectQueries: mocks.projectFindUnique.mock.calls.length, deploymentQueries: mocks.deploymentFindFirst.mock.calls.length };
+  };
+
+  it('finds a public, live site by its slug, in any case', async () => {
+    mocks.projectFindUnique.mockResolvedValue(slugProject('PUBLIC'));
+    expect(await resolveSiteSlug('Docs-Site')).toBe('project-1');
+    expect(mocks.projectFindUnique).toHaveBeenCalledWith(lookup);
+  });
+
+  it('answers a private site (readers or workspace) exactly as it answers an unknown slug', async () => {
+    mocks.projectFindUnique.mockResolvedValue(null);
+    const unknown = await probe('nobody');
+    expect(unknown).toEqual({ result: null, projectQueries: 1, deploymentQueries: 0 });
+    for (const accessMode of ['READERS', 'WORKSPACE'] as const) {
+      mocks.projectFindUnique.mockResolvedValue(slugProject(accessMode));
+      // Same answer and the same single lookup: nothing to tell the two apart by.
+      expect(await probe('docs-site'), accessMode).toEqual(unknown);
+    }
+    mocks.projectFindUnique.mockResolvedValue(slugProject('PUBLIC', new Date('2026-11-01T00:00:00.000Z')));
+    expect(await probe('docs-site'), 'taken down').toEqual(unknown);
+  });
+
+  it('answers nothing for a public site that is not published', async () => {
+    mocks.projectFindUnique.mockResolvedValue(slugProject('PUBLIC'));
+    mocks.deploymentFindFirst.mockResolvedValue(null);
+    expect(await resolveSiteSlug('docs-site')).toBeNull();
+  });
+
+  it('never looks up an empty or overlong slug', async () => {
+    expect(await probe('')).toEqual({ result: null, projectQueries: 0, deploymentQueries: 0 });
+    expect(await probe('a'.repeat(129))).toEqual({ result: null, projectQueries: 0, deploymentQueries: 0 });
   });
 });

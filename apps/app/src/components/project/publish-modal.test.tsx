@@ -28,7 +28,7 @@ const { mutate, showError, preflight, refreshPreflight, retryMembers, domains } 
   refreshPreflight: vi.fn(),
   retryMembers: vi.fn(),
 }));
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
 vi.mock('sonner', () => ({ toast: { error: showError } }));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, params, search, ...props }: { to: string; params: { projectId: string }; search: Record<string, string>; children: ReactNode }) => (
