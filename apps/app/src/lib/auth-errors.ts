@@ -58,7 +58,7 @@ export function friendlyAuthError(error: AuthErrorLike | null | undefined, t: (k
   return fallback;
 }
 
-/** The seconds a rate-limit answer asked to wait (Better Auth's `X-Retry-After`), or null. */
+/** The seconds a rate-limit answer asked to wait, or null. */
 export const retryAfterSeconds = (header: string | null | undefined): number | null => {
   const seconds = Number(header);
   return header && Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
@@ -66,14 +66,17 @@ export const retryAfterSeconds = (header: string | null | undefined): number | n
 
 /**
  * Better Auth's client returns `{ error }` without the response headers. Pass
- * `fetchOptions` as the call's second argument, then read `retryAfter()`.
+ * `fetchOptions` as the call's second argument, then read `retryAfter()`. Two
+ * limiters can answer 429 on the auth routes: the API's per-IP limit on
+ * `/api/auth/*` (standard `Retry-After`) and Better Auth's per-endpoint one
+ * (`X-Retry-After`).
  */
 export function rateLimitWait() {
   let header: string | null = null;
   return {
     fetchOptions: {
       onError: ({ response }: { response: Response }) => {
-        header = response.headers.get('X-Retry-After');
+        header = response.headers.get('Retry-After') ?? response.headers.get('X-Retry-After');
       },
     },
     retryAfter: () => retryAfterSeconds(header),

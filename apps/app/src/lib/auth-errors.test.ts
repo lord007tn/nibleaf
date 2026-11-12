@@ -121,11 +121,14 @@ describe('otpFailure', () => {
     expect(formatWait(300, 'de')).toBe('5 Minuten');
   });
 
-  it('reads X-Retry-After from the rate-limit response the auth client hands its onError', () => {
+  it.each([
+    ['the API limiter', 'Retry-After'],
+    ['Better Auth', 'X-Retry-After'],
+  ])('reads the wait %s sends (%s) from the response the auth client hands its onError', (_source, header) => {
     expect([retryAfterSeconds('42'), retryAfterSeconds('0'), retryAfterSeconds('soon'), retryAfterSeconds(null)]).toEqual([42, null, null, null]);
     const wait = rateLimitWait();
     expect(wait.retryAfter()).toBeNull();
-    wait.fetchOptions.onError({ response: new Response(null, { status: 429, headers: { 'X-Retry-After': '120' } }) });
+    wait.fetchOptions.onError({ response: new Response(null, { status: 429, headers: { [header]: '120' } }) });
     expect(wait.retryAfter()).toBe(120);
   });
 });

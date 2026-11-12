@@ -229,10 +229,10 @@ describe('auth pages', () => {
       expect(resend?.textContent).toMatch(/^Resend/);
     });
 
-    it('gives the rate limiter’s wait and counts Resend down from it (429 X-Retry-After)', async () => {
+    it('gives the rate limiter’s wait and counts Resend down from it (429 Retry-After)', async () => {
       mocks.locale = 'ar';
       mocks.verify.mockImplementation(async (_body: unknown, fetchOptions: { onError: (context: { response: Response }) => void }) => {
-        fetchOptions.onError({ response: new Response(null, { status: 429, headers: { 'X-Retry-After': '120' } }) });
+        fetchOptions.onError({ response: new Response(null, { status: 429, headers: { 'Retry-After': '120' } }) });
         return { error: { status: 429, message: 'Too many requests. Please try again later.' } };
       });
       await reachCodeStep(signIn);
