@@ -51,6 +51,7 @@ import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { type CommentAnchor, EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { type EditorLinks, useEditorLinks } from './editor-links';
+import { seedPageContent } from './editor-sections';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
 import { BlockImage, LegacyImage } from './extensions/block-image';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
@@ -62,6 +63,7 @@ import { InternalLinkClicks } from './extensions/internal-link-clicks';
 import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { MarkdownBlockquote } from './extensions/quote';
+import { SectionTarget } from './extensions/section-target';
 import { SelectionShortcuts } from './extensions/selection-shortcuts';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { TableBubbleMenu } from './table-menu';
@@ -103,6 +105,10 @@ export function getMarkdown(editor: Editor): string {
  * document behind.
  */
 export function seedMarkdown(editor: Editor, markdown: string): void {
+  seedPageContent(editor, markdown, () => replaceWithMarkdown(editor, markdown));
+}
+
+function replaceWithMarkdown(editor: Editor, markdown: string): void {
   if (markdown.trim() === '') {
     editor.commands.clearContent(false);
     return;
@@ -399,6 +405,7 @@ export function buildEditorExtensions({
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
     SelectionShortcuts,
     InternalLinkClicks.configure({ getLinks }),
+    SectionTarget,
   ];
 }
 

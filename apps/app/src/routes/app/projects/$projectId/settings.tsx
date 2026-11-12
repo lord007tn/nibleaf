@@ -48,11 +48,11 @@ import {
   useSettingsDirtyGuard,
 } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
-import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
+import { AiAssistantsPage } from '@/features/ai-assistants/components/ai-assistants-page';
 import { SiteTeamPage } from '@/features/people/components/site-team-page';
 import { siteAiQueryOptions } from '@/features/site-ai/api/query-options';
 import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
@@ -433,7 +433,7 @@ function ActiveSection({
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
     members: <SiteTeamPage key={`members-${projectId}`} organization={organization} projectId={projectId} siteName={project.name} />,
-    apiKeys: <ApiKeysTab role={role} key={`api-keys-${projectId}`} projectId={projectId} />,
+    apiKeys: <AiAssistantsPage key={`api-keys-${projectId}`} projectId={projectId} role={role} siteName={project.name} />,
     usage: (
       <>
         {movedSection ? <MovedSectionNotice organization={organization} section={movedSection} /> : null}

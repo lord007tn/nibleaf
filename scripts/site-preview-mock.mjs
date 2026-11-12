@@ -918,6 +918,93 @@ Need more headroom? Enterprise plans include dedicated capacity and per-endpoint
 </Note>`,
     },
   },
+  // Authored iframes as Mintlify writes them: two allowlisted video players (a
+  // click-to-load facade on the reader), a frame from another site (a link), and a
+  // <video> with the autoplay attributes Mintlify pages often carry and a poster
+  // from another site (both dropped).
+  {
+    group: 'guides',
+    slug: 'video-tour',
+    icon: 'play',
+    en: {
+      title: 'Video tour',
+      description: 'A recorded tour of booking and tracking a shipment.',
+      content: `Watch the tour, then follow the walkthrough recorded for new team members.
+
+<Frame caption="Product tour">
+  <iframe
+    className="w-full aspect-video rounded-xl"
+    src="https://www.youtube.com/embed/M7lc1UVf-VE"
+    title="Tidewater product tour"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media"
+    allowFullScreen
+  ></iframe>
+</Frame>
+
+## Walkthrough
+
+<iframe src="https://www.loom.com/share/0123456789abcdef0123456789abcdef" title="Booking your first shipment"></iframe>
+
+## Live map
+
+Our partner hosts the live container map.
+
+<iframe src="https://maps.example.com/tidewater/live" title="Live container map"></iframe>
+
+## Tracking a shipment
+
+A short clip of the tracking screen, hosted with our other media.
+
+<video
+  controls
+  className="w-full aspect-video rounded-xl"
+  src="https://media.example.com/tidewater/tracking.mp4"
+  poster="https://posters.example.com/tidewater/tracking.jpg"
+  autoPlay
+  muted
+  loop
+></video>`,
+    },
+    ar: {
+      title: 'جولة بالفيديو',
+      description: 'جولة مسجلة لحجز شحنة وتتبعها.',
+      content: `شاهد الجولة، ثم تابع الشرح المسجل لأعضاء الفريق الجدد.
+
+<Frame caption="جولة في المنتج">
+  <iframe
+    className="w-full aspect-video rounded-xl"
+    src="https://www.youtube.com/embed/M7lc1UVf-VE"
+    title="جولة في تايدووتر"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media"
+    allowFullScreen
+  ></iframe>
+</Frame>
+
+## الشرح
+
+<iframe src="https://www.loom.com/share/0123456789abcdef0123456789abcdef" title="حجز أول شحنة"></iframe>
+
+## الخريطة المباشرة
+
+يستضيف شريكنا خريطة الحاويات المباشرة.
+
+<iframe src="https://maps.example.com/tidewater/live" title="خريطة الحاويات المباشرة"></iframe>
+
+## تتبع شحنة
+
+مقطع قصير لشاشة التتبع، مستضاف مع وسائطنا الأخرى.
+
+<video
+  controls
+  className="w-full aspect-video rounded-xl"
+  src="https://media.example.com/tidewater/tracking.mp4"
+  poster="https://posters.example.com/tidewater/tracking.jpg"
+  autoPlay
+  muted
+  loop
+></video>`,
+    },
+  },
 ];
 
 // ─── Projects ────────────────────────────────────────────────────────────────

@@ -236,6 +236,14 @@ const COMPONENT_ATTRIBUTES: Record<string, string[]> = {
 const BLOCK_TAGS =
   'Callout|Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update|Columns|Column|Banner|FileTree|Folder|File|ApiExample|RequestExample|ResponseExample|RelatedContent|RelatedCard';
 
+/** Media and embed attributes, exactly: no autoplay, muted, loop, controls or events. */
+const MEDIA_ATTRIBUTES: Record<string, unknown> = {
+  video: ['src', 'poster'],
+  track: [['kind', 'captions', 'subtitles', 'descriptions', 'chapters'], 'src', 'srcLang', 'label', 'default'],
+  source: ['srcSet', 'src', 'type'],
+  mdxembed: ['provider', 'videoid', 'start', 'title', 'href', 'text'],
+};
+
 const sorted = (values: readonly string[]) => [...values].sort();
 type TestElement = { type: string; tagName: string; properties: Record<string, unknown>; children: TestElement[] };
 const element = (tagName: string, properties: Record<string, unknown> = {}, children: TestElement[] = []): TestElement => ({
@@ -246,12 +254,17 @@ const element = (tagName: string, properties: Record<string, unknown> = {}, chil
 });
 
 describe('reader config derived from the component registry', () => {
-  it('allows exactly the component tags it allowed before, plus underline', () => {
+  it('allows exactly the component tags it allowed before, plus underline, video and embeds', () => {
     const defaults = defaultSchema.tagNames ?? [];
     expect(sanitizeSchema.tagNames?.slice(0, defaults.length)).toEqual(defaults);
     // `u` was added on purpose: the editor's Underline saves `<u>`, which the
-    // GitHub default schema (unlike `sub`/`sup`) does not allow.
-    expect(sorted(sanitizeSchema.tagNames?.slice(defaults.length) ?? [])).toEqual(sorted([...COMPONENT_TAG_NAMES, 'u']));
+    // GitHub default schema (unlike `sub`/`sup`) does not allow. `video` and
+    // `track` are authored videos and captions; `mdxembed` is an authored iframe
+    // as the reader rewrites it (@nibleaf/shared/reader-embeds). No `iframe`.
+    expect(sorted(sanitizeSchema.tagNames?.slice(defaults.length) ?? [])).toEqual(
+      sorted([...COMPONENT_TAG_NAMES, 'u', ...Object.keys(MEDIA_ATTRIBUTES).filter((tag) => tag !== 'source')]),
+    );
+    expect(sanitizeSchema.tagNames).not.toContain('iframe');
     expect(sanitizeSchema.attributes?.u).toBeUndefined();
   });
 
@@ -263,10 +276,11 @@ describe('reader config derived from the component registry', () => {
     expect(code).toEqual([['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang']);
     // How an image loads, limited to the values browsers define.
     expect(img).toEqual([...(defaultImg ?? []), ['loading', 'eager', 'lazy'], ['decoding', 'sync', 'async', 'auto']]);
+    for (const [tag, attributes] of Object.entries(MEDIA_ATTRIBUTES)) expect(rest[tag], tag).toEqual(attributes);
     for (const [tag, attributes] of Object.entries(defaultRest)) {
-      if (!(tag in COMPONENT_ATTRIBUTES)) expect(rest[tag], tag).toEqual(attributes);
+      if (!(tag in COMPONENT_ATTRIBUTES) && !(tag in MEDIA_ATTRIBUTES)) expect(rest[tag], tag).toEqual(attributes);
     }
-    const components = Object.entries(rest).filter(([tag]) => !(tag in defaultRest) || tag in COMPONENT_ATTRIBUTES);
+    const components = Object.entries(rest).filter(([tag]) => !(tag in MEDIA_ATTRIBUTES) && (!(tag in defaultRest) || tag in COMPONENT_ATTRIBUTES));
     // Attribute order is irrelevant to the sanitizer; compare as sets.
     expect(Object.fromEntries(components.map(([tag, attributes]) => [tag, sorted(attributes as string[])]))).toEqual(
       Object.fromEntries(Object.entries(COMPONENT_ATTRIBUTES).map(([tag, attributes]) => [tag, sorted(attributes)])),

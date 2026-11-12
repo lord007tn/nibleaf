@@ -3,7 +3,7 @@ title: 'التكافؤ مع مكوّنات Mintlify وميزات التأليف'
 description: 'قارن كل مكوّن وميزة تأليف في Mintlify بما يعرضه Nibleaf ويحرّره مرئيًا ويحافظ عليه دون فقدان اليوم، واعرف متى تُسدّ كل فجوة.'
 audience: 'قادة التوثيق الذين يقيّمون الانتقال من Mintlify، والمساهمون في Nibleaf'
 content_type: 'reference'
-last_reviewed: '2026-11-07'
+last_reviewed: '2026-11-12'
 verified_against: 'Mintlify documentation (components, create, organize/pages, api-playground) read on 2026-11-07; packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/editor/extensions, apps/worker/src/exports/render.ts, and packages/shared/src/theme-repository-templates'
 lang: 'ar'
 dir: 'rtl'
@@ -134,8 +134,8 @@ translation_key: 'reference/mintlify-parity'
 | `noZoom` على صورة | غير متوفر | | 5 |
 | `Frame` مع `caption` | جزئي | التسميات التوضيحية نص عادي؛ تظهر روابط Markdown والتنسيق داخلها كما كُتبت | 3 |
 | `hint` في `Frame` | غير متوفر | | 3 |
-| تضمين YouTube وغيره عبر `iframe` | غير متوفر | | 5 |
-| `video` مستضاف ذاتيًا مع التشغيل التلقائي والتكرار وكتم الصوت | غير متوفر | | 5 |
+| تضمين YouTube وغيره عبر `iframe` | جزئي | تُعرض إطارات YouTube وVimeo وLoom وWistia كمشغّل لا يتصل بالمزوّد إلا عندما يضغط القارئ على تشغيل؛ وتظهر الإطارات الأخرى كرابط إلى عنوانها؛ ولا توجد كتلة لها في المحرّر بعد | 5 |
+| `video` مستضاف ذاتيًا مع التشغيل التلقائي والتكرار وكتم الصوت | جزئي | يُعرض مع أدوات التحكم من عنوان https أو من ملف على موقعك؛ ويُحذف التشغيل التلقائي والتكرار وكتم الصوت، فلا يبدأ الفيديو إلا عندما يشغّله القارئ | 5 |
 | مخططات Mermaid | جزئي | تُعرض على الموقع؛ ويعرض المحرّر المصدر دون معاينة؛ و`actions` و`placement` غير متوفرين | 5 |
 | الرياضيات بصيغة LaTeX (`$…$` و`$$…$$`) | جزئي | تُعرض على الموقع باستخدام KaTeX؛ ولا يوفّر المحرّر كتلة رياضيات أو معاينة | 5 |
 

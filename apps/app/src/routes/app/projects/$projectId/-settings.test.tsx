@@ -146,11 +146,10 @@ vi.mock('@/features/people/components/site-team-page', () => ({ SiteTeamPage: ()
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
 vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
 vi.mock('@/features/site-ai/components/ai-answers-page', () => ({ AiAnswersPage: () => <div data-testid="ai-answers-settings" /> }));
+vi.mock('@/features/ai-assistants/components/ai-assistants-page', () => ({ AiAssistantsPage: () => null }));
 vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => <div data-testid="integrations-settings" /> }));
-vi.mock('@/components/settings/api-keys-tab', () => ({ ApiKeysTab: () => null }));
 vi.mock('@/components/settings/git-tab', () => ({ GitTab: () => null }));
 vi.mock('@/components/settings/import-tab', () => ({ ImportTab: () => null }));
-vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => null }));
 vi.mock('@/components/settings/usage-tab', () => ({
   UsageTab: ({ organization }: { organization?: { canManage: boolean } }) => (
     <div data-can-manage={String(organization?.canManage)} data-testid="usage-settings" />

@@ -86,6 +86,58 @@ export const MCP_PRESET_SCOPES: Record<McpKeyPreset, ReadonlyArray<McpScope>> = 
   full_admin: MCP_SCOPES,
 };
 
+/** Every MCP tool and the one scope that unlocks it. The dashboard uses it to
+ *  check that its example prompts name real tools a permission can use; the
+ *  server's test keeps it equal to what `get_capabilities` reports. */
+export const MCP_TOOL_SCOPES = {
+  get_capabilities: 'mcp:connect',
+  get_project: 'projects:read',
+  list_pages: 'pages:read',
+  get_page: 'pages:read',
+  search_pages: 'pages:read',
+  list_languages: 'languages:read',
+  list_versions: 'versions:read',
+  get_analytics_overview: 'analytics:read',
+  get_top_pages: 'analytics:read',
+  get_page_feedback: 'analytics:read',
+  get_referrers: 'analytics:read',
+  list_ai_conversations: 'analytics:read',
+  get_ai_conversation: 'analytics:read',
+  get_ai_feedback_summary: 'analytics:read',
+  list_ai_content_gaps: 'analytics:read',
+  get_ai_usage: 'analytics:read',
+  get_search_configuration: 'search:read',
+  get_search_index_diagnostics: 'search:read',
+  get_search_health: 'search:read',
+  list_deployments: 'deployments:read',
+  get_deployment: 'deployments:read',
+  get_pending_changes: 'deployments:read',
+  get_top_searches: 'analytics:search_terms',
+  get_failed_searches: 'analytics:search_terms',
+  create_page_draft: 'pages:write',
+  update_page: 'pages:write',
+  move_page: 'pages:write',
+  translate_page: 'pages:write',
+  set_page_visibility: 'pages:write',
+  preview_publish: 'deployments:publish',
+  publish_changes: 'deployments:publish',
+  get_usage_summary: 'usage:read',
+  get_entitlements: 'entitlements:read',
+  check_entitlement: 'entitlements:read',
+  list_addons: 'addons:read',
+  get_addon: 'addons:read',
+  list_addon_audit_events: 'addons:read',
+  get_theme_template: 'themes:read',
+  get_theme_catalog: 'themes:read',
+  preview_theme_import: 'themes:read',
+  list_exports: 'exports:read',
+  get_export: 'exports:read',
+  get_git_integration_status: 'integrations:read',
+  list_integrations: 'integrations:read',
+  get_integration: 'integrations:read',
+} as const satisfies Record<string, McpScope>;
+export type McpToolName = keyof typeof MCP_TOOL_SCOPES;
+
 /** The minimum role offered each preset in the dashboard. This is UX gating
  *  only: the security boundary is MCP_SCOPE_MIN_ROLE plus the live per-request
  *  role check, never the preset name. */

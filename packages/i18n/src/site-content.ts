@@ -11,6 +11,10 @@ import { site_details } from './paraglide/messages/site_details.js';
 import { site_required } from './paraglide/messages/site_required.js';
 import { site_showproperties } from './paraglide/messages/site_showproperties.js';
 import { site_tab } from './paraglide/messages/site_tab.js';
+import { site_videoloadsonplay } from './paraglide/messages/site_videoloadsonplay.js';
+import { site_videoplay } from './paraglide/messages/site_videoplay.js';
+import { site_videountitled } from './paraglide/messages/site_videountitled.js';
+import { site_videowatch } from './paraglide/messages/site_videowatch.js';
 import { site_viewfullsize } from './paraglide/messages/site_viewfullsize.js';
 import { site_viewfullsizeof } from './paraglide/messages/site_viewfullsizeof.js';
 import { type SiteTranslator, siteT } from './site';
@@ -24,6 +28,8 @@ import { type SiteTranslator, siteT } from './site';
 
 const contentVariableMessages = {
   viewFullSizeOf: site_viewfullsizeof,
+  videoPlay: site_videoplay,
+  videoWatch: site_videowatch,
 };
 
 const contentMessages = {
@@ -38,6 +44,8 @@ const contentMessages = {
   required: site_required,
   showProperties: site_showproperties,
   tab: site_tab,
+  videoLoadsOnPlay: site_videoloadsonplay,
+  videoUntitled: site_videountitled,
   viewFullSize: site_viewfullsize,
 } satisfies Record<string, MessageFn>;
 
