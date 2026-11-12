@@ -50,8 +50,16 @@ let runtime capabilities decide what is drawn, use plain words, and put the fix 
   `apps/app/src/components/settings/{api-keys-tab,connected-apps,assistant-setup}.*`. Also
   `apps/app/src/components/oauth/mcp-oauth-steps.tsx`, `features/site-settings/model/sections.ts`, the `en` and `ar`
   messages, both docs pages in both languages, the Compose files and `operations/deploy-6-runbook.md` §6.
-- Screenshots of today's tab are in [`mcp/shots/`](mcp/shots/). They were taken on a local stack (ports 4310/4410),
-  in EN and AR, at 1440 and 390 px, with MCP on and with MCP off.
+- Screenshots of today's tab are in [`mcp/shots/`](mcp/shots/). They were taken on a local stack (ports 4310/4410, an
+  isolated compose project, the seeded "Documentation" site and the demo Admin), in EN and AR, at 1440 and 390 px,
+  with MCP on and with MCP off. Names follow `<on|off>-<locale>-<width>-<step>.png`. The one-time secret is masked.
+
+| | |
+| --- | --- |
+| MCP on, EN 1440: the URL without a label, the sign-in block as prose, the key form always open ![on-en-1440](mcp/shots/on-en-1440-01-page.png) | After **Create key**: the secret panel, client tabs, the command overflowing, then the untitled key list ![key-created](mcp/shots/on-en-1440-02-key-created.png) |
+| MCP off, EN 1440: the endpoint, live permission cards, a disabled **Create key** with no reason, "Ask your operator" ![off-en-1440](mcp/shots/off-en-1440-01-page.png) | MCP on, AR 390: English menu paths inside Arabic bullets turn into bidi soup («Settings ← Connectors ← Add custom connector») ![on-ar-390](mcp/shots/on-ar-390-01-page.png) |
+- The sign-in pages (`/oauth/project`, `/oauth/consent`) weren't captured: they need a signed request started by a
+  client. PR B captures them through a local OAuth client.
 - I didn't connect a real ChatGPT or Claude account, and no request went to any outside service. The client
   behaviour I describe (how ChatGPT and claude.ai key connectors, how OAuth tokens are stored) comes from their
   public docs. Phase B has to confirm it with a real client on a staging URL (§6).
@@ -281,6 +289,11 @@ Every button that starts a request uses `loading`. Disabled buttons carry a `dis
 
 ### 3.7 Arabic and RTL
 
+- **Bug today:** the Arabic connect bullets embed English menu paths («(Settings → Apps & Connectors…» and
+  «Settings → Connectors → Add custom connector») in running Arabic text. The bidi algorithm reorders them, so they
+  read backwards and the parentheses break ([shot](mcp/shots/on-ar-390-01-page.png)). In the new steps, each menu path
+  is its own LTR-isolated token (`<bdi dir="ltr">`, `→` kept LTR inside it), never inline punctuation. The
+  per-app steps are structured data (app, menu path, action), not one translated sentence.
 - Every new string is in `ar` with the same plurals. URLs, commands, JSON and key endings are wrapped in `dir="ltr"`
   (they already are). App names (ChatGPT, Claude, Cursor, VS Code) stay Latin inside `<bdi>`.
 - Replace «النسخة» for "instance" (it reads as "copy" or "version") with «الخادم». Drop «مشغّل النظام». Fix the
