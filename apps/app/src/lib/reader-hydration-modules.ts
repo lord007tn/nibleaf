@@ -1,4 +1,3 @@
-import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import type { LanguageFn } from 'highlight.js';
 import type { LazyHighlightLanguage } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, type HydrationModule, hydrationModule, loadServerRenderedModules } from '@/lib/hydration-modules';
@@ -11,37 +10,11 @@ import { HYDRATION_MODULE_ATTRIBUTE, type HydrationModule, hydrationModule, load
  * so keep it to these declarations.
  */
 
-/** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
- * detection conservative—false positives only load the richer renderer, while
- * false negatives could change output. Code (fenced blocks and inline spans)
- * can't hold raw HTML or math, so a `<div>` or `$HOME` in a code sample
- * doesn't count. */
-export const needsRichMarkdown = (content: string): boolean => {
-  const prose = withoutCode(content);
-  return /<\/?[A-Za-z][^>]*>/.test(prose) || /(^|[^\\])\$\$?[\s\S]*?\$\$?/m.test(prose);
-};
+/** Moved to @nibleaf/shared/reader-rich, so the parser that reads a page's headings
+ * as the reader renders them picks the same renderer. */
+import { needsRichMarkdown } from '@nibleaf/shared/reader-rich';
 
-/** Fenced code lines blanked, as the reader's MDX normalizer sees them
- *  (`fencedMarkdownLines`), and single-line inline code spans. Indented code
- *  blocks and multi-line spans stay, so they can only cause false positives. */
-const withoutCode = (content: string): string => {
-  if (typeof content !== 'string') return '';
-  if (!content.includes('`') && !content.includes('~~~')) return content;
-  // A fence inside a blockquote or list ends where its container does, which a
-  // line scan can't see: blanking from there could hide math or HTML after it.
-  // When unsure, keep everything, so the check errs towards the rich renderer.
-  if (CONTAINER_FENCE.test(content)) return content;
-  const lines = content.split('\n');
-  const fenced = fencedMarkdownLines(lines);
-  return lines.map((line, index) => (fenced[index] ? '' : line.replace(INLINE_CODE, ''))).join('\n');
-};
-
-/** A backtick run that isn't escaped, its text on the same line, and a closing
- *  run of the same length. */
-const INLINE_CODE = /(?<![\\`])(`+)[^`\n]+?\1(?!`)/g;
-/** A fence opened inside a blockquote or list item. */
-const CONTAINER_FENCE = /^[ \t]*(?:>|[-*+][ \t]|\d{1,9}[.)][ \t])[ \t>]*(?:`{3,}|~{3,})/m;
-
+export { needsRichMarkdown };
 /** The article renderer (Markdown, GFM, code highlighting): pages with an
  *  article, not the API reference or a not-found page. */
 export const articleMarkdownModule = hydrationModule('markdown', () => import('@/components/markdown').then((module) => module.Markdown));

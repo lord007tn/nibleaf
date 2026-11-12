@@ -6,6 +6,7 @@ import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantIndexedPoint, type QdrantPoint } from '@nibleaf/qdrant';
 import { chunkSearchDocument, type SearchChunk, type SearchChunkSource, searchEmbeddingText, sparseVectorForChunk } from '@nibleaf/search';
 import { resolveWorkspaceAi, workspaceEmbeddingProvider } from '@nibleaf/search/workspace';
+import { readerSections } from '@nibleaf/shared/reader-headings';
 import { extractHeadings, type SiteSnapshot } from '@nibleaf/shared/site';
 import { buildUsageEvent, deterministicUsageEventId } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
@@ -31,16 +32,15 @@ const deploymentFilter = (projectId: string, deploymentId: string): QdrantFilter
 });
 
 const sourceFromPage = (page: SiteSnapshot['pages'][number]): SearchChunkSource => {
-  // The reader's own heading ids (the table of contents' and the DOM's), so each
-  // chunk records the section a citation of it opens.
-  const headings = extractHeadings(page.content);
   return {
     id: page.id,
     title: page.title,
     path: page.path,
     description: page.description ?? '',
-    headings: headings.map((heading) => heading.text),
-    anchors: headings.map(({ text, id }) => ({ text, id })),
+    headings: extractHeadings(page.content).map((heading) => heading.text),
+    // The headings the reader renders, read by the parser its renderer shares, at
+    // the lines they are written: sections are cut there and record their DOM ids.
+    sections: readerSections(page.content).map(({ line, depth, id }) => ({ line, depth, id })),
     content: page.content,
     icon: page.icon ?? undefined,
     language: page.languageCode,

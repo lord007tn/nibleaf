@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
   // Section resolution has its own tests (lib/ai-search/sections.test.ts); turns
   // here keep every retrieved source unless a test uses the real resolver.
   sections: vi.fn(
-    (_pages?: unknown) =>
+    (_pages?: unknown, _deploymentId?: unknown) =>
       (source: unknown): unknown =>
         source,
   ),
@@ -372,7 +372,9 @@ describe('reader AI chat stream', () => {
 
   it('gives the model only sources resolved to a section the published page renders', async () => {
     const actual = await vi.importActual<typeof import('@/lib/ai-search/sections')>('@/lib/ai-search/sections');
-    mocks.sections.mockImplementationOnce((pages?: unknown) => actual.publishedSections(pages as never) as (source: unknown) => unknown);
+    mocks.sections.mockImplementationOnce(
+      (pages?: unknown, deploymentId?: unknown) => actual.publishedSections(pages as never, String(deploymentId)) as (source: unknown) => unknown,
+    );
     const indexed = { ...searchChunk(1, 'Run the installer.'), heading: 'With npm', anchor: 'with-npm' };
     const unknownSection = { ...searchChunk(2, 'An old section.'), heading: 'Removed section', headingPath: ['Removed section'] };
     const otherPage = { ...searchChunk(3, 'Not in this version.'), pageId: 'page-from-another-version' };
@@ -387,6 +389,8 @@ describe('reader AI chat stream', () => {
     const read = mocks.stream.mock.calls[0]?.[0].chunks as SearchChunk[];
     // The section's heading as the table of contents shows it (inline Markdown stripped), and its rendered id.
     expect(read.map(({ id, heading, anchor }) => ({ id, heading, anchor }))).toEqual([{ id: 'c1', heading: 'With npm', anchor: 'with-npm' }]);
+    // Resolved against the turn's published deployment, whose headings are read once.
+    expect(mocks.sections).toHaveBeenCalledWith(expect.any(Array), 'deploy-1');
   });
 
   it('uses the Arabic question language throughout a turn on an English reader', async () => {

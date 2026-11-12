@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import { stripMarkdownLinks } from '@nibleaf/shared/utils';
 import { lightStemArabicToken, normalizeArabicSearchText } from './arabic';
 import type { SearchHit } from './index';
@@ -165,10 +166,11 @@ export interface SearchChunkSource {
   path: string;
   description: string;
   headings: string[];
-  /** The page's headings with the DOM ids the reader renders for them, in
-   * document order (`extractHeadings` from `@nibleaf/shared/site`, the same
-   * github-slugger ids as the table of contents). Chunks link their section by it. */
-  anchors?: ReadonlyArray<{ text: string; id: string }>;
+  /** The headings the reader renders, at the source lines where they are written,
+   * with their DOM ids (`readerSections` from `@nibleaf/shared/reader-headings`,
+   * the parser the reader's renderer and the citation check share). Sections are
+   * cut at these lines and record these ids. */
+  sections?: ReadonlyArray<{ line: number; depth: number; id: string }>;
   content: string;
   icon?: string;
   language: string;
@@ -185,8 +187,9 @@ export interface SearchChunk {
   heading: string;
   headingPath: string[];
   /** DOM id of the section this chunk is in, as the published page renders it:
-   * its own heading's, or its nearest ancestor's when its heading has none (the
-   * reader gives ids to h1–h4 only). Absent at the top of a page, before any heading. */
+   * its heading's, or for an h5/h6 its nearest h1–h4 ancestor's (the levels the
+   * reader's table of contents and section links use). Absent at the top of a
+   * page, before any heading, and for pages indexed without the reader's sections. */
   anchor?: string;
   content: string;
   contentHash: string;
@@ -322,34 +325,62 @@ interface Section {
   headingPath: string[];
   /** 1–6; 0 for the text before the first heading. */
   level: number;
+  /** The DOM id of the section (see SearchChunk.anchor); unknown without the reader's sections. */
+  anchor?: string;
   body: string;
 }
 
-const markdownSections = (content: string): Section[] => {
+const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/;
+
+/** A source line's heading text: an ATX heading's (up to three spaces of indent)
+ * or, for a setext heading, the line itself. */
+const headingText = (line: string): string => {
+  const atx = markdownHeading(line.replace(/^ {1,3}(?=#)/, ''));
+  return cleanSearchText(atx ? atx.text : line.trim());
+};
+
+/** Splits a page into sections at its headings. With the reader's sections
+ * (`readerSections` from `@nibleaf/shared/reader-headings`), it cuts exactly at the
+ * lines the reader renders as headings and records their ids: an h5 or h6 takes its
+ * nearest h1–h4 ancestor's, the levels the reader links to. Without them, it finds
+ * ATX headings itself. Either way fenced code (any fence length, nested fences
+ * included) is never a heading: the shared fence parser decides. */
+const markdownSections = (content: string, given?: SearchChunkSource['sections']): Section[] => {
+  const lines = content.split('\n').map((line) => line.replace(/\r$/, ''));
+  const fenced = fencedMarkdownLines(lines);
+  const atLine = given ? new Map(given.map((section) => [section.line, section])) : undefined;
   const sections: Section[] = [];
   const headingPath: string[] = [];
+  const anchors: (string | undefined)[] = [];
   let heading = '';
   let level = 0;
+  let anchor: string | undefined;
   let body: string[] = [];
-  let fenced = false;
   const flush = () => {
     const value = body.join('\n').trim();
     // Imported docs may put a complete definition in a heading with no body.
-    if (value || heading) sections.push({ heading, headingPath: headingPath.filter(Boolean), level, body: value || heading });
+    if (value || heading)
+      sections.push({ heading, headingPath: headingPath.filter(Boolean), level, ...(anchor ? { anchor } : {}), body: value || heading });
     body = [];
   };
-  for (const line of content.split(/\r?\n/)) {
-    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-    const match = fenced ? null : markdownHeading(line);
-    if (!match) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
+    const rendered = atLine?.get(index);
+    const own = atLine ? undefined : fenced[index] ? null : markdownHeading(line);
+    if (!rendered && !own) {
       body.push(line);
       continue;
     }
     flush();
-    level = match.level;
-    heading = cleanSearchText(match.text);
+    level = rendered ? rendered.depth : (own?.level ?? 0);
+    heading = rendered ? headingText(line) : cleanSearchText(own?.text ?? '');
     headingPath.length = Math.max(0, level - 1);
     headingPath[level - 1] = heading;
+    anchors.length = Math.max(0, level - 1);
+    anchor = rendered ? (level <= 4 ? rendered.id : anchors.findLast((ancestor) => ancestor !== undefined)) : undefined;
+    anchors[level - 1] = anchor;
+    // A setext heading's underline is part of the heading, not of its section's text.
+    if (rendered && SETEXT_UNDERLINE.test(lines[index + 1] ?? '') && !markdownHeading(line.replace(/^ {1,3}(?=#)/, ''))) index += 1;
   }
   flush();
   return sections.length > 0 ? sections : [{ heading: '', headingPath: [], level: 0, body: content }];
@@ -364,32 +395,6 @@ export const sectionHeadingKey = (text: string): string =>
     .toLocaleLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
-
-/** The anchor of each section, matched to the page's rendered headings in
- * document order: each section takes the next rendered heading with the same
- * text, so a repeated heading ("Example", "Example") gets its own id (`example`,
- * `example-1`), never the first one's. A heading the reader gives no id (h5, h6),
- * or one that does not match, uses its nearest ancestor's anchor; the text before
- * any heading has none. */
-const sectionAnchors = (sections: readonly Section[], anchors: ReadonlyArray<{ text: string; id: string }>): (string | undefined)[] => {
-  const keys = anchors.map((anchor) => sectionHeadingKey(anchor.text));
-  const byLevel: (string | undefined)[] = [];
-  const result: (string | undefined)[] = [];
-  let next = 0;
-  for (const section of sections) {
-    let anchor: string | undefined;
-    if (section.level) {
-      const key = sectionHeadingKey(section.heading);
-      const found = key ? keys.indexOf(key, next) : -1;
-      byLevel.length = section.level - 1;
-      anchor = found >= 0 ? anchors[found]?.id : byLevel.findLast((ancestor) => ancestor !== undefined);
-      if (found >= 0) next = found + 1;
-      byLevel[section.level - 1] = anchor;
-    }
-    result.push(anchor);
-  }
-  return result;
-};
 
 const splitSection = (body: string, maxChars: number, overlapChars: number): string[] => {
   if (body.length <= maxChars) return [body];
@@ -427,9 +432,7 @@ export const chunkSearchDocument = (
   const maxChars = options.maxChars ?? 1400;
   const overlapChars = Math.min(options.overlapChars ?? 180, Math.floor(maxChars / 3));
   let ordinal = 0;
-  const sections = markdownSections(source.content);
-  const anchors = sectionAnchors(sections, source.anchors ?? []);
-  return sections.flatMap((section, index) =>
+  return markdownSections(source.content, source.sections).flatMap((section) =>
     splitSection(section.body, maxChars, overlapChars).map((content) => {
       // Hash every field that enters the dense embedding. Metadata-only fields
       // (path/icon/visibility) can then update in place without paying for a new
@@ -445,7 +448,7 @@ export const chunkSearchDocument = (
         description: source.description,
         heading: section.heading,
         headingPath: section.headingPath,
-        ...(anchors[index] ? { anchor: anchors[index] } : {}),
+        ...(section.anchor ? { anchor: section.anchor } : {}),
         content,
         contentHash,
         language: source.language,

@@ -10,8 +10,9 @@ headings with the ids `install`, `install-1` and `install-2`.
 
 ## How the citations were computed
 
-`computed-citations.json` was produced by the real code: `chunkSearchDocument` with the page's `extractHeadings` ids,
-then `publishedSections`, then `validateCitedAnswer`. The cited chunk is the Windows install step (`winget`).
+`computed-citations.json` was produced by the real code: `chunkSearchDocument` with the page's `readerSections` (the
+shared parser the reader's renderer uses), then `publishedSections`, then `validateCitedAnswer`. It was regenerated
+after the council fixes, with identical results. The cited chunk is the Windows install step (`winget`).
 
 - **Before:** the same chunks without their index-time anchor, which is how every existing index reads today. They
   resolve by heading text, as main's `withSectionAnchors` does, so they get the first matching id: `#install`

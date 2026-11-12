@@ -873,7 +873,7 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
     languages: resolvePublishedSearchLanguages(snapshot),
     defaultLanguage: defaultLanguage(snapshot.project).code,
     pages: versionPages,
-    sections: publishedSections(versionPages),
+    sections: publishedSections(versionPages, scope.deploymentId),
   }).catch((cause) => {
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });

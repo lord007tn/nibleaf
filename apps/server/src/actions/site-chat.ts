@@ -346,7 +346,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const cost: ChatCostSink = {};
   // A separate utility model reports its spend apart from the answer model's.
   const utilityCost: ChatCostSink = {};
-  const sections = publishedSections(context.versionPages);
+  const sections = publishedSections(context.versionPages, context.scope.deploymentId);
   const supportUrl = context.request.configuration.aiSupportUrl;
   // Side calls (suggestions) stop with the turn, even when it fails.
   const sideCalls = new AbortController();
