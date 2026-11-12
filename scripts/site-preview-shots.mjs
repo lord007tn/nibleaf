@@ -19,13 +19,10 @@
  * Chromium build under %LOCALAPPDATA%\ms-playwright (newest that launches wins).
  */
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-const require = createRequire(import.meta.url);
-const { chromium } = require('playwright-core');
+import { hostKey, launchLocalOnlyBrowser, localHostKeys } from '../tests/integration/lib/capture-env.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -75,23 +72,20 @@ const chromiumCandidates = () => {
     );
 };
 
+/** The browser through the capture guard (tests/integration/lib/capture-env.mjs):
+ *  it can reach only the local app at BASE, and anything else fails the run. */
 const launchBrowser = async () => {
-  const candidates = chromiumCandidates();
+  // Throws before any launch when BASE isn't on this machine.
+  const allowedHosts = localHostKeys([hostKey(BASE)]);
   const errors = [];
-  for (const executablePath of candidates) {
+  // The installed builds first, then whatever playwright-core resolves on its own.
+  for (const executablePath of [...chromiumCandidates(), undefined]) {
     try {
-      const browser = await chromium.launch({ executablePath, headless: true });
-      return { browser, executablePath };
+      const local = await launchLocalOnlyBrowser({ allowedHosts, launch: executablePath ? { executablePath } : {} });
+      return { local, executablePath: executablePath ?? '(playwright default)' };
     } catch (error) {
-      errors.push(`${executablePath}: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`);
+      errors.push(`${executablePath ?? 'default'}: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`);
     }
-  }
-  // Last resort: whatever playwright-core resolves on its own.
-  try {
-    const browser = await chromium.launch({ headless: true });
-    return { browser, executablePath: '(playwright default)' };
-  } catch (error) {
-    errors.push(`default: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`);
   }
   throw new Error(`No Chromium build could be launched.\n${errors.join('\n')}`);
 };
@@ -213,7 +207,8 @@ const main = async () => {
   process.stdout.write(`Waiting for ${BASE}/sites/${firstProject} …\n`);
   await waitForServer(`${BASE}/sites/${firstProject}`);
 
-  const { browser, executablePath } = await launchBrowser();
+  const { local, executablePath } = await launchBrowser();
+  const { browser } = local;
   process.stdout.write(`Chromium: ${executablePath}\n`);
   const shots = [];
   let failures = 0;
@@ -271,7 +266,8 @@ const main = async () => {
       }
     }
   } finally {
-    await browser.close();
+    // Fails the run if anything outside the local app was attempted.
+    await local.close();
   }
 
   const meta = { label: LABEL, base: BASE, deepPath: DEEP_PATH, capturedAt: new Date().toISOString(), chromium: executablePath, fullPage: FULL_PAGE };
