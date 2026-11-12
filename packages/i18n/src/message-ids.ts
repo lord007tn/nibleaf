@@ -1,5 +1,6 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'oauth.consent.can.aiConversations': 'oauth_consent_can_aiconversations',
   'settings.aiAssistants.watch.stalled': 'settings_aiassistants_watch_stalled',
   'settings.aiAssistants.watch.unexpected': 'settings_aiassistants_watch_unexpected',
   'settings.aiAssistants.watch.again': 'settings_aiassistants_watch_again',
