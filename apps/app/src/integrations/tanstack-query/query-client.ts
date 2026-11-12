@@ -101,6 +101,10 @@ export function prefetchRouteData<TQueryFnData, TError, TData, TQueryKey extends
  * client render starts from the same answer (pass it to the query as
  * `initialData`). It is not retried, so a slow API can't hold the page; a
  * failure returns null and the page falls back to its own query.
+ *
+ * It lives here although only split route loaders call it: in a module of its
+ * own, or beside the query factories, the bundler moves TanStack Query's core
+ * helpers into an extra chunk on published docs pages (measured +0.2 KiB gzip).
  */
 export async function loadRouteData<TQueryFnData, TError, TData, TQueryKey extends QueryKey>(
   queryClient: QueryClient,
