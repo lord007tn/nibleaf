@@ -851,7 +851,7 @@ function EditorPage() {
   // way a ?page= deep link does: the page being left is saved first. When the
   // address already names the page (the writer moved on in the page list since),
   // the switch runs directly.
-  const openLinkedPageRef = useRef<(id: string) => void>(() => {});
+  const openLinkedPageRef = useRef<((id: string) => void) | null>(null);
   useEffect(() => {
     openLinkedPageRef.current = (id) => (id === pageParam ? openNode(id) : openPageForAi(id));
   });
@@ -867,7 +867,7 @@ function EditorPage() {
   const editorLinks = useMemo<EditorLinks>(
     () => ({
       resolve: editorLinkResolver(linkSite, page?.id),
-      open: (id) => openLinkedPageRef.current(id),
+      open: (id) => openLinkedPageRef.current?.(id),
       href: (id) => router.buildLocation({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: id } }).href,
     }),
     [linkSite, page?.id, router, projectId],
