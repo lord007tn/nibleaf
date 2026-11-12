@@ -264,6 +264,35 @@ describe('code inside lists and blockquotes', () => {
     expectRoundTrip(page);
   });
 
+  // Containers nested in any order: each strips its own prefix, outermost first.
+  const mixed: Array<[string, (code: string[]) => string]> = [
+    ['a quote in a nested list item', (code) => `- Outer\n\n  - Inner\n\n${code.map((line) => `    > ${line}`).join('\n')}`],
+    ['a list item in a quote in a list item', (code) => `- Outer\n\n  > - Inner\n  >\n${code.map((line) => `  >   ${line}`).join('\n')}`],
+    ['a quote in a quote in a list item', (code) => `- Outer\n\n${code.map((line) => `  > > ${line}`).join('\n')}`],
+    ['a quote in a list item in a quote', (code) => `> - Item\n>\n${code.map((line) => `>   > ${line}`).join('\n')}`],
+    ['a quote in a list item in an ordered list item', (code) => `1. One\n\n   - Two\n\n${code.map((line) => `     > ${line}`).join('\n')}`],
+  ];
+  const fence = ['```html', '<iframe src="x"></iframe>', '```'];
+
+  it.each(mixed)('keeps a fence in %s byte for byte over four saves', (_name, page) => {
+    const source = page(fence);
+    let saved = source;
+    for (let cycle = 0; cycle < 4; cycle++) {
+      saved = getMarkdown(open(saved));
+      expect(saved).toBe(source);
+    }
+  });
+
+  it.each(mixed)('keeps indented code in %s as code over four saves: saved fenced once, then unchanged', (_name, page) => {
+    const source = page(['    <iframe src="x"></iframe>']);
+    const fenced = page(['```', '<iframe src="x"></iframe>', '```']);
+    let saved = source;
+    for (let cycle = 0; cycle < 4; cycle++) {
+      saved = getMarkdown(open(saved));
+      expect(saved).toBe(fenced);
+    }
+  });
+
   it('keeps indented code in a list item as code with the same text over three saves', () => {
     // The editor saves every code block fenced; after that the page is stable.
     const page = '- Item\n\n      const a = 1;';

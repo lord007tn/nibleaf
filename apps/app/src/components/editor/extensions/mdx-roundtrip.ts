@@ -116,6 +116,10 @@ interface MarkdownLayout {
   paragraphOfLine: Int32Array;
   paragraphs: Array<[number, number]>;
   lineStarts: number[];
+  /** How many non-space characters come before each position, so a span's
+   *  blankness is one subtraction rather than a scan of its line. */
+  nonSpace: Int32Array;
+  length: number;
 }
 
 function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undefined): MarkdownLayout {
@@ -129,7 +133,14 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
     paragraphOfLine: new Int32Array(lineStarts.length).fill(-1),
     paragraphs: [],
     lineStarts,
+    nonSpace: new Int32Array(source.length + 1),
+    length: source.length,
   };
+  for (let index = 0; index < source.length; index++) {
+    const code = source.charCodeAt(index);
+    const space = code === 32 || (code >= 9 && code <= 13) || (code > 127 && /\s/.test(source[index] ?? ''));
+    layout.nonSpace[index + 1] = (layout.nonSpace[index] ?? 0) + (space ? 0 : 1);
+  }
   if (!blockTokens) return layout;
   const at = (line: number) => lineStarts[line] ?? source.length;
   for (const token of blockTokens(source.replace(/\r\n?/g, '\n'))) {
@@ -160,28 +171,34 @@ const lineOf = (lineStarts: number[], offset: number): number => {
 /** Whether an opaque range is a block of its own, or sits in a line of text. A range
  *  on lines of its own is a block unless Markdown reads those lines as part of a
  *  longer paragraph; newlines inside the range don't decide it. */
-function isBlockRange(source: string, layout: MarkdownLayout, span: Span): boolean {
-  if (!isWholeLine(source, span.start, span.end)) return false;
+function isBlockRange(layout: MarkdownLayout, span: Span): boolean {
+  if (!wholeLine(layout, span.start, span.end)) return false;
   const first = lineOf(layout.lineStarts, span.start);
   const paragraph = layout.paragraphs[layout.paragraphOfLine[first] ?? -1];
   if (!paragraph) return true;
   return paragraph[0] === first && paragraph[1] === lineOf(layout.lineStarts, Math.max(span.start, span.end - 1)) + 1;
 }
 
-const lineBounds = (source: string, at: number): Span => {
-  const end = source.indexOf('\n', at);
-  return { start: source.lastIndexOf('\n', at - 1) + 1, end: end < 0 ? source.length : end };
-};
+/** Whether `[start, end)` holds only whitespace. */
+const blank = (layout: MarkdownLayout, start: number, end: number): boolean =>
+  (layout.nonSpace[Math.max(start, end)] ?? 0) - (layout.nonSpace[start] ?? 0) === 0;
+
+const lineStart = (layout: MarkdownLayout, line: number): number => layout.lineStarts[line] ?? layout.length;
+
+/** A range on lines of its own: only whitespace before it on its first line and after it on its last. */
+const wholeLine = (layout: MarkdownLayout, start: number, end: number): boolean =>
+  blank(layout, lineStart(layout, lineOf(layout.lineStarts, start)), start) &&
+  blank(layout, end, lineStart(layout, lineOf(layout.lineStarts, end) + 1));
 
 /** A range written at the start of its own lines with a blank line (or the document
  *  edge) on each side: the layout the editor writes a component's children in, so
  *  an opaque block there saves back byte for byte. */
-function isolated(source: string, range: Span): boolean {
-  const first = lineBounds(source, range.start);
-  const last = lineBounds(source, range.end);
-  if (first.start !== range.start || source.slice(range.end, last.end).trim() !== '') return false;
-  const before = first.start === 0 || source.slice(lineBounds(source, first.start - 1).start, first.start).trim() === '';
-  const after = last.end >= source.length || source.slice(last.end, lineBounds(source, last.end + 1).end).trim() === '';
+function isolated(layout: MarkdownLayout, range: Span): boolean {
+  const first = lineOf(layout.lineStarts, range.start);
+  const last = lineOf(layout.lineStarts, range.end);
+  if (lineStart(layout, first) !== range.start || !blank(layout, range.end, lineStart(layout, last + 1))) return false;
+  const before = first === 0 || blank(layout, lineStart(layout, first - 1), range.start);
+  const after = last + 1 >= layout.lineStarts.length || blank(layout, lineStart(layout, last + 1), lineStart(layout, last + 2));
   return before && after;
 }
 
@@ -287,7 +304,6 @@ function innermostContainers(containers: Container[], spans: readonly Span[]): n
  * nearest component that does is kept whole. Returns null for code outside any component.
  */
 function rawHtmlRange(
-  source: string,
   layout: MarkdownLayout,
   raw: Span,
   inCode: boolean,
@@ -307,7 +323,7 @@ function rawHtmlRange(
       code = false;
       continue;
     }
-    if (!code && (!isBlockRange(source, layout, current) || isolated(source, current))) break;
+    if (!code && (!isBlockRange(layout, current) || isolated(layout, current))) break;
     const component = containers[around];
     if (!component) break;
     current = component;
@@ -514,6 +530,42 @@ function balancedEnd(source: string, start: number, open: string, close: string)
   return null;
 }
 
+/**
+ * `balancedEnd(source, start, '{', '}')` for many starts, without rescanning. A
+ * scan passes other `{`s outside quotes in the same state a scan of their own
+ * would start in, so the stack of open braces tells where each of those closes,
+ * or that it never does. A later expression the scan already passed is answered
+ * from that; before, every `{` after an unclosed one rescanned the rest of the page.
+ */
+function expressionEnds(source: string): (start: number) => number | null {
+  const known = new Map<number, number>();
+  return (start) => {
+    const found = known.get(start);
+    if (found !== undefined) return found < 0 ? null : found;
+    const open: number[] = [];
+    let quote = '';
+    let escaped = false;
+    for (let i = start; i < source.length; i++) {
+      const char = source[i] ?? '';
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === quote) quote = '';
+        continue;
+      }
+      if (char === '"' || char === "'" || char === '`') quote = char;
+      else if (char === '{') open.push(i);
+      else if (char === '}') {
+        const opened = open.pop();
+        if (opened !== undefined) known.set(opened, i + 1);
+        if (open.length === 0) return i + 1;
+      }
+    }
+    for (const opened of open) known.set(opened, -1);
+    return null;
+  };
+}
+
 const JSX_NAME = /[A-Z][A-Za-z0-9_.:-]*/y;
 // Lowercase HTML names, custom elements (`my-widget`) included.
 const HTML_NAME = /[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*/y;
@@ -529,6 +581,15 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
   const tokens: TagToken[] = [];
   const html = Boolean(comments);
   let lower: string | undefined;
+  // Positions where a tag scan outside quotes and braces is known to reach the end
+  // of the page with no `>`: from there it reads the same text the same way, so a
+  // later scan that gets there stops at once. Without this, every `<` after an
+  // unclosed tag rescanned the rest of the page. HTML and JSX quote differently,
+  // so each has its own. A scan marks the positions it passed when it fails.
+  const unclosable = { html: new Uint8Array(0), jsx: new Uint8Array(0) };
+  const passed: number[] = [];
+  // The first `</name` at or after the last search for it, or -1 for none.
+  const closers = new Map<string, number>();
   for (let i = 0; i < source.length; i++) {
     if (source[i] !== '<' || mask[i]) continue;
     if (comments && source.startsWith('<!--', i)) {
@@ -555,6 +616,10 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
     // HTML attribute values have no backslash escapes (`title="Old\"` ends at that
     // quote); only JSX and the JavaScript inside `{…}` do.
     let escapes = true;
+    const kind = isHtml ? 'html' : 'jsx';
+    if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
+    const known = unclosable[kind];
+    passed.length = 0;
     for (; cursor < source.length; cursor++) {
       const char = source[cursor] ?? '';
       if (quote) {
@@ -563,6 +628,13 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
         else if (char === quote) quote = '';
         continue;
       }
+      if (braces === 0) {
+        if (known[cursor]) {
+          cursor = source.length;
+          break;
+        }
+        passed.push(cursor);
+      }
       if (char === '"' || char === "'" || (char === '`' && (!isHtml || braces > 0))) {
         quote = char;
         escapes = !isHtml || braces > 0;
@@ -570,15 +642,23 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
       else if (char === '}') braces = Math.max(0, braces - 1);
       else if (char === '>' && braces === 0) break;
     }
-    if (source[cursor] !== '>') continue;
+    if (source[cursor] !== '>') {
+      for (const position of passed) known[position] = 1;
+      continue;
+    }
     const raw = source.slice(i, cursor + 1);
     const selfClosing = !closing && /\/\s*>$/.test(raw);
     tokens.push({ start: i, end: cursor + 1, name, raw, closing, selfClosing, html: isHtml });
     i = cursor;
     if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name)) {
       // A script's or style's content is text up to its closing tag.
+      // A search that found no closer means none after any later tag either.
       lower ??= source.toLowerCase();
-      const close = lower.indexOf(`</${name}`, i + 1);
+      let close = closers.get(name);
+      if (close === undefined || (close !== -1 && close <= i)) {
+        close = lower.indexOf(`</${name}`, i + 1);
+        closers.set(name, close);
+      }
       if (close > i) i = close - 1;
     }
   }
@@ -604,13 +684,6 @@ function tagPairs(tokens: TagToken[]): Map<number, number> {
   return pairs;
 }
 
-const isWholeLine = (source: string, start: number, end: number): boolean => {
-  const lineStart = source.lastIndexOf('\n', start - 1) + 1;
-  const nextNewline = source.indexOf('\n', end);
-  const lineEnd = nextNewline < 0 ? source.length : nextNewline;
-  return source.slice(lineStart, start).trim() === '' && source.slice(end, lineEnd).trim() === '';
-};
-
 function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
   const ranges: SourceRange[] = [];
   let coveredUntil = -1;
@@ -631,7 +704,7 @@ const sourceRange = (source: string, layout: MarkdownLayout, span: Span, name: s
   end: span.end,
   source: source.slice(span.start, span.end),
   name,
-  block: isBlockRange(source, layout, span),
+  block: isBlockRange(layout, span),
 });
 
 /** Whether a lowercase tag is the editor's own markup for a node it structures:
@@ -714,7 +787,7 @@ function keepRawHtml(
   const innermost = innermostContainers(containers, candidates);
   const kept = [...opaque];
   for (const [index, candidate] of candidates.entries()) {
-    const range = rawHtmlRange(source, layout, candidate, candidate.inCode, containers, innermost[index] ?? -1);
+    const range = rawHtmlRange(layout, candidate, candidate.inCode, containers, innermost[index] ?? -1);
     if (range) kept.push(sourceRange(source, layout, range, range.name || candidate.name));
   }
   return outermostRanges(kept);
@@ -852,13 +925,14 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
   }
   const inModule = spanIndex(modules);
   const expressions: SourceRange[] = [];
+  const expressionEnd = expressionEnds(source);
   for (let i = 0; i < source.length; i++) {
     if (source[i] !== '{' || mask[i] || taken(i, i + 1) || inModule(i, i + 1)) continue;
-    const end = balancedEnd(source, i, '{', '}');
+    const end = expressionEnd(i);
     if (!end) continue;
     // A standalone expression owns any JSX nested inside it. Replace the whole
     // expression once, rather than exposing punctuation around smaller atoms.
-    expressions.push({ start: i, end, source: source.slice(i, end), name: 'Expression', block: isWholeLine(source, i, end) });
+    expressions.push({ start: i, end, source: source.slice(i, end), name: 'Expression', block: wholeLine(layout, i, end) });
     i = end - 1;
   }
   opaque = outermostRanges([...opaque, ...modules, ...expressions]);

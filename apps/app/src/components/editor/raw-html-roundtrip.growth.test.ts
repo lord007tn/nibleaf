@@ -32,4 +32,19 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     const [small, large] = growthMs(parse, mixed(250), mixed(1000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
+
+  // Tags that never close: each `<` after the first must not rescan the rest of the page.
+  it.each([
+    ['<iframe ', '<iframe '],
+    ['<iframe src="', '<iframe src="'],
+    ['<div title="', '<div title="'],
+    ['<span ', '<span '],
+    ['<Card title="', '<Card title="'],
+    ['<script> with no closing tag', '<script>'],
+    ['{ expression', '{ '],
+    ['{" expression', '{"'],
+  ])('prepares a page of unclosed %s in one pass', (_name, tag) => {
+    const [small, large] = growthMs(parse, tag.repeat(1000), tag.repeat(4000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
 });

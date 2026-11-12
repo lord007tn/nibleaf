@@ -199,41 +199,33 @@ const CodeBlock = CodeBlockLowlight.extend({
             if (fenceParsers.has(markdownit)) return;
             markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => {
               const lines = state.src.split('\n');
-              // A fence inside a quote keeps its source line without the quote's
-              // `>` markers: the quote's serializer writes them again on save, and
-              // keeping them saved `> ```js` as `> > ```js`.
-              let quoteDepth = 0;
-              const withoutQuotes = (line: string) => {
+              // A fence keeps its source lines without its containers' prefixes: a
+              // quote's `>` and a list item's indent. Their serializers write those
+              // again on save, so keeping them added another on every save until the
+              // fence broke (`> ```js` saved as `> > ```js`; #574 in list items).
+              // The open containers, outermost first: each strips its own prefix
+              // from what the containers around it leave of the line.
+              const containers: Array<{ quote: true } | { quote: false; column: number; line: number }> = [];
+              const withoutContainers = (line: string, lineNumber: number) => {
                 let inner = line;
-                for (let depth = 0; depth < quoteDepth; depth += 1) inner = inner.replace(/^ {0,3}> ?/, '');
+                for (const container of containers) {
+                  if (container.quote) inner = inner.replace(/^ {0,3}> ?/, '');
+                  else if (lineNumber === container.line) inner = inner.slice(container.column);
+                  else inner = inner.slice(Math.min(/^ */.exec(inner)?.[0].length ?? 0, container.column));
+                }
                 return inner;
               };
-              // Likewise a fence in a list item keeps its lines without the item's
-              // indent, which the list's serializer writes again: keeping it added
-              // the indent once more on every save until the fence broke (#574).
-              // Each open container: a quote, or a list item with its content column.
-              const containers: Array<number | 'quote'> = [];
-              const withoutContainers = (line: string) => {
-                const inner = withoutQuotes(line);
-                const item = containers[containers.length - 1];
-                if (typeof item !== 'number') return inner;
-                const indent = /^ */.exec(inner)?.[0].length ?? 0;
-                return inner.slice(Math.min(indent, item));
-              };
               for (const token of state.tokens) {
-                if (token.type === 'blockquote_open') {
-                  quoteDepth += 1;
-                  containers.push('quote');
+                if (token.type === 'blockquote_open') containers.push({ quote: true });
+                if (token.type === 'list_item_open') {
+                  const line = token.map?.[0] ?? -1;
+                  containers.push({ quote: false, column: listItemContentColumn(withoutContainers(lines[line] ?? '', line)), line });
                 }
-                if (token.type === 'blockquote_close') {
-                  quoteDepth = Math.max(0, quoteDepth - 1);
-                  containers.pop();
-                }
-                if (token.type === 'list_item_open') containers.push(listItemContentColumn(withoutQuotes(lines[token.map?.[0] ?? -1] ?? '')));
-                if (token.type === 'list_item_close') containers.pop();
+                if (token.type === 'blockquote_close' || token.type === 'list_item_close') containers.pop();
                 if (token.type !== 'fence' || !token.map) continue;
-                const open = withoutContainers(lines[token.map[0]] ?? '');
-                const close = withoutContainers(lines[Math.max(token.map[0], token.map[1] - 1)] ?? '');
+                const closeLine = Math.max(token.map[0], token.map[1] - 1);
+                const open = withoutContainers(lines[token.map[0]] ?? '', token.map[0]);
+                const close = withoutContainers(lines[closeLine] ?? '', closeLine);
                 const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
                 token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
                 token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
