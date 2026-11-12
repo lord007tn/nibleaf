@@ -37,7 +37,7 @@ import { normalizeMdxBlocks } from './reader-markdown';
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
 import { resolveSiteRoute, sitePathTooLong } from './site-route';
-import { isAllowedMediaUrl, videoEmbedFrom, videoPageUrl } from './video-embeds';
+import { isAllowedMediaUrl, isSiteMediaPath, videoEmbedFrom, videoPageUrl } from './video-embeds';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 /** Served by their own routes, not the page route: the changelog and generated files. */
@@ -106,9 +106,13 @@ export interface PageContentFacts {
   embedsAsLinks: string[];
   /** `<video>`/`<source>` addresses the reader won't play: not https and not on this site. */
   insecureVideos: string[];
+  /** Iframes the reader doesn't show because no closer ends their block, by their address. */
+  unclosedEmbeds: string[];
+  /** Video posters the reader leaves out (anything but a file on this site), by their address. */
+  hiddenPosters: string[];
 }
 
-type EmbedFacts = Pick<PageContentFacts, 'untitledEmbeds' | 'embedsAsLinks' | 'insecureVideos'>;
+type EmbedFacts = Pick<PageContentFacts, 'untitledEmbeds' | 'embedsAsLinks' | 'insecureVideos' | 'unclosedEmbeds' | 'hiddenPosters'>;
 
 // The same parse as #426's link rewriter (micromark MDX + mdast-util-mdx, via
 // remark-mdx). GFM is left out on purpose: it roughly doubles the cost and
@@ -237,6 +241,8 @@ const collectEmbed = (node: HtmlNode, parent: HtmlNode | undefined, embeds: Embe
   } else if (node.tagName === 'video' || (node.tagName === 'source' && parent?.tagName === 'video')) {
     const src = propertyText(properties.src);
     if (src && !isAllowedMediaUrl(src)) embeds.insecureVideos.push(src);
+    const poster = node.tagName === 'video' ? propertyText(properties.poster) : '';
+    if (poster && !isSiteMediaPath(poster)) embeds.hiddenPosters.push(poster);
   }
 };
 
@@ -294,6 +300,9 @@ const htmlLinks = (tree: Root, content: string, embeds: EmbedFacts): string[] =>
   };
   markAuthored(tree as MarkdownNode);
   const visit = (node: HtmlNode, parent?: HtmlNode) => {
+    // Every complete iframe became the reader's embed element (./reader-embeds), so one
+    // still here has no closer in its block (or a tag the rewrite couldn't read).
+    if (node.tagName === 'iframe') embeds.unclosedEmbeds.push(propertyText(node.properties?.src) || '<iframe>');
     if (node.tagName && NON_LINK_CONTEXTS.has(node.tagName)) return;
     if (node.tagName && (LINK_ELEMENTS.has(node.tagName) || EMBED_ELEMENTS.has(node.tagName))) {
       const offset = node.position?.start.offset;
@@ -372,7 +381,16 @@ const collectFacts = (content: string): PageContentFacts => {
   };
   collectDefinitions(tree);
 
-  const facts: PageContentFacts = { links: [], imagesWithoutAlt: [], strayText: [], untitledEmbeds: [], embedsAsLinks: [], insecureVideos: [] };
+  const facts: PageContentFacts = {
+    links: [],
+    imagesWithoutAlt: [],
+    strayText: [],
+    untitledEmbeds: [],
+    embedsAsLinks: [],
+    insecureVideos: [],
+    unclosedEmbeds: [],
+    hiddenPosters: [],
+  };
   const visit = (node: MarkdownNode) => {
     if (inCode(node) || NON_LINK_CONTEXTS.has(node.name?.toLowerCase() ?? '')) return;
     if (SILENT.has(node.type)) {

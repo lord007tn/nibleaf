@@ -26,7 +26,9 @@ type PublishCheckCode =
   | 'duplicate-title'
   | 'embed-untitled'
   | 'embed-as-link'
-  | 'video-not-https';
+  | 'video-not-https'
+  | 'embed-unclosed'
+  | 'video-poster-hidden';
 
 export interface PublishCheck {
   code: PublishCheckCode;
@@ -162,6 +164,8 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
     addEach(page, 'embed-untitled', facts.untitledEmbeds);
     addEach(page, 'embed-as-link', facts.embedsAsLinks);
     addEach(page, 'video-not-https', facts.insecureVideos);
+    addEach(page, 'embed-unclosed', facts.unclosedEmbeds);
+    addEach(page, 'video-poster-hidden', facts.hiddenPosters);
   }
   for (const siblings of siblingsByTitle.values()) {
     if (siblings.length < 2) continue;

@@ -261,7 +261,9 @@ export interface PublishCheck {
     | 'duplicate-title'
     | 'embed-untitled'
     | 'embed-as-link'
-    | 'video-not-https';
+    | 'video-not-https'
+    | 'embed-unclosed'
+    | 'video-poster-hidden';
   severity: 'error' | 'warning';
   pageId: string;
   languageCode: string;

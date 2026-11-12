@@ -23,9 +23,11 @@ const CHECK_META: Record<CheckCode, { title: MessageKey; hint: MessageKey; order
   'missing-alt': { title: 'publish.checks.missingAlt', hint: 'publish.checks.missingAltHint', order: 4 },
   'embed-untitled': { title: 'publish.checks.embedUntitled', hint: 'publish.checks.embedUntitledHint', order: 5 },
   'embed-as-link': { title: 'publish.checks.embedAsLink', hint: 'publish.checks.embedAsLinkHint', order: 6 },
-  'duplicate-title': { title: 'publish.checks.duplicateTitle', hint: 'publish.checks.duplicateTitleHint', order: 7 },
-  'stray-characters': { title: 'publish.checks.strayCharacters', hint: 'publish.checks.strayCharactersHint', order: 8 },
-  'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 9 },
+  'embed-unclosed': { title: 'publish.checks.embedUnclosed', hint: 'publish.checks.embedUnclosedHint', order: 7 },
+  'video-poster-hidden': { title: 'publish.checks.videoPosterHidden', hint: 'publish.checks.videoPosterHiddenHint', order: 8 },
+  'duplicate-title': { title: 'publish.checks.duplicateTitle', hint: 'publish.checks.duplicateTitleHint', order: 9 },
+  'stray-characters': { title: 'publish.checks.strayCharacters', hint: 'publish.checks.strayCharactersHint', order: 10 },
+  'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 11 },
 };
 
 /** One row per page and check: a page with three broken links is one thing to fix. */

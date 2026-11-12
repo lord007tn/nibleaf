@@ -74,6 +74,40 @@ describe('pageContentFacts', () => {
 
   it('reports no embeds for a page without raw HTML', () => {
     const facts = pageContentFacts('# Title\n\n[YouTube](https://youtu.be/dQw4w9WgXcQ)');
-    expect([facts.untitledEmbeds, facts.embedsAsLinks, facts.insecureVideos]).toEqual([[], [], []]);
+    expect([facts.untitledEmbeds, facts.embedsAsLinks, facts.insecureVideos, facts.unclosedEmbeds, facts.hiddenPosters]).toEqual([
+      [],
+      [],
+      [],
+      [],
+      [],
+    ]);
+  });
+
+  it('reports an iframe with no closer in its block, which the reader does not show', () => {
+    const content = [
+      '<iframe src="https://youtu.be/dQw4w9WgXcQ">',
+      '',
+      '## Install',
+      '',
+      '<iframe src="https://youtu.be/M7lc1UVf-VE" title="Tour"></iframe>',
+      '',
+      '```html',
+      '<iframe src="https://in-code.example/">',
+      '```',
+    ].join('\n');
+    const facts = pageContentFacts(content);
+    expect(facts.unclosedEmbeds).toEqual(['https://youtu.be/dQw4w9WgXcQ']);
+    expect(facts.untitledEmbeds).toEqual([]);
+  });
+
+  it('reports video posters the reader leaves out: anything but a file on this site', () => {
+    const content = [
+      '<video controls src="/api/public/assets/a.mp4" poster="https://images.example.com/a.jpg"></video>',
+      '',
+      '<video controls src="/api/public/assets/b.mp4" poster="/api/public/assets/b.jpg"></video>',
+      '',
+      '<video controls src="/api/public/assets/c.mp4" poster="http://images.example.com/c.jpg"></video>',
+    ].join('\n');
+    expect(pageContentFacts(content).hiddenPosters).toEqual(['https://images.example.com/a.jpg', 'http://images.example.com/c.jpg']);
   });
 });
