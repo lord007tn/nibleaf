@@ -196,10 +196,14 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
                 type="radio"
               />
               <span className="flex min-w-0 flex-1 flex-col">
-                <bdi className="truncate font-medium">{candidate.name}</bdi>
-                <bdi className="truncate text-muted-foreground text-xs" dir="ltr">
-                  {candidate.slug}
-                </bdi>
+                {/* The block keeps the page direction (start-aligned in Arabic); the inline
+                    <bdi> only isolates the Latin name or address inside it. */}
+                <span className="truncate text-start font-medium">
+                  <bdi>{candidate.name}</bdi>
+                </span>
+                <span className="truncate text-start text-muted-foreground text-xs">
+                  <bdi dir="ltr">{candidate.slug}</bdi>
+                </span>
               </span>
             </label>
           ));
@@ -207,7 +211,7 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
           // its legend; the websites under it keep one radio group (same name).
           return grouped ? (
             <fieldset className="flex flex-col gap-2" data-slot="organization-group" key={group.id}>
-              <legend className="mt-1 mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+              <legend className="mt-1 mb-2 w-full text-start font-medium text-muted-foreground text-xs uppercase tracking-wide">
                 <bdi>{group.name}</bdi>
               </legend>
               {rows}
