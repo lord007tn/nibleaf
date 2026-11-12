@@ -4813,5 +4813,9 @@
   "publishes_truncated": "Se muestran las primeras {shown} de {total} páginas modificadas.",
   "overview_activity_viewall": "Ver todo",
   "publishes_toolarge": "Esta versión es demasiado grande para compararla aquí.",
-  "publishes_nosnapshot": "La copia publicada de esta versión ya no está guardada, así que no se puede comparar ni restaurar."
+  "publishes_nosnapshot": "La copia publicada de esta versión ya no está guardada, así que no se puede comparar ni restaurar.",
+  "overview_nudge_progress": "{count} de 3 completados",
+  "overview_live_willbeliveat": "El sitio estará disponible en {url}",
+  "overview_live_availableafterpublish": "Esta dirección se podrá abrir después de la primera publicación.",
+  "overview_nudge_connecting": "Conectando: completa la configuración del dominio."
 }

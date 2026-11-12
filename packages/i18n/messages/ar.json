@@ -4867,5 +4867,20 @@
   "publishes_truncated": "تُعرض أول {shown} من أصل {total} صفحة تغيّرت.",
   "overview_activity_viewall": "عرض الكل",
   "publishes_toolarge": "هذه النسخة أكبر من أن تُقارَن هنا.",
-  "publishes_nosnapshot": "لم تعد هذه النسخة المنشورة محفوظة، لذا لا يمكن مقارنتها ولا استعادتها."
+  "publishes_nosnapshot": "لم تعد هذه النسخة المنشورة محفوظة، لذا لا يمكن مقارنتها ولا استعادتها.",
+  "overview_nudge_progress": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "اكتمل {count} من أصل 3",
+        "form=one": "اكتملت خطوة واحدة من أصل 3",
+        "form=two": "اكتملت خطوتان من أصل 3",
+        "form=*": "اكتمل {count} من أصل 3"
+      }
+    }
+  ],
+  "overview_live_willbeliveat": "سيكون الموقع متاحًا على {url}",
+  "overview_live_availableafterpublish": "يمكن فتح هذا العنوان بعد نشر الموقع لأول مرة.",
+  "overview_nudge_connecting": "جارٍ الاتصال — أكمل إعداد النطاق."
 }

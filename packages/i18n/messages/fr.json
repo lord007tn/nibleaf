@@ -4813,5 +4813,9 @@
   "publishes_truncated": "Affichage des {shown} premières pages modifiées sur {total}.",
   "overview_activity_viewall": "Tout afficher",
   "publishes_toolarge": "Cette version est trop volumineuse pour être comparée ici.",
-  "publishes_nosnapshot": "La copie publiée de cette version n’est plus conservée : elle ne peut donc être ni comparée ni restaurée."
+  "publishes_nosnapshot": "La copie publiée de cette version n’est plus conservée : elle ne peut donc être ni comparée ni restaurée.",
+  "overview_nudge_progress": "Étapes terminées : {count}/3",
+  "overview_live_willbeliveat": "Le site sera disponible à l’adresse {url}",
+  "overview_live_availableafterpublish": "Cette adresse sera accessible après la première publication.",
+  "overview_nudge_connecting": "Connexion en cours — terminez la configuration du domaine."
 }
