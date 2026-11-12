@@ -7,6 +7,7 @@ import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } 
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import { rehypeImageLoading } from '@/components/site/image-loading';
 import { Callout } from '@/components/site/mdx/callout';
 import { type DocumentationComponents, str } from '@/components/site/mdx/props';
 import {
@@ -237,6 +238,9 @@ export function MarkdownRenderer({
         rehypePlugins={[
           ...extraRehypePlugins,
           rehypeAuthoredComponentProps,
+          // Before the sanitizer: it reads authored sizes and light/dark classes
+          // to pick the image that loads at once; the rest load as the reader scrolls.
+          rehypeImageLoading,
           [rehypeSanitize, sanitizeSchema],
           ...afterSanitizePlugins,
           rehypeMermaid,

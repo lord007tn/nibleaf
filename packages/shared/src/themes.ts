@@ -374,12 +374,17 @@ const mixHex = (first: string, second: string, weight: number): string => {
  * already passes so preset palettes stay exactly as authored. */
 export const readableOnBackground = (color: string, background: string, required = 4.5): string => {
   if (contrastRatio(color, background) >= required) return color;
+  // Towards white on dark backgrounds and black on light ones first; on a mid
+  // tone that side may never get there while the other does (#303030 on #999999).
   const target = relativeLuminance(background) < 0.35 ? '#ffffff' : '#000000';
-  for (const weight of [0.18, 0.3, 0.42, 0.56, 0.7, 0.85]) {
-    const mixed = mixHex(color, target, weight);
-    if (contrastRatio(mixed, background) >= required) return mixed;
+  const alternate = target === '#ffffff' ? '#000000' : '#ffffff';
+  for (const endpoint of [target, alternate]) {
+    for (const weight of [0.18, 0.3, 0.42, 0.56, 0.7, 0.85]) {
+      const mixed = mixHex(color, endpoint, weight);
+      if (contrastRatio(mixed, background) >= required) return mixed;
+    }
   }
-  return target;
+  return contrastRatio('#ffffff', background) >= contrastRatio('#000000', background) ? '#ffffff' : '#000000';
 };
 
 const readableAccent = (accent: string, canvas: string): string => readableOnBackground(accent, canvas, 3);
