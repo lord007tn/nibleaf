@@ -55,7 +55,8 @@ export const siteAiCapabilitiesSchema = z
     managed: z
       .object({
         available: z.boolean(),
-        reason: z.enum(['noServerKey', 'answersDisabledOnServer']).nullable(),
+        /** `noDailyAnswers`: the server's daily answer limit is 0. */
+        reason: z.enum(['noServerKey', 'answersDisabledOnServer', 'noDailyAnswers']).nullable(),
         model: aiModelRefSchema.nullable(),
         dailyAnswerLimit: z.number().int().nonnegative(),
       })
@@ -107,7 +108,8 @@ export const siteAiStatusSchema = z
             .nullable(),
           /** Last four characters, for site Admins only. */
           keyHint: z.string().max(4).nullable(),
-          addedAt: z.iso.datetime(),
+          /** When the current key was added; null when that is not known (keys saved before it was recorded). */
+          addedAt: z.iso.datetime().nullable(),
           model: aiModelRefSchema.nullable(),
         })
         .strict(),
@@ -124,8 +126,13 @@ export const siteAiStatusSchema = z
       .strict(),
     usage: z
       .object({
-        /** Null when the counter can't be read right now. */
+        /** Completed answers, for display. Null when the counter can't be read right now. */
         answersToday: z.number().int().nonnegative().nullable(),
+        /**
+         * Requests the daily quota counted (failed generations included). Readers are
+         * refused once it reaches `limit`, so the limit state comes from this.
+         */
+        spent: z.number().int().nonnegative().nullable(),
         limit: z.number().int().nonnegative(),
         resetsAt: z.iso.datetime(),
       })

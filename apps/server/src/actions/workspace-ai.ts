@@ -19,7 +19,7 @@ import { z } from 'zod';
 import { env } from '@/env';
 import { AppError, conflict, forbidden } from '@/errors';
 import { readAnswerQuota } from '@/lib/ai-search/quota';
-import { configuredIndexServing, findCurrentIndexRun } from '@/lib/ai-search/readiness';
+import { findCurrentIndexRun, type ServedIndexState, servedIndexState } from '@/lib/ai-search/readiness';
 import type { HonoEnv } from '@/lib/hono/context';
 import { managedAiServes, siteAiSelection, storedAiKeyFailure, storedAiKeyState } from './ai-source';
 import { decryptIntegrationSecret, encryptIntegrationSecret } from './integrations/crypto';
@@ -136,13 +136,19 @@ const savedAnswerModel = (config: unknown) => {
 };
 
 /** What this server can offer a site, from runtime configuration only (no Cloud or self-hosted branch). */
-const siteAiCapabilities = (indexServing: boolean): SiteAiCapabilities => {
+const siteAiCapabilities = (served: ServedIndexState | null): SiteAiCapabilities => {
   const credentialStorage = Boolean(env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY);
   const openAiEmbeddings = env.SEARCH_EMBEDDING_MODEL.startsWith('openai/');
   return {
     managed: {
       available: managedAiServes(),
-      reason: !env.OPENROUTER_API_KEY ? 'noServerKey' : env.SEARCH_ANSWER_ENABLED ? null : 'answersDisabledOnServer',
+      reason: !env.OPENROUTER_API_KEY
+        ? 'noServerKey'
+        : !env.SEARCH_ANSWER_ENABLED
+          ? 'answersDisabledOnServer'
+          : env.SEARCH_ANSWER_DAILY_PER_PROJECT > 0
+            ? null
+            : 'noDailyAnswers',
       model: env.OPENROUTER_API_KEY ? { id: env.SEARCH_ANSWER_MODEL, label: aiModelLabel(env.SEARCH_ANSWER_MODEL) } : null,
       dailyAnswerLimit: env.SEARCH_ANSWER_DAILY_PER_PROJECT,
     },
@@ -155,12 +161,17 @@ const siteAiCapabilities = (indexServing: boolean): SiteAiCapabilities => {
       },
       { id: 'openrouter', available: credentialStorage, reason: credentialStorage ? null : 'credentialStorageMissing' },
     ],
-    // The reader's own check: search exists and serves the collection built for the current embedding settings.
-    answers: !getQdrantClient()
-      ? { available: false, reason: 'searchNotConfigured' }
-      : indexServing
-        ? { available: true, reason: null }
-        : { available: false, reason: 'searchIndexSwitching' },
+    // Whether this server supports AI answers, not whether the index serves them right now:
+    // a new server with no index yet (`empty`) can still prepare its first one, and a
+    // reading that failed just now isn't a reason to block settings. The reader itself
+    // stays fail-closed (`configuredIndexServing`). Only search that is missing, or that
+    // serves a collection built for other settings, makes answers unavailable.
+    answers:
+      served === null
+        ? { available: false, reason: 'searchNotConfigured' }
+        : served === 'other'
+          ? { available: false, reason: 'searchIndexSwitching' }
+          : { available: true, reason: null },
   };
 };
 
@@ -213,7 +224,7 @@ const siteAiStatus = (
       state: storedAiKeyState(connection, id),
       failure: failure ? { reason: failure, checkedAt: connection.lastVerifiedAt?.toISOString() ?? null } : null,
       keyHint: canManage ? (connection.credentialHint ?? null) : null,
-      addedAt: (connection.credentialAddedAt ?? connection.createdAt).toISOString(),
+      addedAt: connection.credentialAddedAt?.toISOString() ?? null,
       model: answerModel ? { id: answerModel, label: aiModelLabel(answerModel) } : null,
     };
   });
@@ -240,7 +251,7 @@ export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) =
     }),
   ]);
   // The same run and served-collection checks the reader uses before it answers.
-  const [run, indexServing, usage] = await Promise.all([
+  const [run, served, usage] = await Promise.all([
     deployment
       ? findCurrentIndexRun(projectId, deployment.id, {
           status: true,
@@ -252,12 +263,12 @@ export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) =
           completedAt: true,
         })
       : null,
-    configuredIndexServing(),
+    servedIndexState(),
     readAnswerQuota(projectId),
   ]);
   const selection = selectionSchema.safeParse(project.config);
   return workspaceAiOverviewSchema.parse({
-    capabilities: siteAiCapabilities(indexServing),
+    capabilities: siteAiCapabilities(served),
     viewer: { canManage },
     status: siteAiStatus(project.config, projectId, connections, deployment, run, usage, canManage),
     selectedProvider: selection.success ? (selection.data.search?.aiProvider ?? 'instance') : 'instance',

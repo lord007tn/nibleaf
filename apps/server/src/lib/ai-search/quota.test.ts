@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ connect: vi.fn(), eval: vi.fn(), get: vi.fn(), disconnect: vi.fn(), clients: vi.fn() }));
+const mocks = vi.hoisted(() => ({ connect: vi.fn(), eval: vi.fn(), mget: vi.fn(), disconnect: vi.fn(), clients: vi.fn() }));
 vi.mock('@/env', () => ({ env: { REDIS_HOST: 'localhost', REDIS_PORT: 6379, REDIS_DB: 3, SEARCH_ANSWER_DAILY_PER_PROJECT: 2 } }));
 vi.mock('ioredis', () => ({
   Redis: class {
@@ -11,7 +11,7 @@ vi.mock('ioredis', () => ({
     on = vi.fn();
     disconnect = mocks.disconnect;
     eval = mocks.eval;
-    get = mocks.get;
+    mget = mocks.mget;
     async connect() {
       await mocks.connect();
       this.status = 'ready';
@@ -70,19 +70,29 @@ describe("reading today's answers", () => {
     mocks.connect.mockResolvedValue(undefined);
   });
 
-  it('reads the UTC-day count of completed answers without spending one', async () => {
-    mocks.get.mockResolvedValue('1');
+  it('reads completed answers and the spent quota for the UTC day, in one read, without spending one', async () => {
+    mocks.mget.mockResolvedValue(['1', '2']);
     const { readAnswerQuota } = await import('./quota');
-    await expect(readAnswerQuota('project-a', now)).resolves.toEqual({ answersToday: 1, limit: 2, resetsAt: '2026-11-12T00:00:00.000Z' });
-    // The completed-answers counter, not the spend counter, which also counts failed generations.
-    expect(mocks.get).toHaveBeenCalledWith('{search-answer-served}:project-a:2026-11-11');
+    await expect(readAnswerQuota('project-a', now)).resolves.toEqual({
+      answersToday: 1,
+      spent: 2,
+      limit: 2,
+      resetsAt: '2026-11-12T00:00:00.000Z',
+    });
+    expect(mocks.mget).toHaveBeenCalledWith('{search-answer-served}:project-a:2026-11-11', '{search-answer-quota}:project-a:2026-11-11');
     expect(mocks.eval).not.toHaveBeenCalled();
   });
 
   it('counts a day with no answers as zero', async () => {
     const { readAnswerQuota } = await import('./quota');
-    mocks.get.mockResolvedValueOnce(null);
-    expect((await readAnswerQuota('project-a', now)).answersToday).toBe(0);
+    mocks.mget.mockResolvedValueOnce([null, null]);
+    expect(await readAnswerQuota('project-a', now)).toMatchObject({ answersToday: 0, spent: 0 });
+  });
+
+  it('reports failed generations that exhausted the quota as spent, not as answers', async () => {
+    const { readAnswerQuota } = await import('./quota');
+    mocks.mget.mockResolvedValueOnce([null, '2']);
+    expect(await readAnswerQuota('project-a', now)).toMatchObject({ answersToday: 0, spent: 2, limit: 2 });
   });
 
   it('counts an answer only once it completed: a failed generation spends quota but is not counted', async () => {
@@ -104,6 +114,6 @@ describe("reading today's answers", () => {
   it('reports an unknown count instead of failing when the counter cannot be read', async () => {
     mocks.connect.mockRejectedValue(new Error('down'));
     const { readAnswerQuota } = await import('./quota');
-    await expect(readAnswerQuota('project-a', now)).resolves.toMatchObject({ answersToday: null, limit: 2 });
+    await expect(readAnswerQuota('project-a', now)).resolves.toMatchObject({ answersToday: null, spent: null, limit: 2 });
   });
 });

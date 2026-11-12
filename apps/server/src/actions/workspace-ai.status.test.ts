@@ -12,15 +12,15 @@ const state = vi.hoisted(() => ({
   env: {} as Record<string, unknown>,
   config: null as unknown,
   qdrant: true,
-  usage: { answersToday: 37 as number | null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
+  usage: { answersToday: 37 as number | null, spent: 40 as number | null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
   connections: [] as Record<string, unknown>[],
   deployment: null as Record<string, unknown> | null,
   /** The current deployment's run, built for the current settings unless it says otherwise. */
   run: null as Record<string, unknown> | null,
   /** More runs, e.g. one built for another embedding model. */
   otherRuns: [] as Record<string, unknown>[],
-  /** The search alias serves the collection for the current embedding settings. */
-  indexServing: true,
+  /** What the search alias serves (see readiness.ts `servedIndexState`); null when there is no search. */
+  served: 'serving' as 'serving' | 'empty' | 'other' | 'unreadable' | null,
   role: 'admin',
   created: [] as Record<string, unknown>[],
   updated: [] as Record<string, unknown>[],
@@ -63,14 +63,18 @@ vi.mock('@/env', () => ({
   },
 }));
 vi.mock('@nibleaf/search/keys', () => ({
-  keys: () => ({ SEARCH_ANSWER_ENABLED: state.env.SEARCH_ANSWER_ENABLED, SEARCH_EMBEDDING_MODEL: state.env.SEARCH_EMBEDDING_MODEL }),
+  keys: () => ({
+    SEARCH_ANSWER_ENABLED: state.env.SEARCH_ANSWER_ENABLED,
+    SEARCH_EMBEDDING_MODEL: state.env.SEARCH_EMBEDDING_MODEL,
+    SEARCH_ANSWER_DAILY_PER_PROJECT: state.env.SEARCH_ANSWER_DAILY_PER_PROJECT,
+  }),
 }));
 vi.mock('@nibleaf/qdrant', () => ({ getQdrantClient: () => (state.qdrant ? {} : null) }));
 vi.mock('@/lib/ai-search/quota', () => ({ readAnswerQuota: vi.fn(async () => state.usage) }));
 // The real matching-run predicate; only the cached alias reading is stubbed.
 vi.mock('@/lib/ai-search/readiness', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/ai-search/readiness')>()),
-  configuredIndexServing: async () => state.indexServing,
+  servedIndexState: async () => state.served,
 }));
 vi.mock('@nibleaf/database', () => ({
   Prisma: { PrismaClientKnownRequestError: class extends Error {} },
@@ -134,6 +138,7 @@ const storedKey = (providerId: 'openai' | 'openrouter', overrides: Record<string
   config: { answerModel: 'gpt-6-luna', embeddingModel: 'openai/text-embedding-3-large' },
   credentialEncrypted: encryptIntegrationSecret(JSON.stringify({ kind: 'workspace-ai', projectId: 'site', providerId, apiKey: fakeKey('4f2a') })),
   credentialHint: '4f2a',
+  credentialAddedAt: created,
   revision: 1,
   createdById: 'admin-user',
   createdAt: created,
@@ -145,12 +150,12 @@ beforeEach(() => {
   state.env = { ...baseEnv };
   state.config = null;
   state.qdrant = true;
-  state.usage = { answersToday: 37, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' };
+  state.usage = { answersToday: 37, spent: 40, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' };
   state.connections = [];
   state.deployment = { id: 'deployment-12', version: 12, completedAt: new Date('2026-11-11T08:00:00.000Z') };
   state.run = { status: 'READY', errorCode: null, indexedPages: 128, indexedChunks: 900, completedAt: new Date('2026-11-11T08:05:00.000Z') };
   state.otherRuns = [];
-  state.indexServing = true;
+  state.served = 'serving';
   state.role = 'admin';
   state.created = [];
   state.updated = [];
@@ -211,6 +216,7 @@ describe('capabilities', () => {
 
   it('says when the search answers need is missing', async () => {
     state.qdrant = false;
+    state.served = null;
     const { capabilities } = await getWorkspaceAi(ctx, 'site');
     expect(capabilities.answers).toEqual({ available: false, reason: 'searchNotConfigured' });
   });
@@ -226,7 +232,7 @@ describe('status', () => {
       connections: [],
       published: { version: 12, at: '2026-11-11T08:00:00.000Z' },
       preparation: { state: 'ready', pages: 128, expectedPages: 128, at: '2026-11-11T08:05:00.000Z' },
-      usage: { answersToday: 37, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
+      usage: { answersToday: 37, spent: 40, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
     });
   });
 
@@ -297,7 +303,7 @@ describe('status', () => {
   });
 
   it('passes an unreadable answer counter through as unknown', async () => {
-    state.usage = { answersToday: null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' };
+    state.usage = { answersToday: null, spent: null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' };
     const { status } = await getWorkspaceAi(ctx, 'site');
     expect(status.usage.answersToday).toBeNull();
   });
@@ -422,7 +428,7 @@ describe("the reader's readiness", () => {
   });
 
   it('reports answers unavailable while search serves a collection built for other settings', async () => {
-    state.indexServing = false;
+    state.served = 'other';
     const { capabilities } = await getWorkspaceAi(ctx, 'site');
     expect(capabilities.answers).toEqual({ available: false, reason: 'searchIndexSwitching' });
   });
@@ -531,5 +537,38 @@ describe('who may read and who may change', () => {
       get: (key: string) => (key === 'apiKey' ? { id: 'key' } : key === 'user' ? { id: 'admin-user' } : undefined),
     } as unknown as Context<HonoEnv>;
     await expect(getWorkspaceAi(apiKeyCtx, 'site')).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+  });
+});
+
+describe('CodeRabbit review on #513', () => {
+  it.each([
+    { served: 'empty', name: 'a new server before its first index job' },
+    { served: 'unreadable', name: 'a search alias that could not be read just now' },
+  ] as const)('lets settings prepare answers on $name (the reader stays fail-closed)', async ({ served }) => {
+    state.served = served;
+    state.run = null;
+    const overview = await getWorkspaceAi(ctx, 'site');
+    expect(overview.capabilities.answers).toEqual({ available: true, reason: null });
+    expect(overview.status.preparation.state).toBe('none');
+  });
+
+  it('decides the limit from the spent quota: failed generations can exhaust it with few answers completed', async () => {
+    state.usage = { answersToday: 0, spent: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' };
+    const { status } = await getWorkspaceAi(ctx, 'site');
+    expect(status.usage).toEqual({ answersToday: 0, spent: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' });
+  });
+
+  it('reports Nibleaf AI unavailable when the daily answer limit is 0', async () => {
+    state.env.SEARCH_ANSWER_DAILY_PER_PROJECT = 0;
+    state.config = { search: { aiAnswers: true } };
+    const overview = await getWorkspaceAi(ctx, 'site');
+    expect(overview.capabilities.managed).toMatchObject({ available: false, reason: 'noDailyAnswers', dailyAnswerLimit: 0 });
+    expect(overview.status.sourceReady).toBe(false);
+  });
+
+  it('leaves the added date unknown for a key saved before it was recorded', async () => {
+    state.connections = [storedKey('openai', { credentialAddedAt: null })];
+    const { status } = await getWorkspaceAi(ctx, 'site');
+    expect(status.connections[0]?.addedAt).toBeNull();
   });
 });

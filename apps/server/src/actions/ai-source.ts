@@ -29,8 +29,9 @@ export const siteAiSelection = (projectConfig: unknown) => {
   return { source: search?.aiProvider ?? 'instance', answersOn: search?.aiAnswers === true };
 };
 
-/** The server's own provider can answer: it holds a key and allows answers. */
-export const managedAiServes = () => Boolean(env.OPENROUTER_API_KEY) && searchKeys().SEARCH_ANSWER_ENABLED;
+/** The server's own provider can answer: it holds a key, allows answers, and allows at least one a day. */
+export const managedAiServes = () =>
+  Boolean(env.OPENROUTER_API_KEY) && searchKeys().SEARCH_ANSWER_ENABLED && searchKeys().SEARCH_ANSWER_DAILY_PER_PROJECT > 0;
 
 /** Whether the reader could decrypt this stored key for this site and provider (never returns the key). */
 const storedAiKeyReadable = (stored: Pick<StoredAiKey, 'projectId' | 'credentialEncrypted'>, providerId: AiKeyProvider) => {

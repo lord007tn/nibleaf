@@ -16,7 +16,16 @@ const qdrant = getQdrantClient();
 const INDEX_CHECK_MS = 30_000;
 /** A failed reading is retried sooner, so a brief Qdrant outage pauses AI answers only briefly. */
 const INDEX_RETRY_MS = 5000;
-let indexCheck: { at: number; ttl: number; serving: Promise<boolean> } | undefined;
+/**
+ * What the read alias serves, compared with this server's configuration:
+ * - `serving`: the collection built for the current embedding settings;
+ * - `empty`: nothing yet (a new server before its first index job);
+ * - `other`: a collection built for other settings (an embedding change in progress);
+ * - `unreadable`: the alias could not be read just now.
+ */
+export type ServedIndexState = 'serving' | 'empty' | 'other' | 'unreadable';
+
+let indexCheck: { at: number; ttl: number; state: Promise<ServedIndexState> } | undefined;
 let lastServed: string | null | undefined;
 
 /** Whether the read alias serves the collection this instance is configured
@@ -24,14 +33,22 @@ let lastServed: string | null | undefined;
  * change the new collection is filled while the alias still serves the old
  * one; querying it with the new vectors would fail. Until the operator
  * reindexes and switches the alias, search keeps its keyword results and AI
- * answers pause instead. A failed reading also counts as not serving. */
-export const configuredIndexServing = async (): Promise<boolean> => {
+ * answers pause instead. A failed reading also counts as not serving: the
+ * reader is fail-closed. */
+export const configuredIndexServing = async (): Promise<boolean> => (await servedIndexState()) === 'serving';
+
+/**
+ * The cached reading behind `configuredIndexServing`, for settings: they let a
+ * new server (`empty`) prepare its first index, while the reader still waits
+ * for `serving`. Null when this server has no search at all.
+ */
+export const servedIndexState = async (): Promise<ServedIndexState | null> => {
   const client = qdrant;
-  if (!client) return false;
+  if (!client) return null;
   const now = Date.now();
   if (!indexCheck || now - indexCheck.at >= indexCheck.ttl) {
-    const check: NonNullable<typeof indexCheck> = { at: now, ttl: INDEX_CHECK_MS, serving: Promise.resolve(false) };
-    check.serving = client.servedCollection().then(
+    const check: NonNullable<typeof indexCheck> = { at: now, ttl: INDEX_CHECK_MS, state: Promise.resolve('unreadable') };
+    check.state = client.servedCollection().then(
       (served) => {
         if (served !== lastServed) {
           lastServed = served;
@@ -44,7 +61,7 @@ export const configuredIndexServing = async (): Promise<boolean> => {
               'Hybrid search and AI answers are paused: the search alias serves a collection built for other embedding settings. Reindex every site, then switch the alias to the configured collection (docs: self-hosting/search-ai, "Change the embedding model").',
             );
         }
-        return served === client.collection;
+        return served === client.collection ? 'serving' : served === null ? 'empty' : 'other';
       },
       (error: unknown) => {
         // Fail closed (keyword results, no AI answers), and read again soon.
@@ -53,12 +70,12 @@ export const configuredIndexServing = async (): Promise<boolean> => {
           { alias: client.alias, configured: client.collection, error: error instanceof Error ? error.message : 'unknown error' },
           'Could not read the search alias; hybrid search and AI answers are paused until the next check',
         );
-        return false;
+        return 'unreadable';
       },
     );
     indexCheck = check;
   }
-  return indexCheck.serving;
+  return indexCheck.state;
 };
 
 /**

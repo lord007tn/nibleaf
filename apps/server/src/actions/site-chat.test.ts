@@ -326,7 +326,8 @@ describe('reader AI chat stream', () => {
     expect(mocks.retrieve.mock.calls[0]?.[4]).toMatchObject({ page: { id: 'page-1', title: 'Install' } });
     await settle();
     // A completed answer counts toward today's answers shown on the AI answers page.
-    expect(mocks.served).toHaveBeenCalledWith('project-1');
+    // Counted at the time its final event went out, so a turn finishing near midnight UTC counts on that day.
+    expect(mocks.served).toHaveBeenCalledWith('project-1', expect.any(Date));
     // The turn reserved the most it can read and write before it ran, measured
     // from the prompts it sends (the reader's page included), then settles to what
     // the answer and suggestion calls spent. One short source fits the least
@@ -826,9 +827,40 @@ describe('reader AI chat stream', () => {
     for (let i = 0; i < 5; i++) await settle();
     const turn = mocks.recordTurn.mock.calls.at(-1)?.[0];
     expect(turn).toMatchObject({ status: 'answered', utilityInputTokens: 37, utilityOutputTokens: 11, utilityCostUsd: 0.000_123 });
+    // The reader got the checked answer before leaving: it counts.
+    expect(mocks.served).toHaveBeenCalledWith('project-1', expect.any(Date));
     expect(turn).not.toHaveProperty('usageEstimated');
     expect(turn).not.toHaveProperty('utilityUsageEstimated');
     mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
+  });
+
+  it('does not count an answered turn whose reader left before the final event', async () => {
+    const leave = new AbortController();
+    mocks.request.current = new Request('http://localhost/api/public/sites/p/chat', { method: 'POST', signal: leave.signal });
+    // The checked result is in (the turn is "answered"), but the reader leaves
+    // when the text ends, before the final event that carries it.
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        yield 'Run the installer. [S1]';
+      })(),
+      result: Promise.resolve({
+        status: 'answered',
+        answer: 'Run the installer. [S1]',
+        citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
+        droppedParagraphs: 0,
+        usage: { inputTokens: 900, outputTokens: 120 },
+        model: 'openai/test-answer-model',
+      }),
+    });
+    const reader = (await chatSite('project-1', body())).body?.getReader();
+    if (!reader) throw new Error('expected a stream');
+    const seen = await readUntil(reader, (text) => text.includes('TEXT_MESSAGE_END'));
+    leave.abort();
+    await reader.cancel().catch(() => undefined);
+    for (let i = 0; i < 5; i++) await settle();
+    expect(seen).not.toContain(AI_CHAT_EVENT.final);
+    expect(mocks.recordTurn.mock.calls.at(-1)?.[0]).toMatchObject({ status: 'answered' });
+    expect(mocks.served).not.toHaveBeenCalled();
   });
 
   it.each(['failed', 'cancelled'] as const)('starts no suggestions for an answer that is %s', async (status) => {

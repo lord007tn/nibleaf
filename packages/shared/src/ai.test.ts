@@ -20,3 +20,10 @@ describe('aiModelLabel', () => {
     expect(aiModelLabel('provider/')).toBe('provider/');
   });
 });
+
+describe('aiModelLabel and object keys', () => {
+  it.each(['constructor', 'toString', '__proto__', 'hasOwnProperty'])('never reads a label off the prototype for %s', (id) => {
+    expect(aiModelLabel(id)).toBe(id);
+    expect(aiModelLabel(`provider/${id}`)).toBe(id);
+  });
+});

@@ -33,5 +33,6 @@ const AI_MODEL_LABELS: Readonly<Record<string, string>> = {
  */
 export const aiModelLabel = (id: string): string => {
   const bare = id.includes('/') ? id.slice(id.lastIndexOf('/') + 1) : id;
-  return AI_MODEL_LABELS[bare] ?? (bare || id);
+  // Own keys only: an id like "constructor" must not read a label off the prototype.
+  return (Object.hasOwn(AI_MODEL_LABELS, bare) ? AI_MODEL_LABELS[bare] : undefined) ?? (bare || id);
 };

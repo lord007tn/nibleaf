@@ -31,7 +31,7 @@ function siteAi(overrides: { capabilities?: Partial<SiteAi['capabilities']>; sta
       connections: [],
       published: { version: 12, at: '2026-11-11T08:00:00.000Z' },
       preparation: { state: 'ready', pages: 128, expectedPages: 128, at: '2026-11-11T08:05:00.000Z' },
-      usage: { answersToday: 37, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
+      usage: { answersToday: 37, spent: 37, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
       ...overrides.status,
     },
     viewer: { canManage: true },
@@ -142,17 +142,17 @@ describe('aiPageState', () => {
     },
     {
       name: 'daily limit reached',
-      ai: siteAi({ status: { ...on, usage: { answersToday: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
+      ai: siteAi({ status: { ...on, usage: { answersToday: 200, spent: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
       state: { kind: 'notWorking', problem: 'limitReached' },
     },
     {
       name: 'a limit of zero',
-      ai: siteAi({ status: { ...on, usage: { answersToday: 0, limit: 0, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
+      ai: siteAi({ status: { ...on, usage: { answersToday: 0, spent: 0, limit: 0, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
       state: { kind: 'notWorking', problem: 'limitReached' },
     },
     {
       name: 'an unknown count is not a reached limit',
-      ai: siteAi({ status: { ...on, usage: { answersToday: null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
+      ai: siteAi({ status: { ...on, usage: { answersToday: null, spent: null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
       state: { kind: 'on' },
     },
     {
@@ -296,12 +296,12 @@ describe('checklist', () => {
     { name: 'Nibleaf AI gone', ai: siteAi({ capabilities: noManaged, status: on }), expected: { source: 'problem' } },
     {
       name: 'daily limit reached',
-      ai: siteAi({ status: { ...on, usage: { answersToday: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
+      ai: siteAi({ status: { ...on, usage: { answersToday: 200, spent: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
       expected: { usage: 'problem:seeUsage' },
     },
     {
       name: 'counter unknown',
-      ai: siteAi({ status: { usage: { answersToday: null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
+      ai: siteAi({ status: { usage: { answersToday: null, spent: null, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
       expected: { usage: 'idle' },
     },
   ] as const)('$name', ({ ai, expected }) => {
@@ -343,5 +343,53 @@ describe('aiAccess', () => {
     const ai = { ...siteAi(), viewer: { canManage: false } };
     expect(switchDecision(ai, aiAccess(ai)).decision).toEqual({ kind: 'locked' });
     expect(sourceOptions(ai, aiAccess(ai)).every(({ decision }) => decision.kind === 'locked')).toBe(true);
+  });
+});
+
+describe('CodeRabbit review on #513', () => {
+  const quota = (answersToday: number | null, spent: number | null, limit = 200) => ({
+    answersToday,
+    spent,
+    limit,
+    resetsAt: '2026-11-12T00:00:00.000Z',
+  });
+
+  it('reports the limit reached when failed generations used the quota, even with few answers completed', () => {
+    const ai = siteAi({ status: { ...on, usage: quota(3, 200) } });
+    expect(aiPageState(ai)).toEqual({ kind: 'notWorking', problem: 'limitReached' });
+    expect(checklist(ai).find(({ id }) => id === 'usage')).toEqual({ id: 'usage', tone: 'problem', fix: 'seeUsage' });
+  });
+
+  it('does not report the limit from completed answers alone', () => {
+    const ai = siteAi({ status: { ...on, usage: quota(200, 120) } });
+    expect(aiPageState(ai)).toEqual({ kind: 'on' });
+  });
+
+  it('treats an unreadable spend count as not reached', () => {
+    expect(aiPageState(siteAi({ status: { ...on, usage: quota(null, null) } }))).toEqual({ kind: 'on' });
+  });
+
+  it.each(['needsRecheck', 'ok', 'rejected'] as const)(
+    'sends the owner to another source when the selected provider is no longer offered (its key is %s)',
+    (state) => {
+      const ai = siteAi({
+        capabilities: {
+          providers: [
+            { id: 'openai', available: false, reason: 'embeddingModelRequiresOpenRouter' },
+            { id: 'openrouter', available: true, reason: null },
+          ],
+        },
+        status: { ...on, source: 'openai', connections: [key('openai', state)] },
+      });
+      expect(aiPageState(ai)).toEqual({ kind: 'notWorking', problem: 'sourceNotOffered' });
+      expect(checklist(ai).find(({ id }) => id === 'source')).toEqual({ id: 'source', tone: 'problem', fix: 'chooseSource' });
+      // It is no longer listed, and the others still are.
+      expect(sourceOptions(ai, 'admin').map(({ id }) => id)).toEqual(['managed', 'openrouter']);
+    },
+  );
+
+  it('still offers "Check key" for a re-checkable key whose provider is offered', () => {
+    const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'needsRecheck')] } });
+    expect(checklist(ai).find(({ id }) => id === 'source')).toEqual({ id: 'source', tone: 'problem', fix: 'checkKey' });
   });
 });

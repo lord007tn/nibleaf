@@ -29,6 +29,8 @@ export type Decision = { kind: 'allowed' } | { kind: 'locked' } | { kind: 'denie
 type AiProblem =
   | 'keyMissing'
   | 'keyRejected'
+  /** The selected own-key provider isn't offered by this server any more (e.g. after an embedding change). */
+  | 'sourceNotOffered'
   | 'keyUnreachable'
   | 'modelWithdrawn'
   | 'keyNeedsRecheck'
@@ -63,14 +65,20 @@ export function offeredSources(ai: SiteAi): AiSource[] {
   return sources;
 }
 
-/** Whether answers have reached today's limit (a limit of 0 means none are allowed). */
-const limitReached = ({ status: { usage } }: SiteAi) => usage.limit === 0 || (usage.answersToday !== null && usage.answersToday >= usage.limit);
+/**
+ * Whether readers are refused today: decided by the quota the server spends
+ * (failed generations included), not by completed answers. A limit of 0 means
+ * none are allowed.
+ */
+const limitReached = ({ status: { usage } }: SiteAi) => usage.limit === 0 || (usage.spent !== null && usage.spent >= usage.limit);
 
 /** What stops the selected source from answering, if anything. */
 function sourceProblem(ai: SiteAi): AiProblem | null {
   const { source } = ai.status;
   if (source === 'managed') return ai.capabilities.managed.available ? null : 'managedUnavailable';
   if (source === null) return null;
+  // Whatever state its key is in, a provider the server no longer offers can't be checked again: choose another source.
+  if (!providerAvailable(ai, source)) return 'sourceNotOffered';
   const connection = connectionOf(ai, source);
   if (!connection) return 'keyMissing';
   if (connection.state === 'rejected') return 'keyRejected';
@@ -140,12 +148,13 @@ export function switchDecision(ai: SiteAi, access: SiteAdminState): { decision: 
 
 /** `warning`: answers work, but something needs a look (some pages couldn't be prepared). */
 type ChecklistTone = 'ok' | 'working' | 'warning' | 'problem' | 'idle';
-type ChecklistFix = 'publish' | 'prepare' | 'replaceKey' | 'checkKey' | 'checkAgain' | 'changeModel' | 'addKey' | 'seeUsage';
+type ChecklistFix = 'publish' | 'prepare' | 'replaceKey' | 'checkKey' | 'checkAgain' | 'changeModel' | 'chooseSource' | 'addKey' | 'seeUsage';
 export type ChecklistRow = { id: 'published' | 'prepared' | 'source' | 'usage'; tone: ChecklistTone; fix: ChecklistFix | null };
 
 const SOURCE_FIX: Partial<Record<AiProblem, ChecklistFix>> = {
   keyMissing: 'addKey',
   keyRejected: 'replaceKey',
+  sourceNotOffered: 'chooseSource',
   keyUnreachable: 'checkAgain',
   modelWithdrawn: 'changeModel',
   keyUnreadable: 'replaceKey',

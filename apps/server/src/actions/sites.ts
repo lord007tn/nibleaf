@@ -876,7 +876,8 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
   });
-  await recordAnswerServed(snapshot.project.id);
+  // A reader who left (a cached answer returns without checking) got nothing: don't count it.
+  if (!getContext<HonoEnv>().req.raw.signal.aborted) await recordAnswerServed(snapshot.project.id);
   return { ...answer, quotaRemaining: quota.remaining };
 };
 
