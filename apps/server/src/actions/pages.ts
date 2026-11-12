@@ -240,8 +240,15 @@ export const assertPageContentFits = (content: string | undefined, stored?: stri
 /** A move or slug change rewrites the paths of the page and its subtree. */
 export const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
 
+/** A page may start untitled (the editor shows a placeholder and the tree a
+ *  warning), but a group is only a navigation heading: it needs its name. */
+const assertGroupTitled = (kind: string, title: string) => {
+  if (kind === 'GROUP' && !title.trim()) throw badRequest('A group needs a title.', { field: 'title' });
+};
+
 export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
   assertPageContentFits(body.content);
+  assertGroupTitled(body.kind ?? 'PAGE', body.title);
   const page = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
@@ -255,7 +262,7 @@ export const createPage = async (projectId: string, body: CreatePageBody, userId
       const languageId =
         parent.languageId ??
         (body.languageId ? (await assertLanguageInProject(projectId, body.languageId, tx)).id : (await getDefaultLanguage(projectId, tx)).id);
-      const slug = await uniqueSiblingSlug(tx, projectId, languageId, branchId, parentId, body.slug || body.title || 'untitled');
+      const slug = await uniqueSiblingSlug(tx, projectId, languageId, branchId, parentId, body.slug || body.title.trim() || 'untitled');
       const maxPosition = await tx.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
       return tx.page.create({
         data: {
@@ -353,6 +360,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         if (lockStructure) await assertAddressLinkRevisions(projectId, prepared, tx);
         const page = await tx.page.findFirst({ where: { id, projectId } });
         if (!page) throw notFound('page', { id });
+        if (body.title !== undefined) assertGroupTitled(page.kind, body.title);
         const route = pageRouteEdit(page, options?.restore ? {} : body);
         if (!lockStructure && route.structural) throw new StructuralPageEdit();
         const expectedUpdatedAt = options?.expectedUpdatedAt ?? (body.expectedUpdatedAt ? new Date(body.expectedUpdatedAt) : undefined);

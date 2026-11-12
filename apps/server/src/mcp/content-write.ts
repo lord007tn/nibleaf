@@ -16,7 +16,14 @@ import { mcpCredentialColumns, mcpCredentialKey } from './credential';
 import { pageRevision } from './dto';
 import { clientRequestIdSchema, isUniqueViolation } from './idempotency';
 import { MAX_MCP_MARKDOWN_BYTES, normalizeMcpLine, type PreparedMarkdown, prepareMcpMarkdown } from './markdown';
-import { createPublishPreviewToken, publishedSiteUrl, publishPreviewSummary, readPublishPreviewToken, readPublishState } from './publish';
+import {
+  createPublishPreviewToken,
+  hasPublishableChanges,
+  publishedSiteUrl,
+  publishPreviewSummary,
+  readPublishPreviewToken,
+  readPublishState,
+} from './publish';
 import { checkMcpPublishRateLimit } from './rate-limit';
 import { auditedInputSchema, type McpActor, type McpWriteOutcome, type McpWriteToolSpec, runMcpReadTool, runMcpWriteTool } from './result';
 import type { McpAuditTarget, McpPrincipal } from './types';
@@ -642,10 +649,13 @@ const previewPublish = async (principal: McpPrincipal, actor: McpActor): Promise
   const projectId = principal.project.id;
   const { pending, settings, digest, snapshot } = await readPublishState(projectId);
   const summary = publishPreviewSummary(pending, settings);
-  const hasChanges = summary.counts.total > 0 || summary.settings.changed;
+  const hasChanges = hasPublishableChanges(pending, settings);
   const canPublish = hasChanges && !summary.redirectIssues.blocking;
   // The person approves what they were shown, so say what the summary leaves out.
   const reviewNotes = [
+    hasChanges && summary.counts.total === 0 && !summary.settings.changed
+      ? 'No page changes: the change is to the site navigation (its groups). Tell the person that.'
+      : null,
     summary.changesTruncated
       ? `This summary lists ${summary.changes.length} of ${summary.counts.total} changed pages. Before asking for approval, tell the person to review the full list in the dashboard's publish dialog.`
       : null,
@@ -742,7 +752,7 @@ const publishChanges = async (
   const projectId = principal.project.id;
   const approvedDigest = readPublishPreviewToken(args.previewToken, actor.userId, projectId);
   const { pending, settings, digest, snapshot } = await readPublishState(projectId);
-  if (pending.changes.length === 0 && settings.length === 0) {
+  if (!hasPublishableChanges(pending, settings)) {
     throw new AppError({ code: 'mcp:nothing_to_publish', message: 'There are no unpublished changes. Nothing was published.' });
   }
   if (digest !== approvedDigest) {

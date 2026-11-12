@@ -152,6 +152,15 @@ describe('updatePage placeholder slug adoption', () => {
     expect(recordEdit).toHaveBeenCalledExactlyOnceWith('author-1', 'project-1');
   });
 
+  it("refuses clearing a group's name, while a page may be left untitled", async () => {
+    seed(row({ kind: 'GROUP', title: 'Guides', slug: 'guides' }));
+    await expect(updatePage('project-1', 'page-1', { title: ' ' })).rejects.toMatchObject({ details: { field: 'title' } });
+    expect(database.update).not.toHaveBeenCalled();
+    seed(row({ title: 'Guide', slug: 'guide' }));
+    await updatePage('project-1', 'page-1', { title: '' });
+    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ title: '' }) }));
+  });
+
   it('does not record an edit when the project-scoped update fails', async () => {
     seed(row());
     database.findFirst.mockResolvedValue(null);

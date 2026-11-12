@@ -28,3 +28,13 @@ it('creates empty titles with unique usable slugs and accepts empty-title autosa
   expect(await createPage('fixture', body)).toMatchObject({ title: '', slug: 'untitled-2', path: 'untitled-2' });
   expect(await createPage('fixture', { title: 'Untitled', slug: 'legacy' })).toMatchObject({ title: 'Untitled', slug: 'legacy' });
 });
+
+it('refuses a group without a name, and gives a blank page title the untitled address', async () => {
+  db.findFirst.mockResolvedValue(null);
+  db.aggregate.mockResolvedValue({ _max: { position: null } });
+  db.create.mockImplementation(async ({ data }) => ({ ...data, id: 'page-x' }));
+  db.create.mockClear();
+  await expect(createPage('fixture', createPageBody.parse({ title: '  ', kind: 'GROUP' }))).rejects.toMatchObject({ details: { field: 'title' } });
+  expect(db.create).not.toHaveBeenCalled();
+  expect(await createPage('fixture', createPageBody.parse({ title: '   ' }))).toMatchObject({ slug: 'untitled' });
+});

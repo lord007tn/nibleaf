@@ -1525,6 +1525,27 @@ describe('preview and publish', () => {
     await client.close();
   });
 
+  it('publishes a change that is only to navigation groups, which lists no page', async () => {
+    // Pending changes list pages only; a renamed or removed group shows as
+    // `upToDate: false` with no listed page.
+    mocks.getPendingChanges.mockImplementation(async () => ({
+      hasBaseline: true,
+      upToDate: false,
+      lastVersion: 1,
+      lastPublishedAt: null,
+      changes: [],
+      redirectIssues: [],
+    }));
+    const client = await connect(makePrincipal());
+    const data = await preview(client);
+    expect(data).toMatchObject({ canPublish: true, counts: { total: 0 } });
+    expect(String(data.nextStep)).toContain('site navigation');
+    const published = await client.call('publish_changes', { confirm: true, previewToken: data.previewToken });
+    expect(published.structuredContent.error?.code).toBeUndefined();
+    expect(mocks.createDeployment).toHaveBeenCalledOnce();
+    await client.close();
+  });
+
   it('reports nothing to publish and enforces the hourly publish budget', async () => {
     mocks.env.MCP_PUBLISH_RATE_LIMIT_PER_HOUR = 1;
     const client = await connect(makePrincipal());
