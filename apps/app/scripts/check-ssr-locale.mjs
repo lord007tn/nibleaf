@@ -20,8 +20,9 @@ const get = (path, headers = {}) =>
     req.end();
   });
 
-const ARABIC = { lang: 'ar', dir: 'rtl', text: 'تسجيل الدخول' };
-const ENGLISH = { lang: 'en', dir: 'ltr', text: 'Log in' };
+// The auth layout's heading, on every state of both pages (the API is not running here).
+const ARABIC = { lang: 'ar', dir: 'rtl', text: 'وثائقك مستضافة وجاهزة.' };
+const ENGLISH = { lang: 'en', dir: 'ltr', text: 'Your docs, hosted and ready.' };
 const htmlTag = (html) => /<html\b[^>]*>/i.exec(html)?.[0] ?? '';
 // The page itself: the document title switches to the interface language after load.
 const body = (html) => html.slice(html.search(/<body\b/i));
