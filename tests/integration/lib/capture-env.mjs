@@ -1,4 +1,11 @@
 // Shared settings for the browser capture scripts under tests/integration.
+//
+// The rule for every capture: take the dev-stack lock (`acquireDevstackLock`),
+// and give each browser context a default-deny network (`localOnlyNetwork`)
+// allowing only the local app, its read-only proxy and any fixture origin. Open
+// a site by its custom domain through `localHostArgs` so the local app serves
+// it. Fail the run if anything outside was attempted, and put the attempted
+// count (0) in the PR body.
 import { rmSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -73,6 +80,56 @@ export async function acquireDevstackLock(owner, { onInterrupt } = {}) {
     release: async () => {
       detach();
       releaseNow();
+    },
+  };
+}
+
+/**
+ * Chromium launch arguments that resolve the given hosts to local ports, so a
+ * capture can open a site by its custom domain (`docs.example.com`) and still be
+ * served by the local app: `localHostArgs({ 'docs.example.com': 4310 })`.
+ * Pass them in `chromium.launch({ args })`.
+ */
+export const localHostArgs = (hosts) => {
+  const rules = Object.entries(hosts).map(([host, port]) => `MAP ${host.toLowerCase()} 127.0.0.1:${port}`);
+  return rules.length > 0 ? [`--host-resolver-rules=${rules.join(',')}`] : [];
+};
+
+/**
+ * Default-deny network for a browser context: only requests whose host
+ * (`name:port`, as in `new URL(url).host`) is on the allowlist go through:
+ * the local app, its read-only proxy, a fixture origin. Every other request is
+ * aborted before it leaves the machine and recorded, so a redirect to a
+ * production domain, a third-party script or a beacon can never reach
+ * production. Call before the first navigation; then `assertNoneAttempted()`
+ * fails the run if anything was attempted, and `attempted` is the evidence for
+ * the PR body (it should be empty).
+ *
+ * Requests a page route answers (`page.route`, an interception harness) are
+ * handled there first and never reach this rule.
+ */
+export async function localOnlyNetwork(context, allowedHosts) {
+  const allowed = new Set(allowedHosts.map((host) => host.toLowerCase()));
+  const attempted = [];
+  await context.route('**/*', (route) => {
+    const request = route.request();
+    let host = '';
+    try {
+      host = new URL(request.url()).host.toLowerCase();
+    } catch {
+      // An address that doesn't parse is never allowed.
+    }
+    if (host && allowed.has(host)) return route.continue();
+    const url = request.url();
+    attempted.push(`${request.method()} ${url.length > 200 ? `${url.slice(0, 200)}…` : url}`);
+    return route.abort('blockedbyclient');
+  });
+  return {
+    attempted,
+    assertNoneAttempted() {
+      if (attempted.length > 0) {
+        throw new Error(`The capture tried to reach ${attempted.length} address(es) outside the local stack:\n${attempted.join('\n')}`);
+      }
     },
   };
 }
