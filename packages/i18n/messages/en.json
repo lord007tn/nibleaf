@@ -4851,5 +4851,10 @@
   "publishes_truncated": "Showing the first {shown} of {total} changed pages.",
   "overview_activity_viewall": "View all",
   "publishes_toolarge": "This version is too large to compare here.",
-  "publishes_nosnapshot": "This version’s published copy is no longer stored, so it can’t be compared or restored."
+  "publishes_nosnapshot": "This version’s published copy is no longer stored, so it can’t be compared or restored.",
+  "overview_nudge_progress": "{count} of 3 done",
+  "overview_live_willbeliveat": "Will be live at {url}",
+  "overview_live_availableafterpublish": "This address opens after the first publish.",
+  "overview_nudge_connecting": "Connecting — finish domain setup.",
+  "overview_nudge_stepdone": "Done: {step}"
 }

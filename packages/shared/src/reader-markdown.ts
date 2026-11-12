@@ -6,6 +6,7 @@
  */
 import { type DocumentationComponentContract, documentationComponentContractEntries } from './documentation-component-contract';
 import { fencedMarkdownLines } from './markdown-code';
+import { inlineCodeSpans, matchOneLineElement, removeMdxCommentsOutsideCode, replaceSelfClosingTags } from './markup-scan';
 import { rewriteReaderEmbeds } from './reader-embeds';
 
 const CONTRACT = documentationComponentContractEntries();
@@ -35,12 +36,13 @@ const OPENING_ATTRIBUTES = `(?:${ATTRIBUTE_PART}*(?:[^/>"']|"[^"\\n]*"|'[^'\\n]*
  */
 export const readerTagRewriter = (contract: ReadonlyArray<readonly [string, DocumentationComponentContract]>): ((text: string) => string) => {
   const selfClosing = contract.flatMap(([tag, component]) => (component.selfClosing ? [tag] : []));
-  const selfClosingTag = selfClosing.length > 0 ? new RegExp(`<(${selfClosing.join('|')})\\b(${ATTRIBUTE_PART}*?)\\/>`, 'gi') : null;
   const renames = contract.flatMap(([tag, component]) =>
     component.readerTag ? [{ pattern: new RegExp(`<(\\/?)${tag}\\b`, 'gi'), replacement: `<$1${component.readerTag}` }] : [],
   );
   return (text) => {
-    const expanded = selfClosingTag ? text.replace(selfClosingTag, '<$1$2></$1>') : text;
+    // `<Tag …/>` with attribute parts as in ATTRIBUTE_PART, read in linear time.
+    const expanded =
+      selfClosing.length > 0 ? replaceSelfClosingTags(text, selfClosing, (name, attributes) => `<${name}${attributes}></${name}>`) : text;
     return renames.reduce((renamed, { pattern, replacement }) => renamed.replace(pattern, replacement), expanded);
   };
 };
@@ -51,9 +53,9 @@ const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b${OPENING_ATTRIBUTES}>\\s
 const CLOSE_TAG = new RegExp(`^\\s*</(?:${BLOCK_TAGS})>\\s*$`, 'i');
 const COMPONENT_LINE = new RegExp(`^\\s*</?(?:${BLOCK_TAGS})\\b${ATTRIBUTE_PART}*>\\s*$`, 'i');
 // A block component opened and closed on one line: `<Callout type="tip">Text</Callout>`.
-const ONE_LINE_BLOCK = new RegExp(`^(\\s*)<(${BLOCK_TAGS})\\b(${OPENING_ATTRIBUTES})>(.*\\S.*)</\\2>\\s*$`, 'i');
-// Inline code spans (`<Frame>` written as an example) are code too.
-const INLINE_CODE = /(`+)[\s\S]*?\1/g;
+// matchOneLineElement reads it as `^(\s*)<(BLOCK_TAGS)\b(OPENING_ATTRIBUTES)>(.*\S.*)</\2>\s*$`
+// (case-insensitive) would, in linear time.
+const oneLineBlock = (line: string) => matchOneLineElement(line, MDX_BLOCK_TAGS);
 // The start of a block opener whose attributes go on to later lines.
 const OPENER_START = new RegExp(`^\\s*<(?:${BLOCK_TAGS})(?:\\s|$)`, 'i');
 const MAX_OPENER_LINES = 32;
@@ -67,7 +69,7 @@ const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean
   const outFenced: boolean[] = [];
   const openerEnd = (i: number): number => {
     const line = lines[i] ?? '';
-    if (fenced[i] || !OPENER_START.test(line) || OPEN_TAG.test(line) || ONE_LINE_BLOCK.test(line)) return -1;
+    if (fenced[i] || !OPENER_START.test(line) || OPEN_TAG.test(line) || oneLineBlock(line)) return -1;
     let joined = line.trimEnd();
     for (let j = i + 1; j < lines.length && j - i < MAX_OPENER_LINES && !fenced[j] && (lines[j] ?? '').trim() !== ''; j++) {
       joined += ` ${(lines[j] ?? '').trim()}`;
@@ -89,15 +91,13 @@ const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean
   return { lines: out, fenced: outFenced };
 };
 
-/** An inline code span (kept as written) or an MDX comment `{/* … *\/}` (removed),
- *  whichever starts first, so a comment containing backticks is still one comment
- *  and a comment shown inside inline code stays an example. */
-const CODE_OR_MDX_COMMENT = /(`+)[\s\S]*?\1|\{\s*\/\*[\s\S]*?\*\/\s*\}/g;
-
 /** MDX comments are authoring notes: MDX drops them, so the reader must not show
  *  them (or any link inside them). Fenced code and inline code keep them as written;
  *  an indented line is not code in MDX, so a comment there is dropped too. A comment
- *  may span lines; an unclosed `{/*` is left as text. */
+ *  may span lines; an unclosed `{/*` is left as text. An inline code span or a
+ *  comment, whichever starts first, is read as a whole, so a comment containing
+ *  backticks is still one comment and a comment shown inside inline code stays
+ *  an example (removeMdxCommentsOutsideCode). */
 const stripMdxComments = (lines: readonly string[], fenced: readonly boolean[]): string[] => {
   const out: string[] = [];
   let start = 0;
@@ -105,13 +105,7 @@ const stripMdxComments = (lines: readonly string[], fenced: readonly boolean[]):
     if (index < lines.length && Boolean(fenced[index]) === Boolean(fenced[start])) continue;
     const run = lines.slice(start, index);
     if (fenced[start]) out.push(...run);
-    else
-      out.push(
-        ...run
-          .join('\n')
-          .replace(CODE_OR_MDX_COMMENT, (match, code: string | undefined) => (code ? match : ''))
-          .split('\n'),
-      );
+    else out.push(...removeMdxCommentsOutsideCode(run.join('\n')).split('\n'));
     start = index;
   }
   return out;
@@ -127,9 +121,9 @@ export function normalizeMdxBlocks(src: string): string {
   // block form so its text is parsed as Markdown inside the component.
   // Nested one-liners (`<CardGroup><Card>x</Card></CardGroup>`) expand level by level.
   const expand = (line: string): string[] => {
-    const match = ONE_LINE_BLOCK.exec(line);
+    const match = oneLineBlock(line);
     if (!match) return [line];
-    const [, indent = '', tag = '', attributes = '', body = ''] = match;
+    const { indent, name: tag, attributes, body } = match;
     // Siblings of the same tag on one line (`<Card>a</Card><Card>b</Card>`) would be
     // mis-split by the greedy match; leave those lines as authored.
     if (body.toLowerCase().includes(`</${tag.toLowerCase()}>`)) return [line];
@@ -179,9 +173,9 @@ export function normalizeMdxBlocks(src: string): string {
   const prose = (text: string) => {
     let output = '';
     let cursor = 0;
-    for (const match of text.matchAll(INLINE_CODE)) {
-      output += rename(text.slice(cursor, match.index)) + match[0];
-      cursor = match.index + match[0].length;
+    for (const [start, end] of inlineCodeSpans(text)) {
+      output += rename(text.slice(cursor, start)) + text.slice(start, end);
+      cursor = end;
     }
     return output + rename(text.slice(cursor));
   };

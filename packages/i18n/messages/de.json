@@ -4851,5 +4851,10 @@
   "publishes_truncated": "Die ersten {shown} von {total} geänderten Seiten werden angezeigt.",
   "overview_activity_viewall": "Alle anzeigen",
   "publishes_toolarge": "Diese Version ist zu groß, um sie hier zu vergleichen.",
-  "publishes_nosnapshot": "Die veröffentlichte Kopie dieser Version ist nicht mehr gespeichert. Daher lässt sie sich weder vergleichen noch wiederherstellen."
+  "publishes_nosnapshot": "Die veröffentlichte Kopie dieser Version ist nicht mehr gespeichert. Daher lässt sie sich weder vergleichen noch wiederherstellen.",
+  "overview_nudge_progress": "{count} von 3 erledigt",
+  "overview_live_willbeliveat": "Die Website wird unter {url} erreichbar sein",
+  "overview_live_availableafterpublish": "Diese Adresse können Sie nach der ersten Veröffentlichung öffnen.",
+  "overview_nudge_connecting": "Verbindung wird hergestellt — schließen Sie die Domain-Einrichtung ab.",
+  "overview_nudge_stepdone": "Erledigt: {step}"
 }

@@ -4878,5 +4878,10 @@
   "publishes_truncated": "Показаны первые {shown} из {total} изменённых страниц.",
   "overview_activity_viewall": "Показать все",
   "publishes_toolarge": "Эта версия слишком велика, чтобы сравнить её здесь.",
-  "publishes_nosnapshot": "Опубликованная копия этой версии больше не хранится, поэтому её нельзя сравнить или восстановить."
+  "publishes_nosnapshot": "Опубликованная копия этой версии больше не хранится, поэтому её нельзя сравнить или восстановить.",
+  "overview_nudge_progress": "Готово: {count} из 3",
+  "overview_live_willbeliveat": "Сайт будет доступен по адресу {url}",
+  "overview_live_availableafterpublish": "Этот адрес откроется после первой публикации.",
+  "overview_nudge_connecting": "Подключение — завершите настройку домена.",
+  "overview_nudge_stepdone": "Готово: {step}"
 }

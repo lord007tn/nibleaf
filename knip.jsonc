@@ -22,7 +22,8 @@
         "scripts/split-ghost-by-language.mjs",
         "tests/integration/delete-inbound-links/browser.mjs",
         "tests/integration/editor-paste-and-title/browser.mjs",
-        "tests/integration/reader-video-embeds/capture.mjs"
+        "tests/integration/reader-video-embeds/capture.mjs",
+        "tests/integration/overview-first-publish/browser.mjs"
       ]
     },
     "apps/server": {
@@ -32,7 +33,8 @@
     "apps/app": {
       "entry": [
         "scripts/delete-inbound-links.fixture.tsx",
-        "scripts/editor-paste-and-title.fixture.tsx"
+        "scripts/editor-paste-and-title.fixture.tsx",
+        "scripts/overview-first-publish.fixture.tsx"
       ]
     },
     "packages/database": {

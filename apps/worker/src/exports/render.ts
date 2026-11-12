@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
 import { pageDescription } from '@nibleaf/shared/markdown-text';
+import { replaceTags } from '@nibleaf/shared/markup-scan';
 import { displayTitle } from '@nibleaf/shared/page-title';
 import { isSafeLinkDestination, normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
 import {
@@ -487,12 +488,18 @@ const themeJs = (searchEntries: Array<{ title: string; path: string; text: strin
   `(()=>{const entries=${JSON.stringify(searchEntries).replaceAll('<', '\\u003c')};const input=document.querySelector('[data-static-search]');const nav=document.querySelector('[data-static-nav]');const status=document.querySelector('[data-static-search-status]');const script=document.currentScript;if(!input||!nav||!script)return;const root=new URL('../',script.src);const original=Array.from(nav.childNodes).map(node=>node.cloneNode(true));const restore=()=>nav.replaceChildren(...original.map(node=>node.cloneNode(true)));input.addEventListener('input',()=>{const q=input.value.trim().toLocaleLowerCase();if(!q){restore();if(status)status.textContent='';return}const matches=entries.filter(x=>x.versionId===document.body.dataset.versionId&&x.languageCode===document.body.dataset.languageCode&&(x.title+' '+x.text).toLocaleLowerCase().includes(q)).slice(0,30);nav.replaceChildren(...matches.map(x=>{const link=document.createElement('a');link.href=new URL(x.path,root).href;link.textContent=x.title;return link}));if(status)status.textContent=String(matches.length)})})();`;
 
 const plainText = (markdown: string): string =>
-  markdown
-    .replace(/```[\s\S]*?```/g, ' ')
-    // Formatting splits no word: `H<sub>2</sub>O` searches as `H2O`.
-    .replace(/<\/?(?:sub|sup|u)>/g, '')
-    .replace(/\[!\w+\]/g, ' ')
-    .replace(/<[^>]+>/g, ' ')
+  // Code keeps its raw text (a tilde fence, or a backtick fence left open), so
+  // the tag step can meet raw markup: replaceTags gives what
+  // `.replace(/<[^>]+>/g, ' ')` gives, in linear time.
+  replaceTags(
+    markdown
+      .replace(/```[\s\S]*?```/g, ' ')
+      // Formatting splits no word: `H<sub>2</sub>O` searches as `H2O`.
+      .replace(/<\/?(?:sub|sup|u)>/g, '')
+      .replace(/\[!\w+\]/g, ' '),
+    /<[^>]+>/g,
+    ' ',
+  )
     .replace(/[#*_`>[\]()!-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

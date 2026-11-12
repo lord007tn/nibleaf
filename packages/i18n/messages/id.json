@@ -4783,5 +4783,10 @@
   "publishes_truncated": "Menampilkan {shown} pertama dari {total} halaman yang berubah.",
   "overview_activity_viewall": "Lihat semua",
   "publishes_toolarge": "Versi ini terlalu besar untuk dibandingkan di sini.",
-  "publishes_nosnapshot": "Salinan terbit versi ini tidak lagi disimpan, jadi tidak dapat dibandingkan atau dipulihkan."
+  "publishes_nosnapshot": "Salinan terbit versi ini tidak lagi disimpan, jadi tidak dapat dibandingkan atau dipulihkan.",
+  "overview_nudge_progress": "{count} dari 3 selesai",
+  "overview_live_willbeliveat": "Situs akan tersedia di {url}",
+  "overview_live_availableafterpublish": "Alamat ini dapat dibuka setelah publikasi pertama.",
+  "overview_nudge_connecting": "Menghubungkan — selesaikan penyiapan domain.",
+  "overview_nudge_stepdone": "Selesai: {step}"
 }

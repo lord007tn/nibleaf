@@ -4786,5 +4786,10 @@
   "publishes_truncated": "{total} बदले गए पेजों में से पहले {shown} दिखाए जा रहे हैं।",
   "overview_activity_viewall": "सभी देखें",
   "publishes_toolarge": "यह संस्करण यहाँ तुलना करने के लिए बहुत बड़ा है।",
-  "publishes_nosnapshot": "इस संस्करण की प्रकाशित प्रति अब सहेजी नहीं है, इसलिए इसकी तुलना नहीं की जा सकती और इसे बहाल नहीं किया जा सकता।"
+  "publishes_nosnapshot": "इस संस्करण की प्रकाशित प्रति अब सहेजी नहीं है, इसलिए इसकी तुलना नहीं की जा सकती और इसे बहाल नहीं किया जा सकता।",
+  "overview_nudge_progress": "3 में से {count} पूरे",
+  "overview_live_willbeliveat": "प्रकाशित होने के बाद पता होगा: {url}",
+  "overview_live_availableafterpublish": "पहली बार प्रकाशित करने के बाद यह पता खुलेगा।",
+  "overview_nudge_connecting": "कनेक्ट हो रहा है — डोमेन सेटअप पूरा करें।",
+  "overview_nudge_stepdone": "पूरा: {step}"
 }
