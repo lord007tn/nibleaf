@@ -11,6 +11,8 @@ export interface GroundedCitation {
   title: string;
   path: string;
   heading?: string;
+  /** DOM id of the cited section on the published page; absent for the page's top. */
+  anchor?: string;
   snippet: string;
   direction: 'ltr' | 'rtl';
   language?: string;

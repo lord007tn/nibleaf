@@ -15,6 +15,8 @@ import type { Nodes } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { gfm } from 'micromark-extension-gfm';
+// The renderer's math delimiters, read as its line-based check reads them.
+import { containsMath } from './reader-rich';
 
 export interface MarkdownCodeUsage {
   /** Lower-cased code block languages, plus `language-*` classes in raw HTML. */
@@ -31,8 +33,6 @@ const MAX_MARKERS = 40_000;
 const MARKERS = new Set(['*', '_', '[', ']', '<', '>']);
 
 const CLASS_LANGUAGE = /\blang(?:uage)?-([^\s"'`>]+)/g;
-/** The renderer's math delimiters, as its line-based check reads them. */
-const MATH = /(^|[^\\])\$\$?[\s\S]*?\$\$?/m;
 
 /** Null when the document is too large or marker-dense to parse safely. */
 export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null => {
@@ -60,5 +60,5 @@ export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null =>
     if ('children' in node) for (const child of node.children as Nodes[]) visit(child);
   };
   visit(fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] }));
-  return { languages: [...languages].sort(), rich: rich || MATH.test(prose.join('\n')) };
+  return { languages: [...languages].sort(), rich: rich || containsMath(prose.join('\n')) };
 };

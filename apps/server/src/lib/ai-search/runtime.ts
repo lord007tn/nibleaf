@@ -24,6 +24,7 @@ import { resolveWorkspaceAi, type WorkspaceAiRuntime, workspaceAnswerProvider, w
 import { isPageTranslation, type SnapshotPage } from '@nibleaf/shared/site';
 import { z } from 'zod';
 import { env } from '@/env';
+import type { SectionResolver } from '@/lib/ai-search/sections';
 import { LruCache, TtlCache } from '@/lib/lru';
 import { configuredIndexServing, findCurrentIndexRun, indexRunServesAnswers } from './readiness';
 
@@ -64,6 +65,9 @@ const indexedChunkPayloadSchema = z.object({
   description: z.string().default(''),
   heading: z.string().default(''),
   heading_path: z.array(z.string()).default([]),
+  // Recorded since section anchors; points indexed before have none. A value
+  // that is not a usable id is ignored rather than dropping the whole point.
+  anchor: z.string().optional().catch(undefined),
   content: z.string(),
   content_hash: z.string(),
   direction: z.enum(['ltr', 'rtl']),
@@ -136,6 +140,7 @@ export const chunkFromPoint = (point: QdrantScoredPoint, scope: SearchScope): Hy
     description: payload.description,
     heading: payload.heading,
     headingPath: payload.heading_path,
+    ...(payload.anchor ? { anchor: payload.anchor } : {}),
     content: payload.content,
     contentHash: payload.content_hash,
     language: scope.language,
@@ -556,14 +561,16 @@ export const answerPublishedSearch = async (
   scope: SearchScope,
   query: string,
   signal?: AbortSignal,
-  context?: ChatLanguageContext,
+  /** `sections` resolves each source to a section of its published page (see
+   * `publishedSections`); sources it leaves out are never given to the model. */
+  context?: ChatLanguageContext & { sections?: SectionResolver },
 ): Promise<GroundedAnswer & { cacheHit: boolean }> => {
   const runtime = await resolveWorkspaceAi(scope.projectId);
   if (!qdrant || !runtime?.answersEnabled || !(await configuredIndexServing())) throw new Error('AI answers are not configured.');
   const cacheKey = searchCacheKey(
     scope,
     query,
-    `answer-v4-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}-${context?.languages.join(',')}`,
+    `answer-v5-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}-${context?.languages.join(',')}`,
   );
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
@@ -572,10 +579,11 @@ export const answerPublishedSearch = async (
     ? await retrieveChatLanguages(scope, query, runtime, context, { language, signal })
     : await retrieveChatContext(scope, query, runtime, { signal });
   const provider = workspaceAnswerProvider(runtime);
+  const sections = context?.sections;
   const answer = await generateGroundedAnswer(
     provider,
     query,
-    retrieval.chunks,
+    sections ? retrieval.chunks.flatMap((chunk) => sections(chunk) ?? []) : retrieval.chunks,
     retrieval.confidence,
     language,
     signal,
