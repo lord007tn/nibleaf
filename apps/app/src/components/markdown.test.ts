@@ -41,6 +41,17 @@ describe('Markdown renderer — default element renderers', () => {
     expect(html).toMatch(/<img[^>]*src="\/plain\.png"[^>]*alt=""|<img[^>]*alt=""[^>]*src="\/plain\.png"/);
     expect(html).toMatch(/<img[^>]*class="[^"]*rounded-xl[^"]*block dark:hidden[^"]*"/);
   });
+
+  it('loads the first image at once and the rest as the reader scrolls to them, all decoded off the main thread', async () => {
+    for (const language of [undefined, 'en']) {
+      const html = await render(['Intro', '![](/first.png)', 'Text', '![](/second.png)', '![](/third.png)'].join('\n\n'), language);
+      const images = html.match(/<img [^>]*>/g) ?? [];
+      expect(images, String(language)).toHaveLength(3);
+      expect(images[0]).toContain('loading="eager"');
+      for (const image of images.slice(1)) expect(image).toContain('loading="lazy"');
+      for (const image of images) expect(image).toContain('decoding="async"');
+    }
+  });
 });
 
 describe('Markdown renderer — Mintlify component parity', () => {

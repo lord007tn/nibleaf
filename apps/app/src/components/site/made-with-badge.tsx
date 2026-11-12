@@ -13,7 +13,7 @@ import { siteT } from '@nibleaf/i18n/site';
 export function MadeWithBadge({ lang }: { lang?: string }) {
   const t = siteT(lang);
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground/80">
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
       <a
         href="https://nibleaf.com/?utm_source=badge"
         target="_blank"

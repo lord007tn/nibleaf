@@ -7,6 +7,7 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
+import { rehypeImageLoading } from '@/components/site/image-loading';
 import { Callout } from '@/components/site/mdx/callout';
 import { type DocumentationComponents, str } from '@/components/site/mdx/props';
 import {
@@ -241,6 +242,8 @@ export function MarkdownRenderer({
           [rehypeSanitize, sanitizeSchema],
           ...afterSanitizePlugins,
           rehypeMermaid,
+          // The first image loads at once; the rest load as the reader scrolls to them.
+          rehypeImageLoading,
           // Each block lays out by its own script; code stays left to right.
           rehypeBlockDirection,
           rehypeSlug,

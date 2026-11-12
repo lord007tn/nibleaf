@@ -77,7 +77,7 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
         >
           <PageIcon name={node.icon} className={cn('mt-0.5 size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/80')} />
           {/* Long titles wrap onto a second line instead of losing their end to an ellipsis. */}
-          <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
+          <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} title={node.title}>
             {node.title}
           </span>
           {node.tag ? (
@@ -139,7 +139,7 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
         aria-expanded={open}
         className="group flex w-full cursor-pointer items-start justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
-        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
+        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} title={node.title}>
           {node.title}
         </span>
         {/* Resting state hides the chevron on fine pointers only; keyboard focus,
@@ -189,7 +189,7 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
       >
         <ChevronRight className={cn('mt-[3px] size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
         {node.icon ? <PageIcon name={node.icon} className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/80" /> : null}
-        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
+        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} title={node.title}>
           {node.title}
         </span>
       </button>

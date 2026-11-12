@@ -237,4 +237,13 @@ describe('SiteNav long titles', () => {
     }
     expect(container.querySelector('.truncate')).toBeNull();
   });
+
+  it('shows the whole title on hover when two lines are not enough', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />);
+    for (const prefix of ['Section', 'Group', 'Page']) {
+      const label = [...container.querySelectorAll('span')].find((span) => span.textContent === `${prefix}: ${long}`);
+      expect(label?.getAttribute('title'), prefix).toBe(`${prefix}: ${long}`);
+    }
+  });
 });
