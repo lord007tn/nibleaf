@@ -293,6 +293,32 @@ describe('code inside lists and blockquotes', () => {
     }
   });
 
+  // Tabs: CommonMark counts a tab up to the next multiple of four columns, and a tab
+  // a container only partly uses (the space after `>`, a list item's indent) leaves
+  // its other columns as spaces. The editor writes container prefixes as spaces,
+  // as it always has, so each save gives the space form, with the code in its fence.
+  const tabbed = (prefix: string, lines: string[]) => lines.map((line) => `${prefix}${line}`).join('\n');
+  it.each([
+    ['a quote in a list item indented with a tab', `- Item\n\n${tabbed('\t> ', fence)}`, `- Item\n\n${tabbed('  > ', fence)}`],
+    ['a list item in a quote, a tab after the quote marker', `> - Item\n>\n${tabbed('>\t', fence)}`, `> - Item\n>\n${tabbed('>   ', fence)}`],
+    ['a quote in a nested list item, tab-indented', `- Outer\n\n\t- Inner\n\n${tabbed('\t\t> ', fence)}`, mixed[0]?.[1](fence)],
+    ['a list item in a quote in a list item, tabs and a partial tab', `- Outer\n\n\t> - Inner\n\t>\n${tabbed('\t>\t', fence)}`, mixed[1]?.[1](fence)],
+    ['a quote in a quote in a list item, tabs and a partial tab', `- Outer\n\n${tabbed('\t>\t> ', fence)}`, mixed[2]?.[1](fence)],
+    ['a quote in a list item in a quote, a partial tab', `> - Item\n>\n${tabbed('>\t> ', fence)}`, mixed[3]?.[1](fence)],
+    ['a quote in a list item in an ordered list item, tabs and spaces', `1. One\n\n\t- Two\n\n${tabbed('\t  > ', fence)}`, mixed[4]?.[1](fence)],
+  ])('keeps a fence in %s in its fence over four saves', (_name, source, saved) => {
+    let markdown = source;
+    for (let cycle = 0; cycle < 4; cycle++) {
+      markdown = getMarkdown(open(markdown));
+      expect(markdown).toBe(saved);
+    }
+    let code = '';
+    open(markdown).state.doc.descendants((node) => {
+      if (node.type.name === 'codeBlock') code = node.textContent;
+    });
+    expect(code).toBe('<iframe src="x"></iframe>');
+  });
+
   it('keeps indented code in a list item as code with the same text over three saves', () => {
     // The editor saves every code block fenced; after that the page is stable.
     const page = '- Item\n\n      const a = 1;';

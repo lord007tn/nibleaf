@@ -588,6 +588,12 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
   // so each has its own. A scan marks the positions it passed when it fails.
   const unclosable = { html: new Uint8Array(0), jsx: new Uint8Array(0) };
   const passed: number[] = [];
+  // Inside `{…}` every scan reads the same way (HTML or JSX, at any depth), so where
+  // a `{` met outside quotes closes is fixed by its position: the position after
+  // its `}`, or -1 when it never closes. A later scan that meets that `{` skips to
+  // its end, or stops, rather than reading the region again.
+  const braceEnds = new Map<number, number>();
+  const opened: number[] = [];
   // The first `</name` at or after the last search for it, or -1 for none.
   const closers = new Map<string, number>();
   for (let i = 0; i < source.length; i++) {
@@ -620,6 +626,7 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
     if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
     const known = unclosable[kind];
     passed.length = 0;
+    opened.length = 0;
     for (; cursor < source.length; cursor++) {
       const char = source[cursor] ?? '';
       if (quote) {
@@ -638,12 +645,25 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
       if (char === '"' || char === "'" || (char === '`' && (!isHtml || braces > 0))) {
         quote = char;
         escapes = !isHtml || braces > 0;
-      } else if (char === '{') braces++;
-      else if (char === '}') braces = Math.max(0, braces - 1);
-      else if (char === '>' && braces === 0) break;
+      } else if (char === '{') {
+        const end = braceEnds.get(cursor);
+        if (end === undefined) {
+          braces++;
+          opened.push(cursor);
+        } else if (end < 0) {
+          cursor = source.length;
+          break;
+        } else cursor = end - 1;
+      } else if (char === '}') {
+        const start = braces > 0 ? opened.pop() : undefined;
+        if (start !== undefined) braceEnds.set(start, cursor + 1);
+        braces = Math.max(0, braces - 1);
+      } else if (char === '>' && braces === 0) break;
     }
     if (source[cursor] !== '>') {
       for (const position of passed) known[position] = 1;
+      // A `{` still open at the end of the page never closes.
+      for (const start of opened) braceEnds.set(start, -1);
       continue;
     }
     const raw = source.slice(i, cursor + 1);

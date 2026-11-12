@@ -43,6 +43,9 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     ['<script> with no closing tag', '<script>'],
     ['{ expression', '{ '],
     ['{" expression', '{"'],
+    ['<iframe { (a brace that never closes)', '<iframe {'],
+    ['<Card x={', '<Card x={'],
+    ['<iframe <Card title=" <span {', '<iframe <Card title=" <span { '],
   ])('prepares a page of unclosed %s in one pass', (_name, tag) => {
     const [small, large] = growthMs(parse, tag.repeat(1000), tag.repeat(4000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
