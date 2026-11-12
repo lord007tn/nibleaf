@@ -20,18 +20,19 @@ translation_key: 'self-hosting/mcp'
 والتصدير وعمليات النشر والتكاملات. وتستطيع أدوات «مساعد كتابة الدعم» إنشاء مسودات
 الصفحات وتعديلها ونشرها بعد معاينة وتأكيد صريحين. لا تتوفر عمليات الحذف، ولا
 تغيير الإعدادات أو العضوية، ولا بيانات اعتماد المزوّد أو الدفع أو بدائيات قاعدة
-البيانات أو الوصول العشوائي للملفات أو تنفيذ الشيفرة. لمسار عمل الدعم وفهرس
-الأدوات الكامل، راجع [العمل على التوثيق مع مساعد ذكاء اصطناعي](/ar/product/ai-assistants).
+البيانات أو الوصول العشوائي للملفات أو تنفيذ الشيفرة. لمسار عمل الدعم، راجع
+[استخدم Nibleaf من مساعد الذكاء الاصطناعي](/ar/product/ai-assistants)، ولفهرس الأدوات الكامل
+راجع [مرجع مساعدي الذكاء الاصطناعي (MCP)](/ar/reference/mcp).
 
 ## التحقق من الإصدار أولاً
 
 تصف هذه الصفحة أدوات الكتابة للدعم وOAuth، وهي متاحة في v0.2.1. أما صورة v0.2.0
 فلم تتضمن سوى واجهة MCP للقراءة فقط. طبّق ترحيلات الإصدار قبل
-تفعيل الإمكانات الجديدة. يمرّر ملف Compose الإنتاجي المثبّت `MCP_ENABLED` و
-`MCP_ALLOWED_HOSTS` و`MCP_RATE_LIMIT_PER_MIN`، لكنه لا يمرّر
-`MCP_WRITE_RATE_LIMIT_PER_MIN` أو `MCP_PUBLISH_RATE_LIMIT_PER_HOUR`. أضف
-تعيينات بيئة صريحة لخدمة API في ملف تجاوز لتخصيص حدود المصدر هذه؛ لا يكفي `.env`.
-راجع [مرجع البيئة](/ar/reference/environment-variables).
+تفعيل الإمكانات الجديدة. تمرّر ملفات Compose المرفقة
+(`docker-compose.yml` و`docker-compose.prod.yml` و`docker-compose.coolify.yml`)
+المتغيرات `MCP_ENABLED` و`MCP_ALLOWED_HOSTS` و`MCP_RATE_LIMIT_PER_MIN`
+و`MCP_WRITE_RATE_LIMIT_PER_MIN` و`MCP_PUBLISH_RATE_LIMIT_PER_HOUR` إلى خدمة API،
+لذا يكفي ضبطها في `.env`. راجع [مرجع البيئة](/ar/reference/environment-variables).
 
 ## تفعيل نقطة النهاية
 
@@ -112,8 +113,8 @@ MCP_PUBLISH_RATE_LIMIT_PER_HOUR=6
 
 تختلف أسماء إعدادات العملاء. استخدم خيار HTTP أو الخادم البعيد، لا أمرًا محليًا
 ولا موصل ملفات. تولّد لوحة الإعداد في لوحة التحكم أوامر وروابط خاصة بكل من
-Claude Code وClaude Desktop وCursor وVS Code؛ وتجد كل مقتطف في قسم «اربط المساعد»
-ضمن [العمل على التوثيق مع مساعد ذكاء اصطناعي](/ar/product/ai-assistants). استدعِ أولًا `tools/list` ثم
+Claude Code وClaude Desktop وCursor وVS Code؛ وتجد كل مقتطف في قسم «اربط مساعدك»
+ضمن [استخدم Nibleaf من مساعد الذكاء الاصطناعي](/ar/product/ai-assistants). استدعِ أولًا `tools/list` ثم
 `get_capabilities`. تحتوي الاستجابة الناجحة على محتوى بروتوكول MCP وغلاف منظم يضم
 معرّف الطلب ومعرّف المشروع المرتبط والإمكانية المطلوبة.
 

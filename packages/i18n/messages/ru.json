@@ -2245,6 +2245,8 @@
   "site_previous": "Предыдущий",
   "site_next": "Далее",
   "site_onthispage": "На этой странице",
+  "site_navshowall": "Показать все",
+  "site_navshowless": "Свернуть",
   "site_minreadcount": [
     {
       "declarations": ["input count", "input form"],
