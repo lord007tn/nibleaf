@@ -1,22 +1,21 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
-import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
-import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
+import { EmailCodeStep, useEmailCode } from '@/components/auth-email-code';
+import { AuthTextField, useAuthFieldErrors } from '@/components/auth-form';
 import { GoogleIcon } from '@/components/icons/brand';
 import { QueryErrorState } from '@/components/query-error-state';
 import { TermsNotice } from '@/components/terms-notice';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
-import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { loadRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError } from '@/lib/auth-errors';
+import { email as validateEmail } from '@/lib/form';
 import { afterAuthDestination } from '@/lib/invitations';
 import { authClient, signIn } from '@/services/auth-client';
 
@@ -31,9 +30,12 @@ export const Route = createFileRoute('/(auth)/sign-up')({
         intent: z.literal('first-publish').optional().catch(undefined),
       })
       .parse(search),
-  // The form waits on the instance metadata (sign-up open? Google?): start it on link hover.
-  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, getPublicMetaQueryOptions()),
-  head: () => ({ meta: [{ title: 'Sign up — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
+  // The form depends on the instance metadata (sign-up open? Google?). It is
+  // known before the first render, on the server too, so the first HTML is the
+  // final form, not a placeholder that the Google button later pushes down.
+  loader: ({ context: { queryClient } }) => loadRouteData(queryClient, getPublicMetaQueryOptions()),
+  // The same words the localized title uses in English (lib/auth-document-title).
+  head: () => ({ meta: [{ title: 'Create account — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignUpPage,
 });
 
@@ -47,15 +49,14 @@ function SignUpPage() {
   const lockedEmail = Boolean(search.email);
   const [name, setName] = useState('');
   const [email, setEmail] = useState(search.email ?? '');
-  const [otp, setOtp] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
-  // Which request is running, so only the button that started it shows a spinner.
-  const [busy, setBusy] = useState<'send' | 'resend' | 'verify' | null>(null);
-  const isSubmitting = busy !== null;
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
-  const { data: publicMeta, isPending: metaPending, isError: metaError, isFetching: metaFetching, refetch: retryMeta } = useGetPublicMeta();
+  const {
+    data: publicMeta,
+    isPending: metaPending,
+    isError: metaError,
+    isFetching: metaFetching,
+    refetch: retryMeta,
+  } = useGetPublicMeta({ initialData: Route.useLoaderData() });
   const googleEnabled = publicMeta?.providers.google ?? false;
   const signupDisabled = publicMeta?.signupDisabled ?? true;
 
@@ -65,72 +66,29 @@ function SignUpPage() {
   const firstPublish = search.intent === 'first-publish';
   const afterAuthPath = destination ?? (firstPublish ? '/app?firstPublish=true' : '/app');
 
-  const finishSignUp = async () => {
-    if (destination) router.history.push(destination);
-    else await navigate({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
-  };
-
-  const requestCode = async (kind: 'send' | 'resend' = 'send') => {
-    setBusy(kind);
-    setError(null);
-    try {
-      const result = await authClient.emailOtp.sendVerificationOtp({ email: normalizedEmail, type: 'sign-in' });
-      if (result.error) {
-        setError(friendlyAuthError(result.error, t, t('auth.otp.sendError')));
-        return;
-      }
-      setCodeSent(true);
-      startCountdown();
-    } catch {
-      setError(t('auth.error.tryAgain'));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const verifyCode = async () => {
-    setBusy('verify');
-    setError(null);
-    try {
-      const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), acceptTerms: true, name: name.trim() });
-      if (result.error) {
-        setError(friendlyAuthError(result.error, t, t('auth.otp.invalid')));
-        if (result.error.code === 'TERMS_REQUIRED') {
-          setCodeSent(false);
-          setOtp('');
-          resetCountdown();
-        }
-        return;
-      }
-      await finishSignUp();
-    } catch {
-      setError(t('auth.error.tryAgain'));
-    } finally {
-      setBusy(null);
-    }
-  };
+  const code = useEmailCode({
+    email: normalizedEmail,
+    verify: (otp, fetchOptions) => authClient.signIn.emailOtp({ email: normalizedEmail, otp, acceptTerms: true, name: name.trim() }, fetchOptions),
+    onVerified: async () => {
+      if (destination) router.history.push(destination);
+      else await navigate({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
+    },
+  });
+  const fields = useAuthFieldErrors({ name: name.trim() ? undefined : t('auth.name.required'), email: validateEmail(email, t) });
 
   const signUpWithGoogle = async () => {
-    setError(null);
+    code.setError(null);
     setIsGoogleSubmitting(true);
     const result = await signIn.social({ provider: 'google', callbackURL: afterAuthPath, additionalData: { acceptTerms: true } });
     if (result.error) {
-      setError(friendlyAuthError(result.error, t, t('auth.signUp.error')));
+      code.setError(friendlyAuthError(result.error, t, t('auth.signUp.error')));
       setIsGoogleSubmitting(false);
     }
   };
 
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (codeSent) {
-      await verifyCode();
-    } else {
-      await requestCode();
-    }
-  };
-
   if (metaPending) {
-    // Shaped like the form below (name, email, terms, button), so it doesn't jump when sign-up opens.
+    // Only when the server couldn't read the instance metadata. Shaped like
+    // the form below (name, email, terms, button).
     return (
       <AuthLayout subtitle={t('auth.signUp.subtitle')}>
         <div aria-busy="true" className="flex flex-col gap-4">
@@ -176,10 +134,18 @@ function SignUpPage() {
     );
   }
 
+  if (code.codeSent) {
+    return (
+      <AuthLayout subtitle={t('auth.otp.checkEmail')}>
+        <EmailCodeStep backLabel={t('auth.otp.changeDetails')} code={code} email={normalizedEmail} submitLabel={t('auth.otp.verifyCreate')} />
+      </AuthLayout>
+    );
+  }
+
   return (
-    <AuthLayout subtitle={codeSent ? t('auth.otp.checkEmail', { email: normalizedEmail }) : t('auth.signUp.subtitle')}>
+    <AuthLayout subtitle={t('auth.signUp.subtitle')}>
       {/* An invitation is tied to one address, so Google (which may pick another) is hidden. */}
-      {!codeSent && googleEnabled && !lockedEmail ? (
+      {googleEnabled && !lockedEmail ? (
         <>
           <div className="mb-2">
             <TermsNotice />
@@ -202,115 +168,72 @@ function SignUpPage() {
           </div>
         </>
       ) : null}
-      <form className="flex flex-col gap-4" onSubmit={submit}>
-        {!codeSent ? (
-          <>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="name">{t('auth.field.name')}</Label>
-              <Input
-                autoComplete="name"
-                autoFocus
-                id="name"
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Ada Lovelace"
-                required
-                value={name}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">{t('auth.field.email')}</Label>
-              <Input
-                autoComplete="email"
-                id="email"
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@company.com"
-                readOnly={lockedEmail}
-                required
-                type="email"
-                value={email}
-              />
-              {lockedEmail ? <p className="text-muted-foreground text-xs">{t('auth.invite.invitedAs', { email: search.email ?? '' })}</p> : null}
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center gap-2" dir="ltr">
-            <Label htmlFor="otp">{t('auth.otp.label')}</Label>
-            <InputOTP
-              aria-invalid={Boolean(error)}
-              autoComplete="one-time-code"
+      <form
+        className="flex flex-col gap-4"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (fields.submit()) void code.requestCode();
+        }}
+      >
+        <AuthTextField error={fields.visible('name')} id="name" label={t('auth.field.name')}>
+          {(control) => (
+            <Input
+              {...control}
+              autoComplete="name"
               autoFocus
-              containerClassName="justify-center"
-              disabled={isSubmitting}
-              id="otp"
-              inputMode="numeric"
-              maxLength={6}
-              onChange={setOtp}
-              onComplete={verifyCode}
-              value={otp}
-            >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
-            <p className="text-center text-muted-foreground text-xs">{t('auth.otp.hint')}</p>
-          </div>
-        )}
-        {error ? (
+              onBlur={fields.onBlur('name')}
+              onChange={(event) => setName(event.target.value)}
+              placeholder={t('auth.field.namePlaceholder')}
+              required
+              value={name}
+            />
+          )}
+        </AuthTextField>
+        <AuthTextField
+          description={lockedEmail ? t('auth.invite.invitedAs', { email: search.email ?? '' }) : undefined}
+          error={fields.visible('email')}
+          id="email"
+          label={t('auth.field.email')}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              autoComplete="email"
+              className="text-start"
+              dir="ltr"
+              onBlur={fields.onBlur('email')}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@company.com"
+              readOnly={lockedEmail}
+              required
+              type="email"
+              value={email}
+            />
+          )}
+        </AuthTextField>
+        {code.error ? (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm" role="alert">
-            {error}
+            {code.error}
           </p>
         ) : null}
         <TermsNotice />
         <Button
           className="mt-1 w-full"
-          disabled={isSubmitting || (codeSent && otp.length !== 6)}
-          loading={busy === 'send' || busy === 'verify'}
-          loadingText={busy === 'verify' ? t('auth.otp.verifying') : t('auth.otp.sending')}
+          disabled={code.busy !== null}
+          loading={code.busy === 'send'}
+          loadingText={t('auth.otp.sending')}
           type="submit"
         >
-          {codeSent ? t('auth.otp.verifyCreate') : t('auth.otp.sendCreate')}
+          {t('auth.otp.sendCreate')}
         </Button>
-        {codeSent ? (
-          <div className="flex items-center justify-between">
-            <Button
-              onClick={() => {
-                setCodeSent(false);
-                setOtp('');
-                setError(null);
-                resetCountdown();
-              }}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('auth.otp.changeDetails')}
-            </Button>
-            <Button
-              disabled={isSubmitting || resendIn > 0}
-              loading={busy === 'resend'}
-              onClick={() => void requestCode('resend')}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              {resendIn > 0 ? t('auth.otp.resendIn', { seconds: resendIn }) : t('auth.otp.resend')}
-            </Button>
-          </div>
-        ) : null}
       </form>
-      {!codeSent ? (
-        <p className="mt-5 text-center text-muted-foreground text-sm">
-          {t('auth.signUp.haveAccount')}{' '}
-          <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-in">
-            {t('auth.signIn.submit')}
-          </Link>
-        </p>
-      ) : null}
+      <p className="mt-5 text-center text-muted-foreground text-sm">
+        {t('auth.signUp.haveAccount')}{' '}
+        <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-in">
+          {t('auth.signIn.submit')}
+        </Link>
+      </p>
     </AuthLayout>
   );
 }

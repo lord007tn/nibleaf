@@ -93,3 +93,22 @@ export function prefetchRouteData<TQueryFnData, TError, TData, TQueryKey extends
   // missing; a failure surfaces through the component's own query, not here.
   void queryClient.ensureQueryData(options).catch(() => undefined);
 }
+
+/**
+ * Load data a page needs in its server-rendered HTML, like the published
+ * reader (apps/app/DATA_LOADING.md): awaited on the server and in the browser,
+ * and returned as loader data, which the router dehydrates, so the first
+ * client render starts from the same answer (pass it to the query as
+ * `initialData`). It is not retried, so a slow API can't hold the page; a
+ * failure returns null and the page falls back to its own query.
+ */
+export async function loadRouteData<TQueryFnData, TError, TData, TQueryKey extends QueryKey>(
+  queryClient: QueryClient,
+  options: EnsureQueryDataOptions<TQueryFnData, TError, TData, TQueryKey>,
+): Promise<TData | null> {
+  try {
+    return await queryClient.ensureQueryData({ ...options, retry: false });
+  } catch {
+    return null;
+  }
+}

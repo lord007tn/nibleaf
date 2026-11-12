@@ -12,7 +12,8 @@ export function useOtpResendCountdown(cooldownSeconds = OTP_RESEND_COOLDOWN_SECO
     return () => window.clearTimeout(timer);
   }, [resendIn]);
 
-  const startCountdown = useCallback(() => setResendIn(cooldownSeconds), [cooldownSeconds]);
+  /** Starts the cooldown; `seconds` overrides it, for example with the wait a rate limit answered. */
+  const startCountdown = useCallback((seconds?: number) => setResendIn(Math.ceil(seconds ?? cooldownSeconds)), [cooldownSeconds]);
   const resetCountdown = useCallback(() => setResendIn(0), []);
 
   return { resendIn, resetCountdown, startCountdown };

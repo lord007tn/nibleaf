@@ -1,15 +1,15 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { AuthCodeField } from '@/components/auth-email-code';
 import { AuthLayout } from '@/layouts/auth';
-import { friendlyAuthError } from '@/lib/auth-errors';
+import { friendlyAuthError, isCodeLockedError } from '@/lib/auth-errors';
 import { afterAuthDestination } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 
@@ -46,6 +46,14 @@ function VerifyEmailPage() {
   // An old link that failed: the page goes on with a code instead of waiting on the dead link.
   const [linkFailed, setLinkFailed] = useState(false);
   const [linkNotice, setLinkNotice] = useState(false);
+  // Three wrong guesses spend a code: only "Resend code" helps then.
+  const [needsNewCode, setNeedsNewCode] = useState(false);
+  const codeInput = useRef<HTMLInputElement>(null);
+  // Focus after the render that re-enables the input; a disabled input can't take focus.
+  const [focusRequest, setFocusRequest] = useState(0);
+  useEffect(() => {
+    if (focusRequest) codeInput.current?.focus();
+  }, [focusRequest]);
   const checkingLink = Boolean(search.token) && !linkFailed;
   const shownError = error ?? (linkNotice ? t(email ? 'auth.verify.invalidLinkResend' : 'auth.verify.invalidLinkEnterEmail') : null);
 
@@ -96,23 +104,29 @@ function VerifyEmailPage() {
       return;
     }
     setOtp('');
+    setNeedsNewCode(false);
     setLinkNotice(false);
     setCodeEmail(target);
+    setFocusRequest((count) => count + 1);
     toast.success(t('auth.verify.sentToast', { email: target }));
   };
 
-  const verifyCode = async () => {
-    if (!email || otp.length !== 6) {
+  const verifyCode = async (code = otp) => {
+    if (!email || code.length !== 6) {
       setError(t('auth.verify.invalidCode'));
       return;
     }
     setError(null);
     setLinkNotice(false);
     setVerifying(true);
-    const result = await authClient.emailOtp.verifyEmail({ email, otp });
+    const result = await authClient.emailOtp.verifyEmail({ email, otp: code });
     if (result.error) {
       setError(friendlyAuthError(result.error, t, t('auth.verify.invalidCode')));
       setVerifying(false);
+      // A rejected code is no use in the boxes; a server failure keeps it for another try.
+      if ((result.error.status ?? 400) < 500) setOtp('');
+      if (isCodeLockedError(result.error)) setNeedsNewCode(true);
+      else setFocusRequest((count) => count + 1);
       return;
     }
     setVerified(true);
@@ -141,7 +155,13 @@ function VerifyEmailPage() {
             t('auth.verify.verified')
           ) : email ? (
             <>
-              {t('auth.verify.sentTo')} <span className="font-medium text-foreground">{email}</span>
+              {t('auth.verify.sentTo')}
+              {/* On its own line, left-to-right and whole; broken only when it can't fit. */}
+              <span className="block font-medium text-foreground">
+                <span className="[overflow-wrap:anywhere] [unicode-bidi:isolate]" dir="ltr">
+                  {email}
+                </span>
+              </span>
             </>
           ) : (
             t('auth.verify.enterEmail')
@@ -153,40 +173,27 @@ function VerifyEmailPage() {
         <>
           <form
             className="mt-6 flex flex-col gap-4"
+            noValidate
             onSubmit={(event) => {
               event.preventDefault();
               void verifyCode();
             }}
           >
-            <div className="flex flex-col items-center gap-2" dir="ltr">
-              <Label htmlFor="verification-code">{t('auth.verify.codeLabel')}</Label>
-              <InputOTP
-                aria-invalid={Boolean(shownError)}
-                autoComplete="one-time-code"
-                autoFocus
-                containerClassName="justify-center"
-                disabled={verifying}
-                id="verification-code"
-                inputMode="numeric"
-                maxLength={6}
-                onChange={setOtp}
-                onComplete={verifyCode}
-                value={otp}
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-            {errorAlert}
-            <Button className="w-full" disabled={otp.length !== 6} loading={verifying} loadingText={t('auth.verify.submitting')} type="submit">
-              {t('auth.verify.submit')}
-            </Button>
+            <AuthCodeField
+              disabled={verifying || needsNewCode}
+              error={shownError}
+              id="verification-code"
+              inputRef={codeInput}
+              label={t('auth.verify.codeLabel')}
+              onChange={setOtp}
+              onComplete={(code) => void verifyCode(code)}
+              value={otp}
+            />
+            {needsNewCode ? null : (
+              <Button className="w-full" disabled={verifying} loading={verifying} loadingText={t('auth.verify.submitting')} type="submit">
+                {t('auth.verify.submit')}
+              </Button>
+            )}
           </form>
           <Button
             className="mt-3 w-full"
@@ -195,7 +202,7 @@ function VerifyEmailPage() {
             loadingText={t('auth.verify.resending')}
             onClick={resend}
             type="button"
-            variant="outline"
+            variant={needsNewCode ? 'default' : 'outline'}
           >
             {t('auth.verify.resend')}
           </Button>
@@ -213,6 +220,8 @@ function VerifyEmailPage() {
             <Input
               autoComplete="email"
               autoFocus
+              className="text-start"
+              dir="ltr"
               id="verification-email"
               onChange={(event) => setTypedEmail(event.target.value)}
               placeholder="you@company.com"

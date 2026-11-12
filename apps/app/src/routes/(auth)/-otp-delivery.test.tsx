@@ -18,12 +18,14 @@ vi.mock('@nibleaf/i18n/react', async () => {
     import('../../../../../packages/i18n/messages/en.json'),
     import('../../../../../packages/i18n/src/message-ids'),
   ]);
-  return {
-    useT: () => (key: keyof typeof MESSAGE_IDS) => (mocks.locale === 'ar' ? ar : en)[MESSAGE_IDS[key]],
-  };
+  const t = (key: keyof typeof MESSAGE_IDS, variables?: Record<string, string | number>) =>
+    String((mocks.locale === 'ar' ? ar : en)[MESSAGE_IDS[key] as keyof typeof en]).replace(/\{(\w+)\}/g, (_, name) =>
+      String(variables?.[name] ?? ''),
+    );
+  return { useT: () => t, useLocale: () => ({ t, locale: mocks.locale }) };
 });
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => mocks.search }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => mocks.search, useLoaderData: () => null }),
   useNavigate: () => mocks.navigate,
   useRouter: () => ({ history: { push: mocks.navigate, replace: mocks.navigate } }),
   Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
@@ -32,7 +34,7 @@ vi.mock('@/hooks/api/public', () => ({
   useGetPublicMeta: () => ({ isPending: false, data: { signupDisabled: false, providers: { google: false } } }),
 }));
 vi.mock('@/hooks/api/query-options', () => ({ getPublicMetaQueryOptions: () => ({ queryKey: ['public', 'meta'] }) }));
-vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ loadRouteData: vi.fn() }));
 vi.mock('@/layouts/auth', () => ({ AuthLayout: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
 vi.mock('@/services/auth-client', () => ({
   authClient: { emailOtp: { sendVerificationOtp: mocks.send, verifyEmail: mocks.verify }, signIn: { emailOtp: mocks.verify } },
@@ -189,6 +191,6 @@ describe('required auth email delivery feedback', () => {
     for (const value of ['1', '12', '123', '1234', '12345']) await enter('[data-input-otp]', value);
     expect(mocks.verify).not.toHaveBeenCalled();
     await enter('[data-input-otp]', '123456');
-    expect(mocks.verify).toHaveBeenCalledExactlyOnceWith({ email: 'synthetic@example.test', otp: '123456', acceptTerms: true });
+    expect(mocks.verify).toHaveBeenCalledExactlyOnceWith({ email: 'synthetic@example.test', otp: '123456', acceptTerms: true }, expect.anything());
   });
 });
