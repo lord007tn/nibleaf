@@ -33,10 +33,12 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { documentationComponentContractEntries, documentationReaderTag } from './documentation-component-contract';
 import { matchTags } from './markup-scan';
+import { READER_EMBED_TAG } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
 import { createLinkResolver } from './site-links';
 import { sitePathTooLong } from './site-route';
+import { isAllowedMediaUrl, isSiteMediaPath, videoEmbedFrom, videoPageUrl } from './video-embeds';
 
 const objectValue = (value: unknown): Record<string, unknown> =>
   Object.prototype.toString.call(value) === '[object Object]' ? (value as Record<string, unknown>) : {};
@@ -83,7 +85,19 @@ export interface PageContentFacts {
   imagesWithoutAlt: string[];
   /** Stray text left over from imports: a paragraph of only `/` or a literal `---`. */
   strayText: string[];
+  /** Provider videos without a title (they get a generic accessible name), by their page address. */
+  untitledEmbeds: string[];
+  /** Iframes the reader shows as a link or as text instead of a player, by their address. */
+  embedsAsLinks: string[];
+  /** `<video>`/`<source>` addresses the reader won't play: not https and not on this site. */
+  insecureVideos: string[];
+  /** Iframes the reader doesn't show because no closer ends their block, by their address. */
+  unclosedEmbeds: string[];
+  /** Video posters the reader leaves out (anything but a file on this site), by their address. */
+  hiddenPosters: string[];
 }
+
+type EmbedFacts = Pick<PageContentFacts, 'untitledEmbeds' | 'embedsAsLinks' | 'insecureVideos' | 'unclosedEmbeds' | 'hiddenPosters'>;
 
 // The same parse as #426's link rewriter (micromark MDX + mdast-util-mdx, via
 // remark-mdx). GFM is left out on purpose: it roughly doubles the cost and
@@ -114,6 +128,8 @@ const LINK_ELEMENTS = new Set([
   'a',
   ...documentationComponentContractEntries().flatMap(([tag, component]) => ('href' in component.attributes ? [documentationReaderTag(tag)] : [])),
 ]);
+/** Elements the embed checks read (see `collectEmbed`). */
+const EMBED_ELEMENTS = new Set([READER_EMBED_TAG, 'video', 'source']);
 const NON_LINK_CONTEXTS = new Set(['script', 'textarea', 'template', 'style', 'noscript', 'iframe', 'title']);
 const STRAY = /^(?:\/|-{3,})$/;
 const HTML_IMAGE = /<img\b[^>]*>/gi;
@@ -160,14 +176,64 @@ const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: n
   return ranges;
 };
 
+/**
+ * Whether an offset lies inside any of the ranges, answered in O(log n) per
+ * offset: the ranges are sorted once by start, with the largest end seen so
+ * far, so a page with many contexts and many links or embeds stays linear.
+ * Same answer as checking every range (an unclosed context can overlap later ones).
+ */
+export const offsetInRanges = (ranges: { start: number; end: number }[]): ((offset: number) => boolean) => {
+  if (ranges.length === 0) return () => false;
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const starts = sorted.map((range) => range.start);
+  const maxEnds: number[] = [];
+  for (const range of sorted) maxEnds.push(Math.max(range.end, maxEnds.at(-1) ?? range.end));
+  return (offset) => {
+    // The last range starting at or before the offset.
+    let low = 0;
+    let high = starts.length - 1;
+    let last = -1;
+    while (low <= high) {
+      const middle = (low + high) >> 1;
+      if ((starts[middle] as number) <= offset) {
+        last = middle;
+        low = middle + 1;
+      } else high = middle - 1;
+    }
+    return last >= 0 && (maxEnds[last] as number) > offset;
+  };
+};
+
 /** A raw HTML node that may open one of the NON_LINK_CONTEXTS (it can span later nodes). */
 const NON_LINK_TAG = new RegExp(`<(?:${[...NON_LINK_CONTEXTS].join('|')})(?![a-z0-9-])`, 'i');
 
 /** HAST property holding a Markdown link's destination as authored. */
 const AUTHORED_HREF = 'dataAuthoredHref';
 
-/** Link destinations after HTML parsing, never text that merely looks like a tag. */
-const htmlLinks = (tree: Root, content: string): string[] => {
+const propertyText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+/** What one element contributes to the embed checks, read as the reader's renderer reads it. */
+const collectEmbed = (node: HtmlNode, parent: HtmlNode | undefined, embeds: EmbedFacts): void => {
+  const properties = node.properties ?? {};
+  if (node.tagName === READER_EMBED_TAG) {
+    const video = videoEmbedFrom(properties.provider, properties.videoid, properties.start);
+    if (video) {
+      if (!propertyText(properties.title)) embeds.untitledEmbeds.push(videoPageUrl(video));
+    } else {
+      const address = propertyText(properties.href) || propertyText(properties.text);
+      if (address) embeds.embedsAsLinks.push(address);
+    }
+  } else if (node.tagName === 'video' || (node.tagName === 'source' && parent?.tagName === 'video')) {
+    const src = propertyText(properties.src);
+    if (src && !isAllowedMediaUrl(src)) embeds.insecureVideos.push(src);
+    const poster = node.tagName === 'video' ? propertyText(properties.poster) : '';
+    if (poster && !isSiteMediaPath(poster)) embeds.hiddenPosters.push(poster);
+  }
+};
+
+/** Link destinations after HTML parsing, never text that merely looks like a tag;
+ *  embeds (iframes as the reader rewrites them, and videos) from the same tree. */
+const htmlLinks = (tree: Root, content: string, embeds: EmbedFacts): string[] => {
   const links: string[] = [];
   // CommonMark: the first definition of a label wins.
   const definitions = new Map<string, string>();
@@ -201,7 +267,7 @@ const htmlLinks = (tree: Root, content: string): string[] => {
     markdownLinks(tree as MarkdownNode);
     return links;
   }
-  const suppressed = hasNonLinkContext ? htmlNonLinkRanges(tree, content) : [];
+  const suppressed = offsetInRanges(hasNonLinkContext ? htmlNonLinkRanges(tree, content) : []);
   // HAST percent-encodes Markdown destinations (`/دليل` → `/%D8%AF…`). Carry the
   // authored one through, so the checks report what the author wrote.
   const markAuthored = (node: MarkdownNode) => {
@@ -218,11 +284,17 @@ const htmlLinks = (tree: Root, content: string): string[] => {
     for (const child of node.children ?? []) markAuthored(child);
   };
   markAuthored(tree as MarkdownNode);
-  const visit = (node: HtmlNode) => {
+  const visit = (node: HtmlNode, parent?: HtmlNode) => {
+    // Every complete iframe became the reader's embed element (./reader-embeds), so one
+    // still here has no closer in its block (or a tag the rewrite couldn't read).
+    if (node.tagName === 'iframe') embeds.unclosedEmbeds.push(propertyText(node.properties?.src) || '<iframe>');
     if (node.tagName && NON_LINK_CONTEXTS.has(node.tagName)) return;
-    if (node.tagName && LINK_ELEMENTS.has(node.tagName)) {
+    if (node.tagName && (LINK_ELEMENTS.has(node.tagName) || EMBED_ELEMENTS.has(node.tagName))) {
       const offset = node.position?.start.offset;
-      if (offset !== undefined && suppressed.some((range) => offset >= range.start && offset < range.end)) return;
+      if (offset !== undefined && suppressed(offset)) return;
+      collectEmbed(node, parent, embeds);
+    }
+    if (node.tagName && LINK_ELEMENTS.has(node.tagName)) {
       // An element exists here only when the reader parses it as HTML. A JSX
       // spread on its own line is text to CommonMark and never gets this far;
       // inside a raw HTML block it is an unknown attribute the sanitizer drops,
@@ -230,7 +302,7 @@ const htmlLinks = (tree: Root, content: string): string[] => {
       const href = node.properties?.[AUTHORED_HREF] ?? node.properties?.href;
       if (typeof href === 'string' && href && !href.trimStart().startsWith('{')) links.push(href);
     }
-    for (const child of node.children ?? []) visit(child);
+    for (const child of node.children ?? []) visit(child, node);
   };
   visit(readerLinkParser.runSync(tree));
   return links;
@@ -294,7 +366,16 @@ const collectFacts = (content: string): PageContentFacts => {
   };
   collectDefinitions(tree);
 
-  const facts: PageContentFacts = { links: [], imagesWithoutAlt: [], strayText: [] };
+  const facts: PageContentFacts = {
+    links: [],
+    imagesWithoutAlt: [],
+    strayText: [],
+    untitledEmbeds: [],
+    embedsAsLinks: [],
+    insecureVideos: [],
+    unclosedEmbeds: [],
+    hiddenPosters: [],
+  };
   const visit = (node: MarkdownNode) => {
     if (inCode(node) || NON_LINK_CONTEXTS.has(node.name?.toLowerCase() ?? '')) return;
     if (SILENT.has(node.type)) {
@@ -341,7 +422,7 @@ const collectFacts = (content: string): PageContentFacts => {
   visit(tree);
   // Links as the reader renders them: its normalized source, through its pipeline.
   const readerSource = normalizeMdxBlocks(content);
-  facts.links = htmlLinks(readerLinkParser.parse(readerSource) as Root, readerSource);
+  facts.links = htmlLinks(readerLinkParser.parse(readerSource) as Root, readerSource, facts);
   return facts;
 };
 

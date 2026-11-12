@@ -63,7 +63,7 @@ export interface Project {
 /** The newest MCP audit event of a key or connected app. `operation` is the
  *  tool or resource name and `errorCode` the audit code when it failed; the
  *  dashboard turns both into one plain sentence. */
-export interface McpActivity {
+interface McpActivity {
   operation: string;
   outcome: string;
   errorCode?: string | null;
@@ -251,7 +251,19 @@ export interface PendingChange {
 /** A pre-publish quality check on the draft being previewed. Warnings leave
  *  publishing allowed; an `error` blocks it (the publish would fail). */
 export interface PublishCheck {
-  code: 'broken-internal-link' | 'missing-alt' | 'untitled-page' | 'stray-characters' | 'unreadable-slug' | 'empty-page' | 'duplicate-title';
+  code:
+    | 'broken-internal-link'
+    | 'missing-alt'
+    | 'untitled-page'
+    | 'stray-characters'
+    | 'unreadable-slug'
+    | 'empty-page'
+    | 'duplicate-title'
+    | 'embed-untitled'
+    | 'embed-as-link'
+    | 'video-not-https'
+    | 'embed-unclosed'
+    | 'video-poster-hidden';
   severity: 'error' | 'warning';
   pageId: string;
   languageCode: string;

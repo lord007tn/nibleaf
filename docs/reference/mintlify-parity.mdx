@@ -3,7 +3,7 @@ title: 'Mintlify component and authoring parity'
 description: 'Compare every Mintlify component and authoring feature with what Nibleaf renders, edits visually, and round-trips today, and see when each gap closes.'
 audience: 'documentation leads evaluating a move from Mintlify, and Nibleaf contributors'
 content_type: 'reference'
-last_reviewed: '2026-11-07'
+last_reviewed: '2026-11-12'
 verified_against: 'Mintlify documentation (components, create, organize/pages, api-playground) read on 2026-11-07; packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/editor/extensions, apps/worker/src/exports/render.ts, and packages/shared/src/theme-repository-templates'
 lang: 'en'
 dir: 'ltr'
@@ -134,8 +134,8 @@ Public Markdown (each page's `.md` and the llms files) and the HTML and PDF expo
 | `noZoom` on an image | Missing | | 5 |
 | `Frame` with `caption` | Partial | Plain-text captions; Markdown links and emphasis in a caption are shown as typed | 3 |
 | `Frame` `hint` | Missing | | 3 |
-| YouTube and other `iframe` embeds | Missing | | 5 |
-| Self-hosted `video` with autoplay, loop, and muted | Missing | | 5 |
+| YouTube and other `iframe` embeds | Partial | YouTube, Vimeo, Loom, and Wistia frames render as a click-to-load player that contacts the provider only when a reader presses play; other frames show as a link to their address; no editor block yet | 5 |
+| Self-hosted `video` with autoplay, loop, and muted | Partial | Renders with player controls from an https address or a file on your site; autoplay, loop, and muted are dropped, so a video plays only when a reader starts it | 5 |
 | Mermaid diagrams | Partial | Rendered on the site; the editor shows the source with no preview; `actions` and `placement` are missing | 5 |
 | LaTeX math (`$…$`, `$$…$$`) | Partial | Rendered on the site with KaTeX; the editor has no math block or preview | 5 |
 

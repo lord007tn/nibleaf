@@ -1,18 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { assistantSetup, ConnectionError, testAssistantConnection } from './assistant-setup';
+import { ConnectionError, testAssistantConnection } from './test-connection';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('assistant setup', () => {
-  it('includes the endpoint in every config while keeping secrets out of installation URLs', () => {
-    const endpoint = 'https://docs.example/api/mcp';
-    const setup = assistantSetup(endpoint, 'private-once-key');
-    for (const snippet of [setup.claudeCode, setup.desktop, setup.cursor, setup.vscode]) expect(snippet).toContain(endpoint);
-    expect(setup.cursorLink).not.toContain('private-once-key');
-    expect(atob(new URL(setup.cursorLink).searchParams.get('config') ?? '')).not.toContain('private-once-key');
-    expect(decodeURIComponent(setup.vscodeLink)).not.toContain('private-once-key');
-    expect(JSON.parse(setup.vscode).inputs[0]).toMatchObject({ type: 'promptString', password: true });
-    expect(JSON.parse(setup.desktop).mcpServers.nibleaf.env.NIBLEAF_AUTH).toBe('Bearer private-once-key');
-  });
   it('initializes before calling capabilities and honors session/protocol headers', async () => {
     const fetcher = vi
       .fn()

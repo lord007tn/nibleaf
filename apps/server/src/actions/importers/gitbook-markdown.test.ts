@@ -119,6 +119,31 @@ describe('convertGitBookMarkdown', () => {
     expect(warnings).toEqual([]);
   });
 
+  it('turns embeds of allowlisted video providers into their canonical player frame', () => {
+    const { content, warnings } = convert(
+      [
+        '{% embed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m5s&list=PL1" %}',
+        '{% embed url="https://vimeo.com/76979871" %}',
+        'Release walkthrough',
+        '{% endembed %}',
+        '{% embed url="https://www.loom.com/share/0123456789abcdef0123456789abcdef?sid=x" %}',
+        '{% embed url="https://acme.wistia.com/medias/abc123def4" %}',
+        '{% embed url="https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ" %}',
+      ].join('\n'),
+    );
+    expect(content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=65"></iframe>');
+    expect(content).toContain(
+      '<Frame caption="Release walkthrough">\n\n<iframe src="https://player.vimeo.com/video/76979871" title="Release walkthrough"></iframe>\n\n</Frame>',
+    );
+    expect(content).toContain('<iframe src="https://www.loom.com/embed/0123456789abcdef0123456789abcdef"></iframe>');
+    expect(content).toContain('<iframe src="https://fast.wistia.net/embed/iframe/abc123def4"></iframe>');
+    expect(content).toContain(
+      '<Card title="youtube.com.evil.example" href="https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ" icon="arrow-up-right-from-square"></Card>',
+    );
+    expect(content).not.toContain('endembed');
+    expect(warnings).toEqual([]);
+  });
+
   it('converts figures, pictures, frames, and inline images to Markdown images', () => {
     const { content } = convert(
       [

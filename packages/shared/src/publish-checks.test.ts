@@ -5,6 +5,7 @@ import {
   buildInboundPageLinkMapAsync,
   findBrokenInternalLinks,
   findInboundPageLinks,
+  offsetInRanges,
   pageContentFacts,
   snapshotContentFacts,
 } from './publish-checks';
@@ -443,5 +444,53 @@ describe('over-long links', () => {
     expect(findBrokenInternalLinks(snapshot).map(({ href: link, reason }) => ({ length: link.length, reason }))).toEqual([
       { length: href.length, reason: 'path-too-long' },
     ]);
+  });
+});
+
+describe('offsets inside skipped HTML ranges', () => {
+  const everyRange = (ranges: { start: number; end: number }[], offset: number) =>
+    ranges.some((range) => offset >= range.start && offset < range.end);
+
+  it('answers like checking every range, with unsorted, nested and overlapping ranges', () => {
+    // An unclosed context runs to the end of the page, so it can overlap later, shorter ranges.
+    const ranges = [
+      { start: 40, end: 45 },
+      { start: 5, end: 10 },
+      { start: 20, end: 100 },
+      { start: 30, end: 35 },
+      { start: 10, end: 12 },
+    ];
+    const inRange = offsetInRanges(ranges);
+    for (let offset = -1; offset <= 101; offset++) expect(inRange(offset), `offset ${offset}`).toBe(everyRange(ranges, offset));
+  });
+
+  it('answers like checking every range for generated ranges', () => {
+    let seed = 7;
+    const next = (limit: number) => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed % limit;
+    };
+    for (let round = 0; round < 50; round++) {
+      const ranges = Array.from({ length: next(12) }, () => {
+        const start = next(200);
+        return { start, end: start + next(60) };
+      });
+      const inRange = offsetInRanges(ranges);
+      for (let offset = 0; offset < 260; offset++) expect(inRange(offset)).toBe(everyRange(ranges, offset));
+    }
+  });
+
+  it('finds nothing when there are no ranges', () => {
+    expect(offsetInRanges([])(0)).toBe(false);
+  });
+});
+
+describe('embed checks next to raw HTML contexts', () => {
+  it('skips a video inside a title and checks the ones after it', () => {
+    const facts = pageContentFacts(
+      '<title>t</title>\n\n<video src="http://a.example.com/1.mp4"></video>\n\n<title><video src="http://b.example.com/2.mp4"></video></title>\n\n<video src="http://c.example.com/3.mp4"></video>\n',
+      false,
+    );
+    expect(facts.insecureVideos).toEqual(['http://a.example.com/1.mp4', 'http://c.example.com/3.mp4']);
   });
 });

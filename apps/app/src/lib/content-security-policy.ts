@@ -1,3 +1,5 @@
+import { VIDEO_EMBED_ORIGINS } from '@nibleaf/shared/video-embeds';
+
 /** Build the enforced HTML Content Security Policy for the dashboard,
  * marketing pages, and published sites. Anonymous marketing passes script hashes;
  * other HTML uses a per-response nonce. Cloudflare injects its
@@ -19,6 +21,9 @@ export function contentSecurityPolicy(inlineScripts: string | readonly string[])
     // HTTP-only private deployment. Mixed-content rules still block it on HTTPS.
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' data: blob: https: http:",
+    // The reader's video players load only after a click, and only from these
+    // origins (@nibleaf/shared/video-embeds); the editor previews them too.
+    `frame-src 'self' ${VIDEO_EMBED_ORIGINS.join(' ')}`,
     "connect-src 'self' https: http:",
     "worker-src 'self' blob:",
     "manifest-src 'self'",

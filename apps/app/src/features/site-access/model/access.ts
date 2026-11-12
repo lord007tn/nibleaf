@@ -95,7 +95,7 @@ export function decide(access: SiteAccess, action: SiteAction): Decision {
         'access.reason.transferTarget',
       );
     case 'site.apiKeys.create':
-      // actions/api-keys.ts issueScopes + settings/api-keys-tab.tsx selectionPermitted.
+      // actions/api-keys.ts issueScopes + features/ai-assistants/components/key-dialog.tsx selectionPermitted.
       // Every current McpScope requires MEMBER (shared/mcp.ts MCP_SCOPE_MIN_ROLE);
       // only the full_admin preset additionally requires ADMIN. Parity is tested.
       //

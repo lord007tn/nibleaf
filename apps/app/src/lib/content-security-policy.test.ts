@@ -12,7 +12,17 @@ describe('contentSecurityPolicy', () => {
     expect(policy).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(policy).toContain("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com");
     expect(policy).toContain("connect-src 'self' https: http:");
-    expect(policy).not.toContain('frame-src');
+  });
+
+  it('frames only the allowlisted video players', () => {
+    const directives = contentSecurityPolicy('n').split('; ');
+    expect(directives.filter((directive) => directive.startsWith('frame-src'))).toEqual([
+      "frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com https://fast.wistia.net",
+    ]);
+    // Everything else is unchanged: no wildcard frames, no child-src fallback.
+    expect(directives).not.toContain('child-src');
+    expect(contentSecurityPolicy(['sha256-abc'])).toContain("frame-src 'self' https://www.youtube-nocookie.com");
+    expect(directives[0]).toBe("default-src 'self'");
   });
 
   it('locks down embedding, plugins, and base URLs without breaking HTTP deployments', () => {

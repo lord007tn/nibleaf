@@ -38,4 +38,76 @@ describe('pageContentFacts', () => {
     expect(pageContentFacts(content).strayText).toEqual(['/', '---']);
     expect(pageContentFacts('<p>---</p>').strayText).toEqual(['---']);
   });
+
+  it('finds video embeds without a title, frames shown as links, and videos without a secure address', () => {
+    const content = [
+      '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?start=5"></iframe>',
+      '',
+      '<iframe src="https://vimeo.com/76979871" title="Titled"></iframe>',
+      '',
+      '<Frame caption="Pen">',
+      '  <iframe src="https://codepen.io/x" title="Pen"></iframe>',
+      '</Frame>',
+      '',
+      '<iframe src="http://example.com/frame"></iframe>',
+      '',
+      '<video controls src="http://cdn.example.com/a.mp4"></video>',
+      '',
+      '<video controls src="https://cdn.example.com/b.mp4">',
+      '  <source src="ftp://cdn.example.com/b.webm" type="video/webm" />',
+      '</video>',
+      '',
+      '<video controls src="/api/public/projects/p/assets/c.mp4"></video>',
+      '',
+      '<picture><source srcset="dark.png"><img src="light.png" alt="Logo"></picture>',
+      '',
+      '```html',
+      '<iframe src="https://youtu.be/dQw4w9WgXcQ"></iframe>',
+      '<video src="http://in-code.example/a.mp4"></video>',
+      '```',
+    ].join('\n');
+    const facts = pageContentFacts(content);
+    expect(facts.untitledEmbeds).toEqual(['https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5s']);
+    expect(facts.embedsAsLinks).toEqual(['https://codepen.io/x', 'http://example.com/frame']);
+    expect(facts.insecureVideos).toEqual(['http://cdn.example.com/a.mp4', 'ftp://cdn.example.com/b.webm']);
+  });
+
+  it('reports no embeds for a page without raw HTML', () => {
+    const facts = pageContentFacts('# Title\n\n[YouTube](https://youtu.be/dQw4w9WgXcQ)');
+    expect([facts.untitledEmbeds, facts.embedsAsLinks, facts.insecureVideos, facts.unclosedEmbeds, facts.hiddenPosters]).toEqual([
+      [],
+      [],
+      [],
+      [],
+      [],
+    ]);
+  });
+
+  it('reports an iframe with no closer in its block, which the reader does not show', () => {
+    const content = [
+      '<iframe src="https://youtu.be/dQw4w9WgXcQ">',
+      '',
+      '## Install',
+      '',
+      '<iframe src="https://youtu.be/M7lc1UVf-VE" title="Tour"></iframe>',
+      '',
+      '```html',
+      '<iframe src="https://in-code.example/">',
+      '```',
+    ].join('\n');
+    const facts = pageContentFacts(content);
+    expect(facts.unclosedEmbeds).toEqual(['https://youtu.be/dQw4w9WgXcQ']);
+    expect(facts.untitledEmbeds).toEqual([]);
+  });
+
+  it('reports video posters the reader leaves out: anything but a file on this site', () => {
+    const content = [
+      '<video controls src="/api/public/assets/a.mp4" poster="https://images.example.com/a.jpg"></video>',
+      '',
+      '<video controls src="/api/public/assets/b.mp4" poster="/api/public/assets/b.jpg"></video>',
+      '',
+      '<video controls src="/api/public/assets/c.mp4" poster="http://images.example.com/c.jpg"></video>',
+    ].join('\n');
+    expect(pageContentFacts(content).hiddenPosters).toEqual(['https://images.example.com/a.jpg', 'http://images.example.com/c.jpg']);
+  });
 });
