@@ -40,7 +40,15 @@ export function SectionLink({ id, language }: { id: string; language?: string })
   }
   return (
     // The heading (its id) describes each button, so a list of buttons tells them apart.
-    <button type="button" className="reader-section-link reader-control" aria-label={t('copySectionLink')} aria-describedby={id} onClick={copy}>
+    // `lang`: its label is the reader's, which can differ from the article's on a fallback page.
+    <button
+      type="button"
+      className="reader-section-link reader-control"
+      aria-label={t('copySectionLink')}
+      aria-describedby={id}
+      lang={language}
+      onClick={copy}
+    >
       <Link className="size-4" aria-hidden />
     </button>
   );
@@ -86,9 +94,10 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
     const modal = dialog.current;
     const source = trigger.current;
     if (!modal || !source) return;
-    // The dialog is portaled out of the article, so carry over its direction and language.
+    // The dialog is portaled out of the article, so carry over its direction. Its
+    // text (the close button) is the reader's, so it takes the reader's language.
     modal.dir = getComputedStyle(source).direction === 'rtl' ? 'rtl' : 'ltr';
-    const lang = source.closest('[lang]')?.getAttribute('lang');
+    const lang = language ?? source.closest('[lang]')?.getAttribute('lang');
     if (lang) modal.lang = lang;
     modal.showModal();
   };
@@ -112,6 +121,7 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
             type="button"
             className="reader-image-zoom reader-control"
             aria-label={alt ? t('viewFullSizeOf', { alt }) : t('viewFullSize')}
+            lang={language}
             onClick={openFullSize}
           >
             <ZoomIn className="size-4" aria-hidden />

@@ -16,11 +16,25 @@ export function selectActiveHeading(headings: { id: string; top: number }[], thr
   return active;
 }
 
-export function MobileTableOfContents({ headings, label }: { headings: TocHeading[]; label: string }) {
+type LanguageAttributes = { lang?: string; dir?: 'ltr' | 'rtl' };
+
+/** `labelLanguage`: the reader's `lang`/`dir` for the label, when the article
+ *  (and so its headings) is in another language, as on a fallback page. */
+export function MobileTableOfContents({
+  headings,
+  label,
+  labelLanguage,
+}: {
+  headings: TocHeading[];
+  label: string;
+  labelLanguage?: LanguageAttributes;
+}) {
   if (!headings.some((heading) => heading.depth <= 3)) return null;
   return (
     <details className="mb-6 rounded-lg border border-border xl:hidden" data-theme-region="mobile-toc">
-      <summary className="min-h-11 cursor-pointer px-4 py-3 font-medium text-sm">{label}</summary>
+      <summary className="min-h-11 cursor-pointer px-4 py-3 font-medium text-sm" {...labelLanguage}>
+        {label}
+      </summary>
       <div className="max-h-[50dvh] overflow-y-auto px-4 pb-3">
         <TableOfContents headings={headings} label={label} mobile />
       </div>
@@ -28,7 +42,19 @@ export function MobileTableOfContents({ headings, label }: { headings: TocHeadin
   );
 }
 
-export function TableOfContents({ headings, label, mobile = false }: { headings: TocHeading[]; label: string; mobile?: boolean }) {
+/** `itemsLanguage`: the article's `lang`/`dir` for the headings listed, when it
+ *  differs from the reader's (the label around them stays in the reader's). */
+export function TableOfContents({
+  headings,
+  label,
+  mobile = false,
+  itemsLanguage,
+}: {
+  headings: TocHeading[];
+  label: string;
+  mobile?: boolean;
+  itemsLanguage?: LanguageAttributes;
+}) {
   const items = headings.filter((heading) => heading.depth <= 3);
   const key = items.map((heading) => heading.id).join('|');
   const [activeId, setActiveId] = useState('');
@@ -84,7 +110,7 @@ export function TableOfContents({ headings, label, mobile = false }: { headings:
           {label}
         </div>
       ) : null}
-      <ul className="space-y-0.5 text-sm" data-theme-region="toc-list">
+      <ul className="space-y-0.5 text-sm" data-theme-region="toc-list" {...itemsLanguage}>
         {items.map((heading) => {
           const active = activeId === heading.id;
           return (

@@ -626,7 +626,7 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
     const categoryLanding = siblingPages
       .filter((candidate) => candidate.languageCode === page.languageCode && resolvePageCategory(candidate, siblingPages.length)?.title === category)
       .sort((a, b) => a.position - b.position)[0];
-    breadcrumbs.splice(-1, 0, { title: category, path: categoryLanding?.path ?? page.path });
+    breadcrumbs.splice(-1, 0, { title: category, path: categoryLanding?.path ?? page.path, section: true });
   }
 
   const servedLanguages = publicLanguages(snapshot.project.languages);
@@ -718,12 +718,21 @@ export const getSitePageMarkdown = async (identifier: string, path: string, lang
 
 const neighbour = (node?: NavNode) => (node ? { title: node.title, path: node.path } : null);
 
-const breadcrumbTrail = (pages: readonly SnapshotPage[], page: SnapshotPage): Array<{ title: string; path: string }> => {
+/** One step of a page's trail. `section` marks a group or category: a heading in
+ *  the navigation, not a page of its own, so the reader shows it as text. Its
+ *  `path` would only lead to whichever page happens to come first under it. */
+interface Breadcrumb {
+  title: string;
+  path: string;
+  section?: true;
+}
+
+const breadcrumbTrail = (pages: readonly SnapshotPage[], page: SnapshotPage): Breadcrumb[] => {
   const byId = new Map(pages.map((p) => [p.id, p]));
-  const trail: Array<{ title: string; path: string }> = [];
+  const trail: Breadcrumb[] = [];
   let current: SnapshotPage | undefined = page;
   while (current) {
-    trail.unshift({ title: current.title, path: current.path });
+    trail.unshift({ title: current.title, path: current.path, ...(current.kind === 'GROUP' ? { section: true as const } : {}) });
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
   return trail;
