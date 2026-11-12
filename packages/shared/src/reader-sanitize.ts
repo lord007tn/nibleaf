@@ -4,6 +4,7 @@ import {
   documentationComponentContractEntries,
   documentationReaderTag,
 } from './documentation-component-contract';
+import { READER_EMBED_TAG } from './reader-embeds';
 
 /*
  * The reader's sanitize schema, shared by the article renderer and by the parser
@@ -59,12 +60,23 @@ export const readerSanitizeSchema: SanitizeOptions = {
   ...defaultSchema,
   // `u`: the editor's Underline (and pasted underlines) save `<u>…</u>`; the
   // GitHub default allows `sub`/`sup` but not `u`. No attributes of its own.
-  tagNames: [...(defaultSchema.tagNames ?? []), 'u', ...COMPONENT_TAGS],
-  protocols: { ...defaultSchema.protocols, ...COMPONENT_PROTOCOLS },
+  // `video`, its captions (`track`) and its `source` (already allowed for `picture`): see below.
+  tagNames: [...(defaultSchema.tagNames ?? []), 'u', 'video', 'track', READER_EMBED_TAG, ...COMPONENT_TAGS],
+  // `poster` is an image address: https or a path on this site, never `data:`/`javascript:`.
+  protocols: { ...defaultSchema.protocols, ...COMPONENT_PROTOCOLS, poster: ['https'] },
   attributes: {
     ...defaultSchema.attributes,
     '*': [...(defaultSchema.attributes?.['*'] ?? []), 'className', 'id'],
     ...COMPONENT_ATTRIBUTES,
+    // An authored iframe, as `normalizeMdxBlocks` rewrites it (./reader-embeds):
+    // the renderer validates these again and builds the player address itself.
+    [READER_EMBED_TAG]: ['provider', 'videoid', 'start', 'title', 'href', 'text'],
+    // A video plays only on request: autoplay, muted, loop and event attributes
+    // are dropped here, and the renderer forces controls and keeps only https
+    // (or same-site) addresses (`isAllowedMediaUrl` in ./video-embeds).
+    video: ['src', 'poster'],
+    source: [...(defaultSchema.attributes?.source ?? []), 'src', 'type'],
+    track: [['kind', 'captions', 'subtitles', 'descriptions', 'chapters'], 'src', 'srcLang', 'label', 'default'],
     // `dataTitle`/`dataLang` (hast camelCase → data-title/data-lang) carry the
     // fenced-code header (filename + language). mdast→hast may place a code
     // node's hProperties on the wrapping <pre>, so allow them on both elements.

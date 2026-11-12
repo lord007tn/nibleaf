@@ -1,5 +1,6 @@
 import { posix } from 'node:path';
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import { parseVideoUrl, videoEmbedSrc } from '@nibleaf/shared/video-embeds';
 import { parse as parseYaml } from 'yaml';
 import { ImportError } from '../../errors';
 import { GitBookImportBudget } from './gitbook-budget';
@@ -419,7 +420,16 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
       }
       if (token.name === 'embed') {
         const url = attributes.url ?? '';
-        if (url) {
+        const video = url ? parseVideoUrl(url) : null;
+        if (video) {
+          // A video the reader plays: the canonical player frame, which the reader
+          // shows as a click-to-load player. The caption, if any, is its title and
+          // the frame's caption; without one the reader names it generically and
+          // the publish checks ask for a title.
+          const title = caption ? plainGitBookText(caption) : '';
+          const frame = `<iframe src="${attr(videoEmbedSrc(video))}"${title ? ` title="${attr(title)}"` : ''}></iframe>`;
+          output.push(block(title ? `<Frame caption="${attr(title)}">\n\n${frame}\n\n</Frame>` : frame));
+        } else if (url) {
           const host = URL.canParse(url) ? new URL(url).hostname.replace(/^www\./, '') : url;
           output.push(
             `\n<Card title="${attr(caption ? plainGitBookText(caption) : host)}" href="${attr(url)}" icon="arrow-up-right-from-square"></Card>\n`,

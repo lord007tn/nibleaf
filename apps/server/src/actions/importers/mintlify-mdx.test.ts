@@ -1,7 +1,27 @@
+import { readFileSync } from 'node:fs';
+import { normalizeMdxBlocks } from '@nibleaf/shared/reader-markdown';
 import { describe, expect, it } from 'vitest';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
 describe('normalizeMintlifyMdx', () => {
+  it('imports iframes and videos as authored HTML, which the reader then renders as players, links and videos', () => {
+    const fixture = (name: string) => readFileSync(new URL(`../../../../../packages/shared/src/__fixtures__/${name}`, import.meta.url), 'utf8');
+    const imported = normalizeMintlifyMdx(fixture('mintlify-video-embeds.mdx'));
+    // The imported page is pinned: the reader's tests render this exact file.
+    expect(imported).toBe(fixture('mintlify-video-embeds.imported.mdx'));
+    expect(imported).toContain('src="https://www.youtube.com/embed/dQw4w9WgXcQ?si=abc123"');
+    expect(imported).toContain('<iframe src="https://www.loom.com/embed/0123456789abcdef0123456789abcdef" title="Loom walkthrough"');
+    expect(imported).toContain('<video controls className="w-full aspect-video rounded-xl" src="https://cdn.example.com/b.mp4"></video>');
+    const reader = normalizeMdxBlocks(imported);
+    expect(reader).toContain('<mdxembed provider="youtube" videoid="dQw4w9WgXcQ" title="YouTube video player"></mdxembed>');
+    expect(reader).toContain('<mdxembed provider="loom" videoid="0123456789abcdef0123456789abcdef" title="Loom walkthrough"></mdxembed>');
+    expect(reader).toContain('<mdxembed href="https://codepen.io/team/embed/abc" title="A pen"></mdxembed>');
+    expect(reader).toContain(
+      '<video autoPlay muted loop playsInline className="w-full aspect-video rounded-xl" src="https://cdn.example.com/demo.mp4" ></video>',
+    );
+    expect(reader).not.toContain('<iframe');
+  });
+
   it('keeps an unclosed fence literal through the end of the document', () => {
     const source = ['```mdx', '<Step title="Literal">', '~~~', '</Step>'].join('\n');
     expect(normalizeMintlifyMdx(source)).toBe(source);

@@ -6,6 +6,7 @@
  */
 import { type DocumentationComponentContract, documentationComponentContractEntries } from './documentation-component-contract';
 import { fencedMarkdownLines } from './markdown-code';
+import { rewriteReaderEmbeds } from './reader-embeds';
 
 const CONTRACT = documentationComponentContractEntries();
 /** Block-level component tags whose inner content should be parsed as Markdown. */
@@ -171,8 +172,9 @@ export function normalizeMdxBlocks(src: string): string {
       push(line);
     }
   }
-  // Expand self-closing tags and rename HTML-colliding ones (see readerTagRewriter).
-  const rename = rewriteReaderTags;
+  // Expand self-closing tags and rename HTML-colliding ones (see readerTagRewriter),
+  // then turn iframes into the reader's embed element (see ./reader-embeds).
+  const rename = (text: string) => rewriteReaderEmbeds(rewriteReaderTags(text));
   // Rename outside inline code spans only, so component reference pages keep their examples.
   const prose = (text: string) => {
     let output = '';
