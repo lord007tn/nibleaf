@@ -10,6 +10,14 @@ describe('left-to-right islands in an answer', () => {
     expect(islands('راسلنا على (help@example.com).')).toEqual(['راسلنا على (', '[help@example.com]', ').']);
   });
 
+  it('keeps the brackets a link opened inside its island, and only the sentence’s outside', () => {
+    const link = 'https://en.wikipedia.org/wiki/Function_(mathematics)';
+    expect(islands(`راجع ${link}.`)).toEqual(['راجع ', `[${link}]`, '.']);
+    expect(islands(`(${link})، ثم`)).toEqual(['(', `[${link}]`, ')، ثم']);
+    expect(islands('See [docs.example.com/a_[b]].')).toEqual(['See [', '[docs.example.com/a_[b]]', '].']);
+    expect(islands('(config.json).')).toEqual(['(', '[config.json]', ').']);
+  });
+
   it('leaves plain words, numbers and Arabic words as they are', () => {
     expect(islands('قد يستغرق ذلك 24 ساعة.')).toEqual(['قد يستغرق ذلك 24 ساعة.']);
     expect(islands('Open the settings page.')).toEqual(['Open the settings page.']);
@@ -31,8 +39,8 @@ describe('the word a citation stays with', () => {
     expect(splitLastWord('  ')).toEqual({ head: '', word: '' });
   });
 
-  it('lets a very long word (a long link) wrap rather than overflow', () => {
+  it('keeps a long word (a long link) with its citation too; the layout lets it wrap inside', () => {
     const link = `https://docs.example.com/${'a'.repeat(60)}`;
-    expect(splitLastWord(`See ${link} `)).toEqual({ head: `See ${link} `, word: '' });
+    expect(splitLastWord(`See ${link} `)).toEqual({ head: 'See ', word: link });
   });
 });

@@ -7,6 +7,10 @@ domain" is English-only.
 No AI provider key is configured locally. The reader, the panel and this PR's code are real. The answers were replayed
 into the panel in the chat API's SSE/AG-UI wire format (as in `operations/ux/reader-ask-ai.md` §1).
 
+The seeded site's theme defaults to light, so the dark shots set the reader's own theme choice
+(`nibleaf.site.theme.<site id>` in local storage) before the page loads. The first dark shots in this PR missed that and
+were light; they're replaced.
+
 - `ar-*-02-answer`: an Arabic answer from English docs, at 1440 and 390, light and dark.
   - **Settings → Custom domain**, **Add domain** and **Check again** read left to right inside the Arabic sentences.
   - `docs.example.com` (code) and a plain-text link are their own left-to-right islands.
@@ -14,6 +18,10 @@ into the panel in the chat API's SSE/AG-UI wire format (as in `operations/ux/rea
 - `ar-*-01-panel-empty`: the panel's subtitle and intro call the docs «هذا التوثيق».
 - `ar-1440-light-03-not-in-docs`: the Arabic refusal says «لم أجد إجابة واضحة في التوثيق» and offers «تواصل مع الدعم».
   The replay reads this text from `packages/i18n/messages/ar.json`, so the shot shows the string this PR ships.
+- `ar-390-*-04-long-citations`: long anchors at 390 px, light and dark.
+  - A long link and a long code run wrap inside, and their citation numbers stay with the last line. Nothing overflows the panel.
+  - `https://en.wikipedia.org/wiki/Function_(mathematics)` keeps its `)` inside the left-to-right island.
+  - A bold label made of code runs (`Settings` → `Custom domain` → …) reads left to right. A label with Arabic in it (**Settings → *إعدادات النطاق***) does not.
 - `en-*-02-answer`: the same layout in English (regression check).
 
 Before, on main, from `operations/ux/reader-ask-ai/shots` (#522): `ar-1440-light-04-answer-ar-on-en.jpg` (a citation

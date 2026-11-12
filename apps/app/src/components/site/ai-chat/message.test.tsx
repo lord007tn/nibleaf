@@ -217,6 +217,68 @@ describe('reader chat messages', () => {
     await unmount();
   });
 
+  it('decides a label’s direction from all of its text, code and nested emphasis included', async () => {
+    const { container, render, unmount } = mount();
+    const arabic: AiChatFinalEvent = {
+      ...final,
+      language: 'ar',
+      answer: 'افتح **`Settings` → `Custom domain`** ثم **Settings → *إعدادات النطاق***. [S1]',
+    };
+    await render(<ChatMessage text="" final={arabic} options={{ ...options, lang: 'ar' }} busy={false} consent="granted" close={vi.fn()} />);
+    const labels = [...container.querySelectorAll('strong')].map((strong) => [strong.textContent, strong.getAttribute('dir')]);
+    expect(labels).toEqual([
+      ['Settings → Custom domain', 'ltr'],
+      ['Settings → إعدادات النطاق', null],
+    ]);
+    await unmount();
+  });
+
+  it('keeps a link’s own closing bracket inside its left-to-right island', async () => {
+    const { container, render, unmount } = mount();
+    const link = 'https://en.wikipedia.org/wiki/Function_(mathematics)';
+    await render(
+      <ChatMessage
+        text=""
+        final={{ ...final, language: 'ar', answer: `راجع ${link}. [S1]` }}
+        options={options}
+        busy={false}
+        consent="granted"
+        close={vi.fn()}
+      />,
+    );
+    expect([...container.querySelectorAll('bdi[dir="ltr"]')].map((island) => island.textContent)).toEqual([link]);
+    await unmount();
+  });
+
+  it('lets a long link, label or code run wrap inside while its citation stays with the last line', async () => {
+    const { container, render, unmount } = mount();
+    const long = `docs.example.com/guides/${'custom-domains/'.repeat(4)}verify`;
+    await render(
+      <ChatMessage
+        text=""
+        final={{
+          ...final,
+          language: 'ar',
+          answer: `راجع https://${long} [S1]\n\nاختر **Settings → Custom domain → Verify the DNS records now** [S1]\n\nشغّل \`nibleaf domains verify --site ${long}\` [S1]`,
+        }}
+        options={options}
+        busy={false}
+        consent="granted"
+        close={vi.fn()}
+      />,
+    );
+    const kept = [...container.querySelectorAll('span.whitespace-nowrap')];
+    expect(kept).toHaveLength(3);
+    for (const glue of kept) {
+      // The anchor sits in its own wrapping run; only the break before the chip is held.
+      const anchor = glue.firstElementChild;
+      expect(anchor?.matches('span.whitespace-normal')).toBe(true);
+      expect(anchor?.textContent?.length).toBeGreaterThan(40);
+      expect(glue.lastElementChild?.matches('button[data-citation]')).toBe(true);
+    }
+    await unmount();
+  });
+
   it('shows code exactly as written: a marker inside it is text, not a citation', async () => {
     const { container, render, unmount } = mount();
     await render(

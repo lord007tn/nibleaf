@@ -5,7 +5,7 @@ import { Check, Copy, LifeBuoy } from 'lucide-react';
 import { Children, cloneElement, isValidElement, type ReactNode, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { siteHref } from '@/lib/site-paths';
-import { isLeftToRightLabel, leftToRightIslands, splitLastWord } from './answer-inline';
+import { isLeftToRightLabel, leftToRightIslands, splitLastWord, textContent } from './answer-inline';
 import { htmlCopy, plainCopy, writeCopy } from './copy';
 import { Feedback } from './feedback';
 import { answerText, citationParts } from './helpers';
@@ -151,9 +151,12 @@ export function ChatMessage({
         if (head) output.push(head);
         anchor = word;
       }
+      // Only the break between the anchor and its chips is held: a long anchor (a
+      // long link, a bold label) still wraps inside, so it never overflows a narrow
+      // panel, and the chips stay with its last line.
       output.push(
         <span className="whitespace-nowrap" key={nextKey('cite')}>
-          {anchor}
+          {anchor === '' || anchor === undefined ? null : <span className="whitespace-normal">{anchor}</span>}
           {chips}
         </span>,
       );
@@ -164,10 +167,8 @@ export function ChatMessage({
   const label =
     (Tag: 'strong' | 'em') =>
     ({ children }: { children?: ReactNode }) => {
-      const text = Children.toArray(children)
-        .filter((child) => typeof child === 'string')
-        .join('');
-      return <Tag dir={isLeftToRightLabel(text) ? 'ltr' : undefined}>{children}</Tag>;
+      // Decided from all of its text, code and nested emphasis included.
+      return <Tag dir={isLeftToRightLabel(textContent(children)) ? 'ltr' : undefined}>{children}</Tag>;
     };
   const supportUrl = final?.status === 'no_answer' ? final.supportUrl : undefined;
   const external = supportUrl ? /^https?:/i.test(supportUrl) : false;

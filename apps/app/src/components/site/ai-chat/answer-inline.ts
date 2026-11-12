@@ -53,7 +53,28 @@ export const leftToRightIslands = (text: string): InlineSegment[] => {
     let start = index;
     let stop = end;
     while (start < stop && OPENING.has(text[start] ?? '')) start += 1;
-    while (stop > start && CLOSING.has(text[stop - 1] ?? '')) stop -= 1;
+    // A closing bracket the word itself opened (`…/Function_(mathematics)`) is
+    // part of it; only an unmatched one belongs to the sentence.
+    let parentheses = 0;
+    let brackets = 0;
+    for (let at = start; at < stop; at += 1) {
+      const character = text[at];
+      if (character === '(') parentheses -= 1;
+      else if (character === ')') parentheses += 1;
+      else if (character === '[') brackets -= 1;
+      else if (character === ']') brackets += 1;
+    }
+    while (stop > start && CLOSING.has(text[stop - 1] ?? '')) {
+      const character = text[stop - 1];
+      if (character === ')') {
+        if (parentheses <= 0) break;
+        parentheses -= 1;
+      } else if (character === ']') {
+        if (brackets <= 0) break;
+        brackets -= 1;
+      }
+      stop -= 1;
+    }
     const core = text.slice(start, stop);
     if (isLeftToRightToken(core)) {
       plain += text.slice(index, start);
@@ -67,18 +88,26 @@ export const leftToRightIslands = (text: string): InlineSegment[] => {
   return segments;
 };
 
-/** The longest word kept on one line with the citation after it; a longer one
- * (a long link) may still break, so it never overflows a narrow panel. */
-const MAX_GLUED_WORD = 40;
-
 /** Text before a citation, split into what may wrap and its last word (with its
  * punctuation), which stays with the citation. The space before the citation goes:
- * the citation keeps its own margin. `word` is empty when there is none to keep. */
+ * the citation keeps its own margin. `word` is empty when there is none to keep.
+ * A long word (a long link) may still wrap inside: only its last line stays with
+ * the citation. */
 export const splitLastWord = (text: string): { head: string; word: string } => {
   let end = text.length;
   while (end > 0 && isSpace(text.charCodeAt(end - 1))) end -= 1;
   let start = end;
   while (start > 0 && !isSpace(text.charCodeAt(start - 1))) start -= 1;
-  if (end - start > MAX_GLUED_WORD) return { head: text, word: '' };
   return { head: text.slice(0, start), word: text.slice(start, end) };
+};
+
+/** All the text inside rendered inline content (a bold run with code or italics in it). */
+export const textContent = (node: unknown): string => {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textContent).join('');
+  if (node && typeof node === 'object' && 'props' in node) {
+    const props = (node as { props?: { children?: unknown } }).props;
+    return textContent(props?.children);
+  }
+  return '';
 };
