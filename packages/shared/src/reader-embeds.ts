@@ -146,7 +146,7 @@ const afterCloser = (text: string, from: number): number => {
 const clip = (value: string | undefined, length: number): string => (value ?? '').replace(/\s+/g, ' ').trim().slice(0, length);
 
 /** The reader element for one iframe's attributes. */
-export const readerEmbedElement = (attributes: ReadonlyMap<string, string>): string => {
+const readerEmbedElement = (attributes: ReadonlyMap<string, string>): string => {
   const src = clip(attributes.get('src'), MAX_TEXT_LENGTH);
   const title = clip(attributes.get('title'), MAX_TITLE_LENGTH);
   const titled = title ? ` title="${escapeAttribute(title)}"` : '';

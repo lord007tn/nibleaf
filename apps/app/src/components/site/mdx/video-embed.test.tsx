@@ -57,7 +57,7 @@ describe('reader video embeds', () => {
 
   it('loads the player after the click and moves focus into it', async () => {
     await renderPage(MINTLIFY_PAGE);
-    const play = container.querySelector(PLAY);
+    const play = container.querySelector<HTMLButtonElement>(PLAY);
     await act(async () => play?.click());
     const frame = container.querySelector('iframe');
     expect(frame?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1');
@@ -115,7 +115,7 @@ describe('reader video embeds', () => {
 
   it('names the control in Arabic and keeps the provider name left to right', async () => {
     await renderPage('<iframe src="https://vimeo.com/76979871" title="جولة في المنتج"></iframe>', 'ar');
-    const play = container.querySelector(PLAY);
+    const play = container.querySelector<HTMLButtonElement>(PLAY);
     expect(play?.getAttribute('aria-label')).toBe('تشغيل الفيديو: جولة في المنتج (يُحمَّل من Vimeo)');
     const provider = play?.querySelector('bdi');
     expect(provider?.getAttribute('dir')).toBe('ltr');
@@ -125,15 +125,15 @@ describe('reader video embeds', () => {
 
   it('gives an untitled video a generic name', async () => {
     await renderPage('<iframe src="https://fast.wistia.net/embed/iframe/abc123def4"></iframe>');
-    expect(container.querySelector(PLAY)?.getAttribute('aria-label')).toBe('Play video: Video (loads from Wistia)');
+    expect(container.querySelector<HTMLButtonElement>(PLAY)?.getAttribute('aria-label')).toBe('Play video: Video (loads from Wistia)');
   });
 
   it('validates a hand-written reader element again', async () => {
     await act(async () => root.render(<VideoEmbed provider="youtube" videoid={'x" onload="y'} href="https://example.com/a" />));
-    expect(container.querySelector(PLAY)).toBeNull();
+    expect(container.querySelector<HTMLButtonElement>(PLAY)).toBeNull();
     expect(container.querySelector('a')?.getAttribute('href')).toBe('https://example.com/a');
     await act(async () => root.render(<VideoEmbed provider="youtube" videoid="dQw4w9WgXcQ" start="1e9" />));
-    await act(async () => container.querySelector(PLAY)?.click());
+    await act(async () => container.querySelector<HTMLButtonElement>(PLAY)?.click());
     expect(container.querySelector('iframe')?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1');
   });
 
