@@ -3,8 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
 import { tsImport } from 'tsx/esm/api';
+import { launchLocalOnlyBrowser } from '../../../tests/integration/lib/capture-env.mjs';
 
 // Isolated layout regression, using the real Button, component classes and built CSS.
 // Run after the app build: node .github/assets/dashboard-shell/notification-wrap.test.mjs [before-ref]
@@ -33,7 +33,9 @@ const css = readdirSync(assets)
   .filter((name) => name.endsWith('.css'))
   .map((name) => readFileSync(`${assets}/${name}`, 'utf8'))
   .join('\n');
-const browser = await chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
+// Nothing outside is reachable (capture-env.mjs); every request is aborted below anyway.
+const local = await launchLocalOnlyBrowser();
+const { browser } = local;
 const results = [];
 try {
   for (const [width, height, textScale] of [
@@ -102,5 +104,5 @@ try {
   );
   console.log(JSON.stringify(results));
 } finally {
-  await browser.close();
+  await local.close();
 }

@@ -85,7 +85,14 @@ try {
 
   // The allowed paths still work: the local origin and a custom domain mapped to it.
   const local = await launchLocalOnlyBrowser({ allowedHosts: [`127.0.0.1:${port}`], customDomains: { 'docs.capture-fixture.test': port } });
-  const page = await (await local.browser.newContext()).newPage();
+  const context = await local.browser.newContext();
+  const page = await context.newPage();
+  // No way around the guard: no browser-level CDP, the context leads back only to
+  // the facade, and page-level CDP is refused.
+  assert.equal(typeof local.browser.newBrowserCDPSession, 'undefined', 'the facade has no newBrowserCDPSession');
+  assert.equal(context.browser(), local.browser, 'context.browser() is the facade');
+  assert.equal(typeof context.browser().newBrowserCDPSession, 'undefined');
+  await assert.rejects(context.newCDPSession(page), /not available in captures/);
   const direct = await page.goto(`${origin}/ok`);
   const mapped = await page.goto('http://docs.capture-fixture.test/ok');
   await local.close();

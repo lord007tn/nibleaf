@@ -74,7 +74,7 @@ try {
     build: { outDir: dist, emptyOutDir: true },
   });
   // Only these hosts are reachable (capture-env.mjs); anything else fails the run.
-  await withLocalOnlyBrowser({ allowedHosts: ['inbound-fixture.local:80'], launch: { headless: true } }, async ({ browser: guarded }) => {
+  await withLocalOnlyBrowser({ allowedHosts: ['inbound-fixture.test:80'], launch: { headless: true } }, async ({ browser: guarded }) => {
     browser = guarded;
     for (const locale of ['en', 'ar']) {
       for (const width of [1440, 390]) {
@@ -82,7 +82,7 @@ try {
         const page = await context.newPage();
         page.on('pageerror', (error) => console.error(error.message));
         const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' };
-        await page.route('http://inbound-fixture.local/**', async (route) => {
+        await page.route('http://inbound-fixture.test/**', async (route) => {
           const pathname = new URL(route.request().url()).pathname;
           const file = resolve(dist, pathname === '/fixture' ? 'index.html' : `.${pathname}`);
           assert.ok(file.startsWith(`${dist}${sep}`), 'fixture assets stay inside the owned build');
@@ -136,7 +136,7 @@ try {
         };
         for (const before of [true, false]) {
           mode = before ? 'success' : 'loading';
-          await page.goto(`http://inbound-fixture.local/fixture?locale=${locale}&before=${before ? 1 : 0}`);
+          await page.goto(`http://inbound-fixture.test/fixture?locale=${locale}&before=${before ? 1 : 0}`);
           await page.getByRole('button', { name: deleteLabel, exact: true }).click({ timeout: 120_000 });
           const dialog = page.getByRole('dialog', { name: deleteLabel });
           await dialog.waitFor();

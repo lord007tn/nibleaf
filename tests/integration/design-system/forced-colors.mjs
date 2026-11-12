@@ -60,15 +60,15 @@ try {
   });
 
   // Only these hosts are reachable (capture-env.mjs); anything else fails the run.
-  await withLocalOnlyBrowser({ allowedHosts: ['harness.local:80'] }, async ({ browser }) => {
+  await withLocalOnlyBrowser({ allowedHosts: ['harness.test:80'] }, async ({ browser }) => {
     const page = await browser.newPage({ viewport: { width: 520, height: 420 } });
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
-    await page.route('http://harness.local/**', (route) => {
+    await page.route('http://harness.test/**', (route) => {
       const path = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
       route.fulfill({ body: readFileSync(join(harness, 'dist', path)), contentType: types[extname(path)] ?? 'application/octet-stream' });
     });
     await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark' });
-    await page.goto('http://harness.local/index.html');
+    await page.goto('http://harness.test/index.html');
     await page.waitForSelector('[data-slot="meter-bar"]');
     assert.equal(await page.evaluate(() => matchMedia('(forced-colors: active)').matches), true, 'forced colors are emulated');
 

@@ -121,6 +121,48 @@ export const allowedHostKey = (host) => {
 
 const LOOPBACK = ['localhost', '127.0.0.1'];
 
+/** Fixture names that never resolve on the internet (RFC 2606 / 6761), for origins a page route answers. */
+const RESERVED_FIXTURE = /\.(test|invalid|example|localhost)$/;
+
+/**
+ * The allowed hosts as keys, each one on this machine: loopback with an explicit
+ * port, a custom domain mapped to the local app, or a reserved fixture name a
+ * route answers. Anything else (a production host from APP_URL, say) throws,
+ * before any browser launches.
+ */
+export const localHostKeys = (allowedHosts, customDomains = {}) => {
+  const mapped = new Set(Object.keys(customDomains).map((host) => host.trim().toLowerCase()));
+  return allowedHosts.map((host) => {
+    const key = allowedHostKey(host);
+    const hostname = key.slice(0, key.lastIndexOf(':'));
+    if (LOOPBACK.includes(hostname) || hostname === '[::1]' || mapped.has(hostname) || RESERVED_FIXTURE.test(hostname)) return key;
+    throw new Error(
+      `Allowed host "${host}" isn't on this machine: allow loopback (localhost:4310), a custom domain mapped to the local app, or a reserved fixture name (.test, .invalid, .example, .localhost) a route answers`,
+    );
+  });
+};
+
+/**
+ * What a capture script gets instead of the Playwright browser: guarded
+ * `newContext`, `newPage` (its own guarded context, closed with the page) and
+ * `close`. Nothing else is reachable, `newBrowserCDPSession` included, so a
+ * script can't open a context the guard doesn't see.
+ */
+export const browserFacade = (raw, newGuardedContext) => {
+  const facade = Object.create(null);
+  facade.newContext = (options) => newGuardedContext(options);
+  facade.newPage = async (options) => {
+    const context = await newGuardedContext(options);
+    const page = await context.newPage();
+    page.on('close', () => {
+      context.close().catch(() => undefined);
+    });
+    return page;
+  };
+  facade.close = () => raw.close();
+  return Object.freeze(facade);
+};
+
 /**
  * Chromium launch arguments that keep the browser on this machine, beneath
  * Playwright, so redirects, WebSockets, DNS prefetch, preconnect and favicons
@@ -210,31 +252,30 @@ const guardContext = async (context, allowed, attempted) => {
  * evidence for the PR body (it should be empty).
  */
 export async function launchLocalOnlyBrowser({ allowedHosts = [], customDomains = {}, launch = {} } = {}) {
+  // Checked before anything launches: a capture can only ever allow this machine.
+  const allowed = new Set([...localHostKeys(allowedHosts, customDomains), ...Object.keys(customDomains).map((host) => `${host.toLowerCase()}:80`)]);
   const { chromium } = await import('playwright-core');
-  const allowed = new Set([...allowedHosts.map(allowedHostKey), ...Object.keys(customDomains).map((host) => `${host.toLowerCase()}:80`)]);
   const attempted = [];
-  const browser = await chromium.launch({
+  const raw = await chromium.launch({
     headless: true,
     executablePath: chromiumExecutable(),
     ...launch,
     args: [...(launch.args ?? []), ...localOnlyBrowserArgs(customDomains)],
   });
-  const newContext = browser.newContext.bind(browser);
-  browser.newContext = async (options = {}) => guardContext(await newContext({ ...options, serviceWorkers: 'block' }), allowed, attempted);
-  // `browser.newPage()` makes its own context; give it a guarded one, closed with the page.
-  browser.newPage = async (options = {}) => {
-    const context = await browser.newContext(options);
-    const page = await context.newPage();
-    page.on('close', () => {
-      context.close().catch(() => undefined);
-    });
-    return page;
-  };
+  const browser = browserFacade(raw, async (options = {}) => {
+    const context = await guardContext(await raw.newContext({ ...options, serviceWorkers: 'block' }), allowed, attempted);
+    // The context's own way back to the browser, and to raw CDP, stay closed too.
+    context.browser = () => browser;
+    context.newCDPSession = async () => {
+      throw new Error('CDP sessions are not available in captures');
+    };
+    return context;
+  });
   return {
     browser,
     attempted,
     async close() {
-      await browser.close().catch(() => undefined);
+      await raw.close().catch(() => undefined);
       if (attempted.length > 0) {
         throw new Error(`The capture tried to reach ${attempted.length} address(es) outside the local stack:\n${attempted.join('\n')}`);
       }

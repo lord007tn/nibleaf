@@ -41,7 +41,7 @@ try {
   const beforeFiles = ['extensions/clean-paste.ts', 'page-title-field.tsx', 'tiptap.css'];
   const evidence = [];
   // Only these hosts are reachable (capture-env.mjs); anything else fails the run.
-  await withLocalOnlyBrowser({ allowedHosts: ['paste-journey.local:80'], launch: { headless: true } }, async ({ browser: guarded }) => {
+  await withLocalOnlyBrowser({ allowedHosts: ['paste-journey.test:80'], launch: { headless: true } }, async ({ browser: guarded }) => {
     browser = guarded;
     for (const phase of ['before', 'after']) {
       const dist = resolve(harness, phase);
@@ -81,7 +81,7 @@ try {
           const page = await context.newPage();
           const errors = [];
           page.on('pageerror', (error) => errors.push(error.message));
-          await page.route('http://paste-journey.local/**', async (route) => {
+          await page.route('http://paste-journey.test/**', async (route) => {
             const pathname = new URL(route.request().url()).pathname;
             const file = resolve(dist, pathname === '/' ? 'index.html' : `.${pathname}`);
             assert.ok(file.startsWith(`${dist}${sep}`));
@@ -92,7 +92,7 @@ try {
                 'application/octet-stream',
             });
           });
-          await page.goto(`http://paste-journey.local/?locale=${locale}`);
+          await page.goto(`http://paste-journey.test/?locale=${locale}`);
           const field = page.getByRole('textbox', { name: locale === 'ar' ? 'عنوان الصفحة' : 'Page title', exact: true });
           await field.waitFor();
           const name = `${phase}-${locale}-${width}`;
