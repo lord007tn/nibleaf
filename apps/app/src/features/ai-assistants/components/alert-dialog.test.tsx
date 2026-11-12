@@ -12,7 +12,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from './api-key-alert-dialog';
+} from './alert-dialog';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 

@@ -63,7 +63,7 @@ export interface Project {
 /** The newest MCP audit event of a key or connected app. `operation` is the
  *  tool or resource name and `errorCode` the audit code when it failed; the
  *  dashboard turns both into one plain sentence. */
-export interface McpActivity {
+interface McpActivity {
   operation: string;
   outcome: string;
   errorCode?: string | null;

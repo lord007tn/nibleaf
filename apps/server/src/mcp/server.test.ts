@@ -1,5 +1,5 @@
 import { InMemoryTransport, type JSONRPCMessage, LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/server';
-import { MCP_SCOPES } from '@nibleaf/shared/mcp';
+import { MCP_SCOPES, MCP_TOOL_SCOPES } from '@nibleaf/shared/mcp';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
@@ -413,6 +413,18 @@ describe('Nibleaf MCP protocol surface', () => {
       ...(templates.result?.resourceTemplates.map(({ uriTemplate }) => uriTemplate.replace('{projectId}', 'project-1')) ?? []),
     ].sort();
     expect(capabilityCall.result?.structuredContent.data.resources.map(({ uri }) => uri).sort()).toEqual(listedResources);
+    await clientTransport.close();
+    await server.close();
+  });
+
+  it('reports exactly the tools and scopes the dashboard knows about (MCP_TOOL_SCOPES)', async () => {
+    const { server, clientTransport, request } = await createProtocolClient();
+    const capabilityCall = await request<{ structuredContent: { data: { tools: Array<{ name: string; scope: string }> } } }>('tools/call', {
+      name: 'get_capabilities',
+      arguments: {},
+    });
+    const reported = Object.fromEntries(capabilityCall.result?.structuredContent.data.tools.map(({ name, scope }) => [name, scope]) ?? []);
+    expect(reported).toEqual(MCP_TOOL_SCOPES);
     await clientTransport.close();
     await server.close();
   });
