@@ -4911,5 +4911,10 @@
   "settings_aiassistants_keydialog_title": "Создать персональный ключ",
   "settings_aiassistants_keydialog_description": "Для скриптов и приложений, которые не умеют входить. Ключ действует от вашего имени с выбранными правами.",
   "settings_aiassistants_keydialog_creating": "Создание…",
-  "settings_aiassistants_keydialog_done": "Ключ сохранён — закрыть"
+  "settings_aiassistants_keydialog_done": "Ключ сохранён — закрыть",
+  "settings_aiassistants_watch_stalled": "«{name}» разрешено, но ещё не отправило ни одного запроса. Проверьте {app} и подождите снова.",
+  "settings_aiassistants_watch_unexpected": "Разрешено приложение «{name}», а не {app}. Если вы его не запускали, отключите его ниже.",
+  "settings_aiassistants_watch_again": "Ждать снова",
+  "settings_aiassistants_keysloaderror": "Не удалось загрузить персональные ключи. Приложения, вошедшие через вход, по-прежнему показаны.",
+  "settings_aiassistants_appsloaderror": "Не удалось загрузить приложения, вошедшие через вход. Персональные ключи по-прежнему показаны."
 }

@@ -86,14 +86,14 @@ export function TechnicalDetails({ activity, children, scopes }: { activity: Mcp
 
 /** A background refresh failed but the last loaded rows are still on screen:
  *  keep them, say they may be out of date and offer a retry. */
-export function RefreshFailedNotice({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
+export function RefreshFailedNotice({ message, onRetry, retrying }: { message?: string; onRetry: () => void; retrying: boolean }) {
   const { t } = useLocale();
   return (
     <div
       className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-sm"
       role="status"
     >
-      <span className="min-w-0 text-muted-foreground">{t('settings.credentials.refreshFailed')}</span>
+      <span className="min-w-0 text-muted-foreground">{message ?? t('settings.credentials.refreshFailed')}</span>
       <Button loading={retrying} onClick={onRetry} size="sm" type="button" variant="outline">
         {t('error.tryAgain')}
       </Button>

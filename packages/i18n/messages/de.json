@@ -4884,5 +4884,10 @@
   "settings_aiassistants_keydialog_title": "Persönlichen Schlüssel erstellen",
   "settings_aiassistants_keydialog_description": "Für Skripte und Apps, die sich nicht anmelden können. Der Schlüssel handelt in Ihrem Namen, mit der gewählten Berechtigung.",
   "settings_aiassistants_keydialog_creating": "Wird erstellt …",
-  "settings_aiassistants_keydialog_done": "Schlüssel gespeichert – schließen"
+  "settings_aiassistants_keydialog_done": "Schlüssel gespeichert – schließen",
+  "settings_aiassistants_watch_stalled": "{name} wurde zugelassen, hat aber noch keine Anfrage gestellt. Prüfen Sie {app} und warten Sie dann erneut.",
+  "settings_aiassistants_watch_unexpected": "Eine App namens {name} wurde zugelassen, nicht {app}. Wenn Sie sie nicht gestartet haben, trennen Sie sie unten.",
+  "settings_aiassistants_watch_again": "Erneut warten",
+  "settings_aiassistants_keysloaderror": "Persönliche Schlüssel konnten nicht geladen werden. Angemeldete Apps werden weiterhin angezeigt.",
+  "settings_aiassistants_appsloaderror": "Angemeldete Apps konnten nicht geladen werden. Persönliche Schlüssel werden weiterhin angezeigt."
 }

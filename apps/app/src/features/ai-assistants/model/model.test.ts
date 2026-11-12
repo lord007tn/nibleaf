@@ -1,7 +1,7 @@
 import { MCP_PRESET_SCOPES, MCP_TOOL_SCOPES } from '@nibleaf/shared/mcp';
 import { describe, expect, it } from 'vitest';
 import { ASSISTANT_CLIENTS, clientChoices, connectSteps, defaultClient, keyClientFor } from './clients';
-import { startWatch, WATCH_MS, watchState } from './connect-watch';
+import { canRestart, keepWatching, restartWatch, startWatch, WATCH_MS, watchState, withBaseline } from './connect-watch';
 import { connectionRows, keyStatus } from './connections';
 import { assistantPageState, defaultPreset, presetChoices } from './page-state';
 import { EXAMPLE_PROMPTS, examplePrompts, minimumPreset } from './prompts';
@@ -163,7 +163,10 @@ describe('connections', () => {
 });
 
 describe('connect watch', () => {
-  const watched = (id: string, overrides: Partial<{ ownedByViewer: boolean; createdAt: string; lastActivity: { outcome: string } | null }> = {}) => ({
+  const watched = (
+    id: string,
+    overrides: Partial<{ name: string; ownedByViewer: boolean; createdAt: string; lastActivity: { outcome: string } | null }> = {},
+  ) => ({
     id,
     name: 'ChatGPT',
     createdAt: '2026-11-12T12:01:00Z',
@@ -172,7 +175,7 @@ describe('connect watch', () => {
     ...overrides,
   });
 
-  it('counts only new grants by this person, and says working only after a call that did not fail', () => {
+  it('counts only new grants by this person for the chosen app, and says working only after a call that succeeded', () => {
     const watch = startWatch('chatgpt', [{ id: 'existing' }], now);
     expect(watch.until).toBe(now + WATCH_MS);
     expect(watchState(watch, [watched('existing', { lastActivity: { outcome: 'succeeded' } })], now).kind).toBe('waiting');
@@ -181,13 +184,51 @@ describe('connect watch', () => {
     expect(watchState(watch, [watched('new')], now)).toMatchObject({ kind: 'authorized', app: { id: 'new' } });
     expect(watchState(watch, [watched('new', { lastActivity: { outcome: 'failed' } })], now).kind).toBe('authorized');
     expect(watchState(watch, [watched('new', { lastActivity: { outcome: 'succeeded' } })], now).kind).toBe('working');
+    expect(watchState(watch, [watched('new', { lastActivity: { outcome: 'replayed' } })], now).kind).toBe('working');
   });
 
-  it('prefers a working grant over a newer idle one and times out only with nothing new', () => {
+  it('never calls a write that has only started "working"', () => {
+    const watch = startWatch('chatgpt', [], now);
+    expect(watchState(watch, [watched('new', { lastActivity: { outcome: 'started' } })], now).kind).toBe('authorized');
+  });
+
+  it('takes no baseline while the list is loading, so old grants never look new', () => {
+    const watch = startWatch('chatgpt', undefined, now);
+    expect(watch.baseline).toBeNull();
+    const old = watched('old', { lastActivity: { outcome: 'succeeded' } });
+    expect(watchState(watch, [old], now).kind).toBe('waiting');
+    const filled = withBaseline(watch, [old]);
+    expect(filled.baseline).toEqual(['old']);
+    expect(withBaseline(filled, [old, watched('new')])).toBe(filled);
+    expect(watchState(filled, [old], now).kind).toBe('waiting');
+    expect(watchState(filled, [old, watched('new')], now).kind).toBe('authorized');
+  });
+
+  it('flags a new grant named like another app instead of claiming it is the chosen one', () => {
+    const watch = startWatch('chatgpt', [], now);
+    expect(watchState(watch, [watched('other', { name: 'Totally Legit Assistant', lastActivity: { outcome: 'succeeded' } })], now)).toMatchObject({
+      kind: 'unexpected',
+      app: { id: 'other' },
+    });
+    const claude = startWatch('claude', [], now);
+    expect(watchState(claude, [watched('cc', { name: 'Claude Code' })], now).kind).toBe('unexpected');
+    expect(watchState(claude, [watched('c', { name: 'Claude' })], now).kind).toBe('authorized');
+    expect(watchState(startWatch('claudeCode', [], now), [watched('cc', { name: 'claude-code' })], now).kind).toBe('authorized');
+  });
+
+  it('ends an unfinished watch at the deadline with a restart, and prefers a working grant', () => {
     const watch = startWatch('claude', [], now);
-    const apps = [watched('a', { lastActivity: { outcome: 'succeeded' } }), watched('b', { createdAt: '2026-11-12T12:05:00Z' })];
+    const later = now + WATCH_MS;
+    const apps = [watched('a', { name: 'Claude', lastActivity: { outcome: 'succeeded' } }), watched('b', { name: 'Claude', createdAt: '2026-11-12T12:05:00Z' })];
     expect(watchState(watch, apps, now)).toMatchObject({ kind: 'working', app: { id: 'a' } });
-    expect(watchState(watch, [], now + WATCH_MS).kind).toBe('timedOut');
-    expect(watchState(watch, [watched('b')], now + WATCH_MS).kind).toBe('authorized');
+    const timedOut = watchState(watch, [], later);
+    expect(timedOut.kind).toBe('timedOut');
+    const stalled = watchState(watch, [watched('b', { name: 'Claude' })], later);
+    expect(stalled.kind).toBe('stalled');
+    expect(canRestart(timedOut) && canRestart(stalled)).toBe(true);
+    expect(keepWatching(stalled, watch, later)).toBe(false);
+    const again = restartWatch(watch, later);
+    expect(again.baseline).toEqual(watch.baseline);
+    expect(watchState(again, [watched('b', { name: 'Claude' })], later).kind).toBe('authorized');
   });
 });

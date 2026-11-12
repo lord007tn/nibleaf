@@ -4816,5 +4816,10 @@
   "settings_aiassistants_keydialog_title": "Buat kunci pribadi",
   "settings_aiassistants_keydialog_description": "Untuk skrip dan aplikasi yang tidak bisa masuk akun. Kunci bertindak atas nama Anda, dengan izin yang Anda pilih.",
   "settings_aiassistants_keydialog_creating": "Membuat…",
-  "settings_aiassistants_keydialog_done": "Kunci sudah disimpan — tutup"
+  "settings_aiassistants_keydialog_done": "Kunci sudah disimpan — tutup",
+  "settings_aiassistants_watch_stalled": "{name} sudah diizinkan tetapi belum mengirim permintaan. Periksa {app}, lalu tunggu lagi.",
+  "settings_aiassistants_watch_unexpected": "Aplikasi bernama {name} yang diizinkan, bukan {app}. Jika bukan Anda yang memulainya, putuskan di bawah.",
+  "settings_aiassistants_watch_again": "Tunggu lagi",
+  "settings_aiassistants_keysloaderror": "Tidak dapat memuat kunci pribadi. Aplikasi yang masuk akun tetap ditampilkan.",
+  "settings_aiassistants_appsloaderror": "Tidak dapat memuat aplikasi yang masuk akun. Kunci pribadi tetap ditampilkan."
 }

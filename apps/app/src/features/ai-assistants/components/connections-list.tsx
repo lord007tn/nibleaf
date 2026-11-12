@@ -35,11 +35,22 @@ const relativeFuture = (value: string, locale: string) => {
   return new Intl.RelativeTimeFormat(localeTag(locale), { numeric: 'auto' }).format(days, 'day');
 };
 
+/** One of the list's two sources (personal keys, signed-in apps), as its query reports it. */
+export interface ConnectionSource<T> {
+  data: T[] | undefined;
+  isPending: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  refetch: () => unknown;
+}
+
 /**
  * Everything that can use this website on someone's behalf, in one list:
  * apps that signed in and personal keys. Admins see everyone's and can filter
  * by person; others see their own. Inactive keys stay reachable (collapsed),
- * so they can still be rotated or removed.
+ * so they can still be rotated or removed. Each source stands on its own: if
+ * one fails to load, the other's rows and actions stay, with a notice and a
+ * retry for the one that failed.
  */
 export function ConnectionsList({
   projectId,
@@ -48,11 +59,6 @@ export function ConnectionsList({
   enabled,
   keys,
   apps,
-  pending,
-  failed,
-  refreshFailed,
-  retrying,
-  onRetry,
   onRotated,
 }: {
   projectId: string;
@@ -60,13 +66,8 @@ export function ConnectionsList({
   manageAll: boolean;
   /** MCP is on: rotation needs it; removing never does. */
   enabled: boolean;
-  keys: ApiKey[] | undefined;
-  apps: ConnectedApp[] | undefined;
-  pending: boolean;
-  failed: boolean;
-  refreshFailed: boolean;
-  retrying: boolean;
-  onRetry: () => void;
+  keys: ConnectionSource<ApiKey>;
+  apps: ConnectionSource<ConnectedApp>;
   onRotated: (key: IssuedKey) => void;
 }) {
   const { t } = useLocale();
@@ -78,11 +79,42 @@ export function ConnectionsList({
   const [candidate, setCandidate] = useState<Row | null>(null);
   const allowedScopes = mcpScopesForRole(role);
 
-  if (failed && (!keys || !apps))
-    return <QueryErrorState description={t('settings.aiAssistants.connectionsLoadError')} onRetry={onRetry} retrying={retrying} />;
-  if (pending || !keys || !apps) return <CredentialRowsSkeleton actions={2} label={t('settings.aiAssistants.connectionsLoading')} />;
+  const unavailable = (source: ConnectionSource<unknown>) => !source.data && source.isError;
+  if (unavailable(keys) && unavailable(apps))
+    return (
+      <QueryErrorState
+        description={t('settings.aiAssistants.connectionsLoadError')}
+        onRetry={() => {
+          void keys.refetch();
+          void apps.refetch();
+        }}
+        retrying={keys.isFetching || apps.isFetching}
+      />
+    );
+  const loading = (source: ConnectionSource<unknown>) => !source.data && !source.isError;
+  if (loading(keys) && loading(apps)) return <CredentialRowsSkeleton actions={2} label={t('settings.aiAssistants.connectionsLoading')} />;
 
-  const { live, inactive, people } = connectionRows(keys, apps, { now: Date.now(), personId: person === EVERYONE ? null : person });
+  const { live, inactive, people } = connectionRows(keys.data ?? [], apps.data ?? [], {
+    now: Date.now(),
+    personId: person === EVERYONE ? null : person,
+  });
+  const sourceNotices = (
+    [
+      [keys, 'settings.aiAssistants.keysLoadError'],
+      [apps, 'settings.aiAssistants.appsLoadError'],
+    ] as const
+  ).map(([source, message]) =>
+    source.isError ? (
+      <RefreshFailedNotice
+        key={message}
+        message={source.data ? undefined : t(message)}
+        onRetry={() => void source.refetch()}
+        retrying={source.isFetching}
+      />
+    ) : loading(source) ? (
+      <CredentialRowsSkeleton key={message} label={t('settings.aiAssistants.connectionsLoading')} rows={1} />
+    ) : null,
+  );
   const personOptions = [
     { value: EVERYONE, label: t('settings.aiAssistants.everyone') },
     ...people.map((entry) => ({ value: entry.id, label: entry.name })),
@@ -104,13 +136,9 @@ export function ConnectionsList({
     if (!approved) return;
     const retainedScopes = key.scopes.filter(isRetainedScope).filter((scope) => allowedScopes.includes(scope));
     rotate.mutate(
-      { id: key.id, body: { scopes: ['mcp:connect', ...retainedScopes], expiresInDays: 90 } },
-      {
-        onSuccess: (created) => {
-          toast.success(t('settings.apiKeys.rotatedToast'));
-          onRotated({ id: created.id, secret: created.secret });
-        },
-      },
+      // The new secret goes straight to the page's state, never into the mutation cache.
+      { id: key.id, body: { scopes: ['mcp:connect', ...retainedScopes], expiresInDays: 90 }, deliver: onRotated },
+      { onSuccess: () => toast.success(t('settings.apiKeys.rotatedToast')) },
     );
   };
 
@@ -149,7 +177,7 @@ export function ConnectionsList({
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      {refreshFailed ? <RefreshFailedNotice onRetry={onRetry} retrying={retrying} /> : null}
+      {sourceNotices}
       {manageAll && people.length > 1 ? (
         <Select items={personOptions} onValueChange={(value) => setPerson(typeof value === 'string' ? value : EVERYONE)} value={person}>
           <SelectTrigger aria-label={t('settings.aiAssistants.filterLabel')} className="w-full sm:w-56">

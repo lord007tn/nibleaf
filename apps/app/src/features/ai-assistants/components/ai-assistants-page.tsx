@@ -3,14 +3,14 @@ import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Bot, ExternalLink, KeyRound } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QueryErrorState } from '@/components/query-error-state';
 import { SettingsSection } from '@/components/settings/section';
 import { useApiKeys } from '@/hooks/api';
 import { docsUrl } from '@/lib/docs-url';
 import { useConnectedAppsWatch } from '../api/hooks';
 import { type AssistantClient, defaultClient, keyClientFor } from '../model/clients';
-import { type ConnectWatch, startWatch, watchState } from '../model/connect-watch';
+import { type ConnectWatch, restartWatch, startWatch, watchState, withBaseline } from '../model/connect-watch';
 import { type AssistantPolicy, assistantPageState } from '../model/page-state';
 import { ConnectCard } from './connect-card';
 import { ConnectionsList } from './connections-list';
@@ -36,6 +36,19 @@ export function AiAssistantsPage({ projectId, role = '', siteName }: { projectId
   const client = chosen ?? defaultClient(signIn);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [issued, setIssued] = useState<IssuedKey | null>(null);
+  // Copied while the app list was still loading: take the "before" snapshot once it arrives.
+  useEffect(() => {
+    if (watch && !watch.baseline && appsQuery.data) setWatch(withBaseline(watch, appsQuery.data));
+  }, [watch, appsQuery.data]);
+  // Re-render at the deadline, so "allowed but not working" and "not connected" show without a poll.
+  const [, setDeadlinePassed] = useState(0);
+  useEffect(() => {
+    if (!watch) return;
+    const remaining = watch.until - Date.now();
+    if (remaining <= 0) return;
+    const timer = setTimeout(() => setDeadlinePassed((value) => value + 1), remaining + 50);
+    return () => clearTimeout(timer);
+  }, [watch]);
 
   const howItWorks = (
     <a
@@ -75,20 +88,15 @@ export function AiAssistantsPage({ projectId, role = '', siteName }: { projectId
     >
       <div className="mb-4 sm:hidden">{personalKeyButton(enabled)}</div>
       <ConnectionsList
-        apps={appsQuery.data}
+        apps={appsQuery}
         enabled={enabled}
-        failed={keysQuery.isError || appsQuery.isError}
-        keys={keysQuery.data?.data}
+        keys={{ ...keysQuery, data: keysQuery.data?.data }}
         manageAll={manageAll}
-        onRetry={retry}
         onRotated={(key) => {
           setIssued(key);
           setDialogOpen(true);
         }}
-        pending={keysQuery.isPending || appsQuery.isPending}
         projectId={projectId}
-        refreshFailed={(keysQuery.isError && Boolean(keysQuery.data)) || (appsQuery.isError && Boolean(appsQuery.data))}
-        retrying={keysQuery.isFetching || appsQuery.isFetching}
         role={role}
       />
     </SettingsSection>
@@ -169,7 +177,13 @@ export function AiAssistantsPage({ projectId, role = '', siteName }: { projectId
             setIssued(null);
             setDialogOpen(true);
           }}
-          onStarted={() => setWatch(startWatch(client, apps, Date.now()))}
+          onRestart={() => watch && setWatch(restartWatch(watch, Date.now()))}
+          // Copying again for the same app keeps its "before" snapshot, so a grant made in between still counts.
+          onStarted={() =>
+            setWatch((current) =>
+              current?.client === client && current.baseline ? restartWatch(current, Date.now()) : startWatch(client, appsQuery.data, Date.now()),
+            )
+          }
           signIn={state.signIn}
           siteName={siteName}
           watch={watchStatus}

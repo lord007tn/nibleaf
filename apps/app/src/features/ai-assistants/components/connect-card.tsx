@@ -6,7 +6,7 @@ import { useLocale } from '@nibleaf/i18n/react';
 import { CircleCheck, KeyRound, LoaderCircle } from 'lucide-react';
 import { Fragment } from 'react';
 import { type AssistantClient, CLIENT_NAMES, type ConnectStep, clientChoices, connectSteps } from '../model/clients';
-import type { WatchState } from '../model/connect-watch';
+import { canRestart, type WatchState } from '../model/connect-watch';
 
 /**
  * Connect an assistant: pick the app, then follow two or three numbered steps
@@ -21,6 +21,7 @@ export function ConnectCard({
   siteName,
   watch,
   onStarted,
+  onRestart,
   onCreateKey,
 }: {
   client: AssistantClient;
@@ -30,6 +31,7 @@ export function ConnectCard({
   siteName: string;
   watch: WatchState | null;
   onStarted: () => void;
+  onRestart: () => void;
   onCreateKey: () => void;
 }) {
   const { t } = useLocale();
@@ -71,7 +73,7 @@ export function ConnectCard({
         </ol>
       )}
 
-      {watch ? <WatchStatus app={app} state={watch} /> : null}
+      {watch ? <WatchStatus app={app} onRestart={onRestart} state={watch} /> : null}
     </div>
   );
 }
@@ -182,27 +184,38 @@ function CopyBlock({ copy, onCopied }: { copy: NonNullable<ConnectStep['copy']>;
   );
 }
 
-function WatchStatus({ state, app }: { state: WatchState; app: string }) {
+function WatchStatus({ state, app, onRestart }: { state: WatchState; app: string; onRestart: () => void }) {
   const { t } = useLocale();
   const working = state.kind === 'working';
   const pending = state.kind === 'waiting' || state.kind === 'authorized';
+  const attention = state.kind === 'unexpected' || state.kind === 'stalled';
+  const message =
+    state.kind === 'waiting'
+      ? t('settings.aiAssistants.watch.waiting', { app })
+      : state.kind === 'authorized'
+        ? t('settings.aiAssistants.watch.authorized', { name: state.app.name })
+        : state.kind === 'working'
+          ? t('settings.aiAssistants.watch.working', { name: state.app.name })
+          : state.kind === 'stalled'
+            ? t('settings.aiAssistants.watch.stalled', { name: state.app.name, app })
+            : state.kind === 'unexpected'
+              ? t('settings.aiAssistants.watch.unexpected', { name: state.app.name, app })
+              : t('settings.aiAssistants.watch.timedOut', { app });
   return (
-    <p
-      className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm data-[tone=success]:border-success/30 data-[tone=success]:bg-success/5"
-      data-tone={working ? 'success' : undefined}
-      role="status"
+    <div
+      className="flex flex-wrap items-start gap-x-2 gap-y-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm data-[tone=attention]:border-warning/40 data-[tone=attention]:bg-warning/5 data-[tone=success]:border-success/30 data-[tone=success]:bg-success/5"
+      data-tone={working ? 'success' : attention ? 'attention' : undefined}
     >
       {working ? <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-success" /> : null}
       {pending ? <LoaderCircle aria-hidden className="mt-0.5 size-4 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" /> : null}
-      <span className="min-w-0">
-        {state.kind === 'waiting'
-          ? t('settings.aiAssistants.watch.waiting', { app })
-          : state.kind === 'authorized'
-            ? t('settings.aiAssistants.watch.authorized', { name: state.app.name })
-            : state.kind === 'working'
-              ? t('settings.aiAssistants.watch.working', { name: state.app.name })
-              : t('settings.aiAssistants.watch.timedOut', { app })}
-      </span>
-    </p>
+      <p className="min-w-0 flex-1" role="status">
+        {message}
+      </p>
+      {canRestart(state) ? (
+        <Button onClick={onRestart} size="sm" type="button" variant="outline">
+          {t('settings.aiAssistants.watch.again')}
+        </Button>
+      ) : null}
+    </div>
   );
 }

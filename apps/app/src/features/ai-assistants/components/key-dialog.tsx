@@ -37,8 +37,11 @@ export type IssuedKey = { id: string; secret: string };
 /**
  * The personal-key route, for scripts and apps that can't sign in. Step one
  * picks what the key may do; step two shows the secret once, with the setup
- * for the chosen app. While the secret is on screen the dialog closes only
- * through "I saved my key", never by Esc or a click outside.
+ * for the chosen app. From the moment Create is pressed until the secret has
+ * been saved, nothing closes the dialog (no Esc, no outside click, no close
+ * button): the server may already have made the key, and its secret is shown
+ * once. On a phone the dialog fits the screen, its body scrolls and the footer
+ * stays in view, so the way out is always visible.
  */
 export function KeyDialog({
   projectId,
@@ -62,34 +65,44 @@ export function KeyDialog({
   onClose: () => void;
 }) {
   const { t } = useLocale();
+  // Owned here, not by the form, so a pending create is never unmounted away.
+  const create = useCreateApiKey(projectId);
+  const locked = Boolean(issued) || create.isPending;
   return (
     <Dialog
-      disablePointerDismissal={Boolean(issued)}
+      disablePointerDismissal={locked}
       onOpenChange={(next) => {
-        // The secret is shown once: only "I saved my key" closes it.
-        if (!next && !issued) onClose();
+        if (!next && !locked) onClose();
       }}
       open={open}
     >
-      <DialogContent className="sm:max-w-xl" closeLabel={t('settings.apiKeys.cancel')} showCloseButton={!issued}>
+      <DialogContent
+        className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-y-auto sm:max-w-xl"
+        closeLabel={t('settings.apiKeys.cancel')}
+        data-slot="key-dialog"
+        showCloseButton={!locked}
+      >
         {issued ? (
           <SecretStep endpoint={endpoint} initialClient={initialClient} issued={issued} onDone={onClose} projectId={projectId} />
         ) : (
-          <CreateStep onCancel={onClose} onIssued={onIssued} presets={presets} projectId={projectId} role={role} />
+          <CreateStep create={create} onCancel={onClose} onIssued={onIssued} presets={presets} role={role} />
         )}
       </DialogContent>
     </Dialog>
   );
 }
 
+/** Keeps the dialog's footer in view while its body scrolls. */
+const STICKY_FOOTER = 'sticky -bottom-6 -mx-6 -mb-6 border-border border-t bg-popover px-6 py-3';
+
 function CreateStep({
-  projectId,
+  create,
   role,
   presets,
   onIssued,
   onCancel,
 }: {
-  projectId: string;
+  create: ReturnType<typeof useCreateApiKey>;
   role: string;
   presets: PresetChoice[];
   onIssued: (key: IssuedKey) => void;
@@ -97,7 +110,6 @@ function CreateStep({
 }) {
   const { t } = useLocale();
   const { count } = useFormatters();
-  const create = useCreateApiKey(projectId);
   const allowedScopes = mcpScopesForRole(role);
   const firstOpen =
     presets.find((choice) => choice.preset === 'support_writer' && choice.reason === null) ?? presets.find((choice) => choice.reason === null);
@@ -112,17 +124,16 @@ function CreateStep({
       if (!selectionPermitted) return;
       create.mutate(
         {
-          name: value.name.trim(),
-          ...(value.preset === 'custom' ? { scopes: value.scopes } : { preset: value.preset }),
-          expiresInDays: value.expiryDays,
-        },
-        {
-          // A failed create keeps the draft; the mutation toasts the reason.
-          onSuccess: (created) => {
-            toast.success(t('settings.apiKeys.created.toast'));
-            onIssued({ id: created.id, secret: created.secret });
+          body: {
+            name: value.name.trim(),
+            ...(value.preset === 'custom' ? { scopes: value.scopes } : { preset: value.preset }),
+            expiresInDays: value.expiryDays,
           },
+          // The secret goes straight to the page's state, never into the mutation cache.
+          deliver: onIssued,
         },
+        // A failed create keeps the draft; the mutation toasts the reason.
+        { onSuccess: () => toast.success(t('settings.apiKeys.created.toast')) },
       );
     },
   });
@@ -241,7 +252,7 @@ function CreateStep({
           ))}
         </fieldset>
       </details>
-      <DialogFooter>
+      <DialogFooter className={STICKY_FOOTER}>
         <Button disabled={create.isPending} onClick={onCancel} type="button" variant="outline">
           {t('settings.apiKeys.cancel')}
         </Button>
@@ -283,6 +294,11 @@ function SecretStep({
   const [, setWatchEnded] = useState(0);
   // A test belongs to the key it started for; a late result for an older key is dropped.
   const testRun = useRef(0);
+  // The form that held focus is gone: move it to the secret's Copy button, the next thing to do.
+  const secretRow = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    secretRow.current?.querySelector<HTMLButtonElement>('button')?.focus();
+  }, [issued.id]);
   useEffect(() => {
     testRun.current += 1;
     setConnection('');
@@ -338,7 +354,7 @@ function SecretStep({
         <DialogTitle>{t('settings.apiKeys.created.title')}</DialogTitle>
         <DialogDescription>{t('settings.apiKeys.secretWarning')}</DialogDescription>
       </DialogHeader>
-      <div className="flex min-w-0 items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2">
+      <div className="flex min-w-0 items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2" ref={secretRow}>
         <code className="min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap px-1 text-sm" dir="ltr">
           {issued.secret}
         </code>
@@ -411,7 +427,7 @@ function SecretStep({
               : t('settings.apiKeys.waiting')}
         </p>
       </div>
-      <DialogFooter>
+      <DialogFooter className={STICKY_FOOTER}>
         <Button onClick={onDone} type="button">
           {t('settings.aiAssistants.keyDialog.done')}
         </Button>

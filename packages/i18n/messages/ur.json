@@ -4875,5 +4875,10 @@
   "settings_aiassistants_keydialog_title": "ذاتی کلید بنائیں",
   "settings_aiassistants_keydialog_description": "ان اسکرپٹس اور ایپس کے لیے جو سائن اِن نہیں کر سکتیں۔ کلید آپ کی طرف سے، آپ کی منتخب اجازت کے ساتھ کام کرتی ہے۔",
   "settings_aiassistants_keydialog_creating": "بن رہی ہے…",
-  "settings_aiassistants_keydialog_done": "کلید محفوظ کر لی — بند کریں"
+  "settings_aiassistants_keydialog_done": "کلید محفوظ کر لی — بند کریں",
+  "settings_aiassistants_watch_stalled": "{name} کو اجازت مل گئی لیکن اس نے ابھی تک کوئی درخواست نہیں بھیجی۔ {app} دیکھیں، پھر دوبارہ انتظار کریں۔",
+  "settings_aiassistants_watch_unexpected": "{name} نامی ایپ کو اجازت ملی، {app} کو نہیں۔ اگر آپ نے اسے شروع نہیں کیا تو نیچے سے منقطع کریں۔",
+  "settings_aiassistants_watch_again": "دوبارہ انتظار کریں",
+  "settings_aiassistants_keysloaderror": "ذاتی کلیدیں لوڈ نہیں ہو سکیں۔ سائن اِن کی ہوئی ایپس اب بھی دکھائی جا رہی ہیں۔",
+  "settings_aiassistants_appsloaderror": "سائن اِن کی ہوئی ایپس لوڈ نہیں ہو سکیں۔ ذاتی کلیدیں اب بھی دکھائی جا رہی ہیں۔"
 }

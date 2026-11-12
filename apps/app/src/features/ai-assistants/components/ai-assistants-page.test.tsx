@@ -213,6 +213,54 @@ describe('Connect an assistant', () => {
     await page.rerender();
     expect(text()).toContain('settings.aiAssistants.watch.working(ChatGPT)');
   });
+
+  it('does not call a grant working while its only call has merely started', async () => {
+    const page = await renderPage();
+    await click(button('settings.aiAssistants.copyAddress'));
+    hooks.useApps.mockReturnValue(
+      query([app({ id: 'new', lastActivity: { operation: 'create_page_draft', outcome: 'started', at: new Date().toISOString() } })]),
+    );
+    await page.rerender();
+    expect(text()).toContain('settings.aiAssistants.watch.authorized(ChatGPT)');
+    expect(text()).not.toContain('settings.aiAssistants.watch.working');
+  });
+
+  it('copied while the app list was loading: takes the baseline once it loads, so an old grant never reads as new', async () => {
+    hooks.useApps.mockReturnValue(query(undefined));
+    const page = await renderPage();
+    await click(button('settings.aiAssistants.copyAddress'));
+    expect(hooks.useApps).toHaveBeenLastCalledWith('project-1', expect.objectContaining({ baseline: null }));
+    const old = app({ id: 'old', lastActivity: { operation: 'get_page', outcome: 'succeeded', at: new Date().toISOString() } });
+    hooks.useApps.mockReturnValue(query([old]));
+    await page.rerender();
+    await page.rerender();
+    expect(hooks.useApps).toHaveBeenLastCalledWith('project-1', expect.objectContaining({ baseline: ['old'] }));
+    expect(text()).toContain('settings.aiAssistants.watch.waiting(ChatGPT)');
+  });
+
+  it('flags a new grant whose name is not the chosen app', async () => {
+    const page = await renderPage();
+    await click(button('settings.aiAssistants.copyAddress'));
+    hooks.useApps.mockReturnValue(query([app({ id: 'odd', name: 'Mystery agent' })]));
+    await page.rerender();
+    expect(text()).toContain('settings.aiAssistants.watch.unexpected(Mystery agent|ChatGPT)');
+  });
+
+  it('at the deadline, says an allowed app never called and offers to watch again', async () => {
+    const page = await renderPage();
+    await click(button('settings.aiAssistants.copyAddress'));
+    hooks.useApps.mockReturnValue(query([app({ id: 'new' })]));
+    const start = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(start + 11 * 60_000);
+    try {
+      await page.rerender();
+      expect(text()).toContain('settings.aiAssistants.watch.stalled(ChatGPT|ChatGPT)');
+      await click(button('settings.aiAssistants.watch.again'));
+      expect(text()).toContain('settings.aiAssistants.watch.authorized(ChatGPT)');
+    } finally {
+      clock.mockRestore();
+    }
+  });
 });
 
 describe('Try asking', () => {
@@ -273,10 +321,10 @@ describe('Connections', () => {
     hooks.confirm.mockResolvedValue(true);
     await click(button('settings.apiKeys.rotate'));
     expect(hooks.rotate.mutate).toHaveBeenCalledWith(
-      { id: 'key-1', body: { scopes: ['mcp:connect', 'pages:write'], expiresInDays: 90 } },
+      { id: 'key-1', body: { scopes: ['mcp:connect', 'pages:write'], expiresInDays: 90 }, deliver: expect.any(Function) },
       expect.any(Object),
     );
-    await act(async () => hooks.rotate.mutate.mock.calls[0]?.[1].onSuccess({ id: 'key-2', secret: 'plm_live_rotated' }));
+    await act(async () => hooks.rotate.mutate.mock.calls[0]?.[0].deliver({ id: 'key-2', secret: 'plm_live_rotated' }));
     expect(text()).toContain('plm_live_rotated');
     expect(text()).toContain('settings.aiAssistants.keyDialog.done');
   });
@@ -293,6 +341,19 @@ describe('Connections', () => {
     hooks.disconnect.isPending = true;
     await page.rerender();
     expect(confirmButton()?.getAttribute('aria-busy')).toBe('true');
+  });
+
+  it('keeps the keys and their actions when signed-in apps fail to load, with a notice and a retry for the apps', async () => {
+    const refetch = vi.fn();
+    hooks.useApiKeys.mockReturnValue(keys([apiKey()], { mcpEnabled: false }));
+    hooks.useApps.mockReturnValue(query(undefined, { isPending: false, isError: true, refetch }));
+    await renderPage('admin');
+    expect(text()).toContain('Laptop');
+    expect(button('settings.apiKeys.revoke')).toBeDefined();
+    expect(text()).toContain('settings.aiAssistants.appsLoadError');
+    expect(text()).not.toContain('settings.aiAssistants.connectionsLoadError');
+    await click(button('error.tryAgain'));
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('keeps rows and offers a retry when a background refresh fails', async () => {
@@ -316,9 +377,41 @@ describe('Personal key dialog', () => {
     expect(dialog?.textContent).toContain('settings.apiKeys.adminOnly');
     await click(button('settings.apiKeys.create'));
     expect(hooks.create.mutate).toHaveBeenCalledWith(
-      { name: 'settings.apiKeys.defaultName', preset: 'support_writer', expiresInDays: 90 },
+      { body: { name: 'settings.apiKeys.defaultName', preset: 'support_writer', expiresInDays: 90 }, deliver: expect.any(Function) },
       expect.any(Object),
     );
+  });
+
+  const pressEscape = () =>
+    act(async () => {
+      (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+  it('closes on Escape while idle, but nothing closes it while a key is being created, and the secret still arrives', async () => {
+    await openDialog();
+    await pressEscape();
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+
+    for (const root of roots.splice(0)) await act(async () => root.unmount());
+    const page = await renderPage();
+    await click(button('settings.aiAssistants.useKey'));
+    await click(button('settings.apiKeys.create'));
+    hooks.create.isPending = true;
+    await page.rerender();
+    expect(document.body.querySelector('[data-slot="dialog-close"]')).toBeNull();
+    await pressEscape();
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
+    hooks.create.isPending = false;
+    await act(async () => hooks.create.mutate.mock.calls.at(-1)?.[0].deliver({ id: 'key-9', secret: 'plm_live_pending' }));
+    expect(text()).toContain('plm_live_pending');
+  });
+
+  it('fits a phone: the dialog is capped to the viewport, scrolls, and keeps its footer in view', async () => {
+    const dialog = await openDialog();
+    expect(dialog?.className).toMatch(/max-h-\[calc\(100dvh-2rem\)\]/);
+    expect(dialog?.className).toContain('overflow-y-auto');
+    expect(dialog?.querySelector('[data-slot="dialog-footer"]')?.className).toContain('sticky');
   });
 
   it('explains an empty name inline instead of creating a key', async () => {
@@ -338,8 +431,11 @@ describe('Personal key dialog', () => {
   it('shows the secret with setup for the chosen app, cannot be dismissed by Escape, and closes on "I saved my key"', async () => {
     await openDialog();
     await click(button('settings.apiKeys.create'));
-    await act(async () => hooks.create.mutate.mock.calls[0]?.[1].onSuccess({ id: 'key-9', secret: 'plm_live_secret' }));
+    await act(async () => hooks.create.mutate.mock.calls[0]?.[0].deliver({ id: 'key-9', secret: 'plm_live_secret' }));
     expect(text()).toContain('plm_live_secret');
+    // The form that held focus is gone: focus lands on the secret's Copy button, not the page.
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('settings.apiKeys.copy');
     expect(text()).toContain(`claude mcp add --transport http nibleaf "${ENDPOINT}" --header "Authorization: Bearer plm_live_secret"`);
     await act(async () => {
       document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -359,7 +455,7 @@ describe('Personal key dialog', () => {
     );
     await openDialog();
     await click(button('settings.apiKeys.create'));
-    await act(async () => hooks.create.mutate.mock.calls[0]?.[1].onSuccess({ id: 'key-9', secret: 'plm_live_one' }));
+    await act(async () => hooks.create.mutate.mock.calls[0]?.[0].deliver({ id: 'key-9', secret: 'plm_live_one' }));
     await click(button('settings.apiKeys.test'));
     expect(hooks.testConnection).toHaveBeenCalledWith('plm_live_one');
     await act(async () => finish({ tools: 22, usedUntil: Date.now() }));

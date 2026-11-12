@@ -4885,5 +4885,10 @@
   "settings_aiassistants_keydialog_title": "Criar uma chave pessoal",
   "settings_aiassistants_keydialog_description": "Para scripts e apps que não fazem login. A chave age em seu nome, com a permissão escolhida.",
   "settings_aiassistants_keydialog_creating": "Criando…",
-  "settings_aiassistants_keydialog_done": "Salvei minha chave — fechar"
+  "settings_aiassistants_keydialog_done": "Salvei minha chave — fechar",
+  "settings_aiassistants_watch_stalled": "{name} foi permitido, mas ainda não fez nenhuma solicitação. Confira o {app} e aguarde de novo.",
+  "settings_aiassistants_watch_unexpected": "Um app chamado {name} foi permitido, não o {app}. Se você não o iniciou, desconecte-o abaixo.",
+  "settings_aiassistants_watch_again": "Aguardar de novo",
+  "settings_aiassistants_keysloaderror": "Não foi possível carregar as chaves pessoais. Os apps conectados por login continuam listados.",
+  "settings_aiassistants_appsloaderror": "Não foi possível carregar os apps conectados por login. As chaves pessoais continuam listadas."
 }

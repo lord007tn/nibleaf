@@ -4884,5 +4884,10 @@
   "settings_aiassistants_keydialog_title": "Create a personal key",
   "settings_aiassistants_keydialog_description": "For scripts and apps that can't sign in. The key acts as you, with the permission you choose.",
   "settings_aiassistants_keydialog_creating": "Creating…",
-  "settings_aiassistants_keydialog_done": "I saved my key — close"
+  "settings_aiassistants_keydialog_done": "I saved my key — close",
+  "settings_aiassistants_watch_stalled": "{name} was allowed but hasn’t made a request yet. Check {app}, then watch again.",
+  "settings_aiassistants_watch_unexpected": "An app named {name} was allowed, not {app}. If you didn’t start it, disconnect it below.",
+  "settings_aiassistants_watch_again": "Watch again",
+  "settings_aiassistants_keysloaderror": "Couldn’t load personal keys. Apps that signed in are still listed.",
+  "settings_aiassistants_appsloaderror": "Couldn’t load apps that signed in. Personal keys are still listed."
 }

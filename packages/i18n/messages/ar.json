@@ -4949,5 +4949,10 @@
   "settings_aiassistants_keydialog_title": "أنشئ مفتاحًا شخصيًا",
   "settings_aiassistants_keydialog_description": "للبرامج النصية والتطبيقات التي لا تدعم تسجيل الدخول. يعمل المفتاح باسمك، بالصلاحية التي تختارها.",
   "settings_aiassistants_keydialog_creating": "جارٍ الإنشاء…",
-  "settings_aiassistants_keydialog_done": "حفظت المفتاح — إغلاق"
+  "settings_aiassistants_keydialog_done": "حفظت المفتاح — إغلاق",
+  "settings_aiassistants_watch_stalled": "تم السماح لـ {name} لكنه لم يرسل أي طلب بعد. راجع {app}، ثم تابع الانتظار.",
+  "settings_aiassistants_watch_unexpected": "تم السماح لتطبيق باسم {name}، وليس {app}. إن لم تبدأ هذا الاتصال بنفسك، افصله من القائمة أدناه.",
+  "settings_aiassistants_watch_again": "تابع الانتظار",
+  "settings_aiassistants_keysloaderror": "تعذّر تحميل المفاتيح الشخصية. ما زالت التطبيقات التي سجّلت الدخول معروضة.",
+  "settings_aiassistants_appsloaderror": "تعذّر تحميل التطبيقات التي سجّلت الدخول. ما زالت المفاتيح الشخصية معروضة."
 }

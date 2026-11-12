@@ -4884,5 +4884,10 @@
   "settings_aiassistants_keydialog_title": "Créer une clé personnelle",
   "settings_aiassistants_keydialog_description": "Pour les scripts et les apps qui ne peuvent pas s’identifier. La clé agit en votre nom, avec la permission choisie.",
   "settings_aiassistants_keydialog_creating": "Création…",
-  "settings_aiassistants_keydialog_done": "J’ai enregistré ma clé — fermer"
+  "settings_aiassistants_keydialog_done": "J’ai enregistré ma clé — fermer",
+  "settings_aiassistants_watch_stalled": "{name} a été autorisé mais n’a encore fait aucune requête. Vérifiez {app}, puis relancez l’attente.",
+  "settings_aiassistants_watch_unexpected": "Une app nommée {name} a été autorisée, et non {app}. Si vous ne l’avez pas lancée, déconnectez-la ci-dessous.",
+  "settings_aiassistants_watch_again": "Attendre à nouveau",
+  "settings_aiassistants_keysloaderror": "Impossible de charger les clés personnelles. Les apps connectées restent affichées.",
+  "settings_aiassistants_appsloaderror": "Impossible de charger les apps connectées. Les clés personnelles restent affichées."
 }

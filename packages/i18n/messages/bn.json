@@ -4818,5 +4818,10 @@
   "settings_aiassistants_keydialog_title": "ব্যক্তিগত কী তৈরি করুন",
   "settings_aiassistants_keydialog_description": "যে স্ক্রিপ্ট ও অ্যাপ সাইন ইন করতে পারে না তাদের জন্য। কী আপনার হয়ে, আপনার বেছে নেওয়া অনুমতি নিয়ে কাজ করে।",
   "settings_aiassistants_keydialog_creating": "তৈরি হচ্ছে…",
-  "settings_aiassistants_keydialog_done": "কী সংরক্ষণ করেছি — বন্ধ করুন"
+  "settings_aiassistants_keydialog_done": "কী সংরক্ষণ করেছি — বন্ধ করুন",
+  "settings_aiassistants_watch_stalled": "{name}-কে অনুমতি দেওয়া হয়েছে, কিন্তু এখনও কোনো অনুরোধ পাঠায়নি। {app} দেখে নিন, তারপর আবার অপেক্ষা করুন।",
+  "settings_aiassistants_watch_unexpected": "{name} নামের একটি অ্যাপকে অনুমতি দেওয়া হয়েছে, {app}-কে নয়। আপনি এটি শুরু না করে থাকলে নিচে থেকে সংযোগ বিচ্ছিন্ন করুন।",
+  "settings_aiassistants_watch_again": "আবার অপেক্ষা করুন",
+  "settings_aiassistants_keysloaderror": "ব্যক্তিগত কী লোড করা যায়নি। সাইন ইন করা অ্যাপগুলো এখনও দেখানো হচ্ছে।",
+  "settings_aiassistants_appsloaderror": "সাইন ইন করা অ্যাপ লোড করা যায়নি। ব্যক্তিগত কীগুলো এখনও দেখানো হচ্ছে।"
 }

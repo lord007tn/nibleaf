@@ -100,14 +100,27 @@ export const useCreateProject = () => {
   });
 };
 
+/** Where a one-time secret goes: straight to the caller, never into the mutation cache. */
+export type DeliverSecret = (key: { id: string; secret: string }) => void;
+
+/** Hands the secret to `deliver` and returns the key without it, so neither the
+ *  cached mutation result nor its variables ever hold the secret. */
+const withoutSecret = ({ secret, ...key }: ApiKeySecret, deliver: DeliverSecret): ApiKey => {
+  deliver({ id: key.id, secret });
+  return key;
+};
+
 export const useCreateApiKey = (projectId: string) => {
   const queryClient = useQueryClient();
   const t = useT();
   return useMutation({
-    mutationFn: async (body: CreateApiKeyBody) =>
-      mutateData<ApiKeySecret>(
-        await api.app.projects[':projectId']['api-keys'].$post({ param: { projectId }, json: body }),
-        t('settings.apiKeys.createError'),
+    mutationFn: async ({ body, deliver }: { body: CreateApiKeyBody; deliver: DeliverSecret }) =>
+      withoutSecret(
+        await mutateData<ApiKeySecret>(
+          await api.app.projects[':projectId']['api-keys'].$post({ param: { projectId }, json: body }),
+          t('settings.apiKeys.createError'),
+        ),
+        deliver,
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
     meta: { errorMessage: t('settings.apiKeys.createError') },
@@ -118,10 +131,13 @@ export const useRotateApiKey = (projectId: string) => {
   const queryClient = useQueryClient();
   const t = useT();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: RotateApiKeyBody }) =>
-      mutateData<ApiKeySecret>(
-        await api.app.projects[':projectId']['api-keys'][':id'].rotate.$post({ param: { projectId, id }, json: body }),
-        t('settings.apiKeys.rotateError'),
+    mutationFn: async ({ id, body, deliver }: { id: string; body: RotateApiKeyBody; deliver: DeliverSecret }) =>
+      withoutSecret(
+        await mutateData<ApiKeySecret>(
+          await api.app.projects[':projectId']['api-keys'][':id'].rotate.$post({ param: { projectId, id }, json: body }),
+          t('settings.apiKeys.rotateError'),
+        ),
+        deliver,
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
     meta: { errorMessage: t('settings.apiKeys.rotateError') },

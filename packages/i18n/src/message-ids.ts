@@ -1,5 +1,10 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'settings.aiAssistants.watch.stalled': 'settings_aiassistants_watch_stalled',
+  'settings.aiAssistants.watch.unexpected': 'settings_aiassistants_watch_unexpected',
+  'settings.aiAssistants.watch.again': 'settings_aiassistants_watch_again',
+  'settings.aiAssistants.keysLoadError': 'settings_aiassistants_keysloaderror',
+  'settings.aiAssistants.appsLoadError': 'settings_aiassistants_appsloaderror',
   'settings.aiAssistants.title': 'settings_aiassistants_title',
   'settings.aiAssistants.description': 'settings_aiassistants_description',
   'settings.aiAssistants.howItWorks': 'settings_aiassistants_howitworks',

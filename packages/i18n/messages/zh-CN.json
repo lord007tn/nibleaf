@@ -4816,5 +4816,10 @@
   "settings_aiassistants_keydialog_title": "创建个人密钥",
   "settings_aiassistants_keydialog_description": "用于无法登录的脚本和应用。密钥以你的身份、按你选择的权限执行操作。",
   "settings_aiassistants_keydialog_creating": "正在创建…",
-  "settings_aiassistants_keydialog_done": "我已保存密钥 — 关闭"
+  "settings_aiassistants_keydialog_done": "我已保存密钥 — 关闭",
+  "settings_aiassistants_watch_stalled": "{name} 已获允许，但还没有发出任何请求。请检查 {app}，然后重新等待。",
+  "settings_aiassistants_watch_unexpected": "获得允许的是名为 {name} 的应用，而不是 {app}。如果不是你发起的，请在下方断开连接。",
+  "settings_aiassistants_watch_again": "重新等待",
+  "settings_aiassistants_keysloaderror": "无法加载个人密钥。已登录的应用仍会显示。",
+  "settings_aiassistants_appsloaderror": "无法加载已登录的应用。个人密钥仍会显示。"
 }

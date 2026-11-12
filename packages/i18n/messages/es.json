@@ -4884,5 +4884,10 @@
   "settings_aiassistants_keydialog_title": "Crear una clave personal",
   "settings_aiassistants_keydialog_description": "Para scripts y apps que no pueden iniciar sesión. La clave actúa en tu nombre, con el permiso que elijas.",
   "settings_aiassistants_keydialog_creating": "Creando…",
-  "settings_aiassistants_keydialog_done": "He guardado mi clave — cerrar"
+  "settings_aiassistants_keydialog_done": "He guardado mi clave — cerrar",
+  "settings_aiassistants_watch_stalled": "{name} tiene permiso, pero aún no ha hecho ninguna solicitud. Revisa {app} y vuelve a esperar.",
+  "settings_aiassistants_watch_unexpected": "Se dio permiso a una app llamada {name}, no a {app}. Si no la iniciaste tú, desconéctala abajo.",
+  "settings_aiassistants_watch_again": "Volver a esperar",
+  "settings_aiassistants_keysloaderror": "No se pudieron cargar las claves personales. Las apps con sesión iniciada siguen en la lista.",
+  "settings_aiassistants_appsloaderror": "No se pudieron cargar las apps con sesión iniciada. Las claves personales siguen en la lista."
 }

@@ -4819,5 +4819,10 @@
   "settings_aiassistants_keydialog_title": "निजी कुंजी बनाएँ",
   "settings_aiassistants_keydialog_description": "उन स्क्रिप्ट और ऐप के लिए जो साइन इन नहीं कर सकते। कुंजी आपकी ओर से, आपकी चुनी अनुमति के साथ काम करती है।",
   "settings_aiassistants_keydialog_creating": "बन रही है…",
-  "settings_aiassistants_keydialog_done": "मैंने कुंजी सहेज ली — बंद करें"
+  "settings_aiassistants_keydialog_done": "मैंने कुंजी सहेज ली — बंद करें",
+  "settings_aiassistants_watch_stalled": "{name} को अनुमति मिल गई, पर उसने अभी तक कोई अनुरोध नहीं भेजा। {app} जाँचें, फिर दोबारा इंतज़ार करें।",
+  "settings_aiassistants_watch_unexpected": "{name} नाम के ऐप को अनुमति मिली, {app} को नहीं। अगर आपने इसे शुरू नहीं किया, तो नीचे से डिस्कनेक्ट करें।",
+  "settings_aiassistants_watch_again": "फिर से इंतज़ार करें",
+  "settings_aiassistants_keysloaderror": "निजी कुंजियाँ लोड नहीं हो सकीं। साइन इन किए ऐप अब भी दिख रहे हैं।",
+  "settings_aiassistants_appsloaderror": "साइन इन किए ऐप लोड नहीं हो सके। निजी कुंजियाँ अब भी दिख रही हैं।"
 }
