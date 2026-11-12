@@ -1,0 +1,151 @@
+{
+  "baseline": "47ddeff639238867c5ecd8fb520dba46a1072edc",
+  "syntheticPaste": true,
+  "isolatedComponents": true,
+  "captures": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "geometry": {
+        "height": 82,
+        "lineHeight": 40.32,
+        "fontSize": 33.6,
+        "width": 912,
+        "scrollWidth": 912,
+        "border": "0px",
+        "font": "\"Geist Variable\", ui-sans-serif, system-ui, sans-serif",
+        "focus": "none",
+        "focusWidth": 1
+      },
+      "emptyListParagraphs": 2,
+      "notionEmptyListParagraphs": 1
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "geometry": {
+        "height": 145,
+        "lineHeight": 36,
+        "fontSize": 30,
+        "width": 350,
+        "scrollWidth": 350,
+        "border": "0px",
+        "font": "\"Geist Variable\", ui-sans-serif, system-ui, sans-serif",
+        "focus": "none",
+        "focusWidth": 1
+      },
+      "emptyListParagraphs": 2,
+      "notionEmptyListParagraphs": 1
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "geometry": {
+        "height": 95,
+        "lineHeight": 40.32,
+        "fontSize": 33.6,
+        "width": 912,
+        "scrollWidth": 912,
+        "border": "0px",
+        "font": "\"Noto Sans Arabic Variable\", \"Noto Sans Arabic\", Tahoma, Arial, sans-serif",
+        "focus": "none",
+        "focusWidth": 1
+      },
+      "emptyListParagraphs": 2,
+      "notionEmptyListParagraphs": 1
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "geometry": {
+        "height": 121,
+        "lineHeight": 36,
+        "fontSize": 30,
+        "width": 350,
+        "scrollWidth": 350,
+        "border": "0px",
+        "font": "\"Noto Sans Arabic Variable\", \"Noto Sans Arabic\", Tahoma, Arial, sans-serif",
+        "focus": "none",
+        "focusWidth": 1
+      },
+      "emptyListParagraphs": 2,
+      "notionEmptyListParagraphs": 1
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "geometry": {
+        "height": 77,
+        "lineHeight": 38.4,
+        "fontSize": 32,
+        "width": 912,
+        "scrollWidth": 912,
+        "border": "0px",
+        "font": "\"Geist Variable\", ui-sans-serif, system-ui, sans-serif",
+        "focus": "solid",
+        "focusWidth": 2
+      },
+      "emptyListParagraphs": 0,
+      "notionEmptyListParagraphs": 0
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "geometry": {
+        "height": 154,
+        "lineHeight": 38.4,
+        "fontSize": 32,
+        "width": 350,
+        "scrollWidth": 350,
+        "border": "0px",
+        "font": "\"Geist Variable\", ui-sans-serif, system-ui, sans-serif",
+        "focus": "solid",
+        "focusWidth": 2
+      },
+      "emptyListParagraphs": 0,
+      "notionEmptyListParagraphs": 0
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "geometry": {
+        "height": 53,
+        "lineHeight": 38.4,
+        "fontSize": 32,
+        "width": 912,
+        "scrollWidth": 912,
+        "border": "0px",
+        "font": "\"Noto Sans Arabic Variable\", \"Noto Sans Arabic\", Tahoma, Arial, sans-serif",
+        "focus": "solid",
+        "focusWidth": 2
+      },
+      "emptyListParagraphs": 0,
+      "notionEmptyListParagraphs": 0
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "geometry": {
+        "height": 130,
+        "lineHeight": 38.4,
+        "fontSize": 32,
+        "width": 350,
+        "scrollWidth": 350,
+        "border": "0px",
+        "font": "\"Noto Sans Arabic Variable\", \"Noto Sans Arabic\", Tahoma, Arial, sans-serif",
+        "focus": "solid",
+        "focusWidth": 2
+      },
+      "emptyListParagraphs": 0,
+      "notionEmptyListParagraphs": 0
+    }
+  ]
+}

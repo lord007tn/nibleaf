@@ -16,8 +16,8 @@ The capture requires the disposable database name in
 Set `NIBLEAF_DEVSTACK_LOCK` to the shared machine-wide Nibleaf lock directory.
 The script acquires it before starting any service, waits while another thread
 owns it, and releases it after stopping its processes. Existing backing
-containers stay running. Chromium is discovered by `../lib/capture-env.mjs`;
-`CHROMIUM_PATH` can override its installed executable.
+containers stay running. Chromium uses `../lib/capture-env.mjs` and the normal Playwright installation;
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE`, `CHROME_PATH` or `CHROMIUM_PATH` can override it.
 
 ```sh
 node --env-file=.env --import tsx tests/integration/editor-p2/browser.mjs
@@ -26,7 +26,7 @@ node --env-file=.env --import tsx tests/integration/editor-p2/browser.mjs
 By default this captures the current build. To compare main and the change in
 one browser session, also set `NIBLEAF_BEFORE_APP` and `NIBLEAF_BEFORE_API` to
 preserved main builds' server entrypoints. The reviewed baseline is main
-`943c26008`. The app entrypoint needs the entire adjacent built output, not only
+`35d9d6686`. The app entrypoint needs the entire adjacent built output, not only
 the entry file. The final app and API entrypoints use the normal `.output` and
 `dist` locations. The same worker runs both phases.
 

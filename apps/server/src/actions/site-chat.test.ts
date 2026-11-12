@@ -451,10 +451,12 @@ describe('reader AI chat stream', () => {
         model: 'openai/test-answer-model',
       }),
     });
+    const started = performance.now();
     const reader = (await chatSite('project-1', body())).body?.getReader();
     if (!reader) throw new Error('expected a stream');
     // The final answer arrives while the suggestions call is still running.
     const first = await readUntil(reader, (text) => text.includes(AI_CHAT_EVENT.final));
+    const answeredMs = performance.now() - started;
     expect(first).toContain(AI_CHAT_EVENT.final);
     expect(first).not.toContain('RUN_FINISHED');
     expect(mocks.suggest.mock.calls[0]?.[0]).toMatchObject({ answer: 'Run the installer. [S1]' });
@@ -466,8 +468,10 @@ describe('reader AI chat stream', () => {
     expect(rest).not.toContain(AI_CHAT_EVENT.followUps);
     for (let i = 0; i < 3; i++) await settle();
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'follow_ups' }));
+    // The recorded latency ends with the answer: no longer than this test saw the
+    // answer take (plus rounding), so the 250 ms the suggestions took is not in it.
     const latencyMs = Number(mocks.recordTurn.mock.calls.at(-1)?.[0].latencyMs);
-    expect(latencyMs).toBeLessThan(250);
+    expect(latencyMs).toBeLessThanOrEqual(Math.round(answeredMs) + 1);
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', latencyMs });
   });
 

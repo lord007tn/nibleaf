@@ -11,13 +11,14 @@
 // Each asserts the dialog field's final value and that it has focus.
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
+import { chromiumExecutable } from '../lib/capture-env.mjs';
 
 const APP = process.env.APP_URL ?? 'http://localhost:4310';
 const SITE = process.env.SITE_ID ?? 'preview-harbor';
 const videoDir = process.argv[2];
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH ?? `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1248/chrome-win64/chrome.exe`,
+  executablePath: chromiumExecutable(),
 });
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },

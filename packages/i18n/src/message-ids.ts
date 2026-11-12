@@ -416,6 +416,7 @@ export const MESSAGE_IDS = {
   'site.aiRephrase': 'site_ai_rephrase',
   'site.aiSources': 'site_ai_sources',
   'site.aiSource': 'site_ai_source',
+  'site.aiSourceTop': 'site_ai_source_top',
   'site.aiCopy': 'site_ai_copy',
   'site.aiCopied': 'site_ai_copied',
   'site.aiCopyFailed': 'site_ai_copyfailed',

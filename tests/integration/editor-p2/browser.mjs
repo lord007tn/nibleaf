@@ -15,7 +15,18 @@ const root = resolve(import.meta.dirname, '../../..');
 const output = resolve(root, '.github/assets/fix-editor-p2-batch');
 assert.equal(new URL(process.env.POSTGRES_URL).pathname.slice(1), process.env.NIBLEAF_CAPTURE_DATABASE, 'explicit disposable database required');
 assert.ok(process.env.NIBLEAF_CAPTURE_DATABASE?.includes('editor_p2'));
-const release = await acquireDevstackLock();
+assert.ok(process.env.NIBLEAF_DEVSTACK_LOCK, 'Set the shared machine-wide NIBLEAF_DEVSTACK_LOCK');
+let lock;
+for (;;) {
+  try {
+    lock = await acquireDevstackLock('fix/editor-p2-batch');
+    break;
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    console.log('Waiting for the shared dev-stack lock.');
+    await new Promise((done) => setTimeout(done, 5000));
+  }
+}
 const db = getDb({ connectionString: process.env.POSTGRES_URL });
 const children = new Set();
 const logs = [];
@@ -103,5 +114,5 @@ try {
   if (session) await db.session.delete({ where: { id: session.id } });
   await db.$disconnect();
   for (const log of logs) log.end();
-  await release();
+  await lock.release();
 }
