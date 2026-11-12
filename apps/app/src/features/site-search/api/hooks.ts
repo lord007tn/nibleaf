@@ -6,7 +6,6 @@ import {
   useUpdateLanguage,
   useUpdateProjectSearchConfiguration,
 } from '@/hooks/api';
-import { useWorkspaceAi } from '@/hooks/api/workspace-ai';
 import { type SearchValues, searchSaveRequests } from '../model/search';
 
 /** The site's resolved search configuration and the server's allowed ranges. */
@@ -14,9 +13,6 @@ export const useSearchConfiguration = (projectId: string) => useProjectSearchCon
 
 /** The languages whose placeholders the form edits (shared with the site's language list). */
 export const useSearchLanguages = (projectId: string) => useLanguages(projectId);
-
-/** The site's Smart AI settings: whether grounded answers can be served (see `groundedAnswersState`). */
-export const useSearchAi = (projectId: string) => useWorkspaceAi(projectId);
 
 /** The index's health, counts and a page of samples; polls while a run is going. */
 export const useSearchIndexDiagnostics = (projectId: string, cursor?: string) => useProjectSearchIndexDiagnostics(projectId, cursor);

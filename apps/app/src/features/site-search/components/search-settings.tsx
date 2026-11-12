@@ -3,17 +3,22 @@ import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { SettingsRow } from '@nibleaf/design-system/components/ui/settings-row';
 import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-section';
+import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
 import { Link } from '@tanstack/react-router';
-import { type ReactNode, useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { LanguageOptionLabel, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import { FormField } from '@/components/ui/form-field';
+import { useSiteAi } from '@/features/site-ai/api/hooks';
+import { aiPageState } from '@/features/site-ai/model/ai';
+import { STATE, STATE_TONE } from '@/features/site-ai/model/copy';
 import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
@@ -21,11 +26,9 @@ import { isolate } from '@/lib/bidi';
 import { validateOnBlurThenChange } from '@/lib/forms/field-errors';
 import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
-import { groundedAnswersState } from '@/lib/grounded-answers';
 import type { SiteAdminState } from '@/lib/project-settings-access';
-import { useSaveSearch, useSearchAi, useSearchConfiguration, useSearchLanguages, wasReported } from '../api/hooks';
+import { useSaveSearch, useSearchConfiguration, useSearchLanguages, wasReported } from '../api/hooks';
 import {
-  aiAnswersControl,
   decisionProps,
   fieldsDecision,
   HOTKEY_LABEL,
@@ -140,29 +143,6 @@ function SearchForm({
   useSaveRegionForm('site-search', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   const { disabled } = decisionProps(fieldsDecision(status));
-  const answersState = groundedAnswersState(useSearchAi(project.id).data);
-  const answers = aiAnswersControl(answersState, draft.baseline.aiAnswers, status);
-  const answersProps = decisionProps(answers.decision);
-  const smartAiLink = answers.linkToSmartAi ? (
-    <Link
-      className="font-medium text-primary underline-offset-4 hover:underline"
-      params={{ projectId: project.id }}
-      search={{ section: 'smartAi' }}
-      to="/app/projects/$projectId/settings"
-    >
-      {t('settings.search.aiAnswers.openSmartAi')}
-    </Link>
-  ) : null;
-  const withLink = (text: string): ReactNode =>
-    smartAiLink ? (
-      <>
-        {`${text} `}
-        {smartAiLink}
-      </>
-    ) : (
-      text
-    );
-
   const maxResultsMessage = (value: string) =>
     maxResultsProblem(value, range) ? t('settings.search.maxResults.error', { min: range.min, max: range.max }) : undefined;
   const startersMessage = (value: string) => (startersProblem(value) ? t('dashboard.ai.startersError') : undefined);
@@ -342,35 +322,7 @@ function SearchForm({
       </SettingsSection>
 
       <SettingsSection title={t('dashboard.ai.title')}>
-        <form.Field name="aiAnswers">
-          {(field) => (
-            <FormField<boolean>
-              control="switch"
-              description={
-                answers.note ? (
-                  <>
-                    {t('settings.search.aiAnswers.hint')} {withLink(t(answers.note))}
-                  </>
-                ) : (
-                  t('settings.search.aiAnswers.hint')
-                )
-              }
-              disabledReason={answersProps.reason ? withLink(t(answersProps.reason)) : undefined}
-              field={field}
-              label={t('settings.search.aiAnswers.label')}
-            >
-              {({ controlProps, value, onValueChange, ids }) => (
-                <Switch
-                  {...controlProps}
-                  aria-labelledby={ids.labelId}
-                  checked={value}
-                  disabled={answersProps.disabled}
-                  onCheckedChange={onValueChange}
-                />
-              )}
-            </FormField>
-          )}
-        </form.Field>
+        <AiAnswersStatusRow projectId={project.id} />
         <form.Field name="aiConversationCapture">
           {(field) => (
             <FormField<boolean> control="switch" description={t('dashboard.ai.captureHint')} field={field} label={t('dashboard.ai.capture')}>
@@ -417,5 +369,37 @@ function SearchForm({
         </form.Field>
       </SettingsSection>
     </form>
+  );
+}
+
+/**
+ * Where AI answers stand, read-only: the switch lives on the AI answers page
+ * only, so this page never writes it (operations/ux/ai-and-integrations.md §4.3).
+ */
+function AiAnswersStatusRow({ projectId }: { projectId: string }) {
+  const t = useT();
+  const ai = useSiteAi(projectId).data;
+  const state = ai ? aiPageState(ai) : null;
+  const copy = state && state.kind !== 'unavailable' ? STATE[state.kind] : null;
+  return (
+    <SettingsRow
+      control="auto"
+      description={copy ? t(copy.line) : state ? t('settings.ai.reason.serverUnavailable') : undefined}
+      label={
+        <span className="inline-flex flex-wrap items-center gap-2">
+          {t('settings.ai')}
+          {state && state.kind !== 'unavailable' ? <StatusBadge tone={STATE_TONE[state.kind]}>{t(STATE[state.kind].badge)}</StatusBadge> : null}
+        </span>
+      }
+    >
+      <Button
+        nativeButton={false}
+        render={<Link params={{ projectId }} search={{ section: 'ai' }} to="/app/projects/$projectId/settings" />}
+        size="sm"
+        variant="outline"
+      >
+        {t('settings.search.aiAnswers.manage')}
+      </Button>
+    </SettingsRow>
   );
 }
