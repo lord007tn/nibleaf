@@ -292,4 +292,20 @@ describe('pending changes: up to date', () => {
     mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Edited' }]);
     expect(await getPendingChanges('project-1')).toMatchObject({ upToDate: false, changes: [expect.objectContaining({ status: 'modified' })] });
   });
+
+  it("carries a moved page's live address, so a copied link opens until the next publish", async () => {
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    mocks.pageFindMany.mockResolvedValue([page]);
+    const published = await getCurrentSnapshot('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-1', version: 1, status: 'READY', snapshot: published, completedAt: new Date() });
+
+    mocks.pageFindMany.mockResolvedValue([{ ...page, slug: 'renamed', path: 'renamed' }]);
+    const [moved] = (await getPendingChanges('project-1')).changes;
+    expect(moved).toMatchObject({ status: 'modified', path: 'renamed', published: { path: 'current' } });
+
+    // A content-only edit keeps the address: nothing extra to carry.
+    mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Edited' }]);
+    const [edited] = (await getPendingChanges('project-1')).changes;
+    expect(edited?.published).toBeUndefined();
+  });
 });

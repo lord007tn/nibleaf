@@ -65,6 +65,12 @@ type ActionDialogProps = {
   fallbackErrorMessage: React.ReactNode
   /** Overrides where focus returns on close (defaults to the trigger, else the page h1). */
   finalFocus?: DialogPrimitive.Popup.Props["finalFocus"]
+  /**
+   * `content` leaves opening focus to a field in `children` (its `autoFocus`),
+   * e.g. a search box the person types into first. Default: the action, or
+   * Cancel when `destructive`.
+   */
+  initialFocus?: "content"
   className?: string
 } & TypedConfirmationProps
 
@@ -97,6 +103,7 @@ function ActionDialog({
   errorMessage,
   fallbackErrorMessage,
   finalFocus,
+  initialFocus,
   className,
   confirmText,
   confirmTextLabel,
@@ -144,7 +151,7 @@ function ActionDialog({
 
   // Opening focus: the field when typing is required, Cancel for destructive
   // actions, else the action itself.
-  const focusOnOpen = confirmText !== undefined ? "input" : destructive ? "cancel" : "confirm"
+  const focusOnOpen = confirmText !== undefined ? "input" : initialFocus ?? (destructive ? "cancel" : "confirm")
   const typedMatches = confirmText === undefined || normalizeTyped(typed) === normalizeTyped(confirmText)
   const showMismatch = !typedMatches && (typedAttempted || typed.trim() !== "")
 
