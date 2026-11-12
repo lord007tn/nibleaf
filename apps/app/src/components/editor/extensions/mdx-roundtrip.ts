@@ -72,41 +72,33 @@ export const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefiniti
  *  names such as `<Img>` stay components. */
 const HTML_ELEMENT_ALIASES: ReadonlyMap<string, string> = new Map([['IMG', 'img']]);
 
-/** Lowercase HTML elements the editor has no node for. Its HTML parser drops them
- *  (and often their content), so they load as opaque blocks that save back as
- *  written, like unknown components. Elements it does structure (images, links,
- *  tables, lists, paragraphs) are not listed and keep their current handling. */
-const RAW_HTML_ELEMENTS: ReadonlySet<string> = new Set([
-  'iframe',
-  'video',
-  'audio',
-  'source',
-  'track',
-  'object',
-  'embed',
-  'param',
-  'picture',
-  'details',
-  'summary',
-  'svg',
-  'canvas',
-  'form',
-  'input',
-  'select',
-  'option',
-  'textarea',
-  'label',
-  'div',
-  'span',
+/** The HTML the editor reads as its own content: the nodes and marks it structures,
+ *  also what it takes as HTML content (`<p><a href>`). `u`, `sup`, `sub`, `mark` and
+ *  `img` save back byte for byte; the rest save as their Markdown form. Any other
+ *  lowercase HTML (`<iframe>`, `<video>`, `<kbd>`, `<script>`, a custom element) loads
+ *  as an opaque block that saves back exactly as written: the editor's HTML parser
+ *  would otherwise drop it. */
+const STRUCTURED_HTML: ReadonlySet<string> = new Set([
+  ...['img', 'u', 'sup', 'sub', 'mark', 'a', 'p', 'strong', 'b', 'em', 'i', 'code', 'ul', 'ol', 'li', 'blockquote', 'pre'],
+  ...['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'nibleaf-mdx-opaque-block', 'nibleaf-mdx-opaque-inline'],
 ]);
 
-/** Markers of the editor's own HTML for the nodes it structures (div[data-callout],
- *  div[data-mdx], span[data-mdx]): such a tag is parsed as before, never kept raw. */
-const EDITOR_MARKUP = /\sdata-(?:mdx|callout)[\s=/>]/;
+/** The editor writes a table Markdown can't hold as HTML, so a raw table opens as a table. */
+const TABLE_HTML: ReadonlySet<string> = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col']);
 
-const isRawHtml = (token: TagToken): boolean => token.html && !token.editorMarkup && RAW_HTML_ELEMENTS.has(token.name);
+/** The lowercase names of the editor's components and callouts (`<accordion>`, `<note>`),
+ *  which it reads as those nodes. `<button>` is an HTML element first, so it stays raw. */
+const COMPONENT_HTML: ReadonlySet<string> = new Set(Object.keys(SUPPORTED_MDX_COMPONENTS).filter((name) => name !== 'button'));
 
-/** The block tokens of the editor's own Markdown parser (markdown-it), used to find code. */
+/** HTML the editor also writes inside its own HTML (a table cell, a `<p>`), so it is
+ *  structured there. Written in Markdown, these save back as written, since the
+ *  editor would rewrite them (`<br>` as `\`, `<hr>` as `---`, `<s>` as `~~`). */
+const EDITOR_HTML_CONTENT: ReadonlySet<string> = new Set(['br', 'hr', 's', 'del', 'strike']);
+
+/** Elements whose content is raw text in HTML: a `<` in a script is not a tag. */
+const RAW_TEXT_HTML: ReadonlySet<string> = new Set(['script', 'style', 'textarea', 'title']);
+
+/** The block tokens of the editor's own Markdown parser (markdown-it). */
 type MarkdownBlockTokens = (source: string) => ReadonlyArray<{ type: string; map: [number, number] | null }>;
 
 interface Span {
@@ -114,34 +106,66 @@ interface Span {
   end: number;
 }
 
-/** Fenced and indented code blocks as the editor's Markdown parser reads them, in
- *  every container (blockquotes, list items), as offsets into `source`. */
-function markdownCodeRanges(source: string, blockTokens: MarkdownBlockTokens | undefined): { fenced: Span[]; indented: Span[] } {
-  const result = { fenced: [] as Span[], indented: [] as Span[] };
-  if (!blockTokens) return result;
+/** How the editor's Markdown parser reads the page's blocks, as offsets into `source`. */
+interface MarkdownLayout {
+  /** Fenced code, in every container (blockquotes, list items). */
+  fenced: Span[];
+  /** True for positions in indented code. */
+  indented: Uint8Array;
+  /** Index of the paragraph each line is in, or -1. */
+  paragraphOfLine: Int32Array;
+  paragraphs: Array<[number, number]>;
+  lineStarts: number[];
+}
+
+function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undefined): MarkdownLayout {
   // markdown-it reads `\r\n` and `\r` as one line break each, as this does.
   const lineStarts = [0];
   const breaks = /\r\n?|\n/g;
   for (let match = breaks.exec(source); match; match = breaks.exec(source)) lineStarts.push(match.index + match[0].length);
+  const layout: MarkdownLayout = {
+    fenced: [],
+    indented: new Uint8Array(source.length),
+    paragraphOfLine: new Int32Array(lineStarts.length).fill(-1),
+    paragraphs: [],
+    lineStarts,
+  };
+  if (!blockTokens) return layout;
+  const at = (line: number) => lineStarts[line] ?? source.length;
   for (const token of blockTokens(source.replace(/\r\n?/g, '\n'))) {
-    if (!token.map || (token.type !== 'fence' && token.type !== 'code_block')) continue;
-    const span = { start: lineStarts[token.map[0]] ?? source.length, end: lineStarts[token.map[1]] ?? source.length };
-    (token.type === 'fence' ? result.fenced : result.indented).push(span);
+    if (!token.map) continue;
+    const [first, last] = token.map;
+    if (token.type === 'fence') layout.fenced.push({ start: at(first), end: at(last) });
+    else if (token.type === 'code_block') layout.indented.fill(1, at(first), at(last));
+    else if (token.type === 'paragraph_open') {
+      layout.paragraphOfLine.fill(layout.paragraphs.length, first, last);
+      layout.paragraphs.push([first, last]);
+    }
   }
-  return result;
+  return layout;
 }
 
-/** `<!-- … -->` comments outside code. */
-function htmlComments(source: string, mask: Uint8Array): Span[] {
-  const comments: Span[] = [];
-  for (let i = source.indexOf('<!--'); i >= 0; i = source.indexOf('<!--', i + 1)) {
-    if (mask[i]) continue;
-    const close = source.indexOf('-->', i + 4);
-    if (close < 0) break;
-    comments.push({ start: i, end: close + 3 });
-    i = close + 2;
+/** The line `offset` is on. */
+const lineOf = (lineStarts: number[], offset: number): number => {
+  let low = 0;
+  let high = lineStarts.length - 1;
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if ((lineStarts[middle] ?? 0) <= offset) low = middle;
+    else high = middle - 1;
   }
-  return comments;
+  return low;
+};
+
+/** Whether an opaque range is a block of its own, or sits in a line of text. A range
+ *  on lines of its own is a block unless Markdown reads those lines as part of a
+ *  longer paragraph; newlines inside the range don't decide it. */
+function isBlockRange(source: string, layout: MarkdownLayout, span: Span): boolean {
+  if (!isWholeLine(source, span.start, span.end)) return false;
+  const first = lineOf(layout.lineStarts, span.start);
+  const paragraph = layout.paragraphs[layout.paragraphOfLine[first] ?? -1];
+  if (!paragraph) return true;
+  return paragraph[0] === first && paragraph[1] === lineOf(layout.lineStarts, Math.max(span.start, span.end - 1)) + 1;
 }
 
 const lineBounds = (source: string, at: number): Span => {
@@ -161,9 +185,102 @@ function isolated(source: string, range: Span): boolean {
   return before && after;
 }
 
+/** Answers "is this span inside one of the ranges?" in O(log n), for ranges in any order. */
+function spanIndex(ranges: readonly Span[]): (start: number, end: number) => boolean {
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const reach: number[] = [];
+  let furthest = -1;
+  for (const range of sorted) {
+    furthest = Math.max(furthest, range.end);
+    reach.push(furthest);
+  }
+  return (start, end) => {
+    // The last range starting at or before `start`; any earlier one is a candidate too,
+    // and `reach` holds the furthest end among them.
+    let low = 0;
+    let high = sorted.length - 1;
+    let found = -1;
+    while (low <= high) {
+      const middle = (low + high) >> 1;
+      if ((sorted[middle]?.start ?? 0) <= start) {
+        found = middle;
+        low = middle + 1;
+      } else high = middle - 1;
+    }
+    return found >= 0 && (reach[found] ?? -1) >= end;
+  };
+}
+
+/** Keep one copy of each range and drop every range inside another, in one ordered sweep. */
+function outermostRanges<T extends Span>(ranges: readonly T[]): T[] {
+  const unique = new Map<string, T>();
+  for (const range of ranges) {
+    const key = `${range.start}:${range.end}`;
+    if (!unique.has(key)) unique.set(key, range);
+  }
+  const sorted = [...unique.values()].sort((a, b) => a.start - b.start || b.end - a.end);
+  const kept: T[] = [];
+  let furthest = -1;
+  for (const range of sorted) {
+    if (range.end <= furthest) continue;
+    kept.push(range);
+    furthest = range.end;
+  }
+  return kept;
+}
+
+interface Container extends Span {
+  name: string;
+  /** A structured HTML element (a raw `<table>`), rather than a supported component. */
+  html: boolean;
+  /** Index of the nearest container around this one, or -1. */
+  parent: number;
+}
+
+/** Containers sorted by position, each with its parent, from one ordered sweep. */
+function containerTree(list: Array<Omit<Container, 'parent'>>): Container[] {
+  const containers: Container[] = list.sort((a, b) => a.start - b.start || b.end - a.end).map((item) => ({ ...item, parent: -1 }));
+  const stack: number[] = [];
+  for (const [index, container] of containers.entries()) {
+    while (stack.length > 0 && (containers[stack[stack.length - 1] ?? -1]?.end ?? 0) <= container.start) stack.pop();
+    container.parent = enclosingOnStack(containers, stack, container);
+    stack.push(index);
+  }
+  return containers;
+}
+
+/** The innermost container on the stack around `span` (well-nested tags make that the top). */
+function enclosingOnStack(containers: Container[], stack: number[], span: Span): number {
+  for (let at = stack.length - 1; at >= 0; at--) {
+    const index = stack[at] ?? -1;
+    const container = containers[index];
+    if (container && container.start <= span.start && container.end >= span.end && (container.start !== span.start || container.end !== span.end))
+      return index;
+  }
+  return -1;
+}
+
+/** For each span (sorted by start), the innermost container around it, in one sweep. */
+function innermostContainers(containers: Container[], spans: readonly Span[]): number[] {
+  const result: number[] = [];
+  const stack: number[] = [];
+  let next = 0;
+  for (const span of spans) {
+    while (next < containers.length && (containers[next]?.start ?? 0) <= span.start) {
+      const container = containers[next] as Container;
+      while (stack.length > 0 && (containers[stack[stack.length - 1] ?? -1]?.end ?? 0) <= container.start) stack.pop();
+      stack.push(next);
+      next++;
+    }
+    while (stack.length > 0 && (containers[stack[stack.length - 1] ?? -1]?.end ?? 0) <= span.start) stack.pop();
+    result.push(enclosingOnStack(containers, stack, span));
+  }
+  return result;
+}
+
 /**
  * Where raw HTML must be kept as one opaque range. Inside an HTML element the
- * editor structures (a raw `<table>`, `<p>`), the outermost such element is kept
+ * editor structures (a raw `<table>`, `<sup>`), the outermost such element is kept
  * whole: the editor would otherwise rewrite it in its own HTML. Inside a supported
  * component, raw HTML stays a child when it is inline or sits in the component's
  * usual block layout; otherwise (an indented block, or read as indented code) the
@@ -171,26 +288,30 @@ function isolated(source: string, range: Span): boolean {
  */
 function rawHtmlRange(
   source: string,
+  layout: MarkdownLayout,
   raw: Span,
   inCode: boolean,
-  containers: Array<Span & { name: string; html: boolean }>,
+  containers: Container[],
+  innermost: number,
 ): (Span & { name: string }) | null {
   let current: Span & { name: string } = { ...raw, name: '' };
+  let around = innermost;
   let code = inCode;
-  const encloses = (outer: Span, inner: Span) =>
-    outer.start <= inner.start && outer.end >= inner.end && (outer.start !== inner.start || outer.end !== inner.end);
   for (;;) {
-    const html = containers.filter((container) => container.html && encloses(container, current)).sort((a, b) => a.start - b.start)[0];
+    let outerHtml = -1;
+    for (let index = around; index >= 0; index = containers[index]?.parent ?? -1) if (containers[index]?.html) outerHtml = index;
+    const html = containers[outerHtml];
     if (html) {
       current = html;
+      around = html.parent;
       code = false;
       continue;
     }
-    const block = source.slice(current.start, current.end).includes('\n') || isWholeLine(source, current.start, current.end);
-    if (!code && (!block || isolated(source, current))) break;
-    const component = containers.filter((container) => !container.html && encloses(container, current)).sort((a, b) => b.start - a.start)[0];
+    if (!code && (!isBlockRange(source, layout, current) || isolated(source, current))) break;
+    const component = containers[around];
     if (!component) break;
     current = component;
+    around = component.parent;
     code = false;
   }
   return code ? null : current;
@@ -207,6 +328,8 @@ interface TagToken {
   html: boolean;
   /** The editor's own markup for a node it structures (`<div data-mdx="Card">`). */
   editorMarkup?: boolean;
+  /** Lowercase HTML the editor keeps opaque (see classifyHtml). */
+  rawHtml?: boolean;
 }
 
 interface SourceRange {
@@ -391,16 +514,36 @@ function balancedEnd(source: string, start: number, open: string, close: string)
   return null;
 }
 
-/** Scan for JSX component tags and, with `html`, lowercase HTML tags too. */
-function scanTags(source: string, mask = codeMask(source), html = false): TagToken[] {
+const JSX_NAME = /[A-Z][A-Za-z0-9_.:-]*/y;
+// Lowercase HTML names, custom elements (`my-widget`) included.
+const HTML_NAME = /[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*/y;
+
+/**
+ * Scan for JSX component tags and, with `comments`, lowercase HTML tags and
+ * `<!-- … -->` comments too. One forward pass: a whole tag, quoted attribute
+ * values and `{…}` included, is read before anything after it, so a `<!--` or `<`
+ * inside an attribute is never read as markup. An unterminated comment runs to
+ * the end of the page, as HTML reads it.
+ */
+function scanTags(source: string, mask = codeMask(source), comments?: Span[]): TagToken[] {
   const tokens: TagToken[] = [];
+  const html = Boolean(comments);
+  let lower: string | undefined;
   for (let i = 0; i < source.length; i++) {
     if (source[i] !== '<' || mask[i]) continue;
+    if (comments && source.startsWith('<!--', i)) {
+      const close = source.indexOf('-->', i + 4);
+      const end = close < 0 ? source.length : close + 3;
+      comments.push({ start: i, end });
+      i = end - 1;
+      continue;
+    }
     let cursor = i + 1;
     const closing = source[cursor] === '/';
     if (closing) cursor++;
-    const rest = source.slice(cursor);
-    const nameMatch = /^[A-Z][A-Za-z0-9_.:-]*/.exec(rest) ?? (html ? /^[a-z][a-z0-9]*/.exec(rest) : null);
+    JSX_NAME.lastIndex = cursor;
+    HTML_NAME.lastIndex = cursor;
+    const nameMatch = JSX_NAME.exec(source) ?? (html ? HTML_NAME.exec(source) : null);
     if (!nameMatch?.[0]) continue;
     const name = nameMatch[0];
     const isHtml = !/^[A-Z]/.test(name);
@@ -429,32 +572,34 @@ function scanTags(source: string, mask = codeMask(source), html = false): TagTok
     }
     if (source[cursor] !== '>') continue;
     const raw = source.slice(i, cursor + 1);
-    tokens.push({ start: i, end: cursor + 1, name, raw, closing, selfClosing: !closing && /\/\s*>$/.test(raw), html: isHtml });
+    const selfClosing = !closing && /\/\s*>$/.test(raw);
+    tokens.push({ start: i, end: cursor + 1, name, raw, closing, selfClosing, html: isHtml });
     i = cursor;
+    if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name)) {
+      // A script's or style's content is text up to its closing tag.
+      lower ??= source.toLowerCase();
+      const close = lower.indexOf(`</${name}`, i + 1);
+      if (close > i) i = close - 1;
+    }
   }
   return tokens;
 }
 
+/** Pair each closing tag with the latest unpaired opening tag of the same name. */
 function tagPairs(tokens: TagToken[]): Map<number, number> {
   const pairs = new Map<number, number>();
-  const stack: number[] = [];
+  const open = new Map<string, number[]>();
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (!token) continue;
-    if (!token.closing && !token.selfClosing) {
-      stack.push(i);
+    if (!token || token.selfClosing) continue;
+    if (!token.closing) {
+      const stack = open.get(token.name);
+      if (stack) stack.push(i);
+      else open.set(token.name, [i]);
       continue;
     }
-    if (!token.closing) continue;
-    for (let s = stack.length - 1; s >= 0; s--) {
-      const openIndex = stack[s];
-      const open = openIndex == null ? undefined : tokens[openIndex];
-      if (open?.name === token.name) {
-        pairs.set(openIndex as number, i);
-        stack.splice(s, 1);
-        break;
-      }
-    }
+    const openIndex = open.get(token.name)?.pop();
+    if (openIndex != null) pairs.set(openIndex, i);
   }
   return pairs;
 }
@@ -466,69 +611,113 @@ const isWholeLine = (source: string, start: number, end: number): boolean => {
   return source.slice(lineStart, start).trim() === '' && source.slice(end, lineEnd).trim() === '';
 };
 
-function unsupportedRanges(source: string, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
+function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
   const ranges: SourceRange[] = [];
   let coveredUntil = -1;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (!token || token.start < coveredUntil) continue;
-    if (token.html ? !isRawHtml(token) : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
-    if (token.closing) {
-      ranges.push({ start: token.start, end: token.end, source: token.raw, name: token.name, block: isWholeLine(source, token.start, token.end) });
-      continue;
-    }
-    const closeIndex = pairs.get(i);
+    if (token.html ? !token.rawHtml : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
+    const closeIndex = token.closing ? undefined : pairs.get(i);
     const close = closeIndex == null ? undefined : tokens[closeIndex];
-    const end = close?.end ?? token.end;
-    ranges.push({
-      start: token.start,
-      end,
-      source: source.slice(token.start, end),
-      name: token.name,
-      block: source.slice(token.start, end).includes('\n') || isWholeLine(source, token.start, end),
-    });
-    coveredUntil = end;
+    ranges.push(sourceRange(source, layout, { start: token.start, end: close?.end ?? token.end }, token.name));
+    if (!token.closing) coveredUntil = close?.end ?? token.end;
   }
   return ranges;
 }
 
-const sourceRange = (source: string, span: Span, name: string): SourceRange => {
-  const text = source.slice(span.start, span.end);
-  return { ...span, source: text, name, block: text.includes('\n') || isWholeLine(source, span.start, span.end) };
-};
+const sourceRange = (source: string, layout: MarkdownLayout, span: Span, name: string): SourceRange => ({
+  start: span.start,
+  end: span.end,
+  source: source.slice(span.start, span.end),
+  name,
+  block: isBlockRange(source, layout, span),
+});
+
+/** Whether a lowercase tag is the editor's own markup for a node it structures:
+ *  `<div data-callout>`, or `<div|span data-mdx="Name">` for that component, read
+ *  from the tag's actual attributes. */
+function isEditorMarkup(token: TagToken): boolean {
+  if (token.closing || (token.name !== 'div' && token.name !== 'span')) return false;
+  const attrs = parseAttributes(token.raw, token.name);
+  if (token.name === 'div' && attrs.some((attr) => attr.name === 'data-callout')) return true;
+  const component = attrs.find((attr) => attr.name === 'data-mdx')?.value;
+  const definition = typeof component === 'string' ? SUPPORTED_MDX_COMPONENTS[component.toLowerCase()] : undefined;
+  return Boolean(definition && definition.canonical === component && Boolean(definition.inline) === (token.name === 'span'));
+}
+
+/**
+ * Mark which lowercase tags are raw HTML to keep opaque. A tag the editor
+ * structures (STRUCTURED_HTML, tables, its components' lowercase names, its own
+ * markup) is parsed as before, and so is the HTML it writes inside its own HTML.
+ * Everything else is raw. Closing tags follow the tag they close.
+ */
+function classifyHtml(tokens: TagToken[], pairs: Map<number, number>): void {
+  const editorHtml: Span[] = [];
+  for (const [index, token] of tokens.entries()) {
+    if (!token.html || token.closing) continue;
+    token.editorMarkup = isEditorMarkup(token);
+    const close = tokens[pairs.get(index) ?? -1];
+    if (close) close.editorMarkup = token.editorMarkup;
+    if (close && (token.editorMarkup || STRUCTURED_HTML.has(token.name) || TABLE_HTML.has(token.name) || COMPONENT_HTML.has(token.name)))
+      editorHtml.push({ start: token.end, end: close.start });
+  }
+  const insideEditorHtml = spanIndex(editorHtml);
+  for (const token of tokens) {
+    if (!token.html) continue;
+    const structured =
+      token.editorMarkup ||
+      STRUCTURED_HTML.has(token.name) ||
+      TABLE_HTML.has(token.name) ||
+      COMPONENT_HTML.has(token.name) ||
+      (EDITOR_HTML_CONTENT.has(token.name) && insideEditorHtml(token.start, token.end));
+    token.rawHtml = !structured;
+  }
+  // A pair is raw or structured together, as its opening tag is.
+  for (const [openIndex, closeIndex] of pairs) {
+    const open = tokens[openIndex];
+    const close = tokens[closeIndex];
+    if (open?.html && close) close.rawHtml = open.rawHtml;
+  }
+}
 
 /** Add raw HTML (comments, and HTML read as indented code inside a component) to
  *  the opaque ranges, widening any raw HTML range to what keeps it byte for byte
  *  (see rawHtmlRange). Ranges inside a wider one are dropped. */
 function keepRawHtml(
   source: string,
+  layout: MarkdownLayout,
   tokens: TagToken[],
   pairs: Map<number, number>,
   opaque: SourceRange[],
-  extra: Array<Span & { inCode: boolean }>,
+  extra: Array<Span & { inCode: boolean; name: string }>,
 ): SourceRange[] {
-  const containers: Array<Span & { name: string; html: boolean }> = [];
+  const list: Array<Omit<Container, 'parent'>> = [];
   for (const [openIndex, closeIndex] of pairs) {
     const open = tokens[openIndex];
     const close = tokens[closeIndex];
     if (!open || !close) continue;
-    const container = open.html
-      ? !open.editorMarkup && !RAW_HTML_ELEMENTS.has(open.name)
+    // Structured HTML elements, and supported components. The editor's own markup and
+    // its components' lowercase names hold their children as components do.
+    const html = open.html && !open.rawHtml && !open.editorMarkup && !COMPONENT_HTML.has(open.name);
+    const component = open.html
+      ? !open.rawHtml && !html
       : Boolean(SUPPORTED_MDX_COMPONENTS[open.name.toLowerCase()]) && !HTML_ELEMENT_ALIASES.has(open.name);
-    if (container) containers.push({ start: open.start, end: close.end, name: open.name, html: open.html });
+    if (html || component) list.push({ start: open.start, end: close.end, name: open.name, html });
   }
-  const covered = (span: Span) => opaque.some((range) => range.start <= span.start && range.end >= span.end);
+  const containers = containerTree(list);
+  const covered = spanIndex(opaque);
   const candidates = [
     ...opaque.filter((range) => /^[a-z]/.test(range.name)).map((range) => ({ ...range, inCode: false })),
-    ...extra.filter((span) => !covered(span)),
-  ];
+    ...extra.filter((span) => !covered(span.start, span.end)),
+  ].sort((a, b) => a.start - b.start);
+  const innermost = innermostContainers(containers, candidates);
   const kept = [...opaque];
-  for (const candidate of candidates) {
-    const range = rawHtmlRange(source, candidate, candidate.inCode, containers);
-    if (range) kept.push(sourceRange(source, range, range.name || 'HTML comment'));
+  for (const [index, candidate] of candidates.entries()) {
+    const range = rawHtmlRange(source, layout, candidate, candidate.inCode, containers, innermost[index] ?? -1);
+    if (range) kept.push(sourceRange(source, layout, range, range.name || candidate.name));
   }
-  const unique = kept.filter((range, index) => kept.findIndex((other) => other.start === range.start && other.end === range.end) === index);
-  return unique.filter((range) => !unique.some((other) => other !== range && other.start <= range.start && other.end >= range.end));
+  return outermostRanges(kept);
 }
 
 function parseAttributes(raw: string, componentName: string): AttributeToken[] {
@@ -610,68 +799,79 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
 function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens): string {
   if (!source || (!source.includes('<') && !source.includes('{') && !/^\s*(?:import|export)\s/m.test(source))) return source;
   const mask = codeMask(source);
-  // Nothing inside code is ever replaced: fenced code is found the way the
-  // Markdown parser reads it, inside blockquotes and list items too.
-  const code = markdownCodeRanges(source, blockTokens);
-  for (const fence of code.fenced) mask.fill(1, fence.start, fence.end);
-  const inIndentedCode = (at: number) => code.indented.some((range) => at >= range.start && at < range.end);
-  const comments = htmlComments(source, mask);
+  // Nothing inside code is ever replaced: code is found the way the Markdown
+  // parser reads it, inside blockquotes and list items too.
+  const layout = markdownLayout(source, blockTokens);
+  for (const fence of layout.fenced) mask.fill(1, fence.start, fence.end);
+  const comments: Span[] = [];
+  const scanned = scanTags(source, mask, comments);
   for (const comment of comments) mask.fill(1, comment.start, comment.end);
-  const scanned = scanTags(source, mask, true);
   // Raw HTML read as indented code stays code, unless a component holds it.
+  const inIndentedCode = (at: number) => layout.indented[at] === 1;
   const codeHtml = scanned.filter((token) => token.html && inIndentedCode(token.start));
   const tokens = scanned.filter((token) => !(token.html && inIndentedCode(token.start)));
   const pairs = tagPairs(tokens);
-  for (const [index, token] of tokens.entries()) {
-    if (!token.html || token.closing || !EDITOR_MARKUP.test(token.raw)) continue;
-    token.editorMarkup = true;
-    const close = tokens[pairs.get(index) ?? -1];
-    if (close) close.editorMarkup = true;
-  }
-  let opaque = keepRawHtml(source, tokens, pairs, unsupportedRanges(source, tokens, pairs), [
-    ...comments.map((comment) => ({ ...comment, inCode: inIndentedCode(comment.start) })),
+  classifyHtml(tokens, pairs);
+  let opaque = keepRawHtml(source, layout, tokens, pairs, unsupportedRanges(source, layout, tokens, pairs), [
+    ...comments.map((comment) => ({ ...comment, inCode: inIndentedCode(comment.start), name: 'HTML comment' })),
     ...codeHtml
-      .filter((token) => isRawHtml(token) && !EDITOR_MARKUP.test(token.raw))
-      .map((token) => ({ start: token.start, end: token.end, inCode: true })),
+      .filter((token) => !STRUCTURED_HTML.has(token.name) && !TABLE_HTML.has(token.name) && !COMPONENT_HTML.has(token.name) && !isEditorMarkup(token))
+      .map((token) => ({ start: token.start, end: token.end, inCode: true, name: token.name })),
   ]);
 
   // MDX ESM and standalone expressions are also explicit opaque nodes. Braces
   // inside JSX tags were consumed by scanTags and are excluded here.
-  const occupied = [...opaque, ...tokens.filter((token) => !token.html || isRawHtml(token)).map((token) => ({ start: token.start, end: token.end }))];
-  const overlaps = (start: number, end: number) => occupied.some((range) => start < range.end && end > range.start);
-  const containsPosition = (position: number) => occupied.some((range) => position >= range.start && position < range.end);
+  const tagSpans = tokens.filter((token) => !token.html || token.rawHtml).map((token) => ({ start: token.start, end: token.end }));
+  const taken = spanIndex([...opaque, ...tagSpans]);
+  // Any range starting before `end` that reaches past `start` overlaps [start, end).
+  const sortedTaken = [...opaque, ...tagSpans].sort((a, b) => a.start - b.start);
+  const reach: number[] = [];
+  for (const range of sortedTaken) reach.push(Math.max(reach[reach.length - 1] ?? -1, range.end));
+  const overlaps = (start: number, end: number) => {
+    let low = 0;
+    let high = sortedTaken.length - 1;
+    let found = -1;
+    while (low <= high) {
+      const middle = (low + high) >> 1;
+      if ((sortedTaken[middle]?.start ?? 0) < end) {
+        found = middle;
+        low = middle + 1;
+      } else high = middle - 1;
+    }
+    return found >= 0 && (reach[found] ?? -1) > start;
+  };
+  const modules: SourceRange[] = [];
   let offset = 0;
   for (const lineWithBreak of source.match(/.*(?:\n|$)/g) ?? []) {
     if (!lineWithBreak) continue;
     const line = lineWithBreak.endsWith('\n') ? lineWithBreak.slice(0, -1) : lineWithBreak;
     if (!mask[offset] && /^\s*(?:import|export)\s/.test(line) && !overlaps(offset, offset + line.length)) {
-      const moduleRange = { start: offset, end: offset + line.length, source: line, name: 'MDX module', block: true };
-      opaque.push(moduleRange);
-      occupied.push(moduleRange);
+      modules.push({ start: offset, end: offset + line.length, source: line, name: 'MDX module', block: true });
     }
     offset += lineWithBreak.length;
   }
+  const inModule = spanIndex(modules);
+  const expressions: SourceRange[] = [];
   for (let i = 0; i < source.length; i++) {
-    if (source[i] !== '{' || mask[i] || containsPosition(i)) continue;
+    if (source[i] !== '{' || mask[i] || taken(i, i + 1) || inModule(i, i + 1)) continue;
     const end = balancedEnd(source, i, '{', '}');
     if (!end) continue;
     // A standalone expression owns any JSX nested inside it. Replace the whole
     // expression once, rather than exposing punctuation around smaller atoms.
-    opaque = opaque.filter((range) => !(range.start >= i && range.end <= end));
-    opaque.push({ start: i, end, source: source.slice(i, end), name: 'Expression', block: isWholeLine(source, i, end) });
-    occupied.push({ start: i, end });
+    expressions.push({ start: i, end, source: source.slice(i, end), name: 'Expression', block: isWholeLine(source, i, end) });
     i = end - 1;
   }
+  opaque = outermostRanges([...opaque, ...modules, ...expressions]);
 
   const replacements: Array<{ start: number; end: number; value: string }> = opaque.map((range) => ({
     start: range.start,
     end: range.end,
     value: placeholder(range),
   }));
-  const opaqueCoverage = (start: number) => opaque.some((range) => start >= range.start && start < range.end);
+  const coveredByOpaque = spanIndex(opaque);
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (!token || token.html || opaqueCoverage(token.start)) continue;
+    if (!token || token.html || coveredByOpaque(token.start, token.start + 1)) continue;
     const element = HTML_ELEMENT_ALIASES.get(token.name);
     if (element) {
       // img is a void element: a stray closing tag has nothing to close.
@@ -699,15 +899,24 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
     replacements.push({ start: token.start, end: token.end, value: token.selfClosing ? `${open}</${wrapper}>` : open });
   }
 
+  // From the end, skipping any replacement that overlaps one already taken; then
+  // the page is assembled once, front to back.
   replacements.sort((a, b) => b.start - a.start || b.end - a.end);
-  let output = source;
+  const chosen: typeof replacements = [];
   let lastStart = source.length + 1;
   for (const replacement of replacements) {
     if (replacement.end > lastStart) continue;
-    output = `${output.slice(0, replacement.start)}${replacement.value}${output.slice(replacement.end)}`;
+    chosen.push(replacement);
     lastStart = replacement.start;
   }
-  return output;
+  const parts: string[] = [];
+  let cursor = 0;
+  for (const replacement of chosen.reverse()) {
+    parts.push(source.slice(cursor, replacement.start), replacement.value);
+    cursor = replacement.end;
+  }
+  parts.push(source.slice(cursor));
+  return parts.join('');
 }
 
 /** Inventory unknown tags without treating them as a page-wide failure. */

@@ -133,6 +133,17 @@ function getCounts(editor: Editor): { words: number; characters: number } {
   return { words: storage.characterCount?.words() ?? 0, characters: storage.characterCount?.characters() ?? 0 };
 }
 
+/** The column a list item's content starts at, as CommonMark reads its first line
+ *  (`- a` → 2, `10. a` → 4): one to four spaces after the marker count, and a
+ *  marker followed by nothing or by more than four spaces takes one. */
+function listItemContentColumn(line: string): number {
+  const match = /^( *)([-+*]|\d{1,9}[.)])( *)(.?)/.exec(line);
+  if (!match) return 0;
+  const marker = (match[1]?.length ?? 0) + (match[2]?.length ?? 0);
+  const spaces = match[3]?.length ?? 0;
+  return marker + (!match[4] || spaces === 0 || spaces > 4 ? 1 : spaces);
+}
+
 /** CodeBlockLowlight that mirrors the chosen language onto the <pre> as `data-language`,
  * so the dark chrome's label bar (CSS ::before) can display it. */
 const CodeBlock = CodeBlockLowlight.extend({
@@ -197,12 +208,32 @@ const CodeBlock = CodeBlockLowlight.extend({
                 for (let depth = 0; depth < quoteDepth; depth += 1) inner = inner.replace(/^ {0,3}> ?/, '');
                 return inner;
               };
+              // Likewise a fence in a list item keeps its lines without the item's
+              // indent, which the list's serializer writes again: keeping it added
+              // the indent once more on every save until the fence broke (#574).
+              // Each open container: a quote, or a list item with its content column.
+              const containers: Array<number | 'quote'> = [];
+              const withoutContainers = (line: string) => {
+                const inner = withoutQuotes(line);
+                const item = containers[containers.length - 1];
+                if (typeof item !== 'number') return inner;
+                const indent = /^ */.exec(inner)?.[0].length ?? 0;
+                return inner.slice(Math.min(indent, item));
+              };
               for (const token of state.tokens) {
-                if (token.type === 'blockquote_open') quoteDepth += 1;
-                if (token.type === 'blockquote_close') quoteDepth = Math.max(0, quoteDepth - 1);
+                if (token.type === 'blockquote_open') {
+                  quoteDepth += 1;
+                  containers.push('quote');
+                }
+                if (token.type === 'blockquote_close') {
+                  quoteDepth = Math.max(0, quoteDepth - 1);
+                  containers.pop();
+                }
+                if (token.type === 'list_item_open') containers.push(listItemContentColumn(withoutQuotes(lines[token.map?.[0] ?? -1] ?? '')));
+                if (token.type === 'list_item_close') containers.pop();
                 if (token.type !== 'fence' || !token.map) continue;
-                const open = withoutQuotes(lines[token.map[0]] ?? '');
-                const close = withoutQuotes(lines[Math.max(token.map[0], token.map[1] - 1)] ?? '');
+                const open = withoutContainers(lines[token.map[0]] ?? '');
+                const close = withoutContainers(lines[Math.max(token.map[0], token.map[1] - 1)] ?? '');
                 const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
                 token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
                 token.attrSet('data-mdx-fence-close', encodeMdxSource(close));

@@ -32,11 +32,21 @@ afterEach(() => {
   for (const editor of editors.splice(0)) editor.destroy();
 });
 
-/** Load and save gives `expected`; loading and saving that again gives the same bytes. */
+/** Load and save gives `expected`; two more load/save cycles give the same bytes. */
 const expectRoundTrip = (page: string, expected = page) => {
   const saved = getMarkdown(open(page));
   expect(saved).toBe(expected);
-  expect(getMarkdown(open(saved))).toBe(saved);
+  const second = getMarkdown(open(saved));
+  expect([second, getMarkdown(open(second))]).toEqual([saved, saved]);
+};
+
+/** The names of every node in the page as the editor loads it. */
+const nodeTypes = (page: string) => {
+  const names: string[] = [];
+  open(page).state.doc.descendants((node) => {
+    names.push(node.type.name);
+  });
+  return names;
 };
 
 /** Type a character after the second one of the page's first paragraph. */
@@ -211,16 +221,9 @@ describe('raw HTML inside containers', () => {
 
   it('keeps a component editable around inline raw HTML, and a Frame around an indented iframe whole', () => {
     const callout = '<Callout type="info">\n\nSome <span style="color: red">red</span> text.\n\n</Callout>';
-    const types = (page: string) => {
-      const names: string[] = [];
-      open(page).state.doc.descendants((node) => {
-        names.push(node.type.name);
-      });
-      return names;
-    };
-    expect(types(callout)).toContain('callout');
+    expect(nodeTypes(callout)).toContain('callout');
     expectRoundTrip(callout);
-    expect(types(reported)).not.toContain('mdxFrame');
+    expect(nodeTypes(reported)).not.toContain('mdxFrame');
   });
 
   it('never writes editor markup into a raw HTML table', () => {
@@ -233,18 +236,6 @@ describe('raw HTML inside containers', () => {
     expectRoundTrip(`> \`\`\`html\n> ${I}\n> \`\`\``);
   });
 
-  it('keeps a fenced block inside a list item as code with its text unchanged', () => {
-    // As on main, the editor re-indents a fence in a list item on each save (any
-    // language, not only HTML); the code's text is kept and nothing is replaced in it.
-    const editor = open(`- Item\n\n  \`\`\`html\n  ${I}\n  \`\`\``);
-    expect(getMarkdown(editor)).toBe(`- Item\n\n    \`\`\`html\n  ${I}\n    \`\`\``);
-    let code = '';
-    open(getMarkdown(editor)).state.doc.descendants((node) => {
-      if (node.type.name === 'codeBlock') code = node.textContent;
-    });
-    expect(code).toBe(I);
-  });
-
   it('keeps an indented iframe as a code block with its text unchanged', () => {
     // As on main, the editor saves every code block fenced.
     const editor = open(`Before.\n\n    ${I}\n\nAfter.`);
@@ -255,5 +246,169 @@ describe('raw HTML inside containers', () => {
 
   it('keeps fenced and inline code as code', () => {
     expectRoundTrip(`\`\`\`html\n${I}\n\`\`\`\n\nUse \`<video src="a.mp4"></video>\` inline.`);
+  });
+});
+
+// #574: a fence in a list item gained the item's indent on every save, until the
+// third save turned it into text and the iframe in it was lost.
+describe('code inside lists and blockquotes', () => {
+  it.each([
+    ['a list item', '- Item\n\n  ```html\n  <iframe src="x"></iframe>\n  ```'],
+    ['a list item, with text after', '- Item\n\n  ```js\n  const a = 1;\n  ```\n\n- Next'],
+    ['an ordered list item', '1. Step\n\n   ```sh\n   pnpm install\n   ```'],
+    ['a nested list item', '- Outer\n\n  - Inner\n\n    ```js\n    const a = 1;\n    ```'],
+    ['a blockquote', '> ```js\n> const a = 1;\n> ```'],
+    ['a blockquote inside a list item', '- Item\n\n  > ```js\n  > const a = 1;\n  > ```'],
+    ['a list item inside a blockquote', '> - Item\n>\n>   ```js\n>   const a = 1;\n>   ```'],
+  ])('keeps a fence in %s byte for byte over three saves', (_name, page) => {
+    expectRoundTrip(page);
+  });
+
+  it('keeps indented code in a list item as code with the same text over three saves', () => {
+    // The editor saves every code block fenced; after that the page is stable.
+    const page = '- Item\n\n      const a = 1;';
+    const code = (markdown: string) => {
+      let text = '';
+      open(markdown).state.doc.descendants((node) => {
+        if (node.type.name === 'codeBlock') text = node.textContent;
+      });
+      return text;
+    };
+    const first = getMarkdown(open(page));
+    expect(first).toBe('- Item\n\n  ```\n  const a = 1;\n  ```');
+    const second = getMarkdown(open(first));
+    expect([second, getMarkdown(open(second))]).toEqual([first, first]);
+    expect([code(page), code(first), code(second)]).toEqual(['const a = 1;', 'const a = 1;', 'const a = 1;']);
+  });
+});
+
+describe('the council review of #573', () => {
+  // 1. A `<!--` inside a quoted attribute is part of the value, not a comment.
+  it('keeps an image whose alt holds "<!--" an image with that alt', () => {
+    const page = 'Before.\n\n<img alt="<!-- note -->" src="https://x.test/a.png">\n\nAfter.';
+    const alt = (markdown: string) => {
+      let value: unknown;
+      open(markdown).state.doc.descendants((node) => {
+        if (node.type.name === 'image') value = node.attrs.alt;
+      });
+      return value;
+    };
+    expect(alt(page)).toBe('<!-- note -->');
+    // The image's own serializer writes `<` in an attribute as `&lt;`, as on main
+    // before #573: the same value, and stable from then on.
+    const saved = 'Before.\n\n<img alt="&lt;!-- note --&gt;" src="https://x.test/a.png">\n\nAfter.';
+    expectRoundTrip(page, saved);
+    expect(alt(saved)).toBe('<!-- note -->');
+  });
+
+  it('keeps a Card whose title holds "<!--" a Card, closing tag included', () => {
+    const page = 'Before.\n\n<Card title="<!-- note -->">\n\nBody\n\n</Card>\n\nAfter.';
+    expect(nodeTypes(page)).toContain('mdxCard');
+    expectRoundTrip(page);
+  });
+
+  // 3. Inline or block comes from the Markdown around the HTML, not from newlines in it.
+  it('keeps a multi-line span inside a paragraph inline', () => {
+    const page = 'Before <span>multi\nline</span> after.';
+    expect(open(page).state.doc.childCount).toBe(1);
+    expectRoundTrip(page);
+  });
+
+  it('keeps a multi-line span inside the link it was written in', () => {
+    const page = 'See [a <span>multi\nline</span> b](https://x.test/) here.';
+    const { doc } = open(page).state;
+    let linked = false;
+    doc.descendants((node) => {
+      if (node.type.name === 'mdxOpaqueInline') linked = node.marks.some((mark) => mark.type.name === 'link');
+    });
+    expect(linked).toBe(true);
+    expectRoundTrip(page);
+  });
+
+  // 6. An unterminated comment runs to the end of the page, as HTML reads it.
+  it.each([
+    ['at the start', '<!-- draft\n\nIntro.\n\nOutro.'],
+    ['in the middle', 'Intro.\n\n<!-- draft\n\nOutro.'],
+    ['at the end', 'Intro.\n\nOutro. <!-- draft'],
+    ['inside a list', '- one\n- two <!-- draft\n- three'],
+  ])('keeps an unterminated comment %s and everything after it', (_name, page) => {
+    expectRoundTrip(page);
+  });
+
+  // 7. The editor's own markup is recognised from real attributes only.
+  it.each([
+    ['a div whose title mentions data-mdx', '<div title=" data-mdx=x">\n  Hello\n</div>'],
+    ['an iframe with a data-mdx attribute', '<iframe data-mdx="something" src="https://x.test/e"></iframe>'],
+    ['a div with data-mdx naming no component', '<div data-mdx="Nothing">\n  Hello\n</div>'],
+    ['a span with data-mdx naming a block component', '<span data-mdx="Card">x</span>'],
+  ])('keeps %s as written', (_name, form) => {
+    expectRoundTrip(`Before.\n\n${form}\n\nAfter.`);
+  });
+
+  it("still reads the editor's own markup as its nodes", () => {
+    expect(nodeTypes('<div data-mdx="Accordion" data-title="FAQ"><p>Body</p></div>')).toContain('mdxAccordion');
+    expect(nodeTypes('<div data-callout="" data-variant="note"><p>Body</p></div>')).toContain('callout');
+  });
+});
+
+// 5. Unknown HTML is kept by default; only what the editor writes back byte for
+// byte is structured.
+describe('every other HTML element', () => {
+  it.each([
+    ['<script>', '<script>window.a = "<b>";</script>'],
+    ['<style>', '<style>.a { color: red; }</style>'],
+    ['<template>', '<template><p>x</p></template>'],
+    ['a custom element', '<my-widget foo="1"></my-widget>'],
+    ['<hr>', '<hr>'],
+    ['<button>', '<button type="button">Go</button>'],
+    ['<p> holding a <kbd>', '<p>Press <kbd>K</kbd></p>'],
+  ])('keeps a block %s byte for byte', (_name, form) => {
+    expectRoundTrip(`Before.\n\n${form}\n\nAfter.`);
+  });
+
+  it.each([
+    ['kbd', '<kbd>Ctrl</kbd>'],
+    ['abbr', '<abbr title="HyperText">HTML</abbr>'],
+    ['br', 'a<br>b'],
+    ['s', '<s>old</s>'],
+    ['del', '<del>old</del>'],
+    ['ins', '<ins>new</ins>'],
+    ['small', '<small>fine</small>'],
+    ['q', '<q>quote</q>'],
+    ['cite', '<cite>Book</cite>'],
+    ['time', '<time datetime="2026-11-12">today</time>'],
+    ['a custom element', '<my-chip>new</my-chip>'],
+  ])('keeps an inline <%s> byte for byte', (_name, form) => {
+    expectRoundTrip(`Press ${form} now.`);
+  });
+
+  // The HTML the editor takes as its own content (`<p><a href>…`) is structured, as
+  // before, and saves as its Markdown form; pinned so it stays stable.
+  it.each([
+    ['<p align>', '<p align="center">Centered</p>', 'Centered'],
+    ['<h2>', '<h2>Heading</h2>', '## Heading'],
+    ['<ul>', '<ul>\n<li>one</li>\n</ul>', '- one'],
+    ['<blockquote>', '<blockquote>Quoted</blockquote>', '> Quoted'],
+    ['<pre>', '<pre>code</pre>', '```\ncode\n```'],
+    ['<a>', '<a href="/x">link</a>', '[link](/x)'],
+    ['<strong>', '<strong>bold</strong>', '**bold**'],
+    ['<br> inside a <p>', '<p>a<br>b</p>', 'a\\\nb'],
+  ])('still structures %s', (_name, form, saved) => {
+    expectRoundTrip(`Before.\n\n${form}\n\nAfter.`, `Before.\n\n${saved}\n\nAfter.`);
+  });
+
+  it.each([
+    ['sup', 'superscript'],
+    ['sub', 'subscript'],
+    ['mark', 'highlight'],
+    ['u', 'underline'],
+  ])('still structures <%s>, which the editor writes back byte for byte', (tag, mark) => {
+    const page = `Press <${tag}>x</${tag}> now.`;
+    let found = false;
+    open(page).state.doc.descendants((node) => {
+      if (node.marks.some((each) => each.type.name === mark)) found = true;
+    });
+    expect(found).toBe(true);
+    expectRoundTrip(page);
   });
 });
