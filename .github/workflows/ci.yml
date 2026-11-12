@@ -134,7 +134,7 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           ACTIVATION_INTEGRATION: "1"
-        run: pnpm --filter @nibleaf/worker exec vitest run src/lib/publish-activation.postgres.test.ts
+        run: pnpm --filter @nibleaf/worker exec vitest run src/lib/publish-activation.postgres.test.ts src/reaper.postgres.test.ts --maxWorkers=1
 
       - name: Verify Better Auth on PostgreSQL
         env:
@@ -248,13 +248,25 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           IMPORT_REHEARSAL: "1"
-        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/import-safety.postgres.test.ts
+          GITBOOK_REHEARSAL: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/import-safety.postgres.test.ts src/actions/importers/gitbook.postgres.test.ts --maxWorkers=1
 
       - name: Verify the People page only shows sites you administer
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           PEOPLE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/people.postgres.test.ts
+
+      - name: Verify pending asset uploads in a fresh database
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf_asset_uploads_test
+          ASSET_UPLOADS_POSTGRES: "1"
+        # This suite refuses databases containing any pre-existing pending rows.
+        # Other PostgreSQL suites intentionally leave unrelated upload fixtures.
+        run: |
+          psql postgresql://nibleaf:nibleaf@127.0.0.1:5432/postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE nibleaf_asset_uploads_test'
+          pnpm --filter @nibleaf/database exec prisma migrate deploy
+          pnpm --filter @nibleaf/server exec vitest run src/actions/asset-uploads.postgres.test.ts --maxWorkers=1
 
       - name: Verify deleting an asset keeps files that saved content uses
         env:
@@ -277,7 +289,7 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           DATA_INTEGRITY_POSTGRES: "1"
-        run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-integrity.postgres.test.ts --maxWorkers=1
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-integrity.postgres.test.ts src/actions/git/git-sync.postgres.test.ts src/mcp/placement.postgres.test.ts --maxWorkers=1
 
       - name: Verify page Trash (restore races, schema drift, erasure)
         env:
@@ -302,11 +314,12 @@ jobs:
           CLICKHOUSE_WRITER_PASSWORD: nibleaf
           CLICKHOUSE_WRITER_USERNAME: nibleaf
           CLICKHOUSE_INTEGRATION: "1"
+          ANALYTICS_LOCK_INTEGRATION: "1"
           # The migration runner serializes workers and the CLI with a PostgreSQL advisory lock.
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
         run: |
           pnpm --filter @nibleaf/clickhouse migrate
-          pnpm --filter @nibleaf/clickhouse test
+          pnpm --filter @nibleaf/clickhouse test --maxWorkers=1
 
       - name: Verify relational analytics and admin discovery on PostgreSQL
         env:
