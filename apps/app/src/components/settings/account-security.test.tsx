@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, vars?: Record<string, string>) => (vars ? `${key}(${Object.values(vars).join('|')})` : key),
 }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', subscribeLanguage: () => () => undefined }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', renderedLocale: () => 'en', subscribeLanguage: () => () => undefined }));
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mocks.navigate,
   Link: ({ children, to, params, onClick }: { children: ReactNode; to: string; params?: { orgSlug: string }; onClick?: () => void }) => (

@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, vars?: Record<string, unknown>) => (vars ? `${key}(${Object.values(vars).join('|')})` : key),
 }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', subscribeLanguage: () => () => undefined }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', renderedLocale: () => 'en', subscribeLanguage: () => () => undefined }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'u-omar' } } }) }));
 vi.mock('@/hooks/api/organization-query-options', () => ({
   organizationMembersQueryOptions: (id: string) => ({ queryKey: ['organizations', id, 'members'], queryFn: mocks.members }),
