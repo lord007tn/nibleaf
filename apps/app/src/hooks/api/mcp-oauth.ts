@@ -12,7 +12,15 @@ import type { ConnectedApp } from './types';
 export interface McpOAuthAuthorization {
   client: { clientId: string; name: string | null; uri: string | null; redirectTarget: string | null; verifiedDomain: string | null };
   requestedScopes: string[];
-  projects: Array<{ id: string; name: string; slug: string; workspace: string; role: string; presets: McpKeyPreset[] }>;
+  projects: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    workspace: string;
+    organization: { id: string; name: string };
+    role: string;
+    presets: McpKeyPreset[];
+  }>;
   selection: { id: string; preset: McpKeyPreset; scopes: string[]; project: { id: string; name: string } } | null;
 }
 

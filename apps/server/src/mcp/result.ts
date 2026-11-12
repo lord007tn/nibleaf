@@ -24,6 +24,7 @@ import {
   completeMcpIdempotentWrite,
   hashMcpArguments,
 } from './idempotency';
+import { dashboardLinks } from './links';
 import { checkMcpWriteRateLimit } from './rate-limit';
 import type { McpAuditTarget, McpErrorEnvelope, McpPrincipal, McpSuccessEnvelope } from './types';
 
@@ -331,9 +332,12 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
         });
       }
     }
+    // Dashboard links are rebuilt from the bound website and the final target on
+    // every answer, first or replayed, and never stored in the replay record.
+    const links = dashboardLinks(spec.operation, principal.project.id, target);
     const envelope: McpSuccessEnvelope = {
       ok: true,
-      data,
+      data: isPlainObject(data) && Object.keys(links).length > 0 ? { ...data, ...links } : data,
       meta: {
         requestId: ctx.get('requestId'),
         projectId: principal.project.id,

@@ -8,7 +8,7 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { type McpOAuthAuthorization, useCreateMcpOAuthGrant, useMcpOAuthAuthorization } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { AuthLayout } from '@/layouts/auth';
-import { consentLines, currentOAuthQuery, oauthStepHref } from '@/lib/mcp-oauth';
+import { consentLines, currentOAuthQuery, groupByOrganization, oauthStepHref } from '@/lib/mcp-oauth';
 import { useSession } from '@/services/auth-client';
 
 /** POST to a Better Auth OAuth endpoint with the page's signed query and go
@@ -143,6 +143,8 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
   const [error, setError] = useState<string | null>(null);
   const client = clientLabel(authorization, t('oauth.unknownClient'));
   const presetAllowed = Boolean(project?.presets.includes(preset));
+  const groups = groupByOrganization(projects);
+  const grouped = groups.length > 1;
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -178,27 +180,44 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
       <p className="text-muted-foreground text-sm leading-relaxed">{t('oauth.project.description', { client })}</p>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-medium text-sm">{t('oauth.project.projectLabel')}</legend>
-        {projects.map((candidate) => (
-          <label
-            className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-            key={candidate.id}
+        {groups.map((group) => (
+          // One heading per organization when there's more than one; the
+          // websites under it keep one radio group (same name) across groups.
+          <div
+            aria-labelledby={grouped ? `mcp-oauth-org-${group.id}` : undefined}
+            className="flex flex-col gap-2"
+            data-slot="organization-group"
+            key={group.id}
+            role={grouped ? 'group' : undefined}
           >
-            <input
-              checked={projectId === candidate.id}
-              name="mcp-oauth-project"
-              onChange={() => {
-                setProjectId(candidate.id);
-                if (!candidate.presets.includes(preset)) setPreset('read_only');
-              }}
-              type="radio"
-            />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <bdi className="truncate font-medium">{candidate.name}</bdi>
-              <bdi className="truncate text-muted-foreground text-xs">
-                {candidate.workspace} · {candidate.slug}
-              </bdi>
-            </span>
-          </label>
+            {grouped ? (
+              <p className="mt-1 font-medium text-muted-foreground text-xs uppercase tracking-wide" id={`mcp-oauth-org-${group.id}`}>
+                <bdi>{group.name}</bdi>
+              </p>
+            ) : null}
+            {group.sites.map((candidate) => (
+              <label
+                className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                key={candidate.id}
+              >
+                <input
+                  checked={projectId === candidate.id}
+                  name="mcp-oauth-project"
+                  onChange={() => {
+                    setProjectId(candidate.id);
+                    if (!candidate.presets.includes(preset)) setPreset('read_only');
+                  }}
+                  type="radio"
+                />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <bdi className="truncate font-medium">{candidate.name}</bdi>
+                  <bdi className="truncate text-muted-foreground text-xs" dir="ltr">
+                    {candidate.slug}
+                  </bdi>
+                </span>
+              </label>
+            ))}
+          </div>
         ))}
       </fieldset>
       <fieldset className="flex flex-col gap-2">

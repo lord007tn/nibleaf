@@ -1,5 +1,5 @@
 import { InMemoryTransport, type JSONRPCMessage, LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/server';
-import { MCP_SCOPES, MCP_TOOL_SCOPES } from '@nibleaf/shared/mcp';
+import { MCP_PRESET_SCOPES, MCP_SCOPES, MCP_TOOL_SCOPES, type McpScope } from '@nibleaf/shared/mcp';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
@@ -8,6 +8,7 @@ import { version } from '../../package.json';
 import { createNibleafMcpServer, MAX_MCP_TOOL_INPUT_ELEMENTS } from './server';
 import type { McpPrincipal } from './types';
 
+const analyticsMode = vi.hoisted(() => ({ value: 'clickhouse' }));
 const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
   getProject: vi.fn(),
@@ -46,6 +47,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit }));
+vi.mock('@nibleaf/clickhouse', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@nibleaf/clickhouse')>();
+  return { ...original, keys: () => ({ ...original.keys(), ANALYTICS_MODE: analyticsMode.value }) };
+});
 vi.mock('@/actions/projects', () => ({ getProject: mocks.getProject }));
 vi.mock('@/actions/pages', () => ({
   listPages: mocks.listPages,
@@ -460,6 +465,57 @@ describe('Nibleaf MCP protocol surface', () => {
     const read = await discover(reader);
     expect(read.data.mode).toBe('read_only_with_preview');
     expect(read.data.unavailable.map(({ domain }) => domain)).toContain('content_writes');
+  });
+
+  it('names the website, the permission level, and why each missing job is missing', async () => {
+    type Job = { domain: string; kind: string; unlockedBy?: string[] };
+    type Capabilities = { website: { id: string; name: string; dashboardUrl: string }; permission: string; unavailable: Job[] };
+    const discover = async (scopes: McpScope[], actor: McpPrincipal['actor'] = { userId: 'user-1', role: 'member' }) => {
+      const { server, clientTransport, request } = await createProtocolClient({ ...principal, actor, credential: { ...principal.credential, scopes } });
+      const response = await request<{ structuredContent: { data: Capabilities } }>('tools/call', { name: 'get_capabilities', arguments: {} });
+      await clientTransport.close();
+      await server.close();
+      return response.result?.structuredContent.data as Capabilities;
+    };
+    const job = (data: Capabilities, domain: string) => data.unavailable.find((entry) => entry.domain === domain);
+    try {
+      analyticsMode.value = 'clickhouse';
+      const readOnly = await discover([...MCP_PRESET_SCOPES.read_only]);
+      expect(readOnly.website).toEqual({ id: principal.project.id, name: principal.project.name, dashboardUrl: expect.stringMatching(/\/app\/projects\/project-1$/) });
+      expect(readOnly.permission).toBe('read_only');
+      // Search terms need only their own permission, never write or publish access.
+      expect(job(readOnly, 'search_terms')).toMatchObject({ kind: 'permission', unlockedBy: ['analytics:search_terms'] });
+      expect(job(readOnly, 'content_writes')).toMatchObject({ kind: 'permission', unlockedBy: ['pages:write', 'deployments:publish'] });
+      expect(job(readOnly, 'page_deletion')?.kind).toBe('dashboard_only');
+
+      const writer = await discover([...MCP_PRESET_SCOPES.support_writer]);
+      expect(writer.permission).toBe('support_writer');
+      expect(job(writer, 'search_terms')).toBeUndefined();
+
+      // Relational analytics keeps no terms: no permission helps, so it's a data gap.
+      analyticsMode.value = 'dual_write';
+      const relational = await discover([...MCP_PRESET_SCOPES.support_writer]);
+      expect(job(relational, 'search_terms')).toMatchObject({ kind: 'data' });
+      expect(job(relational, 'search_terms')?.unlockedBy).toBeUndefined();
+
+      expect((await discover(['mcp:connect', 'pages:read'])).permission).toBe('custom');
+      expect(job(await discover([...MCP_PRESET_SCOPES.read_only], null), 'content_writes')?.kind).toBe('credential');
+    } finally {
+      analyticsMode.value = 'clickhouse';
+    }
+  });
+
+  it('tells the assistant to hand dashboard links to the person', async () => {
+    const { server, clientTransport, request } = await createProtocolClient();
+    const initialized = await request<{ instructions?: string }>('initialize', {
+      protocolVersion: LATEST_PROTOCOL_VERSION,
+      capabilities: {},
+      clientInfo: { name: 'nibleaf-test', version: '1.0.0' },
+    });
+    expect(initialized.result?.instructions).toContain('reviewUrl, publishDialogUrl or deploymentUrl');
+    expect(initialized.result?.instructions).toContain('Opening a link never publishes anything');
+    await clientTransport.close();
+    await server.close();
   });
 
   it('returns protocol content plus structured content with ISO dates and redacted fields', async () => {

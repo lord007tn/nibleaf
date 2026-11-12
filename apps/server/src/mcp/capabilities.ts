@@ -1,10 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/server';
-import { isMcpWriteScope, type McpScope } from '@nibleaf/shared/mcp';
+import { keys as analyticsKeys } from '@nibleaf/clickhouse';
+import { isMcpWriteScope, MCP_KEY_PRESETS, MCP_PRESET_SCOPES, type McpScope } from '@nibleaf/shared/mcp';
 import type { Context } from 'hono';
 import { env } from '@/env';
 import type { HonoEnv } from '@/lib/hono/context';
 import { contentWriteTools } from './content-write';
 import { investigationTools } from './investigate';
+import { dashboardBase } from './links';
 import { supportPrompts } from './prompts';
 import { runMcpReadTool, runMcpResource } from './result';
 import type { McpPrincipal } from './types';
@@ -64,8 +66,83 @@ const availableResources = (projectId: string) =>
     [`nibleaf://projects/${projectId}/deployments/latest`, 'deployments:read'],
   ] as const satisfies ReadonlyArray<readonly [string, McpScope]>;
 
+/**
+ * Why a job the person may ask for can't be done through this connection, so
+ * the assistant can say so instead of failing silently. `kind`:
+ * - `permission`: this connection lacks a scope; `unlockedBy` names the smallest
+ *   addition (never more than the job needs, e.g. search terms alone, not publishing);
+ * - `data`: no permission helps, this server doesn't collect it;
+ * - `credential`: the key itself can't do it (no live creator);
+ * - `dashboard_only`: deliberately not offered over MCP.
+ */
+type UnavailableJob = {
+  domain: string;
+  kind: 'permission' | 'data' | 'credential' | 'dashboard_only';
+  reason: string;
+  unlockedBy?: McpScope[];
+};
+
+const unavailableJobs = (principal: McpPrincipal): UnavailableJob[] => {
+  const scopes = principal.credential.scopes;
+  const jobs: UnavailableJob[] = [];
+  if (!scopes.some(isMcpWriteScope))
+    jobs.push(
+      principal.actor
+        ? {
+            domain: 'content_writes',
+            kind: 'permission',
+            reason: 'This connection does not grant pages:write or deployments:publish.',
+            unlockedBy: ['pages:write', 'deployments:publish'],
+          }
+        : {
+            domain: 'content_writes',
+            kind: 'credential',
+            reason: 'This key has no active creator, so it can only read. Create a new key from the dashboard to write.',
+          },
+    );
+  if (!scopes.includes('analytics:search_terms'))
+    jobs.push({
+      domain: 'search_terms',
+      kind: 'permission',
+      reason:
+        'Reading what visitors searched for (top and failed searches) needs only the analytics:search_terms permission; it does not need write or publish access. Counts without terms are still available.',
+      unlockedBy: ['analytics:search_terms'],
+    });
+  else if (analyticsKeys().ANALYTICS_MODE !== 'clickhouse')
+    jobs.push({
+      domain: 'search_terms',
+      kind: 'data',
+      reason:
+        'This server does not keep individual search terms or failed searches (its analytics run without ClickHouse). No permission changes that; counts are still available.',
+    });
+  jobs.push(
+    {
+      domain: 'page_deletion',
+      kind: 'dashboard_only',
+      reason: 'Deleting pages is intentionally not available over MCP; a person can delete pages in the dashboard.',
+    },
+    {
+      domain: 'settings_mutations',
+      kind: 'dashboard_only',
+      reason:
+        'Project settings, themes, languages, versions, domains, members, API keys, integrations and add-ons can only be changed in the dashboard.',
+    },
+    { domain: 'deployment_rollback', kind: 'dashboard_only', reason: 'Rolling back a deployment is only available in the dashboard.' },
+  );
+  return jobs;
+};
+
+/** The permission level these scopes match exactly, or `custom`. */
+const permissionOf = (scopes: readonly McpScope[]) =>
+  MCP_KEY_PRESETS.find((preset) => MCP_PRESET_SCOPES[preset].length === scopes.length && MCP_PRESET_SCOPES[preset].every((scope) => scopes.includes(scope))) ??
+  'custom';
+
 const getCapabilityDto = (principal: McpPrincipal) => ({
   schemaVersion: 1,
+  /** The one website this connection works on, and where the person manages it. */
+  website: { id: principal.project.id, name: principal.project.name, dashboardUrl: dashboardBase(principal.project.id) },
+  /** The permission level, by name, as the dashboard shows it. */
+  permission: permissionOf(principal.credential.scopes),
   /** `read_only_with_preview`: reads plus non-writing previews. `draft_writes_with_confirmed_publish`:
    *  write tools change only the working copy; going live needs preview_publish + a confirmed publish_changes. */
   mode: principal.credential.scopes.some(isMcpWriteScope) ? ('draft_writes_with_confirmed_publish' as const) : ('read_only_with_preview' as const),
@@ -87,25 +164,7 @@ const getCapabilityDto = (principal: McpPrincipal) => ({
   prompts: supportPrompts
     .filter(([, scopes]) => scopes.every((scope) => principal.credential.scopes.includes(scope)))
     .map(([name, scopes]) => ({ name, scopes })),
-  unavailable: [
-    ...(principal.credential.scopes.some(isMcpWriteScope)
-      ? []
-      : [
-          {
-            domain: 'content_writes',
-            reason: principal.actor
-              ? 'This key does not grant pages:write or deployments:publish.'
-              : 'This key has no active creator, so it can only read. Create a new key from the dashboard to write.',
-          },
-        ]),
-    { domain: 'page_deletion', reason: 'Deleting pages is intentionally not available over MCP; a person can delete pages in the dashboard.' },
-    {
-      domain: 'settings_mutations',
-      reason:
-        'Project settings, themes, languages, versions, domains, members, API keys, integrations and add-ons can only be changed in the dashboard.',
-    },
-    { domain: 'deployment_rollback', reason: 'Rolling back a deployment is only available in the dashboard.' },
-  ],
+  unavailable: unavailableJobs(principal),
   excluded: ['credentials', 'provider_payloads', 'payment_actions', 'database_primitives', 'filesystem_access', 'code_execution'],
 });
 

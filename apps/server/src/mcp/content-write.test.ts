@@ -698,10 +698,16 @@ describe('clientRequestId idempotency', () => {
       revision: (first.structuredContent.data.page as { revision: string }).revision,
       status: 'created',
     });
-    // The stored replay record is compact: no title or content.
+    // Both answers link to the page in the editor: rebuilt from the bound website, token-free.
+    const reviewUrl = 'https://app.example.test/app/projects/project-1/editor?page=page-new-1';
+    expect(first.structuredContent.data.reviewUrl).toBe(reviewUrl);
+    expect(second.structuredContent.data.reviewUrl).toBe(reviewUrl);
+    // The stored replay record is compact: no title, content or links.
     const stored = JSON.stringify([...state.records.values()].map((record) => record.result));
     expect(stored).not.toContain('Refunds');
     expect(stored).not.toContain('How refunds work');
+    expect(stored).not.toContain('reviewUrl');
+    expect(stored).not.toContain('https://');
     expect(lastAudit()).toMatchObject({ outcome: 'replayed', clientRequestId: 'draft-refunds-1', target: { type: 'page', id: 'page-new-1' } });
     await client.close();
   });
@@ -1355,8 +1361,11 @@ describe('preview and publish', () => {
       blocking: false,
       canPublish: true,
       publishedSiteUrl: 'https://docs.docs.example.test',
+      // Opens the dashboard's publish dialog; the link alone publishes nothing and carries no token.
+      publishDialogUrl: 'https://app.example.test/app/projects/project-1/editor?publish=true',
       contentTrust: 'untrusted',
     });
+    expect(String(data.publishDialogUrl)).not.toContain(String(data.previewToken));
     expect(String(data.notice)).toContain('project-wide');
     expect(String(data.nextStep)).toContain('explicitly approve');
     expect(data.previewToken).toMatch(/^v1\./);
@@ -1433,8 +1442,10 @@ describe('preview and publish', () => {
       poll: { tool: 'get_deployment', arguments: { id: 'deployment-1' } },
     });
     expect(lastAudit()).toMatchObject({ operation: 'publish_changes', outcome: 'succeeded', target: { type: 'deployment', id: 'deployment-1' } });
+    const deploymentUrl = 'https://app.example.test/app/projects/project-1/publishes/deployment-1';
+    expect(published.structuredContent.data.deploymentUrl).toBe(deploymentUrl);
     const replay = await client.call('publish_changes', args);
-    expect(replay.structuredContent).toMatchObject({ meta: { replayed: true }, data: { deploymentId: 'deployment-1', replayed: true } });
+    expect(replay.structuredContent).toMatchObject({ meta: { replayed: true }, data: { deploymentId: 'deployment-1', replayed: true, deploymentUrl } });
     expect(mocks.createDeployment).toHaveBeenCalledOnce();
     // The same token cannot publish again: the new deployment changed the state it was bound to.
     const reuse = await client.call('publish_changes', { confirm: true, previewToken });

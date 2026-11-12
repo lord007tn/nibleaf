@@ -65,13 +65,22 @@ describe('OAuth action progress', () => {
 });
 
 const signed = Buffer.from('client_id=c1&ba_param=client_id&sig=abc').toString('base64url');
+const site = (id: string, name: string, slug: string, organization: { id: string; name: string }) => ({
+  id,
+  name,
+  slug,
+  workspace: organization.name,
+  organization,
+  role: 'member',
+  presets: ['read_only', 'support_writer'],
+});
 const authorization = (overrides: object = {}) => ({
   isPending: false,
   isError: false,
   data: {
     client: { clientId: 'c1', name: 'Claude', uri: null, redirectTarget: 'claude.ai', verifiedDomain: null },
     requestedScopes: ['mcp:connect', 'pages:read', 'offline_access'],
-    projects: [{ id: 'p1', name: 'Docs', slug: 'docs', workspace: 'Acme', role: 'member', presets: ['read_only', 'support_writer'] }],
+    projects: [site('p1', 'Docs', 'docs', { id: 'org-acme', name: 'Acme' })],
     selection: null,
     ...overrides,
   },
@@ -96,6 +105,35 @@ describe('MCP OAuth project step', () => {
     const fullAdmin = radios.find((radio) => radio.name === 'mcp-oauth-preset' && radio.closest('label')?.textContent?.includes('full_admin'));
     expect(fullAdmin?.disabled).toBe(true);
     expect(container.textContent).toContain('settings.apiKeys.adminOnly');
+  });
+
+  it('groups websites under their organization, keeping same-named organizations apart', async () => {
+    hooks.authorization.mockReturnValue(
+      authorization({
+        projects: [
+          site('p1', 'Docs', 'docs', { id: 'org-1', name: 'Acme' }),
+          site('p2', 'Docs', 'docs-2', { id: 'org-2', name: 'Acme' }),
+          site('p3', 'Blog', 'blog', { id: 'org-1', name: 'Acme' }),
+        ],
+      }),
+    );
+    const container = await render(<McpOAuthProjectStep />);
+    const groups = [...container.querySelectorAll('[data-slot="organization-group"]')];
+    expect(groups).toHaveLength(2);
+    expect(groups.map((group) => group.getAttribute('role'))).toEqual(['group', 'group']);
+    expect(groups[0]?.getAttribute('aria-labelledby')).toBe('mcp-oauth-org-org-1');
+    expect([...(groups[0]?.querySelectorAll('label') ?? [])].map((label) => label.textContent)).toEqual(['Docsdocs', 'Blogblog']);
+    expect(groups[1]?.textContent).toContain('docs-2');
+    // One radio group across organizations: picking one website unpicks the others.
+    expect(new Set([...container.querySelectorAll<HTMLInputElement>('input[name="mcp-oauth-project"]')].map((input) => input.name)).size).toBe(1);
+  });
+
+  it('shows no organization heading when every website belongs to one organization', async () => {
+    hooks.authorization.mockReturnValue(authorization());
+    const container = await render(<McpOAuthProjectStep />);
+    expect(container.querySelector('[data-slot="organization-group"]')?.getAttribute('role')).toBeNull();
+    expect(container.textContent).not.toContain('Acme');
+    expect(container.textContent).toContain('oauth.project.projectLabel');
   });
 
   it('explains when the person belongs to no project', async () => {
