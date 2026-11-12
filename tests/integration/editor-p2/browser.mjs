@@ -6,9 +6,8 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright-core';
 import { getDb } from '../../../packages/database/src/client.ts';
-import { acquireDevstackLock, chromiumExecutable } from '../lib/capture-env.mjs';
+import { acquireDevstackLock, withLocalOnlyBrowser } from '../lib/capture-env.mjs';
 import { journey } from './journey.mjs';
 
 const root = resolve(import.meta.dirname, '../../..');
@@ -105,44 +104,47 @@ try {
   });
   const signed = encodeURIComponent(`${token}.${createHmac('sha256', process.env.BETTER_AUTH_SECRET).update(token).digest('base64')}`);
   // The interrupt cleanup closes the browser; Playwright must not kill it first.
-  browser = await chromium.launch({
-    executablePath: await chromiumExecutable(),
-    headless: true,
-    handleSIGINT: false,
-    handleSIGTERM: false,
-    handleSIGHUP: false,
-  });
-  const worker = start('worker', 'apps/worker/dist/index.mjs', 4312);
-  const phases = process.env.NIBLEAF_BEFORE_APP ? ['before', 'after'] : ['after'];
-  for (const phase of phases) {
-    const before = phase === 'before';
-    const api = start(`${phase}-api`, before ? process.env.NIBLEAF_BEFORE_API : 'apps/server/dist/index.mjs', 4311);
-    const app = start(`${phase}-app`, before ? process.env.NIBLEAF_BEFORE_APP : 'apps/app/.output/server/index.mjs', 4310);
-    await ready('http://localhost:4311/health');
-    await ready('http://localhost:4310/');
-    for (const locale of ['en', 'ar'])
-      for (const width of [1440, 390]) {
-        const context = await browser.newContext({
-          viewport: { width, height: width === 390 ? 844 : 900 },
-          isMobile: width === 390,
-          hasTouch: width === 390,
-          recordVideo: { dir: resolve(root, '.tmp/editor-p2/videos'), size: { width, height: width === 390 ? 844 : 900 } },
-          locale,
-          reducedMotion: 'reduce',
-        });
-        await context.addCookies([
-          { name: 'better-auth.session_token', value: signed, url: 'http://localhost:4310', httpOnly: true, sameSite: 'Lax' },
-          { name: 'PARAGLIDE_LOCALE', value: locale, url: 'http://localhost:4310' },
-        ]);
-        measurements.push(await journey({ db, context, member, phase, locale, width, output }));
-        await context.close();
+  // Only these hosts are reachable (capture-env.mjs); anything else fails the run.
+  await withLocalOnlyBrowser(
+    {
+      allowedHosts: ['localhost:4310', 'localhost:4311'],
+      launch: { headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false },
+    },
+    async ({ browser: guarded }) => {
+      browser = guarded;
+      const worker = start('worker', 'apps/worker/dist/index.mjs', 4312);
+      const phases = process.env.NIBLEAF_BEFORE_APP ? ['before', 'after'] : ['after'];
+      for (const phase of phases) {
+        const before = phase === 'before';
+        const api = start(`${phase}-api`, before ? process.env.NIBLEAF_BEFORE_API : 'apps/server/dist/index.mjs', 4311);
+        const app = start(`${phase}-app`, before ? process.env.NIBLEAF_BEFORE_APP : 'apps/app/.output/server/index.mjs', 4310);
+        await ready('http://localhost:4311/health');
+        await ready('http://localhost:4310/');
+        for (const locale of ['en', 'ar'])
+          for (const width of [1440, 390]) {
+            const context = await browser.newContext({
+              viewport: { width, height: width === 390 ? 844 : 900 },
+              isMobile: width === 390,
+              hasTouch: width === 390,
+              recordVideo: { dir: resolve(root, '.tmp/editor-p2/videos'), size: { width, height: width === 390 ? 844 : 900 } },
+              locale,
+              reducedMotion: 'reduce',
+            });
+            await context.addCookies([
+              { name: 'better-auth.session_token', value: signed, url: 'http://localhost:4310', httpOnly: true, sameSite: 'Lax' },
+              { name: 'PARAGLIDE_LOCALE', value: locale, url: 'http://localhost:4310' },
+            ]);
+            measurements.push(await journey({ db, context, member, phase, locale, width, output }));
+            await context.close();
+          }
+        await stop(app);
+        await stop(api);
       }
-    await stop(app);
-    await stop(api);
-  }
-  await stop(worker);
-  await writeFile(resolve(output, 'measurements.json'), `${JSON.stringify(measurements, null, 2)}\n`);
-  console.log(`${measurements.length} journeys passed. Measurements saved.`);
+      await stop(worker);
+      await writeFile(resolve(output, 'measurements.json'), `${JSON.stringify(measurements, null, 2)}\n`);
+      console.log(`${measurements.length} journeys passed. Measurements saved.`);
+    },
+  );
 } finally {
   // The lock is released even if a cleanup step throws.
   try {

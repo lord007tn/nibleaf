@@ -1,0 +1,54 @@
+{
+  "label": "after",
+  "en-light": {
+    "indexHeight": 315,
+    "links": 23,
+    "linksBelowVisibleArea": 10,
+    "toggle": {
+      "text": "Show all",
+      "expanded": "false"
+    },
+    "bodyBackground": "rgb(249, 245, 236)"
+  },
+  "en-light-expanded": {
+    "indexHeight": 930,
+    "links": 23,
+    "linksBelowVisibleArea": 0,
+    "toggle": {
+      "text": "Show less",
+      "expanded": "true"
+    },
+    "bodyBackground": "rgb(249, 245, 236)"
+  },
+  "ar-light": {
+    "indexHeight": 315,
+    "links": 27,
+    "linksBelowVisibleArea": 7,
+    "toggle": {
+      "text": "عرض الكل",
+      "expanded": "false"
+    },
+    "bodyBackground": "rgb(249, 245, 236)"
+  },
+  "ar-light-expanded": {
+    "indexHeight": 560,
+    "links": 27,
+    "linksBelowVisibleArea": 0,
+    "toggle": {
+      "text": "عرض أقل",
+      "expanded": "true"
+    },
+    "bodyBackground": "rgb(249, 245, 236)"
+  },
+  "ar-dark": {
+    "indexHeight": 315,
+    "links": 27,
+    "linksBelowVisibleArea": 7,
+    "toggle": {
+      "text": "عرض الكل",
+      "expanded": "false"
+    },
+    "bodyBackground": "rgb(23, 20, 15)"
+  },
+  "externalAttempts": 0
+}

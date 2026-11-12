@@ -47,7 +47,6 @@ import {
   useDirtySources,
   useSettingsDirtyGuard,
 } from '@/components/project-settings/shared';
-import { SmartAiSection } from '@/components/project-settings/smart-ai-section';
 import { QueryErrorState } from '@/components/query-error-state';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
@@ -55,6 +54,8 @@ import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
 import { AiAssistantsPage } from '@/features/ai-assistants/components/ai-assistants-page';
 import { SiteTeamPage } from '@/features/people/components/site-team-page';
+import { siteAiQueryOptions } from '@/features/site-ai/api/query-options';
+import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
 import {
   APPEARANCE_SECTION_IDS,
   type AppearanceSectionId,
@@ -84,7 +85,6 @@ import {
   projectQueryOptions,
   projectUsageQueryOptions,
   readerAccessQueryOptions,
-  workspaceAiQueryOptions,
   workspaceSettingsQueryOptions,
 } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
@@ -109,7 +109,7 @@ const SECTION_ICONS: Record<SectionId, LucideIcon> = {
   openapi: Braces,
   contentImport: Import,
   exports: Archive,
-  smartAi: Bot,
+  ai: Bot,
   apiKeys: KeyRound,
   integrations: Plug,
   members: Users,
@@ -160,8 +160,8 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
       case 'integrations':
         prefetchRouteData(queryClient, integrationsQueryOptions(projectId));
         break;
-      case 'smartAi':
-        prefetchRouteData(queryClient, workspaceAiQueryOptions(projectId));
+      case 'ai':
+        prefetchRouteData(queryClient, siteAiQueryOptions(projectId));
         break;
       case 'apiKeys':
         prefetchRouteData(queryClient, apiKeysQueryOptions(projectId));
@@ -445,7 +445,7 @@ function ActiveSection({
       </>
     ),
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
-    smartAi: <SmartAiSection key={`smart-ai-${projectId}`} project={project} />,
+    ai: <AiAnswersPage key={`ai-${projectId}`} project={project} />,
     exports: (
       <ExportsSection canCreate={canCreateExports} canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />
     ),

@@ -7,9 +7,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, extname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { build } from 'vite';
-import { chromiumExecutable } from '../lib/capture-env.mjs';
+import { withLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const root = resolve(import.meta.dirname, '../../..');
 const appRequire = createRequire(resolve(root, 'apps/app/package.json'));
@@ -74,133 +73,133 @@ try {
     resolve: { alias: { '@': resolve(root, 'apps/app/src') }, dedupe: ['react', 'react-dom'] },
     build: { outDir: dist, emptyOutDir: true },
   });
-  browser = await chromium.launch({
-    executablePath: chromiumExecutable(),
-    headless: true,
-  });
-  for (const locale of ['en', 'ar']) {
-    for (const width of [1440, 390]) {
-      const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 }, reducedMotion: 'reduce' });
-      const page = await context.newPage();
-      page.on('pageerror', (error) => console.error(error.message));
-      const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' };
-      await page.route('http://inbound-fixture.local/**', async (route) => {
-        const pathname = new URL(route.request().url()).pathname;
-        const file = resolve(dist, pathname === '/fixture' ? 'index.html' : `.${pathname}`);
-        assert.ok(file.startsWith(`${dist}${sep}`), 'fixture assets stay inside the owned build');
-        return route.fulfill({ body: await readFile(file), contentType: mime[extname(file)] ?? 'application/octet-stream' });
-      });
-      let mode = 'success';
-      let release;
-      const names =
-        locale === 'ar'
-          ? ['البدء السريع', 'دليل التثبيت', 'إعداد الحساب', 'مرجع الواجهة', 'الأسئلة الشائعة']
-          : ['Quick start', 'Installation guide', 'Account setup', 'API reference', 'Frequently asked questions'];
-      await page.route('**/api/app/projects/fixture-site/pages/setup/inbound-links', async (route) => {
-        if (mode === 'loading')
-          await new Promise((resolveWait) => {
-            release = resolveWait;
-          });
-        if (mode === 'error') return route.fulfill({ status: 503, json: { error: { message: 'Fixture unavailable' } } });
-        return route.fulfill({
-          json: {
-            data: {
-              total: mode === 'empty' ? 0 : 8,
-              pages:
-                mode === 'empty'
-                  ? []
-                  : names.map((title, i) => ({
-                      id: `source-${i}`,
-                      title: mode === 'long' ? `${title} `.repeat(8).trim().slice(0, 200) : title,
-                      path: `source-${i}`,
-                    })),
-            },
-          },
+  // Only these hosts are reachable (capture-env.mjs); anything else fails the run.
+  await withLocalOnlyBrowser({ allowedHosts: ['inbound-fixture.test:80'], launch: { headless: true } }, async ({ browser: guarded }) => {
+    browser = guarded;
+    for (const locale of ['en', 'ar']) {
+      for (const width of [1440, 390]) {
+        const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 }, reducedMotion: 'reduce' });
+        const page = await context.newPage();
+        page.on('pageerror', (error) => console.error(error.message));
+        const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' };
+        await page.route('http://inbound-fixture.test/**', async (route) => {
+          const pathname = new URL(route.request().url()).pathname;
+          const file = resolve(dist, pathname === '/fixture' ? 'index.html' : `.${pathname}`);
+          assert.ok(file.startsWith(`${dist}${sep}`), 'fixture assets stay inside the owned build');
+          return route.fulfill({ body: await readFile(file), contentType: mime[extname(file)] ?? 'application/octet-stream' });
         });
-      });
-      const deleteLabel = locale === 'ar' ? 'حذف الصفحة' : 'Delete page';
-      const cancelLabel = locale === 'ar' ? 'إلغاء' : 'Cancel';
-      const boxes = {};
-      const record = async (state) => {
-        const dialog = page.getByRole('dialog', { name: deleteLabel });
-        const remove = await dialog.getByRole('button', { name: deleteLabel, exact: true }).boundingBox();
-        const footer = await dialog.locator('[data-slot="dialog-footer"]').boundingBox();
-        assert.ok(remove && footer, 'footer and Delete are visible');
-        boxes[state] = { remove, footer };
-        if (state !== 'loading')
-          for (const element of ['remove', 'footer'])
-            for (const coordinate of ['x', 'y', 'width', 'height']) {
-              assert.ok(
-                Math.abs(boxes.loading[element][coordinate] - boxes[state][element][coordinate]) <= 0.5,
-                `${state}: stable ${element} ${coordinate}`,
-              );
-            }
-      };
-      for (const before of [true, false]) {
-        mode = before ? 'success' : 'loading';
-        await page.goto(`http://inbound-fixture.local/fixture?locale=${locale}&before=${before ? 1 : 0}`);
-        await page.getByRole('button', { name: deleteLabel, exact: true }).click({ timeout: 120_000 });
-        const dialog = page.getByRole('dialog', { name: deleteLabel });
-        await dialog.waitFor();
-        await page.evaluate(() => document.fonts.ready);
-        await page.waitForTimeout(300); // Measure after the opening animation settles.
-        if (!before) {
-          await dialog.locator('[aria-busy="true"]').waitFor();
-          await record('loading');
-          await page.screenshot({ path: resolve(output, `loading-${locale}-${width}.png`) });
-          mode = 'success';
-          release();
-          await dialog.getByRole('link', { name: names[0], exact: true }).waitFor();
-          await record('result');
+        let mode = 'success';
+        let release;
+        const names =
+          locale === 'ar'
+            ? ['البدء السريع', 'دليل التثبيت', 'إعداد الحساب', 'مرجع الواجهة', 'الأسئلة الشائعة']
+            : ['Quick start', 'Installation guide', 'Account setup', 'API reference', 'Frequently asked questions'];
+        await page.route('**/api/app/projects/fixture-site/pages/setup/inbound-links', async (route) => {
+          if (mode === 'loading')
+            await new Promise((resolveWait) => {
+              release = resolveWait;
+            });
+          if (mode === 'error') return route.fulfill({ status: 503, json: { error: { message: 'Fixture unavailable' } } });
+          return route.fulfill({
+            json: {
+              data: {
+                total: mode === 'empty' ? 0 : 8,
+                pages:
+                  mode === 'empty'
+                    ? []
+                    : names.map((title, i) => ({
+                        id: `source-${i}`,
+                        title: mode === 'long' ? `${title} `.repeat(8).trim().slice(0, 200) : title,
+                        path: `source-${i}`,
+                      })),
+              },
+            },
+          });
+        });
+        const deleteLabel = locale === 'ar' ? 'حذف الصفحة' : 'Delete page';
+        const cancelLabel = locale === 'ar' ? 'إلغاء' : 'Cancel';
+        const boxes = {};
+        const record = async (state) => {
+          const dialog = page.getByRole('dialog', { name: deleteLabel });
+          const remove = await dialog.getByRole('button', { name: deleteLabel, exact: true }).boundingBox();
+          const footer = await dialog.locator('[data-slot="dialog-footer"]').boundingBox();
+          assert.ok(remove && footer, 'footer and Delete are visible');
+          boxes[state] = { remove, footer };
+          if (state !== 'loading')
+            for (const element of ['remove', 'footer'])
+              for (const coordinate of ['x', 'y', 'width', 'height']) {
+                assert.ok(
+                  Math.abs(boxes.loading[element][coordinate] - boxes[state][element][coordinate]) <= 0.5,
+                  `${state}: stable ${element} ${coordinate}`,
+                );
+              }
+        };
+        for (const before of [true, false]) {
+          mode = before ? 'success' : 'loading';
+          await page.goto(`http://inbound-fixture.test/fixture?locale=${locale}&before=${before ? 1 : 0}`);
+          await page.getByRole('button', { name: deleteLabel, exact: true }).click({ timeout: 120_000 });
+          const dialog = page.getByRole('dialog', { name: deleteLabel });
+          await dialog.waitFor();
+          await page.evaluate(() => document.fonts.ready);
+          await page.waitForTimeout(300); // Measure after the opening animation settles.
+          if (!before) {
+            await dialog.locator('[aria-busy="true"]').waitFor();
+            await record('loading');
+            await page.screenshot({ path: resolve(output, `loading-${locale}-${width}.png`) });
+            mode = 'success';
+            release();
+            await dialog.getByRole('link', { name: names[0], exact: true }).waitFor();
+            await record('result');
+          }
+          const snapshot = await dialog.ariaSnapshot();
+          assert.match(snapshot, /30/);
+          if (!before) {
+            assert.match(snapshot, /status:/);
+            assert.ok(snapshot.includes(locale === 'ar' ? '8 صفحات ترتبط هنا' : '8 pages link here'), 'localized counted warning');
+            for (const title of names) assert.ok(snapshot.includes(`link "${title}"`), title);
+            assert.equal(await dialog.getByRole('link').count(), 5);
+            assert.equal(await dialog.getByRole('button', { name: cancelLabel, exact: true }).evaluate((el) => el === document.activeElement), true);
+            const bounds = await dialog.boundingBox();
+            assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width + 1, 'dialog fits viewport');
+            for (const link of await dialog.getByRole('link').all()) assert.ok((await link.boundingBox()).height >= 44, '44px link target');
+          }
+          await page.screenshot({ path: resolve(output, `${before ? 'before' : 'after'}-${locale}-${width}.png`) });
+          await writeFile(resolve(output, `${before ? 'before' : 'after'}-${locale}-${width}.aria.txt`), snapshot);
         }
-        const snapshot = await dialog.ariaSnapshot();
-        assert.match(snapshot, /30/);
-        if (!before) {
-          assert.match(snapshot, /status:/);
-          assert.ok(snapshot.includes(locale === 'ar' ? '8 صفحات ترتبط هنا' : '8 pages link here'), 'localized counted warning');
-          for (const title of names) assert.ok(snapshot.includes(`link "${title}"`), title);
-          assert.equal(await dialog.getByRole('link').count(), 5);
-          assert.equal(await dialog.getByRole('button', { name: cancelLabel, exact: true }).evaluate((el) => el === document.activeElement), true);
-          const bounds = await dialog.boundingBox();
-          assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width + 1, 'dialog fits viewport');
-          for (const link of await dialog.getByRole('link').all()) assert.ok((await link.boundingBox()).height >= 44, '44px link target');
-        }
-        await page.screenshot({ path: resolve(output, `${before ? 'before' : 'after'}-${locale}-${width}.png`) });
-        await writeFile(resolve(output, `${before ? 'before' : 'after'}-${locale}-${width}.aria.txt`), snapshot);
+        // Refresh the SAME open dialog: a late result, failure, or empty response
+        // must never place Delete under a pointer previously aimed at a link.
+        const dialog = page.getByRole('dialog', { name: deleteLabel });
+        mode = 'error';
+        await page.evaluate(() => window.refetchInboundLinks());
+        await dialog.getByRole('status').waitFor({ state: 'hidden' });
+        await record('error');
+        assert.equal(await dialog.getByRole('status').count(), 0);
+        assert.equal(await dialog.getByRole('button', { name: deleteLabel, exact: true }).isEnabled(), true);
+        await page.screenshot({ path: resolve(output, `error-${locale}-${width}.png`) });
+        await writeFile(resolve(output, `error-${locale}-${width}.aria.txt`), await dialog.ariaSnapshot());
+        mode = 'empty';
+        await page.evaluate(() => window.refetchInboundLinks());
+        await page.waitForFunction(() => document.querySelector('[data-slot="delete-page-advisory"]')?.textContent === '');
+        await record('empty');
+        await page.screenshot({ path: resolve(output, `empty-${locale}-${width}.png`) });
+        mode = 'long';
+        await page.evaluate(() => window.refetchInboundLinks());
+        await page.waitForFunction(() => {
+          const region = document.querySelector('[data-slot="delete-page-advisory"]');
+          return region && region.scrollHeight > region.clientHeight;
+        });
+        await record('long');
+        assert.equal(await dialog.locator('[data-slot="delete-page-advisory"]').evaluate((el) => getComputedStyle(el).overflowY), 'auto');
+        mode = 'success';
+        await page.evaluate(() => window.refetchInboundLinks());
+        await dialog.getByRole('link', { name: names[0], exact: true }).waitFor();
+        await record('restored');
+        await writeFile(resolve(output, `layout-${locale}-${width}.json`), `${JSON.stringify(boxes, null, 2)}\n`);
+        await context.close();
+        console.log(`${locale} ${width}: stable loading/result/error/empty/long-list boxes, accessibility, focus and target sizes passed`);
       }
-      // Refresh the SAME open dialog: a late result, failure, or empty response
-      // must never place Delete under a pointer previously aimed at a link.
-      const dialog = page.getByRole('dialog', { name: deleteLabel });
-      mode = 'error';
-      await page.evaluate(() => window.refetchInboundLinks());
-      await dialog.getByRole('status').waitFor({ state: 'hidden' });
-      await record('error');
-      assert.equal(await dialog.getByRole('status').count(), 0);
-      assert.equal(await dialog.getByRole('button', { name: deleteLabel, exact: true }).isEnabled(), true);
-      await page.screenshot({ path: resolve(output, `error-${locale}-${width}.png`) });
-      await writeFile(resolve(output, `error-${locale}-${width}.aria.txt`), await dialog.ariaSnapshot());
-      mode = 'empty';
-      await page.evaluate(() => window.refetchInboundLinks());
-      await page.waitForFunction(() => document.querySelector('[data-slot="delete-page-advisory"]')?.textContent === '');
-      await record('empty');
-      await page.screenshot({ path: resolve(output, `empty-${locale}-${width}.png`) });
-      mode = 'long';
-      await page.evaluate(() => window.refetchInboundLinks());
-      await page.waitForFunction(() => {
-        const region = document.querySelector('[data-slot="delete-page-advisory"]');
-        return region && region.scrollHeight > region.clientHeight;
-      });
-      await record('long');
-      assert.equal(await dialog.locator('[data-slot="delete-page-advisory"]').evaluate((el) => getComputedStyle(el).overflowY), 'auto');
-      mode = 'success';
-      await page.evaluate(() => window.refetchInboundLinks());
-      await dialog.getByRole('link', { name: names[0], exact: true }).waitFor();
-      await record('restored');
-      await writeFile(resolve(output, `layout-${locale}-${width}.json`), `${JSON.stringify(boxes, null, 2)}\n`);
-      await context.close();
-      console.log(`${locale} ${width}: stable loading/result/error/empty/long-list boxes, accessibility, focus and target sizes passed`);
     }
-  }
+  });
 } finally {
   await browser?.close();
   assert.equal(dirname(harness), appDir);
