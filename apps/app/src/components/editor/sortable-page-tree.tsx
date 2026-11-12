@@ -334,6 +334,14 @@ export const rowName = (node: Pick<PageNode, 'title' | 'config'>): { label: stri
   return sidebarTitle ? { label: sidebarTitle, field: 'sidebarTitle' } : { label: node.title, field: 'title' };
 };
 
+/** The name a row is shown and announced by: its rowName, or "Untitled" (the
+ *  `untitled` text the caller passes, in the writer's language) when that is
+ *  blank. Renaming and searching use the raw rowName. */
+export const shownRowName = (node: Pick<PageNode, 'title' | 'config'>, untitled: string): string => {
+  const { label } = rowName(node);
+  return label.trim() ? label : untitled;
+};
+
 /** Arrow up/down move between rows (and language headers); arrow left/right
  *  nest or un-nest by one level, in the dashboard's direction. */
 const keyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
@@ -584,7 +592,7 @@ export function PageTreeDndProvider({
   const dropHint = (() => {
     if (!projection) return null;
     const parent = projection.parentId ? pageById.get(projection.parentId) : undefined;
-    if (parent) return t('editor.dnd.inside', { title: rowName(parent).label });
+    if (parent) return t('editor.dnd.inside', { title: shownRowName(parent, t('editor.untitled')) });
     return projection.languageId === sourceLanguageId
       ? t('editor.dnd.topLevel')
       : t('editor.dnd.topLevelIn', { language: languageLabel(projection.languageId) });
@@ -613,7 +621,7 @@ export function PageTreeDndProvider({
     const parent = parentId ? (savedPages?.find((page) => page.id === parentId) ?? pageById.get(parentId)) : undefined;
     const variables = {
       title: titleOf(active),
-      parent: parent ? rowName(parent).label : '',
+      parent: parent ? shownRowName(parent, t('editor.untitled')) : '',
       language: languageLabel(languageId),
       position: (moved?.position ?? 0) + 1,
       total: items.filter((item) => item.languageId === languageId && item.parentId === parentId).length,
@@ -667,7 +675,7 @@ export function PageTreeDndProvider({
     const key = String(id);
     if (key.startsWith(MARKER_PREFIX)) return languageLabel(key.slice(MARKER_PREFIX.length));
     const node = pageById.get(key);
-    return node ? rowName(node).label : '';
+    return node ? shownRowName(node, t('editor.untitled')) : '';
   };
   const announcements: Announcements = {
     // Own the live text so it expires instead of leaving stale moves in the DOM.
@@ -1102,7 +1110,10 @@ const RowPresentation = memo(function RowPresentation({
   const t = useT();
   const isGroup = node.kind === 'GROUP';
   // Renaming edits the name the row shows (the sidebar title when there is one).
-  const { label, field: nameField } = rowName(node);
+  const { label: savedLabel, field: nameField } = rowName(node);
+  // An empty or blank name reads "Untitled" in the writer's language, as
+  // displayTitle does for readers; the rename field still starts from the saved value.
+  const label = shownRowName(node, t('editor.untitled'));
   const hiddenLabel = t('editor.pageSettings.hidden');
   const hasMenu = Boolean(onSettings || onCopyLink || href);
   const collapsible = Boolean(hasChildren && onToggleCollapse);
@@ -1230,7 +1241,7 @@ const RowPresentation = memo(function RowPresentation({
         )}
         {renaming ? (
           <RenameInput
-            initialValue={label}
+            initialValue={savedLabel}
             label={nameField === 'sidebarTitle' ? t('editor.pageSettings.sidebarTitle') : t('editor.rename')}
             onDone={(title) => onRename?.(node.id, title, nameField)}
           />
@@ -1243,10 +1254,7 @@ const RowPresentation = memo(function RowPresentation({
               onSelect?.(node.id);
             }}
             onDoubleClick={onStartRename ? () => onStartRename(node.id) : undefined}
-            className={cn(
-              'flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm pointer-coarse:py-2.5',
-              isGroup && 'font-semibold text-[11px] uppercase tracking-wide',
-            )}
+            className={cn('flex min-w-0 flex-1 items-center gap-2 py-1.5 text-start text-sm pointer-coarse:py-2.5', isGroup && 'font-semibold')}
           >
             {isGroup ? (
               <Folder className={iconClass} />
@@ -1259,6 +1267,7 @@ const RowPresentation = memo(function RowPresentation({
             <span className={cn('truncate', node.hidden && 'text-muted-foreground')} dir="auto">
               <MatchText text={label} query={filter} />
             </span>
+            {!isGroup && !node.title.trim() ? <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden /> : null}
             {node.hidden ? (
               // Hidden from the site's navigation: say so on the row, not only in its settings.
               <span className="flex shrink-0 text-muted-foreground" title={hiddenLabel} data-hidden-indicator="">

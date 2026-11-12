@@ -1,0 +1,12 @@
+- menu "إجراءات إضافية لـ«البدء السريع»":
+  - menuitem "معاينة"
+  - menuitem "الإعدادات"
+  - menuitem "إعدادات الصفحة"
+  - menuitemcheckbox "تعليق"
+  - menuitem "إظهار التعليقات"
+  - menuitem "سجل الصفحة"
+  - menuitemcheckbox "إظهار شريط التنسيق"
+  - menuitem "التحرير بصيغة Markdown (متقدم)"
+  - menuitem "إصدار جديد"
+  - separator
+  - menuitem "حذف الصفحة"

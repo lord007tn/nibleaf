@@ -5,7 +5,7 @@ import {
   type DocumentationComponentDefinition,
 } from '@nibleaf/shared/documentation-components';
 import { portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
-import { markdownTemplate, mdxIndexTemplate } from '@nibleaf/shared/theme-repository-templates';
+import { markdownScanTemplate, markdownTemplate, mdxIndexTemplate } from '@nibleaf/shared/theme-repository-templates';
 import { Editor, type Node as TiptapNode } from '@tiptap/core';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -336,6 +336,7 @@ describe('documentation component contract', () => {
  */
 describe('exported theme repository templates', () => {
   const markdown = markdownTemplate();
+  const markdownScan = markdownScanTemplate();
   const index = mdxIndexTemplate();
   const between = (source: string, start: string, end: string) => {
     const from = source.indexOf(start);
@@ -385,7 +386,9 @@ describe('exported theme repository templates', () => {
     expect(renames).toEqual(
       component((candidate) => candidate.reader.tag !== candidate.tag.toLowerCase()).map((candidate) => [candidate.tag, candidate.reader.tag]),
     );
-    const selfClosing = /\.replace\(\/<\(([\w|]+)\)\\b\(\[\^>\]\*\)\\\/>\/gi/.exec(markdown)?.[1]?.split('|');
+    // The self-closing expansion lives in the generated src/lib/markdown-scan.ts.
+    expect(markdown).toContain('expandSelfClosingComponents(');
+    const selfClosing = /const opener = \/<\(([\w|]+)\)\\b\/gi;/.exec(markdownScan)?.[1]?.split('|');
     expect(sorted(selfClosing ?? [])).toEqual(sorted(component((candidate) => candidate.selfClosing).map((candidate) => candidate.tag)));
   });
 

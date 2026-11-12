@@ -40,7 +40,15 @@ export function SectionLink({ id, language }: { id: string; language?: string })
   }
   return (
     // The heading (its id) describes each button, so a list of buttons tells them apart.
-    <button type="button" className="reader-section-link reader-control" aria-label={t('copySectionLink')} aria-describedby={id} onClick={copy}>
+    // `lang`: its label is the reader's, which can differ from the article's on a fallback page.
+    <button
+      type="button"
+      className="reader-section-link reader-control"
+      aria-label={t('copySectionLink')}
+      aria-describedby={id}
+      lang={language}
+      onClick={copy}
+    >
       <Link className="size-4" aria-hidden />
     </button>
   );
@@ -62,6 +70,9 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
     .filter((name) => WRAPPER_CLASS.test(name))
     .join(' ');
   const [zoomable, setZoomable] = useState(false);
+  // The full-size copy is only mounted while the dialog is open, so the page
+  // doesn't hold a second image (and request) for every picture.
+  const [fullSize, setFullSize] = useState(false);
   const image = useRef<HTMLImageElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -86,10 +97,12 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
     const modal = dialog.current;
     const source = trigger.current;
     if (!modal || !source) return;
-    // The dialog is portaled out of the article, so carry over its direction and language.
+    // The dialog is portaled out of the article, so carry over its direction. Its
+    // text (the close button) is the reader's, so it takes the reader's language.
     modal.dir = getComputedStyle(source).direction === 'rtl' ? 'rtl' : 'ltr';
-    const lang = source.closest('[lang]')?.getAttribute('lang');
+    const lang = language ?? source.closest('[lang]')?.getAttribute('lang');
     if (lang) modal.lang = lang;
+    setFullSize(true);
     modal.showModal();
   };
   return (
@@ -112,6 +125,7 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
             type="button"
             className="reader-image-zoom reader-control"
             aria-label={alt ? t('viewFullSizeOf', { alt }) : t('viewFullSize')}
+            lang={language}
             onClick={openFullSize}
           >
             <ZoomIn className="size-4" aria-hidden />
@@ -127,7 +141,10 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
                 event.preventDefault();
                 dialog.current?.close();
               }}
-              onClose={() => trigger.current?.focus()}
+              onClose={() => {
+                setFullSize(false);
+                trigger.current?.focus();
+              }}
               onClick={(event) => {
                 // A click on the dialog element itself (not its content) is a backdrop click.
                 if (event.target === event.currentTarget) dialog.current?.close();
@@ -136,7 +153,7 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
               <button type="button" className="reader-control" onClick={() => dialog.current?.close()}>
                 {t('closeImage')}
               </button>
-              <img src={props.src} alt={props.alt ?? ''} />
+              {fullSize ? <img src={props.src} alt={props.alt ?? ''} decoding="async" /> : null}
             </dialog>,
             document.body,
           )}

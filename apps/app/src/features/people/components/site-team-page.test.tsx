@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, vars?: Record<string, unknown>) => (vars ? `${key}(${Object.values(vars).join('|')})` : key),
 }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', subscribeLanguage: () => () => undefined }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', renderedLocale: () => 'en', subscribeLanguage: () => () => undefined }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'u-me' } } }) }));
 vi.mock('@/hooks/api/queries', () => ({ useProjectMembers: () => mocks.team() }));
 // useSiteAccess (site-access/api) reads the same members query through the

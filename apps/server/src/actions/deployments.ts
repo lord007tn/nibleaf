@@ -2,14 +2,22 @@ import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { type Deployment, deliveryPlanSelect, loadDefaultDeliveryPlan, Prisma, prisma } from '@nibleaf/database';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
-import { type RedirectValidationIssue, summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
-import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import {
+  normalizeRedirectPath,
+  type RedirectPair,
+  type RedirectValidationIssue,
+  resolveRedirectTarget,
+  summarizeRedirectIssues,
+  validateSnapshotRedirects,
+} from '@nibleaf/shared/redirects';
+import { buildSnapshot, publishedVersionSlugs, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
 import { AppError, badRequest, notFound } from '@/errors';
 import { collectPublishChecks, type PublishCheck } from '@/lib/publish-checks';
 import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
 import { logPlatformEvent } from './platform-events';
+import { hasRealPageContent } from './project-starters';
 import { assertProjectInOrg } from './projects';
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
@@ -57,12 +65,17 @@ interface PendingChange extends DeploymentPageDiff {}
 
 /** What will change on the next publish, vs. the last READY deployment. */
 export interface PendingChanges {
+  /** A content page differs from the untouched new-site starters. */
+  hasRealContent: boolean;
   reviewedStateHash: string;
   /** false = never published, so everything counts as new. */
   hasBaseline: boolean;
   /** true = a publish now would put out exactly what is live: no page, settings,
    *  navigation, redirect or API reference change. Only with a baseline. */
   upToDate: boolean;
+  /** Navigation groups were added, removed or changed. `changes` lists pages
+   *  only, so a publish that also reshapes the navigation says so here. */
+  groupsChanged: boolean;
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
@@ -99,9 +112,10 @@ export interface DeploymentPageDiff {
 
 /** Read the complete effective publish input once and compose the same snapshot
  * shape the worker will validate. Keeping preflight and worker inputs aligned
- * prevents the dashboard from approving a different route graph. */
-export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapshot> => {
-  const project = await prisma.project.findUnique({
+ * prevents the dashboard from approving a different route graph. A publish
+ * passes its transaction, so the read happens under the project lock. */
+export const getCurrentSnapshot = async (projectId: string, db: Prisma.TransactionClient = prisma): Promise<SiteSnapshot> => {
+  const project = await db.project.findUnique({
     where: { id: projectId },
     include: {
       languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
@@ -126,7 +140,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
     throw notFound('project', { projectId });
   }
   const branchIds = project.branches.map((branch) => branch.id);
-  const pages = await prisma.page.findMany({
+  const pages = await db.page.findMany({
     where: { projectId, branchId: { in: branchIds } },
     orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     include: { language: { select: { code: true } } },
@@ -138,7 +152,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
     updatedAt: updatedAt.toISOString(),
   }));
   return buildSnapshot(
-    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan, await loadDefaultDeliveryPlan()) },
+    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan, await loadDefaultDeliveryPlan(db)) },
     pageRows,
     new Date().toISOString(),
   );
@@ -346,13 +360,14 @@ export const getDeploymentDiff = async (projectId: string, id: string) => {
   });
 
   const currentSnapshot = deployment.snapshot as unknown as SiteSnapshot;
+  const currentPages = currentSnapshot.pages.filter((page) => page.kind === 'PAGE');
   const previousSnapshot = previousDeployment?.snapshot ? (previousDeployment.snapshot as unknown as SiteSnapshot) : null;
-  const previousPages = previousSnapshot ? previousSnapshot.pages : [];
+  const previousPages = previousSnapshot ? previousSnapshot.pages.filter((page) => page.kind === 'PAGE') : [];
   const previousById = new Map(previousPages.map((page) => [page.id, page]));
-  const currentIds = new Set(currentSnapshot.pages.map((page) => page.id));
+  const currentIds = new Set(currentPages.map((page) => page.id));
   const changes: DeploymentPageDiff[] = [];
 
-  for (const page of currentSnapshot.pages) {
+  for (const page of currentPages) {
     const previous = previousById.get(page.id);
     if (!previous) {
       changes.push(pageSummary(page, 'added'));
@@ -381,15 +396,18 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const latest = await getLatestReadyDeployment(projectId);
   const validation = validateSnapshotRedirects(draftSnapshot ?? (await getCurrentSnapshot(projectId)));
   const currentSnapshot = validation.snapshot;
-  const current = currentSnapshot.pages;
+  const current = currentSnapshot.pages.filter((page) => page.kind === 'PAGE');
+  const hasRealContent = hasRealPageContent(currentSnapshot.pages);
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
     const firstSpecChange = openApiSummary(currentSnapshot.openapi, null, currentSnapshot.project.languages[0]?.code ?? 'en');
     return {
+      hasRealContent,
       reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
       hasBaseline: false,
       upToDate: false,
+      groupsChanged: currentSnapshot.pages.some((page) => page.kind === 'GROUP'),
       lastVersion: null,
       lastPublishedAt: null,
       changes: [...current.map((p) => pageSummary(p, 'added')), ...(firstSpecChange ? [firstSpecChange] : [])],
@@ -399,7 +417,8 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   }
 
   const snap = latest.snapshot as unknown as SiteSnapshot;
-  const prevById = new Map(snap.pages.map((p) => [p.id, p]));
+  const previous = snap.pages.filter((page) => page.kind === 'PAGE');
+  const prevById = new Map(previous.map((p) => [p.id, p]));
   const currentIds = new Set(current.map((p) => p.id));
   const changes: PendingChange[] = [];
 
@@ -411,7 +430,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
       changes.push(pageSummary(p, 'modified', prev));
     }
   }
-  for (const prev of snap.pages) {
+  for (const prev of previous) {
     if (!currentIds.has(prev.id)) {
       changes.push(pageSummary(prev, 'removed', prev));
     }
@@ -419,10 +438,22 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const specChange = openApiSummary(currentSnapshot.openapi, snap.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
   if (specChange) changes.push(specChange);
 
+  const groups = (pages: SnapshotPage[]) => new Map(pages.filter((page) => page.kind === 'GROUP').map((page) => [page.id, page]));
+  const currentGroups = groups(currentSnapshot.pages);
+  const previousGroups = groups(snap.pages);
+  const groupsChanged =
+    currentGroups.size !== previousGroups.size ||
+    [...currentGroups].some(([id, group]) => {
+      const before = previousGroups.get(id);
+      return !before || pageChanged(group, before);
+    });
+
   const reviewedStateHash = reviewedSnapshotDigest(currentSnapshot);
   return {
     reviewedStateHash,
+    hasRealContent,
     hasBaseline: true,
+    groupsChanged,
     // The page list only compares pages; settings, redirects and languages also
     // ship with a publish. The live snapshot is the reviewed input the worker
     // stored, so equal output digests mean nothing at all would change.
@@ -437,16 +468,94 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
 
 const MAX_VERSION_RETRIES = 5;
 
-/** Allocate the next version and create a deployment, retrying when a concurrent
- *  publish/rollback grabs the same version. `max(version)+1` then `create` is a
- *  read-then-write race; the `@@unique([projectId, version])` constraint turns a
- *  collision into a P2002 we recompute-and-retry instead of surfacing as a 500. */
-async function createWithNextVersion<T>(projectId: string, build: (version: number) => Promise<T>): Promise<T> {
-  for (let attempt = 0; ; attempt++) {
-    const last = await prisma.deployment.aggregate({ where: { projectId }, _max: { version: true } });
-    const version = (last._max.version ?? 0) + 1;
+/** Bounds of the section that holds the project lock while a publish creates
+ *  its row (withPublishLock). Prisma's transaction timeout alone bounds
+ *  neither: its ROLLBACK queues behind a statement still waiting in
+ *  PostgreSQL, so the connection stays pinned. These are PostgreSQL's own
+ *  limits, set per transaction. Exported so a test can shorten them. */
+export const publishLockBounds = {
+  /** Waiting for the project lock. A structural page save holds it about
+   *  0.2 s (a 313-page address change in pages.address-changes.postgres.test),
+   *  at most STRUCTURAL_UPDATE_TIMEOUT_MS (30 s); a Git apply up to a minute.
+   *  After 10 s the writer gets a retryable error instead of a hung request. */
+  lockTimeoutMs: 10_000,
+  /** Any one statement under the lock. The largest is the snapshot's page
+   *  read: about 10 ms for 202 pages and 0.2 s for 2,000 pages of 20 kB
+   *  (whole snapshot read, measured locally). 20 s leaves room for sites far
+   *  larger and a loaded database, while still ending a stalled read. */
+  statementTimeoutMs: 20_000,
+  /** Waiting for a pooled connection to begin (Prisma's maxWait, made explicit). */
+  poolWaitMs: 2000,
+  /** The whole section, shared by every version-conflict retry so retries
+   *  cannot multiply the wait. */
+  totalMs: 30_000,
+};
+
+export const nextDeploymentVersion = async (db: Prisma.TransactionClient, projectId: string) =>
+  ((await db.deployment.aggregate({ where: { projectId }, _max: { version: true } }))._max.version ?? 0) + 1;
+
+/** A publish gave up waiting for a concurrent change: retry shortly. 409 like
+ *  `mcp:publish_in_progress` (the site is busy, the server is healthy), which
+ *  also keeps the message readable for MCP clients (they hide 5xx messages). */
+const publishBusy = (cause?: unknown) =>
+  new AppError({ code: 'publish:busy', message: 'Another change is being saved. Try publishing again in a moment.', cause });
+
+/** PostgreSQL lock_not_available (55P03, lock_timeout) and query_canceled
+ *  (57014, statement_timeout), which the pg driver adapter reports as a known
+ *  request error (P2010 for raw queries) with the PostgreSQL code in
+ *  `meta.driverAdapterError.cause.originalCode`, and Prisma's transaction API
+ *  error (P2028: no connection within maxWait, or the transaction's timeout). */
+const publishBoundExceeded = (error: unknown): boolean => {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (error.code === 'P2028') return true;
+  const cause = (error.meta as { driverAdapterError?: { cause?: { originalCode?: unknown } } } | undefined)?.driverAdapterError?.cause;
+  return cause?.originalCode === '55P03' || cause?.originalCode === '57014';
+};
+
+/** Run `work` holding the project row FOR SHARE, within publishLockBounds;
+ *  exceeding them is a retryable `publish:busy`. A version conflict (P2002)
+ *  runs it again from the start, inside the same overall deadline.
+ *
+ *  Lock order: the project row only. Structural page writes take it FOR NO
+ *  KEY UPDATE and then page rows; this takes it FOR SHARE, which conflicts
+ *  with them but not with other publishes, saves that do not move a page, or
+ *  inserts that reference the project. `work` only reads and inserts a
+ *  deployment row, locking no page or deployment row, so a transaction
+ *  waiting on this one holds nothing it needs. */
+export const withPublishLock = <T>(projectId: string, work: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> => {
+  const { lockTimeoutMs, statementTimeoutMs, poolWaitMs, totalMs } = publishLockBounds;
+  const deadline = Date.now() + totalMs;
+  return retryVersionConflicts(async () => {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw publishBusy();
+    const within = (ms: number) => Math.max(1, Math.min(ms, remaining));
     try {
-      return await build(version);
+      return await prisma.$transaction(
+        async (tx) => {
+          // set_config(…, true) is SET LOCAL with bind parameters: this transaction only.
+          await tx.$queryRaw`SELECT set_config('lock_timeout', ${`${within(lockTimeoutMs)}ms`}, true) AS lock_timeout,
+            set_config('statement_timeout', ${`${within(statementTimeoutMs)}ms`}, true) AS statement_timeout`;
+          await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR SHARE`;
+          return await work(tx);
+        },
+        { maxWait: within(poolWaitMs), timeout: remaining },
+      );
+    } catch (error) {
+      if (publishBoundExceeded(error)) throw publishBusy(error);
+      throw error;
+    }
+  });
+};
+
+/** Run `create` (allocate the next version, create a deployment) again when a
+ *  concurrent publish/rollback grabs the same version. `max(version)+1` then
+ *  `create` is a read-then-write race; the `@@unique([projectId, version])`
+ *  constraint turns a collision into a P2002 we recompute-and-retry instead of
+ *  surfacing as a 500. */
+async function retryVersionConflicts<T>(create: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await create();
     } catch (err) {
       const isVersionConflict = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
       if (isVersionConflict && attempt < MAX_VERSION_RETRIES - 1) {
@@ -456,6 +565,78 @@ async function createWithNextVersion<T>(projectId: string, build: (version: numb
     }
   }
 }
+
+const createWithNextVersion = <T>(projectId: string, build: (version: number) => Promise<T>): Promise<T> =>
+  retryVersionConflicts(async () => build(await nextDeploymentVersion(prisma, projectId)));
+
+/** A redirect target as the router compares it: normalized path and query,
+ *  without the fragment (it lands on the same page). */
+const comparableTarget = (href: string): string | null => {
+  const [pathname = '', query = ''] = (href.split('#')[0] ?? '').split('?');
+  try {
+    return `${normalizeRedirectPath(pathname)}?${new URLSearchParams(query).toString()}`;
+  } catch {
+    return null;
+  }
+};
+
+/** Whether a reviewed `input` (read before the publish took the project lock)
+ *  would put a page live at an address readers could not follow to the page's
+ *  draft address. A page counts as moved when its draft address (version,
+ *  language, path) differs from the reviewed one. A moved page is accepted
+ *  only when the reviewed address is
+ *  - its address in the newest live version: readers already use it, and the
+ *    later move recorded a redirect from it; or
+ *  - the source of a redirect that resolves to its draft address.
+ *  Anything else (a first-title adoption, a page renamed twice since the
+ *  review: live /intro, reviewed /first, draft /second has no /first →
+ *  /second) needs a fresh review. Run under the project lock. */
+const reviewedAddressesStale = async (tx: Prisma.TransactionClient, projectId: string, input: SiteSnapshot): Promise<boolean> => {
+  const drafts = await tx.$queryRaw<Array<{ id: string; branchId: string; path: string; code: string }>>`
+    SELECT draft.id, draft."branchId", draft.path, lang.code FROM "page" draft JOIN "language" lang ON lang.id = draft."languageId"
+    WHERE draft."projectId" = ${projectId}`;
+  const draftById = new Map(drafts.map((draft) => [draft.id, draft]));
+  const moved = input.pages.flatMap((page) => {
+    const draft = draftById.get(page.id);
+    return draft && (draft.branchId !== page.versionId || draft.code !== page.languageCode || draft.path !== page.path) ? [{ page, draft }] : [];
+  });
+  if (moved.length === 0) return false;
+  const live = await tx.$queryRaw<Array<{ id: string; versionId: string | null; languageCode: string | null; path: string | null }>>`
+    SELECT page ->> 'id' AS id, page ->> 'versionId' AS "versionId", page ->> 'languageCode' AS "languageCode", page ->> 'path' AS path
+    FROM (
+      SELECT snapshot FROM "deployment" WHERE "projectId" = ${projectId} AND status = 'READY' ORDER BY version DESC LIMIT 1
+    ) latest, jsonb_array_elements(latest.snapshot -> 'pages') page
+    WHERE page ->> 'id' IN (${Prisma.join(moved.map(({ page }) => page.id))})`;
+  const liveById = new Map(live.map((row) => [row.id, row]));
+  const unseen = moved.filter(({ page }) => {
+    const readers = liveById.get(page.id);
+    return !(readers && readers.versionId === page.versionId && readers.languageCode === page.languageCode && readers.path === page.path);
+  });
+  if (unseen.length === 0) return false;
+  const project = await tx.project.findUniqueOrThrow({
+    where: { id: projectId },
+    select: {
+      config: true,
+      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], select: { id: true, name: true, isDefault: true } },
+      languages: { select: { code: true, isDefault: true } },
+    },
+  });
+  const stored = (project.config as { redirects?: unknown } | null)?.redirects;
+  const redirects = Array.isArray(stored) ? (stored as RedirectPair[]) : [];
+  const reviewedPrefix = new Map(input.project.versions.map((version) => [version.id, version.isDefault ? '' : version.slug]));
+  const slugs = publishedVersionSlugs(project.branches);
+  const draftPrefix = new Map(project.branches.map((branch) => [branch.id, branch.isDefault ? '' : (slugs.get(branch.id) ?? branch.id)]));
+  const defaultCode = project.languages.find((language) => language.isDefault)?.code;
+  return unseen.some(({ page, draft }) => {
+    const from = `/${[reviewedPrefix.get(page.versionId), page.path].filter(Boolean).join('/')}`;
+    const to = `/${[draftPrefix.get(draft.branchId), draft.path].filter(Boolean).join('/')}${draft.code === defaultCode ? '' : `?lang=${encodeURIComponent(draft.code)}`}`;
+    const target = resolveRedirectTarget(redirects, from);
+    return target === null || comparableTarget(target) !== comparableTarget(to);
+  });
+};
+
+const reviewStale = () =>
+  new AppError({ code: 'mcp:preview_stale', message: 'Your site changed since you reviewed it. Review the changes again before publishing.' });
 
 /** Dashboard publish options. `skipGrammarChecks` lets the user publish past the
  *  grammar linter after reviewing its findings — broken links still block. */
@@ -508,28 +689,36 @@ export const createDeployment = async (
     }
     reviewedInput = reviewed.approvedSnapshot as unknown as SiteSnapshot;
   }
-  const redirectValidation = validateSnapshotRedirects(reviewedInput ?? (await getCurrentSnapshot(projectId)));
-  if (redirectValidation.issues.length > 0) {
-    throw badRequest(summarizeRedirectIssues(redirectValidation.issues), { redirectIssues: redirectValidation.issues });
-  }
-  if (body.reviewedStateHash && body.reviewedStateHash !== reviewedSnapshotDigest(redirectValidation.snapshot)) {
-    throw new AppError({
-      code: 'mcp:preview_stale',
-      message: 'Your site changed since you reviewed it. Review the changes again before publishing.',
-    });
-  }
-  const deployment = await createWithNextVersion(projectId, (version) =>
-    prisma.deployment.create({
+  // The input is read and the PENDING row created under the project lock, in
+  // one transaction (withPublishLock: lock order and bounds there). A
+  // first-title address adoption (updatePage in ./pages) runs under the same
+  // lock and is refused once a publish is pending, so it either commits
+  // before the read (and goes live at its new address) or waits for the row
+  // (and keeps the address being published). Without the lock it could commit
+  // between the two steps: live at the old address, the draft at the new one,
+  // and no redirect. A reviewed input was read before the lock, so its
+  // addresses are re-checked under it instead. Held for the read and the
+  // insert only; the worker builds after the commit.
+  const deployment = await withPublishLock(projectId, async (tx) => {
+    if (reviewedInput && (await reviewedAddressesStale(tx, projectId, reviewedInput))) throw reviewStale();
+    const redirectValidation = validateSnapshotRedirects(reviewedInput ?? (await getCurrentSnapshot(projectId, tx)));
+    if (redirectValidation.issues.length > 0) {
+      throw badRequest(summarizeRedirectIssues(redirectValidation.issues), { redirectIssues: redirectValidation.issues });
+    }
+    if (body.reviewedStateHash && body.reviewedStateHash !== reviewedSnapshotDigest(redirectValidation.snapshot)) {
+      throw reviewStale();
+    }
+    return tx.deployment.create({
       data: {
         projectId,
-        version,
+        version: await nextDeploymentVersion(tx, projectId),
         status: 'PENDING',
         approvedSnapshot: redirectValidation.snapshot as unknown as Prisma.InputJsonValue,
         createdById: userId,
         ...(body.message ? { commitMessage: body.message } : {}),
       },
-    }),
-  );
+    });
+  });
   const jobData: PublishDeploymentJobData = {
     deploymentId: deployment.id,
     projectId,

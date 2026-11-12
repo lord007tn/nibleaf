@@ -3,13 +3,14 @@ import { DialogLabelsProvider } from '@nibleaf/design-system/components/ui/dialo
 import { DirectionProvider } from '@nibleaf/design-system/components/ui/direction';
 import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
 import { TooltipProvider } from '@nibleaf/design-system/components/ui/tooltip';
-import { isRtl, synchronizeDocumentLanguageFn } from '@nibleaf/i18n';
+import { isRtl } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
-import { type ReactNode, useEffect } from 'react';
+import type { ReactNode } from 'react';
 
 export function LocalizedProductProviders({ children }: { children: ReactNode }) {
+  // <html lang dir> follows the same locale from the root document, already in
+  // the server render (lib/root-document.ts, staticData.interfaceLocale).
   const { locale } = useLocale();
-  useEffect(() => synchronizeDocumentLanguageFn(locale), [locale]);
   return (
     <DirectionProvider direction={isRtl(locale) ? 'rtl' : 'ltr'}>
       <LocalizedSurfaces>

@@ -44,11 +44,16 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => mocks.navigate,
   }),
   useBlocker: () => undefined,
+  useRouter: () => ({ buildLocation: () => ({ href: '' }) }),
   Link: ({ children, to: _to, params: _params, ...props }: { children: ReactNode; to: string; params: unknown }) => <a {...props}>{children}</a>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: mocks.toast, success: mocks.success } }));
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ getQueryData: () => undefined }) }));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ getQueryData: () => undefined }),
+  useQueries: ({ combine }: { combine: (results: unknown[]) => unknown }) => combine([]),
+}));
+vi.mock('@/components/editor/linked-page-history', () => ({ useLinkedPageHistory: () => vi.fn() }));
 vi.mock('@/hooks/api', async () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Test site', config: {} } }),
   useProjectMembers: () => ({ data: { members: [{ role: mocks.role, user: { id: 'user-1' } }] }, isPending: mocks.membersPending }),
@@ -59,6 +64,7 @@ vi.mock('@/hooks/api', async () => ({
   pagePublishState: () => 'unchanged',
   queryKeys: (await import('@/hooks/api/query-keys')).queryKeys,
   useBranches: () => ({}),
+  useOpenApiConfiguration: () => ({}),
   useLanguages: () => ({ data: [{ id: 'lang-en', code: 'en', label: 'English', isDefault: true }] }),
   usePages: () => ({ data: mocks.pages, isPending: false }),
   usePage: () => ({ data: mocks.page }),
@@ -76,6 +82,7 @@ vi.mock('@/hooks/api', async () => ({
 vi.mock('@/hooks/api/query-options', () => ({
   aiDraftCapabilityQueryOptions: (id: string) => ({ queryKey: ['workspace-ai', id, 'draft-capability'] }),
   commentsQueryOptions: vi.fn(),
+  pagesQueryOptions: vi.fn(),
   pageQueryOptions: vi.fn(),
   projectMembersQueryOptions: (id: string) => ({ queryKey: ['members', id] }),
 }));
@@ -103,7 +110,10 @@ vi.mock('@/components/editor/comments-panel', () => ({ CommentsPanel: () => null
 vi.mock('@/components/editor/language-settings-dialog', () => ({ LanguageSettingsDialog: () => null }));
 vi.mock('@/components/editor/markdown-source-editor', () => ({ MarkdownSourceEditor: () => null }));
 vi.mock('@/components/editor/page-settings-dialog', () => ({ PageSettingsDialog: () => null }));
-vi.mock('@/components/editor/sortable-page-tree', () => ({
+vi.mock('@/components/editor/sortable-page-tree', async () => ({
+  // The real label helper, so the toasts read the row's shown name.
+  shownRowName: (await vi.importActual<typeof import('@/components/editor/sortable-page-tree')>('@/components/editor/sortable-page-tree'))
+    .shownRowName,
   SortablePageTree: (props: Record<string, unknown>) => {
     mocks.tree = props;
     return null;

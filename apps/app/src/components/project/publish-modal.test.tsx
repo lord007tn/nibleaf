@@ -108,6 +108,30 @@ describe('publish draft barrier', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    { base: '', domains: [], expected: 'http://localhost:3000/sites/project-1' },
+    { base: '*.docs.example.test.', domains: [], expected: 'https://docs.docs.example.test' },
+    {
+      base: 'docs.example.test',
+      domains: [{ domain: 'docs.example.com', verified: true, isPrimary: true, dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING' }],
+      expected: 'https://docs.docs.example.test',
+    },
+    {
+      base: 'docs.example.test',
+      domains: [{ domain: 'docs.example.com', verified: true, isPrimary: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' }],
+      expected: 'https://docs.example.com',
+    },
+  ])('shows the same first-publish destination as Overview: $expected', async (fixture) => {
+    vi.stubEnv('VITE_SITE_BASE_DOMAIN', fixture.base);
+    domains.data = fixture.domains;
+    preflight.hasBaseline = false;
+    const site = { ...project, id: 'project-1', slug: 'docs', readyPublishes: 0 };
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={site} />));
+    const addresses = [...document.querySelectorAll('[dir="ltr"]')].map((element) => element.textContent?.trim());
+    expect(addresses).toContain(fixture.expected);
   });
 
   it.each([

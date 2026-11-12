@@ -34,6 +34,7 @@
     "./email-providers": "./src/email-providers.ts",
     "./site": "./src/site.ts",
     "./site-route": "./src/site-route.ts",
+    "./site-links": "./src/site-links.ts",
     "./documentation-component-contract": "./src/documentation-component-contract.ts",
     "./documentation-components": "./src/documentation-components.ts",
     "./themes": "./src/themes.ts",
@@ -48,8 +49,11 @@
     "./organization-handles": "./src/organization-handles.ts",
     "./markdown-text": "./src/markdown-text.ts",
     "./markdown-code-usage": "./src/markdown-code-usage.ts",
+    "./markup-scan": "./src/markup-scan.ts",
     "./page-history": "./src/page-history.ts",
     "./page-limits": "./src/page-limits.ts",
+    "./page-title": "./src/page-title.ts",
+    "./page-icons": "./src/page-icons.ts",
     "./testing/growth": "./src/testing/growth.ts",
     "./reader-headings": "./src/reader-headings.ts",
     "./reader-heading-ids": "./src/reader-heading-ids.ts",
@@ -65,6 +69,7 @@
     "test:growth": "vitest run --mode growth --no-file-parallelism --maxWorkers=1 growth"
   },
   "dependencies": {
+    "@nibleaf/i18n": "workspace:*",
     "github-slugger": "^2.0.0",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm": "^3.1.0",

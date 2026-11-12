@@ -156,8 +156,11 @@ describe('reader content ergonomics', () => {
     expect(container.querySelector('dialog')).toBeNull();
     if (!dialog) throw new Error('Missing image dialog');
     expect(dialog.open).toBe(true);
+    // The full-size copy exists only while the dialog is open: no second image per picture.
+    expect(dialog.querySelector('img')?.getAttribute('src')).toBe('/large.png');
     act(() => dialog.dispatchEvent(new Event('cancel', { cancelable: true })));
     expect(dialog.open).toBe(false);
+    expect(dialog.querySelector('img')).toBeNull();
     expect(document.activeElement).toBe(button);
     act(() => button.click());
     act(() => dialog.querySelector('button')?.click());
@@ -228,6 +231,7 @@ describe('reader content ergonomics', () => {
   });
   it('recognizes lucide aliases and leaves unknown authored icons to the caller', async () => {
     for (const name of ['life-buoy', 'lifebuoy', 'LifeBuoy', 'circle-help']) expect(hasIcon(name)).toBe(true);
+    for (const name of ['constructor', '__proto__', 'unknown-icon']) expect(hasIcon(name)).toBe(false);
     await act(async () => root.render(<PageIcon name="life-buoy" />));
     expect(container.querySelector('svg')).not.toBeNull();
     // Unknown names render nothing, so inline <Icon> and the sidebar don't show a stray document icon.

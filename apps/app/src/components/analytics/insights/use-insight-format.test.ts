@@ -5,7 +5,11 @@ import { createRoot } from 'react-dom/client';
 import { describe, expect, it, vi } from 'vitest';
 
 const locale = vi.hoisted(() => ({ current: 'en' }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => locale.current, subscribeLanguage: () => () => undefined }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({
+  getLocale: () => locale.current,
+  renderedLocale: () => locale.current,
+  subscribeLanguage: () => () => undefined,
+}));
 
 import { useInsightFormat } from './use-insight-format';
 

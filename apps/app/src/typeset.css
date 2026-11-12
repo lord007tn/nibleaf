@@ -122,6 +122,12 @@
     &:where(a:hover) {
       text-decoration-color: currentColor;
     }
+    /* A linked card is a block, not a text link: its title and description
+       aren't underlined, and the description keeps its normal weight. */
+    &:where(a[data-theme-component="card"]) {
+      font-weight: inherit;
+      text-decoration-line: none;
+    }
     &:where(a:focus-visible) {
       outline: 2px solid var(--ring, currentColor);
       outline-offset: 2px;

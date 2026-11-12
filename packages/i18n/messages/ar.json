@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "أضف لغة أخرى للموقع لنقل هذه الصفحة إليها.",
+  "editor_pagesettings_invalidicon": "اختر اسم أيقونة مدعومًا، مثل rocket أو book-open أو code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "اتصالات الصياغة",
   "analytics_drafting_description": "أحداث بدء الصياغة واكتمالها وفشلها في الفترة المحددة.",
@@ -491,6 +493,8 @@
   "editor_link_save": "حفظ الرابط",
   "editor_link_open": "فتح في تبويب جديد",
   "editor_link_openrelativehint": "الروابط النسبية تُفتح على موقعك المنشور",
+  "editor_link_openpage": "فتح هذه الصفحة",
+  "editor_link_missingpage": "هذه الصفحة غير موجودة في هذا الموقع",
   "editor_link_remove": "إزالة الرابط",
   "editor_link_invalid": "أدخل رابطًا صالحًا: https أو mailto أو tel أو ‎#anchor أو مسارًا يبدأ بـ /.",
   "editor_toolbar_undo": "تراجع",
@@ -532,6 +536,7 @@
   "editor_pageunpublished": "تغييرات غير منشورة",
   "editor_pagepublished": "منشورة",
   "editor_unpublishedcount": "تغييرات غير منشورة في هذا الموقع: {count}. انشرها ليراها القرّاء.",
+  "editor_unpublishedsitechanges": "تغييرات غير منشورة في تنقّل هذا الموقع أو إعداداته. انشرها لتظهر للقرّاء.",
   "editor_neverpublished": "لم يُنشر هذا الموقع بعد. لن يراه القرّاء حتى تنشره.",
   "editor_creatingpage": "جارٍ إنشاء الصفحة…",
   "editor_openingpage": "جارٍ فتح الصفحة…",
@@ -1454,7 +1459,9 @@
   "settings_danger_delete_toast_error": "تعذّر حذف الموقع. حاول مجددًا.",
   "auth_field_email": "البريد الإلكتروني",
   "auth_field_name": "الاسم",
+  "auth_field_nameplaceholder": "ليلى أحمد",
   "auth_backtosignin": "العودة إلى تسجيل الدخول",
+  "auth_backtosite": "العودة إلى {site}",
   "auth_signin_subtitle": "سجّل الدخول إلى حسابك",
   "auth_brand_heading": "وثائقك مستضافة وجاهزة.",
   "auth_brand_description": "اكتب مقالات المساعدة في محرر بسيط وانشرها بنقرة واحدة. تتولّى Nibleaf البحث والتحليلات وعنوان موقعك والاستضافة.",
@@ -1470,7 +1477,9 @@
   "auth_signin_error": "تعذّر تسجيل الدخول",
   "auth_otp_label": "رمز لمرة واحدة",
   "auth_otp_hint": "تنتهي صلاحية الرمز خلال 10 دقائق ولا يمكن استخدامه إلا مرة واحدة.",
-  "auth_otp_checkemail": "أدخل الرمز المرسل إلى {email}",
+  "auth_otp_checkemail": "تحقق من بريدك الإلكتروني",
+  "auth_otp_sentto": "أرسلنا رمزًا مكوّنًا من 6 أرقام إلى",
+  "auth_otp_openinbox": "افتح {app}",
   "auth_otp_sendsignin": "تسجيل الدخول",
   "auth_otp_sendcreate": "إنشاء حساب",
   "auth_otp_sending": "جارٍ الإرسال…",
@@ -1484,6 +1493,10 @@
   "auth_otp_senderror": "تعذّر إرسال رمز لمرة واحدة",
   "auth_otp_invalid": "هذا الرمز غير صالح أو انتهت صلاحيته.",
   "auth_otp_toomanyattempts": "محاولات كثيرة جدًا. انتظر دقيقة ثم حاول مجددًا.",
+  "auth_otp_codelocked": "محاولات كثيرة جدًا. اطلب رمزًا جديدًا.",
+  "auth_otp_waitbeforeretry": "محاولات كثيرة جدًا. الوقت المتبقي قبل المحاولة مجددًا: {wait}.",
+  "auth_otp_resendwait": "الوقت المتبقي قبل طلب رمز جديد: {wait}.",
+  "auth_otp_resendready": "يمكنك طلب رمز جديد الآن.",
   "auth_error_suspended": "تم إيقاف هذا الحساب. تواصل مع support@nibleaf.com إن كنت تعتقد أن ذلك خطأ.",
   "auth_error_tryagain": "حدث خطأ ما. تحقّق من اتصالك ثم حاول مجددًا.",
   "auth_error_servererror": "حدث خطأ من جهتنا. أعد المحاولة بعد قليل.",
@@ -4208,6 +4221,7 @@
   "analytics_status_readsdisabled_title": "جارٍ جمع التحليلات",
   "analytics_status_readsdisabled_body": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "تغيّر موقعك منذ مراجعته. راجع التغييرات مجددًا قبل النشر.",
+  "publish_busy": "يجري حفظ تغيير آخر الآن. حاول النشر مجددًا بعد لحظات.",
   "admin_pagination_first": "الصفحة الأولى",
   "admin_pagination_next": "الصفحة التالية",
   "dashboard_ai_inputtokens": "وحدات النص في الأسئلة",
@@ -4884,5 +4898,21 @@
   "publishes_truncated": "تُعرض أول {shown} من أصل {total} صفحة تغيّرت.",
   "overview_activity_viewall": "عرض الكل",
   "publishes_toolarge": "هذه النسخة أكبر من أن تُقارَن هنا.",
-  "publishes_nosnapshot": "لم تعد هذه النسخة المنشورة محفوظة، لذا لا يمكن مقارنتها ولا استعادتها."
+  "publishes_nosnapshot": "لم تعد هذه النسخة المنشورة محفوظة، لذا لا يمكن مقارنتها ولا استعادتها.",
+  "overview_nudge_progress": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "اكتمل {count} من أصل 3",
+        "form=one": "اكتملت خطوة واحدة من أصل 3",
+        "form=two": "اكتملت خطوتان من أصل 3",
+        "form=*": "اكتمل {count} من أصل 3"
+      }
+    }
+  ],
+  "overview_live_willbeliveat": "سيكون الموقع متاحًا على {url}",
+  "overview_live_availableafterpublish": "يمكن فتح هذا العنوان بعد نشر الموقع لأول مرة.",
+  "overview_nudge_connecting": "جارٍ الاتصال — أكمل إعداد النطاق.",
+  "overview_nudge_stepdone": "تم: {step}"
 }

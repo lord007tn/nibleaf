@@ -267,6 +267,12 @@ describe('duplicatePage', () => {
     expect(site.created.at(-1)?.config).toEqual(expected);
   });
 
+  it('keeps an untitled page untitled in its copy, not " (copy)"', async () => {
+    site.pages.push(page({ id: 'untitled', title: '', slug: 'untitled', path: 'untitled', position: 40 }));
+    const copy = await duplicatePage('site', 'untitled', 'en');
+    expect(copy).toMatchObject({ title: '', slug: 'untitled-2' });
+  });
+
   it('keeps the copied title within the 200-character limit', async () => {
     site.pages.push(page({ id: 'long', title: 'L'.repeat(200), position: 20 }));
     expect((await duplicatePage('site', 'long', 'en')).title).toHaveLength(200);

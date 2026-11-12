@@ -29,11 +29,16 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => mocks.navigate,
   }),
   useBlocker: () => undefined,
+  useRouter: () => ({ buildLocation: () => ({ href: '' }) }),
   Link: ({ children, to: _to, params: _params, ...props }: { children: ReactNode; to: string; params: unknown }) => <a {...props}>{children}</a>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
 vi.mock('@tanstack/react-pacer', () => ({ useDebouncer: () => ({ maybeExecute: mocks.schedule, cancel: vi.fn() }) }));
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({}),
+  useQueries: ({ combine }: { combine: (results: unknown[]) => unknown }) => combine([]),
+}));
+vi.mock('@/components/editor/linked-page-history', () => ({ useLinkedPageHistory: () => vi.fn() }));
 vi.mock('@/hooks/api', () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Test site', config: {} } }),
   useProjectMembers: () => ({ data: { members: [{ role: mocks.role, user: { id: 'user-1' } }] }, isPending: mocks.membersPending }),
@@ -44,6 +49,7 @@ vi.mock('@/hooks/api', () => ({
   pagePublishState: () => 'unchanged',
   queryKeys: { pages: { allForProject: (id: string) => ['pages', id] } },
   useBranches: () => ({}),
+  useOpenApiConfiguration: () => ({}),
   useLanguages: () => ({}),
   usePages: () => ({ data: mocks.pages, isPending: false }),
   usePage: () => ({ data: mocks.page }),
@@ -61,6 +67,7 @@ vi.mock('@/hooks/api', () => ({
 vi.mock('@/hooks/api/query-options', () => ({
   aiDraftCapabilityQueryOptions: (id: string) => ({ queryKey: ['workspace-ai', id, 'draft-capability'] }),
   commentsQueryOptions: vi.fn(),
+  pagesQueryOptions: vi.fn(),
   pageQueryOptions: vi.fn(),
   projectMembersQueryOptions: (id: string) => ({ queryKey: ['members', id] }),
 }));
@@ -73,7 +80,13 @@ vi.mock('@/components/editor/use-delete-page', () => ({ useDeletePageFlow: () =>
 vi.mock('@/components/editor/page-trash-button', () => ({ PageTrashButton: () => null }));
 vi.mock('@/components/editor/use-ai-assist-session', () => ({ useAiAssistSession: () => ({}), aiAssistPageId: () => null }));
 vi.mock('@/components/editor/site-config-panel', () => ({
-  ConfigSectionList: () => <nav data-testid="config-sections" />,
+  ConfigSectionList: ({ onSelect }: { onSelect: (section: string) => void }) => (
+    <nav data-testid="config-sections">
+      <button type="button" onClick={() => onSelect('seo')}>
+        section-seo
+      </button>
+    </nav>
+  ),
   ConfigSection: () => (
     <form aria-label="Site settings">
       <input aria-label="Site name" />
@@ -144,6 +157,22 @@ describe('editor site settings permissions', () => {
     await openSettings();
     expect(container.querySelector('[data-testid="config-sections"]')).not.toBeNull();
     expect(container.querySelector('form input[aria-label="Site name"]')).not.toBeNull();
+  });
+
+  it('keeps the settings sections reachable on a phone after one is chosen', async () => {
+    mocks.role = 'admin';
+    await render();
+    await openSettings();
+    const drawer = () => container.querySelector<HTMLButtonElement>('button[aria-label="editor.showSidebar"][aria-expanded]');
+    // Opening Site settings shows the section list.
+    expect(drawer()?.getAttribute('aria-expanded')).toBe('true');
+    const section = [...container.querySelectorAll('button')].find((button) => button.textContent === 'section-seo');
+    await act(async () => section?.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    // Choosing a section closes the drawer; the header button opens it again.
+    expect(drawer()?.getAttribute('aria-expanded')).toBe('false');
+    await act(async () => drawer()?.click());
+    expect(drawer()?.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('replaces stale configuration with an announced note and a way back to writing, including in RTL', async () => {

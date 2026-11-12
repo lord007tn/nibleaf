@@ -204,8 +204,9 @@ describe('page bodies for a page-scoped reader', () => {
     const result = await getSitePage('project-1', 'plan/guide');
     expect(result.prev).toBeNull();
     expect(result.next).toBeNull();
+    // The parent is shown to this reader as a section, so its crumb is text, not a link.
     expect(result.breadcrumbs).toEqual([
-      { title: 'Plan', path: 'plan' },
+      { title: 'Plan', path: 'plan', section: true },
       { title: 'Guide', path: 'plan/guide' },
     ]);
   });
@@ -226,6 +227,19 @@ describe('page bodies for a page-scoped reader', () => {
     mocks.resolveViewerAccess.mockResolvedValue(pageReader('parent', 'child'));
     const result = await getSitePage('project-1', 'plan');
     expect(result.page).toMatchObject({ id: 'parent', content: PARENT_BODY });
+  });
+});
+
+describe('an untitled published page', () => {
+  it('reads "Untitled" in its heading, breadcrumbs and navigation, never an empty label', async () => {
+    mocks.resolveViewerAccess.mockResolvedValue(siteReader);
+    const untitled = { ...snapshot, pages: snapshot.pages.map((item) => (item.id === 'child' ? { ...item, title: '' } : item)) };
+    mocks.deploymentFindUnique.mockResolvedValue(withIndex({ snapshot: untitled }));
+    const result = await getSitePage('project-1', 'plan/guide');
+    expect(result.page.title).toBe('Untitled');
+    expect(result.breadcrumbs.at(-1)).toEqual({ title: 'Untitled', path: 'plan/guide' });
+    const site = await getSite('project-1');
+    expect(site.nav[0]?.children[0]).toMatchObject({ id: 'child', title: 'Untitled' });
   });
 });
 

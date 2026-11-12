@@ -12,6 +12,7 @@ import {
 } from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
 import { pageDescription, pageExcerpt } from '@nibleaf/shared/markdown-text';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -627,7 +628,7 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
     const categoryLanding = siblingPages
       .filter((candidate) => candidate.languageCode === page.languageCode && resolvePageCategory(candidate, siblingPages.length)?.title === category)
       .sort((a, b) => a.position - b.position)[0];
-    breadcrumbs.splice(-1, 0, { title: category, path: categoryLanding?.path ?? page.path });
+    breadcrumbs.splice(-1, 0, { title: category, path: categoryLanding?.path ?? page.path, section: true });
   }
 
   const servedLanguages = publicLanguages(snapshot.project.languages);
@@ -667,7 +668,8 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       // truthful lower-bound publication date from their last modification.
       createdAt: page.createdAt ?? page.updatedAt,
       updatedAt: page.updatedAt,
-      title: page.title,
+      // The H1, document title, OG title and Markdown copy: never empty.
+      title: displayTitle(page),
       // Only an author-written summary is a visible lede. The derived excerpt
       // travels separately for SEO/social fallbacks, so the reader never renders
       // the page's own first paragraph twice.
@@ -719,12 +721,21 @@ export const getSitePageMarkdown = async (identifier: string, path: string, lang
 
 const neighbour = (node?: NavNode) => (node ? { title: node.title, path: node.path } : null);
 
-const breadcrumbTrail = (pages: readonly SnapshotPage[], page: SnapshotPage): Array<{ title: string; path: string }> => {
+/** One step of a page's trail. `section` marks a group or category: a heading in
+ *  the navigation, not a page of its own, so the reader shows it as text. Its
+ *  `path` would only lead to whichever page happens to come first under it. */
+interface Breadcrumb {
+  title: string;
+  path: string;
+  section?: true;
+}
+
+const breadcrumbTrail = (pages: readonly SnapshotPage[], page: SnapshotPage): Breadcrumb[] => {
   const byId = new Map(pages.map((p) => [p.id, p]));
-  const trail: Array<{ title: string; path: string }> = [];
+  const trail: Breadcrumb[] = [];
   let current: SnapshotPage | undefined = page;
   while (current) {
-    trail.unshift({ title: current.title, path: current.path });
+    trail.unshift({ title: displayTitle(current), path: current.path, ...(current.kind === 'GROUP' ? { section: true as const } : {}) });
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
   return trail;

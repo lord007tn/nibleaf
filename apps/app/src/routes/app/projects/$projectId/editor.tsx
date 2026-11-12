@@ -17,8 +17,8 @@ import { isRtl } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
 import { useDebouncer } from '@tanstack/react-pacer';
-import { type QueryClient, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
+import { type QueryClient, type UseQueryResult, useQueries, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, Link, useBlocker, useRouter } from '@tanstack/react-router';
 import {
   ChevronLeft,
   ChevronRight,
@@ -62,9 +62,11 @@ import {
   shouldFlushDraft,
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
+import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
 import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
+import { useLinkedPageHistory } from '@/components/editor/linked-page-history';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
 import { MovePageDialog } from '@/components/editor/move-page-dialog';
 import { pagePublicLink } from '@/components/editor/page-public-link';
@@ -74,7 +76,7 @@ import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
 import { NeverPublishedBanner, PagePublishStateBar, type SaveState, SaveStatus } from '@/components/editor/save-status';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
-import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree } from '@/components/editor/sortable-page-tree';
+import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree, shownRowName } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { aiAssistPageId, useAiAssistSession } from '@/components/editor/use-ai-assist-session';
@@ -97,6 +99,7 @@ import {
   useDomains,
   useDuplicatePage,
   useLanguages,
+  useOpenApiConfiguration,
   usePage,
   usePages,
   usePendingChanges,
@@ -107,7 +110,13 @@ import {
   useUploadAsset,
 } from '@/hooks/api';
 import { assetUploadErrorMessage } from '@/hooks/api/client-helpers';
-import { aiDraftCapabilityQueryOptions, commentsQueryOptions, pageQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
+import {
+  aiDraftCapabilityQueryOptions,
+  commentsQueryOptions,
+  pageQueryOptions,
+  pagesQueryOptions,
+  projectMembersQueryOptions,
+} from '@/hooks/api/query-options';
 import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
@@ -147,6 +156,13 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
     }
   },
   component: EditorPage,
+});
+
+/** The other docs versions' pages for link resolution, and whether all of them loaded. Stable, so
+ *  `useQueries` keeps the same result until a query changes. */
+const combineVersionPages = (results: UseQueryResult<PageNode[]>[]) => ({
+  pages: results.flatMap((result) => result.data ?? []),
+  complete: results.every((result) => result.isSuccess),
 });
 
 function EditorPage() {
@@ -773,7 +789,14 @@ function EditorPage() {
         onSuccess: (created) => {
           setPendingSwitch({ kind: 'open', id: created.id });
           setSelectedId(created.id);
-          if (options?.focusTitle) setFocusTitleFor(created.id);
+          if (options?.focusTitle) {
+            // The page list may be a drawer over the canvas (narrow screens, or
+            // the focused Markdown layout): close it so the title that takes
+            // focus is visible, without handing focus back to the drawer's button.
+            setMobileSidebarOpen(false);
+            setFocusedTreeOpen(false);
+            setFocusTitleFor(created.id);
+          }
           options?.onCreated?.(created);
         },
         onError: () => {
@@ -791,10 +814,10 @@ function EditorPage() {
     createAndOpen(
       (callbacks) =>
         createPage.mutate(
-          // Placeholder title in the PAGE's language with a pinned 'untitled' slug: the
-          // address then follows the real title until the page is first published.
+          // The placeholder is presentation only. The address follows the first
+          // real title until the page is first published.
           {
-            title: messageInLanguage('editor.untitled', languageCodeOf(languageId), t),
+            title: '',
             slug: 'untitled',
             parentId,
             languageId,
@@ -838,6 +861,48 @@ function EditorPage() {
     deepLinkedPageId.current = pageParam;
     openNode(pageParam);
   }, [pageParam]);
+  // A link in the page to another page of the site opens that page here, as a
+  // ?page= deep link does (the page being left is saved first), in its own
+  // history entry: Back returns to this page where it was scrolled.
+  const openLinkedPage = useLinkedPageHistory({ projectId, pageId: page?.id, canvas: () => canvasRef.current });
+  const { data: openApi } = useOpenApiConfiguration(projectId);
+  // The other docs versions' pages, loaded once a link may lead into one of them.
+  const [linkVersionsWanted, setLinkVersionsWanted] = useState(false);
+  const otherBranchIds = useMemo(
+    () => (branches ?? []).filter((branch) => branch.id !== activeBranchId).map((branch) => branch.id),
+    [branches, activeBranchId],
+  );
+  const otherVersions = useQueries({
+    queries: (linkVersionsWanted ? otherBranchIds : []).map((id) => pagesQueryOptions(projectId, undefined, id)),
+    combine: combineVersionPages,
+  });
+  const allVersionsLoaded = otherBranchIds.length === 0 || (linkVersionsWanted && otherVersions.complete);
+  const linkSiteFor = useCallback(
+    (pages: readonly PageNode[]) =>
+      project && languages && branches && activeBranchId
+        ? editorSiteSnapshot({ project, languages, branches, pages, branchId: activeBranchId, openApi })
+        : null,
+    [project, languages, branches, activeBranchId, openApi],
+  );
+  const linkSite = useMemo(
+    () => (allPages ? linkSiteFor([...allPages, ...otherVersions.pages]) : null),
+    [allPages, otherVersions.pages, linkSiteFor],
+  );
+  const router = useRouter();
+  const editorLinks = useMemo<EditorLinks>(
+    () => ({
+      resolve: editorLinkResolver(linkSite, page?.id, { allVersions: allVersionsLoaded }),
+      open: (id) => void openLinkedPage(id),
+      href: (id) => router.buildLocation({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: id } }).href,
+      loadVersions: () => setLinkVersionsWanted(true),
+      resolveAsync: async (href) => {
+        setLinkVersionsWanted(true);
+        const lists = await Promise.all(otherBranchIds.map((id) => queryClient.ensureQueryData(pagesQueryOptions(projectId, undefined, id))));
+        return editorLinkResolver(allPages ? linkSiteFor([...allPages, ...lists.flat()]) : null, page?.id)(href);
+      },
+    }),
+    [linkSite, page?.id, allVersionsLoaded, openLinkedPage, router, projectId, otherBranchIds, queryClient, allPages, linkSiteFor],
+  );
   useEffect(() => {
     const decision = deepLinkBranchDecision({ deepLinkedPageId: deepLinkedPageId.current, page, activeBranchId, branches });
     if (decision.kind === 'wait') return;
@@ -904,7 +969,7 @@ function EditorPage() {
     createAndOpen<Page>((callbacks) => duplicatePage.mutate(id, callbacks), {
       // A page's copy is ready to rename, as a new page is; a group has no title field.
       focusTitle: (allPages ?? []).find((p) => p.id === id)?.kind !== 'GROUP',
-      onCreated: (created) => toast.success(t('editor.duplicated', { title: created.title })),
+      onCreated: (created) => toast.success(t('editor.duplicated', { title: shownRowName(created, t('editor.untitled')) })),
     });
   // The page's address on the published site, as the reader builds it: the
   // live domain, the version prefix and the language (left out for the default one).
@@ -951,7 +1016,7 @@ function EditorPage() {
           { pageId: id, body: { hidden, expectedUpdatedAt: latest?.updatedAt ?? node.updatedAt } },
           {
             onSuccess: () => {
-              if (hidden) toast.success(t('editor.hiddenNotice', { title: node.config?.sidebarTitle?.trim() || node.title }));
+              if (hidden) toast.success(t('editor.hiddenNotice', { title: shownRowName(node, t('editor.untitled')) }));
             },
             onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.visibilityFailed')),
           },
@@ -1126,10 +1191,10 @@ function EditorPage() {
   const newPageLanguage = orderedLanguages.find((lang) => lang.id === newPageLanguageId);
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh min-w-0 flex-col overflow-hidden">
       {/* Top bar — workspace controls (Mintlify-style): back + branch on the left,
           configure / preview / publish on the right. No breadcrumb. */}
-      <header className="flex h-14 shrink-0 items-center gap-1.5 border-border border-b bg-background px-2 sm:gap-2.5 sm:px-3">
+      <header className="flex h-14 min-w-0 shrink-0 items-center gap-1.5 border-border border-b bg-background px-2 sm:gap-2.5 sm:px-3">
         <Link
           to="/app/projects/$projectId"
           params={{ projectId }}
@@ -1140,6 +1205,47 @@ function EditorPage() {
           <ChevronLeft className="size-4 rtl:-scale-x-100" />
           {project?.name ? <span className="hidden max-w-[200px] truncate font-medium text-foreground text-sm sm:inline">{project.name}</span> : null}
         </Link>
+        {view === 'content' ? (
+          <>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="size-11 shrink-0 sm:hidden"
+              aria-label={t('editor.showPages')}
+              aria-expanded={treeOverlay || mobileSidebarOpen}
+              onClick={() => {
+                if (markdownFocused) setFocusedTreeOpen(true);
+                else {
+                  setSidebarCollapsed(false);
+                  setMobileSidebarOpen(true);
+                }
+              }}
+            >
+              <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+            </Button>
+            <span className="min-w-0 flex-1 truncate font-medium text-sm sm:hidden" dir="auto">
+              {title || t('editor.untitled')}
+            </span>
+          </>
+        ) : (
+          <>
+            {/* Choosing a settings section closes the phone drawer; this reopens the section list. */}
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="size-11 shrink-0 sm:hidden"
+              aria-label={t('editor.showSidebar')}
+              aria-expanded={mobileSidebarOpen}
+              onClick={() => {
+                setSidebarCollapsed(false);
+                setMobileSidebarOpen(true);
+              }}
+            >
+              <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+            </Button>
+            <span className="min-w-0 flex-1 truncate font-medium text-sm sm:hidden">{t('editor.config.heading')}</span>
+          </>
+        )}
         {/* Divider only once the project name is loaded — otherwise it dangles next to the chevron. */}
         {project?.name ? <span className="hidden h-5 w-px bg-border sm:block" /> : null}
         {/* Versions only matter once a site has more than one; until then the
@@ -1174,7 +1280,7 @@ function EditorPage() {
               aria-label={t('editor.mode.configuration')}
               size="sm"
               variant={view === 'config' ? 'secondary' : 'ghost'}
-              className="cursor-pointer"
+              className="hidden cursor-pointer sm:inline-flex"
               onClick={async () => {
                 const nextView = view === 'config' ? 'content' : 'config';
                 if (view === 'config' && !(await guardConfigChanges())) return;
@@ -1188,7 +1294,13 @@ function EditorPage() {
               <SlidersHorizontal className="size-3.5" /> <span className="hidden md:inline">{t('editor.mode.configuration')}</span>
             </Button>
           ) : null}
-          <Button aria-label={t('project.preview')} onClick={() => void openDraftPreview()} size="sm" variant="outline" className="cursor-pointer">
+          <Button
+            aria-label={t('project.preview')}
+            onClick={() => void openDraftPreview()}
+            size="sm"
+            variant="outline"
+            className="hidden cursor-pointer sm:inline-flex"
+          >
             <Eye className="size-3.5" /> <span>{t('project.preview')}</span>
           </Button>
           {project ? (
@@ -1208,6 +1320,89 @@ function EditorPage() {
               project={project}
             />
           ) : null}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="size-11 shrink-0 sm:hidden"
+                  aria-label={t('editor.pageActions', { title: title || t('editor.untitled') })}
+                />
+              }
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem onClick={() => void openDraftPreview()}>
+                <Eye /> {t('project.preview')}
+              </DropdownMenuItem>
+              {canManageSettings ? (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (view === 'config' && !(await guardConfigChanges())) return;
+                    setView(view === 'config' ? 'content' : 'config');
+                    setSidebarCollapsed(false);
+                    setMobileSidebarOpen(true);
+                  }}
+                >
+                  <SlidersHorizontal /> {t('editor.mode.configuration')}
+                </DropdownMenuItem>
+              ) : null}
+              {page && view === 'content' && !switching ? (
+                <>
+                  {canEditContent ? (
+                    <>
+                      <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setSettingsForId(page.id) })}>
+                        <Settings2 /> {t('editor.pageSettings.title')}
+                      </DropdownMenuItem>
+                      <DropdownMenuCheckboxItem checked={commentMode} onCheckedChange={() => toggleCommentMode()}>
+                        {t('editor.comments.mode')}
+                      </DropdownMenuCheckboxItem>
+                    </>
+                  ) : null}
+                  <DropdownMenuItem onClick={() => setRailSheetOpen((value) => !value)}>
+                    <PanelRight /> {railLabel}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setHistoryForId(page.id) })}>
+                    <History /> {t('editor.history.title')}
+                  </DropdownMenuItem>
+                  <DropdownMenuCheckboxItem
+                    checked={effectiveMode === 'wysiwyg'}
+                    disabled={effectiveMode === 'markdown'}
+                    onCheckedChange={(checked) => {
+                      const next = checked ? 'wysiwyg' : 'visual';
+                      setVisualMode(next);
+                      setEditorMode(next);
+                    }}
+                  >
+                    {t('editor.showToolbar')}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (commentMode) toggleCommentMode();
+                      setEditorMode(effectiveMode === 'markdown' ? visualMode : 'markdown');
+                    }}
+                  >
+                    <Code2 /> {t(effectiveMode === 'markdown' ? 'editor.backToVisual' : 'editor.editSource')}
+                  </DropdownMenuItem>
+                  {!showBranchSwitcher && canEditContent ? (
+                    <DropdownMenuItem onClick={() => setNewVersionOpen(true)}>
+                      <Layers /> {t('editor.branch.new')}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canEditContent ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="destructive" onClick={() => deleteNode(page.id)}>
+                        <Trash2 /> {t('editor.deletePage')}
+                      </DropdownMenuItem>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
       {viewOnly ? <ViewOnlyBanner /> : null}
@@ -1641,7 +1836,7 @@ function EditorPage() {
               ) : null}
               {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
               document mode/view controls. */}
-              <div className="flex min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
+              <div className="hidden min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:flex sm:gap-2 sm:px-4 sm:py-0">
                 {markdownFocused ? (
                   // The focused layout hides the tree; this floats it over the canvas so
                   // the author can still switch pages without leaving Markdown mode.
@@ -1804,28 +1999,30 @@ function EditorPage() {
                   // document can never linger across a page switch.
                   // The link picker searches the version this page belongs to.
                   <ActiveBranchContext.Provider value={page.branchId ?? activeBranchId ?? undefined}>
-                    <TiptapEditor
-                      // Remounts once access is known, so block controls render for that access.
-                      key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
-                      value={content}
-                      onChange={canEditContent ? setContent : ignoreEdit}
-                      editable={canEditContent}
-                      className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
-                      dir={activeLangDir}
-                      lang={activeLanguage?.code}
-                      style={typographyVars(project?.config?.typography)}
-                      onUpload={onUploadImage}
-                      comments={commentMarkers}
-                      activeCommentId={activeCommentId}
-                      commentMode={commentMode}
-                      onAddComment={(anchor) => {
-                        setPendingAnchor(anchor);
-                        openRail();
-                        setRailTab('comments');
-                      }}
-                      titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
-                      variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
-                    />
+                    <EditorLinksContext.Provider value={editorLinks}>
+                      <TiptapEditor
+                        // Remounts once access is known, so block controls render for that access.
+                        key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
+                        value={content}
+                        onChange={canEditContent ? setContent : ignoreEdit}
+                        editable={canEditContent}
+                        className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
+                        dir={activeLangDir}
+                        lang={activeLanguage?.code}
+                        style={typographyVars(project?.config?.typography)}
+                        onUpload={onUploadImage}
+                        comments={commentMarkers}
+                        activeCommentId={activeCommentId}
+                        commentMode={commentMode}
+                        onAddComment={(anchor) => {
+                          setPendingAnchor(anchor);
+                          openRail();
+                          setRailTab('comments');
+                        }}
+                        titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
+                        variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
+                      />
+                    </EditorLinksContext.Provider>
                   </ActiveBranchContext.Provider>
                 ) : (
                   <MarkdownSourceEditor
