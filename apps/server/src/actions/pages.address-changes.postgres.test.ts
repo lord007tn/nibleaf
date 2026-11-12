@@ -2,15 +2,19 @@ import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { buildSnapshot } from '@nibleaf/shared/site';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-const metrics = vi.hoisted(() => ({ active: false, parsesUnderLock: 0, transactionMs: 0 }));
+const metrics = vi.hoisted(() => ({ active: false, parsesUnderLock: 0, transactionMs: 0, parses: 0, documentsUnderLock: [] as string[] }));
 vi.mock('mdast-util-from-markdown', async (original) => {
   const actual = await original<typeof import('mdast-util-from-markdown')>();
   return {
     ...actual,
     fromMarkdown: (...args: Parameters<typeof actual.fromMarkdown>) => {
-      if (metrics.active) metrics.parsesUnderLock++;
+      metrics.parses++;
+      if (metrics.active) {
+        metrics.parsesUnderLock++;
+        metrics.documentsUnderLock.push(String(args[0]));
+      }
       return actual.fromMarkdown(...args);
     },
   };
@@ -19,6 +23,11 @@ vi.mock('mdast-util-from-markdown', async (original) => {
 describe.skipIf(process.env.PAGE_ADDRESS_INTEGRATION !== '1')('page address transactions in PostgreSQL', () => {
   let db: typeof import('@nibleaf/database');
   let actions: typeof import('./pages');
+  let beforeTransaction: (() => Promise<void>) | undefined;
+  afterEach(() => {
+    beforeTransaction = undefined;
+    metrics.documentsUnderLock.length = 0;
+  });
   const organizations: string[] = [];
   beforeAll(async () => {
     db = await import('@nibleaf/database');
@@ -28,6 +37,7 @@ describe.skipIf(process.env.PAGE_ADDRESS_INTEGRATION !== '1')('page address tran
       work: (tx: import('@nibleaf/database').Prisma.TransactionClient) => Promise<unknown>,
       options?: object,
     ) => {
+      await beforeTransaction?.();
       const start = performance.now();
       try {
         return await transaction(async (tx) => {
@@ -50,7 +60,7 @@ describe.skipIf(process.env.PAGE_ADDRESS_INTEGRATION !== '1')('page address tran
     await db?.prisma.$disconnect();
   }, 60_000);
 
-  const fixture = async (count = 2) => {
+  const fixture = async (count = 2, published = true) => {
     const slug = `address-${randomUUID()}`;
     const org = await db.prisma.organization.create({ data: { name: 'Synthetic address regression' } });
     organizations.push(org.id);
@@ -77,19 +87,139 @@ describe.skipIf(process.env.PAGE_ADDRESS_INTEGRATION !== '1')('page address tran
       pages.map((page) => ({ ...page, languageCode: 'en', createdAt: page.createdAt.toISOString(), updatedAt: page.updatedAt.toISOString() })),
       new Date().toISOString(),
     );
-    await db.prisma.deployment.create({
-      data: {
-        projectId: project.id,
-        version: 1,
-        status: 'READY',
-        snapshot: snapshot as unknown as import('@nibleaf/database').Prisma.InputJsonValue,
-      },
-    });
+    if (published)
+      await db.prisma.deployment.create({
+        data: {
+          projectId: project.id,
+          version: 1,
+          status: 'READY',
+          snapshot: snapshot as unknown as import('@nibleaf/database').Prisma.InputJsonValue,
+        },
+      });
     const target = pages[0];
     const source = pages[1];
     if (!target || !source) throw new Error('Page fixture was not created');
     return { project, target, source, text, count };
   };
+
+  const moveUnderSource = (f: Awaited<ReturnType<typeof fixture>>) => ({
+    items: [{ id: f.target.id, parentId: f.source.id, position: 0 }],
+  });
+
+  it('a pure bulk reorder succeeds while another page saves, without parsing links', async () => {
+    const f = await fixture();
+    const parses = metrics.parses;
+    beforeTransaction = async () => {
+      await db.prisma.page.update({ where: { id: f.source.id }, data: { content: 'Concurrent content save' } });
+    };
+    await actions.reorderPages(f.project.id, {
+      items: [
+        { id: f.source.id, parentId: null, position: 0 },
+        { id: f.target.id, parentId: null, position: 1 },
+      ],
+    });
+    expect(metrics.parses).toBe(parses);
+    expect(await db.prisma.page.findUnique({ where: { id: f.source.id } })).toMatchObject({ position: 0, content: 'Concurrent content save' });
+    expect(await db.prisma.page.findUnique({ where: { id: f.target.id } })).toMatchObject({ position: 1, path: 'old' });
+  });
+
+  it.each([
+    { kind: 'a newly added link', content: '[link](/old)', expected: '[link](/parent/old)', attempts: 2 },
+    { kind: 'an unrelated save', content: 'Concurrent text without links', expected: 'Concurrent text without links', attempts: 1 },
+  ])(
+    'preserves $kind in an initially unlinked document when an unpublished address moves',
+    async ({ content, expected, attempts: expectedAttempts }) => {
+      const f = await fixture(3, false);
+      await db.prisma.page.updateMany({ where: { projectId: f.project.id }, data: { content: 'No links before preparation' } });
+      await db.prisma.page.update({ where: { id: f.source.id }, data: { slug: 'parent', path: 'parent' } });
+      const document = await db.prisma.page.findFirstOrThrow({ where: { projectId: f.project.id, position: 2 } });
+      let attempts = 0;
+      beforeTransaction = async () => {
+        if (++attempts !== 1) return;
+        await db.prisma.page.update({
+          where: { id: document.id },
+          data: {
+            content,
+            updatedAt: new Date(document.updatedAt.getTime() + 1000),
+          },
+        });
+      };
+      await actions.reorderPages(f.project.id, moveUnderSource(f));
+      expect(await db.prisma.page.findUnique({ where: { id: document.id } })).toMatchObject({ content: expected });
+      expect(await db.prisma.page.findUnique({ where: { id: f.target.id } })).toMatchObject({ path: 'parent/old', parentId: f.source.id });
+      expect(attempts).toBe(expectedAttempts);
+      expect(await db.prisma.deployment.count({ where: { projectId: f.project.id } })).toBe(0);
+      expect((await db.prisma.project.findUniqueOrThrow({ where: { id: f.project.id } })).config).toEqual(f.project.config);
+    },
+  );
+
+  it('an address move ignores an unrelated save and still relinks and redirects', async () => {
+    const f = await fixture(3);
+    const unrelated = await db.prisma.page.findFirstOrThrow({ where: { projectId: f.project.id, position: 2 } });
+    await db.prisma.page.update({ where: { id: unrelated.id }, data: { content: 'Unrelated content' } });
+    let attempts = 0;
+    beforeTransaction = async () => {
+      attempts++;
+      await db.prisma.page.update({ where: { id: unrelated.id }, data: { content: `Concurrent unrelated save ${attempts}` } });
+    };
+    await actions.reorderPages(f.project.id, moveUnderSource(f));
+    expect(attempts).toBe(1);
+    expect([...new Set(metrics.documentsUnderLock)]).toEqual(['Concurrent unrelated save 1']);
+    expect(await db.prisma.page.findUnique({ where: { id: f.target.id } })).toMatchObject({ path: 'source-1/old' });
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: f.source.id } })).content).toContain('](/source-1/old#install)');
+    expect((await db.prisma.project.findUniqueOrThrow({ where: { id: f.project.id } })).config).toMatchObject({
+      redirects: [{ from: '/old', to: '/source-1/old', generated: true }],
+    });
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: unrelated.id } })).content).toBe('Concurrent unrelated save 1');
+  });
+
+  it('an address move conflicts after three attempts if a relinked page keeps saving', async () => {
+    const f = await fixture();
+    let attempts = 0;
+    beforeTransaction = async () => {
+      attempts++;
+      await db.prisma.page.update({ where: { id: f.source.id }, data: { content: `${f.text} save ${attempts}` } });
+    };
+    await expect(actions.reorderPages(f.project.id, moveUnderSource(f))).rejects.toMatchObject({
+      code: 'page:address_conflict',
+      details: { reason: 'address_raced' },
+    });
+    expect(attempts).toBe(3);
+    expect(await db.prisma.page.findUnique({ where: { id: f.target.id } })).toMatchObject({ path: 'old', parentId: null });
+    expect(await db.prisma.page.findUnique({ where: { id: f.source.id } })).toMatchObject({ content: `${f.text} save 3` });
+    expect((await db.prisma.project.findUniqueOrThrow({ where: { id: f.project.id } })).config).toEqual(f.project.config);
+  });
+
+  it('bulk items retry with fresh content after one relink revision race', async () => {
+    const f = await fixture();
+    let attempts = 0;
+    beforeTransaction = async () => {
+      if (++attempts !== 1) return;
+      await db.prisma.page.update({ where: { id: f.source.id }, data: { content: `${f.text} saved text` } });
+    };
+    metrics.parsesUnderLock = 0;
+    await actions.reorderPages(f.project.id, moveUnderSource(f));
+    expect(attempts).toBe(2);
+    expect([...new Set(metrics.documentsUnderLock)]).toEqual([`${f.text} saved text`]);
+    expect(await db.prisma.page.findUnique({ where: { id: f.source.id } })).toMatchObject({ content: '[link](/source-1/old) saved text' });
+  });
+
+  it('bulk retries retain the expected structure revision precondition', async () => {
+    const f = await fixture();
+    const pages = await db.prisma.page.findMany({ where: { projectId: f.project.id } });
+    let attempts = 0;
+    beforeTransaction = async () => {
+      attempts++;
+      await db.prisma.page.update({ where: { id: f.source.id }, data: { position: 7 } });
+    };
+    await expect(
+      actions.reorderPages(f.project.id, {
+        ...moveUnderSource(f),
+        expectedStructureRevision: actions.pageStructureRevision(pages),
+      }),
+    ).rejects.toMatchObject({ details: { reason: 'structure_changed' } });
+    expect(attempts).toBe(1);
+  });
 
   it('council: real PostgreSQL rollback, commit, and stale autosave preserve the address-link invariant', async () => {
     const f = await fixture();

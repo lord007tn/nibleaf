@@ -44,7 +44,7 @@ import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { readerQuestionStorage } from '@/lib/ai-search/conversation-archive';
-import { consumeAnswerQuota } from '@/lib/ai-search/quota';
+import { consumeAnswerQuota, recordAnswerServed } from '@/lib/ai-search/quota';
 import { answerPublishedSearch, answerSearchAvailable, publishedSearchAnswerHint, runPublishedSearch } from '@/lib/ai-search/runtime';
 import { publishedSections } from '@/lib/ai-search/sections';
 import { AssetReferenceAccess } from '@/lib/asset-reference-access';
@@ -878,6 +878,8 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
   });
+  // A reader who left (a cached answer returns without checking) got nothing: don't count it.
+  if (!getContext<HonoEnv>().req.raw.signal.aborted) await recordAnswerServed(snapshot.project.id);
   return { ...answer, quotaRemaining: quota.remaining };
 };
 

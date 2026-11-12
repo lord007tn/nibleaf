@@ -128,3 +128,29 @@ it('rotates only the requested website secret and its rollout mirror', async () 
     update: { secret: data.webhookSecret },
   });
 });
+
+describe('AI answers settings routes', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const workspaceAi = await import('@/actions/workspace-ai');
+    vi.mocked(workspaceAi.getWorkspaceAi).mockResolvedValue({ viewer: { canManage: false } } as never);
+    vi.mocked(workspaceAi.selectWorkspaceAi).mockResolvedValue({} as never);
+  });
+
+  // Everyone on the site reads where AI answers stand; only Admins change them.
+  it.each([
+    { role: 'viewer', read: 200, change: 403 },
+    { role: 'member', read: 200, change: 403 },
+    { role: 'admin', read: 200, change: 200 },
+    { role: 'owner', read: 200, change: 200 },
+  ])('a site $role: read $read, change $change', async ({ role, read, change }) => {
+    mocks.access.mockResolvedValue({ organizationId: 'site-org', role });
+    expect((await app.request(`${url}/ai`)).status).toBe(read);
+    const patch = await app.request(`${url}/ai`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ providerId: 'disabled', answersEnabled: false }),
+    });
+    expect(patch.status).toBe(change);
+  });
+});

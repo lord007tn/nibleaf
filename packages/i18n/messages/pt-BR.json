@@ -448,6 +448,8 @@
   "editor_format_underline": "Sublinhado",
   "editor_format_subscript": "Assinatura",
   "editor_format_superscript": "Sobrescrito",
+  "editor_format_turninto": "Transformar em",
+  "editor_format_toolbar": "Formatação de texto",
   "editor_link_save": "Salvar link",
   "editor_link_open": "Abrir em nova aba",
   "editor_link_openrelativehint": "Links relativos abertos em seu site publicado",
