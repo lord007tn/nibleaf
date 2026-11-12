@@ -19,10 +19,15 @@ const CHECK_META: Record<CheckCode, { title: MessageKey; hint: MessageKey; order
   'broken-internal-link': { title: 'publish.checks.brokenLink', hint: 'publish.checks.brokenLinkHint', order: 0 },
   'empty-page': { title: 'publish.checks.emptyPage', hint: 'publish.checks.emptyPageHint', order: 1 },
   'untitled-page': { title: 'publish.checks.untitledPage', hint: 'publish.checks.untitledPageHint', order: 2 },
-  'missing-alt': { title: 'publish.checks.missingAlt', hint: 'publish.checks.missingAltHint', order: 3 },
-  'duplicate-title': { title: 'publish.checks.duplicateTitle', hint: 'publish.checks.duplicateTitleHint', order: 4 },
-  'stray-characters': { title: 'publish.checks.strayCharacters', hint: 'publish.checks.strayCharactersHint', order: 5 },
-  'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 6 },
+  'video-not-https': { title: 'publish.checks.videoNotHttps', hint: 'publish.checks.videoNotHttpsHint', order: 3 },
+  'missing-alt': { title: 'publish.checks.missingAlt', hint: 'publish.checks.missingAltHint', order: 4 },
+  'embed-untitled': { title: 'publish.checks.embedUntitled', hint: 'publish.checks.embedUntitledHint', order: 5 },
+  'embed-as-link': { title: 'publish.checks.embedAsLink', hint: 'publish.checks.embedAsLinkHint', order: 6 },
+  'embed-unclosed': { title: 'publish.checks.embedUnclosed', hint: 'publish.checks.embedUnclosedHint', order: 7 },
+  'video-poster-hidden': { title: 'publish.checks.videoPosterHidden', hint: 'publish.checks.videoPosterHiddenHint', order: 8 },
+  'duplicate-title': { title: 'publish.checks.duplicateTitle', hint: 'publish.checks.duplicateTitleHint', order: 9 },
+  'stray-characters': { title: 'publish.checks.strayCharacters', hint: 'publish.checks.strayCharactersHint', order: 10 },
+  'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 11 },
 };
 
 /** One row per page and check: a page with three broken links is one thing to fix. */

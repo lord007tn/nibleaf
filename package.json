@@ -59,6 +59,7 @@
     "test:reader-search:browser": "node tests/integration/reader-search-keystrokes/browser.mjs",
     "test:reader-navigation:browser": "node tests/integration/reader-navigation/browser.mjs",
     "test:reader-deferred-controls:browser": "node tests/integration/reader-deferred-controls/browser.mjs",
+    "test:reader-video-embeds:browser": "node tests/integration/reader-video-embeds/browser.mjs",
     "test:settings:browser": "node tests/integration/settings-leave-guard/browser.mjs",
     "test:ds:forced-colors": "node tests/integration/design-system/forced-colors.mjs",
     "build": "turbo run build",
