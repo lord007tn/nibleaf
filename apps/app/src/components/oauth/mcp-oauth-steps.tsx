@@ -180,45 +180,44 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
       <p className="text-muted-foreground text-sm leading-relaxed">{t('oauth.project.description', { client })}</p>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-medium text-sm">{t('oauth.project.projectLabel')}</legend>
-        {groups.map((group) => (
-          // One heading per organization when there's more than one; the
-          // websites under it keep one radio group (same name) across groups.
-          <div
-            aria-labelledby={grouped ? `mcp-oauth-org-${group.id}` : undefined}
-            className="flex flex-col gap-2"
-            data-slot="organization-group"
-            key={group.id}
-            role={grouped ? 'group' : undefined}
-          >
-            {grouped ? (
-              <p className="mt-1 font-medium text-muted-foreground text-xs uppercase tracking-wide" id={`mcp-oauth-org-${group.id}`}>
+        {groups.map((group) => {
+          const rows = group.sites.map((candidate) => (
+            <label
+              className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+              key={candidate.id}
+            >
+              <input
+                checked={projectId === candidate.id}
+                name="mcp-oauth-project"
+                onChange={() => {
+                  setProjectId(candidate.id);
+                  if (!candidate.presets.includes(preset)) setPreset('read_only');
+                }}
+                type="radio"
+              />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <bdi className="truncate font-medium">{candidate.name}</bdi>
+                <bdi className="truncate text-muted-foreground text-xs" dir="ltr">
+                  {candidate.slug}
+                </bdi>
+              </span>
+            </label>
+          ));
+          // One fieldset per organization when there's more than one, named by
+          // its legend; the websites under it keep one radio group (same name).
+          return grouped ? (
+            <fieldset className="flex flex-col gap-2" data-slot="organization-group" key={group.id}>
+              <legend className="mt-1 mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">
                 <bdi>{group.name}</bdi>
-              </p>
-            ) : null}
-            {group.sites.map((candidate) => (
-              <label
-                className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-                key={candidate.id}
-              >
-                <input
-                  checked={projectId === candidate.id}
-                  name="mcp-oauth-project"
-                  onChange={() => {
-                    setProjectId(candidate.id);
-                    if (!candidate.presets.includes(preset)) setPreset('read_only');
-                  }}
-                  type="radio"
-                />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <bdi className="truncate font-medium">{candidate.name}</bdi>
-                  <bdi className="truncate text-muted-foreground text-xs" dir="ltr">
-                    {candidate.slug}
-                  </bdi>
-                </span>
-              </label>
-            ))}
-          </div>
-        ))}
+              </legend>
+              {rows}
+            </fieldset>
+          ) : (
+            <div className="flex flex-col gap-2" data-slot="organization-group" key={group.id}>
+              {rows}
+            </div>
+          );
+        })}
       </fieldset>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-medium text-sm">{t('oauth.project.permissionLabel')}</legend>

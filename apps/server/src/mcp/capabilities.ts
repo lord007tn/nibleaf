@@ -134,8 +134,9 @@ const unavailableJobs = (principal: McpPrincipal): UnavailableJob[] => {
 
 /** The permission level these scopes match exactly, or `custom`. */
 const permissionOf = (scopes: readonly McpScope[]) =>
-  MCP_KEY_PRESETS.find((preset) => MCP_PRESET_SCOPES[preset].length === scopes.length && MCP_PRESET_SCOPES[preset].every((scope) => scopes.includes(scope))) ??
-  'custom';
+  MCP_KEY_PRESETS.find(
+    (preset) => MCP_PRESET_SCOPES[preset].length === scopes.length && MCP_PRESET_SCOPES[preset].every((scope) => scopes.includes(scope)),
+  ) ?? 'custom';
 
 const getCapabilityDto = (principal: McpPrincipal) => ({
   schemaVersion: 1,

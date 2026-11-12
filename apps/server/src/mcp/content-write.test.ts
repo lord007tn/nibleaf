@@ -1445,7 +1445,10 @@ describe('preview and publish', () => {
     const deploymentUrl = 'https://app.example.test/app/projects/project-1/publishes/deployment-1';
     expect(published.structuredContent.data.deploymentUrl).toBe(deploymentUrl);
     const replay = await client.call('publish_changes', args);
-    expect(replay.structuredContent).toMatchObject({ meta: { replayed: true }, data: { deploymentId: 'deployment-1', replayed: true, deploymentUrl } });
+    expect(replay.structuredContent).toMatchObject({
+      meta: { replayed: true },
+      data: { deploymentId: 'deployment-1', replayed: true, deploymentUrl },
+    });
     expect(mocks.createDeployment).toHaveBeenCalledOnce();
     // The same token cannot publish again: the new deployment changed the state it was bound to.
     const reuse = await client.call('publish_changes', { confirm: true, previewToken });

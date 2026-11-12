@@ -120,8 +120,9 @@ describe('MCP OAuth project step', () => {
     const container = await render(<McpOAuthProjectStep />);
     const groups = [...container.querySelectorAll('[data-slot="organization-group"]')];
     expect(groups).toHaveLength(2);
-    expect(groups.map((group) => group.getAttribute('role'))).toEqual(['group', 'group']);
-    expect(groups[0]?.getAttribute('aria-labelledby')).toBe('mcp-oauth-org-org-1');
+    // Each organization is its own fieldset, named by its legend.
+    expect(groups.map((group) => group.tagName)).toEqual(['FIELDSET', 'FIELDSET']);
+    expect(groups.map((group) => group.querySelector('legend')?.textContent)).toEqual(['Acme', 'Acme']);
     expect([...(groups[0]?.querySelectorAll('label') ?? [])].map((label) => label.textContent)).toEqual(['Docsdocs', 'Blogblog']);
     expect(groups[1]?.textContent).toContain('docs-2');
     // One radio group across organizations: picking one website unpicks the others.
@@ -131,7 +132,7 @@ describe('MCP OAuth project step', () => {
   it('shows no organization heading when every website belongs to one organization', async () => {
     hooks.authorization.mockReturnValue(authorization());
     const container = await render(<McpOAuthProjectStep />);
-    expect(container.querySelector('[data-slot="organization-group"]')?.getAttribute('role')).toBeNull();
+    expect(container.querySelector('[data-slot="organization-group"]')?.tagName).toBe('DIV');
     expect(container.textContent).not.toContain('Acme');
     expect(container.textContent).toContain('oauth.project.projectLabel');
   });

@@ -471,7 +471,11 @@ describe('Nibleaf MCP protocol surface', () => {
     type Job = { domain: string; kind: string; unlockedBy?: string[] };
     type Capabilities = { website: { id: string; name: string; dashboardUrl: string }; permission: string; unavailable: Job[] };
     const discover = async (scopes: McpScope[], actor: McpPrincipal['actor'] = { userId: 'user-1', role: 'member' }) => {
-      const { server, clientTransport, request } = await createProtocolClient({ ...principal, actor, credential: { ...principal.credential, scopes } });
+      const { server, clientTransport, request } = await createProtocolClient({
+        ...principal,
+        actor,
+        credential: { ...principal.credential, scopes },
+      });
       const response = await request<{ structuredContent: { data: Capabilities } }>('tools/call', { name: 'get_capabilities', arguments: {} });
       await clientTransport.close();
       await server.close();
@@ -481,7 +485,11 @@ describe('Nibleaf MCP protocol surface', () => {
     try {
       analyticsMode.value = 'clickhouse';
       const readOnly = await discover([...MCP_PRESET_SCOPES.read_only]);
-      expect(readOnly.website).toEqual({ id: principal.project.id, name: principal.project.name, dashboardUrl: expect.stringMatching(/\/app\/projects\/project-1$/) });
+      expect(readOnly.website).toEqual({
+        id: principal.project.id,
+        name: principal.project.name,
+        dashboardUrl: expect.stringMatching(/\/app\/projects\/project-1$/),
+      });
       expect(readOnly.permission).toBe('read_only');
       // Search terms need only their own permission, never write or publish access.
       expect(job(readOnly, 'search_terms')).toMatchObject({ kind: 'permission', unlockedBy: ['analytics:search_terms'] });
