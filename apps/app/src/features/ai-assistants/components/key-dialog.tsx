@@ -83,7 +83,7 @@ export function KeyDialog({
         showCloseButton={!locked}
       >
         {issued ? (
-          <SecretStep endpoint={endpoint} initialClient={initialClient} issued={issued} onDone={onClose} projectId={projectId} />
+          <SecretStep endpoint={endpoint} key={issued.id} initialClient={initialClient} issued={issued} onDone={onClose} projectId={projectId} />
         ) : (
           <CreateStep create={create} onCancel={onClose} onIssued={onIssued} presets={presets} role={role} />
         )}
@@ -295,11 +295,11 @@ function SecretStep({
   const [now, setNow] = useState(() => Date.now());
   // A test belongs to the key it started for; a late result for an older key is dropped.
   const testRun = useRef(0);
-  // The form that held focus is gone: move it to the secret's Copy button, the next thing to do.
+  // Mounted once per key: the form that held focus is gone, so move it to the Copy button, the next thing to do.
   const secretRow = useRef<HTMLDivElement>(null);
   useEffect(() => {
     secretRow.current?.querySelector<HTMLButtonElement>('button')?.focus();
-  }, [issued.id]);
+  }, []);
   useEffect(() => {
     testRun.current += 1;
     setConnection('');

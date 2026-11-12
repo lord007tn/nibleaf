@@ -119,7 +119,10 @@ describe('optimistic revoke of MCP credentials', () => {
     });
     expect(deliver).toHaveBeenCalledWith({ id: 'key-new', secret });
     expect(JSON.stringify(result)).not.toContain(secret);
-    const cached = queryClient.getMutationCache().getAll().map((entry) => JSON.stringify({ data: entry.state.data, variables: entry.state.variables }));
+    const cached = queryClient
+      .getMutationCache()
+      .getAll()
+      .map((entry) => JSON.stringify({ data: entry.state.data, variables: entry.state.variables }));
     expect(cached.length).toBeGreaterThan(0);
     for (const entry of cached) expect(entry).not.toContain(secret);
   });

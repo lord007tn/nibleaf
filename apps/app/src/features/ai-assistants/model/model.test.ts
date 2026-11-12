@@ -219,7 +219,10 @@ describe('connect watch', () => {
   it('ends an unfinished watch at the deadline with a restart, and prefers a working grant', () => {
     const watch = startWatch('claude', [], now);
     const later = now + WATCH_MS;
-    const apps = [watched('a', { name: 'Claude', lastActivity: { outcome: 'succeeded' } }), watched('b', { name: 'Claude', createdAt: '2026-11-12T12:05:00Z' })];
+    const apps = [
+      watched('a', { name: 'Claude', lastActivity: { outcome: 'succeeded' } }),
+      watched('b', { name: 'Claude', createdAt: '2026-11-12T12:05:00Z' }),
+    ];
     expect(watchState(watch, apps, now)).toMatchObject({ kind: 'working', app: { id: 'a' } });
     const timedOut = watchState(watch, [], later);
     expect(timedOut.kind).toBe('timedOut');
