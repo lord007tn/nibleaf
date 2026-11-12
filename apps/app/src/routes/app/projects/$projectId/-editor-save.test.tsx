@@ -32,6 +32,7 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => mocks.navigate,
   }),
   useBlocker: () => undefined,
+  useRouter: () => ({ buildLocation: () => ({ href: '' }) }),
   Link: ({ children, to: _to, params: _params, ...props }: { children: ReactNode; to: string; params: unknown }) => <a {...props}>{children}</a>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
@@ -47,6 +48,7 @@ vi.mock('@/hooks/api', async () => ({
   pagePublishState: () => 'unchanged',
   queryKeys: (await import('@/hooks/api/query-keys')).queryKeys,
   useBranches: () => ({}),
+  useOpenApiConfiguration: () => ({}),
   useLanguages: () => ({ data: [{ id: 'lang-en', code: 'en', label: 'English', isDefault: true }] }),
   usePages: () => ({ data: mocks.pages, isPending: false }),
   usePage: () => ({ data: mocks.page }),
