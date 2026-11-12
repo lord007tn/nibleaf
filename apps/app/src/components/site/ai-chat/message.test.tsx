@@ -198,6 +198,118 @@ describe('reader chat messages', () => {
     await unmount();
   });
 
+  it('lays out English labels, code and links in an Arabic answer as their own left-to-right islands', async () => {
+    const { container, render, unmount } = mount();
+    const arabic: AiChatFinalEvent = {
+      ...final,
+      language: 'ar',
+      answer:
+        'افتح **Settings → Custom domain**، وأدخل نطاقك مثل `docs.example.com`، ثم اختر **نشر**. [S1]\n\nزر https://docs.example.com/setup للتفاصيل. [S1]',
+    };
+    await render(<ChatMessage text="" final={arabic} options={{ ...options, lang: 'ar' }} busy={false} consent="granted" close={vi.fn()} />);
+    const labels = [...container.querySelectorAll('strong')].map((strong) => [strong.textContent, strong.getAttribute('dir')]);
+    expect(labels).toEqual([
+      ['Settings → Custom domain', 'ltr'],
+      ['نشر', null],
+    ]);
+    expect(container.querySelector('code')?.getAttribute('dir')).toBe('ltr');
+    expect([...container.querySelectorAll('bdi[dir="ltr"]')].map((island) => island.textContent)).toEqual(['https://docs.example.com/setup']);
+    await unmount();
+  });
+
+  it('decides a label’s direction from all of its text, code and nested emphasis included', async () => {
+    const { container, render, unmount } = mount();
+    const arabic: AiChatFinalEvent = {
+      ...final,
+      language: 'ar',
+      answer: 'افتح **`Settings` → `Custom domain`** ثم **Settings → *إعدادات النطاق***. [S1]',
+    };
+    await render(<ChatMessage text="" final={arabic} options={{ ...options, lang: 'ar' }} busy={false} consent="granted" close={vi.fn()} />);
+    const labels = [...container.querySelectorAll('strong')].map((strong) => [strong.textContent, strong.getAttribute('dir')]);
+    expect(labels).toEqual([
+      ['Settings → Custom domain', 'ltr'],
+      ['Settings → إعدادات النطاق', null],
+    ]);
+    await unmount();
+  });
+
+  it('keeps a link’s own closing bracket inside its left-to-right island', async () => {
+    const { container, render, unmount } = mount();
+    const link = 'https://en.wikipedia.org/wiki/Function_(mathematics)';
+    await render(
+      <ChatMessage
+        text=""
+        final={{ ...final, language: 'ar', answer: `راجع ${link}. [S1]` }}
+        options={options}
+        busy={false}
+        consent="granted"
+        close={vi.fn()}
+      />,
+    );
+    expect([...container.querySelectorAll('bdi[dir="ltr"]')].map((island) => island.textContent)).toEqual([link]);
+    await unmount();
+  });
+
+  it('lets a long link, label or code run wrap inside while its citation stays with the last line', async () => {
+    const { container, render, unmount } = mount();
+    const long = `docs.example.com/guides/${'custom-domains/'.repeat(4)}verify`;
+    await render(
+      <ChatMessage
+        text=""
+        final={{
+          ...final,
+          language: 'ar',
+          answer: `راجع https://${long} [S1]\n\nاختر **Settings → Custom domain → Verify the DNS records now** [S1]\n\nشغّل \`nibleaf domains verify --site ${long}\` [S1]`,
+        }}
+        options={options}
+        busy={false}
+        consent="granted"
+        close={vi.fn()}
+      />,
+    );
+    const kept = [...container.querySelectorAll('span.whitespace-nowrap')];
+    expect(kept).toHaveLength(3);
+    for (const glue of kept) {
+      // The anchor sits in its own wrapping run; only the break before the chip is held.
+      const anchor = glue.firstElementChild;
+      expect(anchor?.matches('span.whitespace-normal')).toBe(true);
+      expect(anchor?.textContent?.length).toBeGreaterThan(40);
+      expect(glue.lastElementChild?.matches('button[data-citation]')).toBe(true);
+    }
+    await unmount();
+  });
+
+  it('shows code exactly as written: a marker inside it is text, not a citation', async () => {
+    const { container, render, unmount } = mount();
+    await render(
+      <ChatMessage text="" final={{ ...final, answer: 'Type `[S1]` here. [S1]' }} options={options} busy={false} consent="granted" close={vi.fn()} />,
+    );
+    expect(container.querySelector('code')?.textContent).toBe('[S1]');
+    expect(container.querySelectorAll('button[data-citation]')).toHaveLength(1);
+    await unmount();
+  });
+
+  it('keeps each citation on the line of the word before it, so a number never starts a line alone', async () => {
+    const { container, render, unmount } = mount();
+    const [first] = final.citations;
+    if (!first) throw new Error('fixture');
+    const cited: AiChatFinalEvent = {
+      ...final,
+      language: 'ar',
+      answer: 'قد يستغرق ذلك حتى 24 ساعة. [S1][S2]\n\nثم اختر **Check again** [S1]',
+      citations: [first, { ...first, id: 'S2', heading: 'Wait', anchor: 'wait' }],
+    };
+    await render(<ChatMessage text="" final={cited} options={options} busy={false} consent="granted" close={vi.fn()} />);
+    const kept = [...container.querySelectorAll('span.whitespace-nowrap')];
+    // The last word with both numbers after it, and a bold label with its number.
+    expect(kept.map((span) => span.textContent)).toEqual(['ساعة.12', 'Check again1']);
+    expect(kept[0]?.querySelectorAll('button[data-citation]')).toHaveLength(2);
+    expect(kept[1]?.querySelector('strong')?.textContent).toBe('Check again');
+    // The text before stays free to wrap.
+    expect(container.querySelector('p')?.textContent).toBe('قد يستغرق ذلك حتى 24 ساعة.12');
+    await unmount();
+  });
+
   it('lays out each answer by its own script, since it follows the question language', async () => {
     const { container, render, unmount } = mount();
     await render(
