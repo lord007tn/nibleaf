@@ -1,6 +1,6 @@
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { editorIn, jumpToSection, prefersReducedMotion, sectionFragment } from './editor-sections';
+import { editorIn, landOnSection, prefersReducedMotion, sectionFragment } from './editor-sections';
 
 declare module '@tanstack/react-router' {
   interface HistoryState {
@@ -76,6 +76,20 @@ export function useLinkedPageHistory({
     return () => root.removeEventListener('scroll', onScroll, true);
   });
 
+  // One landing on a section at a time; the writer's first move ends it (`landOnSection`).
+  const endLanding = useRef<(() => void) | null>(null);
+  const startLanding = useCallback((target: string) => {
+    endLanding.current?.();
+    const end = landOnSection({
+      find: () => editorIn(canvasRef.current()),
+      section: target,
+      smooth: !prefersReducedMotion(),
+      waitFrames: SECTION_WAIT_FRAMES,
+    });
+    endLanding.current = end;
+    return end;
+  }, []);
+
   // Once the page an entry names is on screen, put it back where it was left
   // (the top for an entry never scrolled), or go to the section it names.
   const restored = useRef<string | null>(null);
@@ -92,15 +106,8 @@ export function useLinkedPageHistory({
     if (left === undefined && section) {
       const scroller = editorScroller(canvasRef.current());
       if (scroller && !samePage) scroller.scrollTop = 0;
-      const smooth = !prefersReducedMotion();
-      // The page's content reaches the editor over a few frames; look until its heading is there.
-      const seek = () => {
-        const editor = editorIn(canvasRef.current());
-        if (editor && jumpToSection(editor, section, { smooth })) return;
-        if (frames++ < SECTION_WAIT_FRAMES) frame = requestAnimationFrame(seek);
-      };
-      seek();
-      return () => cancelAnimationFrame(frame);
+      // The page's content reaches the editor over a few frames; then the section is looked up once.
+      return startLanding(section);
     }
     const top = left ?? 0;
     // The document renders over a few frames; reapply until it has room.
@@ -111,7 +118,7 @@ export function useLinkedPageHistory({
     };
     apply();
     return () => cancelAnimationFrame(frame);
-  }, [entry, named, pageId, saved, section]);
+  }, [entry, named, pageId, saved, section, startLanding]);
 
   const open = useCallback(
     async (id: string, target?: string) => {
@@ -119,8 +126,7 @@ export function useLinkedPageHistory({
       if (!pageId || (samePage && !target)) return;
       // The section this entry already names: go to it again, as a second click on such a link does on the site.
       if (samePage && target === section && named === pageId) {
-        const editor = editorIn(canvasRef.current());
-        if (editor) jumpToSection(editor, target, { smooth: !prefersReducedMotion() });
+        startLanding(target);
         return;
       }
       const top = editorScroller(canvasRef.current())?.scrollTop ?? 0;
@@ -145,7 +151,7 @@ export function useLinkedPageHistory({
         hashScrollIntoView: false,
       });
     },
-    [navigate, named, pageId, projectId, section],
+    [navigate, named, pageId, projectId, section, startLanding],
   );
   const href = useCallback(
     (id: string, target?: string) =>

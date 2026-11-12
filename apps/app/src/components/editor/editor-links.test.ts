@@ -14,7 +14,16 @@ const project: Pick<Project, 'id' | 'name' | 'slug' | 'description' | 'icon' | '
   slug: 'docs',
   description: null,
   icon: null,
-  config: { redirects: [{ from: 'old-setup', to: 'guides/setup' }] } as Project['config'],
+  config: {
+    redirects: [
+      { from: 'old-setup', to: 'guides/setup' },
+      // A redirect that names a section, one that inherits it, and one whose next hop sets another.
+      { from: 'old-install', to: 'guides/setup#install' },
+      { from: 'install-alias', to: 'old-install' },
+      { from: 'legacy-options', to: 'moved-options#legacy' },
+      { from: 'moved-options', to: 'configuration#options' },
+    ],
+  } as Project['config'],
 };
 const languages: Pick<Language, 'id' | 'code' | 'label' | 'direction' | 'isDefault' | 'config'>[] = [
   { id: 'lang-en', code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null },
@@ -81,6 +90,21 @@ describe('editor link resolution (PUBLIC-18)', () => {
     expect(resolve('setup#%D8%AA%D8%AB%D8%A8%D9%8A%D8%AA')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'تثبيت' });
     // A bare '#' names no section.
     expect(resolve('setup#')).toEqual({ kind: 'page', pageId: 'setup' });
+  });
+
+  it('a redirect’s section wins, as the published redirect lands (#553 council)', () => {
+    const resolve = resolveFrom('intro');
+    // The redirect supplies the section.
+    expect(resolve('/old-install')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'install' });
+    // It replaces the link's own, as a Location with a fragment does.
+    expect(resolve('/old-install#other')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'install' });
+    // A chain inherits the last section set on the way.
+    expect(resolve('/install-alias')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'install' });
+    expect(resolve('/install-alias#other')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'install' });
+    expect(resolve('/legacy-options')).toEqual({ kind: 'page', pageId: 'configuration', anchor: 'options' });
+    // A redirect with no section keeps the link's.
+    expect(resolve('/old-setup#other')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'other' });
+    expect(resolve('/old-setup')).toEqual({ kind: 'page', pageId: 'setup' });
   });
 
   it('follows a redirect from an old address to the page', () => {

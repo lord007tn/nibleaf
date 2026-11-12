@@ -4,7 +4,11 @@
  * lands on that heading, with the caret (and focus) at its start, as the
  * published site lands on it. An unknown section stays at the top, an in-page
  * `#section` link jumps within the page, Back and Forward keep working, a new
- * tab gets the section too, and reduced motion gets an instant jump.
+ * tab gets the section too, and reduced motion gets an instant jump. The
+ * writer always wins (council): a landing still pending never moves the caret
+ * or focus once the writer has acted, and an unknown section is looked up once.
+ *
+ * Animation frames are controlled here (`settle` runs them), never slept on.
  */
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -33,8 +37,9 @@ const PAGES: Record<string, string> = {
   ].join('\n\n'),
 };
 
-const harness: { pages?: LinkedPages; editable: boolean; editors: Map<string, import('@tiptap/core').Editor> } = {
+const harness: { pages?: LinkedPages; editable: boolean; deferSeed: boolean; editors: Map<string, import('@tiptap/core').Editor> } = {
   editable: true,
+  deferSeed: false,
   editors: new Map(),
 };
 
@@ -55,7 +60,12 @@ function PageEditor({ pageId, links }: { pageId: string; links: EditorLinks }) {
     extensions: buildEditorExtensions({ getLinks: () => linksRef.current }),
     // The headings are there before the seed, which then replaces the document and moves the caret.
     content: PAGES[pageId] ?? '',
-    onCreate: ({ editor: created }) => queueMicrotask(() => !created.isDestroyed && seedMarkdown(created, PAGES[pageId] ?? '')),
+    onCreate: ({ editor: created }) => {
+      const seed = () => !created.isDestroyed && seedMarkdown(created, PAGES[pageId] ?? '');
+      // `deferSeed`: the seed waits for a frame, so the writer can act before it.
+      if (harness.deferSeed) requestAnimationFrame(seed);
+      else queueMicrotask(seed);
+    },
   });
   useEffect(() => {
     if (editor) harness.editors.set(pageId, editor);
@@ -95,8 +105,19 @@ function EditorScreen() {
 const roots: Array<ReturnType<typeof createRoot>> = [];
 let scrolled: Array<{ element: Element; options: ScrollIntoViewOptions | boolean | undefined }>;
 let reducedMotion: boolean;
+/** Animation frames requested and not run yet. */
+const frames = new Map<number, FrameRequestCallback>();
+let nextFrame = 0;
 
 beforeEach(() => {
+  frames.clear();
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    nextFrame += 1;
+    frames.set(nextFrame, callback);
+    return nextFrame;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  harness.deferSeed = false;
   harness.editable = true;
   harness.editors.clear();
   scrolled = [];
@@ -121,10 +142,40 @@ afterEach(async () => {
   delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
 });
 
-const settle = () =>
+/** Run one animation frame: the callbacks requested before it. */
+const runFrame = () => {
+  const due = [...frames];
+  frames.clear();
+  for (const [, callback] of due) callback(performance.now());
+};
+/** Let the page settle: `count` frames, each followed by pending imports and promises. */
+const settle = (count = 8) =>
   act(async () => {
-    for (let i = 0; i < 6; i++) await new Promise((done) => requestAnimationFrame(() => done(null)));
+    for (let i = 0; i < count; i++) {
+      runFrame();
+      await vi.dynamicImportSettled();
+      await new Promise((done) => setTimeout(done, 0));
+    }
   });
+
+/** The writer types `text` at the caret: the key and input events, then the edit. */
+const type = (editor: import('@tiptap/core').Editor, text: string) =>
+  act(async () => {
+    for (const character of text) {
+      editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: character, bubbles: true, cancelable: true }));
+      editor.view.dom.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: character, bubbles: true, cancelable: true }));
+      editor.commands.insertContent(character);
+    }
+  });
+/** The end of the heading with this text, as a document position. */
+const headingEnd = (editor: import('@tiptap/core').Editor, text: string) => {
+  let end = -1;
+  editor.state.doc.descendants((node, position) => {
+    if (node.type.name === 'heading' && node.textContent === text) end = position + 1 + node.content.size;
+    return end < 0;
+  });
+  return end;
+};
 
 async function renderEditor(start = '/app/projects/project-1/editor') {
   const history = createMemoryHistory({ initialEntries: [start] });
@@ -311,6 +362,67 @@ describe('Back and Forward around a section link (#553)', () => {
     const { canvas } = await renderEditor('/app/projects/project-1/editor?page=page-b#setup-1');
     expect(canvas().dataset.page).toBe('page-b');
     expect(scrolled.at(-1)?.element).toBe(heading(canvas(), 'Setup', 1));
+  });
+});
+
+describe('the writer always wins over a pending landing (#553 council)', () => {
+  it('an unknown #detailsx, then a click on Details and typing xY, gives DetailsxY with the caret kept', async () => {
+    const { canvas, editor } = await renderEditor();
+    await act(async () => harness.pages?.open('page-a', 'detailsx'));
+    await settle();
+    expect(scrolled).toEqual([]);
+    await act(async () => heading(canvas(), 'Details').dispatchEvent(new Event('pointerdown', { bubbles: true })));
+    const end = headingEnd(editor(), 'Details');
+    await act(async () => editor().commands.setTextSelection(end));
+    await type(editor(), 'x');
+    // The renamed heading now reads "Detailsx": a landing still looking would find it here.
+    await settle();
+    await type(editor(), 'Y');
+    await settle();
+    expect(heading(canvas(), 'DetailsxY')).toBeTruthy();
+    expect(caret(editor())).toEqual({ block: 'DetailsxY', type: 'heading', atStart: false });
+    expect(editor().state.selection.from).toBe(end + 2);
+    expect(scrolled).toEqual([]);
+  });
+
+  it('typing during a deferred seed keeps its position', async () => {
+    harness.deferSeed = true;
+    const { editor } = await renderEditor();
+    await act(async () => harness.pages?.open('page-b', 'install'));
+    // Page B is on screen, its seed not run yet: the writer starts typing.
+    await act(async () => undefined);
+    await type(editor(), 'z');
+    await settle(1);
+    const after = editor().state.selection.from;
+    await settle();
+    expect(editor().state.selection.from).toBe(after);
+    expect(caret(editor()).block).not.toBe('Install');
+    expect(scrolled).toEqual([]);
+  });
+
+  it('a field focused before the landing frame keeps focus', async () => {
+    harness.deferSeed = true;
+    const { editor } = await renderEditor();
+    const field = document.createElement('input');
+    field.setAttribute('aria-label', 'Page title');
+    document.body.append(field);
+    await act(async () => harness.pages?.open('page-b', 'install'));
+    field.focus();
+    await settle();
+    expect(document.activeElement).toBe(field);
+    expect(caret(editor()).block).not.toBe('Install');
+    expect(scrolled).toEqual([]);
+  });
+
+  it('an unknown section is looked up once, after the seed, and requests no further frames', async () => {
+    harness.deferSeed = true;
+    await renderEditor();
+    await act(async () => harness.pages?.open('page-b', 'no-such-section'));
+    await settle(3);
+    expect(frames.size).toBe(0);
+    await settle(3);
+    expect(frames.size).toBe(0);
+    expect(scrolled).toEqual([]);
   });
 });
 

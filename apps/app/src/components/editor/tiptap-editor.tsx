@@ -51,7 +51,7 @@ import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { type CommentAnchor, EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { type EditorLinks, useEditorLinks } from './editor-links';
-import { markPageContentLoaded } from './editor-sections';
+import { seedPageContent } from './editor-sections';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
 import { BlockImage, LegacyImage } from './extensions/block-image';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
@@ -105,7 +105,10 @@ export function getMarkdown(editor: Editor): string {
  * document behind.
  */
 export function seedMarkdown(editor: Editor, markdown: string): void {
-  markPageContentLoaded(editor);
+  seedPageContent(editor, markdown, () => replaceWithMarkdown(editor, markdown));
+}
+
+function replaceWithMarkdown(editor: Editor, markdown: string): void {
   if (markdown.trim() === '') {
     editor.commands.clearContent(false);
     return;

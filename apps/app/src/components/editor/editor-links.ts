@@ -1,5 +1,5 @@
 import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
-import { createLinkResolver } from '@nibleaf/shared/site-links';
+import { createLinkTargetResolver } from '@nibleaf/shared/site-links';
 import { createContext, useContext } from 'react';
 import type { Branch, Language, OpenApiConfiguration, PageNode, Project } from '@/hooks/api/types';
 import { sectionFragment } from './editor-sections';
@@ -135,20 +135,23 @@ export function editorLinkResolver(
   { allVersions = true }: { allVersions?: boolean } = {},
 ): (href: string) => EditorLinkTarget {
   const from = site?.pages.find((page) => page.id === fromPageId);
-  const resolveLink = site ? createLinkResolver(site) : null;
+  const resolveLink = site ? createLinkTargetResolver(site) : null;
   return (href) => {
     if (isWebAddress(href)) return { kind: 'web' };
     const trimmed = href.trim();
-    const hashAt = trimmed.indexOf('#');
-    const anchor = hashAt >= 0 ? sectionFragment(trimmed.slice(hashAt + 1)) : '';
-    const section = anchor ? { anchor } : {};
     // An in-page anchor: a section of the open page, known before the site loads.
-    if (hashAt === 0) return anchor && fromPageId ? { kind: 'page', pageId: fromPageId, anchor } : { kind: 'other' };
+    if (trimmed.startsWith('#')) {
+      const anchor = sectionFragment(trimmed);
+      return anchor && fromPageId ? { kind: 'page', pageId: fromPageId, anchor } : { kind: 'other' };
+    }
     if (!trimmed) return { kind: 'other' };
     if (!(resolveLink && from)) return { kind: 'unknown' };
-    const destination = resolveLink(trimmed, from);
+    const reached = resolveLink(trimmed, from);
+    const destination = reached?.destination ?? null;
     if (destination === false) return !allVersions && (site?.project.versions.length ?? 0) > 1 ? { kind: 'unknown' } : { kind: 'missing' };
     if (destination === null || destination === true || destination.kind !== 'PAGE') return { kind: 'other' };
-    return { kind: 'page', pageId: destination.id, ...section };
+    // The section the reader lands on: the link's, or the one a redirect on the way sets.
+    const anchor = sectionFragment(reached?.fragment ?? '');
+    return anchor ? { kind: 'page', pageId: destination.id, anchor } : { kind: 'page', pageId: destination.id };
   };
 }
