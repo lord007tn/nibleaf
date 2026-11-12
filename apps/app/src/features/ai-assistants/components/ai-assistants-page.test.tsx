@@ -219,7 +219,12 @@ describe('Try asking', () => {
   it('lists the examples, read-only ones first, each with the permission it needs and a copy button', async () => {
     await renderPage();
     const prompts = Array.from(document.body.querySelectorAll('li')).filter((item) => item.textContent?.includes('settings.aiAssistants.prompt.'));
-    expect(prompts.map((item) => item.querySelector('p')?.textContent?.replace('settings.aiAssistants.prompt.', ''))).toEqual(['healthReport', 'aiGaps', 'failedSearches', 'draftPage']);
+    expect(prompts.map((item) => item.querySelector('p')?.textContent?.replace('settings.aiAssistants.prompt.', ''))).toEqual([
+      'healthReport',
+      'aiGaps',
+      'failedSearches',
+      'draftPage',
+    ]);
     expect(prompts[0]?.textContent).toContain('settings.aiAssistants.needs(settings.apiKeys.read_only)');
     expect(prompts[2]?.textContent).toContain('settings.aiAssistants.needs(settings.apiKeys.support_writer)');
     expect(prompts[0]?.querySelector('button[aria-label="settings.aiAssistants.copyPrompt"]')).not.toBeNull();
