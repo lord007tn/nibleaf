@@ -447,6 +447,7 @@
   "editor_link_open": "在新选项卡中打开",
   "editor_link_openrelativehint": "相关链接在您发布的网站上打开",
   "editor_link_openpage": "打开此页面",
+  "editor_link_opensection": "转到此部分",
   "editor_link_missingpage": "此网站上不存在该页面",
   "editor_link_remove": "删除链接",
   "editor_link_invalid": "输入有效的 URL：https、mailto、tel、#anchor 或以 / 开头的路径。",

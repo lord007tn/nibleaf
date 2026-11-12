@@ -921,6 +921,7 @@ export const MESSAGE_IDS = {
   'editor.link.open': 'editor_link_open',
   'editor.link.openRelativeHint': 'editor_link_openrelativehint',
   'editor.link.openPage': 'editor_link_openpage',
+  'editor.link.openSection': 'editor_link_opensection',
   'editor.link.missingPage': 'editor_link_missingpage',
   'editor.link.remove': 'editor_link_remove',
   'editor.link.invalid': 'editor_link_invalid',

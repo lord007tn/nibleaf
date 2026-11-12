@@ -19,14 +19,14 @@ const withoutSite = editorLinkResolver(null, undefined);
 /** Open `href`'s page once it is resolved, in a tab opened now (so the browser allows it). */
 const openInNewTab = (links: EditorLinks, href: string, target: EditorLinkTarget) => {
   if (target.kind === 'page') {
-    window.open(links.href(target.pageId), '_blank', 'noopener');
+    window.open(links.href(target.pageId, target.anchor), '_blank', 'noopener');
     return;
   }
   const tab = window.open('about:blank', '_blank');
   if (!tab) return;
   tab.opener = null;
   void links.resolveAsync(href).then(
-    (resolved) => (resolved.kind === 'page' ? tab.location.replace(links.href(resolved.pageId)) : tab.close()),
+    (resolved) => (resolved.kind === 'page' ? tab.location.replace(links.href(resolved.pageId, resolved.anchor)) : tab.close()),
     () => tab.close(),
   );
 };
@@ -42,11 +42,13 @@ const openInNewTab = (links: EditorLinks, href: string, target: EditorLinkTarget
  *   places the caret, as before.
  * - A link to a page, to no page, or not resolved yet never reaches the app's
  *   address. A link to no page opens nothing.
+ * - A link to a section (`setup#install`, or `#install` on this page) opens
+ *   the page at that heading (#553).
  * - Editing wins: a click while composing text (IME), a Shift+click that
  *   extends the selection, and a drag that ends on a link select text as usual
  *   and open nothing.
  *
- * Web addresses (`https://…`, `mailto:`), in-page anchors and files keep the
+ * Web addresses (`https://…`, `mailto:`) and files keep the
  * browser's behaviour. Only the click is handled: the link mark, and the HTML
  * and Markdown it produces, keep the relative address.
  */
@@ -72,7 +74,7 @@ export const InternalLinkClicks = Extension.create<{ getLinks: () => EditorLinks
       if (!href || isWebAddress(href)) return false;
       const links = getLinks();
       const target = links ? links.resolve(href) : withoutSite(href);
-      // Anchors, files and other site routes keep the browser's behaviour.
+      // Files and other site routes keep the browser's behaviour.
       if (target.kind === 'web' || target.kind === 'other') return false;
       // A page, no page, or not known yet: never the app's own address.
       event.preventDefault();
@@ -82,8 +84,8 @@ export const InternalLinkClicks = Extension.create<{ getLinks: () => EditorLinks
         return true;
       }
       if (view.editable) return false;
-      if (target.kind === 'page') links.open(target.pageId);
-      else void links.resolveAsync(href).then((resolved) => resolved.kind === 'page' && links.open(resolved.pageId));
+      if (target.kind === 'page') links.open(target.pageId, target.anchor);
+      else void links.resolveAsync(href).then((resolved) => resolved.kind === 'page' && links.open(resolved.pageId, resolved.anchor));
       return true;
     };
     return [

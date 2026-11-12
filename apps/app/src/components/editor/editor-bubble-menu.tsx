@@ -17,6 +17,7 @@ import {
   Code,
   ExternalLink,
   FileText,
+  Hash,
   Highlighter,
   Italic,
   Link as LinkIcon,
@@ -138,11 +139,14 @@ export function LinkEditorPanel({
   const links = useEditorLinks();
   const openHref = normalized && isWebAddress(normalized) ? normalized : null;
   const target = normalized && !openHref && links ? links.resolve(normalized) : null;
-  const linkedPageId = target?.kind === 'page' ? target.pageId : null;
+  const linkedPage = target?.kind === 'page' ? target : null;
+  const linkedPageId = linkedPage?.pageId ?? null;
   // Not resolved yet (pages loading, or a link into another docs version): it
   // may be a page, so Open stays available and resolves on the way.
   const unresolved = target?.kind === 'unknown';
-  const openLabel = linkedPageId || unresolved ? t('editor.link.openPage') : t('editor.link.open');
+  // An in-page `#anchor` goes to a section of this page.
+  const inPage = Boolean(linkedPage?.anchor && normalized?.startsWith('#'));
+  const openLabel = inPage ? t('editor.link.openSection') : linkedPageId || unresolved ? t('editor.link.openPage') : t('editor.link.open');
   const openDisabledReason =
     !normalized || openHref || linkedPageId || unresolved
       ? undefined
@@ -216,13 +220,13 @@ export function LinkEditorPanel({
         onClick={() => {
           if (openHref) {
             window.open(openHref, '_blank', 'noopener,noreferrer');
-          } else if (linkedPageId && links) {
+          } else if (linkedPage && links) {
             onDone();
-            links.open(linkedPageId);
+            links.open(linkedPage.pageId, linkedPage.anchor);
           } else if (unresolved && links && normalized) {
             onDone();
             void links.resolveAsync(normalized).then((resolved) => {
-              if (resolved.kind === 'page') links.open(resolved.pageId);
+              if (resolved.kind === 'page') links.open(resolved.pageId, resolved.anchor);
               else if (resolved.kind === 'missing') toast.error(t('editor.link.missingPage'));
             });
           }
@@ -232,7 +236,7 @@ export function LinkEditorPanel({
         type="button"
         variant="ghost"
       >
-        {linkedPageId || unresolved ? <FileText className="size-4" /> : <ExternalLink className="size-4" />}
+        {inPage ? <Hash className="size-4" /> : linkedPageId || unresolved ? <FileText className="size-4" /> : <ExternalLink className="size-4" />}
       </TooltipButton>
       <Suspense fallback={null}>
         <PageLinkPicker

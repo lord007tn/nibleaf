@@ -490,6 +490,7 @@
   "editor_link_open": "Open in new tab",
   "editor_link_openrelativehint": "Relative links open on your published site",
   "editor_link_openpage": "Open this page",
+  "editor_link_opensection": "Go to this section",
   "editor_link_missingpage": "This page doesn't exist on this site",
   "editor_link_remove": "Remove link",
   "editor_link_invalid": "Enter a valid URL: https, mailto, tel, #anchor, or a path starting with /.",

@@ -494,6 +494,7 @@
   "editor_link_open": "فتح في تبويب جديد",
   "editor_link_openrelativehint": "الروابط النسبية تُفتح على موقعك المنشور",
   "editor_link_openpage": "فتح هذه الصفحة",
+  "editor_link_opensection": "الانتقال إلى هذا القسم",
   "editor_link_missingpage": "هذه الصفحة غير موجودة في هذا الموقع",
   "editor_link_remove": "إزالة الرابط",
   "editor_link_invalid": "أدخل رابطًا صالحًا: https أو mailto أو tel أو ‎#anchor أو مسارًا يبدأ بـ /.",

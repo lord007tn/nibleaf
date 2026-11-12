@@ -13,7 +13,7 @@ import { useLinkedPageHistory } from './linked-page-history';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const harness: { open?: (id: string) => Promise<void> } = {};
+const harness: { open?: (id: string, section?: string) => Promise<void> } = {};
 
 const rootRoute = createRootRoute({ component: Outlet });
 const editorRoute = createRoute({
@@ -31,7 +31,7 @@ function Editor() {
     if (page) setSelected(page);
   }, [page]);
   const canvas = useRef<HTMLDivElement>(null);
-  harness.open = useLinkedPageHistory({ projectId: 'project-1', pageId: selected, canvas: () => canvas.current });
+  harness.open = useLinkedPageHistory({ projectId: 'project-1', pageId: selected, canvas: () => canvas.current }).open;
   return (
     <div ref={canvas} data-testid="canvas" data-page={selected}>
       <p>{selected}</p>

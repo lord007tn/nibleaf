@@ -71,10 +71,16 @@ describe('editor link resolution (PUBLIC-18)', () => {
     expect(resolve('/guides/setup')).toEqual({ kind: 'page', pageId: 'setup' });
   });
 
-  it('resolves the page of a link with an #anchor', () => {
+  it('resolves the page of a link with an #anchor, and keeps the anchor (#553)', () => {
     const resolve = resolveFrom('intro');
-    expect(resolve('/configuration#options')).toEqual({ kind: 'page', pageId: 'configuration' });
-    expect(resolve('setup#install')).toEqual({ kind: 'page', pageId: 'setup' });
+    expect(resolve('/configuration#options')).toEqual({ kind: 'page', pageId: 'configuration', anchor: 'options' });
+    expect(resolve('setup#install')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'install' });
+    // Through a redirect, the link's own anchor still applies.
+    expect(resolve('/old-setup#install')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'install' });
+    // An encoded anchor is decoded, as a browser does before it looks for the id.
+    expect(resolve('setup#%D8%AA%D8%AB%D8%A8%D9%8A%D8%AA')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'تثبيت' });
+    // A bare '#' names no section.
+    expect(resolve('setup#')).toEqual({ kind: 'page', pageId: 'setup' });
   });
 
   it('follows a redirect from an old address to the page', () => {
@@ -107,10 +113,17 @@ describe('editor link resolution (PUBLIC-18)', () => {
     expect(isWebAddress('configuration')).toBe(false);
   });
 
-  it('does not open in-page anchors and files as pages', () => {
-    const resolve = resolveFrom('intro');
-    expect(resolve('#options')).toEqual({ kind: 'other' });
-    expect(resolve('/files/guide.pdf')).toEqual({ kind: 'other' });
+  it('does not open files as pages', () => {
+    expect(resolveFrom('intro')('/files/guide.pdf')).toEqual({ kind: 'other' });
+  });
+
+  it('resolves an in-page #anchor to a section of the open page (#553)', () => {
+    expect(resolveFrom('intro')('#options')).toEqual({ kind: 'page', pageId: 'intro', anchor: 'options' });
+    // Known before the site loads: it is the open page.
+    expect(editorLinkResolver(null, 'intro')('#options')).toEqual({ kind: 'page', pageId: 'intro', anchor: 'options' });
+    // Without an open page (other editors) it stays the browser's.
+    expect(editorLinkResolver(null, undefined)('#options')).toEqual({ kind: 'other' });
+    expect(resolveFrom('intro')('#')).toEqual({ kind: 'other' });
   });
 
   it('resolves inside the docs version being edited', () => {

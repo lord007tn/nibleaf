@@ -2,6 +2,7 @@ import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
 import { createLinkResolver } from '@nibleaf/shared/site-links';
 import { createContext, useContext } from 'react';
 import type { Branch, Language, OpenApiConfiguration, PageNode, Project } from '@/hooks/api/types';
+import { sectionFragment } from './editor-sections';
 
 /**
  * Where a link in the open page leads, for the editor. A link to another page
@@ -12,24 +13,32 @@ import type { Branch, Language, OpenApiConfiguration, PageNode, Project } from '
  *
  * - `web`: an address with a scheme (`https:`, `mailto:`) or `//host`; the
  *   browser opens it as it always has.
- * - `page`: a page of this site (the editor opens it).
+ * - `page`: a page of this site (the editor opens it), and the section the
+ *   link names (`#install`, decoded), if any. An in-page `#anchor` is a section
+ *   of the open page.
  * - `missing`: a link into the site that reaches nothing there.
- * - `other`: a site link that isn't a page in the editor: an in-page `#anchor`,
- *   a file, or a route such as the changelog or the API reference.
+ * - `other`: a site link that isn't a page in the editor: a file, or a route
+ *   such as the changelog or the API reference.
  * - `unknown`: not known yet: the site's pages are still loading, or the link
  *   may lead into another docs version whose pages haven't been loaded. It may
  *   be a page, so it can be followed (`resolveAsync` loads what it needs).
  */
-export type EditorLinkTarget = { kind: 'web' } | { kind: 'page'; pageId: string } | { kind: 'missing' } | { kind: 'other' } | { kind: 'unknown' };
+export type EditorLinkTarget =
+  | { kind: 'web' }
+  | { kind: 'page'; pageId: string; anchor?: string }
+  | { kind: 'missing' }
+  | { kind: 'other' }
+  | { kind: 'unknown' };
 
 /** What the page editor offers its links: resolution and opening a page. */
 export interface EditorLinks {
   /** Where `href`, written on the open page, leads. */
   resolve: (href: string) => EditorLinkTarget;
-  /** Open a page of this site in the editor, in this tab, after the open page is saved. */
-  open: (pageId: string) => void;
-  /** A page's editor address, for opening it in a new tab. */
-  href: (pageId: string) => string;
+  /** Open a page of this site in the editor, in this tab, after the open page is saved, at
+   *  `section` (a heading's anchor) when given. The open page itself just goes to `section`. */
+  open: (pageId: string, section?: string) => void;
+  /** A page's editor address, at `section` when given, for opening it in a new tab. */
+  href: (pageId: string, section?: string) => string;
   /** Where `href` leads once every docs version's pages are loaded (loads them when needed). */
   resolveAsync: (href: string) => Promise<EditorLinkTarget>;
   /** Start loading the other docs versions' pages, so `resolve` can answer for links into them. */
@@ -130,11 +139,16 @@ export function editorLinkResolver(
   return (href) => {
     if (isWebAddress(href)) return { kind: 'web' };
     const trimmed = href.trim();
-    if (!trimmed || trimmed.startsWith('#')) return { kind: 'other' };
+    const hashAt = trimmed.indexOf('#');
+    const anchor = hashAt >= 0 ? sectionFragment(trimmed.slice(hashAt + 1)) : '';
+    const section = anchor ? { anchor } : {};
+    // An in-page anchor: a section of the open page, known before the site loads.
+    if (hashAt === 0) return anchor && fromPageId ? { kind: 'page', pageId: fromPageId, anchor } : { kind: 'other' };
+    if (!trimmed) return { kind: 'other' };
     if (!(resolveLink && from)) return { kind: 'unknown' };
     const destination = resolveLink(trimmed, from);
     if (destination === false) return !allVersions && (site?.project.versions.length ?? 0) > 1 ? { kind: 'unknown' } : { kind: 'missing' };
     if (destination === null || destination === true || destination.kind !== 'PAGE') return { kind: 'other' };
-    return { kind: 'page', pageId: destination.id };
+    return { kind: 'page', pageId: destination.id, ...section };
   };
 }
