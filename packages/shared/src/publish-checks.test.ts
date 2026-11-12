@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { documentationComponentContractEntries } from './documentation-component-contract';
-import { buildInboundPageLinkMap, findBrokenInternalLinks, findInboundPageLinks, pageContentFacts, snapshotContentFacts } from './publish-checks';
+import {
+  buildInboundPageLinkMap,
+  buildInboundPageLinkMapAsync,
+  findBrokenInternalLinks,
+  findInboundPageLinks,
+  pageContentFacts,
+  snapshotContentFacts,
+} from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 
 let sequence = 0;
@@ -48,6 +55,110 @@ const broken = (content: string) =>
 describe('inbound draft page links', () => {
   const target = () => page({ id: 'target', path: 'guide', kind: 'GROUP' });
   const child = () => page({ id: 'child', parentId: 'target', path: 'guide/setup', content: '[self](/guide/setup)' });
+
+  it('keeps mixed async results identical, capped and ordered across slices', async () => {
+    const snapshot = site([
+      target(),
+      child(),
+      page({ id: 'ar-child', path: 'guide/setup', languageCode: 'ar' }),
+      page({ id: 'ar-source', path: 'ar-source', languageCode: 'ar', content: '[Arabic](/guide/setup)' }),
+      page({ id: 'v2-target', path: 'setup', versionId: 'v2' }),
+      page({ id: 'v2-source', path: 'source', versionId: 'v2', content: '[Own](https://docs.example.test/v2/setup)' }),
+      page({ path: 'ignored', content: '`[code](/guide)`\n\n<!-- [comment](/guide) -->\n\n[external](https://foreign.test/guide)' }),
+      page({ path: 'guide/relative', content: '[Relative](setup.md#section)' }),
+      ...Array.from({ length: 27 }, (_, i) =>
+        page({
+          id: `mixed-${i}`,
+          path: `mixed-${i}`,
+          hidden: i % 2 === 0,
+          content:
+            i % 3 === 0
+              ? '<Card href="/old">Setup</Card>'
+              : i % 3 === 1
+                ? '[Ref][setup]\n\n[setup]: /guide/setup'
+                : '<a href="https://docs.example.test/guide/setup">Setup</a>',
+        }),
+      ),
+    ]);
+    snapshot.project.config = { redirects: [{ from: '/old', to: '/guide/setup' }] };
+    snapshot.project.languages.push({ code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null });
+    snapshot.project.versions.push({ id: 'v2', name: 'v2', slug: 'v2', isDefault: false });
+    const origins = ['https://docs.example.test'];
+    let clock = 0;
+    let yields = 0;
+    const result = await buildInboundPageLinkMapAsync(snapshot, origins, {
+      now: () => {
+        clock += 5;
+        return clock;
+      },
+      yieldToEventLoop: async () => {
+        yields++;
+      },
+    });
+    expect(result).toEqual(buildInboundPageLinkMap(snapshot, origins));
+    expect(yields).toBeGreaterThan(1);
+    expect(result.get('target')?.total).toBe(28);
+    expect(result.get('target')?.pages).toHaveLength(20);
+    expect(result.get('target')?.pages[0]?.path).toBe('guide/relative');
+    expect(result.get('ar-child')?.pages.map(({ id }) => id)).toEqual(['ar-source']);
+    expect(result.get('v2-target')?.pages.map(({ id }) => id)).toEqual(['v2-source']);
+  });
+
+  it('yields by elapsed work rather than a fixed number of pages, without wall-clock assertions', async () => {
+    for (const pageMs of [2, 7]) {
+      let clock = 0;
+      let lastYield = 0;
+      const slices: number[] = [];
+      const snapshot = site(Array.from({ length: 100 }, (_, i) => page({ path: `timed-${i}` })));
+      for (const source of snapshot.pages)
+        Object.defineProperty(source, 'content', {
+          get: () => {
+            clock += pageMs;
+            return 'Body.';
+          },
+        });
+      await buildInboundPageLinkMapAsync(snapshot, [], {
+        sliceMs: 25,
+        now: () => clock,
+        yieldToEventLoop: async () => {
+          slices.push(clock - lastYield);
+          lastYield = clock;
+        },
+      });
+      expect(slices.length).toBeGreaterThan(1);
+      // An indivisible page can cross the budget by at most its own cost.
+      for (const slice of slices) {
+        expect(slice).toBeGreaterThanOrEqual(25);
+        expect(slice).toBeLessThan(25 + pageMs);
+      }
+      expect(clock - lastYield).toBeLessThan(25);
+    }
+  });
+
+  it('stops at a chunk boundary on abort and never returns a partial map', async () => {
+    const controller = new AbortController();
+    let parsed = 0;
+    const snapshot = site(Array.from({ length: 100 }, (_, i) => page({ path: `abort-${i}` })));
+    for (const source of snapshot.pages)
+      Object.defineProperty(source, 'content', {
+        get: () => {
+          parsed++;
+          return 'Body.';
+        },
+      });
+    await expect(
+      buildInboundPageLinkMapAsync(snapshot, [], {
+        signal: controller.signal,
+        now: () => parsed * 10,
+        yieldToEventLoop: async () => {
+          controller.abort();
+        },
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(parsed).toBe(3);
+    await expect(buildInboundPageLinkMapAsync(snapshot, [], { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+    expect(parsed).toBe(3);
+  });
 
   it('counts absolute URLs only on trusted hosts and leaves publish checks unchanged', () => {
     const snapshot = site([

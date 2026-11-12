@@ -1,3 +1,4 @@
+import { isSupportedPageIcon, normalizePageIconName, type PageIconName } from '@nibleaf/shared/page-icons';
 import {
   Activity,
   BarChart3,
@@ -62,7 +63,9 @@ import {
  * `icon="rocket"`), mirroring the common subset of Mintlify's icon set. Kept
  * curated (not the full Lucide bundle) so the published-site bundle stays small.
  */
-const ICONS: Record<string, LucideIcon> = {
+// Typed by the shared name list, so the names the server accepts and the icons
+// the reader draws can never drift apart.
+const ICONS: Record<PageIconName, LucideIcon> = {
   activity: Activity,
   'bar-chart': BarChart3,
   'bar-chart-3': BarChart3,
@@ -128,23 +131,15 @@ const ICONS: Record<string, LucideIcon> = {
   zap: Zap,
 };
 
-/** Normalize an authored icon name to the map key (lower-kebab). */
-const normalize = (name: string): string =>
-  name
-    .trim()
-    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
-    .toLowerCase()
-    .replace(/[\s_]+/g, '-');
-
 /** Render the named icon, or null when the name is empty/unrecognized so callers
  *  can decide on a fallback. */
 export function PageIcon({ name, className }: { name?: string | null; className?: string }) {
-  if (!name) {
+  if (!name || !isSupportedPageIcon(name)) {
     return null;
   }
-  const Icon = ICONS[normalize(name)];
-  return Icon ? <Icon className={className} aria-hidden /> : null;
+  const Icon = ICONS[normalizePageIconName(name) as PageIconName];
+  return <Icon className={className} aria-hidden />;
 }
 
 /** Whether an authored icon name resolves to a real icon. */
-export const hasIcon = (name?: string | null): boolean => Boolean(name && ICONS[normalize(name)]);
+export const hasIcon = isSupportedPageIcon;

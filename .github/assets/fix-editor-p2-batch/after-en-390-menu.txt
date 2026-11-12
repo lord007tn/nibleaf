@@ -1,0 +1,12 @@
+- menu "More actions for “Quickstart”":
+  - menuitem "Preview"
+  - menuitem "Settings"
+  - menuitem "Page settings"
+  - menuitemcheckbox "Comment"
+  - menuitem "Show comments"
+  - menuitem "History"
+  - menuitemcheckbox "Show formatting toolbar"
+  - menuitem "Edit as Markdown (advanced)"
+  - menuitem "New version"
+  - separator
+  - menuitem "Delete page"

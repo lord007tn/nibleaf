@@ -132,6 +132,12 @@ export const publishedSiteUrl = async (projectId: string, projectSlug: string) =
   return baseDomain ? `https://${projectSlug}.${baseDomain}` : `${env.APP_URL.replace(/\/+$/, '')}/sites/${projectId}`;
 };
 
+/** Whether a publish would change anything. `changes` lists pages only, so a
+ *  change that is only to navigation groups shows up as `upToDate: false`
+ *  with no listed page. */
+export const hasPublishableChanges = (pending: PendingChanges, settings: string[]): boolean =>
+  pending.changes.length > 0 || settings.length > 0 || (pending.hasBaseline && !pending.upToDate);
+
 /** The human-facing summary `preview_publish` returns (no diff lines or content). */
 export const publishPreviewSummary = (pending: PendingChanges, settings: string[]) => {
   const count = (status: 'added' | 'modified' | 'removed') => pending.changes.filter((change) => change.status === status).length;

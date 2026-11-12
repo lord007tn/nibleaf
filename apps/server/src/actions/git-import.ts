@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { prisma } from '@nibleaf/database';
+import { isSupportedPageIcon } from '@nibleaf/shared/page-icons';
 import { exceedsUtf8Bytes, MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
 import { slugify, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { GitConfig } from '@nibleaf/validators';
@@ -498,7 +499,9 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         title: deriveTitle(meta, body, name),
         content: body,
         ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
-        ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
+        // Only an icon the reader draws. Without one the field is left out, so a
+        // re-import keeps the page's stored icon instead of failing or clearing it.
+        ...(meta.icon && isSupportedPageIcon(meta.icon) ? { icon: meta.icon.slice(0, 64) } : {}),
       },
       parentId: null,
       pageId: pageIdBySource.get(file.source) ?? null,

@@ -332,7 +332,11 @@ describe('first-publish checklist and reserved address', () => {
     expect(steps[0]?.querySelector('[role="img"]') !== null).toBe(fixture.edited);
     expect(steps[1]?.querySelector('[role="img"]')).toBeNull();
     expect(steps[2]?.querySelector('[role="img"]') !== null).toBe(fixture.domains.length > 0);
-    for (const check of container.querySelectorAll('ol [role="img"]')) expect(computeAccessibleName(check)).toBe('Done');
+    // Each check names its own step, so a screen reader can tell which ones finished.
+    for (const step of steps) {
+      const check = step.querySelector('[role="img"]');
+      if (check) expect(computeAccessibleName(check)).toBe(`Done: ${step.querySelector('.font-medium')?.textContent}`);
+    }
     expect(steps[fixture.edited ? 1 : 0]?.getAttribute('aria-current')).toBe('step');
     expect(container.querySelector('ol a[aria-label="Edit a page"]')).not.toBeNull();
     expect(container.querySelector('ol a[aria-label="Connect a custom domain"]')).not.toBeNull();

@@ -831,7 +831,8 @@ function NudgeStep({
       )}
     >
       <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-[12px] text-primary">
-        {done ? <Check aria-label={t('dashboard.start.done')} className="size-4" role="img" /> : n}
+        {/* Named with its step, so a list of checks says which ones are finished. */}
+        {done ? <Check aria-label={t('overview.nudge.stepDone', { step: title })} className="size-4" role="img" /> : n}
       </span>
       <div className="min-w-0 leading-snug">
         <div className="font-medium text-sm">{title}</div>
