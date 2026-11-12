@@ -4908,5 +4908,5 @@
   "settings_aiassistants_watch_again": "Aguardar de novo",
   "settings_aiassistants_keysloaderror": "Não foi possível carregar as chaves pessoais. Os apps conectados por login continuam listados.",
   "settings_aiassistants_appsloaderror": "Não foi possível carregar os apps conectados por login. As chaves pessoais continuam listadas.",
-  "oauth_consent_can_aiconversations": "Ler perguntas e respostas salvas do Ask AI (sem dados pessoais)"
+  "oauth_consent_can_aiconversations": "Ler perguntas e respostas salvas do Ask AI. E-mails, números de telefone e chaves são removidos, mas nomes, endereços e outros dados pessoais podem permanecer."
 }

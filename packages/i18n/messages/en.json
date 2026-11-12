@@ -4907,5 +4907,5 @@
   "settings_aiassistants_watch_again": "Watch again",
   "settings_aiassistants_keysloaderror": "Couldn’t load personal keys. Apps that signed in are still listed.",
   "settings_aiassistants_appsloaderror": "Couldn’t load apps that signed in. Personal keys are still listed.",
-  "oauth_consent_can_aiconversations": "Read saved Ask AI questions and answers (personal details removed)"
+  "oauth_consent_can_aiconversations": "Read saved Ask AI questions and answers. Email addresses, phone numbers and keys are removed, but names, addresses and other personal details may remain."
 }

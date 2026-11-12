@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { keys as analyticsKeys } from '@nibleaf/clickhouse';
-import { isMcpWriteScope, MCP_KEY_PRESETS, MCP_PRESET_SCOPES, type McpScope } from '@nibleaf/shared/mcp';
+import { isMcpWriteScope, MCP_KEY_PRESETS, MCP_PRESET_SCOPES, MCP_TOOL_SCOPES, type McpScope, type McpToolName } from '@nibleaf/shared/mcp';
 import type { Context } from 'hono';
 import { env } from '@/env';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -68,53 +68,55 @@ const availableResources = (projectId: string) =>
 
 /**
  * Why a job the person may ask for can't be done through this connection, so
- * the assistant can say so instead of failing silently. `kind`:
- * - `permission`: this connection lacks a scope; `unlockedBy` names the smallest
- *   addition (never more than the job needs, e.g. search terms alone, not publishing);
- * - `data`: no permission helps, this server doesn't collect it;
- * - `credential`: the key itself can't do it (no live creator);
+ * the assistant can say so instead of failing silently. `kind`, in the order
+ * they are checked, so the first real blocker is the one reported:
+ * - `data`: this server doesn't collect what the job needs; no permission helps;
+ * - `credential`: the key itself can't write (no live creator);
+ * - `permission`: this connection lacks the one scope the job's tools need,
+ *   named in `unlockedBy` (exactly that scope, never more);
  * - `dashboard_only`: deliberately not offered over MCP.
  */
 type UnavailableJob = {
   domain: string;
-  kind: 'permission' | 'data' | 'credential' | 'dashboard_only';
+  kind: 'data' | 'credential' | 'permission' | 'dashboard_only';
   reason: string;
   unlockedBy?: McpScope[];
 };
 
+/** The jobs a person asks an assistant for, each named by the tool that does it,
+ *  so its required scope comes from MCP_TOOL_SCOPES rather than a second list. */
+const JOBS = [
+  { domain: 'page_drafts', tool: 'create_page_draft', what: 'Creating and editing page drafts' },
+  { domain: 'publishing', tool: 'publish_changes', what: 'Publishing changes after a confirmed preview' },
+  { domain: 'search_terms', tool: 'get_failed_searches', what: 'Reading what visitors searched for (top and failed searches)', searchData: true },
+] as const satisfies ReadonlyArray<{ domain: string; tool: McpToolName; what: string; searchData?: true }>;
+
 const unavailableJobs = (principal: McpPrincipal): UnavailableJob[] => {
   const scopes = principal.credential.scopes;
+  const searchDataKept = analyticsKeys().ANALYTICS_MODE === 'clickhouse';
   const jobs: UnavailableJob[] = [];
-  if (!scopes.some(isMcpWriteScope))
-    jobs.push(
-      principal.actor
-        ? {
-            domain: 'content_writes',
-            kind: 'permission',
-            reason: 'This connection does not grant pages:write or deployments:publish.',
-            unlockedBy: ['pages:write', 'deployments:publish'],
-          }
-        : {
-            domain: 'content_writes',
-            kind: 'credential',
-            reason: 'This key has no active creator, so it can only read. Create a new key from the dashboard to write.',
-          },
-    );
-  if (!scopes.includes('analytics:search_terms'))
-    jobs.push({
-      domain: 'search_terms',
-      kind: 'permission',
-      reason:
-        'Reading what visitors searched for (top and failed searches) needs only the analytics:search_terms permission; it does not need write or publish access. Counts without terms are still available.',
-      unlockedBy: ['analytics:search_terms'],
-    });
-  else if (analyticsKeys().ANALYTICS_MODE !== 'clickhouse')
-    jobs.push({
-      domain: 'search_terms',
-      kind: 'data',
-      reason:
-        'This server does not keep individual search terms or failed searches (its analytics run without ClickHouse). No permission changes that; counts are still available.',
-    });
+  for (const job of JOBS) {
+    const scope = MCP_TOOL_SCOPES[job.tool];
+    if ('searchData' in job && !searchDataKept)
+      jobs.push({
+        domain: job.domain,
+        kind: 'data',
+        reason: `${job.what} is not possible on this server: its analytics run without ClickHouse, so no individual search terms or failed searches are kept. No permission changes that; counts are still available.`,
+      });
+    else if (isMcpWriteScope(scope) && !principal.actor)
+      jobs.push({
+        domain: job.domain,
+        kind: 'credential',
+        reason: `${job.what} is not possible with this key: it has no active creator, so it can only read. Create a new key from the dashboard.`,
+      });
+    else if (!scopes.includes(scope))
+      jobs.push({
+        domain: job.domain,
+        kind: 'permission',
+        reason: `${job.what} needs the ${scope} permission, and only that one.`,
+        unlockedBy: [scope],
+      });
+  }
   jobs.push(
     {
       domain: 'page_deletion',

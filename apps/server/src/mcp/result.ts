@@ -334,10 +334,12 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
     }
     // Dashboard links are rebuilt from the bound website and the final target on
     // every answer, first or replayed, and never stored in the replay record.
+    // `data` itself is enriched, so the audit-pending answer below keeps them too.
     const links = dashboardLinks(spec.operation, principal.project.id, target);
+    if (isPlainObject(data) && Object.keys(links).length > 0) data = { ...data, ...links };
     const envelope: McpSuccessEnvelope = {
       ok: true,
-      data: isPlainObject(data) && Object.keys(links).length > 0 ? { ...data, ...links } : data,
+      data,
       meta: {
         requestId: ctx.get('requestId'),
         projectId: principal.project.id,

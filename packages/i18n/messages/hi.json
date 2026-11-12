@@ -4842,5 +4842,5 @@
   "settings_aiassistants_watch_again": "फिर से इंतज़ार करें",
   "settings_aiassistants_keysloaderror": "निजी कुंजियाँ लोड नहीं हो सकीं। साइन इन किए ऐप अब भी दिख रहे हैं।",
   "settings_aiassistants_appsloaderror": "साइन इन किए ऐप लोड नहीं हो सके। निजी कुंजियाँ अब भी दिख रही हैं।",
-  "oauth_consent_can_aiconversations": "सहेजे गए Ask AI सवाल और जवाब पढ़ना (निजी जानकारी हटाकर)"
+  "oauth_consent_can_aiconversations": "सहेजे गए Ask AI सवाल और जवाब पढ़ना। ईमेल पते, फ़ोन नंबर और कुंजियाँ हटा दी जाती हैं, लेकिन नाम, पते और अन्य निजी जानकारी रह सकती है।"
 }

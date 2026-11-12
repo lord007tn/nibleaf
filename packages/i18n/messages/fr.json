@@ -4907,5 +4907,5 @@
   "settings_aiassistants_watch_again": "Attendre à nouveau",
   "settings_aiassistants_keysloaderror": "Impossible de charger les clés personnelles. Les apps connectées restent affichées.",
   "settings_aiassistants_appsloaderror": "Impossible de charger les apps connectées. Les clés personnelles restent affichées.",
-  "oauth_consent_can_aiconversations": "Lire les questions et réponses Ask AI enregistrées (sans données personnelles)"
+  "oauth_consent_can_aiconversations": "Lire les questions et réponses Ask AI enregistrées. Les adresses e-mail, numéros de téléphone et clés sont retirés, mais des noms, des adresses et d’autres données personnelles peuvent subsister."
 }

@@ -464,7 +464,7 @@ describe('Nibleaf MCP protocol surface', () => {
     expect(write.instructions).not.toContain('read-only actions');
     const read = await discover(reader);
     expect(read.data.mode).toBe('read_only_with_preview');
-    expect(read.data.unavailable.map(({ domain }) => domain)).toContain('content_writes');
+    expect(read.data.unavailable.map(({ domain }) => domain)).toEqual(expect.arrayContaining(['page_drafts', 'publishing']));
   });
 
   it('names the website, the permission level, and why each missing job is missing', async () => {
@@ -491,23 +491,60 @@ describe('Nibleaf MCP protocol surface', () => {
         dashboardUrl: expect.stringMatching(/\/app\/projects\/project-1$/),
       });
       expect(readOnly.permission).toBe('read_only');
-      // Search terms need only their own permission, never write or publish access.
+      // Each job is unlocked by exactly the scope its tool needs, never more.
       expect(job(readOnly, 'search_terms')).toMatchObject({ kind: 'permission', unlockedBy: ['analytics:search_terms'] });
-      expect(job(readOnly, 'content_writes')).toMatchObject({ kind: 'permission', unlockedBy: ['pages:write', 'deployments:publish'] });
+      expect(job(readOnly, 'page_drafts')).toMatchObject({ kind: 'permission', unlockedBy: ['pages:write'] });
+      expect(job(readOnly, 'publishing')).toMatchObject({ kind: 'permission', unlockedBy: ['deployments:publish'] });
       expect(job(readOnly, 'page_deletion')?.kind).toBe('dashboard_only');
 
       const writer = await discover([...MCP_PRESET_SCOPES.support_writer]);
       expect(writer.permission).toBe('support_writer');
-      expect(job(writer, 'search_terms')).toBeUndefined();
+      for (const domain of ['search_terms', 'page_drafts', 'publishing']) expect(job(writer, domain), domain).toBeUndefined();
 
-      // Relational analytics keeps no terms: no permission helps, so it's a data gap.
-      analyticsMode.value = 'dual_write';
-      const relational = await discover([...MCP_PRESET_SCOPES.support_writer]);
-      expect(job(relational, 'search_terms')).toMatchObject({ kind: 'data' });
-      expect(job(relational, 'search_terms')?.unlockedBy).toBeUndefined();
+      // A draft-only key still learns why it can't publish, and the reverse.
+      const draftsOnly = await discover([...MCP_PRESET_SCOPES.read_only, 'pages:write']);
+      expect(job(draftsOnly, 'page_drafts')).toBeUndefined();
+      expect(job(draftsOnly, 'publishing')).toMatchObject({ kind: 'permission', unlockedBy: ['deployments:publish'] });
+      const publishOnly = await discover([...MCP_PRESET_SCOPES.read_only, 'deployments:publish']);
+      expect(job(publishOnly, 'publishing')).toBeUndefined();
+      expect(job(publishOnly, 'page_drafts')).toMatchObject({ kind: 'permission', unlockedBy: ['pages:write'] });
 
       expect((await discover(['mcp:connect', 'pages:read'])).permission).toBe('custom');
-      expect(job(await discover([...MCP_PRESET_SCOPES.read_only], null), 'content_writes')?.kind).toBe('credential');
+      // No live creator: writes are blocked by the key, whatever its scopes.
+      const orphan = await discover([...MCP_PRESET_SCOPES.support_writer], null);
+      expect(job(orphan, 'page_drafts')?.kind).toBe('credential');
+      expect(job(orphan, 'publishing')?.kind).toBe('credential');
+      expect(job(orphan, 'search_terms')).toBeUndefined();
+    } finally {
+      analyticsMode.value = 'clickhouse';
+    }
+  });
+
+  it.each([
+    ['clickhouse', 'read_only', 'permission'],
+    ['clickhouse', 'support_writer', null],
+    ['dual_write', 'read_only', 'data'],
+    ['dual_write', 'support_writer', 'data'],
+    ['shadow_read', 'read_only', 'data'],
+    ['disabled', 'support_writer', 'data'],
+  ] as const)('reports search terms on %s analytics with %s as %s: data limits come before permission advice', async (mode, preset, kind) => {
+    analyticsMode.value = mode;
+    try {
+      const { server, clientTransport, request } = await createProtocolClient({
+        ...principal,
+        actor: { userId: 'user-1', role: 'member' },
+        credential: { ...principal.credential, scopes: [...MCP_PRESET_SCOPES[preset]] },
+      });
+      const response = await request<{
+        structuredContent: { data: { unavailable: Array<{ domain: string; kind: string; unlockedBy?: string[] }> } };
+      }>('tools/call', { name: 'get_capabilities', arguments: {} });
+      await clientTransport.close();
+      await server.close();
+      const entry = response.result?.structuredContent.data.unavailable.find(({ domain }) => domain === 'search_terms');
+      if (kind === null) expect(entry).toBeUndefined();
+      else expect(entry?.kind).toBe(kind);
+      // A data gap never suggests a permission that wouldn't help.
+      if (kind === 'data') expect(entry?.unlockedBy).toBeUndefined();
     } finally {
       analyticsMode.value = 'clickhouse';
     }

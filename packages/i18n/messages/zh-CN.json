@@ -4839,5 +4839,5 @@
   "settings_aiassistants_watch_again": "重新等待",
   "settings_aiassistants_keysloaderror": "无法加载个人密钥。已登录的应用仍会显示。",
   "settings_aiassistants_appsloaderror": "无法加载已登录的应用。个人密钥仍会显示。",
-  "oauth_consent_can_aiconversations": "读取已保存的 Ask AI 问题和回答（已去除个人信息）"
+  "oauth_consent_can_aiconversations": "读取已保存的 Ask AI 问题和回答。其中的电子邮件地址、电话号码和密钥会被删除，但姓名、地址和其他个人信息可能仍会保留。"
 }

@@ -589,6 +589,17 @@ describe('write audit durability', () => {
     );
     expect(response.isError).not.toBe(true);
     expect(response.structuredContent).toMatchObject({ ok: true, meta: { auditPending: true } });
+    // The saved draft's answer still links back to it.
+    expect(response.structuredContent.data.reviewUrl).toBe('https://app.example.test/app/projects/project-1/editor?page=page-new-1');
+    await client.close();
+  });
+
+  it('keeps the publish dialog link when settling the preview audit fails', async () => {
+    mocks.auditSettle.mockRejectedValueOnce(new Error('audit down'));
+    const client = await connect(makePrincipal());
+    const response = await client.call('preview_publish');
+    expect(response.structuredContent).toMatchObject({ ok: true, meta: { auditPending: true } });
+    expect(response.structuredContent.data.publishDialogUrl).toBe('https://app.example.test/app/projects/project-1/editor?publish=true');
     await client.close();
   });
 });

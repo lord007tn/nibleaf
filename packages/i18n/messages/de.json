@@ -4907,5 +4907,5 @@
   "settings_aiassistants_watch_again": "Erneut warten",
   "settings_aiassistants_keysloaderror": "Persönliche Schlüssel konnten nicht geladen werden. Angemeldete Apps werden weiterhin angezeigt.",
   "settings_aiassistants_appsloaderror": "Angemeldete Apps konnten nicht geladen werden. Persönliche Schlüssel werden weiterhin angezeigt.",
-  "oauth_consent_can_aiconversations": "Gespeicherte „Ask AI“-Fragen und -Antworten lesen (ohne persönliche Daten)"
+  "oauth_consent_can_aiconversations": "Gespeicherte „Ask AI“-Fragen und -Antworten lesen. E-Mail-Adressen, Telefonnummern und Schlüssel werden entfernt, Namen, Adressen und andere persönliche Angaben können aber enthalten bleiben."
 }
