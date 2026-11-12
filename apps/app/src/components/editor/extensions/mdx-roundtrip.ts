@@ -72,6 +72,130 @@ export const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefiniti
  *  names such as `<Img>` stay components. */
 const HTML_ELEMENT_ALIASES: ReadonlyMap<string, string> = new Map([['IMG', 'img']]);
 
+/** Lowercase HTML elements the editor has no node for. Its HTML parser drops them
+ *  (and often their content), so they load as opaque blocks that save back as
+ *  written, like unknown components. Elements it does structure (images, links,
+ *  tables, lists, paragraphs) are not listed and keep their current handling. */
+const RAW_HTML_ELEMENTS: ReadonlySet<string> = new Set([
+  'iframe',
+  'video',
+  'audio',
+  'source',
+  'track',
+  'object',
+  'embed',
+  'param',
+  'picture',
+  'details',
+  'summary',
+  'svg',
+  'canvas',
+  'form',
+  'input',
+  'select',
+  'option',
+  'textarea',
+  'label',
+  'div',
+  'span',
+]);
+
+/** Markers of the editor's own HTML for the nodes it structures (div[data-callout],
+ *  div[data-mdx], span[data-mdx]): such a tag is parsed as before, never kept raw. */
+const EDITOR_MARKUP = /\sdata-(?:mdx|callout)[\s=/>]/;
+
+const isRawHtml = (token: TagToken): boolean => token.html && !token.editorMarkup && RAW_HTML_ELEMENTS.has(token.name);
+
+/** The block tokens of the editor's own Markdown parser (markdown-it), used to find code. */
+type MarkdownBlockTokens = (source: string) => ReadonlyArray<{ type: string; map: [number, number] | null }>;
+
+interface Span {
+  start: number;
+  end: number;
+}
+
+/** Fenced and indented code blocks as the editor's Markdown parser reads them, in
+ *  every container (blockquotes, list items), as offsets into `source`. */
+function markdownCodeRanges(source: string, blockTokens: MarkdownBlockTokens | undefined): { fenced: Span[]; indented: Span[] } {
+  const result = { fenced: [] as Span[], indented: [] as Span[] };
+  if (!blockTokens) return result;
+  // markdown-it reads `\r\n` and `\r` as one line break each, as this does.
+  const lineStarts = [0];
+  const breaks = /\r\n?|\n/g;
+  for (let match = breaks.exec(source); match; match = breaks.exec(source)) lineStarts.push(match.index + match[0].length);
+  for (const token of blockTokens(source.replace(/\r\n?/g, '\n'))) {
+    if (!token.map || (token.type !== 'fence' && token.type !== 'code_block')) continue;
+    const span = { start: lineStarts[token.map[0]] ?? source.length, end: lineStarts[token.map[1]] ?? source.length };
+    (token.type === 'fence' ? result.fenced : result.indented).push(span);
+  }
+  return result;
+}
+
+/** `<!-- … -->` comments outside code. */
+function htmlComments(source: string, mask: Uint8Array): Span[] {
+  const comments: Span[] = [];
+  for (let i = source.indexOf('<!--'); i >= 0; i = source.indexOf('<!--', i + 1)) {
+    if (mask[i]) continue;
+    const close = source.indexOf('-->', i + 4);
+    if (close < 0) break;
+    comments.push({ start: i, end: close + 3 });
+    i = close + 2;
+  }
+  return comments;
+}
+
+const lineBounds = (source: string, at: number): Span => {
+  const end = source.indexOf('\n', at);
+  return { start: source.lastIndexOf('\n', at - 1) + 1, end: end < 0 ? source.length : end };
+};
+
+/** A range written at the start of its own lines with a blank line (or the document
+ *  edge) on each side: the layout the editor writes a component's children in, so
+ *  an opaque block there saves back byte for byte. */
+function isolated(source: string, range: Span): boolean {
+  const first = lineBounds(source, range.start);
+  const last = lineBounds(source, range.end);
+  if (first.start !== range.start || source.slice(range.end, last.end).trim() !== '') return false;
+  const before = first.start === 0 || source.slice(lineBounds(source, first.start - 1).start, first.start).trim() === '';
+  const after = last.end >= source.length || source.slice(last.end, lineBounds(source, last.end + 1).end).trim() === '';
+  return before && after;
+}
+
+/**
+ * Where raw HTML must be kept as one opaque range. Inside an HTML element the
+ * editor structures (a raw `<table>`, `<p>`), the outermost such element is kept
+ * whole: the editor would otherwise rewrite it in its own HTML. Inside a supported
+ * component, raw HTML stays a child when it is inline or sits in the component's
+ * usual block layout; otherwise (an indented block, or read as indented code) the
+ * nearest component that does is kept whole. Returns null for code outside any component.
+ */
+function rawHtmlRange(
+  source: string,
+  raw: Span,
+  inCode: boolean,
+  containers: Array<Span & { name: string; html: boolean }>,
+): (Span & { name: string }) | null {
+  let current: Span & { name: string } = { ...raw, name: '' };
+  let code = inCode;
+  const encloses = (outer: Span, inner: Span) =>
+    outer.start <= inner.start && outer.end >= inner.end && (outer.start !== inner.start || outer.end !== inner.end);
+  for (;;) {
+    const html = containers.filter((container) => container.html && encloses(container, current)).sort((a, b) => a.start - b.start)[0];
+    if (html) {
+      current = html;
+      code = false;
+      continue;
+    }
+    const block = source.slice(current.start, current.end).includes('\n') || isWholeLine(source, current.start, current.end);
+    if (!code && (!block || isolated(source, current))) break;
+    const component = containers.filter((container) => !container.html && encloses(container, current)).sort((a, b) => b.start - a.start)[0];
+    if (!component) break;
+    current = component;
+    code = false;
+  }
+  return code ? null : current;
+}
+
 interface TagToken {
   start: number;
   end: number;
@@ -79,6 +203,10 @@ interface TagToken {
   raw: string;
   closing: boolean;
   selfClosing: boolean;
+  /** A lowercase HTML tag rather than a JSX component. */
+  html: boolean;
+  /** The editor's own markup for a node it structures (`<div data-mdx="Card">`). */
+  editorMarkup?: boolean;
 }
 
 interface SourceRange {
@@ -263,37 +391,45 @@ function balancedEnd(source: string, start: number, open: string, close: string)
   return null;
 }
 
-function scanTags(source: string, mask = codeMask(source)): TagToken[] {
+/** Scan for JSX component tags and, with `html`, lowercase HTML tags too. */
+function scanTags(source: string, mask = codeMask(source), html = false): TagToken[] {
   const tokens: TagToken[] = [];
   for (let i = 0; i < source.length; i++) {
     if (source[i] !== '<' || mask[i]) continue;
     let cursor = i + 1;
     const closing = source[cursor] === '/';
     if (closing) cursor++;
-    const nameMatch = /^[A-Z][A-Za-z0-9_.:-]*/.exec(source.slice(cursor));
+    const rest = source.slice(cursor);
+    const nameMatch = /^[A-Z][A-Za-z0-9_.:-]*/.exec(rest) ?? (html ? /^[a-z][a-z0-9]*/.exec(rest) : null);
     if (!nameMatch?.[0]) continue;
     const name = nameMatch[0];
+    const isHtml = !/^[A-Z]/.test(name);
     cursor += name.length;
     if (!/[\s/>]/.test(source[cursor] ?? '')) continue;
     let quote = '';
     let braces = 0;
     let escaped = false;
+    // HTML attribute values have no backslash escapes (`title="Old\"` ends at that
+    // quote); only JSX and the JavaScript inside `{…}` do.
+    let escapes = true;
     for (; cursor < source.length; cursor++) {
       const char = source[cursor] ?? '';
       if (quote) {
         if (escaped) escaped = false;
-        else if (char === '\\') escaped = true;
+        else if (char === '\\' && escapes) escaped = true;
         else if (char === quote) quote = '';
         continue;
       }
-      if (char === '"' || char === "'" || char === '`') quote = char;
-      else if (char === '{') braces++;
+      if (char === '"' || char === "'" || (char === '`' && (!isHtml || braces > 0))) {
+        quote = char;
+        escapes = !isHtml || braces > 0;
+      } else if (char === '{') braces++;
       else if (char === '}') braces = Math.max(0, braces - 1);
       else if (char === '>' && braces === 0) break;
     }
     if (source[cursor] !== '>') continue;
     const raw = source.slice(i, cursor + 1);
-    tokens.push({ start: i, end: cursor + 1, name, raw, closing, selfClosing: !closing && /\/\s*>$/.test(raw) });
+    tokens.push({ start: i, end: cursor + 1, name, raw, closing, selfClosing: !closing && /\/\s*>$/.test(raw), html: isHtml });
     i = cursor;
   }
   return tokens;
@@ -335,7 +471,8 @@ function unsupportedRanges(source: string, tokens: TagToken[], pairs: Map<number
   let coveredUntil = -1;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (!token || token.start < coveredUntil || SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
+    if (!token || token.start < coveredUntil) continue;
+    if (token.html ? !isRawHtml(token) : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
     if (token.closing) {
       ranges.push({ start: token.start, end: token.end, source: token.raw, name: token.name, block: isWholeLine(source, token.start, token.end) });
       continue;
@@ -353,6 +490,45 @@ function unsupportedRanges(source: string, tokens: TagToken[], pairs: Map<number
     coveredUntil = end;
   }
   return ranges;
+}
+
+const sourceRange = (source: string, span: Span, name: string): SourceRange => {
+  const text = source.slice(span.start, span.end);
+  return { ...span, source: text, name, block: text.includes('\n') || isWholeLine(source, span.start, span.end) };
+};
+
+/** Add raw HTML (comments, and HTML read as indented code inside a component) to
+ *  the opaque ranges, widening any raw HTML range to what keeps it byte for byte
+ *  (see rawHtmlRange). Ranges inside a wider one are dropped. */
+function keepRawHtml(
+  source: string,
+  tokens: TagToken[],
+  pairs: Map<number, number>,
+  opaque: SourceRange[],
+  extra: Array<Span & { inCode: boolean }>,
+): SourceRange[] {
+  const containers: Array<Span & { name: string; html: boolean }> = [];
+  for (const [openIndex, closeIndex] of pairs) {
+    const open = tokens[openIndex];
+    const close = tokens[closeIndex];
+    if (!open || !close) continue;
+    const container = open.html
+      ? !open.editorMarkup && !RAW_HTML_ELEMENTS.has(open.name)
+      : Boolean(SUPPORTED_MDX_COMPONENTS[open.name.toLowerCase()]) && !HTML_ELEMENT_ALIASES.has(open.name);
+    if (container) containers.push({ start: open.start, end: close.end, name: open.name, html: open.html });
+  }
+  const covered = (span: Span) => opaque.some((range) => range.start <= span.start && range.end >= span.end);
+  const candidates = [
+    ...opaque.filter((range) => /^[a-z]/.test(range.name)).map((range) => ({ ...range, inCode: false })),
+    ...extra.filter((span) => !covered(span)),
+  ];
+  const kept = [...opaque];
+  for (const candidate of candidates) {
+    const range = rawHtmlRange(source, candidate, candidate.inCode, containers);
+    if (range) kept.push(sourceRange(source, range, range.name || 'HTML comment'));
+  }
+  const unique = kept.filter((range, index) => kept.findIndex((other) => other.start === range.start && other.end === range.end) === index);
+  return unique.filter((range) => !unique.some((other) => other !== range && other.start <= range.start && other.end >= range.end));
 }
 
 function parseAttributes(raw: string, componentName: string): AttributeToken[] {
@@ -431,16 +607,37 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
  * Converts MDX-only syntax into HTML that markdown-it/DOMParser can safely feed
  * to ProseMirror. Serializers restore the source metadata before persistence.
  */
-function prepareMdxForEditor(source: string): string {
+function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens): string {
   if (!source || (!source.includes('<') && !source.includes('{') && !/^\s*(?:import|export)\s/m.test(source))) return source;
   const mask = codeMask(source);
-  const tokens = scanTags(source, mask);
+  // Nothing inside code is ever replaced: fenced code is found the way the
+  // Markdown parser reads it, inside blockquotes and list items too.
+  const code = markdownCodeRanges(source, blockTokens);
+  for (const fence of code.fenced) mask.fill(1, fence.start, fence.end);
+  const inIndentedCode = (at: number) => code.indented.some((range) => at >= range.start && at < range.end);
+  const comments = htmlComments(source, mask);
+  for (const comment of comments) mask.fill(1, comment.start, comment.end);
+  const scanned = scanTags(source, mask, true);
+  // Raw HTML read as indented code stays code, unless a component holds it.
+  const codeHtml = scanned.filter((token) => token.html && inIndentedCode(token.start));
+  const tokens = scanned.filter((token) => !(token.html && inIndentedCode(token.start)));
   const pairs = tagPairs(tokens);
-  let opaque = unsupportedRanges(source, tokens, pairs);
+  for (const [index, token] of tokens.entries()) {
+    if (!token.html || token.closing || !EDITOR_MARKUP.test(token.raw)) continue;
+    token.editorMarkup = true;
+    const close = tokens[pairs.get(index) ?? -1];
+    if (close) close.editorMarkup = true;
+  }
+  let opaque = keepRawHtml(source, tokens, pairs, unsupportedRanges(source, tokens, pairs), [
+    ...comments.map((comment) => ({ ...comment, inCode: inIndentedCode(comment.start) })),
+    ...codeHtml
+      .filter((token) => isRawHtml(token) && !EDITOR_MARKUP.test(token.raw))
+      .map((token) => ({ start: token.start, end: token.end, inCode: true })),
+  ]);
 
   // MDX ESM and standalone expressions are also explicit opaque nodes. Braces
   // inside JSX tags were consumed by scanTags and are excluded here.
-  const occupied = [...opaque, ...tokens.map((token) => ({ start: token.start, end: token.end }))];
+  const occupied = [...opaque, ...tokens.filter((token) => !token.html || isRawHtml(token)).map((token) => ({ start: token.start, end: token.end }))];
   const overlaps = (start: number, end: number) => occupied.some((range) => start < range.end && end > range.start);
   const containsPosition = (position: number) => occupied.some((range) => position >= range.start && position < range.end);
   let offset = 0;
@@ -474,7 +671,7 @@ function prepareMdxForEditor(source: string): string {
   const opaqueCoverage = (start: number) => opaque.some((range) => start >= range.start && start < range.end);
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (!token || opaqueCoverage(token.start)) continue;
+    if (!token || token.html || opaqueCoverage(token.start)) continue;
     const element = HTML_ELEMENT_ALIASES.get(token.name);
     if (element) {
       // img is a void element: a stray closing tag has nothing to close.
@@ -648,8 +845,13 @@ const MdxOpaqueBlock = Node.create({
       parse: {
         setup(markdownit) {
           if (installedMarkdownParsers.has(markdownit)) return;
+          const blockTokens: MarkdownBlockTokens = (src) => {
+            const tokens: ReturnType<typeof markdownit.parse> = [];
+            markdownit.block.parse(src, markdownit, {}, tokens);
+            return tokens;
+          };
           markdownit.core.ruler.before('normalize', 'nibleaf_mdx_source_roundtrip', (state) => {
-            state.src = prepareMdxForEditor(state.src);
+            state.src = prepareMdxForEditor(state.src, blockTokens);
           });
           installedMarkdownParsers.add(markdownit);
         },
