@@ -672,7 +672,7 @@ const previewPublish = async (principal: McpPrincipal, actor: McpActor): Promise
         ? 'The site navigation also changes (groups added, removed, renamed or moved). Tell the person that along with the page changes.'
         : null,
     summary.changesTruncated
-      ? `This summary lists ${summary.changes.length} of ${summary.counts.total} changed pages. Before asking for approval, tell the person to review the full list in the dashboard's publish dialog.`
+      ? `This summary lists ${summary.changes.length} of ${summary.counts.total} changed pages. Before asking for approval, tell the person to review the full list in the dashboard's publish dialog (publishDialogUrl).`
       : null,
     summary.settings.changed ? `Site settings will also change: ${summary.settings.changedFields.join(', ')}. Name them to the person.` : null,
   ].filter((note): note is string => note !== null);

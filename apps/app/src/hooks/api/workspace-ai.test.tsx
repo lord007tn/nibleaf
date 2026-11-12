@@ -118,3 +118,41 @@ describe('reindexing', () => {
     expect(mocks.toastError).not.toHaveBeenCalled();
   });
 });
+
+describe('checking the saved key (CodeRabbit on #566)', () => {
+  it('reads the AI status again once the check settles, even after the form is gone, and either way', async () => {
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    const models = await mountHook(() => useWorkspaceAiModels('project'));
+    // The form unmounts while the check is still out.
+    let answer: (response: Response) => void = () => undefined;
+    mocks.models.mockReturnValue(
+      new Promise<Response>((done) => {
+        answer = done;
+      }),
+    );
+    const pending = models.current.mutateAsync({ providerId: 'openai' });
+    await act(async () => root.unmount());
+    answer(Response.json({ data: { models: [{ id: 'gpt-6-luna' }] } }));
+    await pending;
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.workspaceAi.detail('project') });
+    // A failed check of the saved key refreshes too.
+    root = createRoot(document.body.appendChild(document.createElement('div')));
+    invalidate.mockClear();
+    mocks.models.mockResolvedValue(failure(422, 'integration:credentials_invalid'));
+    const again = await mountHook(() => useWorkspaceAiModels('project'));
+    await act(async () => {
+      await again.current.mutateAsync({ providerId: 'openai' }).catch(() => undefined);
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.workspaceAi.detail('project') });
+  });
+
+  it('leaves the status alone while a new key is only being tried', async () => {
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    mocks.models.mockResolvedValue(Response.json({ data: { models: [] } }));
+    const models = await mountHook(() => useWorkspaceAiModels('project'));
+    await act(async () => {
+      await models.current.mutateAsync({ providerId: 'openai', apiKey: 'new-key-being-tried' });
+    });
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: queryKeys.workspaceAi.detail('project') });
+  });
+});

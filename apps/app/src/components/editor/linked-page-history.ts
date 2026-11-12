@@ -1,5 +1,6 @@
-import { useNavigate, useRouterState } from '@tanstack/react-router';
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { editorIn, landOnSection, prefersReducedMotion, sectionFragment } from './editor-sections';
 
 declare module '@tanstack/react-router' {
   interface HistoryState {
@@ -9,6 +10,8 @@ declare module '@tanstack/react-router' {
 }
 
 const EDITOR_ROUTE = '/app/projects/$projectId/editor';
+/** How long (in frames) a section link waits for its page's content to reach the editor. */
+const SECTION_WAIT_FRAMES = 60;
 
 /** The element that scrolls the page being edited: the rich text document, or the canvas itself. */
 const editorScroller = (canvas: HTMLElement | null): HTMLElement | null => canvas?.querySelector<HTMLElement>('.pl-document-scroll') ?? canvas;
@@ -26,9 +29,17 @@ const editorScroller = (canvas: HTMLElement | null): HTMLElement | null => canva
  * Scroll positions are also kept per entry as the writer scrolls, so Forward
  * returns to where the linked page was left.
  *
- * `pageId` is the page on screen; `canvas` holds it. Returns the function that
- * opens a linked page. Pushing it goes through the router's navigation blocker,
- * which saves the page being left.
+ * A link to a section (`page#install`) carries it in the entry's hash
+ * (`?page=<id>#install`). An entry with a section and no scroll position yet
+ * (just followed, or opened in a new tab) goes to that heading once the page's
+ * content is in the editor (`jumpToSection`); no such heading leaves it at the
+ * top. A section of the page on screen (`#install`) is its own entry too, as on
+ * the published site, so Back returns to where the page was.
+ *
+ * `pageId` is the page on screen; `canvas` holds it. Returns how to open a
+ * linked page, here (`open`) or in a new tab (`href`, its address). Opening
+ * another page goes through the router's navigation blocker, which saves the
+ * page being left.
  */
 export function useLinkedPageHistory({
   projectId,
@@ -38,12 +49,14 @@ export function useLinkedPageHistory({
   projectId: string;
   pageId: string | undefined;
   canvas: () => HTMLElement | null;
-}): (id: string) => Promise<void> {
+}): LinkedPages {
   const navigate = useNavigate();
+  const router = useRouter();
   const location = useRouterState({ select: (state) => state.location });
   const entry = location.state.__TSR_key ?? location.href;
   const named = (location.search as { page?: string }).page;
   const saved = location.state.editorScroll;
+  const section = sectionFragment(location.hash);
   const positions = useRef(new Map<string, number>());
   const entryRef = useRef(entry);
   const canvasRef = useRef(canvas);
@@ -63,15 +76,40 @@ export function useLinkedPageHistory({
     return () => root.removeEventListener('scroll', onScroll, true);
   });
 
+  // One landing on a section at a time; the writer's first move ends it (`landOnSection`).
+  const endLanding = useRef<(() => void) | null>(null);
+  const startLanding = useCallback((target: string) => {
+    endLanding.current?.();
+    const end = landOnSection({
+      find: () => editorIn(canvasRef.current()),
+      section: target,
+      smooth: !prefersReducedMotion(),
+      waitFrames: SECTION_WAIT_FRAMES,
+    });
+    endLanding.current = end;
+    return end;
+  }, []);
+
   // Once the page an entry names is on screen, put it back where it was left
-  // (the top for an entry never scrolled).
+  // (the top for an entry never scrolled), or go to the section it names.
   const restored = useRef<string | null>(null);
+  // The page the last restored entry showed: an in-page section keeps the scroll it starts from.
+  const shown = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!pageId || pageId !== named || restored.current === entry) return;
     restored.current = entry;
-    const top = positions.current.get(entry) ?? saved ?? 0;
+    const samePage = shown.current === pageId;
+    shown.current = pageId;
+    const left = positions.current.get(entry) ?? saved;
     let frames = 0;
     let frame = 0;
+    if (left === undefined && section) {
+      const scroller = editorScroller(canvasRef.current());
+      if (scroller && !samePage) scroller.scrollTop = 0;
+      // The page's content reaches the editor over a few frames; then the section is looked up once.
+      return startLanding(section);
+    }
+    const top = left ?? 0;
     // The document renders over a few frames; reapply until it has room.
     const apply = () => {
       const scroller = editorScroller(canvasRef.current());
@@ -80,24 +118,53 @@ export function useLinkedPageHistory({
     };
     apply();
     return () => cancelAnimationFrame(frame);
-  }, [entry, named, pageId, saved]);
+  }, [entry, named, pageId, saved, section, startLanding]);
 
-  return useCallback(
-    async (id: string) => {
-      if (!pageId || id === pageId) return;
+  const open = useCallback(
+    async (id: string, target?: string) => {
+      const samePage = id === pageId;
+      if (!pageId || (samePage && !target)) return;
+      // The section this entry already names: go to it again, as a second click on such a link does on the site.
+      if (samePage && target === section && named === pageId) {
+        startLanding(target);
+        return;
+      }
       const top = editorScroller(canvasRef.current())?.scrollTop ?? 0;
       // Rewrite this entry to name the page on screen, then push the linked page.
-      // The rewrite stays on this page, so it needs no save.
+      // The rewrite stays on this page, so it needs no save; nor does a section of this page.
       await navigate({
         to: EDITOR_ROUTE,
         params: { projectId },
         search: { page: pageId },
+        hash: true,
         state: (previous) => ({ ...previous, editorScroll: top }),
         replace: true,
         ignoreBlocker: true,
+        hashScrollIntoView: false,
       });
-      await navigate({ to: EDITOR_ROUTE, params: { projectId }, search: { page: id } });
+      await navigate({
+        to: EDITOR_ROUTE,
+        params: { projectId },
+        search: { page: id },
+        hash: target || undefined,
+        ignoreBlocker: samePage,
+        hashScrollIntoView: false,
+      });
     },
-    [navigate, pageId, projectId],
+    [navigate, named, pageId, projectId, section, startLanding],
   );
+  const href = useCallback(
+    (id: string, target?: string) =>
+      router.buildLocation({ to: EDITOR_ROUTE, params: { projectId }, search: { page: id }, hash: target || undefined }).href,
+    [router, projectId],
+  );
+  return useMemo(() => ({ open, href }), [open, href]);
+}
+
+/** Opening a page that a link in the page leads to. */
+export interface LinkedPages {
+  /** Open page `id` here, in its own history entry, at `section` when given (the page on screen just goes there). */
+  open: (id: string, section?: string) => Promise<void>;
+  /** Page `id`'s editor address, at `section` when given, for a new tab. */
+  href: (id: string, section?: string) => string;
 }

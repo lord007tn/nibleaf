@@ -1,0 +1,222 @@
+{
+  "baseline": "origin/main",
+  "environment": "Isolated actual-component fixture; intercepted fictional HTTP; no server, database or real site",
+  "journeys": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "cards": [
+        {
+          "address": "/team-handbook",
+          "visit": []
+        },
+        {
+          "address": "docs.acme.example",
+          "visit": []
+        },
+        {
+          "address": "/draft-notes",
+          "visit": []
+        }
+      ],
+      "checksShot": null,
+      "requests": [
+        "GET /api/app/organizations/org/projects",
+        "GET /api/app/organizations/org/analytics",
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/org/members",
+        "GET /api/app/organizations/org/invitations"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "cards": [
+        {
+          "address": "/team-handbook",
+          "visit": []
+        },
+        {
+          "address": "docs.acme.example",
+          "visit": []
+        },
+        {
+          "address": "/draft-notes",
+          "visit": []
+        }
+      ],
+      "checksShot": null,
+      "requests": [
+        "GET /api/app/organizations/org/projects",
+        "GET /api/app/organizations/org/analytics",
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/org/members",
+        "GET /api/app/organizations/org/invitations"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "cards": [
+        {
+          "address": "/team-handbook",
+          "visit": []
+        },
+        {
+          "address": "docs.acme.example",
+          "visit": []
+        },
+        {
+          "address": "/draft-notes",
+          "visit": []
+        }
+      ],
+      "checksShot": null,
+      "requests": [
+        "GET /api/app/organizations/org/projects",
+        "GET /api/app/organizations/org/analytics",
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/org/members",
+        "GET /api/app/organizations/org/invitations"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "cards": [
+        {
+          "address": "/team-handbook",
+          "visit": []
+        },
+        {
+          "address": "docs.acme.example",
+          "visit": []
+        },
+        {
+          "address": "/draft-notes",
+          "visit": []
+        }
+      ],
+      "checksShot": null,
+      "requests": [
+        "GET /api/app/organizations/org/projects",
+        "GET /api/app/organizations/org/analytics",
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/org/members",
+        "GET /api/app/organizations/org/invitations"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "cards": [
+        {
+          "address": "/sites/cm0handbook0000000000001",
+          "visit": ["/sites/cm0handbook0000000000001"]
+        },
+        {
+          "address": "docs.acme.example",
+          "visit": ["https://docs.acme.example"]
+        },
+        {
+          "address": "/sites/cm0draft000000000000003",
+          "visit": []
+        }
+      ],
+      "checksShot": "checks-after-en-1440.png",
+      "requests": [
+        "GET /api/app/organizations/org/projects",
+        "GET /api/app/organizations/org/analytics",
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/org/members",
+        "GET /api/app/organizations/org/invitations"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "cards": [
+        {
+          "address": "/sites/cm0handbook0000000000001",
+          "visit": ["/sites/cm0handbook0000000000001"]
+        },
+        {
+          "address": "docs.acme.example",
+          "visit": ["https://docs.acme.example"]
+        },
+        {
+          "address": "/sites/cm0draft000000000000003",
+          "visit": []
+        }
+      ],
+      "checksShot": "checks-after-en-390.png",
+      "requests": [
+        "GET /api/app/organizations/org/projects",
+        "GET /api/app/organizations/org/analytics",
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/org/members",
+        "GET /api/app/organizations/org/invitations"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "cards": [
+        {
+          "address": "/sites/cm0handbook0000000000001",
+          "visit": ["/sites/cm0handbook0000000000001"]
+        },
+        {
+          "address": "docs.acme.example",
+          "visit": ["https://docs.acme.example"]
+        },
+        {
+          "address": "/sites/cm0draft000000000000003",
+          "visit": []
+        }
+      ],
+      "checksShot": "checks-after-ar-1440.png",
+      "requests": [
+        "GET /api/app/organizations/org/projects",
+        "GET /api/app/organizations/org/analytics",
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/org/members",
+        "GET /api/app/organizations/org/invitations"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "cards": [
+        {
+          "address": "/sites/cm0handbook0000000000001",
+          "visit": ["/sites/cm0handbook0000000000001"]
+        },
+        {
+          "address": "docs.acme.example",
+          "visit": ["https://docs.acme.example"]
+        },
+        {
+          "address": "/sites/cm0draft000000000000003",
+          "visit": []
+        }
+      ],
+      "checksShot": "checks-after-ar-390.png",
+      "requests": [
+        "GET /api/app/organizations/org/projects",
+        "GET /api/app/organizations/org/analytics",
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/org/members",
+        "GET /api/app/organizations/org/invitations"
+      ]
+    }
+  ]
+}

@@ -177,4 +177,15 @@ describe('reader language and access', () => {
     expect(container.querySelector('h1')?.textContent).toBe('Not published yet');
     expect(container.querySelector('a[href="/sign-in"]')).toBeNull();
   });
+
+  it('says there is no site at an address the API does not know (or a taken-down site), not that it is unpublished', async () => {
+    for (const details of [undefined, { reason: 'takedown' }]) {
+      mocks.getSite.mockRejectedValue(
+        new ApiResponseError('site not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, details),
+      );
+      const container = await renderReader('/sites/joodpms', 'h1');
+      expect(container.querySelector('h1')?.textContent).toBe('No site at this address');
+      expect(container.textContent).not.toContain('editor');
+    }
+  });
 });

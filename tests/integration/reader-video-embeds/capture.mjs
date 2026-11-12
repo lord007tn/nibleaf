@@ -15,8 +15,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { chromium } from 'playwright-core';
-import { acquireDevstackLock, chromiumExecutable } from '../lib/capture-env.mjs';
+import { acquireDevstackLock, hostKey, withLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const OUTPUT = join(ROOT, '.github/assets/feat-reader-video-embeds');
@@ -63,91 +62,98 @@ try {
   const mock = spawn(process.execPath, ['scripts/site-preview-mock.mjs', '--port', '4311'], { cwd: ROOT, stdio: 'ignore' });
   children.add(mock);
   await waitFor(`${MOCK}/api/public/sites/preview-harbor`);
-  browser = await chromium.launch({ executablePath: chromiumExecutable(), handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
+  // Only the local app and mock are reachable (capture-env.mjs); provider requests are
+  // answered by the routes below, and anything else fails the run.
+  await withLocalOnlyBrowser(
+    { allowedHosts: [hostKey(APP), hostKey(MOCK)], launch: { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false } },
+    async ({ browser: guarded }) => {
+      browser = guarded;
 
-  for (const [phase, appDir] of [
-    ['before', resolve(BEFORE_APP)],
-    ['after', join(ROOT, 'apps/app')],
-  ]) {
-    const app = spawn(process.execPath, ['.output/server/index.mjs'], { cwd: appDir, env: { ...process.env, PORT: '4310' }, stdio: 'ignore' });
-    children.add(app);
-    await waitFor(APP);
-    for (const lang of ['en', 'ar'])
-      for (const width of [1440, 390]) {
-        const context = await browser.newContext({
-          viewport: { width, height: width < 600 ? 844 : 900 },
-          deviceScaleFactor: 1,
-          ...(width < 600 ? { isMobile: true, hasTouch: true } : {}),
-        });
-        const page = await context.newPage();
-        const requests = [];
-        page.on('request', (request) => requests.push(request.url()));
-        await context.route(isOffsite, (route) => {
-          const url = new URL(route.request().url());
-          if (isProvider(url.href)) return route.fulfill({ status: 200, contentType: 'text/html', body: STUB(url.hostname) });
-          return route.fulfill({ status: 204 });
-        });
-        await page.goto(`${PAGE}${lang === 'en' ? '' : `?lang=${lang}`}`, { waitUntil: 'networkidle' });
-        await page.locator('.typeset').first().waitFor({ timeout: 60_000 });
-        await page.waitForTimeout(1500);
-        // The whole article from the top of the page, so the sticky header doesn't cover it.
-        const box = await page
-          .locator('.typeset')
-          .first()
-          .evaluate((element) => {
-            const rect = element.getBoundingClientRect();
-            return { x: rect.left + scrollX, y: rect.top + scrollY, width: rect.width, height: rect.height };
-          });
-        const margin = 16;
-        await page.screenshot({
-          path: join(OUTPUT, `page-${phase}-${lang}-${width}.png`),
-          fullPage: true,
-          clip: {
-            x: Math.max(0, box.x - margin),
-            y: Math.max(0, box.y - margin),
-            width: Math.min(width, box.width + 2 * margin),
-            height: box.height + 2 * margin,
-          },
-        });
+      for (const [phase, appDir] of [
+        ['before', resolve(BEFORE_APP)],
+        ['after', join(ROOT, 'apps/app')],
+      ]) {
+        const app = spawn(process.execPath, ['.output/server/index.mjs'], { cwd: appDir, env: { ...process.env, PORT: '4310' }, stdio: 'ignore' });
+        children.add(app);
+        await waitFor(APP);
+        for (const lang of ['en', 'ar'])
+          for (const width of [1440, 390]) {
+            const context = await browser.newContext({
+              viewport: { width, height: width < 600 ? 844 : 900 },
+              deviceScaleFactor: 1,
+              ...(width < 600 ? { isMobile: true, hasTouch: true } : {}),
+            });
+            const page = await context.newPage();
+            const requests = [];
+            page.on('request', (request) => requests.push(request.url()));
+            await context.route(isOffsite, (route) => {
+              const url = new URL(route.request().url());
+              if (isProvider(url.href)) return route.fulfill({ status: 200, contentType: 'text/html', body: STUB(url.hostname) });
+              return route.fulfill({ status: 204 });
+            });
+            await page.goto(`${PAGE}${lang === 'en' ? '' : `?lang=${lang}`}`, { waitUntil: 'networkidle' });
+            await page.locator('.typeset').first().waitFor({ timeout: 60_000 });
+            await page.waitForTimeout(1500);
+            // The whole article from the top of the page, so the sticky header doesn't cover it.
+            const box = await page
+              .locator('.typeset')
+              .first()
+              .evaluate((element) => {
+                const rect = element.getBoundingClientRect();
+                return { x: rect.left + scrollX, y: rect.top + scrollY, width: rect.width, height: rect.height };
+              });
+            const margin = 16;
+            await page.screenshot({
+              path: join(OUTPUT, `page-${phase}-${lang}-${width}.png`),
+              fullPage: true,
+              clip: {
+                x: Math.max(0, box.x - margin),
+                y: Math.max(0, box.y - margin),
+                width: Math.min(width, box.width + 2 * margin),
+                height: box.height + 2 * margin,
+              },
+            });
 
-        const entry = {
-          phase,
-          lang,
-          width,
-          embeds: await page.locator('[data-theme-component="video-embed"]').count(),
-          linkCards: await page.locator('a[data-theme-component="embed-link"]').count(),
-          iframesBeforePlay: await page.locator('iframe').count(),
-          videos: await page
-            .locator('.typeset video')
-            .evaluateAll((videos) =>
-              videos.map((video) => Object.fromEntries([...video.attributes].map((attribute) => [attribute.name, attribute.value]))),
-            ),
-          offsiteRequestsBeforePlay: requests.filter(isOffsite),
-          requestsBeforePlay: requests.length,
-        };
-        if (phase === 'after') {
-          assert.deepEqual(entry.offsiteRequestsBeforePlay, [], `${lang} ${width}: no off-site request before play`);
-          const play = page.locator('[data-theme-component="video-embed"] button').first();
-          await play.scrollIntoViewIfNeeded();
-          const before = requests.length;
-          await play.click();
-          const frame = page.locator('[data-theme-component="video-embed"] iframe').first();
-          await frame.waitFor();
-          await page.waitForLoadState('networkidle');
-          await page.waitForTimeout(500);
-          entry.requestsAfterPlay = requests.slice(before);
-          entry.offsiteRequestsAfterPlay = entry.requestsAfterPlay.filter(isOffsite);
-        }
-        log.push(entry);
-        console.log(
-          `${phase} ${lang} ${width}: ${entry.embeds} facades, ${entry.linkCards} link cards, ${entry.videos.length} videos, off-site before play ${entry.offsiteRequestsBeforePlay.length}${entry.offsiteRequestsAfterPlay ? `, after ${JSON.stringify(entry.offsiteRequestsAfterPlay)}` : ''}`,
-        );
-        await context.close();
+            const entry = {
+              phase,
+              lang,
+              width,
+              embeds: await page.locator('[data-theme-component="video-embed"]').count(),
+              linkCards: await page.locator('a[data-theme-component="embed-link"]').count(),
+              iframesBeforePlay: await page.locator('iframe').count(),
+              videos: await page
+                .locator('.typeset video')
+                .evaluateAll((videos) =>
+                  videos.map((video) => Object.fromEntries([...video.attributes].map((attribute) => [attribute.name, attribute.value]))),
+                ),
+              offsiteRequestsBeforePlay: requests.filter(isOffsite),
+              requestsBeforePlay: requests.length,
+            };
+            if (phase === 'after') {
+              assert.deepEqual(entry.offsiteRequestsBeforePlay, [], `${lang} ${width}: no off-site request before play`);
+              const play = page.locator('[data-theme-component="video-embed"] button').first();
+              await play.scrollIntoViewIfNeeded();
+              const before = requests.length;
+              await play.click();
+              const frame = page.locator('[data-theme-component="video-embed"] iframe').first();
+              await frame.waitFor();
+              await page.waitForLoadState('networkidle');
+              await page.waitForTimeout(500);
+              entry.requestsAfterPlay = requests.slice(before);
+              entry.offsiteRequestsAfterPlay = entry.requestsAfterPlay.filter(isOffsite);
+            }
+            log.push(entry);
+            console.log(
+              `${phase} ${lang} ${width}: ${entry.embeds} facades, ${entry.linkCards} link cards, ${entry.videos.length} videos, off-site before play ${entry.offsiteRequestsBeforePlay.length}${entry.offsiteRequestsAfterPlay ? `, after ${JSON.stringify(entry.offsiteRequestsAfterPlay)}` : ''}`,
+            );
+            await context.close();
+          }
+        await stop(app);
+        children.delete(app);
       }
-    await stop(app);
-    children.delete(app);
-  }
-  await writeFile(join(OUTPUT, 'request-log.json'), `${JSON.stringify(log, null, 2)}\n`);
+      await writeFile(join(OUTPUT, 'request-log.json'), `${JSON.stringify(log, null, 2)}\n`);
+    },
+  );
 } finally {
   await cleanup();
   await lock.release();

@@ -11,9 +11,8 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { extname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { chromium } from 'playwright-core';
 import { build } from 'vite';
-import { chromiumExecutable } from '../lib/capture-env.mjs';
+import { withLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const appDir = fileURLToPath(new URL('../../../apps/app/', import.meta.url));
 const harness = join(appDir, '.forced-colors-check');
@@ -60,55 +59,54 @@ try {
     build: { outDir: join(harness, 'dist'), emptyOutDir: true },
   });
 
-  const browser = await chromium.launch({
-    executablePath: chromiumExecutable(),
-  });
-  const page = await browser.newPage({ viewport: { width: 520, height: 420 } });
-  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
-  await page.route('http://harness.local/**', (route) => {
-    const path = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
-    route.fulfill({ body: readFileSync(join(harness, 'dist', path)), contentType: types[extname(path)] ?? 'application/octet-stream' });
-  });
-  await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark' });
-  await page.goto('http://harness.local/index.html');
-  await page.waitForSelector('[data-slot="meter-bar"]');
-  assert.equal(await page.evaluate(() => matchMedia('(forced-colors: active)').matches), true, 'forced colors are emulated');
+  // Only these hosts are reachable (capture-env.mjs); anything else fails the run.
+  await withLocalOnlyBrowser({ allowedHosts: ['harness.test:80'] }, async ({ browser }) => {
+    const page = await browser.newPage({ viewport: { width: 520, height: 420 } });
+    const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
+    await page.route('http://harness.test/**', (route) => {
+      const path = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
+      route.fulfill({ body: readFileSync(join(harness, 'dist', path)), contentType: types[extname(path)] ?? 'application/octet-stream' });
+    });
+    await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark' });
+    await page.goto('http://harness.test/index.html');
+    await page.waitForSelector('[data-slot="meter-bar"]');
+    assert.equal(await page.evaluate(() => matchMedia('(forced-colors: active)').matches), true, 'forced colors are emulated');
 
-  const visible = (color) => color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent';
-  // Meter: the bar is drawn as a border, which forced colors keep (a background alone is dropped).
-  const bars = await page.$$eval('[data-slot="meter-bar"]', (els) =>
-    els.map((el) => {
+    const visible = (color) => color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent';
+    // Meter: the bar is drawn as a border, which forced colors keep (a background alone is dropped).
+    const bars = await page.$$eval('[data-slot="meter-bar"]', (els) =>
+      els.map((el) => {
+        const style = getComputedStyle(el);
+        return { top: style.borderTopWidth, bottom: style.borderBottomWidth, color: style.borderTopColor, width: el.getBoundingClientRect().width };
+      }),
+    );
+    assert.equal(bars.length, 3);
+    for (const bar of bars) {
+      assert.equal(bar.top, '3px', 'meter bar top border');
+      assert.equal(bar.bottom, '3px', 'meter bar bottom border');
+      assert.ok(visible(bar.color), `meter bar border is painted (${bar.color})`);
+      assert.ok(bar.width > 0, 'meter bar has width');
+    }
+    // Radio: the chosen dot is a border too.
+    const dot = await page.$eval('[data-slot="radio-group-indicator"]', (el) => {
       const style = getComputedStyle(el);
-      return { top: style.borderTopWidth, bottom: style.borderBottomWidth, color: style.borderTopColor, width: el.getBoundingClientRect().width };
-    }),
-  );
-  assert.equal(bars.length, 3);
-  for (const bar of bars) {
-    assert.equal(bar.top, '3px', 'meter bar top border');
-    assert.equal(bar.bottom, '3px', 'meter bar bottom border');
-    assert.ok(visible(bar.color), `meter bar border is painted (${bar.color})`);
-    assert.ok(bar.width > 0, 'meter bar has width');
-  }
-  // Radio: the chosen dot is a border too.
-  const dot = await page.$eval('[data-slot="radio-group-indicator"]', (el) => {
-    const style = getComputedStyle(el);
-    return { width: style.borderTopWidth, color: style.borderTopColor };
-  });
-  assert.equal(dot.width, '4px', 'radio dot border');
-  assert.ok(visible(dot.color), `radio dot is painted (${dot.color})`);
-  // Focus: a keyboard-focused checkbox shows an outline in forced colors.
-  await page.keyboard.press('Tab');
-  const outline = await page.evaluate(() => {
-    const style = getComputedStyle(document.activeElement);
-    return { role: document.activeElement?.getAttribute('role'), width: style.outlineWidth, style: style.outlineStyle, color: style.outlineColor };
-  });
-  assert.equal(outline.role, 'checkbox');
-  assert.equal(outline.style, 'solid', 'focus outline in forced colors');
-  assert.equal(outline.width, '2px');
-  assert.ok(visible(outline.color), `focus outline is painted (${outline.color})`);
+      return { width: style.borderTopWidth, color: style.borderTopColor };
+    });
+    assert.equal(dot.width, '4px', 'radio dot border');
+    assert.ok(visible(dot.color), `radio dot is painted (${dot.color})`);
+    // Focus: a keyboard-focused checkbox shows an outline in forced colors.
+    await page.keyboard.press('Tab');
+    const outline = await page.evaluate(() => {
+      const style = getComputedStyle(document.activeElement);
+      return { role: document.activeElement?.getAttribute('role'), width: style.outlineWidth, style: style.outlineStyle, color: style.outlineColor };
+    });
+    assert.equal(outline.role, 'checkbox');
+    assert.equal(outline.style, 'solid', 'focus outline in forced colors');
+    assert.equal(outline.width, '2px');
+    assert.ok(visible(outline.color), `focus outline is painted (${outline.color})`);
 
-  if (screenshot) await page.screenshot({ path: screenshot });
-  await browser.close();
+    if (screenshot) await page.screenshot({ path: screenshot });
+  });
   console.log('design-system forced colors: all checks passed');
 } finally {
   rmSync(harness, { recursive: true, force: true });

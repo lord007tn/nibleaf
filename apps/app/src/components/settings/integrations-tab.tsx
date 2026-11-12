@@ -233,7 +233,7 @@ const isComingSoon = (entry: IntegrationCatalogEntry) => entry.availability === 
 /** Where a provider is really set up, when that is another settings page: its button and the line above it. */
 const SETTINGS_LINKS = {
   git: { label: 'settings.integrations.openGitSettings', description: 'settings.integrations.adapterOwned', icon: GitBranch },
-  smartAi: { label: 'settings.integrations.openSmartAi', description: 'settings.integrations.smartAiOwned', icon: Bot },
+  ai: { label: 'settings.integrations.openSmartAi', description: 'settings.integrations.smartAiOwned', icon: Bot },
 } as const satisfies Record<Exclude<IntegrationSettingsSection, 'integrations'>, { label: MessageKey; description: MessageKey; icon: ProviderIcon }>;
 const newIdempotencyKey = () => randomUUID();
 

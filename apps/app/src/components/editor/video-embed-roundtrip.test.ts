@@ -87,7 +87,9 @@ describe('Video and Embed block storage', () => {
     expect(values(editor)).toEqual([
       { kind: 'iframe', src: 'https://www.youtube.com/embed/dQw4w9WgXcQ?si=abc123', title: 'YouTube video player', caption: '' },
       { kind: 'iframe', src: `https://www.loom.com/embed/${LOOM}`, title: 'Loom walkthrough', caption: '' },
-      { kind: 'video', src: 'https://cdn.example.com/demo.mp4', title: '', caption: '' },
+      // Mintlify's multi-line `<video …\n>` opener reads to Markdown as a paragraph and a
+      // blockquote (its lone `>` line), so it isn't a block of its own: it stays #573's
+      // opaque range, kept byte for byte.
       { kind: 'video', src: 'https://cdn.example.com/b.mp4', title: '', caption: '' },
       { kind: 'iframe', src: 'https://codepen.io/team/embed/abc', title: 'A pen', caption: '' },
     ]);

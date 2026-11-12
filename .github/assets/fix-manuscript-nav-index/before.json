@@ -1,0 +1,25 @@
+{
+  "label": "before",
+  "en-light": {
+    "indexHeight": 931,
+    "links": 23,
+    "linksBelowVisibleArea": 0,
+    "toggle": null,
+    "bodyBackground": "rgb(249, 245, 236)"
+  },
+  "ar-light": {
+    "indexHeight": 816,
+    "links": 27,
+    "linksBelowVisibleArea": 0,
+    "toggle": null,
+    "bodyBackground": "rgb(249, 245, 236)"
+  },
+  "ar-dark": {
+    "indexHeight": 816,
+    "links": 27,
+    "linksBelowVisibleArea": 0,
+    "toggle": null,
+    "bodyBackground": "rgb(23, 20, 15)"
+  },
+  "externalAttempts": 0
+}

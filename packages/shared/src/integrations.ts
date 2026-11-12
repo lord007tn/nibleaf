@@ -68,7 +68,7 @@ export type IntegrationCapability =
   | 'analytics'
   | 'assets';
 
-export type IntegrationSettingsSection = 'git' | 'integrations' | 'smartAi';
+export type IntegrationSettingsSection = 'git' | 'integrations' | 'ai';
 
 export interface IntegrationNavigation {
   settingsSection: IntegrationSettingsSection | null;
@@ -185,8 +185,8 @@ export const INTEGRATION_CATALOG: readonly IntegrationManifest[] = [
   webhook('slack', true),
   webhook('discord', false),
   webhook('zapier', true),
-  adapter('openrouter', 'ai', ['generation', 'search', 'health'], 'secret', 'smartAi'),
-  adapter('openai', 'ai', ['generation', 'search', 'health'], 'secret', 'smartAi'),
+  adapter('openrouter', 'ai', ['generation', 'search', 'health'], 'secret', 'ai'),
+  adapter('openai', 'ai', ['generation', 'search', 'health'], 'secret', 'ai'),
   managed('qdrant', 'storage', ['search', 'health']),
   managed('clickhouse', 'analytics', ['analytics', 'health']),
   managed('postmark', 'email', ['delivery', 'health']),

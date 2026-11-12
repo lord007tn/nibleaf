@@ -19,13 +19,17 @@ publish it, and that nobody contacts the provider before play (AUTH-11, PR 2):
 
 The request log has **no request off localhost at all** in the editor, while
 publishing, or in the reader before play; the only one after play is the mocked
-player. The network is default-deny: every request to a host other than
-`localhost`/`127.0.0.1` is aborted, except the provider and `example.com` hosts,
-which are answered in-process by `route` mocks (as in the #547 check), so nothing
-leaves the machine. A navigation or redirect to any other host fails the run.
-The reader is opened only for sites this script creates, which have no custom
-domain (no domain rows, `primaryDomain` null, both checked), and only at
-`http://localhost:4310/sites/<id>/…`.
+player. The browser comes from `withLocalOnlyBrowser` (`../lib/capture-env.mjs`):
+default-deny at Chromium's network layer, with only the app (`localhost:4310`)
+allowed. The provider and `example.com` hosts are answered in-process by this
+script's `route` mocks (as in the #547 check), so nothing leaves the machine; any
+attempt to reach outside the stack (requests, sockets, redirects) fails the run,
+and the count (0) is written to `request-log.json` as `outsideAttempts`. The
+reader is opened only for sites this script creates, which have no custom domain
+(no domain rows, `primaryDomain` null, both checked), and only at
+`http://localhost:4310/sites/<id>/…`. The save is checked once it has settled:
+the editor says the draft is saved, and the stored source holds the final title
+and caption across two reads.
 
 It runs in English and Arabic at 1440 and 390 pixels wide, and writes the
 screenshots and `request-log.json` to `.github/assets/feat-editor-video-blocks/`.

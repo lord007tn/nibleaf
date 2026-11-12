@@ -47,8 +47,12 @@ import { site_madewith } from './paraglide/messages/site_madewith.js';
 import { site_markdowncopyfailed } from './paraglide/messages/site_markdowncopyfailed.js';
 import { site_menu } from './paraglide/messages/site_menu.js';
 import { site_minreadcount } from './paraglide/messages/site_minreadcount.js';
+import { site_navshowall } from './paraglide/messages/site_navshowall.js';
+import { site_navshowless } from './paraglide/messages/site_navshowless.js';
 import { site_next } from './paraglide/messages/site_next.js';
 import { site_noanswergrounded } from './paraglide/messages/site_noanswergrounded.js';
+import { site_nositebody } from './paraglide/messages/site_nositebody.js';
+import { site_nositetitle } from './paraglide/messages/site_nositetitle.js';
 import { site_notfoundbody } from './paraglide/messages/site_notfoundbody.js';
 import { site_notfoundhome } from './paraglide/messages/site_notfoundhome.js';
 import { site_notfoundsearch } from './paraglide/messages/site_notfoundsearch.js';
@@ -120,9 +124,13 @@ const siteMessages = {
   previous: site_previous,
   next: site_next,
   onThisPage: site_onthispage,
+  navShowAll: site_navshowall,
+  navShowLess: site_navshowless,
   updated: site_updated,
   notPublishedTitle: site_notpublishedtitle,
   notPublishedBody: site_notpublishedbody,
+  noSiteTitle: site_nositetitle,
+  noSiteBody: site_nositebody,
   privateTitle: site_privatetitle,
   signOut: site_signout,
   signOutFailed: site_signoutfailed,

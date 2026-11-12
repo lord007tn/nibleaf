@@ -1,0 +1,54 @@
+{
+  "label": "after",
+  "unknown-en-1440": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/no-such-site-here"],
+    "finalUrl": "http://localhost:4310/sites/no-such-site-here",
+    "title": "No site at this address",
+    "heading": "No site at this address"
+  },
+  "unknown-en-390": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/no-such-site-here"],
+    "finalUrl": "http://localhost:4310/sites/no-such-site-here",
+    "title": "No site at this address",
+    "heading": "No site at this address"
+  },
+  "unknown-ar-1440": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/no-such-site-here?lang=ar"],
+    "finalUrl": "http://localhost:4310/sites/no-such-site-here?lang=ar",
+    "title": "لا يوجد موقع على هذا العنوان",
+    "heading": "لا يوجد موقع على هذا العنوان"
+  },
+  "slug-en-1440": {
+    "status": 200,
+    "chain": [
+      "http://localhost:4310/sites/joodpms",
+      "http://localhost:4310/sites/cmw7lrthl008f06nznvwza61j"
+    ],
+    "finalUrl": "http://localhost:4310/sites/cmw7lrthl008f06nznvwza61j",
+    "title": "إضافة عميل على نظام بي آم آس — JOODPMS",
+    "heading": "إضافة عميل على نظام بي آم آس"
+  },
+  "slug-en-390": {
+    "status": 200,
+    "chain": [
+      "http://localhost:4310/sites/joodpms",
+      "http://localhost:4310/sites/cmw7lrthl008f06nznvwza61j"
+    ],
+    "finalUrl": "http://localhost:4310/sites/cmw7lrthl008f06nznvwza61j",
+    "title": "إضافة عميل على نظام بي آم آس — JOODPMS",
+    "heading": "إضافة عميل على نظام بي آم آس"
+  },
+  "slug-ar-1440": {
+    "status": 200,
+    "chain": [
+      "http://localhost:4310/sites/joodpms?lang=ar",
+      "http://localhost:4310/sites/cmw7lrthl008f06nznvwza61j?lang=ar"
+    ],
+    "finalUrl": "http://localhost:4310/sites/cmw7lrthl008f06nznvwza61j?lang=ar",
+    "title": "تعديل بيانات الغرف على نظام PMS — JOODPMS",
+    "heading": "تعديل بيانات الغرف على نظام PMS"
+  }
+}

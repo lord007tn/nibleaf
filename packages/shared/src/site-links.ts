@@ -53,19 +53,30 @@ const resolveSegments = (pathname: string, base: readonly string[]): string[] =>
   return parts;
 };
 
+/** Where a site path leads, and the fragment the redirects on the way set
+ *  (the last one that set one), if any. */
+interface Reached {
+  destination: boolean | SnapshotPage;
+  fragment?: string;
+}
+
 /** Follow what the reader serves for a site path, through configured and
- *  language-prefix redirects (bounded like redirect chains). */
-const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined): boolean | SnapshotPage => {
+ *  language-prefix redirects (bounded like redirect chains). A redirect is a
+ *  Location, so as in a browser a destination's fragment replaces the one the
+ *  link carried, and a destination without one keeps it. */
+const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined): Reached => {
   let path = startPath;
   let lang = startLang;
+  let fragment: string | undefined;
   for (let hop = 0; hop <= MAX_REDIRECT_CHAIN_LENGTH; hop++) {
-    if (RESERVED_ROUTES.has(path)) return true;
+    if (RESERVED_ROUTES.has(path)) return { destination: true, fragment };
     const route = resolveSiteRoute(snapshot, path, { lang });
-    if (route.kind === 'page') return route.page;
-    if (route.kind === 'openapi') return true;
-    if (route.kind === 'not-found') return false;
-    if (/^https?:\/\//i.test(route.to)) return true;
+    if (route.kind === 'page') return { destination: route.page, fragment };
+    if (route.kind === 'openapi') return { destination: true, fragment };
+    if (route.kind === 'not-found') return { destination: false };
+    if (/^https?:\/\//i.test(route.to)) return { destination: true };
     const target = new URL(route.to, 'https://site.invalid');
+    if (target.hash.length > 1) fragment = target.hash.slice(1);
     path = target.pathname
       .split('/')
       .filter(Boolean)
@@ -73,7 +84,7 @@ const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | 
       .join('/');
     lang = searchLanguage(target.searchParams);
   }
-  return false;
+  return { destination: false };
 };
 
 /**
@@ -86,14 +97,29 @@ const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | 
  * against the page URL and carries only its own `?lang=`.
  */
 export const createLinkResolver = (snapshot: SiteSnapshot) => {
+  const resolve = createLinkTargetResolver(snapshot);
+  return (href: string, page: SnapshotPage, siteAbsolute = false): boolean | SnapshotPage | null =>
+    resolve(href, page, siteAbsolute)?.destination ?? null;
+};
+
+/**
+ * `createLinkResolver`, also giving the fragment the reader lands on: the
+ * link's own (`setup#install`), unless a redirect on the way sets another
+ * (`old-setup` → `guides/setup#install`). Raw, as written (not decoded).
+ */
+export const createLinkTargetResolver = (snapshot: SiteSnapshot) => {
   const defaultCode = publicLanguages(snapshot.project.languages).find((language) => language.isDefault)?.code;
   const versionById = new Map(snapshot.project.versions.map((version) => [version.id, version]));
   // A site's shared navigation links repeat across many bodies. Normalize in
   // the source page's context first, then resolve each destination only once
   // per immutable snapshot scan (including redirect chains).
-  const destinations = new Map<string, ReturnType<typeof reaches>>();
-  return (href: string, page: SnapshotPage, siteAbsolute = false): boolean | SnapshotPage | null => {
+  const destinations = new Map<string, Reached>();
+  return (href: string, page: SnapshotPage, siteAbsolute = false): Reached | null => {
     const trimmed = href.trim();
+    const hashAt = trimmed.indexOf('#');
+    const linkFragment = hashAt >= 0 && hashAt < trimmed.length - 1 ? trimmed.slice(hashAt + 1) : undefined;
+    const withFragment = (reached: Reached): Reached =>
+      reached.destination === false ? reached : { destination: reached.destination, fragment: reached.fragment ?? linkFragment };
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('{') || trimmed.startsWith('//') || SCHEME.test(trimmed)) return null;
     const { pathname, query } = splitHref(trimmed);
     if (!pathname) return null;
@@ -115,9 +141,9 @@ export const createLinkResolver = (snapshot: SiteSnapshot) => {
     const path = segments.join('/');
     const key = JSON.stringify([path, lang]);
     const cached = destinations.get(key);
-    if (cached !== undefined) return cached;
-    const destination = reaches(snapshot, path, lang);
-    destinations.set(key, destination);
-    return destination;
+    if (cached !== undefined) return withFragment(cached);
+    const reached = reaches(snapshot, path, lang);
+    destinations.set(key, reached);
+    return withFragment(reached);
   };
 };

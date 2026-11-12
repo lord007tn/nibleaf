@@ -1,4 +1,12 @@
 // Shared settings for the browser capture scripts under tests/integration.
+//
+// The rule for every capture: take the dev-stack lock (`acquireDevstackLock`)
+// and launch the browser with `withLocalOnlyBrowser` (or
+// `launchLocalOnlyBrowser`). Chromium itself then resolves only loopback and the
+// custom domains mapped to the local app, and a closed proxy stops anything
+// else, so redirects, WebSockets, prefetches and favicons stay on this machine
+// too. Every context is guarded for accounting: attempts outside the allowed
+// hosts fail the run, and their count (0) goes in the PR body.
 import { rmSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -9,8 +17,7 @@ import { join } from 'node:path';
  * (PLAYWRIGHT_CHROMIUM_EXECUTABLE, CHROME_PATH, or the older CHROMIUM_PATH),
  * otherwise undefined, so Playwright launches the browser it installed.
  */
-export const chromiumExecutable = () =>
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || process.env.CHROME_PATH || process.env.CHROMIUM_PATH || undefined;
+const chromiumExecutable = () => process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || process.env.CHROME_PATH || process.env.CHROMIUM_PATH || undefined;
 
 /** Where the dev-stack lock lives: NIBLEAF_DEVSTACK_LOCK, or a directory in the OS temp dir. */
 const devstackLockPath = () => process.env.NIBLEAF_DEVSTACK_LOCK || join(tmpdir(), 'nibleaf-devstack.lock');
@@ -74,5 +81,290 @@ export async function acquireDevstackLock(owner, { onInterrupt } = {}) {
       detach();
       releaseNow();
     },
+    /**
+     * Leave the lock in place on purpose (e.g. teardown left services running):
+     * the exit and interrupt handlers are detached, so nothing removes it on the
+     * way out, and a later `release()` does nothing. Remove it by hand once the
+     * services are stopped.
+     */
+    keep: () => {
+      detach();
+      held = false;
+    },
   };
+}
+
+const DEFAULT_PORTS = { 'http:': '80', 'https:': '443', 'ws:': '80', 'wss:': '443' };
+
+/** `hostname:port` with the scheme's default port written out, or '' for an address that doesn't parse. */
+export const hostKey = (address) => {
+  try {
+    const url = new URL(address);
+    return `${url.hostname.toLowerCase()}:${url.port || DEFAULT_PORTS[url.protocol] || ''}`;
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * An allowed host as `hostname:port` (`localhost:4310`). The port is required
+ * and loopback aliases are not merged: `localhost:4310` doesn't allow
+ * `127.0.0.1:4310`. `0.0.0.0` is never allowed.
+ */
+export const allowedHostKey = (host) => {
+  const match = /^([a-z0-9.-]+|\[[0-9a-f:]+\]):(\d{1,5})$/i.exec(host.trim());
+  if (!match) throw new Error(`Allowed host "${host}" must be hostname:port`);
+  const hostname = (match[1] ?? '').toLowerCase();
+  if (hostname === '0.0.0.0' || hostname === '[::]') throw new Error(`"${host}" listens on every interface; allow a loopback name instead`);
+  return `${hostname}:${Number(match[2])}`;
+};
+
+const LOOPBACK = ['localhost', '127.0.0.1'];
+
+/** Fixture names that never resolve on the internet (RFC 2606 / 6761), for origins a page route answers. */
+const RESERVED_FIXTURE = /\.(test|invalid|example|localhost)$/;
+
+/**
+ * The allowed hosts as keys, each one on this machine: loopback with an explicit
+ * port, a custom domain mapped to the local app, or a reserved fixture name a
+ * route answers. Anything else (a production host from APP_URL, say) throws,
+ * before any browser launches.
+ */
+export const localHostKeys = (allowedHosts, customDomains = {}) => {
+  const mapped = new Set(Object.keys(customDomains).map((host) => host.trim().toLowerCase()));
+  return allowedHosts.map((host) => {
+    const key = allowedHostKey(host);
+    const hostname = key.slice(0, key.lastIndexOf(':'));
+    if (LOOPBACK.includes(hostname) || hostname === '[::1]' || mapped.has(hostname) || RESERVED_FIXTURE.test(hostname)) return key;
+    throw new Error(
+      `Allowed host "${host}" isn't on this machine: allow loopback (localhost:4310), a custom domain mapped to the local app, or a reserved fixture name (.test, .invalid, .example, .localhost) a route answers`,
+    );
+  });
+};
+
+/**
+ * What a capture script gets instead of the Playwright browser: guarded
+ * `newContext`, `newPage` (its own guarded context, closed with the page) and
+ * `close`. Nothing else is reachable, `newBrowserCDPSession` included, so a
+ * script can't open a context the guard doesn't see.
+ */
+export const browserFacade = (raw, newGuardedContext) => {
+  const facade = Object.create(null);
+  facade.newContext = (options) => newGuardedContext(options);
+  facade.newPage = async (options) => {
+    const context = await newGuardedContext(options);
+    const page = await context.newPage();
+    page.on('close', () => {
+      context.close().catch(() => undefined);
+    });
+    return page;
+  };
+  facade.close = () => raw.close();
+  return Object.freeze(facade);
+};
+
+/**
+ * Chromium launch arguments that keep the browser on this machine, beneath
+ * Playwright, so redirects, WebSockets, DNS prefetch, preconnect and favicons
+ * are covered as well as ordinary requests:
+ * - host resolution: each custom domain (`{ 'docs.example.com': 4310 }`) maps
+ *   to the local app, loopback resolves as usual, and every other name fails
+ *   to resolve (`MAP * ~NOTFOUND`), even with no custom domains;
+ * - a proxy on a closed local port, which only loopback and the mapped domains
+ *   bypass, so anything that still resolves can't connect out.
+ */
+export const localOnlyBrowserArgs = (customDomains = {}) => {
+  const domains = Object.entries(customDomains).map(([host, port]) => {
+    const name = host.trim().toLowerCase();
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(name)) throw new Error(`Custom domain "${host}" must be a hostname`);
+    if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error(`Custom domain "${host}" needs a local port`);
+    return [name, port];
+  });
+  const rules = [...domains.map(([name, port]) => `MAP ${name} 127.0.0.1:${port}`), 'MAP * ~NOTFOUND', ...LOOPBACK.map((name) => `EXCLUDE ${name}`)];
+  return [
+    `--host-resolver-rules=${rules.join(', ')}`,
+    '--proxy-server=127.0.0.1:9',
+    `--proxy-bypass-list=${[...LOOPBACK, ...domains.map(([name]) => name)].join(';')}`,
+  ];
+};
+
+/**
+ * Accounting for one browser context, on top of the network-level guard: every
+ * request, WebSocket and redirect aimed outside `allowed` is recorded in
+ * `attempted` (requests and sockets are also stopped here). Harness routes on
+ * the context or its pages get a route whose `continue()` falls back to this
+ * guard, so a harness can answer a request but never send it on unchecked.
+ */
+const guardContext = async (context, allowed, attempted) => {
+  const record = (what) => {
+    const line = what.length > 220 ? `${what.slice(0, 220)}…` : what;
+    if (!attempted.includes(line)) attempted.push(line);
+  };
+  const isAllowed = (address) => allowed.has(hostKey(address));
+  // Allowed requests fall back rather than continue, so the guard can sit above
+  // a harness's routes (after a re-install) without answering for them.
+  const guardRequest = (route) => {
+    const request = route.request();
+    if (isAllowed(request.url())) return route.fallback();
+    record(`${request.method()} ${request.url()}`);
+    return route.abort('blockedbyclient');
+  };
+  const guardSocket = (socket) => {
+    if (isAllowed(socket.url())) return socket.connectToServer();
+    record(`WEBSOCKET ${socket.url()}`);
+    return socket.close();
+  };
+  const contextRoute = context.route.bind(context);
+  const contextRouteWebSocket = context.routeWebSocket.bind(context);
+  const installGuard = async () => {
+    await contextRoute('**/*', guardRequest);
+    await contextRouteWebSocket(/.*/, guardSocket);
+  };
+  await installGuard();
+  context.on('response', (response) => {
+    const status = response.status();
+    const location = response.headers().location;
+    if (status < 300 || status >= 400 || !location) return;
+    const target = new URL(location, response.url()).href;
+    if (!isAllowed(target)) record(`REDIRECT ${response.url()} -> ${target}`);
+  });
+  context.on('requestfailed', (request) => {
+    if (!isAllowed(request.url())) record(`${request.method()} ${request.url()}`);
+  });
+  // A harness route's continue() becomes fallback(): the guard still decides.
+  // Each harness handler maps to its wrapper, so unroute(url, handler) still finds it.
+  const wrapped = new WeakMap();
+  const harnessRoute = (handler) => {
+    if (typeof handler !== 'function') return handler;
+    if (!wrapped.has(handler)) {
+      wrapped.set(handler, (route, request) =>
+        handler(
+          new Proxy(route, {
+            get: (target, key) => (key === 'continue' ? (options) => target.fallback(options) : Reflect.get(target, key, target)),
+          }),
+          request,
+        ),
+      );
+    }
+    return wrapped.get(handler);
+  };
+  context.route = (url, handler, options) => contextRoute(url, harnessRoute(handler), options);
+  // Removing routes never removes the guard: whatever was taken away, it is put back.
+  const contextUnroute = context.unroute.bind(context);
+  const contextUnrouteAll = context.unrouteAll.bind(context);
+  context.unroute = async (url, handler) => {
+    await contextUnroute(url, handler && wrapped.has(handler) ? wrapped.get(handler) : handler);
+    await installGuard();
+  };
+  context.unrouteAll = async (options) => {
+    await contextUnrouteAll(options);
+    await installGuard();
+  };
+  const newPage = context.newPage.bind(context);
+  context.newPage = async (...args) => {
+    const page = await newPage(...args);
+    const pageRoute = page.route.bind(page);
+    const pageUnroute = page.unroute.bind(page);
+    page.route = (url, handler, options) => pageRoute(url, harnessRoute(handler), options);
+    page.unroute = (url, handler) => pageUnroute(url, handler && wrapped.has(handler) ? wrapped.get(handler) : handler);
+    return page;
+  };
+  return context;
+};
+
+/** The only DevTools calls a capture may make: throttle the CPU, record a
+ *  screencast, and type text through the IME. None opens a target or context
+ *  or touches the network. */
+const PAGE_TOOL_METHODS = new Set([
+  'Emulation.setCPUThrottlingRate',
+  'Page.startScreencast',
+  'Page.stopScreencast',
+  'Page.screencastFrameAck',
+  'Input.imeSetComposition',
+  'Input.insertText',
+]);
+const PAGE_TOOL_EVENTS = new Set(['Page.screencastFrame']);
+
+/**
+ * What `context.newCDPSession(page)` gives a capture: a session limited to
+ * PAGE_TOOL_METHODS and PAGE_TOOL_EVENTS. The raw session stays inside; any
+ * other method or event throws.
+ */
+export const pageTools = (session) => {
+  const tools = Object.create(null);
+  tools.send = (method, params) => {
+    if (!PAGE_TOOL_METHODS.has(method)) return Promise.reject(new Error(`${method} is not available in captures`));
+    return session.send(method, params);
+  };
+  tools.on = (event, listener) => {
+    if (!PAGE_TOOL_EVENTS.has(event)) throw new Error(`${event} is not available in captures`);
+    session.on(event, listener);
+    return tools;
+  };
+  tools.detach = () => session.detach();
+  return Object.freeze(tools);
+};
+
+/**
+ * Launch Chromium for a capture with the network kept local: the launch
+ * arguments above, and every context from `browser.newContext` guarded and
+ * kept free of service workers. `allowedHosts` are the local app, its
+ * read-only proxy and any fixture origin (`hostname:port`); `customDomains`
+ * map to the local app and are allowed on port 80. `close()` closes the
+ * browser and fails if anything outside was attempted; `attempted` is the
+ * evidence for the PR body (it should be empty).
+ */
+export async function launchLocalOnlyBrowser({ allowedHosts = [], customDomains = {}, launch = {} } = {}) {
+  // Checked before anything launches: a capture can only ever allow this machine.
+  const allowed = new Set([...localHostKeys(allowedHosts, customDomains), ...Object.keys(customDomains).map((host) => `${host.toLowerCase()}:80`)]);
+  const { chromium } = await import('playwright-core');
+  const attempted = [];
+  const raw = await chromium.launch({
+    headless: true,
+    executablePath: chromiumExecutable(),
+    ...launch,
+    args: [...(launch.args ?? []), ...localOnlyBrowserArgs(customDomains)],
+  });
+  const browser = browserFacade(raw, async (options = {}) => {
+    const context = await guardContext(await raw.newContext({ ...options, serviceWorkers: 'block' }), allowed, attempted);
+    // The context's own way back to the browser stays closed, and DevTools comes
+    // only as the narrow page tools (no raw session).
+    const newCDPSession = context.newCDPSession.bind(context);
+    context.browser = () => browser;
+    context.newCDPSession = async (page) => pageTools(await newCDPSession(page));
+    return context;
+  });
+  return {
+    browser,
+    attempted,
+    async close() {
+      await raw.close().catch(() => undefined);
+      if (attempted.length > 0) {
+        throw new Error(`The capture tried to reach ${attempted.length} address(es) outside the local stack:\n${attempted.join('\n')}`);
+      }
+    },
+  };
+}
+
+/**
+ * `launchLocalOnlyBrowser`, run `fn({ browser, attempted })`, close. Anything
+ * attempted outside fails the run after the browser closes; when `fn` itself
+ * failed, its error is the one thrown and the attempts are printed with it.
+ */
+export async function withLocalOnlyBrowser(options, fn) {
+  const local = await launchLocalOnlyBrowser(options);
+  let failure;
+  try {
+    return await fn({ browser: local.browser, attempted: local.attempted });
+  } catch (error) {
+    failure = error;
+    throw error;
+  } finally {
+    if (failure) {
+      await local.browser.close().catch(() => undefined);
+      if (local.attempted.length > 0) console.error(`Also attempted outside the local stack:\n${local.attempted.join('\n')}`);
+    } else {
+      await local.close();
+    }
+  }
 }
