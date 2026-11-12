@@ -667,8 +667,10 @@ const previewPublish = async (principal: McpPrincipal, actor: McpActor): Promise
   // The person approves what they were shown, so say what the summary leaves out.
   const reviewNotes = [
     hasChanges && summary.counts.total === 0 && !summary.settings.changed
-      ? 'No page changes: the change is to the site navigation (its groups). Tell the person that.'
-      : null,
+      ? 'No page changes: the change is to the site navigation (its groups) or other site structure. Tell the person that.'
+      : pending.groupsChanged
+        ? 'The site navigation also changes (groups added, removed, renamed or moved). Tell the person that along with the page changes.'
+        : null,
     summary.changesTruncated
       ? `This summary lists ${summary.changes.length} of ${summary.counts.total} changed pages. Before asking for approval, tell the person to review the full list in the dashboard's publish dialog.`
       : null,

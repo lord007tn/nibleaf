@@ -63,6 +63,9 @@ export interface PendingChanges {
   /** true = a publish now would put out exactly what is live: no page, settings,
    *  navigation, redirect or API reference change. Only with a baseline. */
   upToDate: boolean;
+  /** Navigation groups were added, removed or changed. `changes` lists pages
+   *  only, so a publish that also reshapes the navigation says so here. */
+  groupsChanged: boolean;
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
@@ -385,6 +388,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
       reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
       hasBaseline: false,
       upToDate: false,
+      groupsChanged: currentSnapshot.pages.some((page) => page.kind === 'GROUP'),
       lastVersion: null,
       lastPublishedAt: null,
       changes: [...current.map((p) => pageSummary(p, 'added')), ...(firstSpecChange ? [firstSpecChange] : [])],
@@ -415,10 +419,21 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const specChange = openApiSummary(currentSnapshot.openapi, snap.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
   if (specChange) changes.push(specChange);
 
+  const groups = (pages: SnapshotPage[]) => new Map(pages.filter((page) => page.kind === 'GROUP').map((page) => [page.id, page]));
+  const currentGroups = groups(currentSnapshot.pages);
+  const previousGroups = groups(snap.pages);
+  const groupsChanged =
+    currentGroups.size !== previousGroups.size ||
+    [...currentGroups].some(([id, group]) => {
+      const before = previousGroups.get(id);
+      return !before || pageChanged(group, before);
+    });
+
   const reviewedStateHash = reviewedSnapshotDigest(currentSnapshot);
   return {
     reviewedStateHash,
     hasBaseline: true,
+    groupsChanged,
     // The page list only compares pages; settings, redirects and languages also
     // ship with a publish. The live snapshot is the reviewed input the worker
     // stored, so equal output digests mean nothing at all would change.

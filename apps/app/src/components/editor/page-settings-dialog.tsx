@@ -175,6 +175,22 @@ export function PageSettingsDialog({
 
   const [slugTouched, setSlugTouched] = useState(false);
   const [section, setSection] = useState<PageSettingsSection>('general');
+  // "More options" starts open when the page uses one of them, and opens to show
+  // a field that blocks saving.
+  const [moreOpen, setMoreOpen] = useState(() => hasMoreOptions(page));
+  const [focusField, setFocusField] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset per page and per opening, not on every refetch.
+  useEffect(() => {
+    setMoreOpen(hasMoreOptions(page));
+  }, [page.id, open]);
+  useEffect(() => {
+    if (!focusField || section !== 'general' || !moreOpen) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(focusField)?.focus();
+      setFocusField(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusField, section, moreOpen]);
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
   const modeOptions = [
     { value: 'default', label: t('editor.pageSettings.mode.default') },
@@ -191,8 +207,14 @@ export function PageSettingsDialog({
     identity: [page.id, open ? 'open' : 'closed'],
     source,
     onSubmit: async (value, outcome) => {
-      if ((['icon', 'categoryIcon'] as const).some((key) => value[key] !== source[key] && value[key].trim() && !hasIcon(value[key])))
+      const invalidIcon = (['categoryIcon', 'icon'] as const).find((key) => value[key] !== source[key] && value[key].trim() && !hasIcon(value[key]));
+      if (invalidIcon) {
+        // The field may sit on another tab or in the closed "More options": show it.
+        setSection('general');
+        setMoreOpen(true);
+        setFocusField(invalidIcon === 'icon' ? 'page-icon' : 'page-category-icon');
         return 'invalid';
+      }
       try {
         const result = await update.mutateAsync({ pageId: page.id, body: pageSettingsBody(value) });
         outcome.succeeded();
@@ -418,7 +440,7 @@ export function PageSettingsDialog({
                     onCheckedChange={(checked) => set('hidden', checked)}
                   />
                   {/* Rarely needed fields stay out of the way until asked for. */}
-                  <Collapsible className="border-border border-t pt-3" defaultOpen={hasMoreOptions(page)}>
+                  <Collapsible className="border-border border-t pt-3" open={moreOpen} onOpenChange={setMoreOpen}>
                     <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-1.5 rounded-sm py-1 text-start font-medium text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                       <ChevronRight aria-hidden className="size-4 transition-transform group-data-[panel-open]:rotate-90 rtl:-scale-x-100" />
                       {t('editor.pageSettings.more')}

@@ -309,6 +309,26 @@ describe('pending changes: up to date', () => {
     expect(await getPendingChanges('project-1')).toMatchObject({ upToDate: false, changes: [expect.objectContaining({ status: 'modified' })] });
   });
 
+  it('says when navigation groups change, also alongside page changes', async () => {
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    const group = { ...page, id: 'group-1', kind: 'GROUP', title: 'Guides', slug: 'guides', path: 'guides' };
+    mocks.pageFindMany.mockResolvedValue([group, page]);
+    const published = await getCurrentSnapshot('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-1', version: 1, status: 'READY', snapshot: published, completedAt: new Date() });
+
+    mocks.pageFindMany.mockResolvedValue([group, { ...page, content: 'Edited' }]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ groupsChanged: false, changes: [expect.objectContaining({ status: 'modified' })] });
+
+    mocks.pageFindMany.mockResolvedValue([
+      { ...group, title: 'Tutorials' },
+      { ...page, content: 'Edited' },
+    ]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ groupsChanged: true, changes: [expect.objectContaining({ status: 'modified' })] });
+
+    mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Edited' }]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ groupsChanged: true });
+  });
+
   it('reports removed and added URLs when Git sync converts a page into a group or back', async () => {
     mocks.projectFindUnique.mockResolvedValue(project([]));
     const published = await getCurrentSnapshot('project-1');

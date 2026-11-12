@@ -1087,7 +1087,25 @@ function EditorPage() {
               {title || t('editor.untitled')}
             </span>
           </>
-        ) : null}
+        ) : (
+          <>
+            {/* Choosing a settings section closes the phone drawer; this reopens the section list. */}
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="size-11 shrink-0 sm:hidden"
+              aria-label={t('editor.showSidebar')}
+              aria-expanded={mobileSidebarOpen}
+              onClick={() => {
+                setSidebarCollapsed(false);
+                setMobileSidebarOpen(true);
+              }}
+            >
+              <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+            </Button>
+            <span className="min-w-0 flex-1 truncate font-medium text-sm sm:hidden">{t('editor.config.heading')}</span>
+          </>
+        )}
         {/* Divider only once the project name is loaded — otherwise it dangles next to the chevron. */}
         {project?.name ? <span className="hidden h-5 w-px bg-border sm:block" /> : null}
         {/* Versions only matter once a site has more than one; until then the

@@ -7,7 +7,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { displayTitle } from '@nibleaf/shared/page-title';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, ChevronDown, Eye, FileText } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { publishedVersionSlugFor } from '@/components/editor/docs-version';
 import { Markdown } from '@/components/markdown';
@@ -74,6 +74,13 @@ function ProjectPreview() {
   const pagesQuery = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
   const { data: pages, isPending: pagesPending } = pagesQuery;
   const selected = useMemo(() => pages?.find((page) => page.id === search.pageId) ?? firstPage(pages), [pages, search.pageId]);
+  // The content column stays mounted between pages; start each page at its top,
+  // as the published site does (the router only restores the window's scroll).
+  const contentRef = useRef<HTMLDivElement>(null);
+  const selectedId = selected?.id;
+  useEffect(() => {
+    if (selectedId && contentRef.current) contentRef.current.scrollTop = 0;
+  }, [selectedId]);
   const pageQuery = usePage(previewEnabled ? projectId : undefined, selected?.id);
   const { data: page, isPending: pagePending } = pageQuery;
   const contentPending = pagesPending || (Boolean(selected) && pagePending);
@@ -296,6 +303,7 @@ function ProjectPreview() {
               className="min-h-0 flex-1 overflow-y-auto bg-background outline-none"
               data-theme-region="preview-main"
               id="main-content"
+              ref={contentRef}
               tabIndex={-1}
             >
               {/* Same typography variables the published site sets on its chrome, so

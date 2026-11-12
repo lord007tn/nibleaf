@@ -134,6 +134,29 @@ describe('page settings draft', () => {
     );
   });
 
+  it('shows and focuses the icon field that blocks saving, from another tab and a closed "More options"', async () => {
+    await act(async () => root.render(<PageSettingsDialog onOpenChange={vi.fn()} open page={page} projectId="project-a" />));
+    const more = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.more'));
+    await act(async () => more?.click());
+    const icon = document.querySelector<HTMLInputElement>('#page-icon');
+    if (!icon) throw new Error('Icon field not rendered');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(icon, 'not-an-icon');
+      icon.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    // Close "More options" and move to SEO, so the invalid field is unmounted.
+    await act(async () => more?.click());
+    const seo = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.seo'));
+    await act(async () => seo?.click());
+    expect(document.querySelector('#page-icon')).toBeNull();
+    const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
+    await act(async () => save?.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(document.activeElement?.id).toBe('page-icon');
+    expect(document.activeElement?.getAttribute('aria-invalid')).toBe('true');
+  });
+
   it.each([
     [{ addressChanged: true, redirectsAdded: 1, linksUpdated: 2 }, 'editor.pageSettings.addressChanged'],
     [{ addressChanged: false, redirectsAdded: 0, linksUpdated: 0 }, 'editor.pageSettings.saved'],

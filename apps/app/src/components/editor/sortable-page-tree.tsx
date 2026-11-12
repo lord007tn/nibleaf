@@ -1021,7 +1021,9 @@ const RowPresentation = memo(function RowPresentation({
   const isGroup = node.kind === 'GROUP';
   // Renaming edits the name the row shows (the sidebar title when there is one).
   const { label: savedLabel, field: nameField } = rowName(node);
-  const label = savedLabel || t('editor.untitled');
+  // An empty or blank name reads "Untitled" in the writer's language, as
+  // displayTitle does for readers; the rename field still starts from the saved value.
+  const label = savedLabel.trim() ? savedLabel : t('editor.untitled');
   const collapsible = Boolean(hasChildren && onToggleCollapse);
   const dragging = placeholder !== undefined;
   const iconClass = cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground');

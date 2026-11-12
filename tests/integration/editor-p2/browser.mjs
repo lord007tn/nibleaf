@@ -16,10 +16,42 @@ const output = resolve(root, '.github/assets/fix-editor-p2-batch');
 assert.equal(new URL(process.env.POSTGRES_URL).pathname.slice(1), process.env.NIBLEAF_CAPTURE_DATABASE, 'explicit disposable database required');
 assert.ok(process.env.NIBLEAF_CAPTURE_DATABASE?.includes('editor_p2'));
 assert.ok(process.env.NIBLEAF_DEVSTACK_LOCK, 'Set the shared machine-wide NIBLEAF_DEVSTACK_LOCK');
+const db = getDb({ connectionString: process.env.POSTGRES_URL });
+const children = new Set();
+const logs = [];
+let browser;
+let session;
+// Stop everything this run started. Safe to call twice (an interrupt during the
+// final cleanup), and every step runs even when an earlier one fails.
+let cleaning;
+const cleanup = () => {
+  cleaning ??= (async () => {
+    const steps = [
+      () => browser?.close(),
+      async () => {
+        for (const child of children) await stop(child);
+      },
+      () => session && db.session.delete({ where: { id: session.id } }),
+      () => db.$disconnect(),
+      () => {
+        for (const log of logs) log.end();
+      },
+    ];
+    for (const step of steps) {
+      try {
+        await step();
+      } catch (error) {
+        console.error('Cleanup step failed:', error);
+      }
+    }
+  })();
+  return cleaning;
+};
 let lock;
 for (;;) {
   try {
-    lock = await acquireDevstackLock('fix/editor-p2-batch');
+    // An interrupt stops the services and browser, then releases the lock.
+    lock = await acquireDevstackLock('fix/editor-p2-batch', { onInterrupt: cleanup });
     break;
   } catch (error) {
     if (error.code !== 'EEXIST') throw error;
@@ -27,11 +59,6 @@ for (;;) {
     await new Promise((done) => setTimeout(done, 5000));
   }
 }
-const db = getDb({ connectionString: process.env.POSTGRES_URL });
-const children = new Set();
-const logs = [];
-let browser;
-let session;
 const measurements = [];
 await mkdir(output, { recursive: true });
 await mkdir(resolve(root, '.tmp/editor-p2'), { recursive: true });
@@ -51,7 +78,8 @@ function start(name, entry, port) {
   return child;
 }
 async function stop(child) {
-  if (child.exitCode === null) {
+  // A child killed by a signal has a signalCode and no exitCode: it has exited too.
+  if (child.exitCode === null && child.signalCode === null) {
     child.kill();
     await new Promise((done) => child.once('exit', done));
   }
@@ -76,7 +104,14 @@ try {
     data: { userId: user.id, token, expiresAt: new Date(Date.now() + 3_600_000), activeOrganizationId: member.organizationId },
   });
   const signed = encodeURIComponent(`${token}.${createHmac('sha256', process.env.BETTER_AUTH_SECRET).update(token).digest('base64')}`);
-  browser = await chromium.launch({ executablePath: await chromiumExecutable(), headless: true });
+  // The interrupt cleanup closes the browser; Playwright must not kill it first.
+  browser = await chromium.launch({
+    executablePath: await chromiumExecutable(),
+    headless: true,
+    handleSIGINT: false,
+    handleSIGTERM: false,
+    handleSIGHUP: false,
+  });
   const worker = start('worker', 'apps/worker/dist/index.mjs', 4312);
   const phases = process.env.NIBLEAF_BEFORE_APP ? ['before', 'after'] : ['after'];
   for (const phase of phases) {
@@ -109,10 +144,10 @@ try {
   await writeFile(resolve(output, 'measurements.json'), `${JSON.stringify(measurements, null, 2)}\n`);
   console.log(`${measurements.length} journeys passed. Measurements saved.`);
 } finally {
-  await browser?.close();
-  for (const child of children) await stop(child);
-  if (session) await db.session.delete({ where: { id: session.id } });
-  await db.$disconnect();
-  for (const log of logs) log.end();
-  await lock.release();
+  // The lock is released even if a cleanup step throws.
+  try {
+    await cleanup();
+  } finally {
+    await lock.release();
+  }
 }

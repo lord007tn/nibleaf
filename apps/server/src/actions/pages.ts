@@ -358,7 +358,8 @@ const adoptsFirstTitle = (page: { title: string; slug: string }, body: UpdatePag
   body.title.trim() !== '' &&
   body.title !== page.title &&
   PLACEHOLDER_SLUG_RE.test(page.slug) &&
-  PLACEHOLDER_TITLES.has(page.title);
+  // A blank (whitespace-only) title is as untitled as an empty one.
+  PLACEHOLDER_TITLES.has(page.title.trim());
 
 /** Whether readers may already have this page's address: it is in the newest
  *  live snapshot, or a publish is still pending or building (it may be about

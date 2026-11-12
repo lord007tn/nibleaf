@@ -1546,6 +1546,37 @@ describe('preview and publish', () => {
     await client.close();
   });
 
+  it('discloses navigation changes alongside page changes', async () => {
+    mocks.getPendingChanges.mockImplementation(async () => ({
+      hasBaseline: true,
+      upToDate: false,
+      groupsChanged: true,
+      lastVersion: 1,
+      lastPublishedAt: null,
+      changes: [
+        {
+          id: 'page-1',
+          title: 'Install',
+          path: 'install',
+          languageCode: 'en',
+          kind: 'PAGE',
+          status: 'modified',
+          fields: ['content'],
+          additions: 1,
+          deletions: 0,
+          lines: [],
+          truncated: false,
+        },
+      ],
+      redirectIssues: [],
+    }));
+    const client = await connect(makePrincipal());
+    const data = await preview(client);
+    expect(data).toMatchObject({ canPublish: true, counts: { total: 1 } });
+    expect(String(data.nextStep)).toContain('site navigation also changes');
+    await client.close();
+  });
+
   it('reports nothing to publish and enforces the hourly publish budget', async () => {
     mocks.env.MCP_PUBLISH_RATE_LIMIT_PER_HOUR = 1;
     const client = await connect(makePrincipal());

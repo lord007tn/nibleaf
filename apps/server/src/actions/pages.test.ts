@@ -184,6 +184,7 @@ describe('updatePage placeholder slug adoption', () => {
   });
 
   it.each([
+    ['blank', '   '],
     ['empty', ''],
     ['English', editor_untitled(undefined, { locale: 'en' })],
     ['Arabic', editor_untitled(undefined, { locale: 'ar' })],
