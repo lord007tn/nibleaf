@@ -259,6 +259,52 @@ describe('stray-characters', () => {
   });
 });
 
+describe('video and embed checks', () => {
+  const content = [
+    '<iframe src="https://youtu.be/dQw4w9WgXcQ"></iframe>',
+    '',
+    '<iframe src="https://www.loom.com/share/0123456789abcdef0123456789abcdef" title="Walkthrough"></iframe>',
+    '',
+    '<iframe src="https://codepen.io/x" title="Pen"></iframe>',
+    '',
+    '<video controls src="http://cdn.example.com/a.mp4"></video>',
+  ].join('\n');
+
+  it('warns, without blocking, about an untitled video, a frame shown as a link and a video without a secure address', () => {
+    const checks = collectPublishChecks(snapshot([page({ path: 'a', content })]));
+    const embedChecks = checks.filter((check) => ['embed-untitled', 'embed-as-link', 'video-not-https'].includes(check.code));
+    expect(embedChecks.map((check) => [check.code, check.severity, check.detail])).toEqual([
+      ['embed-untitled', 'warning', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'],
+      ['embed-as-link', 'warning', 'https://codepen.io/x'],
+      ['video-not-https', 'warning', 'http://cdn.example.com/a.mp4'],
+    ]);
+    expect(checks.some((check) => check.severity === 'error')).toBe(false);
+  });
+
+  it('warns about an iframe with no closer in its block and a video poster from another site', () => {
+    const unclosed = [
+      '<iframe src="https://youtu.be/dQw4w9WgXcQ">',
+      '',
+      '## Install',
+      '',
+      '<video controls src="/api/public/assets/a.mp4" poster="https://images.example.com/a.jpg"></video>',
+    ].join('\n');
+    const checks = collectPublishChecks(snapshot([page({ path: 'a', content: unclosed })]));
+    const found = checks.filter((check) => ['embed-unclosed', 'video-poster-hidden'].includes(check.code));
+    expect(found.map((check) => [check.code, check.severity, check.detail])).toEqual([
+      ['embed-unclosed', 'warning', 'https://youtu.be/dQw4w9WgXcQ'],
+      ['video-poster-hidden', 'warning', 'https://images.example.com/a.jpg'],
+    ]);
+  });
+
+  it('skips hidden pages and accepts titled players and secure videos', () => {
+    expect(codes(snapshot([page({ path: 'a', content, hidden: true })]), 'embed-untitled')).toEqual([]);
+    const fine = '<iframe src="https://youtu.be/dQw4w9WgXcQ" title="Tour"></iframe>\n\n<video src="https://cdn.example.com/a.mp4"></video>';
+    const checks = collectPublishChecks(snapshot([page({ path: 'b', content: fine })]));
+    expect(checks.filter((check) => ['embed-untitled', 'embed-as-link', 'video-not-https'].includes(check.code))).toEqual([]);
+  });
+});
+
 describe('unreadable-slug', () => {
   it.each([
     ['empty', ''],

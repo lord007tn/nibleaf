@@ -389,3 +389,67 @@ describe('immutable build-asset cache', () => {
     expect(cache.puts).toBe(0);
   });
 });
+
+describe('content security policy passthrough', () => {
+  const policy = (frames: string) =>
+    `default-src 'self'; script-src 'self' 'nonce-abc'; frame-src 'self' ${frames}; media-src 'self' data: blob: https: http:`;
+  const html = (csp: string, extra: Record<string, string> = {}) =>
+    new Response('<!doctype html><title>Docs</title>', {
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'content-security-policy': csp,
+        'cache-control': 'private, no-store',
+        'x-nibleaf-revision': 'r1',
+        ...extra,
+      },
+    });
+
+  it('returns the origin page, its policy byte for byte, in every cache mode', async () => {
+    const csp = policy('https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com https://fast.wistia.net');
+    for (const mode of [env, cacheOn, { ...env, EDGE_CACHE_MODE: 'stale-only' }]) {
+      const { deps: d } = deps(async () => html(csp), mode === env ? null : forbiddenCache());
+      const response = await handle(page(), mode, d);
+      expect(response.headers.get('content-security-policy')).toBe(csp);
+      expect(response.headers.get('x-nibleaf-edge')).toBeNull();
+      expect(await response.text()).toBe('<!doctype html><title>Docs</title>');
+    }
+  });
+
+  it('never stores a page, so a changed policy reaches the next reader', async () => {
+    const cache = new MemoryCache();
+    const policies = [policy('https://player.vimeo.com'), policy('https://player.vimeo.com https://www.loom.com')];
+    let call = 0;
+    const { deps: d, settle } = deps(async () => html(policies[call++] ?? ''), cache);
+    const first = await handle(page(), cacheOn, d);
+    await settle();
+    const second = await handle(page(), cacheOn, d);
+    await settle();
+    expect(first.headers.get('content-security-policy')).toBe(policies[0]);
+    expect(second.headers.get('content-security-policy')).toBe(policies[1]);
+    expect(cache.matches + cache.puts).toBe(0);
+  });
+
+  it('refuses to store HTML even under a hashed asset path marked immutable', async () => {
+    const cache = new MemoryCache();
+    const marked = () =>
+      html(policy('https://www.loom.com'), {
+        'cache-control': 'public, max-age=31536000, immutable',
+        [STATIC_BUILD_HEADER]: '1',
+      });
+    expect(isStorableAsset(marked())).toBe(false);
+    const { deps: d, settle, seen } = deps(async () => marked(), cache);
+    const path = '/assets/page-AbCd12_-.svg';
+    await handle(new Request(`https://a.example${path}`), cacheOn, d);
+    await settle();
+    const again = await handle(new Request(`https://a.example${path}`), cacheOn, d);
+    expect(cache.puts).toBe(0);
+    expect(seen).toHaveLength(2);
+    expect(again.headers.get('content-security-policy')).toBe(policy('https://www.loom.com'));
+  });
+
+  it('asks Cloudflare not to cache the origin request, so no shared subrequest cache replays an old page', async () => {
+    const { deps: d, seen } = deps(async () => html(policy('https://www.loom.com')));
+    await handle(page(), env, d);
+    expect(seen[0]?.cache).toBe('no-store');
+  });
+});

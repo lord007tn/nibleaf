@@ -251,7 +251,19 @@ export interface PendingChange {
 /** A pre-publish quality check on the draft being previewed. Warnings leave
  *  publishing allowed; an `error` blocks it (the publish would fail). */
 export interface PublishCheck {
-  code: 'broken-internal-link' | 'missing-alt' | 'untitled-page' | 'stray-characters' | 'unreadable-slug' | 'empty-page' | 'duplicate-title';
+  code:
+    | 'broken-internal-link'
+    | 'missing-alt'
+    | 'untitled-page'
+    | 'stray-characters'
+    | 'unreadable-slug'
+    | 'empty-page'
+    | 'duplicate-title'
+    | 'embed-untitled'
+    | 'embed-as-link'
+    | 'video-not-https'
+    | 'embed-unclosed'
+    | 'video-poster-hidden';
   severity: 'error' | 'warning';
   pageId: string;
   languageCode: string;
@@ -473,7 +485,8 @@ export interface SitePage {
   languages: Array<{ code: string; isDefault: boolean; path: string | null }>;
   /** Reader-facing date and language names, formatted once on the server (see lib/reader-text.ts). */
   readerText?: ReaderText;
-  breadcrumbs: Array<{ title: string; path: string }>;
+  /** `section`: a group or category heading, shown as text rather than a link. */
+  breadcrumbs: Array<{ title: string; path: string; section?: true }>;
   prev: { title: string; path: string } | null;
   next: { title: string; path: string } | null;
 }

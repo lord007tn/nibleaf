@@ -11,6 +11,7 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 // clash); a reason entry wins over its code.
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
   ['mcp:preview_stale', 'publish.reviewChanged'],
+  ['publish:busy', 'publish.busy'],
   ['page:revision_conflict', 'editor.conflict.body'],
   ['page:trash_unrestorable', 'editor.trash.unrestorable'],
   ['page:trash_too_large', 'editor.trash.tooLarge'],
