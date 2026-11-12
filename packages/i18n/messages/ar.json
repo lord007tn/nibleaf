@@ -486,6 +486,8 @@
   "editor_format_underline": "تسطير",
   "editor_format_subscript": "نص سفلي",
   "editor_format_superscript": "نص علوي",
+  "editor_format_turninto": "تحويل إلى",
+  "editor_format_toolbar": "تنسيق النص",
   "editor_link_save": "حفظ الرابط",
   "editor_link_open": "فتح في تبويب جديد",
   "editor_link_openrelativehint": "الروابط النسبية تُفتح على موقعك المنشور",

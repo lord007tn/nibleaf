@@ -448,6 +448,8 @@
   "editor_format_underline": "Souligner",
   "editor_format_subscript": "Indice",
   "editor_format_superscript": "Exposant",
+  "editor_format_turninto": "Transformer en",
+  "editor_format_toolbar": "Mise en forme du texte",
   "editor_link_save": "Enregistrer le lien",
   "editor_link_open": "Ouvrir dans un nouvel onglet",
   "editor_link_openrelativehint": "Liens relatifs ouverts sur votre site publié",
