@@ -1,5 +1,6 @@
 import { Prisma, type ProjectIntegration, prisma } from '@nibleaf/database';
 import { getQdrantClient } from '@nibleaf/qdrant';
+import { type ProviderKeyOutcome, providerKeyOutcome, recordProviderKeyOutcome } from '@nibleaf/search/workspace';
 import { aiConnectionConfigSchema, aiCredentialSchema, aiModelLabel, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { canView, roleAtLeast } from '@nibleaf/shared/rbac';
@@ -21,7 +22,7 @@ import { AppError, conflict, forbidden } from '@/errors';
 import { readAnswerQuota } from '@/lib/ai-search/quota';
 import { findCurrentIndexRun, type ServedIndexState, servedIndexState } from '@/lib/ai-search/readiness';
 import type { HonoEnv } from '@/lib/hono/context';
-import { managedAiServes, siteAiSelection, storedAiKeyFailure, storedAiKeyState } from './ai-source';
+import { managedAiServes, siteAiSelection, storedAiKeyFailure, storedAiKeyServes, storedAiKeyState } from './ai-source';
 import { decryptIntegrationSecret, encryptIntegrationSecret } from './integrations/crypto';
 import { updateProjectConfigSection } from './project-config';
 import { assertProjectAccess } from './projects';
@@ -36,7 +37,31 @@ const providerModelsSchema = z.object({
     }),
   ),
 });
-const keyMetadataSchema = z.object({ data: z.object({ is_management_key: z.boolean().optional(), is_provisioning_key: z.boolean().optional() }) });
+const keyMetadataSchema = z.object({
+  data: z.object({
+    is_management_key: z.boolean().optional(),
+    is_provisioning_key: z.boolean().optional(),
+    /** Credit left under the key's own limit; null when it has none. */
+    limit_remaining: z.number().nullable().optional(),
+  }),
+});
+
+/** A failed provider check, with what it says about the key: a code, never provider text. */
+class ProviderCheckFailure extends AppError {
+  readonly outcome: Exclude<ProviderKeyOutcome, 'ok'>;
+  constructor(outcome: Exclude<ProviderKeyOutcome, 'ok'>) {
+    super(
+      outcome === 'keyRefused'
+        ? { code: 'integration:credentials_invalid' }
+        : outcome === 'rateLimited'
+          ? { code: 'integration:rate_limited' }
+          : outcome === 'outOfCredit'
+            ? { code: 'integration:provider_unavailable', message: 'The provider account behind this key is out of credit.' }
+            : { code: 'integration:provider_unavailable' },
+    );
+    this.outcome = outcome;
+  }
+}
 const selectionSchema = z.object({
   search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
 });
@@ -96,14 +121,14 @@ const discoverAiProviderModels = async (providerId: z.infer<typeof aiProviderIdS
       redirect: 'error',
       signal: AbortSignal.timeout(8000),
     });
-    if (response.status === 401 || response.status === 403) throw new AppError({ code: 'integration:credentials_invalid' });
-    if (!response.ok) throw new AppError({ code: 'integration:provider_unavailable' });
+    if (!response.ok) throw new ProviderCheckFailure((await providerKeyOutcome(response)) as Exclude<ProviderKeyOutcome, 'ok'>);
     return response.json();
   };
   try {
     if (providerId === 'openrouter') {
       const key = keyMetadataSchema.parse(await get('/key'));
       if (key.data.is_management_key || key.data.is_provisioning_key) throw new AppError({ code: 'integration:credentials_invalid' });
+      if (typeof key.data.limit_remaining === 'number' && key.data.limit_remaining <= 0) throw new ProviderCheckFailure('outOfCredit');
     }
     const catalog = providerModelsSchema.parse(await get('/models'));
     const embeddingId = providerId === 'openai' ? env.SEARCH_EMBEDDING_MODEL.replace(/^openai\//, '') : env.SEARCH_EMBEDDING_MODEL;
@@ -221,6 +246,7 @@ const siteAiStatus = (
     const failure = storedAiKeyFailure(connection);
     return {
       id,
+      revision: connection.revision,
       state: storedAiKeyState(connection, id),
       failure: failure ? { reason: failure, checkedAt: connection.lastVerifiedAt?.toISOString() ?? null } : null,
       keyHint: canManage ? (connection.credentialHint ?? null) : null,
@@ -232,7 +258,7 @@ const siteAiStatus = (
   return {
     answersOn: selection.answersOn && source !== null,
     source,
-    sourceReady: source === 'managed' ? managedAiServes() : source ? stored.some((key) => key.id === source && key.state === 'ok') : false,
+    sourceReady: source === 'managed' ? managedAiServes() : source ? stored.some((key) => key.id === source && storedAiKeyServes(key.state)) : false,
     connections: stored,
     published: deployment ? { version: deployment.version, at: deployment.completedAt?.toISOString() ?? null } : null,
     preparation: preparationOf(run),
@@ -316,13 +342,47 @@ export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) =
 /** The last four characters of a key, so its owner can tell keys apart (D7). Short keys get no hint. */
 const keyHint = (apiKey: string) => (apiKey.length >= 16 ? apiKey.slice(-4) : null);
 
+/**
+ * Keep what a check of the saved key learned, against the revision that was
+ * checked, so the page never says "works" about a key that doesn't:
+ * - it works: healthy again, unless the provider no longer offers its model;
+ * - refused, or out of credit: it rests, and readers try it again after a cooldown (or a check that works);
+ * - rate-limited: noted on a key that still serves.
+ * Anything else (the provider unreachable just now) teaches nothing about the
+ * key and leaves it as it was.
+ */
+const recordSavedKeyCheck = async (connection: ProjectIntegration, result: { models: { id: string }[] } | { error: unknown }) => {
+  const revision = `${connection.id}:${connection.revision}`;
+  if ('error' in result) {
+    if (result.error instanceof ProviderCheckFailure) await recordProviderKeyOutcome(revision, result.error.outcome);
+    return;
+  }
+  const saved = savedAnswerModel(connection.config);
+  const withdrawn = saved !== undefined && !result.models.some((model) => model.id === saved);
+  await prisma.projectIntegration.updateMany({
+    where: { id: connection.id, revision: connection.revision },
+    data: withdrawn
+      ? { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: 'integration:model_unavailable', lastVerifiedAt: new Date() }
+      : { lastVerificationStatus: 'HEALTHY', lastVerificationCode: null, lastVerifiedAt: new Date() },
+  });
+};
+
 export const getWorkspaceAiModels = async (ctx: Context<HonoEnv>, projectId: string, input: WorkspaceAiModelsBody) => {
   await authorize(ctx, projectId);
   const body = workspaceAiModelsBody.parse(input);
   const connection = await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId: body.providerId } } });
   const apiKey = body.apiKey ?? (connection ? readCredential(projectId, body.providerId, connection.credentialEncrypted) : null);
   if (!apiKey) throw new AppError({ code: 'integration:credentials_invalid' });
-  return { models: await discoverAiProviderModels(body.providerId, apiKey, savedAnswerModel(connection?.config)) };
+  // A new key being tried isn't stored yet; only a check of the saved key is kept.
+  const savedKey = body.apiKey ? null : connection;
+  try {
+    const models = await discoverAiProviderModels(body.providerId, apiKey, savedAnswerModel(connection?.config));
+    if (savedKey) await recordSavedKeyCheck(savedKey, { models });
+    return { models };
+  } catch (error) {
+    if (savedKey) await recordSavedKeyCheck(savedKey, { error }).catch(() => undefined);
+    throw error;
+  }
 };
 
 export const saveWorkspaceAiConnection = async (ctx: Context<HonoEnv>, projectId: string, input: SaveWorkspaceAiConnectionBody) => {

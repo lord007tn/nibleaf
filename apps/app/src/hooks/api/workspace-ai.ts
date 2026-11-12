@@ -1,19 +1,10 @@
 import { useT } from '@nibleaf/i18n/react';
 import type { SaveWorkspaceAiConnectionBody, WorkspaceAiModelsBody, WorkspaceAiSelectionBody } from '@nibleaf/validators';
-import { useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
 import { ApiResponseError, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
 import { queryKeys } from './query-keys';
-import { workspaceAiQueryOptions } from './query-options';
-
-/** While an index run is queued or running, the section follows its status. */
-export const useWorkspaceAi = (projectId: string) =>
-  useQuery({
-    ...workspaceAiQueryOptions(projectId),
-    refetchInterval: (query) => (['PENDING', 'RUNNING'].includes(query.state.data?.index.status ?? '') ? 3000 : false),
-  });
 
 /** What a failed provider request means, in plain words: a refused key and a
  * change made in another session get their own message. Toasted once by the
@@ -26,12 +17,22 @@ const useProviderErrorMessage = () => {
       : friendlyErrorMessage(t, error, 'settings.smartAi.error', { 409: 'settings.smartAi.conflict' });
 };
 
+/**
+ * Checks a key with its provider and lists its models. A new key being tried
+ * isn't stored; a check of the saved key (no `apiKey`) records what it learned
+ * on the server, so the site's AI status is read again once it settles, either
+ * way. That lives on the mutation, so it runs even if the form has gone.
+ */
 export const useWorkspaceAiModels = (projectId: string) => {
+  const client = useQueryClient();
   const errorMessage = useProviderErrorMessage();
   return useMutation({
     gcTime: 0,
     mutationFn: async (json: WorkspaceAiModelsBody) =>
       mutateData(await api.app.projects[':projectId'].settings.ai.models.$post({ param: { projectId }, json }), 'Could not verify the provider.'),
+    onSettled: async (_data, _error, json) => {
+      if (!json.apiKey) await client.invalidateQueries({ queryKey: queryKeys.workspaceAi.detail(projectId) });
+    },
     meta: { errorMessage },
   });
 };
