@@ -5,11 +5,9 @@ import { useLocale, useT } from '@nibleaf/i18n/react';
 import { BarChart3, CirclePause, Clock, Database, ExternalLink, Info, RotateCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useDeployments, useProject } from '@/hooks/api';
+import { docsUrl } from '@/lib/docs-url';
 import { dataFreshness, type InsightsState } from './insights-data';
 import { useInsightFormat } from './use-insight-format';
-
-const CLICKHOUSE_DOCS = 'https://docs.nibleaf.com/self-hosting/clickhouse-analytics';
-const CLICKHOUSE_DOCS_AR = 'https://docs.nibleaf.com/ar/self-hosting/clickhouse-analytics';
 
 /** "Data last received 5 min ago", plus a notice when a published site has sent nothing for over a day. */
 function FreshnessNotice({ projectId, lastEventAt }: { projectId: string; lastEventAt: string | null | undefined }) {
@@ -118,7 +116,7 @@ export function InsightsStatus({ state, projectId, retry }: { state: InsightsSta
           </div>
           <Button
             nativeButton={false}
-            render={<a href={locale.startsWith('ar') ? CLICKHOUSE_DOCS_AR : CLICKHOUSE_DOCS} rel="noreferrer" target="_blank" />}
+            render={<a href={docsUrl(locale, 'self-hosting/clickhouse-analytics')} rel="noreferrer" target="_blank" />}
             size="sm"
             variant="outline"
           >

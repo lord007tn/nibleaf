@@ -116,6 +116,11 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+/* A link to page#section lands on its heading with the room the reader leaves
+ * above an anchor (typeset.css), not flush against the toolbar. */
+.pl-editor .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  scroll-margin-block-start: var(--typeset-flow, 1.25em);
+}
 .pl-editor .ProseMirror h2 {
   font-family: var(--typeset-font-heading, inherit);
   font-size: 1.5em;

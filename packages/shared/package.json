@@ -60,6 +60,7 @@
     "./reader-render-mode": "./src/reader-render-mode.ts",
     "./reader-rich": "./src/reader-rich.ts",
     "./reader-sanitize": "./src/reader-sanitize.ts",
+    "./video-embeds": "./src/video-embeds.ts",
     "./uuid": "./src/uuid.ts"
   },
   "scripts": {

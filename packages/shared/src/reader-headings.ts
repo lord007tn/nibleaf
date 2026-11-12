@@ -76,8 +76,9 @@ export interface ReaderSection extends ReaderHeading {
   source: string;
 }
 
-/** Heading text compared across source and rendering: letters and digits only (any script), case-folded. */
-const headingKey = (text: string) =>
+/** Heading text compared across source and rendering: letters and digits only (any script), case-folded.
+ *  The page editor matches its headings to the reader's with it too. */
+export const readerHeadingKey = (text: string) =>
   text
     .normalize('NFKC')
     .toLocaleLowerCase()
@@ -145,11 +146,11 @@ export const readerSections = (content: string): ReaderSection[] => {
   const sections: ReaderSection[] = [];
   let cursor = 0;
   for (const candidate of sourceHeadings(lines)) {
-    const key = headingKey(renderedSourceText(candidate.depth, candidate.text));
+    const key = readerHeadingKey(renderedSourceText(candidate.depth, candidate.text));
     let found = -1;
     for (let index = cursor; key && index < rendered.length; index += 1) {
       const heading = rendered[index];
-      if (heading?.depth === candidate.depth && headingKey(heading.text) === key) {
+      if (heading?.depth === candidate.depth && readerHeadingKey(heading.text) === key) {
         found = index;
         break;
       }
