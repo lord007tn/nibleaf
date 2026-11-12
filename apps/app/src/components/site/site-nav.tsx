@@ -91,15 +91,27 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
           )}
         >
           <PageIcon name={node.icon} className={cn('mt-0.5 size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/80')} />
-          {/* Long titles wrap onto a second line instead of losing their end to an ellipsis. */}
-          <span className="line-clamp-2 min-w-0 break-words in-focus-visible:line-clamp-none" dir={blockDirection(node.title)} data-nav-label>
-            {node.title}
-          </span>
-          {node.tag ? (
-            <span className="ms-auto mt-0.5 shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase tracking-wide">
-              {node.tag}
+          {/* The title gets the whole row: long titles wrap onto a second line
+              instead of losing their end to an ellipsis, and a tag sits on its
+              own small line under the title rather than in a column beside it. */}
+          <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
+            <span
+              className="line-clamp-2 min-w-0 max-w-full break-words in-focus-visible:line-clamp-none"
+              dir={blockDirection(node.title)}
+              data-nav-label
+            >
+              {node.title}
             </span>
-          ) : null}
+            {node.tag ? (
+              <span
+                className="max-w-full break-words rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase leading-none tracking-wide"
+                data-nav-tag
+                dir={blockDirection(node.tag)}
+              >
+                {node.tag}
+              </span>
+            ) : null}
+          </span>
         </a>
         {hasChildren ? (
           <button
