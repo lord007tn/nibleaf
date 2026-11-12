@@ -17,8 +17,7 @@ import { join } from 'node:path';
  * (PLAYWRIGHT_CHROMIUM_EXECUTABLE, CHROME_PATH, or the older CHROMIUM_PATH),
  * otherwise undefined, so Playwright launches the browser it installed.
  */
-export const chromiumExecutable = () =>
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || process.env.CHROME_PATH || process.env.CHROMIUM_PATH || undefined;
+const chromiumExecutable = () => process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || process.env.CHROME_PATH || process.env.CHROMIUM_PATH || undefined;
 
 /** Where the dev-stack lock lives: NIBLEAF_DEVSTACK_LOCK, or a directory in the OS temp dir. */
 const devstackLockPath = () => process.env.NIBLEAF_DEVSTACK_LOCK || join(tmpdir(), 'nibleaf-devstack.lock');
@@ -212,6 +211,15 @@ export async function launchLocalOnlyBrowser({ allowedHosts = [], customDomains 
   });
   const newContext = browser.newContext.bind(browser);
   browser.newContext = async (options = {}) => guardContext(await newContext({ ...options, serviceWorkers: 'block' }), allowed, attempted);
+  // `browser.newPage()` makes its own context; give it a guarded one, closed with the page.
+  browser.newPage = async (options = {}) => {
+    const context = await browser.newContext(options);
+    const page = await context.newPage();
+    page.on('close', () => {
+      context.close().catch(() => undefined);
+    });
+    return page;
+  };
   return {
     browser,
     attempted,
