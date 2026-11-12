@@ -9,6 +9,7 @@
 import { type MessageKey, type MessageVariables, translateFn } from '@nibleaf/i18n';
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { AllSelection } from '@tiptap/pm/state';
 import { EditorContent } from '@tiptap/react';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -152,7 +153,7 @@ describe('inserting and setting up a Video block', () => {
     await blur(url);
     expect(host.querySelector('[role="alert"]')?.textContent).toBe(en('editor.video.invalidUrl'));
     expect(url.getAttribute('aria-invalid')).toBe('true');
-    await type(url, 'https://cdn.example.com/a.mp4\t'.replace('\t', '\u0000'));
+    await type(url, 'https://cdn.example.com/a\u0000.mp4');
     await blur(url);
     expect(host.querySelector('[role="alert"]')).not.toBeNull();
     expect(blocks(editor)[0]?.src).toBe('');
@@ -343,6 +344,35 @@ describe('pasting a video link', () => {
     );
     expect(blocks(editor)).toEqual([]);
     expect(getMarkdown(editor)).not.toMatch(/iframe|javascript|srcdoc/);
+  });
+});
+
+describe('copying the block to another editor', () => {
+  it('carries its validated address, title and caption across independent editors', async () => {
+    const page = `<Frame caption="From start to finish">\n  <iframe src="https://www.youtube.com/embed/${YT}?si=track" title="Tour" onload="x()"></iframe>\n</Frame>`;
+    const { editor: from } = await make(page);
+    const { editor: to } = await make('');
+    from.view.dispatch(from.state.tr.setSelection(new AllSelection(from.state.doc)));
+    const { dom } = from.view.serializeForClipboard(from.state.selection.content());
+    await act(async () => to.view.pasteHTML(dom.innerHTML, new Event('paste') as ClipboardEvent));
+    expect(blocks(to)).toEqual([
+      expect.objectContaining({ kind: 'iframe', src: `https://www.youtube-nocookie.com/embed/${YT}`, title: 'Tour', caption: 'From start to finish' }),
+    ]);
+    expect(getMarkdown(to)).toBe(
+      `<Frame caption="From start to finish">\n  <iframe src="https://www.youtube-nocookie.com/embed/${YT}" title="Tour"></iframe>\n</Frame>`,
+    );
+  });
+
+  it('drops a copied block whose address the block would not accept', async () => {
+    const { editor } = await make('');
+    await act(async () =>
+      editor.view.pasteHTML(
+        '<div data-video-embed="iframe" data-src="javascript:alert(1)" data-title="x"></div><div data-video-embed="iframe" data-src="http://example.com/x"></div>',
+        new Event('paste') as ClipboardEvent,
+      ),
+    );
+    expect(blocks(editor)).toEqual([]);
+    expect(getMarkdown(editor)).not.toMatch(/iframe|javascript/);
   });
 });
 

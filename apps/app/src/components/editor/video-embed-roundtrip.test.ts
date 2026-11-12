@@ -219,3 +219,116 @@ describe('iframes and videos that are not a block of their own', () => {
     expect(getMarkdown(editor)).toBe(page);
   });
 });
+
+/*
+ * Council fixes for #567: each case was lost or rewritten on a3294ad2. Anything
+ * the shared scanner doesn't read as one closed embed stays #573's opaque,
+ * byte-for-byte block; nothing in code is ever replaced.
+ */
+const I = `<iframe src="https://www.youtube.com/embed/${YT}" title="Tour"></iframe>`;
+/** Save, reopen, save again: the page comes back identical each time. */
+const stable = (page: string) => {
+  const saved = getMarkdown(open(page));
+  expect(saved).toBe(page);
+  expect(getMarkdown(open(saved))).toBe(page);
+  return saved;
+};
+const nodeTypesAround = (editor: Editor, name: string): string[][] => {
+  const chains: string[][] = [];
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name !== name) return;
+    const $pos = editor.state.doc.resolve(pos);
+    chains.push(Array.from({ length: $pos.depth }, (_, depth) => $pos.node(depth + 1).type.name));
+  });
+  return chains;
+};
+const codeTexts = (editor: Editor) => {
+  const texts: string[] = [];
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === 'codeBlock') texts.push(node.textContent);
+  });
+  return texts;
+};
+
+describe('council fix 1: media the shared scanner rejects is kept as written', () => {
+  it.each([
+    ['a "<" in an attribute value', `<iframe src="https://www.youtube.com/embed/${YT}" title="a < b"></iframe>`],
+    ['an over-long tag', `<iframe src="https://www.youtube.com/embed/${YT}" title="${'x'.repeat(5000)}"></iframe>`],
+    [
+      'a video with a blank line before its <source>',
+      '<video controls>\n\n<source src="https://cdn.example.com/a.mp4" type="video/mp4" />\nYour browser cannot play this video.\n</video>',
+    ],
+  ])('%s', (_name, embed) => {
+    const page = `Intro.\n\n${embed}\n\nOutro.`;
+    stable(page);
+    expect(blocks(open(page))).toEqual([]);
+  });
+});
+
+describe('council fix 2: iframes in code stay code', () => {
+  it('keeps an indented iframe as indented code, with its text unchanged', () => {
+    const editor = open(`Intro.\n\n    ${I}\n\nOutro.`);
+    expect(blocks(editor)).toEqual([]);
+    expect(codeTexts(editor)).toEqual([I]);
+    const saved = getMarkdown(editor);
+    expect(saved).toContain(I);
+    expect(saved).not.toMatch(/nibleaf-|data-source/);
+    expect(getMarkdown(open(saved))).toBe(saved);
+  });
+
+  it.each([
+    ['a fence in a blockquote', `> \`\`\`html\n> ${I}\n> \`\`\``],
+    ['a fence in a list item', `- Example:\n\n  \`\`\`html\n  ${I}\n  \`\`\``],
+    ['a fence in an ordered list item', `1. Example:\n\n   \`\`\`html\n   ${I}\n   \`\`\``],
+  ])('keeps %s as code, byte for byte', (_name, page) => {
+    const editor = open(page);
+    expect(blocks(editor)).toEqual([]);
+    expect(codeTexts(editor)).toEqual([I]);
+    stable(page);
+  });
+});
+
+describe('council fix 3: an iframe in a raw HTML table keeps the table as written', () => {
+  it('saves no editor markup, and saves the same again after reopening', () => {
+    const page = `Intro.\n\n<table><tr><td>${I}</td></tr></table>\n\nOutro.`;
+    const saved = stable(page);
+    expect(saved).not.toMatch(/pl-mdx-opaque|nibleaf-|data-source/);
+  });
+});
+
+describe('council fix 4: editing a title changes only that attribute', () => {
+  const setTitle = (page: string, title: string) => {
+    const editor = open(page);
+    setAttributes(editor, 0, { title });
+    return getMarkdown(editor);
+  };
+
+  it('ends an HTML value at its quote: a trailing backslash is part of the value', () => {
+    const src = `https://www.youtube.com/embed/${YT}`;
+    expect(setTitle(`<iframe src="${src}" title="Old\\" allowFullScreen></iframe>`, 'New')).toBe(
+      `<iframe src="${src}" title="New" allowFullScreen></iframe>`,
+    );
+  });
+
+  it('gives a value to a bare title, keeping the attributes after it', () => {
+    const src = `https://www.youtube.com/embed/${YT}`;
+    expect(setTitle(`<iframe title src="${src}" allowFullScreen></iframe>`, 'New')).toBe(`<iframe title="New" src="${src}" allowFullScreen></iframe>`);
+  });
+
+  it('keeps every attribute after the title as written', () => {
+    const src = `https://www.youtube.com/embed/${YT}`;
+    const after = ` width="560" style={{ border: 0 }} data-x='a"b' allowFullScreen`;
+    expect(setTitle(`<iframe src="${src}" title="Old"${after}></iframe>`, 'R&D "tour"')).toBe(
+      `<iframe src="${src}" title="R&amp;D &quot;tour&quot;"${after}></iframe>`,
+    );
+  });
+});
+
+describe('council fix 5: an embed in a list item stays in the list', () => {
+  it('opens as the block inside the first item, and saves byte for byte', () => {
+    const page = `- First\n\n  ${I}\n\n- Next`;
+    const editor = open(page);
+    expect(nodeTypesAround(editor, 'videoEmbed')).toEqual([['bulletList', 'listItem']]);
+    stable(page);
+  });
+});
