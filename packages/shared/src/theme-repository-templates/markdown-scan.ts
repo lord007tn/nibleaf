@@ -113,7 +113,7 @@ export const stripMarkdownLinks = (text: string): string => {
  * The text ends where only whitespace, closing #s and whitespace are left (or
  * after its first character, whichever is later), and holds no line
  * terminator; when it would, it starts earlier inside the whitespace run, as
- * the expression's backtracking does.
+ * the expression's matching rules require.
  */
 export const headingParts = (line: string): { depth: 2 | 3; text: string } | null => {
   let hashes = 0;
@@ -136,5 +136,50 @@ export const headingParts = (line: string): { depth: 2 | 3; text: string } | nul
     if ((terminators[end] as number) === (terminators[start] as number)) return { depth: hashes === 2 ? 2 : 3, text: line.slice(start, end) };
   }
   return null;
+};
+
+/**
+ * A code fence's marker and the rest of its line: the groups of
+ * /^(?:\s*>)*\s*(BACKTICK{3,}|~{3,})(.*)$/.exec(line). Quote markers and
+ * whitespace come first, then the whole run of three or more backticks or
+ * tildes; the rest of the line must hold no line terminator.
+ */
+export const fenceParts = (line: string): { marker: string; rest: string } | null => {
+  let start = 0;
+  while (start < line.length && (line[start] === '>' || WHITESPACE.test(line[start] as string))) start += 1;
+  const char = line[start];
+  if (char !== TICK && char !== '~') return null;
+  let end = start;
+  while (line[end] === char) end += 1;
+  if (end - start < 3) return null;
+  const rest = line.slice(end);
+  return LINE_TERMINATOR.test(rest) ? null : { marker: line.slice(start, end), rest };
+};
+
+/**
+ * A front matter line's key and value: the groups of
+ * /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line). The key is the whole run of word
+ * characters and hyphens, directly followed by a colon; the whitespace after it
+ * (line terminators included) is skipped, and the value must hold no line
+ * terminator.
+ */
+export const frontmatterEntry = (line: string): { key: string; value: string } | null => {
+  if (!/[A-Za-z_]/.test(line[0] ?? '')) return null;
+  let colon = 1;
+  while (colon < line.length && /[\w-]/.test(line[colon] as string)) colon += 1;
+  if (line[colon] !== ':') return null;
+  let start = colon + 1;
+  while (start < line.length && WHITESPACE.test(line[start] as string)) start += 1;
+  const value = line.slice(start);
+  return LINE_TERMINATOR.test(value) ? null : { key: line.slice(0, colon), value };
+};
+
+/** pathname.replace(/^\/+|\/+$/g, ''): leading and trailing slashes removed, each read once. */
+export const trimSlashes = (pathname: string): string => {
+  let start = 0;
+  while (pathname[start] === '/') start += 1;
+  let end = pathname.length;
+  while (end > start && pathname[end - 1] === '/') end -= 1;
+  return pathname.slice(start, end);
 };
 `;

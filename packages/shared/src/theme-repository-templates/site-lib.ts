@@ -6,7 +6,7 @@ import type { ThemeRepositoryTemplateOptions } from './types';
 export const siteLibTemplate = ({ contentRoot }: ThemeRepositoryTemplateOptions): string => {
   const prefix = `../../${contentRoot ? `${contentRoot}/` : ''}`;
   return String.raw`import docsJson from '../../docs.json';
-import { headingParts, stripMarkdownLinks } from './markdown-scan';
+import { frontmatterEntry, headingParts, stripMarkdownLinks, trimSlashes } from './markdown-scan';
 
 export interface SiteLanguage {
   code: string;
@@ -131,8 +131,8 @@ export const parseFrontmatter = (source: string): { meta: Record<string, string 
   if (!match) return { meta: {}, body: normalized };
   const meta: Record<string, string | boolean> = {};
   for (const line of (match[1] ?? '').split('\n')) {
-    const entry = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
-    if (entry?.[1] !== undefined) meta[entry[1]] = parseScalar(entry[2] ?? '');
+    const entry = frontmatterEntry(line);
+    if (entry) meta[entry.key] = parseScalar(entry.value);
   }
   return { meta, body: normalized.slice(match[0].length).replace(/^\n+/, '') };
 };
@@ -200,7 +200,7 @@ export const pages: SitePage[] = Object.entries(sources)
   .sort((a, b) => a.file.localeCompare(b.file, 'en'));
 const pageByFile = new Map(pages.map((page) => [page.file, page]));
 
-export const normalizeRoute = (pathname: string): string => '/' + decodeSafe(pathname).replace(/^\/+|\/+$/g, '');
+export const normalizeRoute = (pathname: string): string => '/' + trimSlashes(decodeSafe(pathname));
 export const pageForRoute = (pathname: string): SitePage | undefined => {
   const route = normalizeRoute(pathname);
   return pages.find((page) => page.route === route);

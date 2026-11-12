@@ -8,7 +8,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { mdxComponents } from '../components/mdx';
-import { expandSelfClosingComponents, inlineCodeRanges } from './markdown-scan';
+import { expandSelfClosingComponents, fenceParts, inlineCodeRanges } from './markdown-scan';
 import { uniqueHeadingId } from './site';
 
 const componentTags = [
@@ -56,8 +56,8 @@ const closeBlock = new RegExp('^\\s*</(?:' + blockTags + ')>\\s*$', 'i');
 const componentLine = new RegExp('^\\s*</?(?:' + blockTags + ')\\b[^>]*>\\s*$', 'i');
 
 const BACKTICK = String.fromCharCode(96);
-// A fence may sit inside quotes or a list item: its marker can follow quote markers and indentation.
-const fenceMarker = new RegExp('^(?:\\s*>)*\\s*(' + BACKTICK + '{3,}|~{3,})(.*)$');
+// A fence may sit inside quotes or a list item: its marker can follow quote
+// markers and indentation (fenceParts in ./markdown-scan).
 const atxHeading = /^ {0,3}#{1,6}(?:\s|$)/;
 
 /** Positions inside fenced or inline code, where component examples are
@@ -76,14 +76,14 @@ const codeMask = (source: string): Uint8Array => {
     paragraph = -1;
   };
   for (const line of source.split('\n')) {
-    const marker = fenceMarker.exec(line);
+    const marker = fenceParts(line);
     if (fence) {
       // A closing fence repeats the opening character at least as many times, with nothing after it.
-      if (marker?.[1] && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2]?.trim()) fence = null;
+      if (marker && marker.marker[0] === fence[0] && marker.marker.length >= fence.length && !marker.rest.trim()) fence = null;
       mask.fill(1, offset, offset + line.length);
-    } else if (marker?.[1] && !(marker[1][0] === BACKTICK && marker[2]?.includes(BACKTICK))) {
+    } else if (marker && !(marker.marker[0] === BACKTICK && marker.rest.includes(BACKTICK))) {
       flush();
-      fence = marker[1];
+      fence = marker.marker;
       mask.fill(1, offset, offset + line.length);
     } else if (!line.trim()) {
       flush();

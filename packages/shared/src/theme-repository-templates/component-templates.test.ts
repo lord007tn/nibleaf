@@ -51,7 +51,8 @@ describe('theme repository component templates', () => {
   //   the next line, come out byte-identical (#338).
   // - markdown.tsx and the new src/lib/markdown-scan.ts: inline code spans and
   //   the self-closing component expansion read in linear time, with the same
-  //   results (markdown-scan.test.ts compares them; #554).
+  //   results (markdown-scan.test.ts compares them; #554). Code fence markers
+  //   are read the same way (#554).
   it('keeps the exported Markdown and MDX component files byte-identical', () => {
     const sha256Prefixes = {
       'src/lib/markdown.tsx': sha256Prefix(markdownTemplate()),
@@ -71,8 +72,8 @@ describe('theme repository component templates', () => {
       'src/components/mdx/index.tsx': sha256Prefix(mdxIndexTemplate()),
     };
     expect(sha256Prefixes).toEqual({
-      'src/lib/markdown.tsx': '20119dcf5730',
-      'src/lib/markdown-scan.ts': '97cd0315762f',
+      'src/lib/markdown.tsx': '3496b1cc00f9',
+      'src/lib/markdown-scan.ts': '3d796faf0cf9',
       'src/lib/markdown.test.tsx': '8df10c37c980',
       'src/components/mdx/shared.ts': 'a6002c02bb8e',
       'src/components/mdx/callouts.tsx': 'f468dfa7c363',

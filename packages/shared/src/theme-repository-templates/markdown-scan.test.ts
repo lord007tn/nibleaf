@@ -8,6 +8,9 @@ type Scan = {
   expandSelfClosingComponents: (text: string) => string;
   stripMarkdownLinks: (text: string) => string;
   headingParts: (line: string) => { depth: 2 | 3; text: string } | null;
+  fenceParts: (line: string) => { marker: string; rest: string } | null;
+  frontmatterEntry: (line: string) => { key: string; value: string } | null;
+  trimSlashes: (pathname: string) => string;
 };
 
 // The generated file itself, written to a gitignored cache folder and imported.
@@ -95,6 +98,32 @@ describe('generated src/lib/markdown-scan.ts gives exactly what it replaces', ()
       const match = /^(#{2,3})\s+(.+?)\s*#*\s*$/.exec(line);
       const expected = match ? { depth: match[1]?.length === 2 ? 2 : 3, text: match[2] } : null;
       expect(scan.headingParts(line), JSON.stringify(line)).toEqual(expected);
+    }
+  });
+
+  it('fenceParts: /^(?:\\s*>)*\\s*(`{3,}|~{3,})(.*)$/', () => {
+    const pattern = /^(?:\s*>)*\s*(`{3,}|~{3,})(.*)$/;
+    const pieces = ['`', '``', '```', '~', '~~~', '>', ' ', '\t', 'a', 'js', '\r', 'LS', 'PS', 'NBSP'];
+    for (const raw of texts(17, 12_000, pieces, 12)) {
+      const line = raw.replaceAll('LS', '\u2028').replaceAll('PS', '\u2029').replaceAll('NBSP', '\u00a0');
+      const match = pattern.exec(line);
+      expect(scan.fenceParts(line), JSON.stringify(line)).toEqual(match ? { marker: match[1], rest: match[2] } : null);
+    }
+  });
+
+  it('frontmatterEntry: /^([A-Za-z_][\\w-]*):\\s*(.*)$/', () => {
+    const pattern = /^([A-Za-z_][\w-]*):\s*(.*)$/;
+    const pieces = ['title', 'a', '_', '-', '9', ':', ' ', '\t', 'b', '\r', 'LS', 'PS', 'NBSP', '"', '#'];
+    for (const raw of texts(19, 12_000, pieces, 10)) {
+      const line = raw.replaceAll('LS', '\u2028').replaceAll('PS', '\u2029').replaceAll('NBSP', '\u00a0');
+      const match = pattern.exec(line);
+      expect(scan.frontmatterEntry(line), JSON.stringify(line)).toEqual(match ? { key: match[1], value: match[2] } : null);
+    }
+  });
+
+  it('trimSlashes: /^\\/+|\\/+$/g', () => {
+    for (const path of texts(23, 8000, ['/', '/', 'a', 'b', '-', '.'], 16)) {
+      expect(scan.trimSlashes(path), JSON.stringify(path)).toBe(path.replace(/^\/+|\/+$/g, ''));
     }
   });
 });

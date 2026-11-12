@@ -4,7 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from '../testing/growth';
 import { markdownScanTemplate } from './markdown-scan';
 
-type Scan = Record<'inlineCodeRanges' | 'expandSelfClosingComponents' | 'stripMarkdownLinks' | 'headingParts', (text: string) => unknown>;
+type Scan = Record<
+  'inlineCodeRanges' | 'expandSelfClosingComponents' | 'stripMarkdownLinks' | 'headingParts' | 'fenceParts' | 'frontmatterEntry' | 'trimSlashes',
+  (text: string) => unknown
+>;
+
+const SEPARATOR = String.fromCharCode(0x20_28);
 
 // Timing bounds, run on their own (pnpm test:growth; see ../testing/growth), on
 // the generated src/lib/markdown-scan.ts itself. Linear work measures about 4x
@@ -28,6 +33,9 @@ describe.runIf(growthTestsEnabled)('generated src/lib/markdown-scan.ts: growth',
     ['case B', 'expandSelfClosingComponents', (size: number) => '<File a'.repeat(4000 * size)],
     ['case C', 'stripMarkdownLinks', (size: number) => '[a'.repeat(4000 * size)],
     ['case D', 'headingParts', (size: number) => `## a${' '.repeat(1000 * size)}x`],
+    ['case E', 'fenceParts', (size: number) => `${'`'.repeat(4000 * size)}${SEPARATOR}x`],
+    ['case F', 'frontmatterEntry', (size: number) => `title: ${' '.repeat(4000 * size)}a${SEPARATOR}b`],
+    ['case G', 'trimSlashes', (size: number) => `a${'/'.repeat(4000 * size)}b`],
   ] as const)(
     'stays linear on %s (%s)',
     (_label, name, build) => {
