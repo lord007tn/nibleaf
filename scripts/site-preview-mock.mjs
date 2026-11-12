@@ -920,7 +920,8 @@ Need more headroom? Enterprise plans include dedicated capacity and per-endpoint
   },
   // Authored iframes as Mintlify writes them: two allowlisted video players (a
   // click-to-load facade on the reader), a frame from another site (a link), and a
-  // <video> with the autoplay attributes Mintlify pages often carry (dropped).
+  // <video> with the autoplay attributes Mintlify pages often carry and a poster
+  // from another site (both dropped).
   {
     group: 'guides',
     slug: 'video-tour',
@@ -958,6 +959,7 @@ A short clip of the tracking screen, hosted with our other media.
   controls
   className="w-full aspect-video rounded-xl"
   src="https://media.example.com/tidewater/tracking.mp4"
+  poster="https://posters.example.com/tidewater/tracking.jpg"
   autoPlay
   muted
   loop
@@ -996,6 +998,7 @@ A short clip of the tracking screen, hosted with our other media.
   controls
   className="w-full aspect-video rounded-xl"
   src="https://media.example.com/tidewater/tracking.mp4"
+  poster="https://posters.example.com/tidewater/tracking.jpg"
   autoPlay
   muted
   loop

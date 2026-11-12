@@ -102,6 +102,20 @@ describe('reader video embeds', () => {
     expect(container.querySelector('source')?.hasAttribute('src')).toBe(false);
   });
 
+  it('server-renders a video poster only when it is a file on this site', () => {
+    const site = { projectId: 'p', lang: 'en', defaultLanguage: 'en' };
+    const external = renderToString(
+      <RichMarkdown content={'<video src="/api/public/assets/a.mp4" poster="https://images.example.com/a.jpg"></video>'} site={site} />,
+    );
+    expect(external).toContain('<video');
+    expect(external).not.toContain('poster=');
+    expect(external).not.toContain('images.example.com');
+    const own = renderToString(
+      <RichMarkdown content={'<video src="/api/public/assets/b.mp4" poster="/api/public/assets/b.jpg"></video>'} site={site} />,
+    );
+    expect(own).toContain('poster="/api/public/assets/b.jpg"');
+  });
+
   it('keeps a video’s caption tracks from secure addresses', async () => {
     await renderPage(
       '<video src="https://cdn.example.com/a.mp4"><track kind="captions" src="/captions/en.vtt" srclang="en" label="English" default /><track kind="subtitles" src="http://cdn.example.com/ar.vtt" srclang="ar" /></video>',

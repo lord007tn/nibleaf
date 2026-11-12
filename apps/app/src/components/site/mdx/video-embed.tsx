@@ -2,6 +2,7 @@ import { siteContentT } from '@nibleaf/i18n/site-content';
 import { blockDirection } from '@nibleaf/shared/script-direction';
 import {
   isAllowedMediaUrl,
+  isSiteMediaPath,
   parseWebUrl,
   VIDEO_PROVIDER_NAMES,
   type VideoEmbed as VideoEmbedValue,
@@ -170,7 +171,9 @@ export function VideoEmbed({
 }
 
 /** A `<video>` plays only on request: controls are always shown, nothing autoplays
- *  or loads before play, and only https (or this site's) addresses are used. */
+ *  or loads before play, and only https (or this site's) addresses are used. A
+ *  poster loads as soon as the page renders (`preload="none"` doesn't stop it), so
+ *  only a file on this site is kept; one from another site is left out. */
 export function ReaderVideo({ node: _node, src, poster, children }: ComponentProps<'video'> & { node?: unknown }) {
   return (
     // biome-ignore lint/a11y/useMediaCaption: an authored video brings its own captions as `<track>` children (ReaderTrack).
@@ -180,7 +183,7 @@ export function ReaderVideo({ node: _node, src, poster, children }: ComponentPro
       playsInline
       preload="none"
       src={isAllowedMediaUrl(src) ? src : undefined}
-      poster={isAllowedMediaUrl(poster) ? poster : undefined}
+      poster={isSiteMediaPath(poster) ? poster : undefined}
     >
       {children}
     </video>

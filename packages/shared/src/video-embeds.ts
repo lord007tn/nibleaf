@@ -209,3 +209,10 @@ export const isAllowedMediaUrl = (value: unknown): value is string => {
   }
   return url.slice(0, 8).toLowerCase() === 'https://' && parseWebUrl(url)?.protocol === 'https:';
 };
+
+/**
+ * Whether a video poster may be shown: a file on this site only. A browser loads
+ * a poster as soon as the page renders (`preload="none"` doesn't stop it), so a
+ * poster from another site would contact it before the reader pressed play.
+ */
+export const isSiteMediaPath = (value: unknown): value is string => isAllowedMediaUrl(value) && value.trim().startsWith('/');

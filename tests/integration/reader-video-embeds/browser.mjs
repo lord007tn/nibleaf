@@ -24,6 +24,8 @@ const captureDir = process.argv[2] ? resolve(process.argv[2]) : null;
 /** Every host a provider's player, thumbnails or media are served from. */
 const PROVIDER_HOST = /(^|\.)(youtube(-nocookie)?\.com|youtu\.be|ytimg\.com|googlevideo\.com|vimeo(cdn)?\.com|loom(cdn)?\.com|wistia\.(com|net))$/;
 const isProvider = (url) => PROVIDER_HOST.test(new URL(url).hostname);
+/** The page's other off-site hosts: the video file and its poster (example.com, answered locally). */
+const isOtherSite = (url) => /(^|\.)example\.com$/.test(new URL(url).hostname);
 const PLAY = '[data-theme-component="video-embed"] button';
 
 const STUB = (name) =>
@@ -73,9 +75,10 @@ try {
     await context.route(isProvider, (route) =>
       route.fulfill({ status: 200, contentType: 'text/html', body: STUB(new URL(route.request().url()).hostname) }),
     );
+    await context.route(isOtherSite, (route) => route.fulfill({ status: 204 }));
     await page.goto(`${PAGE}${lang === 'en' ? '' : `?lang=${lang}`}`, { waitUntil: 'networkidle' });
     if (javaScriptEnabled) await page.locator(PLAY).first().waitFor({ timeout: 60_000 });
-    return { context, page, providerRequests: () => requests.filter(isProvider) };
+    return { context, page, providerRequests: () => requests.filter(isProvider), otherSiteRequests: () => requests.filter(isOtherSite) };
   };
   const shot = async (page, name, options = {}) => {
     if (captureDir) await page.screenshot({ path: join(captureDir, `${name}.png`), ...options });
@@ -98,7 +101,7 @@ try {
     ['ar', 1440],
   ]) {
     await scenario(`${lang} ${width}: no provider request before play, one player after, with focus`, async () => {
-      const { context, page, providerRequests } = await open({ lang, width });
+      const { context, page, providerRequests, otherSiteRequests } = await open({ lang, width });
       const buttons = page.locator(PLAY);
       assert.equal(await buttons.count(), 2, 'a player button for the YouTube and the Loom video');
       const label = await buttons.first().getAttribute('aria-label');
@@ -110,6 +113,9 @@ try {
       // Let lazy chunks, prefetches and idle work settle: still nothing to a provider.
       await page.waitForTimeout(1500);
       assert.deepEqual(providerRequests(), [], 'no provider request before play');
+      // A poster loads as soon as it renders, so one from another site is left out.
+      assert.deepEqual(otherSiteRequests(), [], 'no request for the video file or its poster before play');
+      assert.equal(await page.locator('.typeset video').getAttribute('poster'), null, 'the poster from another site is left out');
       if (lang === 'ar') assert.equal(await page.evaluate(() => document.documentElement.dir), 'rtl');
       const box = await buttons.first().boundingBox();
       assert.ok(box && Math.abs(box.width / box.height - 16 / 9) < 0.02, 'the poster reserves a 16:9 box');
