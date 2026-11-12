@@ -1113,7 +1113,9 @@ const RowPresentation = memo(function RowPresentation({
   // the rename field replaces the menu, that would steal focus from the field
   // and send the next keystrokes into that page. So from the moment Rename is
   // chosen until the rename ends, the menu restores focus nowhere, through its
-  // whole close and unmount, and the field focuses itself.
+  // whole close and unmount, and the field focuses itself. Adding a page inside
+  // and duplicating hold it the same way: they open another page, whose title
+  // takes focus, and a trigger regaining it would take the next keystrokes.
   const holdMenuFocus = useRef(false);
   // Most rows never open a menu. Mount its focus/portal machinery on demand.
   const [menuMounted, setMenuMounted] = useState(false);
@@ -1286,7 +1288,13 @@ const RowPresentation = memo(function RowPresentation({
         ) : null}
         {!overlay && !dragging && !renaming && hasMenu ? (
           menuMounted ? (
-            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenu
+              open={menuOpen}
+              onOpenChange={(open) => {
+                if (open) holdMenuFocus.current = false;
+                setMenuOpen(open);
+              }}
+            >
               <DropdownMenuTrigger
                 render={
                   <Button
@@ -1324,7 +1332,10 @@ const RowPresentation = memo(function RowPresentation({
                   <RowActionsItem
                     icon={<Plus />}
                     disabledReason={creating ? t('editor.creatingPage') : undefined}
-                    onSelect={() => onAddChild(node.id)}
+                    onSelect={() => {
+                      holdMenuFocus.current = true;
+                      onAddChild(node.id);
+                    }}
                   >
                     {t('editor.addPageInside')}
                   </RowActionsItem>
@@ -1333,7 +1344,10 @@ const RowPresentation = memo(function RowPresentation({
                   <RowActionsItem
                     icon={<CopyPlus />}
                     disabledReason={creating ? t('editor.creatingPage') : undefined}
-                    onSelect={() => onDuplicate(node.id)}
+                    onSelect={() => {
+                      holdMenuFocus.current = true;
+                      onDuplicate(node.id);
+                    }}
                   >
                     {hasChildren ? t('editor.duplicatePageOnly') : t('editor.duplicate')}
                   </RowActionsItem>

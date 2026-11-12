@@ -209,6 +209,23 @@ describe('page tree row menu (AUTH-38)', () => {
     expect(row(container, 'Deploy')).not.toBeNull();
   });
 
+  it.each([
+    ['editor.addPageInside', false],
+    ['editor.duplicate', false],
+    ['settings.members.copyLink', true],
+  ] as const)('after %s, focus returns to the menu button: %s', async (label, returns) => {
+    // Add and Duplicate open another page whose title takes focus: a menu button
+    // regaining it would take the next keystrokes (Space reopens the menu).
+    const { container } = await renderTree();
+    const button = trigger(container, 'Install');
+    await act(async () => button.focus());
+    const menu = await openMenu(container, 'Install');
+    await act(async () => item(menu, translate(label)).click());
+    await settle(300);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement === trigger(container, 'Install')).toBe(returns);
+  });
+
   it('gives a Viewer only Open in new tab and Copy link', async () => {
     const { container, actions } = await renderTree({ readOnly: true });
     const menu = await openMenu(container, 'Install');
