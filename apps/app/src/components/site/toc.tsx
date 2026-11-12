@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { blockDirection } from '@nibleaf/shared/script-direction';
-import { AlignLeft } from 'lucide-react';
+import { AlignLeft, ChevronDown } from 'lucide-react';
 import { type CSSProperties, useEffect, useState } from 'react';
 
 type TocHeading = { id: string; text: string; depth: number };
@@ -34,9 +34,17 @@ export function MobileTableOfContents({
 }) {
   if (!headings.some((heading) => heading.depth <= 3)) return null;
   return (
-    <details className="mb-6 rounded-lg border border-border xl:hidden" data-theme-region="mobile-toc">
-      <summary className="min-h-11 cursor-pointer px-4 py-3 font-medium text-sm" {...labelLanguage}>
-        {label}
+    <details className="group mb-6 rounded-lg border border-border xl:hidden" data-theme-region="mobile-toc">
+      {/* The browser's own ▶ marker is hidden (it's unstyled and doesn't follow the text direction); the chevron sits at the end in both directions. */}
+      <summary
+        className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-medium text-sm [&::-webkit-details-marker]:hidden"
+        {...labelLanguage}
+      >
+        <span className="flex items-center gap-2">
+          <AlignLeft className="size-3.5 text-muted-foreground rtl:-scale-x-100" aria-hidden />
+          {label}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
       </summary>
       <div className="max-h-[50dvh] overflow-y-auto px-4 pb-3">
         <TableOfContents headings={headings} label={label} mobile labelLanguage={labelLanguage} itemsLanguage={itemsLanguage} />

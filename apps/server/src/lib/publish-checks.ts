@@ -1,6 +1,7 @@
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
+import { hasTextOutsideComments } from '@nibleaf/shared/markup-scan';
 import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, snapshotContentFacts } from '@nibleaf/shared/publish-checks';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
@@ -96,10 +97,10 @@ const isUnreadableSlug = (slug: string): boolean => {
   );
 };
 
-/** Whether anything but HTML/MDX comments and whitespace is left. Splits on
- *  the comments instead of stripping them: nothing here is rendered, it only
- *  decides whether a page is empty. */
-const hasBody = (content: string): boolean => content.split(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/).some((part) => part.trim().length > 0);
+/** Whether anything but HTML/MDX comments and whitespace is left: nothing here
+ *  is rendered, it only decides whether a page is empty. One forward read
+ *  (`hasTextOutsideComments`), the same answer as splitting on the comments. */
+const hasBody = hasTextOutsideComments;
 
 const SEVERITY_ORDER = { error: 0, warning: 1 } as const;
 

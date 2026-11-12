@@ -1,0 +1,62 @@
+{
+  "baseline": "35d9d6686ce511df9cf68d61bc3e44b2086d85b2",
+  "method": "Unique route preloads, gzip level 9; same check-bundle-budget.mjs logic on both builds",
+  "profiles": {
+    "public-docs": {
+      "before": {
+        "raw": 836548,
+        "gzip": 280543
+      },
+      "after": {
+        "raw": 836612,
+        "gzip": 280558
+      },
+      "delta": {
+        "raw": 64,
+        "gzip": 15
+      }
+    },
+    "public-docs-index": {
+      "before": {
+        "raw": 834928,
+        "gzip": 279757
+      },
+      "after": {
+        "raw": 834992,
+        "gzip": 279774
+      },
+      "delta": {
+        "raw": 64,
+        "gzip": 17
+      }
+    },
+    "dashboard-home": {
+      "before": {
+        "raw": 4545153,
+        "gzip": 1323503
+      },
+      "after": {
+        "raw": 4547819,
+        "gzip": 1324459
+      },
+      "delta": {
+        "raw": 2666,
+        "gzip": 956
+      }
+    },
+    "dashboard-analytics": {
+      "before": {
+        "raw": 4888717,
+        "gzip": 1419721
+      },
+      "after": {
+        "raw": 4891383,
+        "gzip": 1420673
+      },
+      "delta": {
+        "raw": 2666,
+        "gzip": 952
+      }
+    }
+  }
+}

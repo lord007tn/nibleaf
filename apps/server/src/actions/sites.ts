@@ -12,6 +12,7 @@ import {
 } from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
 import { pageDescription, pageExcerpt } from '@nibleaf/shared/markdown-text';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -46,6 +47,7 @@ import { AppError, notFound } from '@/errors';
 import { readerQuestionStorage } from '@/lib/ai-search/conversation-archive';
 import { consumeAnswerQuota, recordAnswerServed } from '@/lib/ai-search/quota';
 import { answerPublishedSearch, answerSearchAvailable, publishedSearchAnswerHint, runPublishedSearch } from '@/lib/ai-search/runtime';
+import { publishedSections } from '@/lib/ai-search/sections';
 import { AssetReferenceAccess } from '@/lib/asset-reference-access';
 import { buildChangelogRss } from '@/lib/changelog-rss';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -666,7 +668,8 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       // truthful lower-bound publication date from their last modification.
       createdAt: page.createdAt ?? page.updatedAt,
       updatedAt: page.updatedAt,
-      title: page.title,
+      // The H1, document title, OG title and Markdown copy: never empty.
+      title: displayTitle(page),
       // Only an author-written summary is a visible lede. The derived excerpt
       // travels separately for SEO/social fallbacks, so the reader never renders
       // the page's own first paragraph twice.
@@ -732,7 +735,7 @@ const breadcrumbTrail = (pages: readonly SnapshotPage[], page: SnapshotPage): Br
   const trail: Breadcrumb[] = [];
   let current: SnapshotPage | undefined = page;
   while (current) {
-    trail.unshift({ title: current.title, path: current.path, ...(current.kind === 'GROUP' ? { section: true as const } : {}) });
+    trail.unshift({ title: displayTitle(current), path: current.path, ...(current.kind === 'GROUP' ? { section: true as const } : {}) });
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
   return trail;
@@ -881,6 +884,7 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
     languages: resolvePublishedSearchLanguages(snapshot),
     defaultLanguage: defaultLanguage(snapshot.project).code,
     pages: versionPages,
+    sections: publishedSections(versionPages, scope.deploymentId),
   }).catch((cause) => {
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });

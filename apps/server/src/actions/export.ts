@@ -36,7 +36,8 @@ const safePath = (value: string): string =>
 const yamlString = (value: string): string => JSON.stringify(value);
 
 const frontMatter = (page: { title: string; description: string | null; icon: string | null; hidden: boolean }): string => {
-  const lines = ['---', `title: ${yamlString(page.title)}`];
+  // An untitled page has no title line: re-importing it keeps it untitled.
+  const lines = ['---', ...(page.title.trim() ? [`title: ${yamlString(page.title)}`] : [])];
   if (page.description) {
     lines.push(`description: ${yamlString(page.description)}`);
   }

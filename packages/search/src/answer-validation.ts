@@ -18,6 +18,7 @@ export const citationFor = (id: string, chunks: SearchChunk[], query: string): G
     title: chunk.title,
     path: chunk.path,
     heading: chunk.heading || undefined,
+    ...(chunk.anchor ? { anchor: chunk.anchor } : {}),
     snippet: searchChunkSnippet(chunk, query, 260),
     direction: chunk.direction,
     language: chunk.language,

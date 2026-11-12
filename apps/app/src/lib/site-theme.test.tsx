@@ -1,4 +1,5 @@
 import { translateFn } from '@nibleaf/i18n';
+import { contrastRatio } from '@nibleaf/shared/themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ThemePreview } from '@/components/project-settings/theme-section';
@@ -11,6 +12,34 @@ import {
   DocumentationThemeProvider,
 } from '@/components/site/documentation-theme-provider';
 import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteThemeNoFlashScript } from './site-theme';
+
+describe('footer small print contrast', () => {
+  const footerColors = (css: string) => [...css.matchAll(/--theme-footer-muted:([^;}]+)/g)].map((match) => match[1]);
+  it.each(['harbor', 'manuscript', 'signal'] as const)('clears 4.7:1 on the %s canvas in light and dark', (preset) => {
+    const theme = resolveProjectTheme({ theme: { preset } } as never);
+    const [light, dark] = footerColors(projectThemeCss({ theme: { preset } } as never));
+    expect(contrastRatio(light as string, theme.colors.light.canvas)).toBeGreaterThanOrEqual(4.7);
+    expect(contrastRatio(dark as string, theme.colors.dark.canvas)).toBeGreaterThanOrEqual(4.7);
+  });
+  it('nudges a custom palette accepted at AA (4.54:1) up to 4.7:1, darker on light and lighter on dark', () => {
+    const config = {
+      theme: {
+        preset: 'harbor',
+        colors: { light: { mutedForeground: '#737373', canvas: '#fafafa' }, dark: { mutedForeground: '#6f6f6f', canvas: '#0a0a0a' } },
+      },
+    };
+    expect(contrastRatio('#737373', '#fafafa')).toBeLessThan(4.7);
+    const [light, dark] = footerColors(projectThemeCss(config as never));
+    expect(contrastRatio(light as string, '#fafafa')).toBeGreaterThanOrEqual(4.7);
+    expect(contrastRatio(dark as string, '#0a0a0a')).toBeGreaterThanOrEqual(4.7);
+    expect(light).toBe(projectThemeVariables(config as never, 'light')['--theme-footer-muted' as keyof object]);
+  });
+  it('uses #707070 on the legacy light palette (4.74:1 on #fafafa) and the muted token in dark', () => {
+    const css = projectThemeCss(null);
+    expect(footerColors(css)).toEqual(['#707070', 'var(--muted-foreground)']);
+    expect(contrastRatio('#707070', '#fafafa')).toBeGreaterThanOrEqual(4.7);
+  });
+});
 
 describe('published theme projection', () => {
   it('projects a preset and semantic overrides onto the stable CSS interface', () => {

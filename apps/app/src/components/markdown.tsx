@@ -1,12 +1,13 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { markdownCodeUsage } from '@nibleaf/shared/markdown-code-usage';
+import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
+import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { LanguageFn } from 'highlight.js';
 import { type ComponentProps, Suspense, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
-import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
+import { rehypeImageLoading } from '@/components/site/image-loading';
 import { Callout } from '@/components/site/mdx/callout';
 import { type DocumentationComponents, str } from '@/components/site/mdx/props';
 import {
@@ -24,7 +25,7 @@ import { ContentImage, SectionLink } from '@/components/site/reader-content-cont
 import { CORE_HIGHLIGHT_GRAMMARS, rehypeReaderHighlight } from '@/components/site/reader-highlight';
 import { lazyHighlightLanguages, lazyHighlightLanguagesNamed } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
-import { highlightLanguageModule, needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
+import { highlightLanguageModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -134,8 +135,7 @@ export function Markdown(props: MarkdownProps) {
   // ends, `r&#117;st`), the same on the server and in the browser, so the
   // modules the server marked are the ones hydration expects. Past the parser's
   // safety bounds, the line-based checks decide, erring towards loading.
-  const usage = markdownCodeUsage(normalizeMdxBlocks(props.content));
-  const rich = usage ? usage.rich : needsRichMarkdown(props.content);
+  const { rich, usage } = readerRenderMode(props.content);
   const languages = usage ? lazyHighlightLanguagesNamed(usage.languages, props.content) : lazyHighlightLanguages(props.content);
   if (languages.length === 0) return <MarkdownBody {...props} rich={rich} />;
   // Code in a language outside the core grammars: its grammars load like the
@@ -238,12 +238,17 @@ export function MarkdownRenderer({
         rehypePlugins={[
           ...extraRehypePlugins,
           rehypeAuthoredComponentProps,
+          // Before the sanitizer: it reads authored sizes and light/dark classes
+          // to pick the image that loads at once; the rest load as the reader scrolls.
+          rehypeImageLoading,
           [rehypeSanitize, sanitizeSchema],
           ...afterSanitizePlugins,
           rehypeMermaid,
           // Each block lays out by its own script; code stays left to right.
           rehypeBlockDirection,
-          rehypeSlug,
+          // The reader's heading ids, the same ones the search indexer records and
+          // the chat's citations are checked against (@nibleaf/shared/reader-headings).
+          rehypeReaderHeadingIds,
           // `heading-anchor` class lets the anchor renderer keep heading styling
           // (not link color/underline); tabIndex -1 keeps it out of the tab order.
           [rehypeAutolinkHeadings, { behavior: 'wrap', properties: { className: 'heading-anchor', tabIndex: -1 } }],

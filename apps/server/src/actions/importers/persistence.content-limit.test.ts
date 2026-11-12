@@ -77,3 +77,23 @@ describe('re-importing an existing page', () => {
     expect(mocks.tx.page.update).not.toHaveBeenCalled();
   });
 });
+
+describe('imported icons', () => {
+  it('keeps icons the reader draws and the one a page already had, and drops others instead of failing', async () => {
+    mocks.page.findFirst.mockResolvedValue({ id: 'page-1', config: { categoryIcon: 'old-category' }, icon: 'legacy-name' });
+    await upsertLeafPage(target, { ...imported('Body'), icon: 'legacy-name', config: { categoryIcon: 'old-category' } });
+    expect(mocks.page.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ icon: 'legacy-name', config: { categoryIcon: 'old-category' } }) }),
+    );
+    await upsertLeafPage(target, { ...imported('Body'), icon: 'fa-solid-rocket', config: { categoryIcon: 'nope', sidebarTitle: 'Setup' } });
+    expect(mocks.page.update).toHaveBeenLastCalledWith(
+      // The unknown category icon is dropped, so the stored one stays.
+      expect.objectContaining({ data: expect.objectContaining({ icon: null, config: { categoryIcon: 'old-category', sidebarTitle: 'Setup' } }) }),
+    );
+
+    mocks.page.findFirst.mockResolvedValue(null);
+    mocks.createPage.mockResolvedValue({ id: 'page-2' });
+    await upsertLeafPage(target, { ...imported('Body'), icon: 'not-a-real-icon' });
+    expect(mocks.createPage).toHaveBeenCalledWith('project-1', expect.objectContaining({ icon: null }));
+  });
+});
