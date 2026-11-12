@@ -1441,6 +1441,8 @@
   "auth_otp_toomanyattempts": "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es dann erneut.",
   "auth_otp_codelocked": "Zu viele Versuche. Fordern Sie einen neuen Code an.",
   "auth_otp_waitbeforeretry": "Zu viele Versuche. Versuchen Sie es in {wait} erneut.",
+  "auth_otp_resendwait": "Sie können in {wait} einen neuen Code anfordern.",
+  "auth_otp_resendready": "Sie können jetzt einen neuen Code anfordern.",
   "auth_error_suspended": "Dieses Konto ist gesperrt. Wenden Sie sich an support@nibleaf.com, wenn Sie das für einen Fehler halten.",
   "auth_error_tryagain": "Etwas ist schiefgelaufen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "auth_error_servererror": "Bei uns ist etwas schiefgelaufen. Versuchen Sie es gleich noch einmal.",

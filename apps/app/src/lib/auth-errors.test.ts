@@ -132,3 +132,24 @@ describe('otpFailure', () => {
     expect(wait.retryAfter()).toBe(120);
   });
 });
+
+describe('retryAfterSeconds', () => {
+  const now = Date.parse('2026-11-12T10:00:00Z');
+  it.each([
+    ['delta-seconds', '120', 120],
+    ['delta-seconds with spaces', ' 30 ', 30],
+    ['an HTTP-date', 'Thu, 12 Nov 2026 10:02:00 GMT', 120],
+    ['a huge number, capped', '100000000000000000000', null],
+    ['a long wait, capped at an hour', '86400', 3600],
+    ['an HTTP-date far ahead, capped', 'Fri, 13 Nov 2026 10:00:00 GMT', 3600],
+    ['a past HTTP-date', 'Thu, 12 Nov 2026 09:00:00 GMT', null],
+    ['zero', '0', null],
+    ['a negative number', '-5', null],
+    ['a fraction', '1.5', null],
+    ['scientific notation', '1e20', null],
+    ['text', 'soon', null],
+    ['empty', '', null],
+  ])('%s', (_case, header, expected) => {
+    expect(retryAfterSeconds(header, now)).toBe(expected);
+  });
+});

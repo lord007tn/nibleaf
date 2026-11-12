@@ -1387,6 +1387,8 @@
   "auth_otp_toomanyattempts": "बहुत अधिक प्रयास। एक मिनट रुकें, फिर से कोशिश करें।",
   "auth_otp_codelocked": "बहुत अधिक प्रयास। नया कोड मंगाएँ।",
   "auth_otp_waitbeforeretry": "बहुत अधिक प्रयास। {wait} बाद फिर से कोशिश करें।",
+  "auth_otp_resendwait": "आप {wait} बाद नया कोड मांग सकते हैं।",
+  "auth_otp_resendready": "अब आप नया कोड मांग सकते हैं।",
   "auth_error_suspended": "यह खाता निलंबित है। अगर आपको लगता है कि यह गलती है, तो support@nibleaf.com से संपर्क करें।",
   "auth_error_tryagain": "कुछ गड़बड़ हो गई। अपना कनेक्शन जाँचें और फिर से कोशिश करें।",
   "auth_error_servererror": "हमारी ओर से कुछ गड़बड़ हो गई। थोड़ी देर में फिर से कोशिश करें।",

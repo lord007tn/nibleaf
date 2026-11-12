@@ -4,8 +4,8 @@ import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
-import { EmailCodeStep, useEmailCode } from '@/components/auth-email-code';
-import { AuthTextField, useAuthFieldErrors } from '@/components/auth-form';
+import { EmailCodeStep, ResendStatus, useEmailCode } from '@/components/auth-email-code';
+import { AuthFormStatus, AuthTextField, useAuthFieldErrors } from '@/components/auth-form';
 import { GoogleIcon } from '@/components/icons/brand';
 import { TermsNotice } from '@/components/terms-notice';
 import { useGetPublicMeta } from '@/hooks/api/public';
@@ -65,6 +65,7 @@ function SignInPage() {
   const afterAuthPath = destination ?? '/app';
 
   const code = useEmailCode({
+    flow: 'sign-in',
     email: normalizedEmail,
     verify: (otp, fetchOptions) => authClient.signIn.emailOtp({ email: normalizedEmail, otp, acceptTerms: true, ...oauthBody }, fetchOptions),
     onVerified: async (result) => {
@@ -153,14 +154,17 @@ function SignInPage() {
           </p>
         ) : null}
         <TermsNotice />
+        <ResendStatus resendIn={code.resendIn} />
+        <AuthFormStatus message={fields.announcement} />
+        {/* A send-wait (after a code or a rate limit) shows on this step too, and holds the button. */}
         <Button
           className="mt-1 w-full"
-          disabled={code.busy !== null}
+          disabled={code.busy !== null || code.resendIn > 0}
           loading={code.busy === 'send'}
           loadingText={t('auth.otp.sending')}
           type="submit"
         >
-          {t('auth.otp.sendSignIn')}
+          {code.resendIn > 0 ? t('auth.otp.resendIn', { seconds: code.resendIn }) : t('auth.otp.sendSignIn')}
         </Button>
       </form>
       <p className="mt-5 text-center text-muted-foreground text-sm" hidden={connectingApp}>

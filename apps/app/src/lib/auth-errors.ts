@@ -58,10 +58,28 @@ export function friendlyAuthError(error: AuthErrorLike | null | undefined, t: (k
   return fallback;
 }
 
-/** The seconds a rate-limit answer asked to wait, or null. */
-export const retryAfterSeconds = (header: string | null | undefined): number | null => {
-  const seconds = Number(header);
-  return header && Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : null;
+/** The longest wait a rate-limit answer can impose on the screen. */
+const MAX_RETRY_AFTER_SECONDS = 3600;
+
+/**
+ * The seconds a rate-limit answer asked to wait, or null. `Retry-After` is
+ * either delta-seconds ("120") or an HTTP-date; anything else, a past date,
+ * zero or a negative value is ignored, and a longer wait is capped so a bad
+ * header can never disable "Resend" for good.
+ */
+export const retryAfterSeconds = (header: string | null | undefined, now = Date.now()): number | null => {
+  const value = header?.trim();
+  if (!value) return null;
+  let seconds: number;
+  if (/^\d{1,10}$/.test(value)) seconds = Number(value);
+  else {
+    const at = Date.parse(value);
+    // An HTTP-date names a weekday and a month; a bare number or other text is not one.
+    if (!Number.isFinite(at) || !/[a-z]{3}/i.test(value)) return null;
+    seconds = Math.ceil((at - now) / 1000);
+  }
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
+  return Math.min(seconds, MAX_RETRY_AFTER_SECONDS);
 };
 
 /**

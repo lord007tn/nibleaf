@@ -1490,6 +1490,8 @@
   "auth_otp_toomanyattempts": "محاولات كثيرة جدًا. انتظر دقيقة ثم حاول مجددًا.",
   "auth_otp_codelocked": "محاولات كثيرة جدًا. اطلب رمزًا جديدًا.",
   "auth_otp_waitbeforeretry": "محاولات كثيرة جدًا. الوقت المتبقي قبل المحاولة مجددًا: {wait}.",
+  "auth_otp_resendwait": "الوقت المتبقي قبل طلب رمز جديد: {wait}.",
+  "auth_otp_resendready": "يمكنك طلب رمز جديد الآن.",
   "auth_error_suspended": "تم إيقاف هذا الحساب. تواصل مع support@nibleaf.com إن كنت تعتقد أن ذلك خطأ.",
   "auth_error_tryagain": "حدث خطأ ما. تحقّق من اتصالك ثم حاول مجددًا.",
   "auth_error_servererror": "حدث خطأ من جهتنا. أعد المحاولة بعد قليل.",

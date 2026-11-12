@@ -1,5 +1,5 @@
 import { Label } from '@nibleaf/design-system/components/ui/label';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { fieldErrorsVisible } from '@/lib/forms/field-errors';
 
 type FieldControl = { id: string; 'aria-describedby'?: string; 'aria-invalid'?: true };
@@ -52,18 +52,46 @@ export function AuthTextField({
 export function useAuthFieldErrors<K extends string>(errors: Record<K, string | undefined>) {
   const [blurred, setBlurred] = useState<Partial<Record<K, boolean>>>({});
   const [submissionAttempts, setSubmissionAttempts] = useState(0);
+  // The field to focus once the submit's render has put its error in the DOM,
+  // so its aria-describedby already names the message when focus lands.
+  const [focusRequest, setFocusRequest] = useState<{ id: K; attempt: number } | null>(null);
+  // What a refused submit says, for the polite live region (AuthFormStatus).
+  const [announcement, setAnnouncement] = useState('');
   const keys = Object.keys(errors) as K[];
+  useEffect(() => {
+    if (focusRequest) document.getElementById(focusRequest.id)?.focus();
+  }, [focusRequest]);
 
   return {
+    /** Read out after a refused submit: render it in {@link AuthFormStatus}. */
+    announcement,
     /** The error to show under `key` now, if any. */
     visible: (key: K) => (fieldErrorsVisible({ errors: [errors[key]], isBlurred: blurred[key] }, submissionAttempts) ? errors[key] : undefined),
     onBlur: (key: K) => () => setBlurred((current) => (current[key] ? current : { ...current, [key]: true })),
     /** Counts a submission and focuses the first field in error; returns whether the form may be sent. */
     submit: (): boolean => {
-      setSubmissionAttempts((count) => count + 1);
+      const attempt = submissionAttempts + 1;
+      setSubmissionAttempts(attempt);
       const invalid = keys.find((key) => errors[key]);
-      if (invalid) document.getElementById(invalid)?.focus();
+      if (invalid) {
+        setFocusRequest({ id: invalid, attempt });
+        // A trailing zero-width space on alternate attempts makes the same message read again.
+        setAnnouncement(`${errors[invalid]}${attempt % 2 ? '' : '​'}`);
+      } else setAnnouncement('');
       return invalid === undefined;
     },
   };
+}
+
+/**
+ * A stable, polite live region for a refused submit: rendered from the first
+ * paint so screen readers pick up its later text. The field's own error stays
+ * linked by aria-describedby; this says it once, even when focus is already there.
+ */
+export function AuthFormStatus({ message }: { message: string }) {
+  return (
+    <p aria-live="polite" className="sr-only" data-slot="auth-form-status" role="status">
+      {message}
+    </p>
+  );
 }

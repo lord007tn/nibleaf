@@ -73,6 +73,8 @@ describe('auth pages', () => {
     mocks.locale = 'en';
     mocks.loaderData = { signupDisabled: false, providers: { google: true } };
     mocks.send.mockResolvedValue({ error: null });
+    // A send-wait is kept per flow in this tab; each test starts without one.
+    sessionStorage.clear();
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -108,7 +110,8 @@ describe('auth pages', () => {
       const html = renderToString(withQueries(Page));
       expect(html).toContain('with Google');
       expect(html).toContain('<form');
-      expect(html).not.toContain('role="status"');
+      // main's placeholder was a busy skeleton; the live regions are fine.
+      expect(html).not.toContain('aria-busy');
     });
 
     it.each(pages)('%s hydrates to the same structure the server sent (no Google pop-in)', async (_name, Page) => {
@@ -248,6 +251,68 @@ describe('auth pages', () => {
       await submit();
       expect(mocks.verify).not.toHaveBeenCalled();
       expect(container.querySelector('[role="alert"]')?.textContent).toBe('Enter the valid 6-digit code from your email.');
+    });
+  });
+
+  describe('send-waits and announcements', () => {
+    const status = (slot: string) => container.querySelector(`[data-slot="${slot}"]`)?.textContent ?? '';
+    const rateLimitedSend = (seconds: string) =>
+      mocks.send.mockImplementation(async (_body: unknown, fetchOptions: { onError: (context: { response: Response }) => void }) => {
+        fetchOptions.onError({ response: new Response(null, { status: 429, headers: { 'Retry-After': seconds } }) });
+        return { error: { status: 429, message: 'Too many requests.' } };
+      });
+
+    it.each(pages)('%s holds and shows the wait when the first send is rate-limited, and sends nothing meanwhile', async (_name, Page) => {
+      rateLimitedSend('30');
+      await render(Page);
+      if (container.querySelector('#name')) await enter('#name', 'Ada');
+      await enter('#email', 'ada@example.com');
+      await submit();
+      const send = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+      expect(send?.disabled).toBe(true);
+      expect(send?.textContent).toContain('30');
+      expect(status('resend-status')).toBe('You can request a new code in 30 seconds.');
+      // Enter in the email field cannot send while the wait runs.
+      await act(async () => container.querySelector('form')?.requestSubmit());
+      expect(mocks.send).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the wait after "Change email" and after the page is opened again', async () => {
+      await reachCodeStep(signIn, 'ada@example.com');
+      const change = button('Change email');
+      await act(async () => change?.click());
+      expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+      await act(async () => root.unmount());
+      root = createRoot(container);
+      await render(signIn);
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+      const send = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+      expect(send?.disabled).toBe(true);
+      expect(send?.textContent).toMatch(/Resend in \d+s/);
+    });
+
+    it('announces once when a new code can be requested again, not every second', async () => {
+      rateLimitedSend('1');
+      await render(signIn);
+      await enter('#email', 'ada@example.com');
+      await submit();
+      expect(status('resend-status')).toBe('You can request a new code in 1 second.');
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 1200)));
+      expect(status('resend-status')).toBe('You can request a new code now.');
+      expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+    });
+
+    it('says why a submit was refused even when the invalid field already has focus, after its error is in the DOM', async () => {
+      await render(signIn);
+      await enter('#email', 'not-an-email');
+      const email = container.querySelector<HTMLInputElement>('#email');
+      email?.focus();
+      await act(async () => container.querySelector('form')?.requestSubmit());
+      expect(document.activeElement).toBe(email);
+      const described = email?.getAttribute('aria-describedby') ?? '';
+      expect(described && document.getElementById(described.split(' ').at(-1) ?? '')?.textContent).toBeTruthy();
+      expect(status('auth-form-status')).toContain('valid email');
+      expect(mocks.send).not.toHaveBeenCalled();
     });
   });
 

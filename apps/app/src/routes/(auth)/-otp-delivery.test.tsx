@@ -64,6 +64,8 @@ describe('required auth email delivery feedback', () => {
     mocks.locale = 'ar';
     mocks.send.mockResolvedValue({ error: unavailable });
     mocks.verify.mockResolvedValue({ error: { code: 'INVALID_OTP' } });
+    // A send-wait is kept per flow in this tab; each test starts without one.
+    sessionStorage.clear();
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);

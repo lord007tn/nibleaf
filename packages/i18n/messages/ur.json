@@ -1432,6 +1432,8 @@
   "auth_otp_toomanyattempts": "بہت زیادہ کوششیں۔ ایک منٹ انتظار کریں، پھر دوبارہ کوشش کریں۔",
   "auth_otp_codelocked": "بہت زیادہ کوششیں۔ نیا کوڈ منگوائیں۔",
   "auth_otp_waitbeforeretry": "بہت زیادہ کوششیں۔ {wait} بعد دوبارہ کوشش کریں۔",
+  "auth_otp_resendwait": "آپ {wait} بعد نیا کوڈ مانگ سکتے ہیں۔",
+  "auth_otp_resendready": "اب آپ نیا کوڈ مانگ سکتے ہیں۔",
   "auth_error_suspended": "یہ اکاؤنٹ معطل ہے۔ اگر آپ کے خیال میں یہ غلطی ہے تو support@nibleaf.com سے رابطہ کریں۔",
   "auth_error_tryagain": "کچھ غلط ہو گیا۔ اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
   "auth_error_servererror": "ہماری طرف سے کچھ غلط ہو گیا۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔",

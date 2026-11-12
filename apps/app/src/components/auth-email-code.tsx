@@ -6,7 +6,7 @@ import { useLocale } from '@nibleaf/i18n/react';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { TermsNotice } from '@/components/terms-notice';
-import { friendlyAuthError, otpFailure, rateLimitWait } from '@/lib/auth-errors';
+import { formatWait, friendlyAuthError, otpFailure, rateLimitWait } from '@/lib/auth-errors';
 import { authClient } from '@/services/auth-client';
 
 const CODE_LENGTH = 6;
@@ -33,10 +33,13 @@ const webmailFor = (email: string) => WEBMAIL[email.slice(email.lastIndexOf('@')
  * the main action, with the server's wait as its countdown.
  */
 export function useEmailCode({
+  flow,
   email,
   verify,
   onVerified,
 }: {
+  /** Which page asks, so its send-wait is kept apart and survives a reload in this tab. */
+  flow: 'sign-in' | 'sign-up';
   email: string;
   verify: (otp: string, fetchOptions: FetchOptions) => Promise<AuthResult>;
   onVerified: (data: unknown) => Promise<void> | void;
@@ -52,7 +55,9 @@ export function useEmailCode({
   /** An error about the code (shown under the boxes). */
   const [codeError, setCodeError] = useState<string | null>(null);
   const [needsNewCode, setNeedsNewCode] = useState(false);
-  const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
+  // An absolute deadline, kept per flow for this tab: changing details, a remount or a
+  // reload never clears a wait the server still enforces.
+  const { resendIn, startCountdown } = useOtpResendCountdown(undefined, { storageKey: `nibleaf.otp-wait.${flow}` });
   const codeInput = useRef<HTMLInputElement>(null);
   // Focus after the render that re-enables the input; a disabled input can't take focus.
   const [focusRequest, setFocusRequest] = useState(0);
@@ -73,8 +78,10 @@ export function useEmailCode({
     }
   };
 
-  const requestCode = (kind: 'send' | 'resend' = 'send') =>
-    run(kind, async () => {
+  const requestCode = (kind: 'send' | 'resend' = 'send') => {
+    // While a wait runs, a send would only be refused again (and look broken).
+    if (resendIn > 0) return Promise.resolve();
+    return run(kind, async () => {
       setError(null);
       setCodeError(null);
       const wait = rateLimitWait();
@@ -97,6 +104,7 @@ export function useEmailCode({
         else setError(t('auth.error.tryAgain'));
       }
     });
+  };
 
   const back = () => {
     setCodeSent(false);
@@ -104,7 +112,7 @@ export function useEmailCode({
     setError(null);
     setCodeError(null);
     setNeedsNewCode(false);
-    resetCountdown();
+    // The send-wait stays: the server still enforces it for the next code.
   };
 
   const verifyCode = (value = otp) => {
@@ -159,6 +167,30 @@ export function useEmailCode({
 }
 
 type EmailCode = ReturnType<typeof useEmailCode>;
+
+/**
+ * Says, politely and once, when a send-wait starts and when a new code can be
+ * requested again; the countdown itself only ticks in the button label, so it
+ * is never read out every second.
+ */
+export function ResendStatus({ resendIn }: { resendIn: number }) {
+  const { t, locale } = useLocale();
+  const [message, setMessage] = useState('');
+  const waiting = resendIn > 0;
+  const wasWaiting = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: announce only when waiting starts or ends, never each second.
+  useEffect(() => {
+    if (waiting === wasWaiting.current) return;
+    wasWaiting.current = waiting;
+    setMessage(waiting ? t('auth.otp.resendWait', { wait: formatWait(resendIn, locale) }) : t('auth.otp.resendReady'));
+    // Only the transition is announced, with the wait as it was when it started.
+  }, [waiting]);
+  return (
+    <p aria-live="polite" className="sr-only" data-slot="resend-status" role="status">
+      {message}
+    </p>
+  );
+}
 
 /** "We sent a 6-digit code to", then the address on its own line: left-to-right, isolated, and broken only when it can't fit. */
 function CodeSentTo({ email, className }: { email: string; className?: string }) {
@@ -269,6 +301,7 @@ export function EmailCodeStep({
   };
   return (
     <>
+      <ResendStatus resendIn={code.resendIn} />
       <CodeSentTo email={email} />
       <form
         className="flex flex-col gap-4"

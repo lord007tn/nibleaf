@@ -1766,6 +1766,8 @@ export const MESSAGE_IDS = {
   'auth.otp.tooManyAttempts': 'auth_otp_toomanyattempts',
   'auth.otp.codeLocked': 'auth_otp_codelocked',
   'auth.otp.waitBeforeRetry': 'auth_otp_waitbeforeretry',
+  'auth.otp.resendWait': 'auth_otp_resendwait',
+  'auth.otp.resendReady': 'auth_otp_resendready',
   'auth.error.suspended': 'auth_error_suspended',
   'auth.error.tryAgain': 'auth_error_tryagain',
   'auth.error.serverError': 'auth_error_servererror',

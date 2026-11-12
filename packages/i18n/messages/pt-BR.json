@@ -1441,6 +1441,8 @@
   "auth_otp_toomanyattempts": "Muitas tentativas. Aguarde um minuto e tente novamente.",
   "auth_otp_codelocked": "Muitas tentativas. Solicite um novo código.",
   "auth_otp_waitbeforeretry": "Muitas tentativas. Tente novamente em {wait}.",
+  "auth_otp_resendwait": "Você poderá pedir um novo código em {wait}.",
+  "auth_otp_resendready": "Agora você pode pedir um novo código.",
   "auth_error_suspended": "Esta conta está suspensa. Fale com support@nibleaf.com se você acha que isso é um erro.",
   "auth_error_tryagain": "Algo deu errado. Verifique sua conexão e tente novamente.",
   "auth_error_servererror": "Algo deu errado do nosso lado. Tente novamente em instantes.",
