@@ -20,3 +20,9 @@
 # (PR #435), labelled "random token". Later commits assemble it at runtime; this
 # fingerprint only covers the commit that added it.
 d8cebd20b108bed388db5f522e18334efcbcbb74:apps/server/src/lib/publish-checks.test.ts:generic-api-key:247
+
+# False positive: a made-up placeholder API key in the AI answers status tests
+# (PR #513), used to check that only its last four characters are ever stored.
+# Later commits assemble the fake key at runtime; this fingerprint only covers
+# the commit that added it.
+834f17335505aff50a4c68428f5593c8827cb00a:apps/server/src/actions/workspace-ai.status.test.ts:generic-api-key:487
