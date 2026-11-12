@@ -41,8 +41,8 @@ const ALLOW = 'encrypted-media; picture-in-picture; fullscreen';
 const focusFrame = (frame: HTMLIFrameElement | null) => frame?.focus();
 
 const BOX = 'relative block aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted';
-const POSTER =
-  'absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-3 p-4 text-center text-foreground no-underline outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors';
+const POSTER_LAYOUT = 'absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center text-foreground no-underline';
+const POSTER = `${POSTER_LAYOUT} cursor-pointer outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset motion-safe:transition-colors`;
 
 function PlayIcon() {
   return (
@@ -114,14 +114,30 @@ function VideoFacade({ embed, title, language }: { embed: VideoEmbedValue; title
   );
 }
 
-/** A frame from another site: a link to it, showing where it goes. */
-function EmbedLink({ url, title }: { url: URL; title?: string }) {
+/**
+ * The facade as it looks before play, with nothing to press: how the editor
+ * previews a provider video. Like the reader's, it contacts nobody.
+ */
+export function VideoPosterPreview({ embed, title, language }: { embed: VideoEmbedValue; title?: string; language?: string }) {
+  const t = siteContentT(language);
+  return (
+    <span className={BOX} data-theme-component="video-embed" data-provider={embed.provider}>
+      <span className={POSTER_LAYOUT}>
+        <Poster title={title || t('videoUntitled')} provider={VIDEO_PROVIDER_NAMES[embed.provider]} note={t('videoLoadsOnPlay')} />
+      </span>
+    </span>
+  );
+}
+
+/** A frame from another site: a link to it, showing where it goes. The editor opens it in a new tab. */
+export function EmbedLink({ url, title, newTab = false }: { url: URL; title?: string; newTab?: boolean }) {
   return (
     <a
       className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 no-underline hover:border-primary/50 motion-safe:transition-colors"
       data-theme-component="embed-link"
       href={url.href}
       rel="noopener noreferrer"
+      target={newTab ? '_blank' : undefined}
     >
       {title ? (
         <span className="font-semibold text-foreground" dir={blockDirection(title)}>

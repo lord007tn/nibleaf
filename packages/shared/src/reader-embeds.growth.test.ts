@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { offsetInRanges, pageContentFacts } from './publish-checks';
-import { rewriteReaderEmbeds } from './reader-embeds';
+import { rewriteReaderEmbeds, scanAuthoredEmbeds } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growth';
 import { isAllowedMediaUrl, parseVideoUrl } from './video-embeds';
@@ -39,6 +39,13 @@ describe.runIf(growthTestsEnabled)('reader embed growth', () => {
     linear(rewriteReaderEmbeds, sizes('<video controls src="https://cdn.example.com/a.mp4" ', 20_000));
     linear(rewriteReaderEmbeds, sizes('<video\n  controls\n', 20_000));
     linear(normalizeMdxBlocks, sizes('<video controls\n', 5000));
+  });
+
+  it('scans iframes and videos for the editor in linear time', () => {
+    linear(scanAuthoredEmbeds, sizes('<iframe src="https://youtu.be/x">text ', 20_000));
+    linear(scanAuthoredEmbeds, sizes('<video controls src="https://cdn.example.com/a.mp4">\n<source src="a" />\n', 20_000));
+    linear(scanAuthoredEmbeds, sizes('<video src="a"></vide </video x <iframe src="b"></ifram ', 20_000));
+    linear(scanAuthoredEmbeds, sizes('<iframe src="https://youtu.be/x"></iframe>\n<video src="a.mp4"></video>\n\n', 10_000));
   });
 
   it('rewrites long src values built from repeated segments in linear time', () => {

@@ -19,7 +19,7 @@
  * regular expressions run on one attribute value or one tag's text, with no
  * nested or overlapping quantifiers.
  */
-import { parseVideoUrl, parseWebUrl } from './video-embeds';
+import { parseVideoUrl, parseWebUrl, type VideoEmbed } from './video-embeds';
 
 /** The reader element the rewrite emits. */
 export const READER_EMBED_TAG = 'mdxembed';
@@ -31,6 +31,7 @@ const MAX_TEXT_LENGTH = 2048;
 const OPENER = '<iframe';
 const VIDEO_OPENER = '<video';
 const CLOSER = '</iframe';
+const VIDEO_CLOSER = '</video';
 
 const isSpace = (char: string | undefined): boolean => char === ' ' || char === '\t' || char === '\n' || char === '\r' || char === '\f';
 /** Ends an attribute name. */
@@ -139,11 +140,12 @@ const opens = (text: string, at: number, opener: string): boolean => {
 };
 
 /**
- * Finds `</iframe …>` closers (any case) at or after a position, for positions
- * that only grow: the last answer is reused while it still lies ahead, and a
- * new search starts after it, so each character is read once per scan.
+ * Finds `</iframe …>` closers (or another element's, any case) at or after a
+ * position, for positions that only grow: the last answer is reused while it
+ * still lies ahead, and a new search starts after it, so each character is read
+ * once per scan.
  */
-const closerFinder = (text: string) => {
+const closerFinder = (text: string, closer = CLOSER) => {
   let found = -2; // not searched yet
   let searchedFrom = 0;
   /** Where the first closer at or after `from` ends (past its `>`), or -1 when none follows. */
@@ -152,8 +154,8 @@ const closerFinder = (text: string) => {
     if (found >= from) return found;
     searchedFrom = from;
     for (let at = text.indexOf('</', from); at >= 0; at = text.indexOf('</', at + 2)) {
-      if (text.slice(at, at + CLOSER.length).toLowerCase() !== CLOSER) continue;
-      let index = at + CLOSER.length;
+      if (text.slice(at, at + closer.length).toLowerCase() !== closer) continue;
+      let index = at + closer.length;
       while (index < text.length && isSpace(text[index])) index++;
       if (text[index] !== '>') continue;
       found = index + 1;
@@ -193,20 +195,36 @@ const blankLineFinder = (text: string) => {
 
 const clip = (value: string | undefined, length: number): string => (value ?? '').replace(/\s+/g, ' ').trim().slice(0, length);
 
+/**
+ * How the reader shows an iframe with this `src`: an allowlisted provider's
+ * click-to-load player, a link card for any other https address, or the
+ * address as plain text. Null without an address (the reader shows nothing).
+ * The editor previews an iframe with the same answer.
+ */
+export type ReaderEmbedSource = { kind: 'video'; video: VideoEmbed } | { kind: 'link'; url: URL } | { kind: 'text'; text: string };
+
+export const readerEmbedSource = (value: string | undefined): ReaderEmbedSource | null => {
+  const src = clip(value, MAX_TEXT_LENGTH);
+  const video = parseVideoUrl(src);
+  if (video) return { kind: 'video', video };
+  if (!src) return null;
+  const url = parseWebUrl(src);
+  return url?.protocol === 'https:' ? { kind: 'link', url } : { kind: 'text', text: src };
+};
+
 /** The reader element for one iframe's attributes. */
 const readerEmbedElement = (attributes: ReadonlyMap<string, string>): string => {
-  const src = clip(attributes.get('src'), MAX_TEXT_LENGTH);
+  const source = readerEmbedSource(attributes.get('src'));
   const title = clip(attributes.get('title'), MAX_TITLE_LENGTH);
   const titled = title ? ` title="${escapeAttribute(title)}"` : '';
-  const video = parseVideoUrl(src);
-  if (video) {
+  if (!source) return '';
+  if (source.kind === 'video') {
+    const { video } = source;
     const start = video.start ? ` start="${video.start}"` : '';
     return `<${READER_EMBED_TAG} provider="${video.provider}" videoid="${video.id}"${start}${titled}></${READER_EMBED_TAG}>`;
   }
-  if (!src) return '';
-  const url = parseWebUrl(src);
-  if (url?.protocol === 'https:') return `<${READER_EMBED_TAG} href="${escapeAttribute(url.href)}"${titled}></${READER_EMBED_TAG}>`;
-  return `<${READER_EMBED_TAG} text="${escapeAttribute(src)}"${titled}></${READER_EMBED_TAG}>`;
+  if (source.kind === 'link') return `<${READER_EMBED_TAG} href="${escapeAttribute(source.url.href)}"${titled}></${READER_EMBED_TAG}>`;
+  return `<${READER_EMBED_TAG} text="${escapeAttribute(source.text)}"${titled}></${READER_EMBED_TAG}>`;
 };
 
 /** A tag's text on one line: each run of whitespace becomes one space. */
@@ -248,4 +266,55 @@ export const rewriteReaderEmbeds = (text: string): string => {
     at = end - 1;
   }
   return output + text.slice(kept);
+};
+
+/** An authored `<iframe>` or `<video>` as the reader reads it (see `scanAuthoredEmbeds`). */
+export interface AuthoredEmbed {
+  kind: 'iframe' | 'video';
+  /** Where the opener's `<` is. */
+  start: number;
+  /** Just past the opener's `>`. */
+  openEnd: number;
+  /** Just past the closer's `>` (the opener's, when self-closing); `openEnd` when not closed. */
+  end: number;
+  /** False for an opener with no closer in its own Markdown block. */
+  closed: boolean;
+  /** Attribute names lowercased, values decoded; the first of a repeated name wins. */
+  attributes: ReadonlyMap<string, string>;
+}
+
+/**
+ * Every `<iframe>` and `<video>` in `text` that the reader reads, in order, with
+ * the same rules as `rewriteReaderEmbeds`: an opener it can't read is skipped,
+ * and a closer counts only when it ends before the next blank line. A `<video>`
+ * runs to its `</video>` under the same rule, so its `<source>` and `<track>`
+ * children are part of it. The editor opens each closed one as a block that
+ * saves back as written.
+ *
+ * Linear like the rewrite: each tag read stops at the next `<` or after
+ * MAX_TAG_LENGTH characters, and the closer and blank-line finders only search
+ * forward. The caller skips code.
+ */
+export const scanAuthoredEmbeds = (text: string): AuthoredEmbed[] => {
+  const found: AuthoredEmbed[] = [];
+  if (!text.includes('<')) return found;
+  const iframeCloser = closerFinder(text);
+  const videoCloser = closerFinder(text, VIDEO_CLOSER);
+  const blankLine = blankLineFinder(text);
+  for (let at = text.indexOf('<'); at >= 0; at = text.indexOf('<', at + 1)) {
+    const iframe = opens(text, at, OPENER);
+    if (!iframe && !opens(text, at, VIDEO_OPENER)) continue;
+    const tag = readTag(text, at + (iframe ? OPENER : VIDEO_OPENER).length);
+    if (!tag) continue;
+    let end = tag.end;
+    if (!tag.selfClosing) {
+      end = (iframe ? iframeCloser : videoCloser)(tag.end);
+      const blank = blankLine(tag.end);
+      if (end >= 0 && blank >= 0 && end > blank) end = -1;
+    }
+    const closed = end >= 0;
+    found.push({ kind: iframe ? 'iframe' : 'video', start: at, openEnd: tag.end, end: closed ? end : tag.end, closed, attributes: tag.attributes });
+    at = (closed ? end : tag.end) - 1;
+  }
+  return found;
 };

@@ -1,0 +1,114 @@
+[
+  {
+    "phase": "before",
+    "locale": "en",
+    "width": 1440,
+    "projectId": "cmwds85sf0001ogyogkh1qdny",
+    "saved": "<https://www.youtube.com/watch?v=M7lc1UVf-VE&t=30>",
+    "editorRequests": 712,
+    "editorOffSiteRequests": [],
+    "publishOffSiteRequests": [],
+    "readerRequestsBeforePlay": 83,
+    "readerOffSiteRequestsBeforePlay": [],
+    "requestsMadeByPlay": []
+  },
+  {
+    "phase": "before",
+    "locale": "en",
+    "width": 390,
+    "projectId": "cmwds8g5r0007ogyogdpm923x",
+    "saved": "<https://www.youtube.com/watch?v=M7lc1UVf-VE&t=30>",
+    "editorRequests": 711,
+    "editorOffSiteRequests": [],
+    "publishOffSiteRequests": [],
+    "readerRequestsBeforePlay": 82,
+    "readerOffSiteRequestsBeforePlay": [],
+    "requestsMadeByPlay": []
+  },
+  {
+    "phase": "before",
+    "locale": "ar",
+    "width": 1440,
+    "projectId": "cmwds8oph000dogyo7397xtic",
+    "saved": "<https://www.youtube.com/watch?v=M7lc1UVf-VE&t=30>",
+    "editorRequests": 713,
+    "editorOffSiteRequests": [],
+    "publishOffSiteRequests": [],
+    "readerRequestsBeforePlay": 84,
+    "readerOffSiteRequestsBeforePlay": [],
+    "requestsMadeByPlay": []
+  },
+  {
+    "phase": "before",
+    "locale": "ar",
+    "width": 390,
+    "projectId": "cmwds8wf9000jogyo3wz62zv6",
+    "saved": "<https://www.youtube.com/watch?v=M7lc1UVf-VE&t=30>",
+    "editorRequests": 713,
+    "editorOffSiteRequests": [],
+    "publishOffSiteRequests": [],
+    "readerRequestsBeforePlay": 83,
+    "readerOffSiteRequestsBeforePlay": [],
+    "requestsMadeByPlay": []
+  },
+  {
+    "phase": "after",
+    "locale": "en",
+    "width": 1440,
+    "projectId": "cmwds9tl9000pogyoq24ysjo9",
+    "saved": "<Frame caption=\"From sign-up to first publish\">\n  <iframe src=\"https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30\" title=\"Tidewater product tour\"></iframe>\n</Frame>",
+    "editorRequests": 712,
+    "editorOffSiteRequests": [],
+    "publishOffSiteRequests": [],
+    "readerRequestsBeforePlay": 84,
+    "readerOffSiteRequestsBeforePlay": [],
+    "requestsMadeByPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30&autoplay=1"
+    ]
+  },
+  {
+    "phase": "after",
+    "locale": "en",
+    "width": 390,
+    "projectId": "cmwdsa3qk000vogyo3kvnhq7u",
+    "saved": "<Frame caption=\"From sign-up to first publish\">\n  <iframe src=\"https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30\" title=\"Tidewater product tour\"></iframe>\n</Frame>",
+    "editorRequests": 712,
+    "editorOffSiteRequests": [],
+    "publishOffSiteRequests": [],
+    "readerRequestsBeforePlay": 83,
+    "readerOffSiteRequestsBeforePlay": [],
+    "requestsMadeByPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30&autoplay=1"
+    ]
+  },
+  {
+    "phase": "after",
+    "locale": "ar",
+    "width": 1440,
+    "projectId": "cmwdsadj90011ogyonbkn99ua",
+    "saved": "<Frame caption=\"من التسجيل إلى أول نشر\">\n  <iframe src=\"https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30\" title=\"جولة في المنتج\"></iframe>\n</Frame>",
+    "editorRequests": 715,
+    "editorOffSiteRequests": [],
+    "publishOffSiteRequests": [],
+    "readerRequestsBeforePlay": 85,
+    "readerOffSiteRequestsBeforePlay": [],
+    "requestsMadeByPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30&autoplay=1"
+    ]
+  },
+  {
+    "phase": "after",
+    "locale": "ar",
+    "width": 390,
+    "projectId": "cmwdsan6i0017ogyo9a6nl7te",
+    "saved": "<Frame caption=\"من التسجيل إلى أول نشر\">\n  <iframe src=\"https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30\" title=\"جولة في المنتج\"></iframe>\n</Frame>",
+    "editorRequests": 715,
+    "editorOffSiteRequests": [],
+    "publishOffSiteRequests": [],
+    "readerRequestsBeforePlay": 84,
+    "readerOffSiteRequestsBeforePlay": [],
+    "requestsMadeByPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30&autoplay=1"
+    ]
+  }
+]

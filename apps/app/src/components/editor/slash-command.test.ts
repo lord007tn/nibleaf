@@ -174,9 +174,9 @@ describe('slash command scaffolds', () => {
 });
 
 describe('writer block search', () => {
-  it('lists everyday blocks first, then images and tables, with each section shown once', () => {
+  it('lists everyday blocks first, then media and tables, with each section shown once', () => {
     const items = createSlashItems();
-    expect(items.slice(0, 8).map((item) => item.titleKey)).toEqual([
+    expect(items.slice(0, 10).map((item) => item.titleKey)).toEqual([
       'editor.slash.text.title',
       'editor.slash.h1.title',
       'editor.slash.h2.title',
@@ -184,6 +184,8 @@ describe('writer block search', () => {
       'editor.slash.bulletList.title',
       'editor.slash.numberedList.title',
       'editor.slash.image.title',
+      'editor.slash.video.title',
+      'editor.slash.embed.title',
       'editor.slash.table.title',
     ]);
     const sections = items.map(slashSection).filter((section, index, all) => index === 0 || all[index - 1] !== section);
@@ -199,6 +201,8 @@ describe('writer block search', () => {
         "editor.slash.bulletList.title",
         "editor.slash.numberedList.title",
         "editor.slash.image.title",
+        "editor.slash.video.title",
+        "editor.slash.embed.title",
         "editor.slash.table.title",
         "editor.slash.note.title",
         "editor.slash.tip.title",

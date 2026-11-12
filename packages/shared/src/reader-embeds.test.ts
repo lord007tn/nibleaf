@@ -5,7 +5,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { describe, expect, it } from 'vitest';
-import { rewriteReaderEmbeds } from './reader-embeds';
+import { readerEmbedSource, rewriteReaderEmbeds, scanAuthoredEmbeds } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { readerSanitizeSchema } from './reader-sanitize';
 
@@ -236,5 +236,64 @@ describe('the reader sanitizer', () => {
     expect(elements(page, 'a')).toEqual([]);
     expect(elements(page, 'mdxembed').map((embed) => embed.properties)).toEqual([{ text: 'javascript:alert(1)', title: 'Bad' }]);
     expect(text(page)).not.toContain('<iframe');
+  });
+});
+
+describe('scanAuthoredEmbeds finds the iframes and videos the reader reads', () => {
+  const spans = (text: string) =>
+    scanAuthoredEmbeds(text).map((embed) => ({
+      kind: embed.kind,
+      source: text.slice(embed.start, embed.end),
+      closed: embed.closed,
+      src: embed.attributes.get('src'),
+      title: embed.attributes.get('title'),
+    }));
+
+  it('reads each closed iframe and video, with its children, and the values the reader reads', () => {
+    expect(spans(MINTLIFY_PAGE)).toEqual([
+      expect.objectContaining({ kind: 'iframe', closed: true, src: `https://www.youtube.com/embed/${YT}?si=abc123`, title: 'YouTube video player' }),
+      expect.objectContaining({ kind: 'iframe', closed: true, src: `https://www.loom.com/embed/${LOOM}`, title: 'Loom walkthrough' }),
+      expect.objectContaining({ kind: 'video', closed: true, src: 'https://cdn.example.com/demo.mp4' }),
+      expect.objectContaining({
+        kind: 'video',
+        closed: true,
+        source:
+          '<video controls onplay="alert(1)" poster="javascript:alert(1)" src="https://cdn.example.com/b.mp4">\n  <source src="https://cdn.example.com/b.webm" type="video/webm" onerror="alert(1)" />\n</video>',
+      }),
+      expect.objectContaining({ kind: 'iframe', closed: true, src: 'https://codepen.io/team/pen/abc', title: 'A pen' }),
+    ]);
+    expect(spans(`<iframe src={"https://youtu.be/${YT}"} title='R&amp;D' />`)).toEqual([
+      {
+        kind: 'iframe',
+        source: `<iframe src={"https://youtu.be/${YT}"} title='R&amp;D' />`,
+        closed: true,
+        src: `https://youtu.be/${YT}`,
+        title: 'R&D',
+      },
+    ]);
+  });
+
+  it('counts a closer only before the next blank line, as the reader does', () => {
+    const text = `<iframe src="https://youtu.be/${YT}">\n\n## Install\n\n<iframe src="https://www.loom.com/embed/${LOOM}"></iframe>`;
+    expect(spans(text).map(({ closed, src }) => ({ closed, src }))).toEqual([
+      { closed: false, src: `https://youtu.be/${YT}` },
+      { closed: true, src: `https://www.loom.com/embed/${LOOM}` },
+    ]);
+    expect(spans('<video src="https://cdn.example.com/a.mp4">\n\nText\n\n</video>')[0]?.closed).toBe(false);
+  });
+
+  it('skips tags it cannot read, and similar names', () => {
+    expect(spans('<iframes src="x"></iframes> <iframe src="a" <b> <video-x src="y"> <iframe')).toEqual([]);
+  });
+});
+
+describe('readerEmbedSource', () => {
+  it('answers the way the reader shows an iframe', () => {
+    expect(readerEmbedSource(`https://youtu.be/${YT}?t=30`)).toEqual({ kind: 'video', video: { provider: 'youtube', id: YT, start: 30 } });
+    expect(readerEmbedSource('https://maps.example.com/embed?x=1')).toEqual({ kind: 'link', url: new URL('https://maps.example.com/embed?x=1') });
+    expect(readerEmbedSource('http://example.com/x')).toEqual({ kind: 'text', text: 'http://example.com/x' });
+    expect(readerEmbedSource('javascript:alert(1)')).toEqual({ kind: 'text', text: 'javascript:alert(1)' });
+    expect(readerEmbedSource('  ')).toBeNull();
+    expect(readerEmbedSource(undefined)).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 import { translateFn } from '@nibleaf/i18n';
 import { DOCUMENTATION_COMPONENTS, type DocumentationComponentDefinition } from '@nibleaf/shared/documentation-components';
+import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
@@ -427,6 +428,92 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
   )}"${known}`;
 }
 
+/** The element the editor's Video and Embed block (`./video-embed`) is parsed from. */
+export const VIDEO_EMBED_ELEMENT = 'nibleaf-video-embed';
+
+const isSpaceAt = (source: string, index: number): boolean => /\s/.test(source[index] ?? '');
+
+/**
+ * The page's authored `<iframe>`s and `<video>`s, read the way the reader reads
+ * them (`scanAuthoredEmbeds`), outside code:
+ *  - one on lines of its own becomes the Video/Embed block, which saves its
+ *    source back as written. A `<Frame>` holding only it (Mintlify's documented
+ *    shape) is part of the block, so its caption is the block's caption;
+ *  - one inside a line of text, or an opener the reader leaves unclosed, is kept
+ *    as written in an opaque node. The editor used to drop both on save.
+ */
+function mediaRanges(
+  source: string,
+  mask: Uint8Array,
+  tokens: TagToken[],
+  pairs: Map<number, number>,
+): { units: Array<{ start: number; end: number; value: string }>; opaque: SourceRange[] } {
+  const units: Array<{ start: number; end: number; value: string }> = [];
+  const opaque: SourceRange[] = [];
+  if (!/<(?:iframe|video)/i.test(source)) return { units, opaque };
+  // Code is never read: its characters (line breaks aside) are blanked out of reach.
+  let prose = '';
+  for (let index = 0; index < source.length; index++) prose += mask[index] && source[index] !== '\n' ? '_' : (source[index] ?? '');
+  const frameOpeners = new Map<number, number>();
+  tokens.forEach((token, index) => {
+    if (token.name === 'Frame' && !token.closing && !token.selfClosing) frameOpeners.set(token.end, index);
+  });
+  for (const embed of scanAuthoredEmbeds(prose)) {
+    if (!embed.closed) {
+      const block = isWholeLine(source, embed.start, embed.openEnd);
+      opaque.push({
+        start: block ? lineStart(source, embed.start) : embed.start,
+        end: embed.openEnd,
+        source: source.slice(embed.start, embed.openEnd),
+        name: embed.kind,
+        block,
+      });
+      continue;
+    }
+    let before = embed.start;
+    while (before > 0 && isSpaceAt(source, before - 1)) before--;
+    let after = embed.end;
+    while (after < source.length && isSpaceAt(source, after)) after++;
+    const openerIndex = frameOpeners.get(before);
+    const opener = openerIndex === undefined ? undefined : tokens[openerIndex];
+    const closeIndex = openerIndex === undefined ? undefined : pairs.get(openerIndex);
+    const closer = closeIndex === undefined ? undefined : tokens[closeIndex];
+    const framed = opener && closer?.start === after && isWholeLine(source, opener.start, closer.end) ? { opener, closer } : null;
+    if (!framed && !isWholeLine(source, embed.start, embed.end)) {
+      opaque.push({ start: embed.start, end: embed.end, source: source.slice(embed.start, embed.end), name: embed.kind, block: false });
+      continue;
+    }
+    const start = framed?.opener.start ?? embed.start;
+    const end = framed?.closer.end ?? embed.end;
+    const caption = framed ? attributeValue(parseAttributes(framed.opener.raw, framed.opener.name), 'caption') : undefined;
+    // The placeholder starts its line: indented (as Mintlify nests it in a <Step>), it would read as code.
+    units.push({
+      start: lineStart(source, start),
+      end,
+      value: `<${VIDEO_EMBED_ELEMENT} data-source="${encodeMdxSource(source.slice(start, end))}" data-frame-open="${
+        framed ? framed.opener.end - start : 0
+      }" data-frame-close="${framed ? framed.closer.start - start : end - start}" data-caption="${escapeHtmlAttribute(
+        typeof caption === 'string' ? caption : '',
+      )}"></${VIDEO_EMBED_ELEMENT}>`,
+    });
+  }
+  return { units, opaque };
+}
+
+/** Where the line holding `index` starts. */
+const lineStart = (source: string, index: number): number => source.lastIndexOf('\n', index - 1) + 1;
+
+/** Tokens outside every range (both sorted by start). */
+function outsideRanges(tokens: TagToken[], ranges: Array<{ start: number; end: number }>): TagToken[] {
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  let next = 0;
+  return tokens.filter((token) => {
+    while (next < sorted.length && (sorted[next]?.end ?? 0) <= token.start) next++;
+    const range = sorted[next];
+    return !(range && token.start >= range.start && token.start < range.end);
+  });
+}
+
 /**
  * Converts MDX-only syntax into HTML that markdown-it/DOMParser can safely feed
  * to ProseMirror. Serializers restore the source metadata before persistence.
@@ -434,13 +521,20 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
 function prepareMdxForEditor(source: string): string {
   if (!source || (!source.includes('<') && !source.includes('{') && !/^\s*(?:import|export)\s/m.test(source))) return source;
   const mask = codeMask(source);
-  const tokens = scanTags(source, mask);
+  const allTokens = scanTags(source, mask);
+  const media = mediaRanges(source, mask, allTokens, tagPairs(allTokens));
+  // Tags inside an iframe or video (an absorbed <Frame> included) belong to it.
+  const tokens = media.units.length > 0 || media.opaque.length > 0 ? outsideRanges(allTokens, [...media.units, ...media.opaque]) : allTokens;
   const pairs = tagPairs(tokens);
   let opaque = unsupportedRanges(source, tokens, pairs);
+  // An iframe or video inside an unsupported component is part of its source.
+  const inOpaque = (range: { start: number; end: number }) => opaque.some((other) => range.start >= other.start && range.end <= other.end);
+  let units = media.units.filter((unit) => !inOpaque(unit));
+  opaque.push(...media.opaque.filter((range) => !inOpaque(range)));
 
   // MDX ESM and standalone expressions are also explicit opaque nodes. Braces
   // inside JSX tags were consumed by scanTags and are excluded here.
-  const occupied = [...opaque, ...tokens.map((token) => ({ start: token.start, end: token.end }))];
+  const occupied = [...units, ...opaque, ...tokens.map((token) => ({ start: token.start, end: token.end }))];
   const overlaps = (start: number, end: number) => occupied.some((range) => start < range.end && end > range.start);
   const containsPosition = (position: number) => occupied.some((range) => position >= range.start && position < range.end);
   let offset = 0;
@@ -461,16 +555,20 @@ function prepareMdxForEditor(source: string): string {
     // A standalone expression owns any JSX nested inside it. Replace the whole
     // expression once, rather than exposing punctuation around smaller atoms.
     opaque = opaque.filter((range) => !(range.start >= i && range.end <= end));
+    units = units.filter((unit) => !(unit.start >= i && unit.end <= end));
     opaque.push({ start: i, end, source: source.slice(i, end), name: 'Expression', block: isWholeLine(source, i, end) });
     occupied.push({ start: i, end });
     i = end - 1;
   }
 
-  const replacements: Array<{ start: number; end: number; value: string }> = opaque.map((range) => ({
-    start: range.start,
-    end: range.end,
-    value: placeholder(range),
-  }));
+  const replacements: Array<{ start: number; end: number; value: string }> = [
+    ...units,
+    ...opaque.map((range) => ({
+      start: range.start,
+      end: range.end,
+      value: placeholder(range),
+    })),
+  ];
   const opaqueCoverage = (start: number) => opaque.some((range) => start >= range.start && start < range.end);
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
@@ -550,12 +648,13 @@ export function sourceMetadataAttributes() {
 
 const equalSourceValue = (left: unknown, right: unknown): boolean => String(left ?? '') === String(right ?? '');
 
-function replaceOpeningAttribute(raw: string, componentName: string, name: string, value: unknown): string {
+export function replaceOpeningAttribute(raw: string, componentName: string, name: string, value: unknown): string {
   const attrs = parseAttributes(raw, componentName);
   const existing = attrs.find((attr) => attr.name.toLowerCase() === name.toLowerCase());
   const remove = value == null || value === '' || value === false;
   if (existing) {
-    if (remove) return `${raw.slice(0, existing.start)}${raw.slice(existing.end)}`;
+    // A removed attribute takes the space before it along, so no double space is left.
+    if (remove) return `${raw.slice(0, existing.start).trimEnd()}${raw.slice(existing.end)}`;
     const rendered =
       value === true
         ? existing.name

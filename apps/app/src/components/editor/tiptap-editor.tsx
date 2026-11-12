@@ -64,6 +64,7 @@ import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/m
 import { MarkdownBlockquote } from './extensions/quote';
 import { SelectionShortcuts } from './extensions/selection-shortcuts';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
+import { VideoEmbed } from './extensions/video-embed';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
 import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
@@ -390,6 +391,7 @@ export function buildEditorExtensions({
     CharacterCount,
     Callout,
     ...mdxNodes,
+    VideoEmbed,
     ...opaqueMdxNodes,
     SlashCommand.configure({
       locale,

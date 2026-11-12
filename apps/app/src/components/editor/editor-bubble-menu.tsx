@@ -24,12 +24,15 @@ import {
   Pilcrow,
   Strikethrough,
   Unlink,
+  Video,
 } from 'lucide-react';
 import { type ComponentType, type KeyboardEvent, lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
 import { isWebAddress, useEditorLinks } from './editor-links';
 import { selectionMenuApplies, selectionMenuRequest } from './extensions/selection-shortcuts';
+import { embedLinkedVideo, VIDEO_EMBED_NODE } from './extensions/video-embed';
+import { isEmbeddableVideoLink } from './extensions/video-embed-url';
 import { isPageQuery, normalizeLinkUrl, type PageLinkMatch } from './link-utils';
 import { currentTurnIntoKind, TURN_INTO_OPTIONS, type TurnIntoKind, turnInto } from './turn-into';
 
@@ -150,6 +153,9 @@ export function LinkEditorPanel({
         ? t('editor.link.missingPage')
         : t('editor.link.openRelativeHint');
   const iconButton = 'size-7 shrink-0 text-foreground/80';
+  // The saved link is a video the Video block plays: offer to embed it instead.
+  const embeddableVideo =
+    editor.isEditable && editor.isActive('link') && Boolean(editor.schema.nodes[VIDEO_EMBED_NODE]) && isEmbeddableVideoLink(initialUrl.trim());
   // Load the other docs versions' pages when a link may lead into one of them.
   useEffect(() => {
     if (unresolved) links?.loadVersions();
@@ -245,6 +251,21 @@ export function LinkEditorPanel({
           onPick={pick}
         />
       </Suspense>
+      {embeddableVideo ? (
+        <Button
+          className="h-7 shrink-0 px-2 text-xs"
+          onClick={() => {
+            onDone();
+            embedLinkedVideo(editor, initialUrl.trim());
+          }}
+          size="xs"
+          type="button"
+          variant="ghost"
+        >
+          <Video aria-hidden className="size-4" />
+          {t('editor.video.embedVideo')}
+        </Button>
+      ) : null}
       {editor.isActive('link') ? (
         <Button
           aria-label={t('editor.link.remove')}
