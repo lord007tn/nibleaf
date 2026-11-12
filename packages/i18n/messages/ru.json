@@ -458,6 +458,7 @@
   "editor_link_open": "Открыть в новой вкладке",
   "editor_link_openrelativehint": "Относительные ссылки открываются на опубликованном вами сайте.",
   "editor_link_openpage": "Открыть эту страницу",
+  "editor_link_opensection": "Перейти к этому разделу",
   "editor_link_missingpage": "Такой страницы нет на этом сайте",
   "editor_link_remove": "Удалить ссылку",
   "editor_link_invalid": "Введите действительный URL-адрес: https, mailto, tel, #anchor или путь, начинающийся с /.",

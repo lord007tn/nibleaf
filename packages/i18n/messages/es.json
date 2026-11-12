@@ -456,6 +456,7 @@
   "editor_link_open": "Abrir en nueva pestaña",
   "editor_link_openrelativehint": "Enlaces relativos abiertos en su sitio publicado",
   "editor_link_openpage": "Abrir esta página",
+  "editor_link_opensection": "Ir a esta sección",
   "editor_link_missingpage": "Esta página no existe en este sitio",
   "editor_link_remove": "Quitar enlace",
   "editor_link_invalid": "Ingrese una URL válida: https, mailto, tel, #anchor o una ruta que comience con /.",

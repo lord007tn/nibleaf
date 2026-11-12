@@ -30,12 +30,13 @@ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
 const TARGETS: Record<string, EditorLinkTarget> = {
   configuration: { kind: 'page', pageId: 'page-config' },
-  '/guides/setup#install': { kind: 'page', pageId: 'page-setup' },
+  '/guides/setup#install': { kind: 'page', pageId: 'page-setup', anchor: 'install' },
   '/nowhere': { kind: 'missing' },
   'https://example.com/docs': { kind: 'web' },
   // Into another docs version whose pages aren't loaded yet.
   '/v2/setup': { kind: 'unknown' },
-  '#options': { kind: 'other' },
+  // A section of the page being edited.
+  '#options': { kind: 'page', pageId: 'page-current', anchor: 'options' },
   '/files/guide.pdf': { kind: 'other' },
 };
 /** Where links lead once every version's pages are loaded. */
@@ -43,8 +44,8 @@ const RESOLVED: Record<string, EditorLinkTarget> = { '/v2/setup': { kind: 'page'
 
 const makeLinks = () => ({
   resolve: (href: string): EditorLinkTarget => TARGETS[href] ?? { kind: 'other' },
-  open: vi.fn<(pageId: string) => void>(),
-  href: (pageId: string) => `/app/projects/project-1/editor?page=${pageId}`,
+  open: vi.fn<(pageId: string, section?: string) => void>(),
+  href: (pageId: string, section?: string) => `/app/projects/project-1/editor?page=${pageId}${section ? `#${section}` : ''}`,
   resolveAsync: vi.fn(async (href: string): Promise<EditorLinkTarget> => RESOLVED[href] ?? TARGETS[href] ?? { kind: 'other' }),
   loadVersions: vi.fn(),
 });
@@ -117,6 +118,7 @@ async function renderPanel(href: string, links: EditorLinks | null) {
   const buttons = [...container.querySelectorAll('button')];
   const open =
     buttons.find((button) => button.getAttribute('aria-label') === translate('editor.link.openPage')) ??
+    buttons.find((button) => button.getAttribute('aria-label') === translate('editor.link.openSection')) ??
     buttons.find((button) => button.getAttribute('aria-label') === translate('editor.link.open'));
   if (!open) throw new Error('No Open button');
   return { editor, open, onDone, container };
@@ -136,16 +138,28 @@ describe('the link bubble opens internal links in the editor (PUBLIC-18)', () =>
     expect(open.getAttribute('aria-label')).toBe(translate('editor.link.openPage'));
     expect(open.hasAttribute('disabled') || open.getAttribute('aria-disabled') === 'true').toBe(false);
     await act(async () => open.click());
-    expect(links.open).toHaveBeenCalledWith('page-config');
+    expect(links.open).toHaveBeenCalledWith('page-config', undefined);
     expect(onDone).toHaveBeenCalled();
     expect(windowOpen).not.toHaveBeenCalled();
   });
 
-  it('opens a root link with an #anchor on its page', async () => {
+  it('opens a root link with an #anchor on its page, at that section (#553)', async () => {
     const links = makeLinks();
     const { open } = await renderPanel('/guides/setup#install', links);
     await act(async () => open.click());
-    expect(links.open).toHaveBeenCalledWith('page-setup');
+    expect(links.open).toHaveBeenCalledWith('page-setup', 'install');
+  });
+
+  it('goes to a section of the page being edited (#553)', async () => {
+    const links = makeLinks();
+    const { open, onDone } = await renderPanel('#options', links);
+    expect(open.getAttribute('aria-label')).toBe(translate('editor.link.openSection'));
+    expect(translate('editor.link.openSection')).toBe('Go to this section');
+    expect(open.getAttribute('aria-disabled') === 'true' || open.hasAttribute('disabled')).toBe(false);
+    await act(async () => open.click());
+    expect(onDone).toHaveBeenCalled();
+    expect(links.open).toHaveBeenCalledWith('page-current', 'options');
+    expect(windowOpen).not.toHaveBeenCalled();
   });
 
   it('keeps Open disabled for a link to no page, and says why', async () => {
@@ -207,8 +221,29 @@ describe('clicks on internal links in the page (PUBLIC-18)', () => {
     const { anchor } = editorWithLink('configuration', { links, editable: false });
     // Enter on a focused link dispatches a click with no pointer.
     expect(click(anchor, { detail: 0 }).defaultPrevented).toBe(true);
-    expect(links.open).toHaveBeenCalledWith('page-config');
+    expect(links.open).toHaveBeenCalledWith('page-config', undefined);
     expect(windowOpen).not.toHaveBeenCalled();
+  });
+
+  it('Ctrl+click on a link to a section opens the page’s editor at that section in a new tab (#553)', () => {
+    const links = makeLinks();
+    const { anchor } = editorWithLink('/guides/setup#install', { links });
+    expect(click(anchor, { ctrlKey: true }).defaultPrevented).toBe(true);
+    expect(windowOpen).toHaveBeenCalledWith('/app/projects/project-1/editor?page=page-setup#install', '_blank', 'noopener');
+  });
+
+  it('a plain click on a link to a section of a read-only page opens it at that section (#553)', () => {
+    const links = makeLinks();
+    const { anchor } = editorWithLink('/guides/setup#install', { links, editable: false });
+    expect(click(anchor, { detail: 0 }).defaultPrevented).toBe(true);
+    expect(links.open).toHaveBeenCalledWith('page-setup', 'install');
+  });
+
+  it('a plain click on an in-page #section link of a read-only page jumps there (#553)', () => {
+    const links = makeLinks();
+    const { anchor } = editorWithLink('#options', { links, editable: false });
+    expect(click(anchor, { detail: 0 }).defaultPrevented).toBe(true);
+    expect(links.open).toHaveBeenCalledWith('page-current', 'options');
   });
 
   it('Ctrl+click on a link to no page does nothing, and never opens the app address', () => {
@@ -265,9 +300,9 @@ describe('internal links keep their address (PUBLIC-18)', () => {
 });
 
 describe('council fixes: clicks that edit, and links that keep their default (PUBLIC-18)', () => {
-  it('an #anchor click and a /files/guide.pdf click keep the browser’s behaviour', () => {
+  it('a /files/guide.pdf click keeps the browser’s behaviour', () => {
     const links = makeLinks();
-    for (const href of ['#options', '/files/guide.pdf']) {
+    for (const href of ['/files/guide.pdf']) {
       const { anchor } = editorWithLink(href, { links });
       expect(click(anchor).defaultPrevented).toBe(false);
       expect(click(anchor, { ctrlKey: true }).defaultPrevented).toBe(false);
@@ -326,7 +361,7 @@ describe('council fixes: links into another docs version (PUBLIC-18)', () => {
     await act(async () => open.click());
     expect(links.resolveAsync).toHaveBeenCalledWith('/v2/setup');
     expect(onDone).toHaveBeenCalled();
-    expect(links.open).toHaveBeenCalledWith('page-v2-setup');
+    expect(links.open).toHaveBeenCalledWith('page-v2-setup', undefined);
   });
 
   it('Ctrl+click on a link into another version opens that page’s editor in a new tab once resolved', async () => {
