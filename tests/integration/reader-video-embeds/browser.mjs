@@ -116,8 +116,26 @@ try {
       await buttons.first().scrollIntoViewIfNeeded();
       await shot(page, `poster-${lang}-${width}`);
 
-      // Keyboard: from the paragraph before the video, Tab reaches the play button.
-      await page.locator('.typeset p').first().click();
+      // Keyboard: the play button is the next Tab stop after the paragraph before
+      // the video. Clicking the prose would focus <main> (tabIndex -1, the skip
+      // target) and restart the Tab order at its top, so start from the last
+      // tabbable element that precedes the paragraph instead.
+      await page.evaluate(() => {
+        const paragraph = document.querySelector('.typeset p');
+        const tabbable = [...document.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')].filter(
+          (element) =>
+            element.tabIndex >= 0 &&
+            !element.disabled &&
+            element.getClientRects().length > 0 &&
+            paragraph.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING,
+        );
+        // Hidden controls (a closed mobile menu) refuse focus; take the nearest one that accepts it.
+        for (const element of tabbable.reverse()) {
+          element.focus();
+          if (document.activeElement === element) return;
+        }
+        throw new Error('no tabbable element precedes the first paragraph');
+      });
       await page.keyboard.press('Tab');
       assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), label, 'Tab reaches the play button');
       await shot(page, `focus-${lang}-${width}`);
