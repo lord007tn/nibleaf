@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { slugify } from '@nibleaf/shared';
-import { replaceScriptAndStyleElements, replaceTags } from '@nibleaf/shared/markup-scan';
+import { collapseLineBreakRuns, replaceScriptAndStyleElements, replaceTags } from '@nibleaf/shared/markup-scan';
 import type { LexicalHTMLRenderer as LexicalHTMLRendererInstance } from '@tryghost/kg-lexical-html-renderer';
 import type { MobiledocHtmlRenderer as MobiledocHtmlRendererInstance } from '@tryghost/kg-mobiledoc-html-renderer';
 import TurndownService from 'turndown';
@@ -316,11 +316,12 @@ const decodeHtmlEntity = (entity: string): string => {
 // The script/style and tag steps are linear scans (@nibleaf/shared/markup-scan)
 // that give exactly what `/<(script|style)[\s\S]*?<\/\1>/gi` and `/<[^>]+>/g` give.
 export const htmlToPlainText = (html: string): string =>
-  replaceTags(replaceScriptAndStyleElements(html, ' ').replace(/<(?:br|\/p|\/div|\/h[1-6]|\/li)\s*\/?>/gi, '\n'), /<[^>]+>/g, ' ')
-    .replace(/&(nbsp|amp|lt|gt|quot|#39);/gi, decodeHtmlEntity)
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\s*\n\s*/g, '\n')
-    .trim();
+  // collapseLineBreakRuns: what `.replace(/\s*\n\s*/g, '\n')` gives, reading each whitespace run once.
+  collapseLineBreakRuns(
+    replaceTags(replaceScriptAndStyleElements(html, ' ').replace(/<(?:br|\/p|\/div|\/h[1-6]|\/li)\s*\/?>/gi, '\n'), /<[^>]+>/g, ' ')
+      .replace(/&(nbsp|amp|lt|gt|quot|#39);/gi, decodeHtmlEntity)
+      .replace(/[ \t]+/g, ' '),
+  ).trim();
 
 export interface GhostHtmlConversion {
   markdown: string;

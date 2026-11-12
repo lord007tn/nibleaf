@@ -107,10 +107,8 @@ const lastQuote = (source: string, quote: string): number => {
 
 /**
  * The next match of `ACTIVE_TAG` at or after `from`, as `ACTIVE_TAG.exec` would
- * find it, or null. Read by hand and charged to the scan budget: the regex
- * reads to the end of the text from every opener whose `>` never comes (or whose
- * quote never closes), and text full of such openers made that grow with the
- * square of the text. `'spent'` once the budget is used up.
+ * find it, or null. Read by hand and charged to the scan budget, so the time
+ * stays linear in the text's length. `'spent'` once the budget is used up.
  */
 const nextActiveTag = (source: string, from: number): { index: number; end: number; closing: boolean } | null | 'spent' => {
   for (let at = from; ; ) {

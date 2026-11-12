@@ -3,18 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { stripMarkdown } from './index';
 
 // Timing bounds, run on their own (pnpm test:growth). Search snippets read the
-// whole page through stripMarkdown on every query; these inputs open markup that
-// never closes, or are long runs of blank lines, where a regex re-reads the rest
-// of the text from every opener or line start.
+// whole page through stripMarkdown on every query, in time linear in its length.
 describe.runIf(growthTestsEnabled)('search snippets: growth', () => {
   it.each([
-    ['image labels without ]', (n: number) => '![a'.repeat(n)],
-    ['link labels without ]', (n: number) => '[a'.repeat(n)],
-    ['links without (', (n: number) => `${'[a'.repeat(n)}]`],
-    ['tags without a closing >', (n: number) => '<a b'.repeat(n)],
-    ['blank lines', (n: number) => `${'\n'.repeat(n)}x`],
+    ['case A', (n: number) => '![a'.repeat(n)],
+    ['case B', (n: number) => '[a'.repeat(n)],
+    ['case C', (n: number) => `${'[a'.repeat(n)}]`],
+    ['case D', (n: number) => '<a b'.repeat(n)],
+    ['case E', (n: number) => `${'\n'.repeat(n)}x`],
   ])(
-    'strips a page of %s in linear time',
+    'stays linear on %s',
     (_label, build) => {
       const [small, large] = growthMs(stripMarkdown, build(3000), build(12_000), { vary: (text, rep) => `${text} ${rep}` });
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));

@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  collapseLineBreakRuns,
   forwardIndexOf,
+  hasTextOutsideComments,
+  inlineCodeSpans,
   markdownAndHtmlImages,
+  matchOneLineElement,
   matchTags,
+  removeMdxCommentsOutsideCode,
+  replaceElements,
   replaceMarkdownImages,
   replaceMarkdownImageTargets,
   replaceMarkdownLinksWithLabels,
   replaceScriptAndStyleElements,
+  replaceSelfClosingTags,
   replaceTagAttributes,
   replaceTags,
 } from './markup-scan';
@@ -137,6 +144,115 @@ describe('linear tag and link scanning gives exactly what the regex gives', () =
     for (let index = 0; index < 6000; index += 1) {
       const text = Array.from({ length: Math.floor(next() * 30) }, () => pieces[Math.floor(next() * pieces.length)]).join('');
       expect(replaceScriptAndStyleElements(text, ' '), text).toBe(text.replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' '));
+    }
+  });
+
+  it('hasTextOutsideComments: splitting on HTML and MDX comments', () => {
+    const next = random(41);
+    const pieces = ['<!--', '-->', '{/*', '*/}', '<!-->', '{/*/}', ' ', '\n', 'x', '-', '*', '{', '}', '/', '<', '>', '!'];
+    for (let index = 0; index < 8000; index += 1) {
+      const text = Array.from({ length: Math.floor(next() * 24) }, () => pieces[Math.floor(next() * pieces.length)]).join('');
+      const expected = text.split(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/).some((part) => part.trim().length > 0);
+      expect(hasTextOutsideComments(text), JSON.stringify(text)).toBe(expected);
+    }
+  });
+
+  it.each([['pre'], ['code']])('replaceElements: /<%s[\\s\\S]*?<\\/%s>/gi', (name) => {
+    const next = random(47);
+    const pieces = [
+      `<${name}`,
+      `<${name.toUpperCase()}`,
+      `</${name}>`,
+      `</${name.toUpperCase()}>`,
+      `</${name}`,
+      `<${name}x`,
+      'a',
+      '\n',
+      ' ',
+      '<',
+      '>',
+    ];
+    const pattern = new RegExp(`<${name}[\\s\\S]*?<\\/${name}>`, 'gi');
+    for (let index = 0; index < 6000; index += 1) {
+      const text = Array.from({ length: Math.floor(next() * 30) }, () => pieces[Math.floor(next() * pieces.length)]).join('');
+      expect(replaceElements(text, [name], ' '), text).toBe(text.replace(pattern, ' '));
+    }
+  });
+
+  it('collapseLineBreakRuns:/\\s*\\n\\s*/g → \\n', () => {
+    const next = random(43);
+    const pieces = [' ', '\t', '\n', '\r', '\u00a0', '\u2028', '\u3000', 'x', 'y'];
+    for (let index = 0; index < 8000; index += 1) {
+      const text = Array.from({ length: Math.floor(next() * 30) }, () => pieces[Math.floor(next() * pieces.length)]).join('');
+      expect(collapseLineBreakRuns(text), JSON.stringify(text)).toBe(text.replace(/\s*\n\s*/g, '\n'));
+    }
+  });
+
+  it('inlineCodeSpans: /(`+)[\\s\\S]*?\\1/g', () => {
+    const next = random(53);
+    const pieces = ['`', '`', '``', '```', 'a', ' ', '\n', '{'];
+    for (let index = 0; index < 8000; index += 1) {
+      const text = Array.from({ length: Math.floor(next() * 30) }, () => pieces[Math.floor(next() * pieces.length)]).join('');
+      const expected = [...text.matchAll(/(`+)[\s\S]*?\1/g)].map((match) => [match.index, match.index + match[0].length]);
+      expect(inlineCodeSpans(text), JSON.stringify(text)).toEqual(expected);
+    }
+  });
+
+  it('removeMdxCommentsOutsideCode: /(`+)[\\s\\S]*?\\1|\\{\\s*\\/\\*[\\s\\S]*?\\*\\/\\s*\\}/g', () => {
+    const next = random(59);
+    const pieces = ['`', '``', '{', '}', '/*', '*/', '{/*', '*/}', '/', '*', ' ', '\n', 'a', '{ /*', '*/ }'];
+    const pattern = /(`+)[\s\S]*?\1|\{\s*\/\*[\s\S]*?\*\/\s*\}/g;
+    for (let index = 0; index < 8000; index += 1) {
+      const text = Array.from({ length: Math.floor(next() * 30) }, () => pieces[Math.floor(next() * pieces.length)]).join('');
+      const expected = text.replace(pattern, (match, code: string | undefined) => (code ? match : ''));
+      expect(removeMdxCommentsOutsideCode(text), JSON.stringify(text)).toBe(expected);
+    }
+  });
+
+  // The attribute parts reader-markdown.ts reads component tags with.
+  const LONE_QUOTE = `"(?![^"\\n]*")|'(?![^'\\n]*')`;
+  const PART = `(?:[^>"']|"[^"\\n]*"|'[^'\\n]*'|${LONE_QUOTE})`;
+  const OPENING = `(?:${PART}*(?:[^/>"']|"[^"\\n]*"|'[^'\\n]*'|${LONE_QUOTE}))?`;
+  const TAG_PIECES = ['"', "'", '"x"', '/', '/>', '>', ' ', '\n', 'a', '=', '<'];
+
+  it('replaceSelfClosingTags: <(names)\\b(PART*?)\\/>', () => {
+    const next = random(61);
+    const names = ['File', 'Icon', 'Card'];
+    const pieces = [...TAG_PIECES, '<File', '<file', '<Icon', '<Files', '<Card'];
+    const pattern = new RegExp(`<(${names.join('|')})\\b(${PART}*?)\\/>`, 'gi');
+    for (let index = 0; index < 8000; index += 1) {
+      const text = Array.from({ length: Math.floor(next() * 30) }, () => pieces[Math.floor(next() * pieces.length)]).join('');
+      expect(replaceSelfClosingTags(text, names, show), JSON.stringify(text)).toBe(
+        text.replace(pattern, (_match, name, attributes) => show(name, attributes)),
+      );
+    }
+  });
+
+  it('matchOneLineElement: ^(\\s*)<(names)\\b(OPENING)>(.*\\S.*)</\\2>\\s*$', () => {
+    const next = random(67);
+    const names = ['Card', 'CardGroup', 'Note'];
+    const pieces = [
+      ...TAG_PIECES.filter((piece) => piece !== '\n'),
+      '<Card',
+      '<card',
+      '<CardGroup',
+      '<Note',
+      '</Card>',
+      '</CARD>',
+      '</Note>',
+      '</CardGroup>',
+      '\t',
+      '\r',
+      'x',
+    ];
+    const pattern = new RegExp(`^(\\s*)<(${names.join('|')})\\b(${OPENING})>(.*\\S.*)</\\2>\\s*$`, 'i');
+    for (let index = 0; index < 12_000; index += 1) {
+      const length = Math.floor(next() * 14);
+      const opener = ['<Card', '<card', '<CardGroup', '<Note', '<Cards', 'x'][Math.floor(next() * 6)];
+      const text = (next() < 0.5 ? ' ' : '') + opener + Array.from({ length }, () => pieces[Math.floor(next() * pieces.length)]).join('');
+      const match = pattern.exec(text);
+      const expected = match ? { indent: match[1], name: match[2], attributes: match[3], body: match[4] } : null;
+      expect(matchOneLineElement(text, names), JSON.stringify(text)).toEqual(expected);
     }
   });
 

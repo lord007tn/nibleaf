@@ -3,7 +3,7 @@ import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { replaceMarkdownImageTargets, replaceTagAttributes } from '@nibleaf/shared/markup-scan';
 
 // Read with linear scans (@nibleaf/shared/markup-scan), which give exactly what
-// these regexes give: imported files can be large and full of unclosed markup.
+// these regexes give, in time linear in the file's length.
 const HTML_IMAGE_OPEN = /<(?:img|Image)\b/gi;
 const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])([^"']+)(["'])/giy;
 

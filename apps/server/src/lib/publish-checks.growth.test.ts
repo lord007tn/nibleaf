@@ -51,6 +51,13 @@ describe.runIf(growthTestsEnabled)('publish checks on a large site: growth', () 
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
+  it('stays linear on case A', () => {
+    const build = (n: number) => site(1, `\n\n~~~\n${'<!-- a'.repeat(n)}\n~~~`);
+    // The same snapshot each call: the parsed facts are cached, the rest is read again.
+    const [small, large] = growthMs(collectPublishChecks, build(4000), build(16_000));
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  }, 60_000);
+
   it('stays linear on a repeat open of the same snapshot', () => {
     const [small, large] = growthMs(collectPublishChecks, site(100), site(400));
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));

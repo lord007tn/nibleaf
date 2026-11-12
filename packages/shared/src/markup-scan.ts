@@ -2,10 +2,8 @@
  * Linear tag and link scanning for content up to 2 MiB.
  *
  * Each function here gives exactly what the regex in its comment gives
- * (markup-scan.test.ts compares them on generated input). A regex of the shape
- * `opener [^x]* x …` re-reads the rest of the text from every opener whenever
- * the `x` it needs is missing, so its time grows with the square of the text;
- * these scans read each character a bounded number of times instead.
+ * (markup-scan.test.ts compares them on generated input), and reads each
+ * character a bounded number of times.
  */
 
 type Replacer = (match: string, ...groups: string[]) => string;
@@ -208,27 +206,28 @@ export const replaceMarkdownImageTargets = (text: string, replacer: (before: str
 };
 
 /**
- * `text.replace(/<(script|style)[\s\S]*?<\/\1>/gi, replacement)`: each script
- * or style element, from its opening `<script`/`<style` to its own close tag,
- * in linear time. An opener with no close tag after it means no later opener of
+ * `text.replace(/<(name|…)[\s\S]*?<\/\1>/gi, replacement)` for the given
+ * lowercase tag names: each element, from its opener to its own close tag, in
+ * linear time. An opener with no close tag after it means no later opener of
  * that name has one either.
  */
-export const replaceScriptAndStyleElements = (text: string, replacement: string): string => {
-  const opener = /<(script|style)/gi;
-  const closers = { script: /<\/script>/gi, style: /<\/style>/gi };
-  const lastClose = { script: -2, style: -2 };
+export const replaceElements = (text: string, names: readonly string[], replacement: string): string => {
+  const opener = new RegExp(`<(${names.join('|')})`, 'gi');
+  const closers = new Map(names.map((name) => [name, new RegExp(`</${name}>`, 'gi')]));
+  const lastClose = new Map(names.map((name) => [name, -2]));
   let out = '';
   let copied = 0;
   for (;;) {
     const open = opener.exec(text);
     if (!open) break;
-    const name = (open[1] as string).toLowerCase() as 'script' | 'style';
+    const name = (open[1] as string).toLowerCase();
     const bodyStart = open.index + open[0].length;
-    let close = lastClose[name];
+    let close = lastClose.get(name) ?? -2;
     if (close !== -1 && close < bodyStart) {
-      closers[name].lastIndex = bodyStart;
-      close = closers[name].exec(text)?.index ?? -1;
-      lastClose[name] = close;
+      const closer = closers.get(name) as RegExp;
+      closer.lastIndex = bodyStart;
+      close = closer.exec(text)?.index ?? -1;
+      lastClose.set(name, close);
     }
     if (close === -1) {
       // Nothing of this name can close any more; the regex moves on one character.
@@ -241,6 +240,264 @@ export const replaceScriptAndStyleElements = (text: string, replacement: string)
     opener.lastIndex = end;
   }
   return out + text.slice(copied);
+};
+
+/** `text.replace(/<(script|style)[\s\S]*?<\/\1>/gi, replacement)`. */
+export const replaceScriptAndStyleElements = (text: string, replacement: string): string => replaceElements(text, ['script', 'style'], replacement);
+
+/**
+ * `text.split(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/).some((part) => part.trim().length > 0)`:
+ * whether anything but HTML/MDX comments and whitespace is left, read once.
+ * An opener that never closes isn't a comment, so its own characters count.
+ */
+export const hasTextOutsideComments = (text: string): boolean => {
+  const nextHtml = forwardIndexOf(text, '<!--');
+  const nextMdx = forwardIndexOf(text, '{/*');
+  const htmlClose = forwardIndexOf(text, '-->');
+  const mdxClose = forwardIndexOf(text, '*/}');
+  for (let from = 0; ; ) {
+    const html = nextHtml(from);
+    const mdx = nextMdx(from);
+    const start = html === -1 ? mdx : mdx === -1 ? html : Math.min(html, mdx);
+    if (start === -1) return /\S/.test(text.slice(from));
+    if (/\S/.test(text.slice(from, start))) return true;
+    const close = start === html ? htmlClose(start + 4) : mdxClose(start + 3);
+    if (close === -1) return true;
+    from = close + 3;
+  }
+};
+
+/**
+ * `text.replace(/\s*\n\s*\/g, '\n')`: every run of whitespace that holds a line
+ * break becomes that one line break; other whitespace stays as it is. Each run
+ * is read once.
+ */
+export const collapseLineBreakRuns = (text: string): string => text.replace(/\s+/g, (run) => (run.includes('\n') ? '\n' : run));
+
+/**
+ * Where `/(`+)[\s\S]*?\1/y` ends when tried at `start` (-1: no match), for
+ * starts that never decrease. The backticks from `start` to the end of their
+ * run open the span, as many as some later run can close (the first later run
+ * at least that long closes it); when no later run is long enough, half of the
+ * rest of the run closes against the other half. Runs are listed once.
+ */
+const codeSpanEnds = (text: string): ((start: number) => number) => {
+  const starts: number[] = [];
+  const lengths: number[] = [];
+  for (let index = text.indexOf('`'); index !== -1; ) {
+    let end = index + 1;
+    while (text[end] === '`') end += 1;
+    starts.push(index);
+    lengths.push(end - index);
+    index = text.indexOf('`', end);
+  }
+  // The longest run from each run on.
+  const longestFrom: number[] = new Array(starts.length + 1).fill(0);
+  for (let run = starts.length - 1; run >= 0; run -= 1) longestFrom[run] = Math.max(lengths[run] as number, longestFrom[run + 1] as number);
+  let run = 0;
+  return (start) => {
+    while (run < starts.length && (starts[run] as number) + (lengths[run] as number) <= start) run += 1;
+    const runStart = starts[run];
+    if (runStart === undefined || runStart > start) return -1;
+    const rest = runStart + (lengths[run] as number) - start;
+    const ticks = Math.min(rest, longestFrom[run + 1] as number);
+    if (2 * ticks > rest) {
+      // The runs passed over here are inside the span, so the next start is past them.
+      let close = run + 1;
+      while ((lengths[close] as number) < ticks) close += 1;
+      return (starts[close] as number) + ticks;
+    }
+    return rest >= 2 ? start + 2 * Math.floor(rest / 2) : -1;
+  };
+};
+
+/** `[...text.matchAll(/(`+)[\s\S]*?\1/g)]` as `[start, end]` pairs: inline code spans, in linear time. */
+export const inlineCodeSpans = (text: string): Array<[number, number]> => {
+  const spanEnd = codeSpanEnds(text);
+  const spans: Array<[number, number]> = [];
+  for (let start = text.indexOf('`'); start !== -1; ) {
+    const end = spanEnd(start);
+    if (end === -1) {
+      start = text.indexOf('`', start + 1);
+      continue;
+    }
+    spans.push([start, end]);
+    start = text.indexOf('`', end);
+  }
+  return spans;
+};
+
+const WHITESPACE = /\s/;
+const skipWhitespace = (text: string, from: number): number => {
+  let index = from;
+  while (index < text.length && WHITESPACE.test(text[index] as string)) index += 1;
+  return index;
+};
+
+/**
+ * `text.replace(/(`+)[\s\S]*?\1|\{\s*\/\*[\s\S]*?\*\/\s*\}/g, (match, code) => (code ? match : ''))`:
+ * MDX comments removed and inline code spans kept as written, whichever starts
+ * first, in linear time. When one comment finds no close, no later one can.
+ */
+export const removeMdxCommentsOutsideCode = (text: string): string => {
+  const spanEnd = codeSpanEnds(text);
+  const nextTick = forwardIndexOf(text, '`');
+  const nextBrace = forwardIndexOf(text, '{');
+  const nextClose = forwardIndexOf(text, '*/');
+  let closes = true;
+  let out = '';
+  let copied = 0;
+  for (let from = 0; ; ) {
+    const tick = nextTick(from);
+    const brace = nextBrace(from);
+    const start = tick === -1 ? brace : brace === -1 ? tick : Math.min(tick, brace);
+    if (start === -1) break;
+    if (start === tick) {
+      const end = spanEnd(start);
+      from = end === -1 ? start + 1 : end;
+      continue;
+    }
+    const opener = skipWhitespace(text, start + 1);
+    let end = -1;
+    if (closes && text.startsWith('/*', opener)) {
+      for (let close = nextClose(opener + 2); close !== -1; close = nextClose(close + 2)) {
+        const after = skipWhitespace(text, close + 2);
+        if (text[after] === '}') {
+          end = after + 1;
+          break;
+        }
+      }
+      closes = end !== -1;
+    }
+    if (end === -1) {
+      from = start + 1;
+      continue;
+    }
+    out += text.slice(copied, start);
+    copied = end;
+    from = end;
+  }
+  return out + text.slice(copied);
+};
+
+/** For each quote, the next quote of the same kind on its line (-1: none, or not a quote). */
+const pairedQuotes = (text: string): Int32Array => {
+  const paired = new Int32Array(text.length).fill(-1);
+  let double = -1;
+  let single = -1;
+  for (let index = text.length - 1; index >= 0; index -= 1) {
+    const char = text[index];
+    if (char === '\n') {
+      double = -1;
+      single = -1;
+    } else if (char === '"') {
+      paired[index] = double;
+      double = index;
+    } else if (char === "'") {
+      paired[index] = single;
+      single = index;
+    }
+  }
+  return paired;
+};
+
+/**
+ * Tag attribute text, read one part at a time from `from`: a quote closed
+ * later on its line is read through its close; any other character but `>` is
+ * one part (a quote not closed on its line is an ordinary character). This is
+ * `(?:[^>"']|"[^"\n]*"|'[^'\n]*'|"(?![^"\n]*")|'(?![^'\n]*'))`, where at each
+ * position exactly one alternative can match. Gives the index after the part
+ * starting at `at`, or -1 at a `>` or the end.
+ */
+const nextAttributePart = (text: string, paired: Int32Array, at: number): number => {
+  const char = text[at];
+  if (char === undefined || char === '>') return -1;
+  const close = paired[at] as number;
+  return close === -1 ? at + 1 : close + 1;
+};
+
+/**
+ * `text.replace(new RegExp(`<(names)\\b(PART*?)\\/>`, 'gi'), (match, name, attributes) => replacer(name, attributes))`
+ * with PART the attribute part above: self-closing tags of the given names,
+ * in linear time. Reading attributes from a position always goes the same way,
+ * so where it ends is kept for every position it passes.
+ */
+export const replaceSelfClosingTags = (text: string, names: readonly string[], replacer: (name: string, attributes: string) => string): string => {
+  const opener = new RegExp(`<(${names.join('|')})\\b`, 'gi');
+  let paired: Int32Array | null = null;
+  // Per position: the index after the `/>` that reading from it reaches, -1 for none, 0 not read yet.
+  let ends: Int32Array | null = null;
+  const tagEnd = (from: number): number => {
+    paired ??= pairedQuotes(text);
+    ends ??= new Int32Array(text.length + 1);
+    const passed: number[] = [];
+    let at = from;
+    let end = 0;
+    while (end === 0) {
+      end = ends[at] as number;
+      if (end !== 0) break;
+      passed.push(at);
+      if (text.startsWith('/>', at)) end = at + 2;
+      else {
+        at = nextAttributePart(text, paired, at);
+        if (at === -1) end = -1;
+      }
+    }
+    for (const position of passed) ends[position] = end;
+    return end;
+  };
+  let out = '';
+  let copied = 0;
+  for (;;) {
+    const open = opener.exec(text);
+    if (!open) break;
+    const attributesStart = open.index + open[0].length;
+    const end = tagEnd(attributesStart);
+    if (end === -1) {
+      opener.lastIndex = open.index + 1;
+      continue;
+    }
+    out += text.slice(copied, open.index) + replacer(open[1] as string, text.slice(attributesStart, end - 2));
+    copied = end;
+    opener.lastIndex = end;
+  }
+  return out + text.slice(copied);
+};
+
+const LINE_TERMINATOR = /[\n\r\u2028\u2029]/;
+const NON_SPACE = /\S/;
+const asciiLowerCase = (text: string): string => text.replace(/[A-Z]/g, (char) => char.toLowerCase());
+
+/**
+ * `new RegExp(`^(\\s*)<(names)\\b(ATTRIBUTES)>(.*\\S.*)</\\2>\\s*$`, 'i').exec(line)`,
+ * where ATTRIBUTES is `(?:PART*(?:PART but not /))?`: an element opened and
+ * closed on one line, as its indent, name, attributes and body. Reading
+ * attributes stops at one `>` only, and only one close tag can be followed by
+ * nothing but whitespace, so each piece is found by one forward read.
+ */
+export const matchOneLineElement = (
+  line: string,
+  names: readonly string[],
+): { indent: string; name: string; attributes: string; body: string } | null => {
+  const indentEnd = skipWhitespace(line, 0);
+  const open = new RegExp(`<(${names.join('|')})\\b`, 'iy');
+  open.lastIndex = indentEnd;
+  const opened = open.exec(line);
+  if (!opened) return null;
+  const name = opened[1] as string;
+  const attributesStart = indentEnd + opened[0].length;
+  const paired = pairedQuotes(line);
+  let close = attributesStart;
+  for (let next = nextAttributePart(line, paired, close); next !== -1; next = nextAttributePart(line, paired, close)) close = next;
+  if (line[close] !== '>') return null;
+  const attributes = line.slice(attributesStart, close);
+  if (attributes.endsWith('/')) return null;
+  const rest = line.slice(close + 1).trimEnd();
+  const closeTag = `</${asciiLowerCase(name)}>`;
+  if (rest.length < closeTag.length || asciiLowerCase(rest.slice(rest.length - closeTag.length)) !== closeTag) return null;
+  const body = rest.slice(0, rest.length - closeTag.length);
+  if (LINE_TERMINATOR.test(body) || !NON_SPACE.test(body)) return null;
+  return { indent: line.slice(0, indentEnd), name, attributes, body };
 };
 
 const HTML_IMAGE_OPEN = /<img\b/gi;
