@@ -4,7 +4,7 @@ import { blockDirection } from '@nibleaf/shared/script-direction';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type ComponentProps, Suspense, startTransition, useEffect, useState } from 'react';
 import { SiteChatPageAction } from '@/components/site/ai-chat/provider';
-import { chromeLanguageAttributes, contentLanguageAttributes } from '@/components/site/content-language';
+import { type ContentLanguageAttributes, chromeLanguageAttributes, contentLanguageAttributes } from '@/components/site/content-language';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { LanguageFallbackNotice } from '@/components/site/language-fallback-notice';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
@@ -27,7 +27,11 @@ const ARTICLE_MODULES = [articleMarkdownModule];
  *  fallback (READER-03). If the renderer can't load, hydrating keeps the
  *  server's body and a client navigation says so here; neither shows the
  *  route's error page. */
-function ArticleBody({ language, ...props }: ComponentProps<typeof import('@/components/markdown').Markdown> & { language?: string }) {
+function ArticleBody({
+  language,
+  chromeLanguage,
+  ...props
+}: ComponentProps<typeof import('@/components/markdown').Markdown> & { language?: string; chromeLanguage?: ContentLanguageAttributes }) {
   const t = siteT(language);
   return (
     // Only the server render can suspend here: it waits for the renderer.
@@ -38,7 +42,7 @@ function ArticleBody({ language, ...props }: ComponentProps<typeof import('@/com
         modules={ARTICLE_MODULES}
         pending={<ArticleBodySkeleton />}
         failed={(retry) => (
-          <div role="alert">
+          <div role="alert" {...chromeLanguage}>
             <button
               className="min-h-11 w-full cursor-pointer rounded-xl border border-border p-5 text-start text-sm transition-colors hover:text-primary"
               onClick={retry}
@@ -76,11 +80,14 @@ function ReaderActions({
   projectId,
   path,
   language,
+  attributes,
   addons,
 }: {
   projectId: string;
   path: string;
   language?: string;
+  /** The reader's `lang`/`dir`, when the article around it is in another language. */
+  attributes?: ContentLanguageAttributes;
   addons: NonNullable<ProjectConfig['addons']> | undefined;
 }) {
   const t = siteT(language);
@@ -111,6 +118,7 @@ function ReaderActions({
         presentation === 'card' ? 'mt-8 rounded-xl border border-border bg-muted/30 p-4 sm:p-5' : 'mt-14 border-border/70 border-t pt-6',
       )}
       data-theme-region="reader-actions"
+      {...attributes}
     >
       {showFeedback ? (
         <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
@@ -201,11 +209,15 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const resolvedVersion = data.versions.find((item) => item.slug === data.activeVersion);
   const versionPrefix = resolvedVersion && !resolvedVersion.isDefault ? resolvedVersion.slug : undefined;
   const defaultLanguage = data.languages.find((item) => item.isDefault)?.code;
+  // The page's own language, for the fallback notice's link to the page as shown.
   const navigationLanguage = data.activeLanguage !== defaultLanguage ? data.activeLanguage : undefined;
-  // Article-level chrome strings follow the page's RESOLVED language (which can
-  // differ from the URL param on fallback pages) so labels match the content.
-  const tArticle = siteT(language);
-  // The meta line describes the article to the reader, in the reader's language.
+  // Where the reader goes next (breadcrumbs, previous/next, links in the article)
+  // keeps the READER's language, so an Arabic reader on an English fallback page
+  // is still reading in Arabic on the next one.
+  const readerNavigationLanguage = readerLanguage !== defaultLanguage ? readerLanguage : undefined;
+  // Every label around the article (the outline, breadcrumbs, tags, the pager,
+  // feedback) is in the reader's language; only the article itself is in the
+  // page's, which differs on a fallback page.
   const tReader = siteT(readerLanguage);
   // Per-page layout behaviour (Mintlify-style `mode`/`hideToc`): `wide` drops the
   // TOC and fills the width, `center` narrows + centers the column.
@@ -244,7 +256,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
       ) : null}
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
       {ancestors.length > 0 ? (
-        <nav className="mb-3" aria-label={tArticle('breadcrumb')}>
+        <nav className="mb-3" aria-label={tReader('breadcrumb')} {...chromeLanguage}>
           <ol className="flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
             {ancestors.map((crumb, index) => (
               <li key={crumb.path} className="flex items-center gap-1.5">
@@ -253,13 +265,22 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
                     /
                   </span>
                 ) : null}
-                <a
-                  href={siteHref(projectId, crumb.path, { lang: navigationLanguage, version: versionPrefix })}
-                  className="transition-opacity hover:opacity-80"
-                  dir={blockDirection(crumb.title)}
-                >
-                  {crumb.title}
-                </a>
+                {crumb.section ? (
+                  // A group or category is a heading in the navigation, not a page:
+                  // linking it would only open whichever page comes first under it.
+                  <span dir={blockDirection(crumb.title)} lang={contentLanguage.lang}>
+                    {crumb.title}
+                  </span>
+                ) : (
+                  <a
+                    href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+                    className="transition-opacity hover:opacity-80"
+                    dir={blockDirection(crumb.title)}
+                    lang={contentLanguage.lang}
+                  >
+                    {crumb.title}
+                  </a>
+                )}
               </li>
             ))}
           </ol>
@@ -294,9 +315,14 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         </li>
       </ul>
       {page.config?.tags?.length ? (
-        <ul className="mt-4 flex flex-wrap gap-2" aria-label={tArticle('tags')}>
+        <ul className="mt-4 flex flex-wrap gap-2" aria-label={tReader('tags')} {...chromeLanguage}>
           {page.config.tags.map((tag) => (
-            <li className="rounded-full border border-border bg-muted/45 px-2.5 py-1 font-medium text-muted-foreground text-xs" key={tag}>
+            <li
+              className="rounded-full border border-border bg-muted/45 px-2.5 py-1 font-medium text-muted-foreground text-xs"
+              key={tag}
+              dir={blockDirection(tag)}
+              lang={contentLanguage.lang}
+            >
               {tag}
             </li>
           ))}
@@ -305,10 +331,20 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
       {/* Below the wide breakpoint the outline sits after the page header, where readers look for it. */}
       {showToc ? (
         <div className="mt-6">
-          <MobileTableOfContents headings={page.headings} label={tArticle('onThisPage')} />
+          <MobileTableOfContents
+            headings={page.headings}
+            label={tReader('onThisPage')}
+            labelLanguage={chromeLanguage}
+            itemsLanguage={contentLanguage}
+          />
         </div>
       ) : null}
-      <ArticleBody content={page.content} language={language} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
+      <ArticleBody
+        content={page.content}
+        language={readerLanguage}
+        chromeLanguage={chromeLanguage}
+        site={{ projectId, lang: readerLanguage, defaultLanguage, version: versionPrefix }}
+      />
 
       <SiteChatPageAction title={page.title} path={page.path} lang={language} />
       {readerActionsAfterNavigation ? null : (
@@ -316,7 +352,8 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           key={JSON.stringify([projectId, page.path, language, data.activeVersion])}
           projectId={projectId}
           path={page.path}
-          language={language}
+          language={readerLanguage}
+          attributes={chromeLanguage}
           addons={addons}
         />
       )}
@@ -328,18 +365,19 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
             hasReaderActions && !readerActionsAfterNavigation ? 'mt-8' : 'mt-14 border-border/70 border-t pt-6',
           )}
           data-theme-region="pager"
-          aria-label={`${tArticle('previous')} / ${tArticle('next')}`}
+          aria-label={`${tReader('previous')} / ${tReader('next')}`}
+          {...chromeLanguage}
         >
           {prev ? (
             <a
-              href={siteHref(projectId, prev.path, { lang: navigationLanguage, version: versionPrefix })}
+              href={siteHref(projectId, prev.path, { lang: readerNavigationLanguage, version: versionPrefix })}
               rel="prev"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <ChevronLeft className="size-4 shrink-0 [&:dir(rtl)]:-scale-x-100" />
               <span className="min-w-0">
-                <span className="mb-1 block text-muted-foreground text-xs">{tArticle('previous')}</span>
-                <span className="line-clamp-2 break-words" dir={blockDirection(prev.title)}>
+                <span className="mb-1 block text-muted-foreground text-xs">{tReader('previous')}</span>
+                <span className="line-clamp-2 break-words" dir={blockDirection(prev.title)} lang={contentLanguage.lang}>
                   {prev.title}
                 </span>
               </span>
@@ -349,13 +387,13 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
           {next ? (
             <a
-              href={siteHref(projectId, next.path, { lang: navigationLanguage, version: versionPrefix })}
+              href={siteHref(projectId, next.path, { lang: readerNavigationLanguage, version: versionPrefix })}
               rel="next"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <span className="min-w-0">
-                <span className="mb-1 block text-muted-foreground text-xs">{tArticle('next')}</span>
-                <span className="line-clamp-2 break-words" dir={blockDirection(next.title)}>
+                <span className="mb-1 block text-muted-foreground text-xs">{tReader('next')}</span>
+                <span className="line-clamp-2 break-words" dir={blockDirection(next.title)} lang={contentLanguage.lang}>
                   {next.title}
                 </span>
               </span>
@@ -371,7 +409,8 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           key={JSON.stringify([projectId, page.path, language, data.activeVersion])}
           projectId={projectId}
           path={page.path}
-          language={language}
+          language={readerLanguage}
+          attributes={chromeLanguage}
           addons={addons}
         />
       ) : null}
@@ -381,7 +420,9 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   return (
     <DocumentationPageLayout
       article={article}
-      tableOfContents={showToc ? <TableOfContents headings={page.headings} label={tArticle('onThisPage')} /> : undefined}
+      tableOfContents={
+        showToc ? <TableOfContents headings={page.headings} label={tReader('onThisPage')} itemsLanguage={contentLanguage} /> : undefined
+      }
       reserveTocColumn={mode === 'default'}
     />
   );

@@ -181,6 +181,12 @@ jobs:
           PAGE_ADDRESS_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/pages.address-changes.postgres.test.ts --maxWorkers=1
 
+      - name: Verify a publish and a first-title address adoption never interleave
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PUBLISH_ADOPTION_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/deployments.address-adoption.postgres.test.ts --maxWorkers=1
+
       - name: Verify the Viewer role cannot change a site
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf

@@ -1,3 +1,4 @@
+import { markdownCodeSpans } from './markup-scan';
 import { buildMdxTree, type MdxNode, tokenizeMdx } from './mdx-tokens';
 
 /** A character reference a Markdown renderer decodes to text: named,
@@ -147,10 +148,11 @@ const attributeText = (value: string | undefined): Segment[] => {
   const segments: Segment[] = [];
   const line = (value ?? '').replace(/[\r\n]+/g, ' ').trim();
   let cursor = 0;
-  for (const match of line.matchAll(/(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g)) {
-    if (match.index > cursor) segments.push({ kind: 'attribute', value: markdownText(line.slice(cursor, match.index)) });
-    segments.push({ kind: 'code', value: match[0] });
-    cursor = match.index + match[0].length;
+  // markdownCodeSpans: what `/(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g` finds, in linear time.
+  for (const [start, end] of markdownCodeSpans(line)) {
+    if (start > cursor) segments.push({ kind: 'attribute', value: markdownText(line.slice(cursor, start)) });
+    segments.push({ kind: 'code', value: line.slice(start, end) });
+    cursor = end;
   }
   if (cursor < line.length) segments.push({ kind: 'attribute', value: markdownText(line.slice(cursor)) });
   return segments;

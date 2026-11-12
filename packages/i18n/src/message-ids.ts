@@ -298,6 +298,7 @@ export const MESSAGE_IDS = {
   'analytics.status.readsDisabled.title': 'analytics_status_readsdisabled_title',
   'analytics.status.readsDisabled.body': 'analytics_status_readsdisabled_body',
   'publish.reviewChanged': 'publish_reviewchanged',
+  'publish.busy': 'publish_busy',
   'admin.pagination.first': 'admin_pagination_first',
   'admin.pagination.next': 'admin_pagination_next',
 
@@ -920,6 +921,8 @@ export const MESSAGE_IDS = {
   'editor.link.save': 'editor_link_save',
   'editor.link.open': 'editor_link_open',
   'editor.link.openRelativeHint': 'editor_link_openrelativehint',
+  'editor.link.openPage': 'editor_link_openpage',
+  'editor.link.missingPage': 'editor_link_missingpage',
   'editor.link.remove': 'editor_link_remove',
   'editor.link.invalid': 'editor_link_invalid',
   'editor.toolbar.undo': 'editor_toolbar_undo',

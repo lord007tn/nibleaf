@@ -8,6 +8,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import { mdxComponents } from '../components/mdx';
+import { expandSelfClosingComponents, fenceParts, inlineCodeRanges } from './markdown-scan';
 import { uniqueHeadingId } from './site';
 
 const componentTags = [
@@ -55,8 +56,8 @@ const closeBlock = new RegExp('^\\s*</(?:' + blockTags + ')>\\s*$', 'i');
 const componentLine = new RegExp('^\\s*</?(?:' + blockTags + ')\\b[^>]*>\\s*$', 'i');
 
 const BACKTICK = String.fromCharCode(96);
-// A fence may sit inside quotes or a list item: its marker can follow quote markers and indentation.
-const fenceMarker = new RegExp('^(?:\\s*>)*\\s*(' + BACKTICK + '{3,}|~{3,})(.*)$');
+// A fence may sit inside quotes or a list item: its marker can follow quote
+// markers and indentation (fenceParts in ./markdown-scan).
 const atxHeading = /^ {0,3}#{1,6}(?:\s|$)/;
 
 /** Positions inside fenced or inline code, where component examples are
@@ -64,32 +65,7 @@ const atxHeading = /^ {0,3}#{1,6}(?:\s|$)/;
 const codeMask = (source: string): Uint8Array => {
   const mask = new Uint8Array(source.length);
   const markInline = (start: number, end: number) => {
-    const text = source.slice(start, end);
-    let cursor = 0;
-    while (cursor < text.length) {
-      if (text[cursor] !== BACKTICK) {
-        cursor += 1;
-        continue;
-      }
-      let count = 1;
-      while (text[cursor + count] === BACKTICK) count += 1;
-      let closer = -1;
-      for (let at = text.indexOf(BACKTICK, cursor + count); at >= 0; ) {
-        let run = 1;
-        while (text[at + run] === BACKTICK) run += 1;
-        if (run === count) {
-          closer = at;
-          break;
-        }
-        at = text.indexOf(BACKTICK, at + run);
-      }
-      if (closer < 0) {
-        cursor += count;
-        continue;
-      }
-      mask.fill(1, start + cursor, start + closer + count);
-      cursor = closer + count;
-    }
+    for (const [from, to] of inlineCodeRanges(source.slice(start, end))) mask.fill(1, start + from, start + to);
   };
   let fence: string | null = null;
   let offset = 0;
@@ -100,14 +76,14 @@ const codeMask = (source: string): Uint8Array => {
     paragraph = -1;
   };
   for (const line of source.split('\n')) {
-    const marker = fenceMarker.exec(line);
+    const marker = fenceParts(line);
     if (fence) {
       // A closing fence repeats the opening character at least as many times, with nothing after it.
-      if (marker?.[1] && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2]?.trim()) fence = null;
+      if (marker && marker.marker[0] === fence[0] && marker.marker.length >= fence.length && !marker.rest.trim()) fence = null;
       mask.fill(1, offset, offset + line.length);
-    } else if (marker?.[1] && !(marker[1][0] === BACKTICK && marker[2]?.includes(BACKTICK))) {
+    } else if (marker && !(marker.marker[0] === BACKTICK && marker.rest.includes(BACKTICK))) {
       flush();
-      fence = marker[1];
+      fence = marker.marker;
       mask.fill(1, offset, offset + line.length);
     } else if (!line.trim()) {
       flush();
@@ -143,9 +119,7 @@ const outsideCode = (source: string, mask: Uint8Array, rewrite: (text: string) =
 export const normalizeMarkdown = (source: string): string => {
   const mask = codeMask(source);
   // Renames keep every line break, so line numbers still match the mask.
-  const renamed = outsideCode(source, mask, (text) =>
-    text.replace(/<(\/?)Frame\b/gi, '<$1mdxframe').replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>'),
-  );
+  const renamed = outsideCode(source, mask, (text) => expandSelfClosingComponents(text.replace(/<(\/?)Frame\b/gi, '<$1mdxframe')));
   const inCode: boolean[] = [];
   let offset = 0;
   for (const line of source.split('\n')) {
