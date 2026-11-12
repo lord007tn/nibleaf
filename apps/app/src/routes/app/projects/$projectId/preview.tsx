@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, ChevronDown, Eye, FileText } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
@@ -66,6 +67,8 @@ function ProjectPreview() {
   // Content direction follows the previewed language (Arabic → RTL), mirroring
   // the published site so authors preview real layout, not always-LTR.
   const contentDir = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
+  // The preview shows what readers will see: an untitled page reads "Untitled" in its language.
+  const shownTitle = (node: { title: string }) => displayTitle({ title: node.title, languageCode: activeLanguage?.code });
   const activeBranchId = search.branchId ?? defaultScopeId(branches);
   const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
   const pagesQuery = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
@@ -183,7 +186,7 @@ function ProjectPreview() {
               page
                 ? {
                     path: page.path,
-                    title: page.title,
+                    title: shownTitle(page),
                     languageCode: activeLanguage?.code,
                     // A non-default version lives under its own prefix (`/v2/…`).
                     versionSlug: publishedVersionSlugFor(branches, page.branchId ?? activeBranchId),
@@ -215,7 +218,7 @@ function ProjectPreview() {
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-sm">{t('preview.title')}</span>
                   <span className="block truncate text-muted-foreground text-xs">
-                    {selected?.title ?? (failedQuery ? t('error.title') : t('preview.empty'))}
+                    {(selected ? shownTitle(selected) : undefined) ?? (failedQuery ? t('error.title') : t('preview.empty'))}
                   </span>
                 </span>
                 <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', mobileNavigationOpen && 'rotate-180')} />
@@ -244,7 +247,7 @@ function ProjectPreview() {
                       type="button"
                     >
                       {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
-                      <span className="truncate">{item.title}</span>
+                      <span className="truncate">{shownTitle(item)}</span>
                     </button>
                   ))}
                 </div>
@@ -279,7 +282,7 @@ function ProjectPreview() {
                       type="button"
                     >
                       {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
-                      <span className="truncate">{item.title}</span>
+                      <span className="truncate">{shownTitle(item)}</span>
                     </button>
                   ))}
                 </div>
@@ -326,7 +329,7 @@ function ProjectPreview() {
                         </span>
                       </div>
                       <h1 className="mt-2 font-semibold text-3xl tracking-tight" dir="auto">
-                        {page.title}
+                        {shownTitle(page)}
                       </h1>
                       {page.description ? <p className="mt-2 text-muted-foreground">{page.description}</p> : null}
                     </div>

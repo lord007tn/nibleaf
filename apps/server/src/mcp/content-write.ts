@@ -3,6 +3,7 @@ import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
 import { type Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { McpScope } from '@nibleaf/shared/mcp';
+import { importedPageIcon } from '@nibleaf/shared/page-icons';
 import type { UpdatePageBody } from '@nibleaf/validators';
 import type { Context } from 'hono';
 import { z } from 'zod';
@@ -79,7 +80,11 @@ const searchPagesInput = z
 
 const createPageDraftInput = z
   .object({
-    title: titleArg.optional().describe('Page title. Required unless the markdown frontmatter sets one.'),
+    title: titleArg
+      .optional()
+      .describe(
+        'Page title. Required unless the markdown frontmatter sets one. Pass "" to create an untitled PAGE (shown as "Untitled" until named); a GROUP always needs a title.',
+      ),
     description: descriptionArg.optional(),
     icon: iconArg.optional(),
     markdown: markdownArg.optional(),
@@ -312,6 +317,8 @@ export const nearIdenticalTitles = (left: string, right: string) => {
 };
 
 const possibleDuplicates = async (projectId: string, page: Page) => {
+  // Untitled pages are not duplicates of each other.
+  if (!page.title.trim()) return [];
   const candidates = await prisma.page.findMany({
     where: { projectId, branchId: page.branchId, languageId: page.languageId, id: { not: page.id } },
     select: { id: true, kind: true, title: true, path: true, updatedAt: true },
@@ -409,9 +416,12 @@ const searchPages = async (projectId: string, args: z.output<typeof searchPagesI
 
 const createPageDraft = async (projectId: string, args: z.output<typeof createPageDraftInput>, actor: McpActor): Promise<McpWriteOutcome> => {
   const prepared = prepare(args.markdown);
-  const title = normalizeMcpLine(args.title ?? prepared?.title ?? '').slice(0, 200);
-  if (!title)
+  // An explicit empty title creates an untitled page, as the dashboard does; a
+  // missing one is more likely a mistake, and a group always needs its name.
+  if (args.title === undefined && !prepared?.title)
     throw new AppError({ code: 'validation:failed', message: 'Invalid arguments: title: provide a title argument or a frontmatter title.' });
+  const title = normalizeMcpLine(args.title ?? prepared?.title ?? '').slice(0, 200);
+  if (!title && args.kind === 'GROUP') throw new AppError({ code: 'validation:failed', message: 'Invalid arguments: title: a GROUP needs a title.' });
   const parentId = args.parentId ?? null;
   if (parentId) {
     const parent = await getPage(projectId, parentId);
@@ -470,7 +480,9 @@ const updatePageContent = async (projectId: string, args: z.output<typeof update
   const prepared = prepare(args.markdown);
   if (prepared && page.kind === 'GROUP') throw badRequest('A GROUP has no content; omit markdown.');
   const title = args.title === undefined ? prepared?.title : normalizeMcpLine(args.title).slice(0, 200);
-  if (title === '') throw new AppError({ code: 'validation:failed', message: 'Invalid arguments: title: must not be empty.' });
+  // Clearing a PAGE title leaves it untitled, as in the dashboard; a GROUP keeps its name.
+  if (title?.trim() === '' && page.kind === 'GROUP')
+    throw new AppError({ code: 'validation:failed', message: 'Invalid arguments: title: a GROUP needs a title.' });
   const description =
     args.description === undefined ? prepared?.description : args.description === null ? null : normalizeMcpLine(args.description) || null;
   const icon = args.icon === undefined ? prepared?.icon : args.icon === null ? null : normalizeMcpLine(args.icon) || null;
@@ -608,7 +620,8 @@ const translatePage = async (projectId: string, args: z.output<typeof translateP
       // Same slug as the source so the URL mirrors it across languages.
       slug: source.slug,
       description: args.description === undefined ? (prepared?.description ?? null) : normalizeMcpLine(args.description) || null,
-      icon: args.icon === undefined ? (prepared?.icon ?? source.icon) : normalizeMcpLine(args.icon) || null,
+      // The source's icon carries over only when the reader draws it; an explicit one is checked by createPage.
+      icon: args.icon === undefined ? (prepared?.icon ?? importedPageIcon(source.icon)) : normalizeMcpLine(args.icon) || null,
       content: prepared?.body ?? '',
       parentId,
       languageId: args.targetLanguageId,

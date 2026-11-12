@@ -487,6 +487,7 @@
   "editor_pageunpublished": "有未发布的更改",
   "editor_pagepublished": "已发布",
   "editor_unpublishedcount": "此站点有未发布的更改：{count} 项。发布后读者才能看到。",
+  "editor_unpublishedsitechanges": "此站点的导航或设置有未发布的更改。发布后读者即可看到。",
   "editor_neverpublished": "此站点尚未发布。在你发布之前，读者无法看到它。",
   "editor_creatingpage": "正在创建页面…",
   "editor_openingpage": "正在打开页面…",

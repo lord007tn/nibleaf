@@ -534,6 +534,7 @@
   "editor_pageunpublished": "تغييرات غير منشورة",
   "editor_pagepublished": "منشورة",
   "editor_unpublishedcount": "تغييرات غير منشورة في هذا الموقع: {count}. انشرها ليراها القرّاء.",
+  "editor_unpublishedsitechanges": "تغييرات غير منشورة في تنقّل هذا الموقع أو إعداداته. انشرها لتظهر للقرّاء.",
   "editor_neverpublished": "لم يُنشر هذا الموقع بعد. لن يراه القرّاء حتى تنشره.",
   "editor_creatingpage": "جارٍ إنشاء الصفحة…",
   "editor_openingpage": "جارٍ فتح الصفحة…",

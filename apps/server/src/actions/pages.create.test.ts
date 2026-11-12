@@ -38,3 +38,20 @@ it('refuses a group without a name, and gives a blank page title the untitled ad
   expect(db.create).not.toHaveBeenCalled();
   expect(await createPage('fixture', createPageBody.parse({ title: '   ' }))).toMatchObject({ slug: 'untitled' });
 });
+
+it('accepts only icons the reader draws, for the page and its navigation category', async () => {
+  db.findFirst.mockResolvedValue(null);
+  db.aggregate.mockResolvedValue({ _max: { position: null } });
+  db.create.mockImplementation(async ({ data }) => ({ ...data, id: 'page-icon' }));
+  db.create.mockClear();
+  await expect(createPage('fixture', createPageBody.parse({ title: 'Setup', icon: 'not-a-real-icon' }))).rejects.toMatchObject({
+    details: { field: 'icon', value: 'not-a-real-icon' },
+  });
+  await expect(createPage('fixture', createPageBody.parse({ title: 'Setup', config: { categoryIcon: 'nope' } }))).rejects.toMatchObject({
+    details: { field: 'categoryIcon' },
+  });
+  expect(db.create).not.toHaveBeenCalled();
+  expect(await createPage('fixture', createPageBody.parse({ title: 'Setup', icon: 'BookOpen', config: { categoryIcon: 'rocket' } }))).toMatchObject({
+    icon: 'BookOpen',
+  });
+});

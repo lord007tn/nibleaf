@@ -487,6 +487,7 @@
   "editor_pageunpublished": "Perubahan belum diterbitkan",
   "editor_pagepublished": "Diterbitkan",
   "editor_unpublishedcount": "Perubahan yang belum diterbitkan di situs ini: {count}. Terbitkan agar pembaca dapat melihatnya.",
+  "editor_unpublishedsitechanges": "Ada perubahan yang belum dipublikasikan pada navigasi atau pengaturan situs ini. Publikasikan agar pembaca melihatnya.",
   "editor_neverpublished": "Situs ini belum diterbitkan. Pembaca tidak dapat melihatnya sampai Anda menerbitkannya.",
   "editor_creatingpage": "Membuat halaman…",
   "editor_openingpage": "Membuka halaman…",

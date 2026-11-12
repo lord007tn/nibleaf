@@ -1604,3 +1604,53 @@ describe('title similarity', () => {
     expect(nearIdenticalTitles(left, right)).toBe(expected);
   });
 });
+
+describe('untitled pages through MCP', () => {
+  it('creates an untitled PAGE from an explicit empty title, as the dashboard does', async () => {
+    const client = await connect(makePrincipal());
+    const response = await client.call('create_page_draft', { title: '', markdown: 'Body' });
+    expect(response.isError).not.toBe(true);
+    expect(mocks.createPage).toHaveBeenCalledWith('project-1', expect.objectContaining({ kind: 'PAGE', title: '' }), expect.anything());
+    // Untitled pages are not "possible duplicates" of each other.
+    expect((response.structuredContent.data as { possibleDuplicates: unknown[] }).possibleDuplicates).toEqual([]);
+    await client.close();
+  });
+
+  it('still asks for a title when none is given, and always for a GROUP', async () => {
+    const client = await connect(makePrincipal());
+    const missing = await client.call('create_page_draft', { markdown: 'Body' });
+    expect(missing.structuredContent.error?.message).toContain('provide a title argument');
+    const group = await client.call('create_page_draft', { title: ' ', kind: 'GROUP' });
+    expect(group.structuredContent.error).toMatchObject({ code: 'validation:failed', message: expect.stringContaining('GROUP needs a title') });
+    expect(mocks.createPage).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('clears a PAGE title but never a GROUP name', async () => {
+    state.pages.push(page({ id: 'group-1', kind: 'GROUP', title: 'Guides', slug: 'guides' }));
+    const client = await connect(makePrincipal());
+    const cleared = await client.call('update_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', title: '' });
+    expect(cleared.isError).not.toBe(true);
+    expect(mocks.updatePage).toHaveBeenCalledWith(
+      'project-1',
+      'page-1',
+      expect.objectContaining({ title: '' }),
+      expect.anything(),
+      expect.anything(),
+    );
+    mocks.updatePage.mockClear();
+    const group = await client.call('update_page', { pageId: 'group-1', expectedRevision: '2026-11-02T00:00:00.000Z', title: '' });
+    expect(group.structuredContent.error?.message).toContain('GROUP needs a title');
+    expect(mocks.updatePage).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('reads an untitled page as "Untitled", flagged untitled', async () => {
+    const first = state.pages[0] as { title: string };
+    first.title = '';
+    const client = await connect(makePrincipal());
+    const read = await client.call('get_page', { pageId: 'page-1' });
+    expect(read.structuredContent.data).toMatchObject({ id: 'page-1', title: 'Untitled', untitled: true });
+    await client.close();
+  });
+});

@@ -177,6 +177,12 @@ export async function journey({ db, context, member, phase, locale, width, outpu
   assert.ok(created);
   assert.equal(created.title, before ? t('editor.untitled') : '');
   if (!before) assert.equal(await page.locator('[data-page-title]').inputValue(), '');
+  if (!before && width === 390) {
+    // Creating from the drawer closes it, so the focused title is visible: never
+    // closed by hand here, which would hide the regression.
+    await closeTree.waitFor({ state: 'hidden' });
+    assert.equal(await page.locator('[data-page-title]').evaluate((element) => element === document.activeElement), true);
+  }
   await record('new-page');
   if (width === 390 && !(await closeTree.isVisible())) await showPages.click();
   const createdRow = page.locator(`[data-page-id="${created.id}"]`);

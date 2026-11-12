@@ -12,6 +12,7 @@ import {
 } from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
 import { pageDescription, pageExcerpt } from '@nibleaf/shared/markdown-text';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -666,7 +667,8 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       // truthful lower-bound publication date from their last modification.
       createdAt: page.createdAt ?? page.updatedAt,
       updatedAt: page.updatedAt,
-      title: page.title,
+      // The H1, document title, OG title and Markdown copy: never empty.
+      title: displayTitle(page),
       // Only an author-written summary is a visible lede. The derived excerpt
       // travels separately for SEO/social fallbacks, so the reader never renders
       // the page's own first paragraph twice.
@@ -723,7 +725,7 @@ const breadcrumbTrail = (pages: readonly SnapshotPage[], page: SnapshotPage): Ar
   const trail: Array<{ title: string; path: string }> = [];
   let current: SnapshotPage | undefined = page;
   while (current) {
-    trail.unshift({ title: current.title, path: current.path });
+    trail.unshift({ title: displayTitle(current), path: current.path });
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
   return trail;

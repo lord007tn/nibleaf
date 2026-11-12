@@ -150,6 +150,29 @@ describe('AUTH-16 editor save lifecycle', () => {
       await new Promise((resolve) => setTimeout(resolve, 800));
     });
   }
+  it('closes the page drawer after creating a page from it, so the focused title is visible', async () => {
+    const showPages = container.querySelector<HTMLButtonElement>('button[aria-label="editor.showPages"]');
+    if (!showPages) throw new Error('Missing the page drawer button');
+    await act(async () => showPages.click());
+    // The drawer button says whether the page drawer is open.
+    const drawerOpen = () => showPages.getAttribute('aria-expanded');
+    expect(drawerOpen()).toBe('true');
+    const created = { ...page, id: 'page-new', title: '', slug: 'untitled', path: 'untitled' };
+    mocks.create.mockImplementation((_body, callbacks) => {
+      mocks.page = created;
+      mocks.pages = [page, created];
+      callbacks.onSuccess(created);
+      callbacks.onSettled();
+    });
+    const newPage = [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('editor.newPage'));
+    if (!newPage) throw new Error('Missing new page action');
+    await act(async () => newPage.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.create).toHaveBeenCalledOnce();
+    expect(drawerOpen()).toBe('false');
+    const title = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="editor.pageTitlePlaceholder"]');
+    expect(document.activeElement).toBe(title);
+  });
   it('AUTH-07: failed creation clears the pending canvas and restores the action focus', async () => {
     mocks.page = undefined;
     mocks.pages = [];

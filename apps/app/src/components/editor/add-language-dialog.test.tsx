@@ -69,6 +69,9 @@ const optionFor = (code: string): HTMLElement => {
 describe('AddLanguageDialog', () => {
   it.each([
     ['Arab', ['Arabic']],
+    // Tashkeel is optional in writing: a vowelled name finds the plain one.
+    ['العَرَبِيَّة', ['Arabic']],
+    ['العربية', ['Arabic']],
     ['Brasil', ['Português (Brasil)']],
     ['pt-B', ['Português (Brasil)']],
     ['zzz', []],

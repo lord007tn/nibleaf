@@ -487,6 +487,7 @@
   "editor_pageunpublished": "অপ্রকাশিত পরিবর্তন",
   "editor_pagepublished": "প্রকাশিত",
   "editor_unpublishedcount": "এই সাইটে অপ্রকাশিত পরিবর্তন: {count}। পাঠকদের দেখাতে প্রকাশ করুন।",
+  "editor_unpublishedsitechanges": "এই সাইটের নেভিগেশন বা সেটিংসে অপ্রকাশিত পরিবর্তন আছে। পাঠকদের দেখাতে প্রকাশ করুন।",
   "editor_neverpublished": "এই সাইটটি এখনও প্রকাশিত হয়নি। আপনি প্রকাশ না করা পর্যন্ত পাঠকেরা এটি দেখতে পাবেন না।",
   "editor_creatingpage": "পৃষ্ঠা তৈরি হচ্ছে…",
   "editor_openingpage": "পৃষ্ঠা খোলা হচ্ছে…",

@@ -258,6 +258,19 @@ describe('hybrid search differential indexing jobs', () => {
     jobSequence = 0;
   });
 
+  it('titles an untitled page in its own language in the search payload', async () => {
+    const pages = mocks.deployment.snapshot.pages;
+    const arabic = pages[0] as { title: string };
+    const original = arabic.title;
+    arabic.title = '';
+    try {
+      await handleSearchJobs(job('index-deployment'));
+      expect(firstUpsertedPoint()).toMatchObject({ payload: { page_id: 'page-ar', title: 'صفحة بدون عنوان' } });
+    } finally {
+      arabic.title = original;
+    }
+  });
+
   it('embeds only visible pages and stamps deterministic tenant/deployment/language/private payloads', async () => {
     await expect(handleSearchJobs(job('index-deployment'))).resolves.toMatchObject({ indexed: 1, embedded: 1, reused: 0 });
     const point = firstUpsertedPoint();

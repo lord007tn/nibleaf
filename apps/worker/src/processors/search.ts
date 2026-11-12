@@ -6,6 +6,7 @@ import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantIndexedPoint, type QdrantPoint } from '@nibleaf/qdrant';
 import { chunkSearchDocument, type SearchChunk, type SearchChunkSource, searchEmbeddingText, sparseVectorForChunk } from '@nibleaf/search';
 import { resolveWorkspaceAi, workspaceEmbeddingProvider } from '@nibleaf/search/workspace';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { extractHeadings, type SiteSnapshot } from '@nibleaf/shared/site';
 import { buildUsageEvent, deterministicUsageEventId } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
@@ -32,7 +33,7 @@ const deploymentFilter = (projectId: string, deploymentId: string): QdrantFilter
 
 const sourceFromPage = (page: SiteSnapshot['pages'][number]): SearchChunkSource => ({
   id: page.id,
-  title: page.title,
+  title: displayTitle(page),
   path: page.path,
   description: page.description ?? '',
   headings: extractHeadings(page.content).map((heading) => heading.text),

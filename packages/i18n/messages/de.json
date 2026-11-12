@@ -496,6 +496,7 @@
   "editor_pageunpublished": "Unveröffentlichte Änderungen",
   "editor_pagepublished": "Veröffentlicht",
   "editor_unpublishedcount": "Unveröffentlichte Änderungen auf dieser Website: {count}. Veröffentlichen Sie sie, damit Leser sie sehen.",
+  "editor_unpublishedsitechanges": "Unveröffentlichte Änderungen an der Navigation oder den Einstellungen dieser Website. Veröffentlichen Sie sie, damit Leser sie sehen.",
   "editor_neverpublished": "Diese Website ist noch nicht veröffentlicht. Leser sehen sie erst, wenn Sie veröffentlichen.",
   "editor_creatingpage": "Seite wird erstellt…",
   "editor_openingpage": "Seite wird geöffnet…",

@@ -195,15 +195,18 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
   );
 }
 
+/** Arabic short vowels and marks (tashkeel, U+064B–U+065F) and the superscript
+ *  alef (U+0670): optional in writing, so "العَرَبِيَّة" finds "العربية". */
+const ARABIC_MARKS = /[\u064B-\u065F\u0670]/g;
+const searchable = (value: string) => value.normalize('NFC').replace(ARABIC_MARKS, '').toLocaleLowerCase();
+
 /** Match names at word starts and codes at their prefix, without fuzzy hits. */
 function matchesLanguage(language: CatalogLanguage, search: string): boolean {
-  const query = search.trim().normalize('NFC').toLocaleLowerCase();
+  const query = searchable(search.trim());
   return (
     language.code.toLowerCase().startsWith(query) ||
     [language.label, language.native].some((name) =>
-      name
-        .normalize('NFC')
-        .toLocaleLowerCase()
+      searchable(name)
         .split(/[\s()-]+/u)
         .some((_word, index, words) => words.slice(index).join(' ').startsWith(query)),
     )

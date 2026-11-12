@@ -163,6 +163,19 @@ describe('updatePage placeholder slug adoption', () => {
     expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ title: '' }) }));
   });
 
+  it('refuses a new unsupported icon but never blocks a page that keeps its stored one', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', icon: 'legacy-name', config: { categoryIcon: 'old-category' } } as unknown as Partial<Row>));
+    // An ordinary save that resends the stored values goes through.
+    await updatePage('project-1', 'page-1', { content: 'Edited', icon: 'legacy-name', config: { categoryIcon: 'old-category' } });
+    expect(database.update).toHaveBeenCalledTimes(1);
+    await expect(updatePage('project-1', 'page-1', { icon: 'another-unknown' })).rejects.toMatchObject({ details: { field: 'icon' } });
+    await expect(updatePage('project-1', 'page-1', { config: { categoryIcon: 'nope' } })).rejects.toMatchObject({
+      details: { field: 'categoryIcon' },
+    });
+    await updatePage('project-1', 'page-1', { icon: 'rocket' });
+    expect(database.update).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ icon: 'rocket' }) }));
+  });
+
   it('does not record an edit when the project-scoped update fails', async () => {
     seed(row());
     database.findFirst.mockResolvedValue(null);
@@ -184,6 +197,35 @@ describe('updatePage placeholder slug adoption', () => {
       expect.objectContaining({ data: expect.objectContaining({ title: 'Getting started', slug: 'getting-started' }) }),
     );
     expect(updated.path).toBe('getting-started');
+  });
+
+  it.each([
+    ['is in the live version', true],
+    ['is in a publish still building', true],
+    ['was never published', false],
+  ])('keeps the address of a placeholder page that %s', async (_case, live) => {
+    seed(row({ title: '', slug: 'untitled-2', path: 'untitled-2' }));
+    const liveChecks: string[] = [];
+    database.queryRaw.mockImplementation(async (strings: TemplateStringsArray) => {
+      const sql = strings.join('?');
+      if (!sql.includes('"deployment"')) return [];
+      liveChecks.push(sql);
+      return [{ live }];
+    });
+
+    const updated = await updatePage('project-1', 'page-1', { title: 'Getting started' });
+
+    // Asked once, under the structural lock, and only because the address could follow the title.
+    expect(liveChecks).toHaveLength(1);
+    expect(liveChecks[0]).toMatch(/PENDING.*BUILDING/s);
+    expect(updated.title).toBe('Getting started');
+    expect(updated.slug).toBe(live ? 'untitled-2' : 'getting-started');
+  });
+
+  it('never asks about publication for an ordinary title edit', async () => {
+    seed(row({ title: 'Overview', slug: 'overview', path: 'overview' }));
+    await updatePage('project-1', 'page-1', { title: 'Overview and setup' });
+    expect(database.queryRaw.mock.calls.some(([strings]) => (strings as TemplateStringsArray).join('?').includes('"deployment"'))).toBe(false);
   });
 
   it('adopts the title slug for a localized placeholder group', async () => {

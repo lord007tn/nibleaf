@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
 import { pageDescription } from '@nibleaf/shared/markdown-text';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { isSafeLinkDestination, normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
 import {
   defaultLanguage,
@@ -307,7 +308,7 @@ const navHtml = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
   return visibleVariantPages(snapshot, page)
     .map((candidate) => {
       const href = path.posix.relative(path.posix.dirname(current), outputPath(snapshot, candidate)) || './';
-      return `<a${candidate.id === page.id ? ' class="active" aria-current="page"' : ''} href="${escapeHtml(href)}">${escapeHtml(candidate.title)}</a>`;
+      return `<a${candidate.id === page.id ? ' class="active" aria-current="page"' : ''} href="${escapeHtml(href)}">${escapeHtml(displayTitle(candidate))}</a>`;
     })
     .join('');
 };
@@ -337,7 +338,7 @@ const tocHtml = (page: SnapshotPage): string => {
     .filter((heading) => heading.depth === 2 || heading.depth === 3)
     .map((heading) => `<li class="depth-${heading.depth}"><a href="#${escapeHtml(heading.id)}">${escapeHtml(heading.text)}</a></li>`)
     .join('');
-  return links ? `<nav class="toc" aria-label="${escapeHtml(page.title)}"><ol>${links}</ol></nav>` : '';
+  return links ? `<nav class="toc" aria-label="${escapeHtml(displayTitle(page))}"><ol>${links}</ol></nav>` : '';
 };
 
 const pagerHtml = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
@@ -347,9 +348,9 @@ const pagerHtml = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
   const link = (candidate: SnapshotPage | undefined, rel: 'prev' | 'next') => {
     if (!candidate) return '<span></span>';
     const href = path.posix.relative(path.posix.dirname(current), outputPath(snapshot, candidate)) || './';
-    return `<a rel="${rel}" href="${escapeHtml(href)}">${escapeHtml(candidate.title)}</a>`;
+    return `<a rel="${rel}" href="${escapeHtml(href)}">${escapeHtml(displayTitle(candidate))}</a>`;
   };
-  return `<nav class="pager" aria-label="${escapeHtml(page.title)}">${link(pages[index - 1], 'prev')}${link(pages[index + 1], 'next')}</nav>`;
+  return `<nav class="pager" aria-label="${escapeHtml(displayTitle(page))}">${link(pages[index - 1], 'prev')}${link(pages[index + 1], 'next')}</nav>`;
 };
 
 /** Static archives are origin-neutral by contract. Root-relative discovery URLs
@@ -381,7 +382,7 @@ const seoHead = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
   const config = exportConfigOf(snapshot);
   const language = languageFor(snapshot, page);
   const siteName = language.config?.seo?.metaTitle?.trim() || config.seo?.metaTitle?.trim() || language.config?.name?.trim() || snapshot.project.name;
-  const title = page.config?.seo?.metaTitle?.trim() || `${page.title} – ${siteName}`;
+  const title = page.config?.seo?.metaTitle?.trim() || `${displayTitle(page)} – ${siteName}`;
   const description =
     page.config?.seo?.metaDescription?.trim() ||
     pageDescription(page) ||
@@ -441,7 +442,7 @@ const seoHead = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: siteName, item: '/' },
-          { '@type': 'ListItem', position: 2, name: page.title, item: canonical },
+          { '@type': 'ListItem', position: 2, name: displayTitle(page), item: canonical },
         ],
       },
     ],
@@ -456,7 +457,7 @@ const seoHead = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
 };
 
 const articleHtml = (snapshot: SiteSnapshot, page: SnapshotPage, assets: ExportAsset[]): string =>
-  `<header class="article-header"><div class="meta"><time datetime="${escapeHtml(page.updatedAt)}">${escapeHtml(page.updatedAt.slice(0, 10))}</time></div><h1>${escapeHtml(page.title)}</h1>${page.description ? `<p class="article-description">${escapeHtml(page.description)}</p>` : ''}</header><div class="prose">${proseHtml(snapshot, page, assets)}</div>${pagerHtml(snapshot, page)}`;
+  `<header class="article-header"><div class="meta"><time datetime="${escapeHtml(page.updatedAt)}">${escapeHtml(page.updatedAt.slice(0, 10))}</time></div><h1>${escapeHtml(displayTitle(page))}</h1>${page.description ? `<p class="article-description">${escapeHtml(page.description)}</p>` : ''}</header><div class="prose">${proseHtml(snapshot, page, assets)}</div>${pagerHtml(snapshot, page)}`;
 
 const harborDocumentBody = (snapshot: SiteSnapshot, page: SnapshotPage, assets: ExportAsset[]): string =>
   `<header class="harbor-topbar"><a class="brand" href="${escapeHtml(variantHomeHref(snapshot, page))}">${escapeHtml(snapshot.project.name)}</a>${searchHtml(snapshot, page)}<span class="harbor-edition meta">${escapeHtml(versionFor(snapshot, page)?.name ?? '')} · ${escapeHtml(languageFor(snapshot, page).label)}</span></header><div class="harbor-shell"><aside class="harbor-library"><nav class="nav" aria-label="${escapeHtml(languageFor(snapshot, page).label)}" data-static-nav>${navHtml(snapshot, page)}</nav></aside><main class="article harbor-article" id="content"><article>${articleHtml(snapshot, page, assets)}</article></main><aside class="harbor-toc">${tocHtml(page)}</aside></div>`;
@@ -530,7 +531,7 @@ const llmsTxt = (snapshot: SiteSnapshot, pages: SnapshotPage[], fromDirectory = 
     for (const page of matching) {
       const href = path.posix.relative(fromDirectory || '.', outputMarkdownPath(snapshot, page)) || './';
       const description = machinePageDescription(page);
-      lines.push(`- [${oneLine(page.title)}](${href})${description ? `: ${description}` : ''}`);
+      lines.push(`- [${oneLine(displayTitle(page))}](${href})${description ? `: ${description}` : ''}`);
     }
   }
   return `${lines.join('\n')}\n`;
@@ -539,7 +540,7 @@ const llmsTxt = (snapshot: SiteSnapshot, pages: SnapshotPage[], fromDirectory = 
 const llmsFullTxt = (snapshot: SiteSnapshot, pages: SnapshotPage[], fromDirectory = ''): string => {
   const sections = pages.map((page) => {
     const href = path.posix.relative(fromDirectory || '.', outputMarkdownPath(snapshot, page)) || './';
-    const header = [`# ${oneLine(page.title)}`, '', `Source: ${href}`];
+    const header = [`# ${oneLine(displayTitle(page))}`, '', `Source: ${href}`];
     if (page.description?.trim()) header.push('', `> ${oneLine(page.description)}`);
     return `${header.join('\n')}\n\n${normalizePublicMarkdownContent(page.content)}\n`;
   });
@@ -593,7 +594,7 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
       : `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>${escapeHtml(snapshot.project.name)}</title>`,
   );
   const searchEntries = pages.map((page) => ({
-    title: page.title,
+    title: displayTitle(page),
     path: outputPath(snapshot, page),
     text: plainText(normalizePublicMarkdownContent(page.content)),
     versionId: page.versionId,
@@ -603,7 +604,11 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
   const indexablePages = machineIndexablePages(snapshot);
   for (const page of indexablePages) {
     const description = page.description?.trim();
-    const parts = [`# ${oneLine(page.title)}`, ...(description ? [`> ${oneLine(description)}`] : []), normalizePublicMarkdownContent(page.content)];
+    const parts = [
+      `# ${oneLine(displayTitle(page))}`,
+      ...(description ? [`> ${oneLine(description)}`] : []),
+      normalizePublicMarkdownContent(page.content),
+    ];
     files[outputMarkdownPath(snapshot, page)] = strToU8(`${parts.filter(Boolean).join('\n\n')}\n`);
   }
   const machineFilesEnabled = exportConfigOf(snapshot).visibility !== 'private' && exportConfigOf(snapshot).seo?.allowIndex !== false;
@@ -627,7 +632,8 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
 };
 
 const frontMatter = (page: SnapshotPage): string => {
-  const values = ['---', `title: ${JSON.stringify(page.title)}`];
+  // An untitled page has no title line: re-importing it keeps it untitled.
+  const values = ['---', ...(page.title.trim() ? [`title: ${JSON.stringify(page.title)}`] : [])];
   if (page.description) values.push(`description: ${JSON.stringify(page.description)}`);
   if (page.icon) values.push(`icon: ${JSON.stringify(page.icon)}`);
   if (page.hidden) values.push('hidden: true');
@@ -684,7 +690,7 @@ export const renderPdfHtml = (
           // marked already escaped `&` in the destination: unescape once, so it is escaped once.
           return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href.replaceAll('&amp;', '&'))}${after}`;
         });
-      return `<article id="page-${escapeHtml(page.id)}" dir="${direction.toLowerCase()}"><h1>${escapeHtml(page.title)}</h1>${html}</article>`;
+      return `<article id="page-${escapeHtml(page.id)}" dir="${direction.toLowerCase()}"><h1>${escapeHtml(displayTitle(page))}</h1>${html}</article>`;
     })
     .join('');
   const theme = resolveTheme(themeConfigOf(snapshot));

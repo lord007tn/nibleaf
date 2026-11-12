@@ -944,6 +944,7 @@ export const MESSAGE_IDS = {
   'editor.pageUnpublished': 'editor_pageunpublished',
   'editor.pagePublished': 'editor_pagepublished',
   'editor.unpublishedCount': 'editor_unpublishedcount',
+  'editor.unpublishedSiteChanges': 'editor_unpublishedsitechanges',
   'editor.neverPublished': 'editor_neverpublished',
   'editor.creatingPage': 'editor_creatingpage',
   'editor.openingPage': 'editor_openingpage',

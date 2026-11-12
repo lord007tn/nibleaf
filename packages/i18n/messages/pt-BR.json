@@ -496,6 +496,7 @@
   "editor_pageunpublished": "Alterações não publicadas",
   "editor_pagepublished": "Publicado",
   "editor_unpublishedcount": "Alterações não publicadas neste site: {count}. Publique para que os leitores as vejam.",
+  "editor_unpublishedsitechanges": "Alterações não publicadas na navegação ou nas configurações deste site. Publique para mostrá-las aos leitores.",
   "editor_neverpublished": "Este site ainda não foi publicado. Os leitores só poderão vê-lo depois que você publicar.",
   "editor_creatingpage": "Criando página…",
   "editor_openingpage": "Abrindo página…",

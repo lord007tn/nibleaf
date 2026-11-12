@@ -758,7 +758,14 @@ function EditorPage() {
         onSuccess: (created) => {
           setPendingSwitch({ kind: 'open', id: created.id });
           setSelectedId(created.id);
-          if (options?.focusTitle) setFocusTitleFor(created.id);
+          if (options?.focusTitle) {
+            // The page list may be a drawer over the canvas (narrow screens, or
+            // the focused Markdown layout): close it so the title that takes
+            // focus is visible, without handing focus back to the drawer's button.
+            setMobileSidebarOpen(false);
+            setFocusedTreeOpen(false);
+            setFocusTitleFor(created.id);
+          }
         },
         onError: () => {
           setPendingSwitch(null);

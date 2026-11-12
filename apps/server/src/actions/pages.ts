@@ -5,6 +5,7 @@ import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_pagetoolarge } from '@nibleaf/i18n/messages/editor_pagetoolarge';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { pageDescriptionText } from '@nibleaf/shared/markdown-text';
+import { isSupportedPageIcon } from '@nibleaf/shared/page-icons';
 import { MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
 import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
 import { interpolateVariablesWithin, variablesFromConfig } from '@nibleaf/shared/site';
@@ -252,6 +253,20 @@ export const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
 
 /** A page may start untitled (the editor shows a placeholder and the tree a
  *  warning), but a group is only a navigation heading: it needs its name. */
+/** Page and category icons must be ones the reader draws (the shared list), so
+ *  REST, MCP and the dashboard agree. An update may keep the value already
+ *  stored, so a page saved before this check is never blocked by its own icon. */
+const assertSupportedIcons = (
+  next: { icon?: string | null; categoryIcon?: string | null },
+  stored: { icon?: string | null; categoryIcon?: string | null } = {},
+) => {
+  for (const field of ['icon', 'categoryIcon'] as const) {
+    const value = next[field];
+    if (!value?.trim() || value === stored[field] || isSupportedPageIcon(value)) continue;
+    throw badRequest(`"${value}" is not a supported icon name.`, { field, value });
+  }
+};
+
 const assertGroupTitled = (kind: string, title: string) => {
   if (kind === 'GROUP' && !title.trim()) throw badRequest('A group needs a title.', { field: 'title' });
 };
@@ -259,6 +274,7 @@ const assertGroupTitled = (kind: string, title: string) => {
 export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
   assertPageContentFits(body.content);
   assertGroupTitled(body.kind ?? 'PAGE', body.title);
+  assertSupportedIcons({ icon: body.icon, categoryIcon: body.config?.categoryIcon });
   const page = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
@@ -334,14 +350,36 @@ interface UpdatePageOptions {
   expectedUpdatedAt?: Date;
 }
 
-const pageRouteEdit = (page: { title: string; slug: string; parentId: string | null }, body: UpdatePageBody) => {
-  const adoptsTitle =
-    body.slug === undefined &&
-    body.title !== undefined &&
-    body.title.trim() !== '' &&
-    body.title !== page.title &&
-    PLACEHOLDER_SLUG_RE.test(page.slug) &&
-    PLACEHOLDER_TITLES.has(page.title);
+/** A page still on its placeholder address and title whose first real title
+ *  would become its address. */
+const adoptsFirstTitle = (page: { title: string; slug: string }, body: UpdatePageBody) =>
+  body.slug === undefined &&
+  body.title !== undefined &&
+  body.title.trim() !== '' &&
+  body.title !== page.title &&
+  PLACEHOLDER_SLUG_RE.test(page.slug) &&
+  PLACEHOLDER_TITLES.has(page.title);
+
+/** Whether readers may already have this page's address: it is in the newest
+ *  live snapshot, or a publish is still pending or building (it may be about
+ *  to put the page live at its current address). The same "published" the
+ *  dashboard uses (pending changes against the newest live version). Read
+ *  under the structural lock, which publishing also takes. */
+const pageAddressMayBeLive = async (tx: Prisma.TransactionClient, projectId: string, pageId: string): Promise<boolean> => {
+  const [row] = await tx.$queryRaw<Array<{ live: boolean }>>`
+    SELECT EXISTS (
+        SELECT 1 FROM "deployment" WHERE "projectId" = ${projectId} AND status IN ('PENDING', 'BUILDING')
+      ) OR EXISTS (
+        SELECT 1 FROM (
+          SELECT snapshot FROM "deployment" WHERE "projectId" = ${projectId} AND status = 'READY' ORDER BY version DESC LIMIT 1
+        ) latest
+        WHERE latest.snapshot -> 'pages' @> jsonb_build_array(jsonb_build_object('id', ${pageId}::text))
+      ) AS live`;
+  return row?.live === true;
+};
+
+const pageRouteEdit = (page: { title: string; slug: string; parentId: string | null }, body: UpdatePageBody, mayAdoptTitle = true) => {
+  const adoptsTitle = mayAdoptTitle && adoptsFirstTitle(page, body);
   const desired = body.slug || (adoptsTitle ? body.title : page.slug) || page.slug;
   const parentId = body.parentId === undefined ? page.parentId : body.parentId;
   return {
@@ -371,7 +409,19 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         const page = await tx.page.findFirst({ where: { id, projectId } });
         if (!page) throw notFound('page', { id });
         if (body.title !== undefined) assertGroupTitled(page.kind, body.title);
-        const route = pageRouteEdit(page, options?.restore ? {} : body);
+        if (!options?.restore) {
+          const storedConfig = (page.config ?? {}) as { categoryIcon?: string };
+          assertSupportedIcons(
+            { icon: body.icon, categoryIcon: body.config?.categoryIcon },
+            { icon: page.icon, categoryIcon: storedConfig.categoryIcon },
+          );
+        }
+        const edit = options?.restore ? {} : body;
+        // Only a never-published page's address follows its first real title:
+        // a published address is one readers and links already use. Checked
+        // under the structural lock; without it, a possible adoption retries there.
+        const mayAdoptTitle = lockStructure && adoptsFirstTitle(page, edit) ? !(await pageAddressMayBeLive(tx, projectId, id)) : true;
+        const route = pageRouteEdit(page, edit, mayAdoptTitle);
         if (!lockStructure && route.structural) throw new StructuralPageEdit();
         const expectedUpdatedAt = options?.expectedUpdatedAt ?? (body.expectedUpdatedAt ? new Date(body.expectedUpdatedAt) : undefined);
         if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {

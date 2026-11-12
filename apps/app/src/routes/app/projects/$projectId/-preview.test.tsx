@@ -78,6 +78,26 @@ describe('preview content', () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 
+  it('shows an untitled page as "Untitled", as readers will see it', async () => {
+    const untitled = {
+      id: 'p1',
+      kind: 'PAGE',
+      title: '',
+      path: 'untitled-2',
+      slug: 'untitled-2',
+      icon: null,
+      description: null,
+      content: 'Body',
+      parentId: null,
+      position: 0,
+      hidden: false,
+    };
+    queries.pages = { data: [untitled], isPending: false, isError: false };
+    queries.page = { data: untitled, isPending: false, isError: false };
+    await act(async () => root.render(<ProjectPreview />));
+    expect(container.querySelector('h1')?.textContent).toBe('Untitled');
+  });
+
   it('keeps the authoring chrome outside the site theme', async () => {
     queries.pages = { data: [], isPending: false, isError: false };
     await act(async () => root.render(<ProjectPreview />));
