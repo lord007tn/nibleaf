@@ -5,6 +5,7 @@ import { Check, Copy, LifeBuoy } from 'lucide-react';
 import { Children, cloneElement, isValidElement, type ReactNode, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { siteHref } from '@/lib/site-paths';
+import { isLeftToRightLabel, leftToRightIslands, splitLastWord } from './answer-inline';
 import { htmlCopy, plainCopy, writeCopy } from './copy';
 import { Feedback } from './feedback';
 import { answerText, citationParts } from './helpers';
@@ -72,34 +73,102 @@ export function ChatMessage({
     const timer = window.setTimeout(() => setCopied(undefined), copied.result === 'copied' ? 2500 : 6000);
     return () => window.clearTimeout(timer);
   }, [copied]);
-  const cite = (children: ReactNode): ReactNode =>
-    Children.map(children, (child) => {
-      if (typeof child === 'string')
-        return citationParts(child).map((part) => {
-          if (!part.source) return part.text;
+  const chip = (number: number, key: string) => (
+    <button
+      type="button"
+      data-citation={number}
+      className="mx-0.5 inline-flex rounded border px-1.5 text-primary text-xs focus-visible:ring-2"
+      key={key}
+      aria-label={`${t('aiSource')} ${number}`}
+      onClick={() => {
+        const item = document.getElementById(sourceId(number));
+        item?.scrollIntoView({ block: 'nearest' });
+        item?.focus();
+      }}
+    >
+      {number}
+    </button>
+  );
+  /** A block's children with citation chips drawn, links, paths and dotted names
+   * laid out as left-to-right islands, and each run of chips kept on the line of
+   * the word (or bold or code run) before it, so a number never starts a line alone. */
+  const cite = (children: ReactNode): ReactNode => {
+    let count = 0;
+    const nextKey = (name: string) => {
+      count += 1;
+      return `${name}-${count}`;
+    };
+    const items: ReactNode[] = [];
+    for (const child of Children.toArray(children)) {
+      if (typeof child === 'string') {
+        for (const part of citationParts(child)) {
+          if (!part.source) {
+            for (const segment of leftToRightIslands(part.text))
+              items.push(
+                segment.leftToRight ? (
+                  <bdi dir="ltr" key={nextKey('ltr')}>
+                    {segment.text}
+                  </bdi>
+                ) : (
+                  segment.text
+                ),
+              );
+            continue;
+          }
           const number = cited.numberOf(part.source);
           // A marker the checked answer does not list is not drawn.
-          if (number === undefined) return null;
-          return (
-            <button
-              type="button"
-              data-citation={number}
-              className="mx-0.5 inline-flex rounded border px-1.5 text-primary text-xs focus-visible:ring-2"
-              key={part.key}
-              aria-label={`${t('aiSource')} ${number}`}
-              onClick={() => {
-                const item = document.getElementById(sourceId(number));
-                item?.scrollIntoView({ block: 'nearest' });
-                item?.focus();
-              }}
-            >
-              {number}
-            </button>
-          );
-        });
-      if (isValidElement<{ children?: ReactNode }>(child)) return cloneElement(child, {}, cite(child.props.children));
-      return child;
-    });
+          if (number !== undefined) items.push(chip(number, nextKey('chip')));
+        }
+      } else if (isValidElement<{ children?: ReactNode; node?: { tagName?: string } }>(child))
+        // Code is shown exactly as written: a `[S1]` in it is text, not a citation.
+        items.push(child.props.node?.tagName === 'code' ? child : cloneElement(child, {}, cite(child.props.children)));
+      else items.push(child);
+    }
+    const isChip = (item: ReactNode) => isValidElement<{ 'data-citation'?: number }>(item) && item.props['data-citation'] !== undefined;
+    const output: ReactNode[] = [];
+    for (let index = 0; index < items.length; index += 1) {
+      if (!isChip(items[index])) {
+        output.push(items[index]);
+        continue;
+      }
+      // A run of chips, with only spaces between them.
+      const chips: ReactNode[] = [];
+      while (
+        index < items.length &&
+        (isChip(items[index]) || (typeof items[index] === 'string' && !String(items[index]).trim() && isChip(items[index + 1])))
+      ) {
+        if (isChip(items[index])) chips.push(items[index]);
+        index += 1;
+      }
+      index -= 1;
+      // What the chips follow: the last word of the text before them, or the
+      // element (bold, code, a link island) right before them.
+      let before = output.pop();
+      if (typeof before === 'string' && !before.trim() && output.length && typeof output.at(-1) !== 'string') before = output.pop();
+      let anchor: ReactNode = before;
+      if (typeof before === 'string') {
+        const { head, word } = splitLastWord(before);
+        if (head) output.push(head);
+        anchor = word;
+      }
+      output.push(
+        <span className="whitespace-nowrap" key={nextKey('cite')}>
+          {anchor}
+          {chips}
+        </span>,
+      );
+    }
+    return output;
+  };
+  /** Bold or italic text that is an English label inside any answer reads left to right on its own. */
+  const label =
+    (Tag: 'strong' | 'em') =>
+    ({ children }: { children?: ReactNode }) => {
+      const text = Children.toArray(children)
+        .filter((child) => typeof child === 'string')
+        .join('');
+      return <Tag dir={isLeftToRightLabel(text) ? 'ltr' : undefined}>{children}</Tag>;
+    };
   const supportUrl = final?.status === 'no_answer' ? final.supportUrl : undefined;
   const external = supportUrl ? /^https?:/i.test(supportUrl) : false;
   return (
@@ -129,6 +198,8 @@ export function ChatMessage({
                 ]),
               ),
               li: ({ children }) => <li>{cite(children)}</li>,
+              strong: label('strong'),
+              em: label('em'),
               pre: ({ children }) => (
                 <pre dir="ltr" className="overflow-x-auto rounded bg-muted p-3 text-start text-xs">
                   {children}
