@@ -5,6 +5,7 @@ import {
   hasTextOutsideComments,
   inlineCodeSpans,
   markdownAndHtmlImages,
+  markdownCodeSpans,
   matchOneLineElement,
   matchTags,
   removeMdxCommentsOutsideCode,
@@ -198,7 +199,17 @@ describe('linear tag and link scanning gives exactly what the regex gives', () =
     }
   });
 
-  it('removeMdxCommentsOutsideCode: /(`+)[\\s\\S]*?\\1|\\{\\s*\\/\\*[\\s\\S]*?\\*\\/\\s*\\}/g', () => {
+  it('markdownCodeSpans: /(`+)(?!`)([\\s\\S]*?[^`])\\1(?!`)/g', () => {
+    const next = random(71);
+    const pieces = ['`', '`', '``', '```', 'a', ' ', '\n', 'b'];
+    for (let index = 0; index < 10_000; index += 1) {
+      const text = Array.from({ length: Math.floor(next() * 30) }, () => pieces[Math.floor(next() * pieces.length)]).join('');
+      const expected = [...text.matchAll(/(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g)].map((match) => [match.index, match.index + match[0].length]);
+      expect(markdownCodeSpans(text), JSON.stringify(text)).toEqual(expected);
+    }
+  });
+
+  it('removeMdxCommentsOutsideCode:/(`+)[\\s\\S]*?\\1|\\{\\s*\\/\\*[\\s\\S]*?\\*\\/\\s*\\}/g', () => {
     const next = random(59);
     const pieces = ['`', '``', '{', '}', '/*', '*/', '{/*', '*/}', '/', '*', ' ', '\n', 'a', '{ /*', '*/ }'];
     const pattern = /(`+)[\s\S]*?\1|\{\s*\/\*[\s\S]*?\*\/\s*\}/g;

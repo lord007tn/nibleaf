@@ -6,6 +6,7 @@ import type { ThemeRepositoryTemplateOptions } from './types';
 export const siteLibTemplate = ({ contentRoot }: ThemeRepositoryTemplateOptions): string => {
   const prefix = `../../${contentRoot ? `${contentRoot}/` : ''}`;
   return String.raw`import docsJson from '../../docs.json';
+import { headingParts, stripMarkdownLinks } from './markdown-scan';
 
 export interface SiteLanguage {
   code: string;
@@ -312,9 +313,7 @@ export const uniqueHeadingId = (text: string, used: Map<string, number>): string
 };
 
 const inlineText = (markdown: string): string =>
-  markdown
-    .replace(/\x60([^\x60]*)\x60/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+  stripMarkdownLinks(markdown.replace(/\x60([^\x60]*)\x60/g, '$1'))
     .replace(/[*_~]+/g, '')
     .trim();
 
@@ -332,10 +331,10 @@ export const extractHeadings = (body: string): Heading[] => {
       continue;
     }
     if (fence) continue;
-    const match = /^(#{2,3})\s+(.+?)\s*#*\s*$/.exec(line);
-    if (!match) continue;
-    const text = inlineText(match[2] ?? '');
-    headings.push({ depth: match[1]?.length === 2 ? 2 : 3, text, id: uniqueHeadingId(text, used) });
+    const heading = headingParts(line);
+    if (!heading) continue;
+    const text = inlineText(heading.text);
+    headings.push({ depth: heading.depth, text, id: uniqueHeadingId(text, used) });
   }
   return headings;
 };

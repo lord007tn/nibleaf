@@ -327,6 +327,57 @@ export const inlineCodeSpans = (text: string): Array<[number, number]> => {
   return spans;
 };
 
+/**
+ * `[...text.matchAll(/(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g)]` as `[start, end]`
+ * pairs: CommonMark-style code spans, closed by the next run of exactly the
+ * opener's length. From each run the expression tries the whole run first,
+ * then each shorter tail of it; the first length some later run has wins. The
+ * next run of each length is read with a pointer that only moves forward, so
+ * the scan is linear.
+ */
+export const markdownCodeSpans = (text: string): Array<[number, number]> => {
+  const starts: number[] = [];
+  const lengths: number[] = [];
+  for (let index = text.indexOf('`'); index !== -1; ) {
+    let end = index + 1;
+    while (text[end] === '`') end += 1;
+    starts.push(index);
+    lengths.push(end - index);
+    index = text.indexOf('`', end);
+  }
+  const runsOfLength = new Map<number, number[]>();
+  for (let run = 0; run < lengths.length; run += 1) {
+    const length = lengths[run] as number;
+    const runs = runsOfLength.get(length);
+    if (runs) runs.push(run);
+    else runsOfLength.set(length, [run]);
+  }
+  const pointers = new Map<number, number>();
+  const nextRunOfLength = (length: number, after: number): number => {
+    const runs = runsOfLength.get(length);
+    if (!runs) return -1;
+    let at = pointers.get(length) ?? 0;
+    while (at < runs.length && (runs[at] as number) <= after) at += 1;
+    pointers.set(length, at);
+    return runs[at] ?? -1;
+  };
+  const spans: Array<[number, number]> = [];
+  for (let run = 0; run < starts.length; ) {
+    const start = starts[run] as number;
+    const length = lengths[run] as number;
+    let close = -1;
+    let skipped = 0;
+    for (; skipped < length && close === -1; skipped += 1) close = nextRunOfLength(length - skipped, run);
+    if (close === -1) {
+      run += 1;
+      continue;
+    }
+    spans.push([start + skipped - 1, (starts[close] as number) + (lengths[close] as number)]);
+    run = close + 1;
+  }
+  return spans;
+};
+
 const WHITESPACE = /\s/;
 const skipWhitespace = (text: string, from: number): number => {
   let index = from;
