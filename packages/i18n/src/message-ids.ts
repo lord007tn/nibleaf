@@ -1,5 +1,10 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'overview.nudge.progress': 'overview_nudge_progress',
+  'overview.live.willBeLiveAt': 'overview_live_willbeliveat',
+  'overview.live.availableAfterPublish': 'overview_live_availableafterpublish',
+  'overview.nudge.connecting': 'overview_nudge_connecting',
+  'overview.nudge.stepDone': 'overview_nudge_stepdone',
   'editor.pageSettings.oneLanguage': 'editor_pagesettings_onelanguage',
   'editor.pageSettings.invalidIcon': 'editor_pagesettings_invalidicon',
   'editor.history.title': 'editor_history_title',

@@ -4773,5 +4773,10 @@
   "publishes_truncated": "正在显示 {total} 个已更改页面中的前 {shown} 个。",
   "overview_activity_viewall": "查看全部",
   "publishes_toolarge": "此版本过大，无法在此比较。",
-  "publishes_nosnapshot": "此版本的已发布副本已不再保存，因此无法比较或恢复。"
+  "publishes_nosnapshot": "此版本的已发布副本已不再保存，因此无法比较或恢复。",
+  "overview_nudge_progress": "已完成 {count}/3 项",
+  "overview_live_willbeliveat": "发布后的网站地址：{url}",
+  "overview_live_availableafterpublish": "首次发布后即可打开此地址。",
+  "overview_nudge_connecting": "正在连接 — 请完成域名设置。",
+  "overview_nudge_stepdone": "已完成：{step}"
 }

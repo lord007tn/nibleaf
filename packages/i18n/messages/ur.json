@@ -4832,5 +4832,10 @@
   "publishes_truncated": "{total} تبدیل شدہ صفحات میں سے پہلے {shown} دکھائے جا رہے ہیں۔",
   "overview_activity_viewall": "سب دیکھیں",
   "publishes_toolarge": "یہ نسخہ یہاں موازنے کے لیے بہت بڑا ہے۔",
-  "publishes_nosnapshot": "اس نسخے کی شائع شدہ کاپی اب محفوظ نہیں، اس لیے نہ اس کا موازنہ ہو سکتا ہے اور نہ اسے بحال کیا جا سکتا ہے۔"
+  "publishes_nosnapshot": "اس نسخے کی شائع شدہ کاپی اب محفوظ نہیں، اس لیے نہ اس کا موازنہ ہو سکتا ہے اور نہ اسے بحال کیا جا سکتا ہے۔",
+  "overview_nudge_progress": "3 میں سے {count} مکمل",
+  "overview_live_willbeliveat": "سائٹ اس پتے پر دستیاب ہوگی: {url}",
+  "overview_live_availableafterpublish": "پہلی بار شائع کرنے کے بعد یہ پتہ کھل سکے گا۔",
+  "overview_nudge_connecting": "کنکشن جاری ہے — ڈومین کی ترتیب مکمل کریں۔",
+  "overview_nudge_stepdone": "مکمل: {step}"
 }
