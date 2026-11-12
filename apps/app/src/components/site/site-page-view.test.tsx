@@ -181,12 +181,36 @@ describe('reader layout ergonomics', () => {
     expect(html).not.toContain('data-theme-region="toc"');
     expect(html).not.toContain('xl:grid-cols-');
   });
+  it.each([DOCUMENTATION_THEME_TEMPLATES.reference, DOCUMENTATION_THEME_TEMPLATES.editorial])(
+    'keeps the $id outline column on a default page without an outline, so the article does not jump',
+    (template) => {
+      const html = renderToStaticMarkup(template.PageLayout({ article: <article>Body</article>, reserveTocColumn: true }));
+      expect(html).toContain('xl:grid-cols-');
+      expect(html).not.toContain('data-theme-region="toc"');
+    },
+  );
+  it('reserves the outline column on default pages with or without headings, and not on wide or centered ones', () => {
+    const layout = (page: Partial<ReturnType<typeof data>['page']>) =>
+      renderToStaticMarkup(<SitePageView data={data({ page: { ...data().page, ...page } })} projectId="project-1" />).match(
+        /xl:grid-cols-\[[^\]]+\]/,
+      )?.[0];
+    const withOutline = layout({ headings: [{ id: 'setup', text: 'Setup', depth: 2 }], config: { mode: 'default' } });
+    expect(withOutline).toBeDefined();
+    expect(layout({ headings: [], config: { mode: 'default' } })).toBe(withOutline);
+    expect(layout({ headings: [{ id: 'setup', text: 'Setup', depth: 2 }], config: { mode: 'default', hideToc: true } })).toBe(withOutline);
+    expect(layout({ headings: [], config: { mode: 'wide' } })).toBeUndefined();
+    expect(layout({ headings: [], config: { mode: 'center' } })).toBeUndefined();
+  });
   it('renders a collapsed mobile outline and the Signal styling hooks with a named landmark', () => {
     const headings = [{ id: 'refunds', text: 'Refunds', depth: 2 }];
     const html = renderToStaticMarkup(<MobileTableOfContents headings={headings} label="On this page" />);
     expect(html).toContain('<details');
     expect(html).not.toContain(' open=');
     expect(html).toContain('min-h-11');
+    // The browser's unstyled ▶ marker is hidden; a chevron at the end replaces it in both directions.
+    expect(html).toContain('list-none');
+    expect(html).toContain('[&amp;::-webkit-details-marker]:hidden');
+    expect(html).toContain('group-open:rotate-180');
     expect(html).toContain('aria-label="On this page"');
     const desktop = renderToStaticMarkup(<TableOfContents headings={headings} label="On this page" />);
     for (const hook of [

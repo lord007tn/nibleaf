@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   applyThemeTemplateConfig,
   canonicalThemeTemplateJson,
+  contrastRatio,
   inspectThemeTemplateInput,
   previewThemeConfigChanges,
+  readableOnBackground,
   resolveTheme,
   safeThemeFontFamily,
   safeThemeHex,
@@ -12,6 +14,20 @@ import {
   themeOwnedConfig,
   themeTemplateFromConfig,
 } from './themes';
+
+describe('readableOnBackground', () => {
+  it('reaches the target on a mid-tone background by trying the other side too', () => {
+    // Towards white never reaches 4.7:1 on #999999; towards black does.
+    const color = readableOnBackground('#303030', '#999999', 4.7);
+    expect(contrastRatio(color, '#999999')).toBeGreaterThanOrEqual(4.7);
+    expect(contrastRatio(color, '#999999')).toBeGreaterThan(contrastRatio('#303030', '#999999'));
+  });
+
+  it('keeps a color that already passes, and otherwise falls back to the more readable of black and white', () => {
+    expect(readableOnBackground('#5b6577', '#ffffff', 4.5)).toBe('#5b6577');
+    expect(readableOnBackground('#777777', '#777777', 21)).toBe('#000000');
+  });
+});
 
 describe('documentation themes', () => {
   it('ships three distinct, contrast-guarded presets', () => {
