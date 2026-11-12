@@ -5,12 +5,13 @@ import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import type { MessageKey } from '@nibleaf/i18n';
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale, useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
 import { CircleCheck, PenLine } from 'lucide-react';
 import { useId, useMemo } from 'react';
 import type { PublishCheck } from '@/hooks/api/types';
 import { useFormatters } from '@/lib/format';
+import { languageName } from '@/lib/language-name';
 
 type CheckCode = PublishCheck['code'];
 
@@ -23,6 +24,8 @@ const CHECK_META: Record<CheckCode, { title: MessageKey; hint: MessageKey; order
   'duplicate-title': { title: 'publish.checks.duplicateTitle', hint: 'publish.checks.duplicateTitleHint', order: 4 },
   'stray-characters': { title: 'publish.checks.strayCharacters', hint: 'publish.checks.strayCharactersHint', order: 5 },
   'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 6 },
+  'home-untranslated': { title: 'publish.checks.homeUntranslated', hint: 'publish.checks.homeUntranslatedHint', order: 7 },
+  'blog-root-group': { title: 'publish.checks.blogRootGroup', hint: 'publish.checks.blogRootGroupHint', order: 8 },
 };
 
 /** One row per page and check: a page with three broken links is one thing to fix. */
@@ -186,10 +189,29 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
 /** The evidence under a row: the broken links, image sources or stray text,
  *  read left to right as code; or, for a duplicate, the other page. */
 function CheckDetails({ code, details, tooLong = [] }: { code: CheckCode; details: string[]; tooLong?: string[] }) {
-  const t = useT();
+  const { locale, t } = useLocale();
   if (details.length === 0 || code === 'unreadable-slug') return null;
   if (code === 'duplicate-title') {
     return <span>{t('publish.checks.duplicateOf', { path: `/${details[0] ?? ''}` })}</span>;
+  }
+  if (code === 'home-untranslated') {
+    // `language|title`: who lands where instead of on a translation of this page.
+    return (
+      <span className="flex flex-col gap-0.5">
+        {details.map((detail) => {
+          const split = detail.indexOf('|');
+          const code = split < 0 ? detail : detail.slice(0, split);
+          return (
+            <span key={detail}>
+              {t('publish.checks.homeUntranslatedLanding', {
+                language: languageName(code, undefined, locale),
+                title: split < 0 ? '' : detail.slice(split + 1),
+              })}
+            </span>
+          );
+        })}
+      </span>
+    );
   }
   return (
     <span className="flex flex-wrap gap-1.5">

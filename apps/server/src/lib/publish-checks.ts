@@ -1,8 +1,10 @@
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
+import { site_importblog } from '@nibleaf/i18n/messages/site_importblog';
 import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, snapshotContentFacts } from '@nibleaf/shared/publish-checks';
-import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { buildNavTree, defaultLanguage, isPageTranslation, publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { firstPage, pagesForLanguage, pagesForVersion } from '@nibleaf/shared/site-route';
 
 /**
  * Pre-publish quality checks, computed from the exact draft snapshot the
@@ -22,7 +24,9 @@ type PublishCheckCode =
   | 'stray-characters'
   | 'unreadable-slug'
   | 'empty-page'
-  | 'duplicate-title';
+  | 'duplicate-title'
+  | 'home-untranslated'
+  | 'blog-root-group';
 
 export interface PublishCheck {
   code: PublishCheckCode;
@@ -31,9 +35,10 @@ export interface PublishCheck {
   languageCode: string;
   title: string;
   path: string;
-  /** The evidence: the link, the image source, the stray text, the slug or the
-   *  path of the other page with the same title. Empty for an untitled or
-   *  empty page, where the page itself is the evidence. */
+  /** The evidence: the link, the image source, the stray text, the slug, the
+   *  path of the other page with the same title, or (`home-untranslated`) the
+   *  language and the page its readers land on as `language|title`. Empty for an
+   *  untitled or empty page, or a "Blog" section, where the page is the evidence. */
   detail: string;
   /** Why a link is broken, when it isn't a missing page: too long to serve. */
   reason?: 'path-too-long';
@@ -103,6 +108,45 @@ const hasBody = (content: string): boolean => content.split(/<!--[\s\S]*?-->|\{\
 
 const SEVERITY_ORDER = { error: 0, warning: 1 } as const;
 
+/** The title the Ghost importer gives a site's posts ("Blog", "المدونة", …), in
+ *  every interface locale. */
+const IMPORTED_BLOG_TITLES = new Set<string>(
+  INTERFACE_LOCALES.map(({ code }) => site_importblog(undefined, { locale: code }).trim().normalize('NFC').toLocaleLowerCase()),
+);
+
+/**
+ * Checks about the site as readers enter it, in its default version:
+ * - `home-untranslated`: readers who open the site in another language land on
+ *   that language's own first page when the home page has no translation there
+ *   (same rule as the reader, `resolveSitePage`). One per language, on the home
+ *   page, with the language and the page they land on as `language|title`.
+ * - `blog-root-group`: the first section of a language's navigation is the
+ *   importer's "Blog", so every docs page reads as a blog post in the sidebar
+ *   and the breadcrumbs.
+ */
+const siteStructureChecks = (
+  snapshot: SiteSnapshot,
+  served: ReadonlySet<string>,
+  add: (page: SnapshotPage, code: PublishCheckCode, detail?: string) => void,
+): void => {
+  const version = snapshot.project.versions.find((candidate) => candidate.isDefault);
+  if (!version) return;
+  const versionPages = pagesForVersion(snapshot, version);
+  const defaultCode = defaultLanguage(snapshot.project).code;
+  const home = firstPage(pagesForLanguage(versionPages, defaultCode), defaultCode);
+  for (const code of served) {
+    const pages = pagesForLanguage(versionPages, code);
+    const nav = buildNavTree(pages, code);
+    const first = nav[0];
+    const firstGroup = first && first.kind === 'GROUP' ? pages.find((page) => page.id === first.id) : undefined;
+    if (firstGroup && IMPORTED_BLOG_TITLES.has(firstGroup.title.trim().normalize('NFC').toLocaleLowerCase())) add(firstGroup, 'blog-root-group');
+    if (!home || code === defaultCode) continue;
+    const translated = pages.some((page) => page.kind === 'PAGE' && !page.hidden && isPageTranslation(home, page));
+    const landing = translated ? undefined : firstPage(pages, code);
+    if (landing) add(home, 'home-untranslated', `${code}|${landing.title}`);
+  }
+};
+
 /** Every check for the snapshot, errors first, then in page order. */
 export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
   const served = new Set(publicLanguages(snapshot.project.languages).map((language) => language.code));
@@ -163,6 +207,7 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
       add(page, 'duplicate-title', other?.path ?? '');
     }
   }
+  siteStructureChecks(snapshot, served, add);
 
   return checks.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]).slice(0, MAX_CHECKS);
 }

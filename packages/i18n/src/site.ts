@@ -49,6 +49,8 @@ import { site_menu } from './paraglide/messages/site_menu.js';
 import { site_minreadcount } from './paraglide/messages/site_minreadcount.js';
 import { site_next } from './paraglide/messages/site_next.js';
 import { site_noanswergrounded } from './paraglide/messages/site_noanswergrounded.js';
+import { site_nositebody } from './paraglide/messages/site_nositebody.js';
+import { site_nositetitle } from './paraglide/messages/site_nositetitle.js';
 import { site_notfoundbody } from './paraglide/messages/site_notfoundbody.js';
 import { site_notfoundhome } from './paraglide/messages/site_notfoundhome.js';
 import { site_notfoundsearch } from './paraglide/messages/site_notfoundsearch.js';
@@ -123,6 +125,8 @@ const siteMessages = {
   updated: site_updated,
   notPublishedTitle: site_notpublishedtitle,
   notPublishedBody: site_notpublishedbody,
+  noSiteTitle: site_nositetitle,
+  noSiteBody: site_nositebody,
   privateTitle: site_privatetitle,
   signOut: site_signout,
   signOutFailed: site_signoutfailed,

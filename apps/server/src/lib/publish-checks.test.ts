@@ -320,6 +320,67 @@ describe('duplicate-title', () => {
   });
 });
 
+describe('home-untranslated', () => {
+  const home = () => page({ path: 'get-started', title: 'Get started', translationKey: 'start', position: 0 });
+  const arabicFirst = () => page({ path: 'tags', title: 'كيف نضيف وسما', languageCode: 'ar', position: 0 });
+
+  it('warns once per language whose readers land on another page, on the home page, naming where they land', () => {
+    const checks = codes(
+      snapshot([home(), arabicFirst(), page({ path: 'intro', title: 'مقدمة', languageCode: 'ar', position: 3 })]),
+      'home-untranslated',
+    );
+    expect(checks).toEqual([
+      expect.objectContaining({ title: 'Get started', path: 'get-started', languageCode: 'en', detail: 'ar|كيف نضيف وسما', severity: 'warning' }),
+    ]);
+  });
+
+  it('stays quiet when the home page has a translation (by key or by path), or the language has no pages', () => {
+    const byKey = page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', position: 5 });
+    expect(codes(snapshot([home(), arabicFirst(), byKey]), 'home-untranslated')).toEqual([]);
+    const byPath = page({ path: 'get-started', title: 'ابدأ', languageCode: 'ar', position: 5 });
+    expect(codes(snapshot([page({ path: 'get-started', title: 'Get started', position: 0 }), arabicFirst(), byPath]), 'home-untranslated')).toEqual(
+      [],
+    );
+    expect(codes(snapshot([home()]), 'home-untranslated')).toEqual([]);
+  });
+
+  it('counts a hidden translation as none, and skips a disabled language', () => {
+    const hidden = page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', hidden: true, position: 5 });
+    expect(codes(snapshot([home(), arabicFirst(), hidden]), 'home-untranslated')).toHaveLength(1);
+    const disabled = snapshot([home(), arabicFirst()]);
+    disabled.project.languages = disabled.project.languages.map((language) => (language.code === 'ar' ? { ...language, enabled: false } : language));
+    expect(codes(disabled, 'home-untranslated')).toEqual([]);
+  });
+});
+
+describe('blog-root-group', () => {
+  const group = (title: string, extra: Partial<SnapshotPage> = {}) => page({ path: 'blog', title, kind: 'GROUP', position: 0, ...extra });
+
+  it('warns when a language opens on a section named like the importer’s "Blog"', () => {
+    const english = group('Blog', { id: 'blog-en' });
+    const arabic = group('المدونة', { id: 'blog-ar', languageCode: 'ar' });
+    const site = snapshot([
+      english,
+      arabic,
+      page({ path: 'blog/a', title: 'A', parentId: 'blog-en', position: 0 }),
+      page({ path: 'blog/b', title: 'ب', parentId: 'blog-ar', languageCode: 'ar', position: 0 }),
+    ]);
+    expect(codes(site, 'blog-root-group').map((check) => check.pageId)).toEqual(['blog-en', 'blog-ar']);
+  });
+
+  it('leaves a "Blog" section alone when it is not the first one, and any other first section', () => {
+    const guides = group('Guides', { id: 'guides' });
+    const blog = group('Blog', { id: 'blog', path: 'news', position: 1 });
+    const site = snapshot([
+      guides,
+      blog,
+      page({ path: 'blog/a', title: 'A', parentId: 'guides', position: 0 }),
+      page({ path: 'news/a', title: 'B', parentId: 'blog', position: 0 }),
+    ]);
+    expect(codes(site, 'blog-root-group')).toEqual([]);
+  });
+});
+
 describe('collectPublishChecks', () => {
   it('reports nothing for a clean site and skips disabled languages', () => {
     const site = snapshot([page({ path: 'start', title: 'Start' }), page({ path: 'setup', title: 'Setup', content: 'See [start](/start).' })]);

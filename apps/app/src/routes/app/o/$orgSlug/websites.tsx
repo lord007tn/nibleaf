@@ -191,7 +191,7 @@ function WebsitesPage() {
       ) : projects.isError && !projects.data ? null : visible.length ? (
         <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visible.map((project) => (
-            <li key={project.id}>
+            <li className="relative" key={project.id}>
               <Link
                 className="group flex h-full flex-col rounded-xl border border-border bg-card p-5 text-start outline-none transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                 params={{ projectId: project.id }}
@@ -200,17 +200,16 @@ function WebsitesPage() {
                 <div className="flex items-start gap-3">
                   <WebsiteMark className="size-11 rounded-xl text-xl" icon={project.icon} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">
+                    <span className="block truncate font-semibold" id={`website-name-${project.id}`}>
                       <bdi>{project.name}</bdi>
                     </span>
+                    {/* The address readers use: the site's domain, else its page on this host. */}
                     <span className="block truncate font-mono text-muted-foreground text-xs">
-                      <bdi dir="ltr">{project.domain ?? `/${project.slug}`}</bdi>
+                      <bdi dir="ltr">{project.domain ?? `/sites/${project.id}`}</bdi>
                     </span>
                   </span>
-                  <ArrowUpRight
-                    aria-hidden
-                    className="size-4.5 shrink-0 text-muted-foreground transition group-hover:text-primary rtl:-scale-x-100"
-                  />
+                  {/* Room for the live-site link drawn over this corner. */}
+                  <span aria-hidden className="size-8 shrink-0" />
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
                   <SiteStatusBadge site={project} />
@@ -234,6 +233,20 @@ function WebsitesPage() {
                   ) : null}
                 </div>
               </Link>
+              {/* A sibling of the card's link (links can't nest), over its corner. */}
+              {project.live ? (
+                <a
+                  aria-describedby={`website-name-${project.id}`}
+                  aria-label={t('overview.viewSite')}
+                  className="absolute end-4 top-4 grid size-8 place-items-center rounded-md text-muted-foreground outline-none transition hover:bg-muted hover:text-primary focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  href={project.domain ? `https://${project.domain}` : `/sites/${project.id}`}
+                  rel="noreferrer"
+                  target="_blank"
+                  title={t('overview.viewSite')}
+                >
+                  <ArrowUpRight aria-hidden className="size-4.5 rtl:-scale-x-100" />
+                </a>
+              ) : null}
             </li>
           ))}
         </ul>

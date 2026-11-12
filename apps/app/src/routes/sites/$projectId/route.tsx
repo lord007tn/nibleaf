@@ -61,7 +61,8 @@ export const Route = createFileRoute('/sites/$projectId')({
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
       // The API names why the shell is hidden. A private site gets its own
-      // sign-in screen; every other cause keeps the not-published screen.
+      // sign-in screen; a site that exists but isn't published says so; anything
+      // else (an unknown address, a taken-down site) is just no site here.
       // A private site's sign-in screen shows the site's own name, logo and colours.
       if (error.reason === 'private') {
         return {
@@ -71,7 +72,7 @@ export const Route = createFileRoute('/sites/$projectId')({
           gate: error.details?.gate as PrivateSiteGate | undefined,
         };
       }
-      return { site: null, siteOrigin: customDomainOrigin(), unavailable: undefined };
+      return { site: null, siteOrigin: customDomainOrigin(), unavailable: error.reason === 'not_published' ? undefined : ('missing' as const) };
     }
   },
   headers: ({ loaderData }) => (loaderData ? siteRobotsHeaders(loaderData.site) : undefined),
@@ -319,8 +320,8 @@ function SiteChrome() {
       >
         <div>
           <BookOpen className="mx-auto size-8 text-muted-foreground" aria-hidden />
-          <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t('notPublishedTitle')}</h1>
-          <p className="mt-2 max-w-sm text-muted-foreground text-sm">{t('notPublishedBody')}</p>
+          <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t(unavailable === 'missing' ? 'noSiteTitle' : 'notPublishedTitle')}</h1>
+          <p className="mt-2 max-w-sm text-muted-foreground text-sm">{t(unavailable === 'missing' ? 'noSiteBody' : 'notPublishedBody')}</p>
         </div>
       </div>
     );

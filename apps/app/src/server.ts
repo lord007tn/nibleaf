@@ -245,6 +245,31 @@ async function resolveHost(host: string): Promise<string | null> {
   }
 }
 
+const slugCache = new Map<string, { projectId: string | null; at: number }>();
+
+/** The live site whose slug is `slug` (`/sites/<slug>` written by hand, or copied
+ *  from the dashboard), or null. Only live sites answer. */
+async function resolveSiteSlug(slug: string): Promise<string | null> {
+  const hit = slugCache.get(slug);
+  if (hit && Date.now() - hit.at < TTL) {
+    return hit.projectId;
+  }
+  try {
+    const response = await got(`${SELF}/api/public/domains/slug?slug=${encodeURIComponent(slug)}`, {
+      headers: internalRequestHeaders(),
+      responseType: 'json',
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+    });
+    const parsed = z.object({ data: z.object({ projectId: z.string().nullable().optional() }).optional() }).safeParse(response.body);
+    const projectId = response.ok && parsed.success ? (parsed.data.data?.projectId ?? null) : null;
+    slugCache.set(slug, { projectId, at: Date.now() });
+    return projectId;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Published-site metadata (privacy + primary domain) ──────────────────────
 
 /** What the edge needs to know about a published site: whether its HTML may be
@@ -837,6 +862,21 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
           // domain itself the request is a custom-domain request, not this branch.
           if (meta?.primaryDomain && meta.primaryDomain !== bare) {
             return Response.redirect(`https://${meta.primaryDomain}${siteMatch[2] || '/'}${url.search}`, 301);
+          }
+          // `/sites/<slug>`: the site's name in the address rather than its id
+          // (what the dashboard showed before, and what people type). Send it to
+          // the site; from there its primary domain, if any, takes over.
+          if (!meta) {
+            let slug = siteMatch[1];
+            try {
+              slug = decodeURIComponent(slug);
+            } catch {
+              // A malformed escape is looked up as written (and matches no slug).
+            }
+            const projectId = await resolveSiteSlug(slug.toLowerCase());
+            if (projectId && projectId !== siteMatch[1]) {
+              return Response.redirect(`${url.origin}/sites/${projectId}${siteMatch[2] ?? ''}${url.search}`, 301);
+            }
           }
           return renderHtml(routedRequest);
         }

@@ -415,3 +415,32 @@ describe('machine files for a signed-in reader of a private site', () => {
     expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow');
   });
 });
+
+describe('/sites/<slug> on the platform host', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.startHandler
+      .mockReset()
+      .mockResolvedValue(new Response('<!doctype html><title>Published</title>', { headers: { 'content-type': 'text/html' } }));
+    mocks.got.mockImplementation(async (url: string) => {
+      // The slug isn't a site id, so the shell lookup finds nothing.
+      if (url.includes('/api/public/sites/')) return upstream({ error: { code: 'not_found' } }, 404);
+      if (url.includes('/api/public/domains/slug?slug=jood-pms')) return upstream({ data: { projectId: 'cmsiteid0001' } });
+      if (url.includes('/api/public/domains/slug?slug=')) return upstream({ data: { projectId: null } }, 404);
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+  });
+
+  it("sends an address written with a live site's slug to the site, keeping the path and query", async () => {
+    const response = await server.fetch(new Request('http://localhost:4310/sites/JOOD-PMS/guide/setup?lang=ar'));
+    expect(response.status).toBe(301);
+    expect(response.headers.get('location')).toBe('http://localhost:4310/sites/cmsiteid0001/guide/setup?lang=ar');
+    expect(mocks.startHandler).not.toHaveBeenCalled();
+  });
+
+  it('renders the page as before when no live site has that slug', async () => {
+    const response = await server.fetch(new Request('http://localhost:4310/sites/nobody-here'));
+    expect(response.status).toBe(200);
+    expect(mocks.startHandler).toHaveBeenCalled();
+  });
+});

@@ -251,7 +251,16 @@ export interface PendingChange {
 /** A pre-publish quality check on the draft being previewed. Warnings leave
  *  publishing allowed; an `error` blocks it (the publish would fail). */
 export interface PublishCheck {
-  code: 'broken-internal-link' | 'missing-alt' | 'untitled-page' | 'stray-characters' | 'unreadable-slug' | 'empty-page' | 'duplicate-title';
+  code:
+    | 'broken-internal-link'
+    | 'missing-alt'
+    | 'untitled-page'
+    | 'stray-characters'
+    | 'unreadable-slug'
+    | 'empty-page'
+    | 'duplicate-title'
+    | 'home-untranslated'
+    | 'blog-root-group';
   severity: 'error' | 'warning';
   pageId: string;
   languageCode: string;

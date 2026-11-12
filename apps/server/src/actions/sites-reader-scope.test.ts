@@ -80,6 +80,7 @@ import {
   getSitePage,
   invalidatePublishedSiteConfig,
   resolvePublishedAnswerContext,
+  resolveSiteSlug,
   searchSite,
 } from './sites';
 
@@ -735,5 +736,26 @@ describe('completed AI answers', () => {
     });
     await answerSite('project-1', 'pricing');
     expect(mocks.recordAnswerServed).not.toHaveBeenCalled();
+  });
+});
+
+describe('a site address written with its slug', () => {
+  it('finds a live site by its slug, in any case', async () => {
+    expect(await resolveSiteSlug('Docs-Site')).toBe('project-1');
+    expect(mocks.projectFindUnique).toHaveBeenCalledWith({ where: { slug: 'docs-site' }, select: { id: true } });
+  });
+
+  it('answers nothing for an unknown slug, a site that is not published, or a taken-down site', async () => {
+    mocks.projectFindUnique.mockResolvedValueOnce(null);
+    expect(await resolveSiteSlug('nobody')).toBeNull();
+
+    mocks.deploymentFindFirst.mockResolvedValue(null);
+    expect(await resolveSiteSlug('docs-site')).toBeNull();
+
+    invalidatePublishedSiteConfig('project-1');
+    mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
+      'name' in select ? { ...liveChrome(), takedownAt: new Date('2026-11-01T00:00:00.000Z') } : { id: 'project-1' },
+    );
+    expect(await resolveSiteSlug('docs-site')).toBeNull();
   });
 });
