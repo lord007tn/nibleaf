@@ -5,6 +5,8 @@ import { getInvitationInfoQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
+  // <html lang dir> follows the interface language (lib/root-document.ts).
+  staticData: { interfaceLocale: true },
   loader: ({ context: { queryClient }, params: { invitationId } }) => prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId)),
   // Not under the (auth) layout, so noindex it directly: the URL carries a live
   // invitation token that must never be crawled or indexed. The page sets a

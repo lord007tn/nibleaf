@@ -33,7 +33,11 @@ vi.mock('@nibleaf/i18n/react', async () => {
   const t = (key: Parameters<typeof translateFn>[0], variables?: Parameters<typeof translateFn>[1]) => translateFn(key, variables, mocks.locale);
   return { useT: () => t, useLocale: () => ({ t, locale: mocks.locale, setLocale: vi.fn() }) };
 });
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => mocks.locale, subscribeLanguage: () => () => undefined }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({
+  getLocale: () => mocks.locale,
+  renderedLocale: () => mocks.locale,
+  subscribeLanguage: () => () => undefined,
+}));
 vi.mock('@tanstack/react-router', () => ({
   getRouteApi: () => ({ useSearch: () => mocks.search, useParams: () => ({ projectId: 'p1' }) }),
   useNavigate: () => mocks.navigate,
