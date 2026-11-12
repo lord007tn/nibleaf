@@ -37,6 +37,7 @@ const retryableCodes = new Set([
   'mcp:disabled',
   'mcp:idempotency_in_progress',
   'mcp:publish_in_progress',
+  'publish:busy',
 ]);
 
 const toolContent = (value: McpSuccessEnvelope | McpErrorEnvelope) => [{ type: 'text' as const, text: JSON.stringify(value) }];

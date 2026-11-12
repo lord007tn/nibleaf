@@ -4219,6 +4219,7 @@
   "analytics_status_readsdisabled_title": "جارٍ جمع التحليلات",
   "analytics_status_readsdisabled_body": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "تغيّر موقعك منذ مراجعته. راجع التغييرات مجددًا قبل النشر.",
+  "publish_busy": "يجري حفظ تغيير آخر الآن. حاول النشر مجددًا بعد لحظات.",
   "admin_pagination_first": "الصفحة الأولى",
   "admin_pagination_next": "الصفحة التالية",
   "dashboard_ai_inputtokens": "وحدات النص في الأسئلة",

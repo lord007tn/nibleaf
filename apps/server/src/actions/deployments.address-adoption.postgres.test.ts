@@ -200,6 +200,96 @@ describe.skipIf(process.env.PUBLISH_ADOPTION_POSTGRES !== '1')('publish and firs
     });
   }, 60_000);
 
+  /** Make the current drafts the live version. */
+  const markLive = async (projectId: string) => {
+    const live = await deployments.getCurrentSnapshot(projectId);
+    await db.prisma.deployment.create({
+      data: { projectId, version: 1, status: 'READY', snapshot: live as unknown as import('@nibleaf/database').Prisma.InputJsonValue },
+    });
+  };
+  /** A publish of the current drafts that failed its checks, as "Publish anyway" finds it. */
+  const failedReview = async (projectId: string) => {
+    const deployment = await deployments.createDeployment(projectId, projectId, projectId, {});
+    await db.prisma.deployment.update({ where: { id: deployment.id }, data: { status: 'FAILED', completedAt: new Date() } });
+    return deployment.id;
+  };
+
+  it('Publish anyway refuses a reviewed address the page has left since: live /introduction, reviewed /first, draft /second', async () => {
+    const f = await fixture();
+    await markLive(f.id);
+    expect((await pages.updatePage(f.id, f.titled.id, { slug: 'first' })).path).toBe('first');
+    const reviewedDeploymentId = await failedReview(f.id);
+    expect((await pages.updatePage(f.id, f.titled.id, { slug: 'second' })).path).toBe('second');
+    const before = await db.prisma.deployment.count({ where: { projectId: f.id } });
+    // Published, /first would have no redirect to /second (only /introduction has one).
+    await expect(deployments.createDeployment(f.id, f.id, f.id, { reviewedDeploymentId, skipGrammarChecks: true })).rejects.toMatchObject({
+      code: 'mcp:preview_stale',
+    });
+    expect(await db.prisma.deployment.count({ where: { projectId: f.id } })).toBe(before);
+  }, 60_000);
+
+  it('Publish anyway accepts a reviewed address readers already use: live and reviewed /introduction, draft /second', async () => {
+    const f = await fixture();
+    await markLive(f.id);
+    const reviewedDeploymentId = await failedReview(f.id);
+    expect((await pages.updatePage(f.id, f.titled.id, { slug: 'second' })).path).toBe('second');
+    const deployment = await deployments.createDeployment(f.id, f.id, f.id, { reviewedDeploymentId, skipGrammarChecks: true });
+    expect(await addresses(f.id, deployment.id, f.titled.id)).toEqual({ published: 'introduction', draft: 'second', divergedWithoutRedirect: false });
+  }, 60_000);
+
+  it('Publish anyway accepts a reviewed address that a redirect leads to the current address', async () => {
+    const f = await fixture();
+    const reviewedDeploymentId = await failedReview(f.id);
+    expect((await pages.updatePage(f.id, f.titled.id, { slug: 'second' })).path).toBe('second');
+    // Never live, so the move recorded no redirect; an author added one.
+    await db.prisma.project.update({ where: { id: f.id }, data: { config: { redirects: [{ from: '/introduction', to: '/second' }] } } });
+    const deployment = await deployments.createDeployment(f.id, f.id, f.id, { reviewedDeploymentId, skipGrammarChecks: true });
+    expect(await addresses(f.id, deployment.id, f.titled.id)).toEqual({ published: 'introduction', draft: 'second', divergedWithoutRedirect: false });
+  }, 60_000);
+
+  it('a publish that waits for the project lock past its bound fails with a retryable error, frees its connection, and the next publish succeeds', async () => {
+    const f = await fixture();
+    const bounds = { ...deployments.publishLockBounds };
+    Object.assign(deployments.publishLockBounds, { lockTimeoutMs: 200 });
+    const deferred = () => {
+      let resolve!: () => void;
+      const promise = new Promise<void>((settle) => {
+        resolve = settle;
+      });
+      return { promise, resolve };
+    };
+    const holding = deferred();
+    const released = deferred();
+    // A structural write (a Git apply can hold this for a minute).
+    const holder = db.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${f.id} FOR NO KEY UPDATE`;
+        holding.resolve();
+        await released.promise;
+      },
+      { timeout: 60_000 },
+    );
+    try {
+      await holding.promise;
+      const started = performance.now();
+      const publish = deployments.createDeployment(f.id, f.id, f.id, {}).catch((error: unknown) => error);
+      // A bound on the test, not a synchronisation sleep: the old code waited until the holder ended.
+      const outcome = await Promise.race([publish, new Promise((settle) => setTimeout(() => settle('still waiting'), 5000))]);
+      expect(outcome).toMatchObject({ code: 'publish:busy', status: 409 });
+      expect(performance.now() - started).toBeLessThan(5000);
+      // The publish's session is back in the pool: not waiting, not left in a transaction.
+      const [row] = await db.prisma.$queryRaw<Array<{ busy: number }>>`
+        SELECT count(*)::int AS busy FROM pg_stat_activity
+        WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE '%FOR SHARE%' AND state <> 'idle'`;
+      expect(row?.busy).toBe(0);
+    } finally {
+      released.resolve();
+      await holder;
+      Object.assign(deployments.publishLockBounds, bounds);
+    }
+    expect(await deployments.createDeployment(f.id, f.id, f.id, {})).toMatchObject({ status: 'PENDING' });
+  }, 60_000);
+
   it('a save that does not move a page is not held while a publish reads the drafts', async () => {
     const f = await fixture();
     let during: 'settled' | 'waiting' | undefined;

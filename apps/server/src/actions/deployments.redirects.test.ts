@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   deploymentFindFirst: vi.fn(),
   deploymentUpdateMany: vi.fn(),
   platformEventCreate: vi.fn(),
+  transactionOptions: vi.fn(),
 }));
 
 vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, QueueNames: { PUBLISH: 'publish' } }));
@@ -27,7 +28,10 @@ vi.mock('@nibleaf/database', () => {
     // The publish input is read under the project lock (covered in PostgreSQL
     // by deployments.address-adoption.postgres.test.ts); here it is a no-op.
     $queryRaw: async () => [],
-    $transaction: (work: (tx: unknown) => Promise<unknown>) => work(prisma),
+    $transaction: (work: (tx: unknown) => Promise<unknown>, options?: unknown) => {
+      mocks.transactionOptions(options);
+      return work(prisma);
+    },
   };
   return {
     // The canonical free plan as seeded in production: no entitlement rows.
@@ -38,6 +42,7 @@ vi.mock('@nibleaf/database', () => {
   };
 });
 
+import { Prisma } from '@nibleaf/database';
 import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
 import { createDeployment, getCurrentSnapshot, getPendingChanges, rollbackDeployment } from './deployments';
 
@@ -109,6 +114,31 @@ describe('createDeployment redirect preflight', () => {
     mocks.pageFindMany.mockResolvedValue([page]);
     mocks.deploymentAggregate.mockResolvedValue({ _max: { version: 2 } });
     mocks.deploymentCreate.mockResolvedValue({ id: 'deployment-3', projectId: 'project-1', version: 3, status: 'PENDING' });
+  });
+
+  it('shares one deadline across version-conflict retries, so retries cannot multiply the wait', async () => {
+    const value = project([]);
+    mocks.projectFindFirst.mockResolvedValue(value);
+    mocks.projectFindUnique.mockResolvedValue(value);
+    let now = 1_000_000;
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    // Each attempt takes 20 s and loses its version to a concurrent publish.
+    mocks.deploymentCreate.mockImplementation(async () => {
+      now += 20_000;
+      throw Object.assign(new Prisma.PrismaClientKnownRequestError('version taken', { code: 'P2002', clientVersion: 'test' }), { code: 'P2002' });
+    });
+    try {
+      await expect(createDeployment('org-1', 'project-1', 'user-1', {})).rejects.toMatchObject({ code: 'publish:busy', status: 409 });
+    } finally {
+      clock.mockRestore();
+    }
+    // 30 s in all: the second attempt gets the 10 s left, and there is no third.
+    expect(mocks.deploymentCreate).toHaveBeenCalledTimes(2);
+    expect(mocks.transactionOptions.mock.calls.map(([options]) => options)).toEqual([
+      { maxWait: 2000, timeout: 30_000 },
+      { maxWait: 2000, timeout: 10_000 },
+    ]);
+    expect(mocks.createJob).not.toHaveBeenCalled();
   });
 
   it('fails atomically before version allocation or enqueue when a destination is unpublished', async () => {

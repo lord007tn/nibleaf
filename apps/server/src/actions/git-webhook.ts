@@ -1,11 +1,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
-import { Prisma, prisma } from '@nibleaf/database';
+import { prisma } from '@nibleaf/database';
 import { logger } from '@nibleaf/logger';
 import type { GitConfigStored } from '@nibleaf/validators';
 import { z } from 'zod';
 import { badRequest } from '@/errors';
+import { nextDeploymentVersion, withPublishLock } from './deployments';
 import { importFromGitProvider } from './git-import';
 import { logPlatformEvent } from './platform-events';
 import { readProjectGitSettings, writeProjectSettings } from './project-settings-storage';
@@ -68,7 +69,6 @@ const patchStoredGitConfig = async (projectId: string, patch: Partial<GitConfigS
 };
 
 const MAX_SYNC_ERROR_LENGTH = 300;
-const MAX_VERSION_RETRIES = 5;
 
 /**
  * Enqueue a publish after a successful webhook import, mirroring the dashboard
@@ -84,7 +84,7 @@ const MAX_VERSION_RETRIES = 5;
  * former owners), so it never decides this. No Owner (an org needing repair)
  * means no author; the publish still runs.
  */
-export const webhookPublishAuthor = (organizationId: string) =>
+export const webhookPublishAuthor = (organizationId: string): Promise<{ userId: string } | null> =>
   prisma.member.findFirst({ where: { organizationId, orgRole: 'owner' }, select: { userId: true } });
 
 const enqueueWebhookPublish = async (organizationId: string, projectId: string, branch: string): Promise<void> => {
@@ -94,45 +94,29 @@ const enqueueWebhookPublish = async (organizationId: string, projectId: string, 
   }
   const owner = await webhookPublishAuthor(organizationId);
 
-  // max(version)+1 then create is a read-then-write race; the unique
-  // (projectId, version) constraint turns collisions into P2002s we retry.
-  let deploymentId: string | null = null;
-  let version = 0;
-  for (let attempt = 0; attempt < MAX_VERSION_RETRIES; attempt++) {
-    const last = await prisma.deployment.aggregate({ where: { projectId }, _max: { version: true } });
-    version = (last._max.version ?? 0) + 1;
-    try {
-      // The worker reads the drafts after this row exists. Created under the
-      // project lock like createDeployment's row (FOR SHARE), so a first-title
-      // address adoption in progress commits first, and a later one sees this
-      // PENDING row and keeps the address being published.
-      const deployment = await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR SHARE`;
-        return tx.deployment.create({
-          data: {
-            projectId,
-            version,
-            status: 'PENDING',
-            createdById: owner?.userId ?? null,
-            commitMessage: `Sync from git push (${branch})`,
-          },
-        });
-      });
-      deploymentId = deployment.id;
-      break;
-    } catch (error) {
-      const isVersionConflict = error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
-      if (!isVersionConflict || attempt === MAX_VERSION_RETRIES - 1) {
-        throw error;
-      }
-    }
-  }
-  if (!deploymentId) {
-    return;
-  }
-  const jobData: PublishDeploymentJobData = { deploymentId, projectId, auto: true };
+  // The worker reads the drafts after this row exists. Created under the
+  // project lock like createDeployment's row (withPublishLock: FOR SHARE, the
+  // same bounds, version-conflict retries), so a first-title address adoption
+  // in progress commits first, and a later one sees this PENDING row and keeps
+  // the address being published.
+  const deployment = await withPublishLock(projectId, async (tx) =>
+    tx.deployment.create({
+      data: {
+        projectId,
+        version: await nextDeploymentVersion(tx, projectId),
+        status: 'PENDING',
+        createdById: owner?.userId ?? null,
+        commitMessage: `Sync from git push (${branch})`,
+      },
+    }),
+  );
+  const jobData: PublishDeploymentJobData = { deploymentId: deployment.id, projectId, auto: true };
   await createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData });
-  logPlatformEvent('publish_clicked', { userId: owner?.userId ?? null, projectId, metadata: { auto: true, source: 'git-webhook', version } });
+  logPlatformEvent('publish_clicked', {
+    userId: owner?.userId ?? null,
+    projectId,
+    metadata: { auto: true, source: 'git-webhook', version: deployment.version },
+  });
 };
 
 /**

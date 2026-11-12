@@ -298,6 +298,7 @@ export const MESSAGE_IDS = {
   'analytics.status.readsDisabled.title': 'analytics_status_readsdisabled_title',
   'analytics.status.readsDisabled.body': 'analytics_status_readsdisabled_body',
   'publish.reviewChanged': 'publish_reviewchanged',
+  'publish.busy': 'publish_busy',
   'admin.pagination.first': 'admin_pagination_first',
   'admin.pagination.next': 'admin_pagination_next',
 

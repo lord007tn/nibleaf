@@ -30,6 +30,7 @@ export type ErrorCode =
   | 'mcp:nothing_to_publish'
   | 'mcp:publish_blocked'
   | 'mcp:publish_in_progress'
+  | 'publish:busy'
   | 'validation:failed'
   | 'page:revision_conflict'
   | 'page:address_conflict'
@@ -125,6 +126,8 @@ const ERROR_STATUS = {
   'mcp:nothing_to_publish': 409,
   'mcp:publish_blocked': 409,
   'mcp:publish_in_progress': 409,
+  // A publish gave up waiting for a concurrent change (the project lock); retry shortly.
+  'publish:busy': 409,
   'validation:failed': 422,
   'page:revision_conflict': 409,
   'page:address_conflict': 409,
