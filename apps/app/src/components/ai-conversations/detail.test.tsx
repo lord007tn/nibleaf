@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ detail: vi.fn(), refetch: vi.fn() }));
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', subscribeLanguage: () => () => undefined }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', renderedLocale: () => 'en', subscribeLanguage: () => () => undefined }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn() }));
 vi.mock('@/hooks/api', () => ({ useProjectMembers: () => ({ data: undefined, isError: false }) }));
 vi.mock('@/hooks/api/ai-conversations', () => ({

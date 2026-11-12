@@ -4180,6 +4180,7 @@
   "analytics_status_readsdisabled_title": "Les données statistiques sont collectées",
   "analytics_status_readsdisabled_body": "Le serveur collecte les statistiques. Lorsque la migration est prête, son administrateur peut activer les rapports avec ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Votre site a changé depuis votre vérification. Vérifiez à nouveau les modifications avant de publier.",
+  "publish_busy": "Une autre modification est en cours d’enregistrement. Réessayez de publier dans un instant.",
   "admin_pagination_first": "Première page",
   "admin_pagination_next": "Page suivante",
   "dashboard_ai_inputtokens": "Unités de texte des questions",

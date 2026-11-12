@@ -1,6 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteContentT } from '@nibleaf/i18n/site-content';
 import { Children, isValidElement, type ReactElement, type ReactNode, useId, useRef, useState } from 'react';
+import { ReaderLabel } from './reader-label';
 import { handleTabKeyDown } from './utils';
 
 // ─── CodeGroup (tabbed code blocks) ───────────────────────────────────────────
@@ -18,14 +19,18 @@ export function CodeGroup({ children, language }: { children?: ReactNode; langua
   if (blocks.length === 0) {
     return null;
   }
-  const labelFor = (block: PreElement, index: number): string => {
+  const labelFor = (block: PreElement, index: number): ReactNode => {
     const code = block.props?.children;
     const title = block.props?.['data-title'] ?? code?.props?.['data-title'];
     if (title) {
       return title;
     }
     const codeLanguage = /language-([\w+#-]+)/.exec(code?.props?.className ?? '')?.[1] ?? block.props?.['data-lang'] ?? code?.props?.['data-lang'];
-    return codeLanguage ? codeLanguage.toUpperCase() : `${siteContentT(language)('tab')} ${index + 1}`;
+    return codeLanguage ? (
+      codeLanguage.toUpperCase()
+    ) : (
+      <ReaderLabel language={language}>{`${siteContentT(language)('tab')} ${index + 1}`}</ReaderLabel>
+    );
   };
   return (
     <div className="my-5 overflow-hidden rounded-xl border border-border">

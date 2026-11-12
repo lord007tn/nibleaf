@@ -17,6 +17,7 @@
     "./site-search": "./src/site-search.ts",
     "./marketing": "./src/marketing.ts",
     "./locale-state": "./src/runtime.ts",
+    "./request-locale": "./src/request-locale.ts",
     "./messages": "./src/paraglide/messages.js",
     "./messages/*": "./src/paraglide/messages/*.js",
     "./runtime": "./src/paraglide/runtime.js"

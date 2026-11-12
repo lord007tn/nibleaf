@@ -4181,6 +4181,7 @@
   "analytics_status_readsdisabled_title": "Os dados analíticos estão sendo coletados",
   "analytics_status_readsdisabled_body": "O servidor está coletando dados analíticos. Quando a migração estiver pronta, o administrador poderá ativar os relatórios com ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Seu site mudou desde a revisão. Revise as alterações novamente antes de publicar.",
+  "publish_busy": "Outra alteração está sendo salva. Tente publicar novamente em instantes.",
   "admin_pagination_first": "Primeira página",
   "admin_pagination_next": "Próxima página",
   "dashboard_ai_inputtokens": "Unidades de texto nas perguntas",

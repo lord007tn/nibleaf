@@ -181,6 +181,12 @@ jobs:
           PAGE_ADDRESS_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/pages.address-changes.postgres.test.ts --maxWorkers=1
 
+      - name: Verify a publish and a first-title address adoption never interleave
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PUBLISH_ADOPTION_POSTGRES: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/deployments.address-adoption.postgres.test.ts --maxWorkers=1
+
       - name: Verify the Viewer role cannot change a site
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
@@ -397,6 +403,9 @@ jobs:
         shell: bash
         env:
           APP_URL: https://nibleaf.com
+          # The auth pages load Better Auth, which refuses an empty secret in
+          # production (check-ssr-locale.mjs renders /sign-in and /sign-up).
+          BETTER_AUTH_SECRET: ci-app-runtime-smoke-only-0123456789abcdef
         run: |
           pnpm --filter @nibleaf/app start > /tmp/nibleaf-app-runtime.log 2>&1 &
           app_pid=$!
@@ -421,6 +430,7 @@ jobs:
           grep --fixed-strings --quiet "Nibleaf’s August 2026 source release" /tmp/nibleaf-release-en.html
           grep --fixed-strings --quiet "إصدار مصدر Nibleaf في أغسطس 2026" /tmp/nibleaf-release-ar.html
           node apps/app/scripts/check-marketing-csp.mjs http://127.0.0.1:3000
+          node apps/app/scripts/check-ssr-locale.mjs http://127.0.0.1:3000
           node apps/app/scripts/check-asset-cache.mjs http://127.0.0.1:3000
           test "$(curl --connect-timeout 2 --max-time 10 --silent --output /dev/null --write-out '%{http_code}' --header 'Host: nibleaf.com' 'http://127.0.0.1:3000/%E0%A4%A')" = 400
 

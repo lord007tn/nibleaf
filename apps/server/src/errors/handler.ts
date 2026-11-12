@@ -37,6 +37,7 @@ export const errorMiddleware =
   (err: Error, ctx: Context): Response => {
     if (err instanceof AppError) {
       if (err.code === 'import:busy') ctx.header('Retry-After', '10');
+      if (err.code === 'publish:busy') ctx.header('Retry-After', '5');
       if (err.status >= 500) {
         logger.error({ err, code: err.code }, 'AppError (server)');
       } else {

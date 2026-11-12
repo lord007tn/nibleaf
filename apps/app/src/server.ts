@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import { requestInterfaceLocale, withInterfaceLocale } from '@nibleaf/i18n/request-locale';
 import { clientIpFromForwardedFor } from '@nibleaf/shared/client-ip';
 import {
   canonicalPathFromMarkdownAlias,
@@ -615,9 +616,17 @@ const APP_SECURITY_HEADERS = {
   'X-Frame-Options': 'SAMEORIGIN',
 } as const;
 
+/** HTML rendered in the visitor's interface locale depends on the locale cookie
+ *  and Accept-Language. It is already `private, no-store`; the Vary keeps any
+ *  cache that ignores that from serving it to a visitor in another language. */
+const varyOnInterfaceLocale = (headers: Headers): void => {
+  appendVary(headers, 'Cookie');
+  appendVary(headers, 'Accept-Language');
+};
+
 /** Custom server responses bypass Nitro route rules, so apply the same baseline
  *  here as a final wrapper. Preserve any stricter route-specific value. */
-async function withSecurityHeaders(response: Response | Promise<Response>, nonce: string): Promise<Response> {
+async function withSecurityHeaders(response: Response | Promise<Response>, nonce: string, localized: boolean): Promise<Response> {
   const res = await response;
   try {
     res.headers.set('x-nibleaf-revision', REVISION);
@@ -635,6 +644,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
       // A CSP nonce must be unique each time the policy is transmitted. Never
       // allow an intermediary to replay HTML and its nonce from a shared cache.
       res.headers.set('cache-control', 'private, no-store');
+      if (localized) varyOnInterfaceLocale(res.headers);
       return encodePublicRouteManifestResponse(res);
     }
     return res;
@@ -653,6 +663,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
       wrapped.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
       if (nonce === '') return marketingHashResponse(encodePublicRouteManifestResponse(wrapped));
       wrapped.headers.set('cache-control', 'private, no-store');
+      if (localized) varyOnInterfaceLocale(wrapped.headers);
       return encodePublicRouteManifestResponse(wrapped);
     }
     return wrapped;
@@ -911,6 +922,20 @@ const crawlerProjectForRequest = async (request: Request): Promise<string | null
   return resolveHost(bare);
 };
 
+/** A marketing page, or its Markdown alias. Its language comes from the URL
+ *  (/ar), and its HTML and Markdown are shared-cached. */
+const MARKETING_DOCUMENT_PATHS = new Set(marketingSitemapEntries().map((entry) => entry.path));
+const isMarketingDocumentPath = (pathname: string): boolean => MARKETING_DOCUMENT_PATHS.has(canonicalPathFromMarkdownAlias(pathname) ?? pathname);
+
+/** A published reader document: any page on a custom domain, or /sites/:id on
+ *  the dashboard origin. It renders in each page's own language (#474, #481). */
+const isPublishedReaderRequest = (request: Request, url: URL): boolean => {
+  const host = effectiveRequestHost(request, url);
+  const bare = host.split(':')[0] ?? '';
+  if (ownHosts.has(host) || ownHosts.has(bare)) return /^\/sites\/[^/]/u.test(url.pathname);
+  return true;
+};
+
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   if (new URL(request.url).pathname === '/health') {
     if (existsSync(DRAIN_FILE)) {
@@ -947,21 +972,31 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
     marketingSitemapEntries().some((entry) => entry.path === url.pathname);
   const nonce = marketing ? '' : randomBytes(18).toString('base64');
   const renderRequest = marketing && request.method === 'HEAD' ? new Request(request.url, { method: 'GET', headers: request.headers }) : request;
-  return ssrNonce.run(nonce, async () =>
-    withoutHeadBody(
-      await withSecurityHeaders(
-        observeCrawlerResponse(
-          request,
-          // The page route's internal Markdown flag never leaves the server,
-          // whichever path rendered the page (cloud origin, dotted paths, …).
-          Promise.resolve(handleRequestInner(renderRequest, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
-          crawlerProjectForRequest,
+  // Product pages (auth, dashboard, invitations) render in the visitor's
+  // interface language: the locale cookie, then Accept-Language, as the browser
+  // resolves it, so hydration never switches language or direction. The locale
+  // is scoped to this request. Marketing pages take their language from the URL
+  // and are shared-cached, and a published reader renders each page's own
+  // language, so both keep the base locale, as before.
+  const interfaceLocale = isMarketingDocumentPath(url.pathname) || isPublishedReaderRequest(request, url) ? null : requestInterfaceLocale(request);
+  const respond = () =>
+    ssrNonce.run(nonce, async () =>
+      withoutHeadBody(
+        await withSecurityHeaders(
+          observeCrawlerResponse(
+            request,
+            // The page route's internal Markdown flag never leaves the server,
+            // whichever path rendered the page (cloud origin, dotted paths, …).
+            Promise.resolve(handleRequestInner(renderRequest, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
+            crawlerProjectForRequest,
+          ),
+          nonce,
+          interfaceLocale !== null,
         ),
-        nonce,
+        request.method,
       ),
-      request.method,
-    ),
-  );
+    );
+  return interfaceLocale ? withInterfaceLocale(interfaceLocale, url.origin, respond) : respond();
 };
 
 export default createServerEntry({ fetch: handleRequest });

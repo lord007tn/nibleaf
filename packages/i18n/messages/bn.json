@@ -4114,6 +4114,7 @@
   "analytics_status_readsdisabled_title": "অ্যানালিটিক্স সংগ্রহ করা হচ্ছে",
   "analytics_status_readsdisabled_body": "সার্ভার অ্যানালিটিক্স সংগ্রহ করছে। স্থানান্তর প্রস্তুত হলে প্রশাসক ANALYTICS_MODE=clickhouse দিয়ে প্রতিবেদন চালু করতে পারেন।",
   "publish_reviewchanged": "পর্যালোচনার পর আপনার সাইট বদলেছে। প্রকাশের আগে পরিবর্তনগুলো আবার পর্যালোচনা করুন।",
+  "publish_busy": "আরেকটি পরিবর্তন সংরক্ষণ করা হচ্ছে। একটু পরে আবার প্রকাশ করার চেষ্টা করুন।",
   "admin_pagination_first": "প্রথম পৃষ্ঠা",
   "admin_pagination_next": "পরের পৃষ্ঠা",
   "dashboard_ai_inputtokens": "প্রশ্নে টেক্সট ইউনিট",
