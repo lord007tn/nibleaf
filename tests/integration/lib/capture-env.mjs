@@ -82,6 +82,16 @@ export async function acquireDevstackLock(owner, { onInterrupt } = {}) {
       detach();
       releaseNow();
     },
+    /**
+     * Leave the lock in place on purpose (e.g. teardown left services running):
+     * the exit and interrupt handlers are detached, so nothing removes it on the
+     * way out, and a later `release()` does nothing. Remove it by hand once the
+     * services are stopped.
+     */
+    keep: () => {
+      detach();
+      held = false;
+    },
   };
 }
 

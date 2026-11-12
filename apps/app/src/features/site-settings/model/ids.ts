@@ -21,7 +21,7 @@ export const SECTION_IDS = [
   'openapi',
   'contentImport',
   'exports',
-  'smartAi',
+  'ai',
   'apiKeys',
   'integrations',
   'members',
@@ -48,7 +48,7 @@ const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', varia
 >;
 
 /** Sections that were renamed or folded into another. */
-const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { analytics: 'integrations' };
+const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { analytics: 'integrations', smartAi: 'ai' };
 
 const includes = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
 const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);

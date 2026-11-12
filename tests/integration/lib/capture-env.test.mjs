@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { allowedHostKey, hostKey, localOnlyBrowserArgs } from './capture-env.mjs';
+import { acquireDevstackLock, allowedHostKey, hostKey, localOnlyBrowserArgs } from './capture-env.mjs';
 
 // The guard's behaviour in a real browser (redirects, WebSockets, prefetch,
 // favicons, harness routes) is covered by capture-network.browser.mjs.
@@ -45,5 +48,44 @@ describe('host keys', () => {
     assert.throws(() => allowedHostKey('localhost'), /hostname:port/);
     assert.throws(() => allowedHostKey('0.0.0.0:4310'), /every interface/);
     assert.throws(() => allowedHostKey('http://localhost:4310'), /hostname:port/);
+  });
+});
+
+describe('the dev-stack lock', () => {
+  const listeners = () => ['exit', 'SIGINT', 'SIGTERM'].map((event) => process.listenerCount(event));
+  const withLockPath = async (fn) => {
+    const dir = mkdtempSync(join(tmpdir(), 'devstack-lock-test-'));
+    const previous = process.env.NIBLEAF_DEVSTACK_LOCK;
+    process.env.NIBLEAF_DEVSTACK_LOCK = join(dir, 'editor-devstack.lock');
+    try {
+      await fn(process.env.NIBLEAF_DEVSTACK_LOCK);
+    } finally {
+      if (previous === undefined) delete process.env.NIBLEAF_DEVSTACK_LOCK;
+      else process.env.NIBLEAF_DEVSTACK_LOCK = previous;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  it('release() removes the lock and its handlers', async () => {
+    await withLockPath(async (path) => {
+      const before = listeners();
+      const lock = await acquireDevstackLock('test');
+      assert.ok(existsSync(path));
+      await lock.release();
+      assert.equal(existsSync(path), false);
+      assert.deepEqual(listeners(), before);
+    });
+  });
+
+  it('keep() leaves the lock in place: no handler removes it on exit, and release() does nothing', async () => {
+    await withLockPath(async (path) => {
+      const before = listeners();
+      const lock = await acquireDevstackLock('test');
+      assert.notDeepEqual(listeners(), before);
+      lock.keep();
+      assert.deepEqual(listeners(), before);
+      await lock.release();
+      assert.ok(existsSync(path));
+    });
   });
 });
