@@ -29,6 +29,12 @@ describe.runIf(growthTestsEnabled)('reader embed growth', () => {
     linear(rewriteReaderEmbeds, sizes('<iframe src={{{{{{{{ ', 20_000));
   });
 
+  it('rewrites many complete iframe openers with no closer in linear time', () => {
+    linear(rewriteReaderEmbeds, sizes('<iframe src="https://youtu.be/x">text ', 20_000));
+    linear(rewriteReaderEmbeds, sizes('<iframe src="https://youtu.be/x"></ifram </iframe x ', 20_000));
+    linear(normalizeMdxBlocks, sizes('<iframe src="https://youtu.be/x">\n', 5000));
+  });
+
   it('rewrites many video tags without a close in linear time', () => {
     linear(rewriteReaderEmbeds, sizes('<video controls src="https://cdn.example.com/a.mp4" ', 20_000));
     linear(rewriteReaderEmbeds, sizes('<video\n  controls\n', 20_000));

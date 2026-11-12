@@ -43,7 +43,8 @@ const decode = (value: string): string => value.replace(ENTITY, (entity) => ENTI
 const escapeAttribute = (value: string): string =>
   value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
-type Scan = { end: number; attributes: Map<string, string> };
+/** A tag read to its `>`: where it ends, its attributes, and whether it ended with `/>`. */
+type Scan = { end: number; attributes: Map<string, string>; selfClosing: boolean };
 
 /** A quoted value from `start` (the opening quote): its text and the index after the closing quote. */
 const quoted = (text: string, start: number, limit: number): { value: string; end: number } | null => {
@@ -83,14 +84,18 @@ const readTag = (text: string, from: number): Scan | null => {
   const attributes = new Map<string, string>();
   const limit = Math.min(text.length, from + MAX_TAG_LENGTH);
   let index = from;
+  // Whether the last thing read was a lone `/` (only whitespace since), so `/>` ends a self-closing tag.
+  let slash = false;
   while (index < limit) {
     const char = text[index];
-    if (char === '>') return { end: index + 1, attributes };
+    if (char === '>') return { end: index + 1, attributes, selfClosing: slash };
     if (char === '<') return null;
     if (isSpace(char) || char === '/') {
+      if (char === '/') slash = true;
       index++;
       continue;
     }
+    slash = false;
     if (char === '{') {
       // A JSX spread (`{...props}`): read past it, keep nothing.
       const spread = expression(text, index, limit);
@@ -133,14 +138,30 @@ const opens = (text: string, at: number, opener: string): boolean => {
   return isSpace(after) || after === '>' || after === '/';
 };
 
-/** Where an immediately following `</iframe>` ends (only whitespace between), else `from`. */
-const afterCloser = (text: string, from: number): number => {
-  let index = from;
-  while (index < text.length && isSpace(text[index])) index++;
-  if (text.slice(index, index + CLOSER.length).toLowerCase() !== CLOSER) return from;
-  index += CLOSER.length;
-  while (index < text.length && isSpace(text[index])) index++;
-  return text[index] === '>' ? index + 1 : from;
+/**
+ * Finds `</iframe …>` closers (any case) at or after a position, for positions
+ * that only grow: the last answer is reused while it still lies ahead, and a
+ * new search starts after it, so each character is read once per scan.
+ */
+const closerFinder = (text: string) => {
+  let found = -2; // not searched yet
+  let searchedFrom = 0;
+  /** Where the first closer at or after `from` ends (past its `>`), or -1 when none follows. */
+  return (from: number): number => {
+    if (found === -1 && from >= searchedFrom) return -1;
+    if (found >= from) return found;
+    searchedFrom = from;
+    for (let at = text.indexOf('</', from); at >= 0; at = text.indexOf('</', at + 2)) {
+      if (text.slice(at, at + CLOSER.length).toLowerCase() !== CLOSER) continue;
+      let index = at + CLOSER.length;
+      while (index < text.length && isSpace(text[index])) index++;
+      if (text[index] !== '>') continue;
+      found = index + 1;
+      return found;
+    }
+    found = -1;
+    return -1;
+  };
 };
 
 const clip = (value: string | undefined, length: number): string => (value ?? '').replace(/\s+/g, ' ').trim().slice(0, length);
@@ -165,13 +186,18 @@ const readerEmbedElement = (attributes: ReadonlyMap<string, string>): string => 
 const oneLine = (tag: string): string => tag.replace(/\s+/g, ' ');
 
 /**
- * Rewrite every complete `<iframe …>` (with an adjacent `</iframe>`, if any) in
- * prose, and put every complete `<video …>` opener on one line: written over
+ * Rewrite every complete `<iframe …>…</iframe>` (or self-closing `<iframe … />`)
+ * in prose, and put every complete `<video …>` opener on one line: written over
  * several lines (Mintlify's form), its lone `>` line would start a blockquote and
  * the video would render as text. The sanitizer decides what a video keeps.
+ *
+ * What sits between an iframe's tags is never shown (a browser reads it as text
+ * and doesn't render it), so it is dropped with the iframe: a link in it must not
+ * start to render. An iframe with no closer is left as written, as before.
  */
 export const rewriteReaderEmbeds = (text: string): string => {
   if (!text.includes('<')) return text;
+  const closerEnd = closerFinder(text);
   let output = '';
   let kept = 0;
   for (let at = text.indexOf('<'); at >= 0; at = text.indexOf('<', at + 1)) {
@@ -179,7 +205,8 @@ export const rewriteReaderEmbeds = (text: string): string => {
     if (!iframe && !opens(text, at, VIDEO_OPENER)) continue;
     const tag = readTag(text, at + (iframe ? OPENER : VIDEO_OPENER).length);
     if (!tag) continue;
-    const end = iframe ? afterCloser(text, tag.end) : tag.end;
+    const end = iframe && !tag.selfClosing ? closerEnd(tag.end) : tag.end;
+    if (end < 0) continue;
     output += text.slice(kept, at) + (iframe ? readerEmbedElement(tag.attributes) : oneLine(text.slice(at, end)));
     kept = end;
     at = end - 1;

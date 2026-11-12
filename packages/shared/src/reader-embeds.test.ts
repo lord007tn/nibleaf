@@ -139,6 +139,26 @@ describe('normalizeMdxBlocks rewrites authored iframes', () => {
     }
   });
 
+  it('drops what sits between an iframe’s tags, which a browser never shows', () => {
+    const content = `<iframe src="https://youtu.be/${YT}" title="Tour">\n\n[Hidden](/hidden) <a href="/hidden-anchor">x</a> <iframe src="https://evil.example/">\n\n</IFRAME >\n\n[Visible](/visible)`;
+    expect(rewriteReaderEmbeds(content)).toBe(`<mdxembed provider="youtube" videoid="${YT}" title="Tour"></mdxembed>\n\n[Visible](/visible)`);
+    const links = elements(render(content), 'a').map((link) => link.properties?.href);
+    expect(links).toEqual(['/visible']);
+  });
+
+  it('leaves an iframe with no closer as written, which the sanitizer drops', () => {
+    const unclosed = `<iframe src="https://youtu.be/${YT}">\n\nAfter`;
+    expect(rewriteReaderEmbeds(unclosed)).toBe(unclosed);
+    expect(elements(render(unclosed), 'mdxembed')).toEqual([]);
+    expect(elements(render(unclosed), 'iframe')).toEqual([]);
+  });
+
+  it('reads a self-closing JSX iframe as complete', () => {
+    expect(rewriteReaderEmbeds(`<iframe src="https://youtu.be/${YT}" />\n\n[Visible](/visible)`)).toBe(
+      `<mdxembed provider="youtube" videoid="${YT}"></mdxembed>\n\n[Visible](/visible)`,
+    );
+  });
+
   it('is idempotent', () => {
     const once = normalizeMdxBlocks(MINTLIFY_PAGE);
     expect(normalizeMdxBlocks(once)).toBe(once);
