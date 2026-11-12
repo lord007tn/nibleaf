@@ -33,7 +33,13 @@ describe('MCP OAuth request on dashboard pages', () => {
 describe('consent summary', () => {
   it('says a read-only connection cannot change anything', () => {
     const { can, cannot } = consentLines(MCP_PRESET_SCOPES.read_only);
-    expect(can).toEqual(['oauth.consent.can.read', 'oauth.consent.can.deployments', 'oauth.consent.can.analytics']);
+    // Read only includes saved Ask AI conversations, so the page says so.
+    expect(can).toEqual([
+      'oauth.consent.can.read',
+      'oauth.consent.can.deployments',
+      'oauth.consent.can.analytics',
+      'oauth.consent.can.aiConversations',
+    ]);
     expect(cannot).toEqual(['oauth.consent.cannot.change', 'oauth.consent.cannot.other']);
   });
 

@@ -398,3 +398,18 @@ it('localizes the compact checklist permission failure in Arabic and uses Englis
     expect(loadCatalog(code).overview_nudge_permissionserror).toBe(english);
   }
 });
+
+it('never promises that saved Ask AI conversations are anonymized, in any locale', () => {
+  // Redaction removes emails, phone-like numbers, long digit runs, keys and URL
+  // queries; names and street addresses pass through, so consent must say so.
+  const english = loadCatalog('en');
+  const key = 'oauth_consent_can_aiconversations';
+  expect(english[key]).toMatch(/may remain/);
+  expect(english[key]).not.toMatch(/personal details removed|anonymi[sz]/i);
+  expect(loadCatalog('ar')[key]).toContain('قد تبقى');
+  for (const { code } of INTERFACE_LOCALES) {
+    const value = loadCatalog(code)[key];
+    expect(value, code).toBeTruthy();
+    if (code !== 'en') expect(value, code).not.toBe(english[key]);
+  }
+});

@@ -5,12 +5,13 @@ import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import type { MessageKey } from '@nibleaf/i18n';
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale, useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
 import { CircleCheck, PenLine } from 'lucide-react';
 import { useId, useMemo } from 'react';
 import type { PublishCheck } from '@/hooks/api/types';
 import { useFormatters } from '@/lib/format';
+import { languageName } from '@/lib/language-name';
 
 type CheckCode = PublishCheck['code'];
 
@@ -28,6 +29,8 @@ const CHECK_META: Record<CheckCode, { title: MessageKey; hint: MessageKey; order
   'duplicate-title': { title: 'publish.checks.duplicateTitle', hint: 'publish.checks.duplicateTitleHint', order: 9 },
   'stray-characters': { title: 'publish.checks.strayCharacters', hint: 'publish.checks.strayCharactersHint', order: 10 },
   'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 11 },
+  'home-untranslated': { title: 'publish.checks.homeUntranslated', hint: 'publish.checks.homeUntranslatedHint', order: 12 },
+  'blog-root-group': { title: 'publish.checks.blogRootGroup', hint: 'publish.checks.blogRootGroupHint', order: 13 },
 };
 
 /** One row per page and check: a page with three broken links is one thing to fix. */
@@ -121,7 +124,10 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
       ) : (
         <>
           <Callout className="py-2.5" title={summary.filter(Boolean).join(' · ')} tone={errors ? 'danger' : 'warning'} />
-          <ScrollArea className="max-h-72 rounded-xl border border-border">
+          {/* The height limit goes on the viewport: on the root, the viewport's
+              100% height can't resolve against a max-height, so a long list ran
+              past the border instead of scrolling. */}
+          <ScrollArea className="rounded-xl border border-border [&>[data-slot=scroll-area-viewport]]:max-h-72">
             <div className="divide-y divide-border">
               {groups.map((group) => {
                 const meta = CHECK_META[group.code];
@@ -188,13 +194,45 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
   );
 }
 
+/** A `home-untranslated` detail: JSON from the server's check. */
+const homeLanding = (detail: string): { language: string; landing: string; key: string | null; path: string } => {
+  try {
+    const parsed = JSON.parse(detail) as Partial<{ language: string; landing: string; key: string | null; path: string }>;
+    return { language: parsed.language ?? '', landing: parsed.landing ?? '', key: parsed.key ?? null, path: parsed.path ?? '' };
+  } catch {
+    return { language: detail, landing: '', key: null, path: '' };
+  }
+};
+
 /** The evidence under a row: the broken links, image sources or stray text,
  *  read left to right as code; or, for a duplicate, the other page. */
 function CheckDetails({ code, details, tooLong = [] }: { code: CheckCode; details: string[]; tooLong?: string[] }) {
-  const t = useT();
+  const { locale, t } = useLocale();
   if (details.length === 0 || code === 'unreadable-slug') return null;
   if (code === 'duplicate-title') {
     return <span>{t('publish.checks.duplicateOf', { path: `/${details[0] ?? ''}` })}</span>;
+  }
+  if (code === 'home-untranslated') {
+    // Who lands where instead of on a translation of this page, and the exact
+    // change that sends them to one.
+    return (
+      <span className="flex flex-col gap-0.5">
+        {details.map((detail) => {
+          const landing = homeLanding(detail);
+          const language = languageName(landing.language, undefined, locale);
+          return (
+            <span className="flex flex-col gap-0.5" key={detail}>
+              <span>{t('publish.checks.homeUntranslatedLanding', { language, title: landing.landing })}</span>
+              <span>
+                {landing.key
+                  ? t('publish.checks.homeUntranslatedFixKey', { language, key: landing.key })
+                  : t('publish.checks.homeUntranslatedFixPath', { language, path: `/${landing.path}` })}
+              </span>
+            </span>
+          );
+        })}
+      </span>
+    );
   }
   return (
     <span className="flex flex-wrap gap-1.5">

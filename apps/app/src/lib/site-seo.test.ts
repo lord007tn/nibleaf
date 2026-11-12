@@ -492,6 +492,7 @@ describe('siteHead analytics scripts', () => {
   it('titles a private or unpublished site in the requested language, never indexed', () => {
     expect(unavailableSiteHead('private', 'ar').meta).toEqual([{ title: 'هذا التوثيق خاص' }, { name: 'robots', content: 'noindex,nofollow' }]);
     expect(unavailableSiteHead(undefined).meta?.[0]).toEqual({ title: 'Not published yet' });
+    expect(unavailableSiteHead('missing', 'ar').meta?.[0]).toEqual({ title: 'لا يوجد موقع على هذا العنوان' });
   });
 
   it('advertises the project name as og:site_name, localized by the active language', () => {

@@ -246,6 +246,58 @@ async function resolveHost(host: string): Promise<string | null> {
   }
 }
 
+/** A site slug is a DNS label (`projectSlug` in @nibleaf/validators): anything
+ *  else can't name a site, so it is answered without a lookup or a cache entry. */
+const SITE_SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/;
+/** Slug answers kept at once. Least recently used first out; expired entries go when read. */
+const SLUG_CACHE_LIMIT = 1000;
+const slugCache = new Map<string, { projectId: string | null; at: number }>();
+
+const rememberSlug = (slug: string, projectId: string | null): void => {
+  slugCache.delete(slug);
+  slugCache.set(slug, { projectId, at: Date.now() });
+  while (slugCache.size > SLUG_CACHE_LIMIT) {
+    const oldest = slugCache.keys().next().value;
+    if (oldest === undefined) break;
+    slugCache.delete(oldest);
+  }
+};
+
+/** The public, live site whose slug is `slug` (`/sites/<slug>` written by hand,
+ *  or copied from the dashboard), or null. Only a definite answer from the API
+ *  is cached; a failed lookup is tried again next time. */
+export async function resolveSiteSlug(slug: string): Promise<string | null> {
+  if (!SITE_SLUG.test(slug)) return null;
+  const hit = slugCache.get(slug);
+  if (hit) {
+    if (Date.now() - hit.at < TTL) {
+      // Read again: move it to the most recently used end.
+      slugCache.delete(slug);
+      slugCache.set(slug, hit);
+      return hit.projectId;
+    }
+    slugCache.delete(slug);
+  }
+  try {
+    const response = await got(`${SELF}/api/public/domains/slug?slug=${encodeURIComponent(slug)}`, {
+      headers: internalRequestHeaders(),
+      responseType: 'json',
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+    });
+    const parsed = z.object({ data: z.object({ projectId: z.string().nullable().optional() }).optional() }).safeParse(response.body);
+    if (!response.ok || !parsed.success) return null;
+    const projectId = parsed.data.data?.projectId ?? null;
+    rememberSlug(slug, projectId);
+    return projectId;
+  } catch {
+    return null;
+  }
+}
+
+/** For tests: how many slug answers are kept. */
+export const slugCacheSize = (): number => slugCache.size;
+
 // ─── Published-site metadata (privacy + primary domain) ──────────────────────
 
 /** What the edge needs to know about a published site: whether its HTML may be
@@ -710,6 +762,9 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
 
   // Stable `.md` aliases render the same published/marketing document as the
   // canonical HTML path. `/pricing.md` remains its dedicated product artifact.
+  // The path as the reader asked for it, before the alias below rewrites it:
+  // a redirect keeps the representation they asked for (`/guide.md` stays `.md`).
+  const requestedPathname = url.pathname;
   const markdownAliasCanonical = isGetLike && url.pathname !== '/pricing.md' ? canonicalPathFromMarkdownAlias(url.pathname) : null;
   let routedRequest = request;
   if (markdownAliasCanonical) {
@@ -848,6 +903,30 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
           // domain itself the request is a custom-domain request, not this branch.
           if (meta?.primaryDomain && meta.primaryDomain !== bare) {
             return Response.redirect(`https://${meta.primaryDomain}${siteMatch[2] || '/'}${url.search}`, 301);
+          }
+          // `/sites/<slug>`: the site's name in the address rather than its id
+          // (what the dashboard showed before, and what people type). Send it to
+          // the site; from there its primary domain, if any, takes over.
+          if (!meta) {
+            let slug = siteMatch[1];
+            try {
+              slug = decodeURIComponent(slug);
+            } catch {
+              // A malformed escape is looked up as written (and matches no slug).
+            }
+            const projectId = await resolveSiteSlug(slug.toLowerCase());
+            if (projectId && projectId !== siteMatch[1]) {
+              // Everything after the slug as the reader wrote it, `.md` included.
+              const slugPrefix = `/sites/${siteMatch[1]}`;
+              const suffix = requestedPathname.startsWith(slugPrefix) ? requestedPathname.slice(slugPrefix.length) : (siteMatch[2] ?? '');
+              // Relative, so the browser keeps the scheme and host it used (behind a
+              // TLS proxy the server's own URL may say otherwise). Not cached: a slug
+              // can be renamed and then taken by another site.
+              return new Response(null, {
+                status: 301,
+                headers: { location: `/sites/${projectId}${suffix}${url.search}`, 'cache-control': 'no-store' },
+              });
+            }
           }
           return renderHtml(routedRequest);
         }

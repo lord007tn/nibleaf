@@ -25,6 +25,7 @@
         "tests/integration/editor-paste-and-title/browser.mjs",
         "tests/integration/reader-video-embeds/capture.mjs",
         "tests/integration/overview-first-publish/browser.mjs",
+        "tests/integration/site-owner-addresses/browser.mjs",
         "tests/integration/ssr-locale-direction/capture.mjs"
       ]
     },
@@ -36,7 +37,8 @@
       "entry": [
         "scripts/delete-inbound-links.fixture.tsx",
         "scripts/editor-paste-and-title.fixture.tsx",
-        "scripts/overview-first-publish.fixture.tsx"
+        "scripts/overview-first-publish.fixture.tsx",
+        "scripts/site-owner-addresses.fixture.tsx"
       ]
     },
     "packages/database": {
