@@ -115,7 +115,8 @@ try {
             languageCode: 'en',
             title: 'Welcome',
             path: 'welcome',
-            detail: `ar|${ar ? 'كيف نضيف وسماً' : 'كيف نضيف وسماً'}`,
+            // As the server sends it: where Arabic readers land, and the home page's key and path.
+            detail: JSON.stringify({ language: 'ar', landing: 'كيف نضيف وسماً', key: 'welcome', path: 'welcome' }),
           },
           { code: 'blog-root-group', severity: 'warning', pageId: 'blog', languageCode: 'en', title: 'Blog', path: 'blog', detail: '' },
         ];
@@ -203,7 +204,8 @@ try {
               viewport.scrollTop = viewport.scrollHeight;
               const bounds = area.getBoundingClientRect();
               const row = last.getBoundingClientRect();
-              return { before, after: viewport.scrollTop, lastVisible: row.top >= bounds.top && row.bottom <= bounds.bottom + 1 };
+              // The end of the last warning shows inside the border (the warning itself can be taller than the box).
+              return { before, after: viewport.scrollTop, lastVisible: row.bottom > bounds.top && row.bottom <= bounds.bottom + 1 };
             });
             assert.ok(scrolled && scrolled.after > scrolled.before, `${name}: the list scrolls (${JSON.stringify(scrolled)})`);
             assert.ok(scrolled.lastVisible, `${name}: the last warning comes into view (${JSON.stringify(scrolled)})`);
