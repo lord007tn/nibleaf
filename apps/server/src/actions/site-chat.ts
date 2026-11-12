@@ -49,7 +49,7 @@ import { type ChatTurnHold, extendChatTurn, releaseChatTurn, reserveChatTurn, se
 import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
 import { readerChatPolicy, recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
-import { consumeAnswerQuota } from '@/lib/ai-search/quota';
+import { consumeAnswerQuota, recordAnswerServed } from '@/lib/ai-search/quota';
 import { type ChatRetrieval, resolveChatRuntime, retrieveChatLanguages } from '@/lib/ai-search/runtime';
 import { envExtras } from '@/lib/env-extras';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -156,6 +156,8 @@ type ProviderCall = 'condense' | 'generation' | 'follow_ups';
 
 interface TurnOutcome {
   status: AiConversationTurnStatus;
+  /** When the reader took the checked final event: the answer's completion time. */
+  finalAt?: Date;
   noAnswerReason?: AiChatNoAnswerReason;
   answer?: string;
   rewrittenQuery?: string;
@@ -564,6 +566,10 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       language,
       limits: { turnsRemaining: reservation.turnsRemaining, quotaRemaining: quota.remaining },
     } satisfies AiChatFinalEvent);
+    // Resumed only when the stream asks for more, i.e. the reader took the final event. A
+    // reader who leaves while it is still queued ends the turn at the yield above, so the
+    // turn is not counted as a completed answer.
+    outcome.finalAt = new Date();
     const { questions: followUps } = await suggesting;
     if (followUps.length) yield custom(AI_CHAT_EVENT.followUps, { turnId, questions: followUps } satisfies AiChatFollowUpsEvent);
     yield { type: EventType.RUN_FINISHED, threadId, runId, finishReason: 'stop', timestamp: Date.now() };
@@ -658,6 +664,9 @@ const finishTurn = async ({
   await settleChatSpend(projectId, body.conversationId, reservation, chargedTokens).catch(() =>
     log.warn({ projectId }, 'AI chat spend could not be recorded'),
   );
+  // Counted on the day the reader got it (suggestions can settle after midnight UTC),
+  // and not at all if the reader left before the final event.
+  if (outcome.finalAt && (outcome.status === 'answered' || outcome.status === 'no_answer')) await recordAnswerServed(projectId, outcome.finalAt);
 
   // Estimated totals stay out of analytics events, which carry reported facts
   // only, and they report the answer model's usage, the model they name.

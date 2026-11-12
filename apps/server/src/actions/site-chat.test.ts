@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   release: vi.fn(),
   settle: vi.fn(),
   quota: vi.fn(),
+  served: vi.fn(async () => undefined),
   recordTurn: vi.fn(),
   recordFeedback: vi.fn(),
   // Whether this instance can archive question text (see readerChatPolicy below).
@@ -42,7 +43,7 @@ vi.mock('@/lib/ai-search/chat-budget', () => ({
   releaseChatTurn: mocks.release,
   settleChatSpend: mocks.settle,
 }));
-vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota }));
+vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota, recordAnswerServed: mocks.served }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({
   recordAiChatTurn: mocks.recordTurn,
   recordAiChatFeedback: mocks.recordFeedback,
@@ -324,6 +325,9 @@ describe('reader AI chat stream', () => {
     // The page the reader asked from is passed as a narrowing hint only.
     expect(mocks.retrieve.mock.calls[0]?.[4]).toMatchObject({ page: { id: 'page-1', title: 'Install' } });
     await settle();
+    // A completed answer counts toward today's answers shown on the AI answers page.
+    // Counted at the time its final event went out, so a turn finishing near midnight UTC counts on that day.
+    expect(mocks.served).toHaveBeenCalledWith('project-1', expect.any(Date));
     // The turn reserved the most it can read and write before it ran, measured
     // from the prompts it sends (the reader's page included), then settles to what
     // the answer and suggestion calls spent. One short source fits the least
@@ -451,10 +455,12 @@ describe('reader AI chat stream', () => {
         model: 'openai/test-answer-model',
       }),
     });
+    const started = performance.now();
     const reader = (await chatSite('project-1', body())).body?.getReader();
     if (!reader) throw new Error('expected a stream');
     // The final answer arrives while the suggestions call is still running.
     const first = await readUntil(reader, (text) => text.includes(AI_CHAT_EVENT.final));
+    const answeredMs = performance.now() - started;
     expect(first).toContain(AI_CHAT_EVENT.final);
     expect(first).not.toContain('RUN_FINISHED');
     expect(mocks.suggest.mock.calls[0]?.[0]).toMatchObject({ answer: 'Run the installer. [S1]' });
@@ -466,8 +472,10 @@ describe('reader AI chat stream', () => {
     expect(rest).not.toContain(AI_CHAT_EVENT.followUps);
     for (let i = 0; i < 3; i++) await settle();
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'follow_ups' }));
+    // The recorded latency ends with the answer: no longer than this test saw the
+    // answer take (plus rounding), so the 250 ms the suggestions took is not in it.
     const latencyMs = Number(mocks.recordTurn.mock.calls.at(-1)?.[0].latencyMs);
-    expect(latencyMs).toBeLessThan(250);
+    expect(latencyMs).toBeLessThanOrEqual(Math.round(answeredMs) + 1);
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', latencyMs });
   });
 
@@ -819,9 +827,40 @@ describe('reader AI chat stream', () => {
     for (let i = 0; i < 5; i++) await settle();
     const turn = mocks.recordTurn.mock.calls.at(-1)?.[0];
     expect(turn).toMatchObject({ status: 'answered', utilityInputTokens: 37, utilityOutputTokens: 11, utilityCostUsd: 0.000_123 });
+    // The reader got the checked answer before leaving: it counts.
+    expect(mocks.served).toHaveBeenCalledWith('project-1', expect.any(Date));
     expect(turn).not.toHaveProperty('usageEstimated');
     expect(turn).not.toHaveProperty('utilityUsageEstimated');
     mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
+  });
+
+  it('does not count an answered turn whose reader left before the final event', async () => {
+    const leave = new AbortController();
+    mocks.request.current = new Request('http://localhost/api/public/sites/p/chat', { method: 'POST', signal: leave.signal });
+    // The checked result is in (the turn is "answered"), but the reader leaves
+    // when the text ends, before the final event that carries it.
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        yield 'Run the installer. [S1]';
+      })(),
+      result: Promise.resolve({
+        status: 'answered',
+        answer: 'Run the installer. [S1]',
+        citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
+        droppedParagraphs: 0,
+        usage: { inputTokens: 900, outputTokens: 120 },
+        model: 'openai/test-answer-model',
+      }),
+    });
+    const reader = (await chatSite('project-1', body())).body?.getReader();
+    if (!reader) throw new Error('expected a stream');
+    const seen = await readUntil(reader, (text) => text.includes('TEXT_MESSAGE_END'));
+    leave.abort();
+    await reader.cancel().catch(() => undefined);
+    for (let i = 0; i < 5; i++) await settle();
+    expect(seen).not.toContain(AI_CHAT_EVENT.final);
+    expect(mocks.recordTurn.mock.calls.at(-1)?.[0]).toMatchObject({ status: 'answered' });
+    expect(mocks.served).not.toHaveBeenCalled();
   });
 
   it.each(['failed', 'cancelled'] as const)('starts no suggestions for an answer that is %s', async (status) => {
@@ -1005,6 +1044,8 @@ describe('reader AI chat stream', () => {
     expect(mocks.recordTurn).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'generation' }));
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', outcome: 'failed' });
+    // A failed generation spent quota but is not a served answer.
+    expect(mocks.served).not.toHaveBeenCalled();
   });
 
   it('ignores a page context the reader cannot see', async () => {

@@ -33,7 +33,7 @@ vi.mock('@nibleaf/search', () => ({ searchDocs: vi.fn() }));
 vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: { headers: new Headers() } } }) }));
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@/lib/access', () => ({ accessibleProjectIds: vi.fn(), resolveSiteAccess: vi.fn() }));
-vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
+vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn(), recordAnswerServed: vi.fn(async () => undefined) }));
 vi.mock('@/lib/ai-search/runtime', () => ({ answerPublishedSearch: vi.fn(), answerSearchAvailable: vi.fn(), runPublishedSearch: vi.fn() }));
 vi.mock('@/lib/search-cache', () => ({ getCachedIndex: vi.fn() }));
 vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn(), trackProjectEvents: vi.fn() }));

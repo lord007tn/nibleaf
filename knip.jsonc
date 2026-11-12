@@ -19,7 +19,8 @@
         "scripts/site-preview-mock.mjs",
         "scripts/site-preview-shots.mjs",
         "scripts/split-ghost-by-language.mjs",
-        "tests/integration/delete-inbound-links/browser.mjs"
+        "tests/integration/delete-inbound-links/browser.mjs",
+        "tests/integration/editor-paste-and-title/browser.mjs"
       ]
     },
     "apps/server": {
@@ -27,7 +28,10 @@
       "ignoreDependencies": ["quansync"]
     },
     "apps/app": {
-      "entry": ["scripts/delete-inbound-links.fixture.tsx"]
+      "entry": [
+        "scripts/delete-inbound-links.fixture.tsx",
+        "scripts/editor-paste-and-title.fixture.tsx"
+      ]
     },
     "packages/database": {
       "ignoreDependencies": ["@prisma/client"]

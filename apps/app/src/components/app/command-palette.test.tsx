@@ -416,6 +416,38 @@ describe('CommandPalette', () => {
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/o/$orgSlug/websites', params: { orgSlug: 'acme' }, search: { newSite: true } });
   });
 
+  it('yields Ctrl/⌘+K to the page editor whatever order the listeners run in (AUTH-10)', async () => {
+    const onOpenChange = await render(false);
+    const page = document.createElement('div');
+    page.setAttribute('data-mod-k-owner', '');
+    page.setAttribute('contenteditable', 'true');
+    const word = document.createElement('strong');
+    page.append(word);
+    document.body.append(page);
+    // Not prevented by the editor first: the palette still leaves the key alone.
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      word.dispatchEvent(event);
+    });
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+
+    // A read-only page does not claim the key.
+    page.setAttribute('contenteditable', 'false');
+    act(() => {
+      word.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true }));
+    });
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+  });
+
+  it('leaves Ctrl/⌘+K to an IME composition', async () => {
+    const onOpenChange = await render(false);
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, isComposing: true, bubbles: true, cancelable: true }));
+    });
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it('leaves Ctrl/⌘+K alone when a focused widget already handled it', async () => {
     const onOpenChange = await render(false);
     const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true });

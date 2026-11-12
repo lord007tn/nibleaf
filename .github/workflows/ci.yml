@@ -134,7 +134,7 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           ACTIVATION_INTEGRATION: "1"
-        run: pnpm --filter @nibleaf/worker exec vitest run src/lib/publish-activation.postgres.test.ts
+        run: pnpm --filter @nibleaf/worker exec vitest run src/lib/publish-activation.postgres.test.ts src/reaper.postgres.test.ts --maxWorkers=1
 
       - name: Verify Better Auth on PostgreSQL
         env:
@@ -248,13 +248,25 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           IMPORT_REHEARSAL: "1"
-        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/import-safety.postgres.test.ts
+          GITBOOK_REHEARSAL: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/import-safety.postgres.test.ts src/actions/importers/gitbook.postgres.test.ts --maxWorkers=1
 
       - name: Verify the People page only shows sites you administer
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           PEOPLE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/people.postgres.test.ts
+
+      - name: Verify pending asset uploads in a fresh database
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf_asset_uploads_test
+          ASSET_UPLOADS_POSTGRES: "1"
+        # This suite refuses databases containing any pre-existing pending rows.
+        # Other PostgreSQL suites intentionally leave unrelated upload fixtures.
+        run: |
+          psql postgresql://nibleaf:nibleaf@127.0.0.1:5432/postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE nibleaf_asset_uploads_test'
+          pnpm --filter @nibleaf/database exec prisma migrate deploy
+          pnpm --filter @nibleaf/server exec vitest run src/actions/asset-uploads.postgres.test.ts --maxWorkers=1
 
       - name: Verify deleting an asset keeps files that saved content uses
         env:
@@ -277,7 +289,7 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           DATA_INTEGRITY_POSTGRES: "1"
-        run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-integrity.postgres.test.ts --maxWorkers=1
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-integrity.postgres.test.ts src/actions/git/git-sync.postgres.test.ts src/mcp/placement.postgres.test.ts --maxWorkers=1
 
       - name: Verify page Trash (restore races, schema drift, erasure)
         env:
@@ -302,11 +314,12 @@ jobs:
           CLICKHOUSE_WRITER_PASSWORD: nibleaf
           CLICKHOUSE_WRITER_USERNAME: nibleaf
           CLICKHOUSE_INTEGRATION: "1"
+          ANALYTICS_LOCK_INTEGRATION: "1"
           # The migration runner serializes workers and the CLI with a PostgreSQL advisory lock.
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
         run: |
           pnpm --filter @nibleaf/clickhouse migrate
-          pnpm --filter @nibleaf/clickhouse test
+          pnpm --filter @nibleaf/clickhouse test --maxWorkers=1
 
       - name: Verify relational analytics and admin discovery on PostgreSQL
         env:
@@ -469,3 +482,129 @@ jobs:
           retention-days: 90
 
       # Dependency vulnerabilities are scanned by the dedicated OSV workflow.
+
+  integration:
+    name: Redis, ClickHouse & Qdrant integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24@sha256:e5d2edd28b1f8d40a0a6c0c9cdc545b19b56a0d5d88f94bc11a97d970d4700d0
+        env:
+          POSTGRES_DB: nibleaf_analytics_test
+          POSTGRES_USER: nibleaf
+          POSTGRES_PASSWORD: nibleaf
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nibleaf -d nibleaf_analytics_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
+        env:
+          DFLY_cluster_mode: emulated
+          DFLY_lock_on_hashtags: "true"
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 12
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8.33.6-alpine@sha256:87e0a5b72f5465b18eacca7c76850e7ff551c9795c50e451f5646299e5e24146
+        env:
+          CLICKHOUSE_DB: nibleaf_analytics_test
+          CLICKHOUSE_USER: nibleaf
+          CLICKHOUSE_PASSWORD: nibleaf
+        ports: ["8123:8123"]
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      qdrant:
+        image: qdrant/qdrant:v1.19.0
+        ports: ["6333:6333"]
+    env:
+      POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf_analytics_test
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
+      ANALYTICS_HASH_SALT: ci-analytics-hash-salt
+      CLICKHOUSE_URL: http://127.0.0.1:8123
+      CLICKHOUSE_DATABASE: nibleaf_analytics_test
+      CLICKHOUSE_READER_USERNAME: nibleaf
+      CLICKHOUSE_READER_PASSWORD: nibleaf
+      CLICKHOUSE_WRITER_USERNAME: nibleaf
+      CLICKHOUSE_WRITER_PASSWORD: nibleaf
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm --filter @nibleaf/i18n run setup
+      - run: pnpm exec turbo run build --filter="@nibleaf/server^..." --filter="@nibleaf/worker^..."
+      - name: Prepare the isolated pipeline databases
+        run: |
+          pnpm --filter @nibleaf/database exec prisma migrate deploy
+          pnpm --filter @nibleaf/clickhouse migrate
+      - name: Verify chat budgets on Redis
+        env:
+          NIBLEAF_REDIS_TESTS: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/lib/ai-search/chat-budget.redis.test.ts --maxWorkers=1
+      - name: Verify analytics outage replay and erasure
+        env:
+          CLICKHOUSE_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/worker exec vitest run src/analytics/pipeline.integration.test.ts --maxWorkers=1
+      - name: Wait for Qdrant readiness
+        run: curl --fail --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:6333/readyz
+      - name: Verify Qdrant tenant isolation
+        env:
+          QDRANT_INTEGRATION_URL: http://127.0.0.1:6333
+        run: pnpm --filter @nibleaf/qdrant exec vitest run src/client.integration.test.ts --maxWorkers=1
+
+  rollback-floor-changes:
+    name: Detect rollback compatibility changes
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.paths.outputs.required }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - id: paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          elif ! git diff --quiet "$BASE_SHA" HEAD -- \
+            ':(glob)packages/database/**' \
+            ':(glob)packages/auth/**' \
+            ':(glob)packages/shared/**' \
+            ':(glob)packages/validators/**' \
+            ':(glob)apps/server/**' \
+            ':(glob)scripts/migration-safety*' \
+            ':(glob)scripts/**/legacy*' \
+            ':(glob)scripts/self-host*' \
+            ':(glob)**/docker-compose*.yml' \
+            ':(glob)**/Dockerfile*' \
+            ':(glob)**/docker-entrypoint*' \
+            ':(glob)docker/**' \
+            ':(glob).dockerignore' \
+            ':(glob).github/workflows/ci.yml' \
+            ':(glob).github/workflows/docker.yml' \
+            ':(glob).github/workflows/release.yml' \
+            ':(glob).github/workflows/rollback-floor.yml' \
+            ':(glob)pnpm-lock.yaml' \
+            ':(glob)pnpm-workspace.yaml' \
+            ':(glob)package.json'; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "required=false" >> "$GITHUB_OUTPUT"
+            echo "Rollback floor suites are not required: no rollback-sensitive paths changed."
+          fi
+
+  rollback-floor:
+    needs: rollback-floor-changes
+    if: needs.rollback-floor-changes.outputs.required == 'true'
+    uses: ./.github/workflows/rollback-floor.yml

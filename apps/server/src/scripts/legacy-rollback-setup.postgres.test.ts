@@ -23,12 +23,17 @@ describe.skipIf(process.env.LEGACY_ROLLBACK_SETUP !== '1')('new release before a
     const { prisma } = await import('@nibleaf/database');
     const projects = await import('../actions/projects');
     const members = await import('../actions/members');
+    const organizations = await import('../actions/organizations');
     const run = `rollback-${randomUUID().slice(0, 8)}`;
     const person = (label: string) => prisma.user.create({ data: { name: label, email: `${run}-${label}@nibleaf.test`, emailVerified: true } });
     const owner = await person('owner');
     const demoted = await person('demoted');
     const removed = await person('removed');
-    const site = await projects.createProject(owner.id, { name: run });
+    const createSite = async (userId: string, name: string) => {
+      const org = await organizations.createOrganization(userId, name);
+      return projects.createProject(userId, { name, organizationId: org.id });
+    };
+    const site = await createSite(owner.id, run);
     // Written the way the previous release / expand backfill wrote Admins.
     const legacyAdmin = (userId: string) => prisma.member.create({ data: { organizationId: site.organizationId, userId, role: 'admin' } });
     const demotedRow = await legacyAdmin(demoted.id);
@@ -36,10 +41,10 @@ describe.skipIf(process.env.LEGACY_ROLLBACK_SETUP !== '1')('new release before a
     await members.updateMemberRole(site.organizationId, demotedRow.id, owner.id, { role: 'viewer' }, site.id);
     await members.removeMember(site.organizationId, removedRow.id, owner.id, site.id);
     const creator = await person('creator');
-    const created = await projects.createProject(creator.id, { name: `${run}-created` });
+    const created = await createSite(creator.id, `${run}-created`);
     const deleter = await person('deleter');
-    const doomed = await projects.createProject(deleter.id, { name: `${run}-deleted` });
-    expect(created.dataTenantId).toBe(created.organizationId);
+    const doomed = await createSite(deleter.id, `${run}-deleted`);
+    expect(created.dataTenantId).toBeTruthy();
     writeFileSync(
       `${process.env.LEGACY_COMPAT_RESULT}.rollback.json`,
       JSON.stringify({
@@ -50,6 +55,7 @@ describe.skipIf(process.env.LEGACY_ROLLBACK_SETUP !== '1')('new release before a
         removedId: removed.id,
         createdSiteId: created.id,
         createdOrganizationId: created.organizationId,
+        createdDataTenantId: created.dataTenantId,
         creatorId: creator.id,
         deletedSiteId: doomed.id,
         deletedOrganizationId: doomed.organizationId,

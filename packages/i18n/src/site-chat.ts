@@ -40,6 +40,7 @@ import { site_ai_saving_rating } from './paraglide/messages/site_ai_saving_ratin
 import { site_ai_searching } from './paraglide/messages/site_ai_searching.js';
 import { site_ai_send } from './paraglide/messages/site_ai_send.js';
 import { site_ai_source } from './paraglide/messages/site_ai_source.js';
+import { site_ai_source_top } from './paraglide/messages/site_ai_source_top.js';
 import { site_ai_sources } from './paraglide/messages/site_ai_sources.js';
 import { site_ai_start } from './paraglide/messages/site_ai_start.js';
 import { site_ai_steps } from './paraglide/messages/site_ai_steps.js';
@@ -99,6 +100,7 @@ const chatMessages = {
   aiRephrase: site_ai_rephrase,
   aiSource: site_ai_source,
   aiSources: site_ai_sources,
+  aiSourceTop: site_ai_source_top,
   aiCopy: site_ai_copy,
   aiCopied: site_ai_copied,
   aiCopyFailed: site_ai_copyfailed,
