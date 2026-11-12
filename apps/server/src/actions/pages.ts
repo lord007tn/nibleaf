@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto';
 import { Prisma, prisma } from '@nibleaf/database';
-import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
+import { DEFAULT_LOCALE, INTERFACE_LOCALES, resolveLocale } from '@nibleaf/i18n/locales';
+import { editor_duplicatetitle } from '@nibleaf/i18n/messages/editor_duplicatetitle';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_pagetoolarge } from '@nibleaf/i18n/messages/editor_pagetoolarge';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { pageDescriptionText } from '@nibleaf/shared/markdown-text';
 import { isSupportedPageIcon } from '@nibleaf/shared/page-icons';
 import { MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
-import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
+import { type PageStructureRow, pageStructureRevisionSource, resolvePageMove } from '@nibleaf/shared/page-moves';
 import { interpolateVariablesWithin, variablesFromConfig } from '@nibleaf/shared/site';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { BulkReorderPagesBody, CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
@@ -315,6 +316,87 @@ export const createPage = async (projectId: string, body: CreatePageBody, userId
   return page;
 };
 
+/** A duplicate's settings: the original's, minus what names one address. A
+ *  copied canonical URL would keep the copy pointing search engines at the
+ *  original after the writer rewrites it. */
+const duplicatedPageConfig = (config: Prisma.JsonValue | null): Prisma.InputJsonValue | undefined => {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return config ?? undefined;
+  const { seo, ...rest } = config as Record<string, Prisma.JsonValue>;
+  if (!seo || typeof seo !== 'object' || Array.isArray(seo)) return config as Prisma.InputJsonValue;
+  const { canonicalUrl: _canonical, ...keptSeo } = seo as Record<string, Prisma.JsonValue>;
+  const next = Object.keys(keptSeo).length > 0 ? { ...rest, seo: keptSeo } : rest;
+  return Object.keys(next).length > 0 ? (next as Prisma.InputJsonValue) : undefined;
+};
+
+/**
+ * Copy one page, or one group without its pages, as a writer's starting point:
+ * the same parent, kind, content, icon, description, settings and visibility,
+ * placed right after the original, titled "<title> (copy)" in the page's
+ * language (the writer's interface language when the page language has no
+ * catalog). The address is the original's, made unique among its siblings.
+ *
+ * Not copied: pages inside it, comments, history, reader access grants, the
+ * canonical URL, the Git import source and the translation link (a second variant of one page in
+ * one language would break hreflang pairing).
+ *
+ * Takes the page-move lock order (the project, then every page row by id),
+ * because it shifts the siblings after the original. Those shifts are raw
+ * position writes, so a sibling's revision stamp stays put and a collaborator
+ * editing it never gets a conflict from a duplicate next to it.
+ */
+export const duplicatePage = async (projectId: string, id: string, interfaceLocale?: string | null) =>
+  prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
+      await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
+      const source = await tx.page.findFirst({ where: { id, projectId }, include: { language: { select: { code: true } } } });
+      if (!source) throw notFound('page', { id });
+      assertPageContentFits(source.content);
+      const scope = { projectId, branchId: source.branchId, languageId: source.languageId, parentId: source.parentId };
+      const locale = resolveLocale(source.language.code) ?? resolveLocale(interfaceLocale) ?? DEFAULT_LOCALE;
+      // Cut to the 200-unit title limit without leaving half of a surrogate pair.
+      // An untitled page's copy stays untitled (its address follows its first
+      // title like any new page's), never " (copy)".
+      const title = source.title.trim()
+        ? editor_duplicatetitle({ title: source.title }, { locale })
+            .slice(0, 200)
+            .replace(/[\uD800-\uDBFF]$/, '')
+        : '';
+      const slug = await uniqueSiblingSlug(tx, projectId, source.languageId, source.branchId, source.parentId, source.slug);
+      const parent = await parentInfo(tx, projectId, source.parentId);
+      // Siblings in tree order. The copy takes the next position; later siblings
+      // move down only as far as needed to stay after it, in the same order.
+      const siblings = await tx.page.findMany({
+        where: scope,
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, position: true },
+      });
+      const position = source.position + 1;
+      let previous = position;
+      for (const sibling of siblings.slice(siblings.findIndex((page) => page.id === source.id) + 1)) {
+        const next = Math.max(sibling.position, previous + 1);
+        if (next !== sibling.position) await tx.$executeRaw`UPDATE "page" SET position = ${next} WHERE id = ${sibling.id}`;
+        previous = next;
+      }
+      return tx.page.create({
+        data: {
+          ...scope,
+          kind: source.kind,
+          title,
+          slug,
+          path: joinPath(parent.path, slug),
+          icon: source.icon,
+          description: source.description,
+          content: source.content,
+          config: duplicatedPageConfig(source.config),
+          hidden: source.hidden,
+          position,
+        },
+      });
+    },
+    { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
+  );
+
 /** Deep-merge a page-config patch over the stored config: the `seo` object is
  *  merged key-by-key; scalar keys (sidebarTitle/mode/hideToc) replace. Passing
  *  `null` clears the whole config. Mirrors updateProject's section-level merge. */
@@ -525,13 +607,7 @@ type ReorderRow = {
 
 /** Returned on unfiltered branch-list reads; ignores content-only edits. */
 export const pageStructureRevision = (rows: readonly PageStructureRow[]) =>
-  createHash('sha256')
-    .update(
-      JSON.stringify(
-        [...rows].sort((a, b) => a.id.localeCompare(b.id)).map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]),
-      ),
-    )
-    .digest('hex');
+  createHash('sha256').update(pageStructureRevisionSource(rows)).digest('hex');
 
 /** The languages a reorder moves pages into must belong to this site. */
 const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: string, body: BulkReorderPagesBody) => {

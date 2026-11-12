@@ -244,6 +244,8 @@ export interface PendingChange {
   deletions: number;
   lines: DeploymentDiffLine[];
   truncated: boolean;
+  /** A modified page's live address when the draft moved it (path or language). */
+  published?: { path: string; languageCode: string };
 }
 
 /** A pre-publish quality check on the draft being previewed. Warnings leave

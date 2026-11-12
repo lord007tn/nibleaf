@@ -53,6 +53,11 @@
     "./page-title": "./src/page-title.ts",
     "./page-icons": "./src/page-icons.ts",
     "./testing/growth": "./src/testing/growth.ts",
+    "./reader-headings": "./src/reader-headings.ts",
+    "./reader-heading-ids": "./src/reader-heading-ids.ts",
+    "./reader-render-mode": "./src/reader-render-mode.ts",
+    "./reader-rich": "./src/reader-rich.ts",
+    "./reader-sanitize": "./src/reader-sanitize.ts",
     "./uuid": "./src/uuid.ts"
   },
   "scripts": {
@@ -76,7 +81,10 @@
     "remark-mdx": "3.1.1",
     "remark-parse": "11.0.0",
     "remark-rehype": "11.1.2",
-    "unified": "11.0.5"
+    "unified": "11.0.5",
+    "rehype-katex": "7.0.1",
+    "rehype-sanitize": "6.0.0",
+    "remark-math": "6.0.0"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",

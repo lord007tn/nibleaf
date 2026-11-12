@@ -254,6 +254,26 @@ export const useCreatePage = (projectId: string, options?: { reportErrors?: bool
   });
 };
 
+/** Copy a page (a group without its pages) right after itself, with its content and settings. */
+export const useDuplicatePage = (projectId: string) => {
+  const qc = useQueryClient();
+  const t = useT();
+  return useMutation({
+    networkMode: 'always',
+    meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'editor.duplicateFailed') },
+    mutationFn: async (pageId: string) =>
+      mutateData<Page>(
+        await api.app.projects[':projectId'].pages[':id'].duplicate.$post({ param: { projectId, id: pageId } }),
+        'Could not duplicate the page.',
+      ),
+    onSuccess: (created) => {
+      qc.setQueryData(queryKeys.pages.detail(projectId, created.id), created);
+      void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+      return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+    },
+  });
+};
+
 export const useUpdatePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({

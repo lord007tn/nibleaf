@@ -66,13 +66,15 @@ import { createEditorSaveQueue, type PageDraft } from '@/components/editor/edito
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
+import { MovePageDialog } from '@/components/editor/move-page-dialog';
+import { pagePublicLink } from '@/components/editor/page-public-link';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
 import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
 import { NeverPublishedBanner, PagePublishStateBar, type SaveState, SaveStatus } from '@/components/editor/save-status';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
-import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree } from '@/components/editor/sortable-page-tree';
+import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree, shownRowName } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { aiAssistPageId, useAiAssistSession } from '@/components/editor/use-ai-assist-session';
@@ -85,12 +87,15 @@ import {
   friendlyErrorMessage,
   pageNeverPublished,
   pagePublishState,
+  pickLiveDomain,
   queryKeys,
   useAiDraftCapability,
   useBranches,
   useComments,
   useCreatePage,
   useDeleteAsset,
+  useDomains,
+  useDuplicatePage,
   useLanguages,
   usePage,
   usePages,
@@ -108,6 +113,7 @@ import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
+import { copyToClipboard } from '@/lib/invitations';
 import { resolveProjectEditAccess } from '@/lib/project-settings-access';
 import { typographyVars } from '@/lib/typography';
 import { useSession } from '@/services/auth-client';
@@ -201,7 +207,10 @@ function EditorPage() {
   const { data: languages } = useLanguages(projectId);
   const { data: allPages, isPending } = usePages(projectId, undefined, activeBranchId ?? undefined);
   const createPage = useCreatePage(projectId);
+  const duplicatePage = useDuplicatePage(projectId);
   const updatePage = useUpdatePage(projectId);
+  const { data: domains } = useDomains(projectId);
+  const [moveForId, setMoveForId] = useState<string | null>(null);
   const [historyForId, setHistoryForId] = useState<string | null>(null);
   const uploadAsset = useUploadAsset(projectId);
   const deleteAsset = useDeleteAsset(projectId);
@@ -746,7 +755,13 @@ function EditorPage() {
     const replacement = target ?? [...document.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === previous?.text);
     (replacement ?? document.getElementById('main-content'))?.focus();
   }, [pendingSwitch]);
-  const createAndOpen = (body: Parameters<typeof createPage.mutate>[0], options?: { focusTitle?: boolean }) => {
+  // Create a page (New page, Add a page inside, Duplicate) and open it. With
+  // `focusTitle`, keys typed while it is created go into its title, which then
+  // takes focus, so the new page is ready to name.
+  const createAndOpen = <Created extends { id: string }>(
+    create: (callbacks: { onSuccess: (created: Created) => void; onError: () => void; onSettled: () => void }) => void,
+    options?: { focusTitle?: boolean; onCreated?: (created: Created) => void },
+  ) => {
     if (creationInFlight.current || transitionInFlight.current) return;
     const focused = document.activeElement;
     creationFocus.current =
@@ -754,7 +769,7 @@ function EditorPage() {
     bufferTitleKeys.current = options?.focusTitle === true;
     beginSwitch({ kind: 'create' }, () => {
       creationInFlight.current = true;
-      createPage.mutate(body, {
+      create({
         onSuccess: (created) => {
           setPendingSwitch({ kind: 'open', id: created.id });
           setSelectedId(created.id);
@@ -766,6 +781,7 @@ function EditorPage() {
             setFocusedTreeOpen(false);
             setFocusTitleFor(created.id);
           }
+          options?.onCreated?.(created);
         },
         onError: () => {
           setPendingSwitch(null);
@@ -780,14 +796,19 @@ function EditorPage() {
   };
   const addPage = (parentId: string | null, languageId: string) =>
     createAndOpen(
-      // The placeholder is presentation only. The address follows the first real title.
-      {
-        title: '',
-        slug: 'untitled',
-        parentId,
-        languageId,
-        ...branchScope,
-      },
+      (callbacks) =>
+        createPage.mutate(
+          // The placeholder is presentation only. The address follows the first
+          // real title until the page is first published.
+          {
+            title: '',
+            slug: 'untitled',
+            parentId,
+            languageId,
+            ...branchScope,
+          },
+          callbacks,
+        ),
       { focusTitle: true },
     );
   // A group only needs a name, so ask for it instead of opening every page setting.
@@ -801,7 +822,7 @@ function EditorPage() {
       confirmLabel: t('editor.createGroup'),
     });
     if (!name) return;
-    createAndOpen({ title: name.slice(0, 200), kind: 'GROUP', languageId, ...branchScope });
+    createAndOpen((callbacks) => createPage.mutate({ title: name.slice(0, 200), kind: 'GROUP', languageId, ...branchScope }, callbacks));
   };
   const openNode = (id: string) => {
     if (id === activeTreeId) return;
@@ -883,6 +904,67 @@ function EditorPage() {
       },
     });
   };
+  // ─── Row menu actions (AUTH-38) ───────────────────────────────────────────────
+  // Duplicate saves the page being edited first, so the copy has its latest
+  // text, then opens the copy as creating a page does.
+  const duplicateNode = (id: string) =>
+    createAndOpen<Page>((callbacks) => duplicatePage.mutate(id, callbacks), {
+      // A page's copy is ready to rename, as a new page is; a group has no title field.
+      focusTitle: (allPages ?? []).find((p) => p.id === id)?.kind !== 'GROUP',
+      onCreated: (created) => toast.success(t('editor.duplicated', { title: shownRowName(created, t('editor.untitled')) })),
+    });
+  // The page's address on the published site, as the reader builds it: the
+  // live domain, the version prefix and the language (left out for the default one).
+  const copyPageLink = async (id: string) => {
+    const node = (allPages ?? []).find((p) => p.id === id);
+    if (!node || node.kind === 'GROUP' || !project) return;
+    // Readers open the LIVE address: a published page whose address the draft
+    // changed (slug, parent or language) keeps its old one until the next publish.
+    const live = pendingChanges?.changes.find((change) => change.id === id && change.status === 'modified')?.published;
+    const liveLanguageId = live && orderedLanguages.find((language) => language.code === live.languageCode)?.id;
+    const linked = live && liveLanguageId ? { ...node, path: live.path, languageId: liveLanguageId } : node;
+    const url = pagePublicLink(projectId, linked, {
+      slug: project.slug,
+      primaryDomain: domains ? pickLiveDomain(domains)?.domain : undefined,
+      languages: orderedLanguages,
+      versionSlug: publishedVersionSlugFor(branches, node.branchId ?? activeBranchId),
+    });
+    if (!(await copyToClipboard(url))) {
+      toast.error(t('settings.members.copyFailed'));
+      return;
+    }
+    // A hidden page's address doesn't open on the published site; say so rather
+    // than let the writer share a link that leads nowhere.
+    toast.success(
+      node.hidden
+        ? t('editor.linkCopiedHidden')
+        : pageNeverPublished(id, pendingChanges)
+          ? t('editor.linkCopiedUnpublished')
+          : t('editor.linkCopied'),
+    );
+  };
+  const pageHref = useCallback((id: string) => `/app/projects/${encodeURIComponent(projectId)}/editor?page=${encodeURIComponent(id)}`, [projectId]);
+  // Hidden pages stay in the editor and leave the site's navigation on the next
+  // publish. Conditional on the revision the writer saw, like every page save;
+  // the open page's draft is saved first so the two don't conflict.
+  const toggleHidden = (id: string) =>
+    void runAfterSavingDraft({
+      action: () => {
+        const node = (allPages ?? []).find((p) => p.id === id);
+        if (!node) return;
+        const latest = freshestServerCopy(id, node, freshestServerCopy(id, draftRef.current.page, lastSavedRef.current));
+        const hidden = !node.hidden;
+        updatePage.mutate(
+          { pageId: id, body: { hidden, expectedUpdatedAt: latest?.updatedAt ?? node.updatedAt } },
+          {
+            onSuccess: () => {
+              if (hidden) toast.success(t('editor.hiddenNotice', { title: shownRowName(node, t('editor.untitled')) }));
+            },
+            onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.visibilityFailed')),
+          },
+        );
+      },
+    });
 
   // Raw Markdown is a focused workspace: the source editor gets the entire
   // application canvas while the page tree and comments/AI rail temporarily
@@ -1499,11 +1581,30 @@ function EditorPage() {
                               onSettings={(id) => void runAfterSavingDraft({ action: () => setSettingsForId(id) })}
                               onRename={renameNode}
                               onDelete={deleteNode}
+                              onDuplicate={duplicateNode}
+                              onCopyLink={(id) => void copyPageLink(id)}
+                              onMoveTo={setMoveForId}
+                              onToggleHidden={toggleHidden}
+                              pageHref={pageHref}
+                              creating={createPage.isPending || duplicatePage.isPending}
                             />
                           )}
                         </div>
                       );
                     })}
+                    {(() => {
+                      const moving = moveForId && canEditContent ? (allPages ?? []).find((p) => p.id === moveForId) : undefined;
+                      return moving ? (
+                        <MovePageDialog
+                          key={moving.id}
+                          page={moving}
+                          pages={allPages ?? []}
+                          languages={orderedLanguages}
+                          onMove={(move) => reorderPages.mutateAsync(move)}
+                          onClose={() => setMoveForId(null)}
+                        />
+                      ) : null;
+                    })()}
                   </PageTreeDndProvider>
 
                   {/* Add a language */}

@@ -95,6 +95,9 @@ export interface DeploymentPageDiff {
   deletions: number;
   lines: DeploymentDiffLine[];
   truncated: boolean;
+  /** A modified page's live address when the draft moved it (path or
+   *  language), so a copied link can point at what readers can open now. */
+  published?: { path: string; languageCode: string };
 }
 
 /** Read the complete effective publish input once and compose the same snapshot
@@ -296,6 +299,9 @@ const pageSummary = (page: SnapshotPage, status: DeploymentPageDiff['status'], p
     status,
     fields: status === 'modified' && previous ? changedFields(page, previous) : ['content'],
     ...diff,
+    ...(status === 'modified' && previous && (previous.path !== page.path || previous.languageCode !== page.languageCode)
+      ? { published: { path: previous.path, languageCode: previous.languageCode } }
+      : {}),
   };
 };
 
