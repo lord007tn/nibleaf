@@ -41,11 +41,21 @@ const site = vi.hoisted(() => ({
   updates: [] as Array<{ where: Record<string, unknown>; data: Record<string, unknown> }>,
 }));
 
-vi.mock('@/lib/page-address-changes', () => ({
-  prepareAddressLinks: async () => undefined,
-  assertAddressLinkRevisions: async () => undefined,
-  preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 }),
-}));
+// Address-link upkeep (redirects, rewritten links) has its own suites. Every
+// export of the real module is stubbed, so a new one added there fails here
+// loudly instead of reaching an incomplete database mock.
+vi.mock('@/lib/page-address-changes', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/page-address-changes')>();
+  const stubs = {
+    prepareAddressLinks: async () => undefined,
+    assertAddressLinkRevisions: async () => undefined,
+    prepareReorderAddressLinks: async () => ({ assertRevisions: async () => undefined }),
+    preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 }),
+  };
+  const unstubbed = Object.keys(real).filter((name) => !(name in stubs));
+  if (unstubbed.length > 0) throw new Error(`Stub these page-address-changes exports for the row-action tests: ${unstubbed.join(', ')}`);
+  return stubs;
+});
 vi.mock('@/lib/page-history', () => ({ snapshotPage: vi.fn(async () => 'throttled') }));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: vi.fn() }));
 vi.mock('./branches', () => ({ assertBranchInProject: async (_p: string, id: string) => ({ id }), getDefaultBranch: async () => ({ id: 'main' }) }));
@@ -111,7 +121,11 @@ vi.mock('@nibleaf/database', () => {
     page,
     language: { findMany: async () => [...site.languages.keys()].map((id) => ({ id })) },
   };
-  return { Prisma: { JsonNull: null }, prisma: { page, $transaction: async (work: (client: typeof tx) => Promise<unknown>) => work(tx) } };
+  // The bare client has the same models as the transaction client: a reorder
+  // plans once outside its lock (#525) and again inside it, so both must see
+  // the same site, and a model added to one can't be missing from the other.
+  const { $queryRaw: _lock, $executeRaw: _shift, ...models } = tx;
+  return { Prisma: { JsonNull: null }, prisma: { ...models, $transaction: async (work: (client: typeof tx) => Promise<unknown>) => work(tx) } };
 });
 
 import { duplicatePage, pageStructureRevision, reorderPages, updatePage } from './pages';
