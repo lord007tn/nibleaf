@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   success: vi.fn(),
   duplicate: vi.fn(),
   neverPublished: false,
+  pendingChanges: undefined as { hasBaseline: boolean; changes: Array<Record<string, unknown>> } | undefined,
   tree: {} as Record<string, unknown>,
   moveDialog: vi.fn(),
   pages: [] as Array<Record<string, unknown>>,
@@ -61,7 +62,7 @@ vi.mock('@/hooks/api', async () => ({
   useLanguages: () => ({ data: [{ id: 'lang-en', code: 'en', label: 'English', isDefault: true }] }),
   usePages: () => ({ data: mocks.pages, isPending: false }),
   usePage: () => ({ data: mocks.page }),
-  usePendingChanges: () => ({}),
+  usePendingChanges: () => ({ data: mocks.pendingChanges }),
   useComments: () => ({}),
   useCreatePage: () => ({ mutate: mocks.create, isPending: false }),
   useUpdatePage: () => ({ mutateAsync: mocks.update, mutate: mocks.update }),
@@ -171,6 +172,7 @@ describe('page tree row actions in the editor (AUTH-38)', () => {
     mocks.page = open;
     mocks.pages = [open, other];
     mocks.neverPublished = false;
+    mocks.pendingChanges = undefined;
     for (const mock of [mocks.update, mocks.duplicate, mocks.toast, mocks.success, mocks.moveDialog]) mock.mockReset();
     container = document.createElement('div');
     document.body.append(container);
@@ -218,6 +220,33 @@ describe('page tree row actions in the editor (AUTH-38)', () => {
     expect(mocks.success).toHaveBeenCalledWith('editor.duplicated');
   });
 
+  it('opens the copy ready to rename: keys typed while it is created go into its title', async () => {
+    await render();
+    let created!: () => void;
+    const copy = { ...other, id: 'page-3', title: 'Install (copy)', slug: 'install-2', path: 'guides/install-2' };
+    mocks.duplicate.mockImplementation((_id: string, callbacks: { onSuccess: (page: unknown) => void; onSettled: () => void }) => {
+      created = () => {
+        mocks.page = copy;
+        mocks.pages = [open, other, copy];
+        callbacks.onSuccess(copy);
+        callbacks.onSettled();
+      };
+    });
+    await act(async () => tree().onDuplicate?.('page-2'));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(mocks.duplicate).toHaveBeenCalledOnce();
+    for (const key of ['S', 'e', 't', 'u', 'p']) {
+      await act(async () => {
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      });
+    }
+    await act(async () => created());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    const title = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="editor.pageTitlePlaceholder"]');
+    expect(document.activeElement).toBe(title);
+    expect(title?.value).toBe('Setup');
+  });
+
   it.each([
     [false, 'editor.linkCopied'],
     [true, 'editor.linkCopiedUnpublished'],
@@ -229,6 +258,23 @@ describe('page tree row actions in the editor (AUTH-38)', () => {
     await act(async () => tree().onCopyLink?.('page-2'));
     expect(writeText).toHaveBeenCalledWith('https://docs.example.com/guides/install');
     expect(mocks.success).toHaveBeenCalledWith(message);
+  });
+
+  it('copies the live address of a published page whose draft moved it, until the next publish', async () => {
+    // Published at guides/install; the draft has since moved it to guides/setup.
+    mocks.pages = [open, { ...other, slug: 'setup', path: 'guides/setup' }];
+    mocks.pendingChanges = {
+      hasBaseline: true,
+      changes: [
+        { id: 'page-2', status: 'modified', path: 'guides/setup', languageCode: 'en', published: { path: 'guides/install', languageCode: 'en' } },
+      ],
+    };
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    await render();
+    await act(async () => tree().onCopyLink?.('page-2'));
+    expect(writeText).toHaveBeenCalledWith('https://docs.example.com/guides/install');
+    expect(mocks.success).toHaveBeenCalledWith('editor.linkCopied');
   });
 
   it("says a hidden page's link won't open on the published site", async () => {

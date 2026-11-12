@@ -755,7 +755,13 @@ function EditorPage() {
     const replacement = target ?? [...document.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === previous?.text);
     (replacement ?? document.getElementById('main-content'))?.focus();
   }, [pendingSwitch]);
-  const createAndOpen = (body: Parameters<typeof createPage.mutate>[0], options?: { focusTitle?: boolean }) => {
+  // Create a page (New page, Add a page inside, Duplicate) and open it. With
+  // `focusTitle`, keys typed while it is created go into its title, which then
+  // takes focus, so the new page is ready to name.
+  const createAndOpen = <Created extends { id: string }>(
+    create: (callbacks: { onSuccess: (created: Created) => void; onError: () => void; onSettled: () => void }) => void,
+    options?: { focusTitle?: boolean; onCreated?: (created: Created) => void },
+  ) => {
     if (creationInFlight.current || transitionInFlight.current) return;
     const focused = document.activeElement;
     creationFocus.current =
@@ -763,11 +769,12 @@ function EditorPage() {
     bufferTitleKeys.current = options?.focusTitle === true;
     beginSwitch({ kind: 'create' }, () => {
       creationInFlight.current = true;
-      createPage.mutate(body, {
+      create({
         onSuccess: (created) => {
           setPendingSwitch({ kind: 'open', id: created.id });
           setSelectedId(created.id);
           if (options?.focusTitle) setFocusTitleFor(created.id);
+          options?.onCreated?.(created);
         },
         onError: () => {
           setPendingSwitch(null);
@@ -782,15 +789,19 @@ function EditorPage() {
   };
   const addPage = (parentId: string | null, languageId: string) =>
     createAndOpen(
-      // Placeholder title in the PAGE's language with a pinned 'untitled' slug: the
-      // address then follows the real title until the page is first published.
-      {
-        title: messageInLanguage('editor.untitled', languageCodeOf(languageId), t),
-        slug: 'untitled',
-        parentId,
-        languageId,
-        ...branchScope,
-      },
+      (callbacks) =>
+        createPage.mutate(
+          // Placeholder title in the PAGE's language with a pinned 'untitled' slug: the
+          // address then follows the real title until the page is first published.
+          {
+            title: messageInLanguage('editor.untitled', languageCodeOf(languageId), t),
+            slug: 'untitled',
+            parentId,
+            languageId,
+            ...branchScope,
+          },
+          callbacks,
+        ),
       { focusTitle: true },
     );
   // A group only needs a name, so ask for it instead of opening every page setting.
@@ -804,7 +815,7 @@ function EditorPage() {
       confirmLabel: t('editor.createGroup'),
     });
     if (!name) return;
-    createAndOpen({ title: name.slice(0, 200), kind: 'GROUP', languageId, ...branchScope });
+    createAndOpen((callbacks) => createPage.mutate({ title: name.slice(0, 200), kind: 'GROUP', languageId, ...branchScope }, callbacks));
   };
   const openNode = (id: string) => {
     if (id === activeTreeId) return;
@@ -889,29 +900,23 @@ function EditorPage() {
   // ─── Row menu actions (AUTH-38) ───────────────────────────────────────────────
   // Duplicate saves the page being edited first, so the copy has its latest
   // text, then opens the copy as creating a page does.
-  const duplicateNode = (id: string) => {
-    if (creationInFlight.current || transitionInFlight.current) return;
-    beginSwitch({ kind: 'create' }, () => {
-      creationInFlight.current = true;
-      duplicatePage.mutate(id, {
-        onSuccess: (created) => {
-          setPendingSwitch({ kind: 'open', id: created.id });
-          setSelectedId(created.id);
-          toast.success(t('editor.duplicated', { title: created.title }));
-        },
-        onError: () => setPendingSwitch(null),
-        onSettled: () => {
-          creationInFlight.current = false;
-        },
-      });
+  const duplicateNode = (id: string) =>
+    createAndOpen<Page>((callbacks) => duplicatePage.mutate(id, callbacks), {
+      // A page's copy is ready to rename, as a new page is; a group has no title field.
+      focusTitle: (allPages ?? []).find((p) => p.id === id)?.kind !== 'GROUP',
+      onCreated: (created) => toast.success(t('editor.duplicated', { title: created.title })),
     });
-  };
   // The page's address on the published site, as the reader builds it: the
   // live domain, the version prefix and the language (left out for the default one).
   const copyPageLink = async (id: string) => {
     const node = (allPages ?? []).find((p) => p.id === id);
     if (!node || node.kind === 'GROUP' || !project) return;
-    const url = pagePublicLink(projectId, node, {
+    // Readers open the LIVE address: a published page whose address the draft
+    // changed (slug, parent or language) keeps its old one until the next publish.
+    const live = pendingChanges?.changes.find((change) => change.id === id && change.status === 'modified')?.published;
+    const liveLanguageId = live && orderedLanguages.find((language) => language.code === live.languageCode)?.id;
+    const linked = live && liveLanguageId ? { ...node, path: live.path, languageId: liveLanguageId } : node;
+    const url = pagePublicLink(projectId, linked, {
       slug: project.slug,
       primaryDomain: domains ? pickLiveDomain(domains)?.domain : undefined,
       languages: orderedLanguages,

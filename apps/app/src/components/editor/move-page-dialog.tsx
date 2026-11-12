@@ -7,7 +7,7 @@ import { FileText, Folder, Languages } from 'lucide-react';
 import { type KeyboardEvent, useId, useMemo, useState } from 'react';
 import type { PageNode } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
-import { filterPageIds, pageStructureRevision, subtreeIds } from './page-tree-utils';
+import { filterPageIds, pageMatchesSearch, pageStructureRevision, subtreeIds } from './page-tree-utils';
 import { flatten, rowName, usePageTreeReveal } from './sortable-page-tree';
 
 /** Confirmed without choosing a destination. */
@@ -22,6 +22,8 @@ interface Destination {
   icon: 'language' | 'group' | 'page';
   /** Where the page already is: listed, but not a choice. */
   current: boolean;
+  /** Matches the search itself; false for a page listed only as a match's ancestor. */
+  match: boolean;
 }
 
 /** The places a page can move to: the top level of each language, and every
@@ -46,6 +48,7 @@ export function moveDestinations(
       depth: 0,
       icon: 'language' as const,
       current: page.parentId === null && page.languageId === language.id,
+      match: !included,
     },
     ...flatten(candidates.filter((node) => node.languageId === language.id))
       .filter((item) => !included || included.has(item.id))
@@ -57,6 +60,7 @@ export function moveDestinations(
         depth: item.depth + 1,
         icon: item.node.kind === 'GROUP' ? ('group' as const) : ('page' as const),
         current: page.parentId === item.id,
+        match: !included || pageMatchesSearch(item.node, query),
       })),
   ]);
 }
@@ -93,14 +97,19 @@ export function MovePageDialog({
       ),
     [page, pages, languages, query, t],
   );
-  const choice = destinations.find((destination) => destination.key === selected && !destination.current);
+  // While searching, the first page that matches itself (not an ancestor listed
+  // only for context) is the default choice, and Enter picks it.
+  const firstMatch = query.trim()
+    ? destinations.find((destination) => destination.match && destination.icon !== 'language' && !destination.current)
+    : undefined;
+  const selectedKey = destinations.some((destination) => destination.key === selected) ? selected : (firstMatch?.key ?? null);
+  const choice = destinations.find((destination) => destination.key === selectedKey && !destination.current);
 
   const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
     // Enter in the filter picks the first match; it never submits the move.
     event.preventDefault();
-    const first = destinations.find((destination) => destination.icon !== 'language' && !destination.current);
-    if (first) setSelected(first.key);
+    if (firstMatch) setSelected(firstMatch.key);
   };
 
   return (
@@ -150,14 +159,15 @@ export function MovePageDialog({
           <legend className="sr-only">{t('editor.moveTitle', { title: rowName(page).label })}</legend>
           {destinations.map((destination) => {
             const Icon = destination.icon === 'language' ? Languages : destination.icon === 'group' ? Folder : FileText;
-            const checked = selected === destination.key && !destination.current;
+            const checked = selectedKey === destination.key && !destination.current;
             return (
               <label
                 key={destination.key}
                 className={cn(
-                  'flex min-w-0 cursor-pointer items-center gap-2 rounded-md py-1.5 pe-2 text-sm',
+                  'flex min-w-0 cursor-pointer items-center gap-2 rounded-md py-1.5 pe-2 text-sm pointer-coarse:min-h-11',
                   checked ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
                   destination.current && 'cursor-default text-muted-foreground',
+                  !destination.match && !checked && 'text-muted-foreground',
                   destination.icon === 'language' && 'font-medium',
                 )}
                 style={{ paddingInlineStart: 8 + destination.depth * 16 }}

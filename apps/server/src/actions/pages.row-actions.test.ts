@@ -240,6 +240,19 @@ describe('duplicatePage', () => {
     expect((await duplicatePage('site', 'intro-it', 'xx')).title).toBe('Introduzione (copy)');
   });
 
+  it.each([
+    [
+      { seo: { canonicalUrl: 'https://docs.example.com/install', noindex: true }, mode: 'wide' },
+      { seo: { noindex: true }, mode: 'wide' },
+    ],
+    [{ seo: { canonicalUrl: 'https://docs.example.com/install' }, sidebarTitle: 'Setup' }, { sidebarTitle: 'Setup' }],
+    [{ seo: { canonicalUrl: 'https://docs.example.com/install' } }, undefined],
+  ])('leaves out the canonical URL, which names the original address (%j)', async (config, expected) => {
+    site.pages.push(page({ id: 'canonical', config, position: 30 }));
+    await duplicatePage('site', 'canonical', 'en');
+    expect(site.created.at(-1)?.config).toEqual(expected);
+  });
+
   it('keeps the copied title within the 200-character limit', async () => {
     site.pages.push(page({ id: 'long', title: 'L'.repeat(200), position: 20 }));
     expect((await duplicatePage('site', 'long', 'en')).title).toHaveLength(200);

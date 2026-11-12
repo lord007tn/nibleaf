@@ -283,6 +283,18 @@ export const createPage = async (projectId: string, body: CreatePageBody, userId
   return page;
 };
 
+/** A duplicate's settings: the original's, minus what names one address. A
+ *  copied canonical URL would keep the copy pointing search engines at the
+ *  original after the writer rewrites it. */
+const duplicatedPageConfig = (config: Prisma.JsonValue | null): Prisma.InputJsonValue | undefined => {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return config ?? undefined;
+  const { seo, ...rest } = config as Record<string, Prisma.JsonValue>;
+  if (!seo || typeof seo !== 'object' || Array.isArray(seo)) return config as Prisma.InputJsonValue;
+  const { canonicalUrl: _canonical, ...keptSeo } = seo as Record<string, Prisma.JsonValue>;
+  const next = Object.keys(keptSeo).length > 0 ? { ...rest, seo: keptSeo } : rest;
+  return Object.keys(next).length > 0 ? (next as Prisma.InputJsonValue) : undefined;
+};
+
 /**
  * Copy one page, or one group without its pages, as a writer's starting point:
  * the same parent, kind, content, icon, description, settings and visibility,
@@ -291,7 +303,7 @@ export const createPage = async (projectId: string, body: CreatePageBody, userId
  * catalog). The address is the original's, made unique among its siblings.
  *
  * Not copied: pages inside it, comments, history, reader access grants, the
- * Git import source and the translation link (a second variant of one page in
+ * canonical URL, the Git import source and the translation link (a second variant of one page in
  * one language would break hreflang pairing).
  *
  * Takes the page-move lock order (the project, then every page row by id),
@@ -339,7 +351,7 @@ export const duplicatePage = async (projectId: string, id: string, interfaceLoca
           icon: source.icon,
           description: source.description,
           content: source.content,
-          config: source.config ?? undefined,
+          config: duplicatedPageConfig(source.config),
           hidden: source.hidden,
           position,
         },

@@ -40,13 +40,18 @@ export function pageMatchRanges(text: string, query: string): Array<[number, num
 }
 
 /** Include matching pages and their ancestor chain, even inside folded groups. */
-export function filterPageIds(pages: readonly PageNode[], query: string): Set<string> {
+/** Whether a page itself matches a tree search (its title, sidebar title,
+ *  address or slug), as opposed to being shown only as a match's ancestor. */
+export function pageMatchesSearch(page: PageNode, query: string): boolean {
   const needle = normalizePageSearch(query.trim());
+  return !needle || [page.title, page.config?.sidebarTitle ?? '', page.path, page.slug].some((value) => normalizePageSearch(value).includes(needle));
+}
+
+export function filterPageIds(pages: readonly PageNode[], query: string): Set<string> {
   const byId = new Map(pages.map((page) => [page.id, page]));
   const included = new Set<string>();
   for (const page of pages) {
-    if (needle && ![page.title, page.config?.sidebarTitle ?? '', page.path, page.slug].some((value) => normalizePageSearch(value).includes(needle)))
-      continue;
+    if (!pageMatchesSearch(page, query)) continue;
     let current: PageNode | undefined = page;
     while (current && !included.has(current.id)) {
       included.add(current.id);

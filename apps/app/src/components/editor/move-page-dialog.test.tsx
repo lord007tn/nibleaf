@@ -194,6 +194,34 @@ describe('MovePageDialog', () => {
     expect(onMove).not.toHaveBeenCalled();
   });
 
+  it('picks the page that matches, never an ancestor listed only for context', async () => {
+    // Guides → Deploy → Rollback: searching "Rollback" lists Guides and Deploy above it.
+    const { dialog, onMove } = await renderDialog(PAGES[0] as PageNode);
+    await type(search(dialog), 'Rollback');
+    expect([...dialog.querySelectorAll('[data-destination]')].map((element) => element.getAttribute('data-destination'))).toEqual([
+      'language:en',
+      'Guides',
+      'Deploy',
+      'Rollback',
+      'language:ar',
+    ]);
+    // The direct match is the default choice, and Enter keeps it.
+    expect(radio(dialog, 'Rollback').checked).toBe(true);
+    await act(async () => {
+      search(dialog).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    });
+    expect(radio(dialog, 'Rollback').checked).toBe(true);
+    expect(radio(dialog, 'Guides').checked).toBe(false);
+    await act(async () => confirm(dialog).click());
+    await settle();
+    expect(onMove).toHaveBeenCalledWith(expect.objectContaining({ pageId: 'Install', parentId: 'Rollback' }));
+  });
+
+  it('marks which listed pages match the search', () => {
+    const destinations = moveDestinations(PAGES[0] as PageNode, PAGES, LANGUAGES, 'rollback', topLevel);
+    expect(destinations.filter((destination) => destination.match).map((destination) => destination.key)).toEqual(['Rollback']);
+  });
+
   it('shows a refused move in the dialog with the same words as a refused drag', async () => {
     const onMove = vi.fn(async () => {
       throw new ApiResponseError('changed', 409, 'database:conflict', undefined, undefined, undefined, undefined, { reason: 'structure_changed' });
