@@ -26,7 +26,7 @@ import {
   suggestFollowUps,
 } from '@nibleaf/search';
 import { type ChatCostSink, knownChatCost, workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
-import { defaultLanguage, extractHeadings } from '@nibleaf/shared/site';
+import { defaultLanguage } from '@nibleaf/shared/site';
 import {
   AI_CHAT_EVENT,
   type AiChatConsent,
@@ -34,7 +34,6 @@ import {
   type AiChatFinalEvent,
   type AiChatFollowUpsEvent,
   type AiChatNoAnswerReason,
-  type AiChatSource,
   type AiConversationTurnStatus,
   type SiteChatBody,
   type SiteChatFeedbackBody,
@@ -51,6 +50,7 @@ import { readerChatPolicy, recordAiChatFeedback, recordAiChatTurn } from '@/lib/
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
 import { type ChatRetrieval, resolveChatRuntime, retrieveChatLanguages } from '@/lib/ai-search/runtime';
+import { publishedSections } from '@/lib/ai-search/sections';
 import { envExtras } from '@/lib/env-extras';
 import type { HonoEnv } from '@/lib/hono/context';
 import { resolvePublishedSearchLanguages } from '@/lib/search-configuration';
@@ -91,38 +91,6 @@ const resolvePageContext = (context: PublishedAnswerContext, pagePath?: string) 
     (candidate) => candidate.kind === 'PAGE' && !candidate.hidden && candidate.languageCode === context.scope.language && candidate.path === path,
   );
   return page ? { id: page.id, title: page.title, path: page.path } : undefined;
-};
-
-const headingKey = (text: string) =>
-  text
-    .normalize('NFKC')
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-
-/** Adds the article's own heading id (the same github-slugger ids the reader
- * TOC uses) to each source, so a citation opens the exact section. A heading
- * that cannot be matched leaves the source page-level rather than guessing. */
-const withSectionAnchors = (context: PublishedAnswerContext) => {
-  const byPage = new Map<string, Map<string, string>>();
-  const anchorsFor = (pageId: string) => {
-    let anchors = byPage.get(pageId);
-    if (!anchors) {
-      anchors = new Map();
-      const page = context.versionPages.find((candidate) => candidate.id === pageId);
-      for (const heading of page ? extractHeadings(page.content) : []) {
-        const key = headingKey(heading.text);
-        if (key && !anchors.has(key)) anchors.set(key, heading.id);
-      }
-      byPage.set(pageId, anchors);
-    }
-    return anchors;
-  };
-  return (sources: AiChatSource[]): AiChatSource[] =>
-    sources.map((source) => {
-      const anchor = source.heading ? anchorsFor(source.pageId).get(headingKey(source.heading)) : undefined;
-      return anchor && anchor.length <= 200 ? { ...source, anchor } : source;
-    });
 };
 
 /** Refusal codes that are a quota or budget the reader ran into. */
@@ -376,7 +344,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const cost: ChatCostSink = {};
   // A separate utility model reports its spend apart from the answer model's.
   const utilityCost: ChatCostSink = {};
-  const anchored = withSectionAnchors(context);
+  const sections = publishedSections(context.versionPages);
   const supportUrl = context.request.configuration.aiSupportUrl;
   // Side calls (suggestions) stop with the turn, even when it fails.
   const sideCalls = new AbortController();
@@ -440,12 +408,20 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       { language, page, signal },
     );
     outcome.retrieval = retrieval;
+    // Only sources whose section the published page renders are read, so every
+    // citation the answer can make opens a real section (see publishedSections).
+    const sectioned = retrieval.chunks.flatMap((chunk) => sections(chunk) ?? []);
+    if (sectioned.length < retrieval.chunks.length)
+      log.info(
+        { projectId, leftOut: retrieval.chunks.length - sectioned.length },
+        'AI chat left out sources whose section the published page does not render',
+      );
     // The sources the answer reads: the best matches that fit the context, and
     // only as many as the budgets have room for. The least of them was reserved
     // before the turn ran; reserve what reading the rest adds, or read less.
     let sources: SearchChunk[] = [];
-    if (retrieval.chunks.length && retrieval.confidence >= env.SEARCH_ANSWER_MIN_CONFIDENCE) {
-      const fitted = fitChatContext(retrieval.chunks);
+    if (sectioned.length && retrieval.confidence >= env.SEARCH_ANSWER_MIN_CONFIDENCE) {
+      const fitted = fitChatContext(sectioned);
       const wanted = chatSourcesTokens(shape, fitted) - CHAT_MIN_SOURCES_TOKENS;
       const granted =
         wanted > 0
@@ -512,7 +488,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       Object.assign(outcome, { status: result.status, noAnswerReason: result.noAnswerReason, answer: result.answer });
       final =
         result.status === 'answered'
-          ? { status: 'answered', answer: result.answer, citations: anchored(citationsToSources(result.citations)), suggestions: [] }
+          ? { status: 'answered', answer: result.answer, citations: citationsToSources(result.citations), suggestions: [] }
           : noAnswer(result.answer, result.noAnswerReason ?? 'empty');
       if (result.status === 'answered') {
         // Suggestions read the checked answer, so they never ask what it already

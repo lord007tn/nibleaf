@@ -385,6 +385,23 @@ describe('hybrid search differential indexing jobs', () => {
     expect(JSON.stringify(mocks.deletePoints.mock.calls)).not.toContain('tenant-b');
   });
 
+  it('records the section each chunk opens, and adds it to a point indexed before anchors without a new embedding', async () => {
+    await handleSearchJobs(job('index-deployment'));
+    const point = firstUpsertedPoint();
+    // The reader's own id for "## التثبيت" (github-slugger keeps Arabic letters).
+    expect(point.payload).toMatchObject({ heading: 'التثبيت', anchor: 'التثبيت' });
+    const { anchor: _anchor, ...indexedBefore } = point.payload as Record<string, unknown>;
+    mocks.currentPoints = [{ id: point.id, payload: indexedBefore }];
+    mocks.embed.mockClear();
+    mocks.upsert.mockClear();
+    mocks.replacePayload.mockClear();
+
+    await expect(handleSearchJobs(job('index-deployment'))).resolves.toMatchObject({ embedded: 0, metadataUpdated: 1, unchanged: 0 });
+    expect(mocks.embed).not.toHaveBeenCalled();
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    expect(mocks.replacePayload).toHaveBeenCalledWith(point.id, expect.objectContaining({ anchor: 'التثبيت' }), expect.anything());
+  });
+
   it('can delete tenant data even when no embedding credential is configured', async () => {
     mocks.apiKey = undefined;
     await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ deleted: true });

@@ -165,6 +165,10 @@ export interface SearchChunkSource {
   path: string;
   description: string;
   headings: string[];
+  /** The page's headings with the DOM ids the reader renders for them, in
+   * document order (`extractHeadings` from `@nibleaf/shared/site`, the same
+   * github-slugger ids as the table of contents). Chunks link their section by it. */
+  anchors?: ReadonlyArray<{ text: string; id: string }>;
   content: string;
   icon?: string;
   language: string;
@@ -180,6 +184,10 @@ export interface SearchChunk {
   description: string;
   heading: string;
   headingPath: string[];
+  /** DOM id of the section this chunk is in, as the published page renders it:
+   * its own heading's, or its nearest ancestor's when its heading has none (the
+   * reader gives ids to h1–h4 only). Absent at the top of a page, before any heading. */
+  anchor?: string;
   content: string;
   contentHash: string;
   language: string;
@@ -312,6 +320,8 @@ const markdownHeading = (line: string): { level: number; text: string } | null =
 interface Section {
   heading: string;
   headingPath: string[];
+  /** 1–6; 0 for the text before the first heading. */
+  level: number;
   body: string;
 }
 
@@ -319,12 +329,13 @@ const markdownSections = (content: string): Section[] => {
   const sections: Section[] = [];
   const headingPath: string[] = [];
   let heading = '';
+  let level = 0;
   let body: string[] = [];
   let fenced = false;
   const flush = () => {
     const value = body.join('\n').trim();
     // Imported docs may put a complete definition in a heading with no body.
-    if (value || heading) sections.push({ heading, headingPath: headingPath.filter(Boolean), body: value || heading });
+    if (value || heading) sections.push({ heading, headingPath: headingPath.filter(Boolean), level, body: value || heading });
     body = [];
   };
   for (const line of content.split(/\r?\n/)) {
@@ -335,13 +346,49 @@ const markdownSections = (content: string): Section[] => {
       continue;
     }
     flush();
-    const level = match.level;
+    level = match.level;
     heading = cleanSearchText(match.text);
     headingPath.length = Math.max(0, level - 1);
     headingPath[level - 1] = heading;
   }
   flush();
-  return sections.length > 0 ? sections : [{ heading: '', headingPath: [], body: content }];
+  return sections.length > 0 ? sections : [{ heading: '', headingPath: [], level: 0, body: content }];
+};
+
+/** Heading text compared the way both sides agree on: the chunker reads raw
+ * Markdown headings, the reader strips inline Markdown, so only letters and
+ * digits count (any script), case-folded. */
+export const sectionHeadingKey = (text: string): string =>
+  text
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
+/** The anchor of each section, matched to the page's rendered headings in
+ * document order: each section takes the next rendered heading with the same
+ * text, so a repeated heading ("Example", "Example") gets its own id (`example`,
+ * `example-1`), never the first one's. A heading the reader gives no id (h5, h6),
+ * or one that does not match, uses its nearest ancestor's anchor; the text before
+ * any heading has none. */
+const sectionAnchors = (sections: readonly Section[], anchors: ReadonlyArray<{ text: string; id: string }>): (string | undefined)[] => {
+  const keys = anchors.map((anchor) => sectionHeadingKey(anchor.text));
+  const byLevel: (string | undefined)[] = [];
+  const result: (string | undefined)[] = [];
+  let next = 0;
+  for (const section of sections) {
+    let anchor: string | undefined;
+    if (section.level) {
+      const key = sectionHeadingKey(section.heading);
+      const found = key ? keys.indexOf(key, next) : -1;
+      byLevel.length = section.level - 1;
+      anchor = found >= 0 ? anchors[found]?.id : byLevel.findLast((ancestor) => ancestor !== undefined);
+      if (found >= 0) next = found + 1;
+      byLevel[section.level - 1] = anchor;
+    }
+    result.push(anchor);
+  }
+  return result;
 };
 
 const splitSection = (body: string, maxChars: number, overlapChars: number): string[] => {
@@ -380,7 +427,9 @@ export const chunkSearchDocument = (
   const maxChars = options.maxChars ?? 1400;
   const overlapChars = Math.min(options.overlapChars ?? 180, Math.floor(maxChars / 3));
   let ordinal = 0;
-  return markdownSections(source.content).flatMap((section) =>
+  const sections = markdownSections(source.content);
+  const anchors = sectionAnchors(sections, source.anchors ?? []);
+  return sections.flatMap((section, index) =>
     splitSection(section.body, maxChars, overlapChars).map((content) => {
       // Hash every field that enters the dense embedding. Metadata-only fields
       // (path/icon/visibility) can then update in place without paying for a new
@@ -396,6 +445,7 @@ export const chunkSearchDocument = (
         description: source.description,
         heading: section.heading,
         headingPath: section.headingPath,
+        ...(anchors[index] ? { anchor: anchors[index] } : {}),
         content,
         contentHash,
         language: source.language,
