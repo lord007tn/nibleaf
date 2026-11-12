@@ -18,7 +18,7 @@ import { useLocale, useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { type QueryClient, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
+import { createFileRoute, Link, useBlocker, useRouter } from '@tanstack/react-router';
 import {
   ChevronLeft,
   ChevronRight,
@@ -62,6 +62,7 @@ import {
   shouldFlushDraft,
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
+import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
 import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
@@ -97,6 +98,7 @@ import {
   useDomains,
   useDuplicatePage,
   useLanguages,
+  useOpenApiConfiguration,
   usePage,
   usePages,
   usePendingChanges,
@@ -845,6 +847,31 @@ function EditorPage() {
     deepLinkedPageId.current = pageParam;
     openNode(pageParam);
   }, [pageParam]);
+  // A link in the page to another page of the site opens that page here, the
+  // way a ?page= deep link does: the page being left is saved first. When the
+  // address already names the page (the writer moved on in the page list since),
+  // the switch runs directly.
+  const openLinkedPageRef = useRef<(id: string) => void>(() => {});
+  useEffect(() => {
+    openLinkedPageRef.current = (id) => (id === pageParam ? openNode(id) : openPageForAi(id));
+  });
+  const { data: openApi } = useOpenApiConfiguration(projectId);
+  const linkSite = useMemo(
+    () =>
+      project && languages && branches && allPages && activeBranchId
+        ? editorSiteSnapshot({ project, languages, branches, pages: allPages, branchId: activeBranchId, openApi })
+        : null,
+    [project, languages, branches, allPages, activeBranchId, openApi],
+  );
+  const router = useRouter();
+  const editorLinks = useMemo<EditorLinks>(
+    () => ({
+      resolve: editorLinkResolver(linkSite, page?.id),
+      open: (id) => openLinkedPageRef.current(id),
+      href: (id) => router.buildLocation({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: id } }).href,
+    }),
+    [linkSite, page?.id, router, projectId],
+  );
   useEffect(() => {
     const decision = deepLinkBranchDecision({ deepLinkedPageId: deepLinkedPageId.current, page, activeBranchId, branches });
     if (decision.kind === 'wait') return;
@@ -1941,28 +1968,30 @@ function EditorPage() {
                   // document can never linger across a page switch.
                   // The link picker searches the version this page belongs to.
                   <ActiveBranchContext.Provider value={page.branchId ?? activeBranchId ?? undefined}>
-                    <TiptapEditor
-                      // Remounts once access is known, so block controls render for that access.
-                      key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
-                      value={content}
-                      onChange={canEditContent ? setContent : ignoreEdit}
-                      editable={canEditContent}
-                      className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
-                      dir={activeLangDir}
-                      lang={activeLanguage?.code}
-                      style={typographyVars(project?.config?.typography)}
-                      onUpload={onUploadImage}
-                      comments={commentMarkers}
-                      activeCommentId={activeCommentId}
-                      commentMode={commentMode}
-                      onAddComment={(anchor) => {
-                        setPendingAnchor(anchor);
-                        openRail();
-                        setRailTab('comments');
-                      }}
-                      titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
-                      variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
-                    />
+                    <EditorLinksContext.Provider value={editorLinks}>
+                      <TiptapEditor
+                        // Remounts once access is known, so block controls render for that access.
+                        key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
+                        value={content}
+                        onChange={canEditContent ? setContent : ignoreEdit}
+                        editable={canEditContent}
+                        className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
+                        dir={activeLangDir}
+                        lang={activeLanguage?.code}
+                        style={typographyVars(project?.config?.typography)}
+                        onUpload={onUploadImage}
+                        comments={commentMarkers}
+                        activeCommentId={activeCommentId}
+                        commentMode={commentMode}
+                        onAddComment={(anchor) => {
+                          setPendingAnchor(anchor);
+                          openRail();
+                          setRailTab('comments');
+                        }}
+                        titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
+                        variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
+                      />
+                    </EditorLinksContext.Provider>
                   </ActiveBranchContext.Provider>
                 ) : (
                   <MarkdownSourceEditor

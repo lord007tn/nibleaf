@@ -3,6 +3,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@nibleaf
 import { DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@nibleaf/design-system/components/ui/dropdown-menu-radio';
 import { IconButton } from '@nibleaf/design-system/components/ui/icon-button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -15,6 +16,7 @@ import {
   ChevronDown,
   Code,
   ExternalLink,
+  FileText,
   Highlighter,
   Italic,
   Link as LinkIcon,
@@ -25,6 +27,7 @@ import {
 } from 'lucide-react';
 import { type ComponentType, type KeyboardEvent, lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
+import { isWebAddress, useEditorLinks } from './editor-links';
 import { selectionMenuApplies, selectionMenuRequest } from './extensions/selection-shortcuts';
 import { isPageQuery, normalizeLinkUrl, type PageLinkMatch } from './link-utils';
 import { currentTurnIntoKind, TURN_INTO_OPTIONS, type TurnIntoKind, turnInto } from './turn-into';
@@ -127,11 +130,21 @@ export function LinkEditorPanel({
     onDone();
   };
   const normalized = normalizeLinkUrl(draft);
-  // Relative destinations ('/x', '#x', './x', 'getting-started') would resolve
-  // against the dashboard origin, not the published site — only absolute URLs
-  // (which always carry a scheme after normalization) are openable from here.
-  const openHref =
-    normalized && !normalized.startsWith('/') && !normalized.startsWith('#') && /^[a-z][a-z0-9+.-]*:/i.test(normalized) ? normalized : null;
+  // Web addresses (which always carry a scheme after normalization) open in a
+  // new tab. A relative link ('/x', './x', 'getting-started') would resolve
+  // against the dashboard's origin, so in the page editor it opens the page it
+  // leads to on the site, in the editor; anything else can't be opened here.
+  const links = useEditorLinks();
+  const openHref = normalized && isWebAddress(normalized) ? normalized : null;
+  const target = normalized && !openHref && links ? links.resolve(normalized) : null;
+  const linkedPageId = target?.kind === 'page' ? target.pageId : null;
+  const openLabel = linkedPageId ? t('editor.link.openPage') : t('editor.link.open');
+  const openDisabledReason =
+    !normalized || openHref || linkedPageId
+      ? undefined
+      : target?.kind === 'missing'
+        ? t('editor.link.missingPage')
+        : t('editor.link.openRelativeHint');
   const iconButton = 'size-7 shrink-0 text-foreground/80';
 
   return (
@@ -187,22 +200,26 @@ export function LinkEditorPanel({
       >
         <Check className="size-4" />
       </Button>
-      <Button
-        aria-label={t('editor.link.open')}
+      <TooltipButton
+        aria-label={openLabel}
         className={iconButton}
-        disabled={!openHref}
+        disabled={!(openHref || linkedPageId)}
+        disabledReason={openDisabledReason}
         onClick={() => {
           if (openHref) {
             window.open(openHref, '_blank', 'noopener,noreferrer');
+          } else if (linkedPageId && links) {
+            onDone();
+            links.open(linkedPageId);
           }
         }}
         size="icon-xs"
-        title={normalized && !openHref ? t('editor.link.openRelativeHint') : t('editor.link.open')}
+        tooltip={openLabel}
         type="button"
         variant="ghost"
       >
-        <ExternalLink className="size-4" />
-      </Button>
+        {linkedPageId ? <FileText className="size-4" /> : <ExternalLink className="size-4" />}
+      </TooltipButton>
       <Suspense fallback={null}>
         <PageLinkPicker
           editor={editor}

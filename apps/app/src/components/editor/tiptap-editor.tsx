@@ -50,11 +50,13 @@ import { type ComponentType, type CSSProperties, type ReactNode, useCallback, us
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { type CommentAnchor, EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
+import { type EditorLinks, useEditorLinks } from './editor-links';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
 import { BlockImage, LegacyImage } from './extensions/block-image';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CleanPaste } from './extensions/clean-paste';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
+import { InternalLinkClicks } from './extensions/internal-link-clicks';
 import { ImageControls } from './extensions/image-controls';
 import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions/image-upload';
 import { mdxNodes } from './extensions/mdx';
@@ -227,6 +229,8 @@ interface BuildExtensionsOptions {
    *  disabled for RTL documents. */
   dir?: 'ltr' | 'rtl';
   locale?: Locale;
+  /** The page editor's link resolution, for clicks on links into the site. */
+  getLinks?: () => EditorLinks | null;
 }
 
 const RTL_LETTER = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u;
@@ -346,6 +350,7 @@ export function buildEditorExtensions({
   getActiveId,
   dir = 'ltr',
   locale = dir === 'rtl' ? 'ar' : 'en',
+  getLinks = () => null,
 }: BuildExtensionsOptions = {}) {
   return [
     StarterKit.configure({
@@ -393,6 +398,7 @@ export function buildEditorExtensions({
     }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
     SelectionShortcuts,
+    InternalLinkClicks.configure({ getLinks }),
   ];
 }
 
@@ -746,6 +752,12 @@ export function TiptapEditor({
   const commentModeRef = useRef(commentMode);
   const editableRef = useRef(editable);
   const onAddCommentRef = useRef(onAddComment);
+  // Read by the link click handler, so it always resolves against the current site.
+  const links = useEditorLinks();
+  const linksRef = useRef(links);
+  useEffect(() => {
+    linksRef.current = links;
+  }, [links]);
   useEffect(() => {
     valueRef.current = value;
     onChangeRef.current = onChange;
@@ -782,6 +794,7 @@ export function TiptapEditor({
           : undefined,
         getComments: () => commentsRef.current,
         getActiveId: () => activeCommentRef.current,
+        getLinks: () => linksRef.current,
         dir,
         locale: scaffoldLocaleOf({ lang, dir }),
       }),

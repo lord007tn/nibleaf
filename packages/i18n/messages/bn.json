@@ -446,6 +446,8 @@
   "editor_link_save": "লিঙ্ক সংরক্ষণ করুন",
   "editor_link_open": "নতুন ট্যাবে খুলুন",
   "editor_link_openrelativehint": "আপনার প্রকাশিত সাইটে আপেক্ষিক লিঙ্ক খোলা",
+  "editor_link_openpage": "এই পৃষ্ঠাটি খুলুন",
+  "editor_link_missingpage": "এই সাইটে এই পৃষ্ঠাটি নেই",
   "editor_link_remove": "লিঙ্ক সরান",
   "editor_link_invalid": "একটি বৈধ URL লিখুন: https, mailto, tel, #anchor, অথবা / দিয়ে শুরু হওয়া একটি পথ।",
   "editor_toolbar_undo": "পূর্বাবস্থায় ফেরান",
