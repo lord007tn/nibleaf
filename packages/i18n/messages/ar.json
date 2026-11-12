@@ -4903,7 +4903,7 @@
   "settings_aiassistants_step_cursorinstall": "أضف Nibleaf إلى Cursor وأكّد التثبيت:",
   "settings_aiassistants_step_vscodeinstall": "أضف Nibleaf إلى VS Code وأكّد التثبيت:",
   "settings_aiassistants_step_editorconfig": "أو احفظ هذا الإعداد في مشروعك:",
-  "settings_aiassistants_step_signin": "عندما يفتح {app} صفحة Nibleaf، سجّل الدخول واختر {site} وما يُسمح لـ{app} بفعله، ثم اختر «سماح».",
+  "settings_aiassistants_step_signin": "عندما يفتح {app} صفحة Nibleaf، سجّل الدخول، واختر {site} والصلاحيات التي تمنحها للتطبيق، ثم اختر «سماح».",
   "settings_aiassistants_step_usekey": "لا يستطيع هذا الخادم ربط التطبيقات عبر تسجيل الدخول، لذا يتصل {app} بمفتاح شخصي.",
   "settings_aiassistants_createkey": "أنشئ مفتاحًا شخصيًا",
   "settings_aiassistants_copyaddress": "نسخ العنوان",

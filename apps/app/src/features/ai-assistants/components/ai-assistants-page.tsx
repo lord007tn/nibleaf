@@ -52,25 +52,28 @@ export function AiAssistantsPage({ projectId, role = '', siteName }: { projectId
     void keysQuery.refetch();
     void appsQuery.refetch();
   };
+  const personalKeyButton = (enabled: boolean) => (
+    <Button
+      disabledReason={enabled ? undefined : t('settings.aiAssistants.off.reason')}
+      onClick={() => {
+        setIssued(null);
+        setDialogOpen(true);
+      }}
+      type="button"
+      variant="outline"
+    >
+      <KeyRound aria-hidden />
+      {t('settings.aiAssistants.useKey')}
+    </Button>
+  );
+  // Beside the title on wider screens; under the description on a phone, so the description keeps its width.
   const connections = (enabled: boolean, manageAll: boolean) => (
     <SettingsSection
-      action={
-        <Button
-          disabledReason={enabled ? undefined : t('settings.aiAssistants.off.reason')}
-          onClick={() => {
-            setIssued(null);
-            setDialogOpen(true);
-          }}
-          type="button"
-          variant="outline"
-        >
-          <KeyRound aria-hidden />
-          {t('settings.aiAssistants.useKey')}
-        </Button>
-      }
+      action={<div className="hidden shrink-0 sm:block">{personalKeyButton(enabled)}</div>}
       description={manageAll ? t('settings.aiAssistants.connectionsDescription') : t('settings.aiAssistants.connectionsDescriptionMember')}
       title={t('settings.aiAssistants.connectionsTitle')}
     >
+      <div className="mb-4 sm:hidden">{personalKeyButton(enabled)}</div>
       <ConnectionsList
         apps={appsQuery.data}
         enabled={enabled}

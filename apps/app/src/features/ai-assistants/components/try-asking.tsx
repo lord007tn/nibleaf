@@ -15,7 +15,7 @@ export function TryAsking() {
           const text = t(`settings.aiAssistants.prompt.${id}`);
           return (
             <li className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center" key={id}>
-              <p className="min-w-0 flex-1 text-sm">“{text}”</p>
+              <p className="min-w-0 flex-1 border-primary/40 border-s-2 ps-3 text-sm">{text}</p>
               <div className="flex shrink-0 items-center gap-2">
                 <Badge variant="outline">{t('settings.aiAssistants.needs', { permission: t(`settings.apiKeys.${preset}`) })}</Badge>
                 <CopyButton

@@ -140,7 +140,7 @@ function CopyBlock({ copy, onCopied }: { copy: NonNullable<ConnectStep['copy']>;
   if (copy.kind === 'url')
     return (
       <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-muted/40 py-1 ps-3 pe-1">
-        <code className="min-w-0 flex-1 truncate text-sm" dir="ltr">
+        <code className="min-w-0 flex-1 break-all text-sm" dir="ltr">
           {copy.value}
         </code>
         <CopyButton
