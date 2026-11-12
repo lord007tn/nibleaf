@@ -12,6 +12,8 @@ into the panel in the chat API's SSE/AG-UI wire format (as in `operations/ux/rea
   - `docs.example.com` (code) and a plain-text link are their own left-to-right islands.
   - Every citation number stays on the line of the word before it.
 - `ar-*-01-panel-empty`: the panel's subtitle and intro call the docs «هذا التوثيق».
+- `ar-1440-light-03-not-in-docs`: the Arabic refusal says «لم أجد إجابة واضحة في التوثيق» and offers «تواصل مع الدعم».
+  The replay reads this text from `packages/i18n/messages/ar.json`, so the shot shows the string this PR ships.
 - `en-*-02-answer`: the same layout in English (regression check).
 
 Before, on main, from `operations/ux/reader-ask-ai/shots` (#522): `ar-1440-light-04-answer-ar-on-en.jpg` (a citation
