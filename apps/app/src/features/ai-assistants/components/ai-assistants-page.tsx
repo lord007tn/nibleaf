@@ -40,13 +40,16 @@ export function AiAssistantsPage({ projectId, role = '', siteName }: { projectId
   useEffect(() => {
     if (watch && !watch.baseline && appsQuery.data) setWatch(withBaseline(watch, appsQuery.data));
   }, [watch, appsQuery.data]);
-  // Re-render at the deadline, so "allowed but not working" and "not connected" show without a poll.
-  const [, setDeadlinePassed] = useState(0);
+  // "Now" is state, moved forward at the deadline, so "allowed but not working" and
+  // "not connected" show without a poll. It must be state: the React Compiler
+  // memoizes renders on their inputs, and a bare Date.now() in render isn't one.
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!watch) return;
+    setNow(Date.now());
     const remaining = watch.until - Date.now();
     if (remaining <= 0) return;
-    const timer = setTimeout(() => setDeadlinePassed((value) => value + 1), remaining + 50);
+    const timer = setTimeout(() => setNow(Date.now()), remaining + 50);
     return () => clearTimeout(timer);
   }, [watch]);
 
@@ -161,7 +164,7 @@ export function AiAssistantsPage({ projectId, role = '', siteName }: { projectId
     );
 
   const apps = appsQuery.data ?? [];
-  const watchStatus = watch ? watchState(watch, apps, Date.now()) : null;
+  const watchStatus = watch ? watchState(watch, apps, now) : null;
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <SettingsSection action={howItWorks} description={t('settings.aiAssistants.description')} title={t('settings.aiAssistants.title')}>

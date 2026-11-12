@@ -246,19 +246,38 @@ describe('Connect an assistant', () => {
     expect(text()).toContain('settings.aiAssistants.watch.unexpected(Mystery agent|ChatGPT)');
   });
 
-  it('at the deadline, says an allowed app never called and offers to watch again', async () => {
-    const page = await renderPage();
-    await click(button('settings.aiAssistants.copyAddress'));
-    hooks.useApps.mockReturnValue(query([app({ id: 'new' })]));
-    const start = Date.now();
-    const clock = vi.spyOn(Date, 'now').mockReturnValue(start + 11 * 60_000);
+  it('re-renders by itself at the deadline: "not connected yet" appears without any other update', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {
+      await renderPage();
+      await click(button('settings.aiAssistants.copyAddress'));
+      expect(text()).toContain('settings.aiAssistants.watch.waiting(ChatGPT)');
+      await act(async () => {
+        vi.advanceTimersByTime(10 * 60_000 + 100);
+      });
+      expect(text()).toContain('settings.aiAssistants.watch.timedOut(ChatGPT)');
+      expect(button('settings.aiAssistants.watch.again')).toBeDefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('at the deadline, says an allowed app never called and offers to watch again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const page = await renderPage();
+      await click(button('settings.aiAssistants.copyAddress'));
+      hooks.useApps.mockReturnValue(query([app({ id: 'new' })]));
       await page.rerender();
+      expect(text()).toContain('settings.aiAssistants.watch.authorized(ChatGPT)');
+      await act(async () => {
+        vi.advanceTimersByTime(10 * 60_000 + 100);
+      });
       expect(text()).toContain('settings.aiAssistants.watch.stalled(ChatGPT|ChatGPT)');
       await click(button('settings.aiAssistants.watch.again'));
       expect(text()).toContain('settings.aiAssistants.watch.authorized(ChatGPT)');
     } finally {
-      clock.mockRestore();
+      vi.useRealTimers();
     }
   });
 });

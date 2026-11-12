@@ -291,7 +291,8 @@ function SecretStep({
   // "Your AI app is using this key": use after `since` (server time) counts.
   // 0 for a fresh key; the end of the dashboard's own test after Test connection.
   const [waiting, setWaiting] = useState(() => ({ id: issued.id, since: 0, until: Date.now() + WAIT_FOR_APP_MS }));
-  const [, setWatchEnded] = useState(0);
+  // "Now" is state, moved forward at the deadline: a bare Date.now() in render would be memoized by the React Compiler.
+  const [now, setNow] = useState(() => Date.now());
   // A test belongs to the key it started for; a late result for an older key is dropped.
   const testRun = useRef(0);
   // The form that held focus is gone: move it to the secret's Copy button, the next thing to do.
@@ -308,7 +309,7 @@ function SecretStep({
   useEffect(() => {
     const remaining = waiting.until - Date.now();
     if (remaining <= 0) return;
-    const timer = setTimeout(() => setWatchEnded((value) => value + 1), remaining);
+    const timer = setTimeout(() => setNow(Date.now()), remaining + 50);
     return () => clearTimeout(timer);
   }, [waiting]);
   const { data } = useApiKeys(projectId, waiting);
@@ -422,7 +423,7 @@ function SecretStep({
         <p className="text-muted-foreground text-sm" role="status">
           {connected
             ? t('settings.apiKeys.assistantConnected')
-            : Date.now() >= waiting.until
+            : now >= waiting.until
               ? t('settings.apiKeys.waitingStopped')
               : t('settings.apiKeys.waiting')}
         </p>
