@@ -205,8 +205,9 @@ describe('page bodies for a page-scoped reader', () => {
     const result = await getSitePage('project-1', 'plan/guide');
     expect(result.prev).toBeNull();
     expect(result.next).toBeNull();
+    // The parent is shown to this reader as a section, so its crumb is text, not a link.
     expect(result.breadcrumbs).toEqual([
-      { title: 'Plan', path: 'plan' },
+      { title: 'Plan', path: 'plan', section: true },
       { title: 'Guide', path: 'plan/guide' },
     ]);
   });

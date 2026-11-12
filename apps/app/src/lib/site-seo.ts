@@ -474,7 +474,8 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
       }),
     },
   ];
-  const breadcrumbs = data.breadcrumbs ?? [];
+  // Sections (groups, categories) aren't pages, so they have no URL to list.
+  const breadcrumbs = (data.breadcrumbs ?? []).filter((crumb) => !crumb.section);
   if (breadcrumbs.length > 0) {
     scripts.push({
       type: 'application/ld+json',

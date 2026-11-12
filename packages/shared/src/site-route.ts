@@ -16,7 +16,16 @@
  *   5. otherwise not found.
  */
 import { normalizeRedirectPath, type RedirectPair, resolveRedirectTarget } from './redirects';
-import { buildNavTree, defaultLanguage, type NavNode, publicLanguages, type SiteSnapshot, type SnapshotPage, type SnapshotVersion } from './site';
+import {
+  buildNavTree,
+  defaultLanguage,
+  isPageTranslation,
+  type NavNode,
+  publicLanguages,
+  type SiteSnapshot,
+  type SnapshotPage,
+  type SnapshotVersion,
+} from './site';
 
 const SLASH = 47;
 
@@ -138,6 +147,9 @@ interface LanguagePageIndex {
   servedByPath: Map<string, SnapshotPage>;
   /** The first page of any kind at each path, in snapshot order. */
   anyByPath: Map<string, SnapshotPage>;
+  /** The language's home: the translation of the default language's home,
+   *  computed for the home it was asked about (`from`), or null if there's none. */
+  homeTranslation?: { from: SnapshotPage; page: SnapshotPage | null };
   /** The first page in nav order (`firstPage`), once computed. */
   first?: SnapshotPage | null;
   /** For every proper path prefix, the path of the first page beneath it in nav order (`firstPageUnder`), once computed. */
@@ -177,6 +189,23 @@ const indexedFirstPage = (index: LanguagePageIndex, languageCode: string): Snaps
   return index.first ?? undefined;
 };
 
+/**
+ * A language's home (the site root, `''`): the translation of the default
+ * language's home when this language has one (by translation key, else the same
+ * path: `isPageTranslation`), so an Arabic reader at the root sees the Arabic
+ * version of the English home, not whichever Arabic page sorts first. Without a
+ * translation, the language's own first page in nav order. The translation
+ * lookup runs once per index and default home.
+ */
+const indexedHome = (index: LanguagePageIndex, languageCode: string, defaultHome: SnapshotPage | undefined): SnapshotPage | undefined => {
+  if (!defaultHome) return indexedFirstPage(index, languageCode);
+  if (index.homeTranslation?.from !== defaultHome) {
+    const page = index.pages.find((candidate) => candidate.kind === 'PAGE' && !candidate.hidden && isPageTranslation(defaultHome, candidate));
+    index.homeTranslation = { from: defaultHome, page: page ?? null };
+  }
+  return index.homeTranslation.page ?? indexedFirstPage(index, languageCode);
+};
+
 /** `firstPageUnder(pages, languageCode, prefix)`, answered from one pass over the nav. */
 const indexedFirstPageUnder = (index: LanguagePageIndex, languageCode: string, prefix: string): SnapshotPage | undefined => {
   if (!prefix) return undefined;
@@ -202,11 +231,13 @@ export const resolveSitePage = (snapshot: SiteSnapshot, path: string, lang?: str
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const docsVersion = explicitVersion ?? activeVersion(snapshot, version);
 
+  const defaultCode = defaultLanguage(snapshot.project).code;
+  const defaultHome = () => indexedFirstPage(languagePageIndex(snapshot, docsVersion, defaultCode), defaultCode);
   const findIn = (langCode: string) => {
     const index = languagePageIndex(snapshot, docsVersion, langCode);
     const found =
       index.servedByPath.get(normalized) ??
-      (normalized === '' ? indexedFirstPage(index, langCode) : undefined) ??
+      (normalized === '' ? indexedHome(index, langCode, langCode === defaultCode ? undefined : defaultHome()) : undefined) ??
       // A group/section prefix (e.g. a navbar tab pointing at `/guides`)
       // resolves to its first page in nav order, Mintlify-style. Paths with no
       // pages beneath them still 404.
@@ -215,7 +246,6 @@ export const resolveSitePage = (snapshot: SiteSnapshot, path: string, lang?: str
   };
 
   // Try the active language; fall back to the default language's pages before 404.
-  const defaultCode = defaultLanguage(snapshot.project).code;
   const match = findIn(activeLanguage) ?? (activeLanguage === defaultCode ? undefined : findIn(defaultCode));
   return match ? { ...match, docsVersion, normalized } : null;
 };
