@@ -9,8 +9,7 @@
 // public site mock standing in for the API. See README.md here.
 //   node tests/integration/reader-navigation/browser.mjs [videoDir]
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright-core';
-import { chromiumExecutable } from '../lib/capture-env.mjs';
+import { hostKey, launchLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const APP = process.env.APP_URL ?? 'http://localhost:4310';
 const MOCK = process.env.MOCK_URL ?? 'http://localhost:4311';
@@ -21,9 +20,9 @@ const START = 'getting-started/introduction';
 const TARGET = 'guides/webhooks';
 const failures = [];
 
-const browser = await chromium.launch({
-  executablePath: chromiumExecutable(),
-});
+// Only the local app and mock are reachable (capture-env.mjs); anything else fails the run.
+const local = await launchLocalOnlyBrowser({ allowedHosts: [hostKey(APP), hostKey(MOCK)] });
+const { browser } = local;
 
 const mockControl = async (state) => {
   const response = await fetch(`${MOCK}/__mock/control`, { method: 'POST', body: JSON.stringify(state) });
@@ -329,7 +328,7 @@ await scenario('a gateway failure loads that page from the server once; failing 
 });
 
 await mockControl({});
-await browser.close();
+await local.close();
 if (failures.length > 0) {
   console.error(`reader navigation: ${failures.length} failed`);
   process.exit(1);

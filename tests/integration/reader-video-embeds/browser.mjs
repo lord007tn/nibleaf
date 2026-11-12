@@ -12,8 +12,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { chromium } from 'playwright-core';
-import { acquireDevstackLock, chromiumExecutable } from '../lib/capture-env.mjs';
+import { acquireDevstackLock, hostKey, launchLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const APP = 'http://localhost:4310';
@@ -45,6 +44,8 @@ const waitFor = async (url) => {
 
 const children = [];
 let browser;
+// Only the local app and mock are reachable; provider requests are answered by the routes below.
+let local;
 /** Stop what this run started: the browser and both servers. */
 const cleanup = async () => {
   await browser?.close().catch(() => undefined);
@@ -60,7 +61,11 @@ try {
   await waitFor(`${MOCK}/api/public/sites/preview-harbor`);
   await waitFor(APP);
   if (captureDir) await mkdir(captureDir, { recursive: true });
-  browser = await chromium.launch({ executablePath: chromiumExecutable(), handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
+  local = await launchLocalOnlyBrowser({
+    allowedHosts: [hostKey(APP), hostKey(MOCK)],
+    launch: { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false },
+  });
+  browser = local.browser;
 
   /** A page on the tour with every request recorded and provider responses stubbed. */
   const open = async ({ lang = 'en', width = 1440, javaScriptEnabled = true } = {}) => {
@@ -172,6 +177,8 @@ try {
     await shot(page, 'no-javascript-en-1440');
     await context.close();
   });
+  // Fails the run if anything outside the local stack was attempted.
+  await local.close();
 } finally {
   await cleanup();
   await lock.release();

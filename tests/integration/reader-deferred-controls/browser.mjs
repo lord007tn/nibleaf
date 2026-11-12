@@ -10,8 +10,7 @@
 // control's chunk back with `page.route` while the reader acts on the static
 // trigger, then lets it through and checks the control opened.
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright-core';
-import { chromiumExecutable } from '../lib/capture-env.mjs';
+import { hostKey, launchLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const APP = process.env.APP_URL ?? 'http://localhost:4310';
 const SITE = process.env.SITE_ID ?? 'preview-harbor';
@@ -19,9 +18,9 @@ const videoDir = process.argv[2];
 const MENUS = /\/assets\/header-menus-[^/]+\.js(\?.*)?$/;
 const DRAWER = /\/assets\/mobile-nav-drawer-[^/]+\.js(\?.*)?$/;
 
-const browser = await chromium.launch({
-  executablePath: chromiumExecutable(),
-});
+// Only the local app is reachable (capture-env.mjs); anything else fails the run.
+const local = await launchLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] });
+const { browser } = local;
 const failures = [];
 
 /** A page whose `chunk` waits for `release()`, or fails while `fail` is set. */
@@ -113,7 +112,7 @@ await scenario('a failed download is announced, and selecting the trigger again 
   await context.close();
 });
 
-await browser.close();
+await local.close();
 if (failures.length > 0) {
   console.error(`reader deferred controls: ${failures.length} failed`);
   process.exit(1);

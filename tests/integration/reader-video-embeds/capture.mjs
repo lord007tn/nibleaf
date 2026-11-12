@@ -15,8 +15,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { chromium } from 'playwright-core';
-import { acquireDevstackLock, chromiumExecutable } from '../lib/capture-env.mjs';
+import { acquireDevstackLock, hostKey, launchLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const OUTPUT = join(ROOT, '.github/assets/feat-reader-video-embeds');
@@ -52,6 +51,8 @@ const stop = (child) =>
 
 const children = new Set();
 let browser;
+// Only the local app and mock are reachable; provider requests are answered by the routes below.
+let local;
 const cleanup = async () => {
   await browser?.close().catch(() => undefined);
   for (const child of children) await stop(child);
@@ -63,7 +64,11 @@ try {
   const mock = spawn(process.execPath, ['scripts/site-preview-mock.mjs', '--port', '4311'], { cwd: ROOT, stdio: 'ignore' });
   children.add(mock);
   await waitFor(`${MOCK}/api/public/sites/preview-harbor`);
-  browser = await chromium.launch({ executablePath: chromiumExecutable(), handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
+  local = await launchLocalOnlyBrowser({
+    allowedHosts: [hostKey(APP), hostKey(MOCK)],
+    launch: { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false },
+  });
+  browser = local.browser;
 
   for (const [phase, appDir] of [
     ['before', resolve(BEFORE_APP)],
@@ -148,6 +153,8 @@ try {
     children.delete(app);
   }
   await writeFile(join(OUTPUT, 'request-log.json'), `${JSON.stringify(log, null, 2)}\n`);
+  // Fails the run if anything outside the local stack was attempted.
+  await local.close();
 } finally {
   await cleanup();
   await lock.release();

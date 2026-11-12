@@ -10,16 +10,15 @@
 // field and the loading shell before the chunk is let through mid-typing.
 // Each asserts the dialog field's final value and that it has focus.
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright-core';
-import { chromiumExecutable } from '../lib/capture-env.mjs';
+import { hostKey, launchLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const APP = process.env.APP_URL ?? 'http://localhost:4310';
 const SITE = process.env.SITE_ID ?? 'preview-harbor';
 const videoDir = process.argv[2];
 
-const browser = await chromium.launch({
-  executablePath: chromiumExecutable(),
-});
+// Only the local app is reachable (capture-env.mjs); anything else fails the run.
+const local = await launchLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] });
+const { browser } = local;
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },
   ...(videoDir ? { recordVideo: { dir: videoDir, size: { width: 960, height: 600 } } } : {}),
@@ -189,7 +188,7 @@ await page.locator(FIELD).waitFor();
 await expectField('reopen, type and delete everything', '');
 
 await context.close();
-await browser.close();
+await local.close();
 if (failures.length > 0) {
   console.error(`reader search keystrokes: ${failures.length} failed`);
   process.exit(1);
