@@ -62,6 +62,9 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
     .filter((name) => WRAPPER_CLASS.test(name))
     .join(' ');
   const [zoomable, setZoomable] = useState(false);
+  // The full-size copy is only mounted while the dialog is open, so the page
+  // doesn't hold a second image (and request) for every picture.
+  const [fullSize, setFullSize] = useState(false);
   const image = useRef<HTMLImageElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -90,6 +93,7 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
     modal.dir = getComputedStyle(source).direction === 'rtl' ? 'rtl' : 'ltr';
     const lang = source.closest('[lang]')?.getAttribute('lang');
     if (lang) modal.lang = lang;
+    setFullSize(true);
     modal.showModal();
   };
   return (
@@ -127,7 +131,10 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
                 event.preventDefault();
                 dialog.current?.close();
               }}
-              onClose={() => trigger.current?.focus()}
+              onClose={() => {
+                setFullSize(false);
+                trigger.current?.focus();
+              }}
               onClick={(event) => {
                 // A click on the dialog element itself (not its content) is a backdrop click.
                 if (event.target === event.currentTarget) dialog.current?.close();
@@ -136,7 +143,7 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
               <button type="button" className="reader-control" onClick={() => dialog.current?.close()}>
                 {t('closeImage')}
               </button>
-              <img src={props.src} alt={props.alt ?? ''} />
+              {fullSize ? <img src={props.src} alt={props.alt ?? ''} decoding="async" /> : null}
             </dialog>,
             document.body,
           )}

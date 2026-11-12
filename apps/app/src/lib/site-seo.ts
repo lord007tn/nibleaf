@@ -4,6 +4,7 @@ import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import { truncateText } from '@nibleaf/shared/utils';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
 import { hydratedCustomDomainProjectId } from '@/lib/custom-domain-rewrite';
+import { siteEmoji } from '@/lib/site-emoji';
 
 /**
  * Public origin the site is served from. On the client this is the real origin;
@@ -211,16 +212,6 @@ const hasMarkdownAlternate = (data: SitePage, requestedLanguage?: string): boole
 /** Route `headers` for a published page: flag Markdown eligibility. */
 export const pageMarkdownHeaders = (data: SitePage | null | undefined, requestedLanguage?: string): Record<string, string> | undefined =>
   data && hasMarkdownAlternate(data, requestedLanguage) ? { [SITE_MARKDOWN_ALTERNATE_HEADER]: '1' } : undefined;
-
-/** Emoji are text, never image URLs. Encoding the SVG also escapes XML markup. */
-export const siteEmoji = (value?: string | null): string | undefined => {
-  const text = value?.trim();
-  return text &&
-    /(?:\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3)/u.test(text) &&
-    Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)).length === 1
-    ? text
-    : undefined;
-};
 
 export const siteIconHref = (config: ProjectConfig | null | undefined, icon?: string | null, projectId?: string): string => {
   const branding = config?.branding;
