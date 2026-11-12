@@ -39,6 +39,12 @@ const pagesRoutes = {
     description: 'Move a page (and its children) to Trash for 30 days.',
     responses: ok,
   }),
+  duplicate: createRouteConfig({
+    guard: [...editor],
+    tags: ['pages'],
+    description: 'Copy a page (or a group without its pages) right after itself: content and settings, not comments or history.',
+    responses: { 201: { description: 'created' }, ...errorResponses },
+  }),
   reorder: createRouteConfig({ guard: [...editor], tags: ['pages'], description: 'Reorder / re-parent pages.', responses: ok }),
 };
 
