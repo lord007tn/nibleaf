@@ -2792,6 +2792,8 @@ export const MESSAGE_IDS = {
   'site.previous': 'site_previous',
   'site.next': 'site_next',
   'site.onThisPage': 'site_onthispage',
+  'site.navShowAll': 'site_navshowall',
+  'site.navShowLess': 'site_navshowless',
   'site.minReadCount': 'site_minreadcount',
   'site.screenshotCount': 'site_screenshotcount',
   'site.updated': 'site_updated',

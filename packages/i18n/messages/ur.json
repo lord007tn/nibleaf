@@ -2220,6 +2220,8 @@
   "site_previous": "پچھلا",
   "site_next": "اگلا",
   "site_onthispage": "اس صفحہ پر",
+  "site_navshowall": "سب دکھائیں",
+  "site_navshowless": "کم دکھائیں",
   "site_minreadcount": [
     {
       "declarations": ["input count", "input form"],
