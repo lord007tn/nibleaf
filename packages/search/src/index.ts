@@ -1,3 +1,4 @@
+import { replaceMarkdownImages, replaceMarkdownLinksWithLabels, replaceTags } from '@nibleaf/shared/markup-scan';
 import { create, insertMultiple, type Orama, search } from '@orama/orama';
 import { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
 import { cleanSearchText } from './hybrid';
@@ -343,21 +344,34 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
 const SNIPPET_RADIUS = 90;
 const ARABIC_SNIPPET_WORD = /[\u0621-\u063a\u0640-\u065f\u0670\u0671\u06d6-\u06ed]+/gu;
 
+/** A run of whitespace from a line start, then a list bullet or ordered marker.
+ *  The marker part is optional so a run without one is consumed (and kept as it
+ *  is) in one step: trying each line start inside the run would read the same
+ *  run again from every one of them, and fail the same way. */
+const LIST_MARKER = /^\s*(?:([-*+]|\d+\.)\s+)?/gm;
+/** A run of whitespace from a line start, then a thematic break or setext
+ *  underline (`---`, `===`), optional for the same reason. */
+const THEMATIC_BREAK = /^\s*(?:([-=*_]\s*){3,}$)?/gm;
+
 /** Strip common Markdown/MDX syntax so a search snippet reads as clean prose
- *  instead of showing literal `# heading`, `**bold**`, fenced code, etc. */
+ *  instead of showing literal `# heading`, `**bold**`, fenced code, etc. Every
+ *  step reads the text in linear time (it can be a whole 2 MiB page). */
 export function stripMarkdown(src: string): string {
-  return src
+  const withoutCode = src
     .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks
     .replace(/~~~[\s\S]*?~~~/g, ' ')
-    .replace(/`([^`]+)`/g, '$1') // inline code
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // images
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links → text
-    .replace(/<\/?[A-Za-z][^>]*>/g, ' ') // html / MDX component tags
+    .replace(/`([^`]+)`/g, '$1'); // inline code
+  const prose = replaceTags(
+    replaceMarkdownLinksWithLabels(replaceMarkdownImages(withoutCode, ' ')), // images, then links → text
+    /<\/?[A-Za-z][^>]*>/g, // html / MDX component tags
+    ' ',
+  );
+  return prose
     .replace(/\[!\w+\]/g, ' ') // admonition markers ([!NOTE])
     .replace(/^\s{0,3}#{1,6}\s+/gm, '') // ATX headings
     .replace(/^\s{0,3}>\s?/gm, '') // blockquote markers
-    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '') // list bullets / ordered markers
-    .replace(/^\s*([-=*_]\s*){3,}$/gm, ' ') // hr / setext underlines
+    .replace(LIST_MARKER, (run, marker) => (marker === undefined ? run : '')) // list bullets / ordered markers
+    .replace(THEMATIC_BREAK, (run, mark) => (mark === undefined ? run : ' ')) // hr / setext underlines
     .replace(/[*~]{1,3}/g, '') // emphasis markers (preserve underscores in code-like identifiers)
     .replace(/\|/g, ' ') // table pipes
     .replace(/\s+/g, ' ')

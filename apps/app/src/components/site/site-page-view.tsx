@@ -1,6 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
-import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { blockDirection } from '@nibleaf/shared/script-direction';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type ComponentProps, Suspense, startTransition, useEffect, useState } from 'react';
@@ -13,6 +12,7 @@ import { ArticleBodySkeleton } from '@/components/site/site-article-skeleton';
 import { useSiteReader } from '@/components/site/site-reader-context';
 import { MobileTableOfContents, TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
+import { articleStats } from '@/lib/article-stats';
 import { HydrationIsland } from '@/lib/hydration-modules';
 import { articleMarkdownModule } from '@/lib/reader-hydration-modules';
 import { formatUpdated } from '@/lib/reader-text';
@@ -68,14 +68,6 @@ const applyUrlTemplate = (template: string | undefined, path: string, fallbackUr
     .replaceAll('{path}', pagePath)
     .replaceAll('{encodedPath}', encodeURIComponent(pagePath))
     .replaceAll('{url}', encodeURIComponent(fallbackUrl));
-};
-
-/** The dark-mode twin of a light/dark image pair (`hidden dark:block`): the
- *  reader sees one screenshot, not two. */
-const isDarkModeTwin = (image: string): boolean => {
-  // class="…", className="…" or className={"…"}
-  const classes = image.match(/\bclass(?:Name)?=\{?["']([^"']*)["']\}?/)?.[1]?.split(/\s+/) ?? [];
-  return classes.includes('hidden') && classes.some((name) => name.startsWith('dark:') && name !== 'dark:hidden');
 };
 
 /** "Was this page helpful?" + edit/issue links, rendered at the end of the
@@ -228,14 +220,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     (addons?.editSuggestions !== false && Boolean(addons?.editUrl?.trim())) ||
     (addons?.issueLinks !== false && Boolean(addons?.issueUrl?.trim()));
   const readerActionsAfterNavigation = addons?.feedbackPlacement === 'after-navigation';
-  const readableText = page.content
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/[`#*_>[\](){}|~-]/g, ' ');
-  const readingMinutes = Math.max(1, Math.ceil(readableText.split(/\s+/).filter(Boolean).length / 220));
-  const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b[^>]*>/gi) ?? []).filter(
-    (image) => !isDarkModeTwin(image),
-  ).length;
+  const { readingMinutes, imageCount } = articleStats(page.content);
   // Formatted on the server (getSitePageFn) and rendered verbatim, so a browser
   // whose ICU words the date differently can't cause a hydration mismatch. Pages
   // that didn't come through that function format it here.

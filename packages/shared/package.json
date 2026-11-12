@@ -48,6 +48,7 @@
     "./organization-handles": "./src/organization-handles.ts",
     "./markdown-text": "./src/markdown-text.ts",
     "./markdown-code-usage": "./src/markdown-code-usage.ts",
+    "./markup-scan": "./src/markup-scan.ts",
     "./page-history": "./src/page-history.ts",
     "./page-limits": "./src/page-limits.ts",
     "./testing/growth": "./src/testing/growth.ts",

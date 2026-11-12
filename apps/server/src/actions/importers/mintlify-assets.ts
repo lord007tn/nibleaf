@@ -1,8 +1,11 @@
 import { posix } from 'node:path';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import { replaceMarkdownImageTargets, replaceTagAttributes } from '@nibleaf/shared/markup-scan';
 
-const MARKDOWN_IMAGE = /(!\[[^\]]*\]\()([^\s)]+)((?:\s+["'][^)]*["'])?\))/g;
-const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])([^"']+)(["'])/gi;
+// Read with linear scans (@nibleaf/shared/markup-scan), which give exactly what
+// these regexes give: imported files can be large and full of unclosed markup.
+const HTML_IMAGE_OPEN = /<(?:img|Image)\b/gi;
+const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])([^"']+)(["'])/giy;
 
 const cleanReference = (value: string): string => {
   const withoutSuffix = value.split(/[?#]/, 1)[0] ?? value;
@@ -53,13 +56,13 @@ export const rewriteMintlifyAssetReferences = (
     return rawUrl(path);
   };
   const protectedCode = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY });
-  const markdown = protectedCode.content.replace(
-    MARKDOWN_IMAGE,
-    (_match, before: string, reference: string, after: string) => `${before}${resolve(reference)}${after}`,
-  );
-  const rewritten = markdown.replace(
+  // `(!\[[^\]]*\]\()([^\s)]+)((?:\s+["'][^)]*["'])?\))`: Markdown image targets.
+  const markdown = replaceMarkdownImageTargets(protectedCode.content, (before, reference, after) => `${before}${resolve(reference)}${after}`);
+  const rewritten = replaceTagAttributes(
+    markdown,
+    HTML_IMAGE_OPEN,
     HTML_IMAGE,
-    (_match, before: string, reference: string, after: string) => `${before}${resolve(reference)}${after}`,
+    (_match, before = '', reference = '', after = '') => `${before}${resolve(reference)}${after}`,
   );
   return { content: protectedCode.restore(rewritten), resolved: [...resolved], missing: [...missing] };
 };
