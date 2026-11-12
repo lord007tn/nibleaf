@@ -5,29 +5,60 @@ import { fencedMarkdownLines } from './markdown-code';
  * math). The reader's page code imports this, so it stays a line scan with no
  * parser; `readerRenderMode` (./reader-render-mode) refines it with one.
  *
- * Every check here runs on author content up to the page size limit, on the
- * reader's render path, so each is a single linear scan: no regex that could
- * retry from every `<`, `$` or backtick.
+ * Each check is a single forward scan, so detection time grows linearly with
+ * the page. The HTML-tag and math checks are shared with the code-usage reader
+ * (./markdown-code-usage) and search's snippet text, so all read text alike.
  */
 
 const isLetter = (code: number) => (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+const SLASH = 47;
 const BACKTICK = 96;
 const BACKSLASH = 92;
 
-/** A tag: `<`, an optional `/`, a Latin letter, and a `>` somewhere after the
- * letter. The earliest such start leaves the most text for its `>`, so only it
- * needs one look for a `>`. */
-const hasTag = (text: string): boolean => {
+/** Where an HTML or component tag opened at `index` has its name: after `<`
+ * and an optional `/`, when that is a Latin letter; -1 when it is not a tag. */
+const tagName = (text: string, index: number): number => {
+  const letter = text.charCodeAt(index + 1) === SLASH ? index + 2 : index + 1;
+  return isLetter(text.charCodeAt(letter)) ? letter : -1;
+};
+
+/** Whether the text holds a tag: `<`, an optional `/`, a Latin letter, and a
+ * `>` somewhere after the letter. The earliest tag start leaves the most text
+ * for its `>`, so it alone decides. */
+export const containsHtmlTag = (text: string): boolean => {
   for (let index = text.indexOf('<'); index >= 0; index = text.indexOf('<', index + 1)) {
-    const letter = text.charCodeAt(index + 1) === 47 ? index + 2 : index + 1;
-    if (isLetter(text.charCodeAt(letter))) return text.indexOf('>', letter + 1) >= 0;
+    const letter = tagName(text, index);
+    if (letter >= 0) return text.indexOf('>', letter + 1) >= 0;
   }
   return false;
 };
 
-/** Math: a `$` not right after a backslash, and another `$` anywhere after it.
- * The earliest such `$` leaves the most text for the second one. */
-const hasMath = (text: string): boolean => {
+/** The text with each tag (as `containsHtmlTag` reads one, up to the first `>`
+ * after its name) replaced, left to right. Once a tag start has no `>` after
+ * it, no later one has either, so the rest is kept as written. */
+export const replaceHtmlTags = (text: string, replacement: string): string => {
+  let output = '';
+  let kept = 0;
+  let index = text.indexOf('<');
+  while (index >= 0) {
+    const letter = tagName(text, index);
+    if (letter < 0) {
+      index = text.indexOf('<', index + 1);
+      continue;
+    }
+    const close = text.indexOf('>', letter + 1);
+    if (close < 0) break;
+    output += text.slice(kept, index) + replacement;
+    kept = close + 1;
+    index = text.indexOf('<', kept);
+  }
+  return output + text.slice(kept);
+};
+
+/** Whether the text holds math: a `$` not right after a backslash, and another
+ * `$` anywhere after it. The earliest such `$` leaves the most text for the
+ * second one, so it alone decides. */
+export const containsMath = (text: string): boolean => {
   for (let index = text.indexOf('$'); index >= 0; index = text.indexOf('$', index + 1)) {
     if (index === 0 || text.charCodeAt(index - 1) !== BACKSLASH) return text.indexOf('$', index + 1) >= 0;
   }
@@ -41,13 +72,13 @@ const hasMath = (text: string): boolean => {
  * doesn't count. */
 export const needsRichMarkdown = (content: string): boolean => {
   const prose = withoutCode(content);
-  return hasTag(prose) || hasMath(prose);
+  return containsHtmlTag(prose) || containsMath(prose);
 };
 
 /** A line without its inline code spans: a backtick run that is not preceded by
  * a backslash, at least one character on the same line without a backtick, and a
- * closing run of exactly the same length. One pass: a run that opens no span is
- * only ever looked at again as the next span's closing candidate. */
+ * closing run of exactly the same length. Each run is read once: one that opens
+ * no span is next read as the following span's possible opener. */
 const withoutInlineCode = (line: string): string => {
   if (!line.includes('`')) return line;
   let output = '';
@@ -89,6 +120,5 @@ const withoutCode = (content: string): string => {
   return lines.map((line, index) => (fenced[index] ? '' : withoutInlineCode(line))).join('\n');
 };
 
-/** A fence opened inside a blockquote or list item. Anchored at line starts, and
- * each repetition is bounded by the next part's first character class. */
+/** A fence opened inside a blockquote or list item, at a line start. */
 const CONTAINER_FENCE = /^[ \t]*(?:>|[-*+][ \t]|\d{1,9}[.)][ \t])[ \t>]*(?:`{3,}|~{3,})/m;
