@@ -28,3 +28,21 @@ NIBLEAF_DEVSTACK_LOCK=/path/to/devstack.lock pnpm test:reader-video-embeds:brows
 
 Pass `captureDir` to save a screenshot of each step. Set `CHROMIUM_PATH` (or
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE`) if Playwright's Chromium is not installed.
+
+## Before/after captures
+
+`capture.mjs` records the same page on main's build and on this build, in
+English and Arabic at 1440 and 390: a screenshot of the whole article
+(`page-<phase>-<lang>-<width>.png`) and `request-log.json`, which lists, for
+each profile, the facades, link cards and `<video>` attributes rendered, every
+off-site request before the first play, and the requests the first play made.
+Like `browser.mjs`, it takes the dev-stack lock itself and starts the mock and
+each app build in turn; provider and `example.com` responses are stubbed.
+
+```sh
+pnpm turbo run build --filter=@nibleaf/app   # here and in a worktree at main
+NIBLEAF_DEVSTACK_LOCK=/path/to/devstack.lock NIBLEAF_BEFORE_APP=/path/to/main/apps/app \
+  node tests/integration/reader-video-embeds/capture.mjs
+```
+
+Output goes to `.github/assets/feat-reader-video-embeds/`.
