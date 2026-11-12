@@ -179,11 +179,33 @@ export const videoPageUrl = ({ provider, id, start }: VideoEmbed): string => {
   }
 };
 
-/** Whether a `<video>`/`<source>` address may be used: https, or a path on this site (our own assets). */
+/** A fixed origin to resolve site paths against: only whether the result stays on it matters. */
+const SITE_BASE = new URL('https://site.nibleaf.invalid');
+
+/**
+ * Whether a `<video>`/`<source>`/`<track>` address or a poster may be used:
+ * https, or a path on this site (our own assets).
+ *
+ * A browser removes tab and newline anywhere in a URL and reads `\` as `/`, so
+ * `/<tab>/host/x` or `/\host/x` is another host to it. Any ASCII control
+ * character, space or backslash is refused outright; a path must then still
+ * resolve to this site's origin. Percent-encoded bytes (`/%09/x`) are not
+ * decoded while resolving, so they stay in the path on this site.
+ */
 export const isAllowedMediaUrl = (value: unknown): value is string => {
   if (typeof value !== 'string') return false;
   const url = value.trim();
-  // `//host` and `/\host` are other hosts to a browser.
-  if (url.startsWith('/')) return url[1] !== '/' && url[1] !== '\\';
+  if (!url || url.length > MAX_URL_LENGTH) return false;
+  for (let index = 0; index < url.length; index++) {
+    const code = url.charCodeAt(index);
+    if (code <= 0x20 || code === 0x7f || code === 0x5c) return false;
+  }
+  if (url.startsWith('/')) {
+    try {
+      return new URL(url, SITE_BASE).origin === SITE_BASE.origin;
+    } catch {
+      return false;
+    }
+  }
   return url.slice(0, 8).toLowerCase() === 'https://' && parseWebUrl(url)?.protocol === 'https:';
 };

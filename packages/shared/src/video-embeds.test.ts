@@ -185,4 +185,28 @@ describe('web and media addresses', () => {
   ])('media address %s allowed: %s', (value, allowed) => {
     expect(isAllowedMediaUrl(value)).toBe(allowed);
   });
+
+  // A browser strips tab and newline from a URL and reads `\` as `/`, so these
+  // resolve to another host however they are spelled in the source.
+  it.each([
+    ['tab', '/\t/tracker.example/x.mp4'],
+    ['newline', '/\n/tracker.example/x.mp4'],
+    ['carriage return', '/\r/tracker.example/x.mp4'],
+    ['backslash', '/\\/tracker.example/x.mp4'],
+    ['slash, backslash', '/\\/evil'],
+    ['protocol-relative', '//evil'],
+    ['tab inside https', 'https://cdn.exa\tmple.com/a.mp4'],
+    ['NUL', '/assets/a.mp4\u0000'],
+    ['DEL', '/assets/\u007fa.mp4'],
+    ['space inside', '/assets/a b.mp4'],
+  ])('rejects a media address with a %s', (_name, value) => {
+    expect(isAllowedMediaUrl(value)).toBe(false);
+  });
+
+  it('keeps a path on this site, including a percent-encoded tab, which the URL parser leaves in the path', () => {
+    expect(isAllowedMediaUrl('/assets/x.mp4')).toBe(true);
+    // `%09` is not decoded while resolving, so `/%09/evil` stays a path on this site.
+    expect(isAllowedMediaUrl('/%09/evil')).toBe(true);
+    expect(new URL('/%09/evil', 'https://docs.example.com').host).toBe('docs.example.com');
+  });
 });
