@@ -679,6 +679,7 @@ function SiteChrome() {
                 ) : null}
               </div>
             }
+            navigationLabels={{ showAll: t('navShowAll'), showLess: t('navShowLess') }}
             navigation={
               <>
                 {navAnchors.length > 0 ? (

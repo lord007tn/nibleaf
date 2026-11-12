@@ -2301,6 +2301,8 @@
   "site_previous": "السابق",
   "site_next": "التالي",
   "site_onthispage": "في هذه الصفحة",
+  "site_navshowall": "عرض الكل",
+  "site_navshowless": "عرض أقل",
   "site_minreadcount": [
     {
       "declarations": ["input count", "input form"],

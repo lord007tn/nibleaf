@@ -2165,6 +2165,8 @@
   "site_previous": "আগের",
   "site_next": "পরবর্তী",
   "site_onthispage": "এই পৃষ্ঠায়",
+  "site_navshowall": "সব দেখুন",
+  "site_navshowless": "কম দেখুন",
   "site_minreadcount": [
     {
       "declarations": ["input count", "input form"],

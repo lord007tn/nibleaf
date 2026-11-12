@@ -2165,6 +2165,8 @@
   "site_previous": "Sebelumnya",
   "site_next": "Selanjutnya",
   "site_onthispage": "Di halaman ini",
+  "site_navshowall": "Tampilkan semua",
+  "site_navshowless": "Tampilkan lebih sedikit",
   "site_minreadcount": [
     {
       "declarations": ["input count", "input form"],

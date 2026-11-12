@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { type ResolvedTheme, THEME_SCHEMA_VERSION, type ThemeLayout } from '@nibleaf/shared/themes';
-import { type CSSProperties, createContext, type ReactNode, useContext } from 'react';
+import { type CSSProperties, createContext, type ReactNode, useContext, useEffect, useId, useRef, useState } from 'react';
 
 export type DocumentationThemeContextName = 'reader' | 'project-preview' | 'studio-preview';
 
@@ -8,6 +8,9 @@ interface ReaderSlots {
   banner?: ReactNode;
   header: ReactNode;
   navigation: ReactNode;
+  /** In the reader's language: the control that opens a navigation index the
+   *  theme shows in a limited height (Manuscript). */
+  navigationLabels?: { showAll: string; showLess: string };
   content: ReactNode;
   footer?: ReactNode;
   overlays?: ReactNode;
@@ -129,6 +132,65 @@ const HarborTemplate: DocumentationThemeTemplate = {
   ),
 };
 
+/**
+ * Manuscript's navigation index above the paper, at desktop width. It opens in
+ * a limited height so the article stays near the top; when the index is taller,
+ * its end fades and a button shows the rest (and folds it again), so no page is
+ * out of reach. Server HTML keeps every link; collapsing is presentation only.
+ */
+function ManuscriptNavigationIndex({ labels, children }: { labels?: ReaderSlots['navigationLabels']; children: ReactNode }) {
+  const content = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const id = useId();
+  useEffect(() => {
+    const element = content.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setOverflows(element.scrollHeight > element.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    for (const child of element.children) observer.observe(child);
+    // A link reached by keyboard past the visible height opens the whole index.
+    const reveal = (event: FocusEvent) => {
+      if (!element.hasAttribute('data-collapsed') || !(event.target instanceof Element)) return;
+      if (event.target.getBoundingClientRect().bottom > element.getBoundingClientRect().bottom) setExpanded(true);
+    };
+    element.addEventListener('focusin', reveal);
+    return () => {
+      observer.disconnect();
+      element.removeEventListener('focusin', reveal);
+    };
+  }, []);
+  const collapsible = Boolean(labels) && (overflows || expanded);
+  return (
+    <aside className="documentation-manuscript-reader-navigation hidden lg:block" data-theme-region="sidebar">
+      <div
+        className="documentation-manuscript-navigation py-6"
+        data-collapsed={expanded ? undefined : ''}
+        data-overflows={collapsible && !expanded ? '' : undefined}
+        data-theme-region="sidebar-content"
+        id={id}
+        ref={content}
+      >
+        {children}
+      </div>
+      {collapsible && labels ? (
+        <button
+          aria-controls={id}
+          aria-expanded={expanded}
+          className="documentation-manuscript-navigation-toggle"
+          data-theme-region="nav-toggle"
+          onClick={() => setExpanded((value) => !value)}
+          type="button"
+        >
+          {expanded ? labels.showLess : labels.showAll}
+        </button>
+      ) : null}
+    </aside>
+  );
+}
+
 /** Manuscript — an editorial shell: chapter deck across the top, then a single
  * sheet of "paper" carrying a focused reading measure with the outline in the
  * margin. */
@@ -146,11 +208,7 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
       >
         {slots.header}
         <div className="mx-auto flex w-full max-w-[82rem] flex-1 flex-col px-4 pb-10 sm:px-6" data-theme-region="content-shell">
-          <aside className="documentation-manuscript-reader-navigation hidden lg:block" data-theme-region="sidebar">
-            <div className="documentation-manuscript-navigation py-6" data-theme-region="sidebar-content">
-              {slots.navigation}
-            </div>
-          </aside>
+          <ManuscriptNavigationIndex labels={slots.navigationLabels}>{slots.navigation}</ManuscriptNavigationIndex>
           <div className="documentation-manuscript-paper min-w-0 flex-1 border border-(--theme-border) bg-(--theme-surface) shadow-[0_18px_50px_-20px_color-mix(in_oklab,var(--theme-foreground)_22%,transparent)] lg:mt-2">
             {slots.content}
           </div>

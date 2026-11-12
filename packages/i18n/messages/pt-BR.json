@@ -2229,6 +2229,8 @@
   "site_previous": "Anterior",
   "site_next": "Próximo",
   "site_onthispage": "Nesta página",
+  "site_navshowall": "Mostrar tudo",
+  "site_navshowless": "Mostrar menos",
   "site_minreadcount": [
     {
       "declarations": ["input count", "input form"],
