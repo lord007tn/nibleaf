@@ -1,4 +1,5 @@
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import { replaceTags } from '@nibleaf/shared/markup-scan';
 
 const tagName = (line: string): string | null => {
   const match = line.trim().match(/^<\/?([A-Z][A-Za-z0-9.]*)\b/);
@@ -73,7 +74,8 @@ export const normalizeMintlifyMdx = (content: string): string => {
       continue;
     }
 
-    line = line.replace(/<img\b[^>]*\/?>/gi, (imageTag) => {
+    // replaceTags: the same as `line.replace`, in linear time when a `>` is missing.
+    line = replaceTags(line, /<img\b[^>]*\/?>/gi, (imageTag) => {
       const src = attribute(imageTag, 'src');
       if (!src) return imageTag;
       const alt = attribute(imageTag, 'alt') ?? '';
