@@ -11,6 +11,7 @@
 //   MAILPIT_URL   the stack's Mailpit API, where the sign-in code arrives
 //   APP_URL       the dashboard (default http://localhost:4310)
 //   PHASES        before,after (default); each label goes on its files
+//   SERVERS       the server types to capture (default: each phase's own list)
 //   OUTPUT        where the JPEGs go (default .github/assets/feat-ai-answers-page)
 //
 // One invocation owns the machine-wide dev-stack lock (NIBLEAF_DEVSTACK_LOCK sets
@@ -35,7 +36,10 @@ const PHASES = (process.env.PHASES ?? 'before,after').split(',').filter((phase) 
 const OUTPUT = resolve(root, process.env.OUTPUT ?? '.github/assets/feat-ai-answers-page');
 // Server types: managed (the server runs the AI), own-key (no server AI, a saved
 // OpenAI key) and no-key (no server AI, no key saved yet: production today).
+// Two more states are only looked at, not walked: rejected-key (the saved key's
+// provider refused it; answers off) and viewer (Nibleaf AI, read by a Viewer).
 // "before" is the reference, so it takes one colour scheme; no-key has no old journey.
+// SERVERS (comma-separated) picks server types for every phase.
 const PLAN = {
   before: { servers: ['managed', 'own-key'], schemes: ['light'] },
   after: { servers: ['managed', 'own-key', 'no-key'], schemes: ['light', 'dark'] },
@@ -132,6 +136,12 @@ async function journey(page, phase, projectId, server, locale, tag) {
   if (phase === 'after') {
     await open(page, projectId, 'ai');
     await shot(page, `${tag}-1-off`);
+    if (server === 'rejected-key' || server === 'viewer') {
+      // States to read, not change: the page as it stands, and Search.
+      await open(page, projectId, 'search');
+      await shot(page, `${tag}-3-search`);
+      return;
+    }
     if (server === 'no-key') {
       // The switch waits for a key; the first step is adding one (never saved here).
       await page.getByRole('button', { name: ADD_KEY[locale] }).first().click();
@@ -201,7 +211,8 @@ try {
       console.log(`sources: ${phase}`);
       run(`${STACK_SOURCES} ${phase}`);
     }
-    for (const server of PLAN[phase].servers) await capture(browser, phase, server);
+    const servers = process.env.SERVERS ? process.env.SERVERS.split(',') : PLAN[phase].servers;
+    for (const server of servers) await capture(browser, phase, server);
   }
   console.log(`shots in ${OUTPUT}`);
 } finally {

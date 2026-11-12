@@ -29,6 +29,8 @@ export type Decision = { kind: 'allowed' } | { kind: 'locked' } | { kind: 'denie
 export type AiProblem =
   | 'keyMissing'
   | 'keyRejected'
+  /** The provider account behind the key has no credit left. */
+  | 'keyOutOfCredit'
   /** The selected own-key provider isn't offered by this server any more (e.g. after an embedding change). */
   | 'sourceNotOffered'
   | 'keyUnreachable'
@@ -56,6 +58,8 @@ const denied = (reason: AiBlockReason): Decision => ({ kind: 'denied', reason })
 
 const providerAvailable = (ai: SiteAi, id: AiKeyProvider) => ai.capabilities.providers.some((provider) => provider.id === id && provider.available);
 const connectionOf = (ai: SiteAi, id: AiKeyProvider) => ai.status.connections.find((connection) => connection.id === id);
+/** A key answers readers while it works, and while its provider only rate-limits it. */
+const keyServes = (state: SiteAiStatus['connections'][number]['state'] | undefined) => state === 'ok' || state === 'rateLimited';
 
 /** Sources this server can offer at all, in the order the page lists them. */
 export function offeredSources(ai: SiteAi): AiSource[] {
@@ -82,6 +86,7 @@ function sourceProblem(ai: SiteAi): AiProblem | null {
   const connection = connectionOf(ai, source);
   if (!connection) return 'keyMissing';
   if (connection.state === 'rejected') return 'keyRejected';
+  if (connection.state === 'outOfCredit') return 'keyOutOfCredit';
   if (connection.state === 'unreachable') return 'keyUnreachable';
   if (connection.state === 'modelWithdrawn') return 'modelWithdrawn';
   if (connection.state === 'needsRecheck') return 'keyNeedsRecheck';
@@ -125,7 +130,7 @@ export function sourceOptions(ai: SiteAi, access: SiteAdminState): SourceOption[
   return offeredSources(ai).map((id) => {
     const connection = id === 'managed' ? null : (connectionOf(ai, id) ?? null);
     const decision =
-      access !== 'admin' ? locked : id === 'managed' || connection?.state === 'ok' ? allowed : denied(connection ? 'keyNotWorking' : 'addKeyFirst');
+      access !== 'admin' ? locked : id === 'managed' || keyServes(connection?.state) ? allowed : denied(connection ? 'keyNotWorking' : 'addKeyFirst');
     return { id, selected: ai.status.source === id, connection, decision };
   });
 }
@@ -149,11 +154,18 @@ export function switchDecision(ai: SiteAi, access: SiteAdminState): { decision: 
 /** `warning`: answers work, but something needs a look (some pages couldn't be prepared). */
 type ChecklistTone = 'ok' | 'working' | 'warning' | 'problem' | 'idle';
 export type ChecklistFix = 'publish' | 'prepare' | 'replaceKey' | 'checkKey' | 'checkAgain' | 'changeModel' | 'chooseSource' | 'addKey' | 'seeUsage';
-export type ChecklistRow = { id: 'published' | 'prepared' | 'source' | 'usage'; tone: ChecklistTone; fix: ChecklistFix | null };
+export type ChecklistRow = {
+  id: 'published' | 'prepared' | 'source' | 'usage';
+  tone: ChecklistTone;
+  fix: ChecklistFix | null;
+  /** The source row's problem, whether or not answers are on: a broken key never reads as working. */
+  problem?: AiProblem;
+};
 
 const SOURCE_FIX: Partial<Record<AiProblem, ChecklistFix>> = {
   keyMissing: 'addKey',
   keyRejected: 'replaceKey',
+  keyOutOfCredit: 'checkAgain',
   sourceNotOffered: 'chooseSource',
   keyUnreachable: 'checkAgain',
   modelWithdrawn: 'changeModel',
@@ -172,9 +184,30 @@ export function checklistSource(ai: SiteAi): AiSource | null {
   return ai.status.source;
 }
 
+/**
+ * Whether the docs can be prepared for AI now: preparing reads them with the
+ * selected source, so it needs one that works (the reindex is refused otherwise).
+ */
+export const canPrepare = (ai: SiteAi): boolean => Boolean(ai.status.published) && checklistSource(ai) !== null && sourceProblem(ai) === null;
+
+/** The selected own key is rate-limited by its provider: it still answers, but some readers may get none for now. */
+const sourceRateLimited = (ai: SiteAi): boolean => {
+  const source = checklistSource(ai);
+  return source !== null && source !== 'managed' && connectionOf(ai, source)?.state === 'rateLimited';
+};
+
+/** The one fix for the problem the page leads with (the "Not working" callout). */
+export function problemFix(ai: SiteAi, problem: AiProblem): ChecklistFix | null {
+  if (problem === 'notPublished') return 'publish';
+  if (problem === 'limitReached') return 'seeUsage';
+  if (problem === 'notPrepared' || problem === 'preparationFailed') return canPrepare(ai) ? 'prepare' : null;
+  return SOURCE_FIX[problem] ?? null;
+}
+
 /** "Is it working?": each step answers need, with the one fix for a failing step. */
 export function checklist(ai: SiteAi): ChecklistRow[] {
   const { status } = ai;
+  const prepare: ChecklistFix | null = canPrepare(ai) ? 'prepare' : null;
   const published: ChecklistRow = { id: 'published', tone: status.published ? 'ok' : 'problem', fix: status.published ? null : 'publish' };
   const preparation = status.preparation.state;
   const prepared: ChecklistRow = !status.published
@@ -182,19 +215,21 @@ export function checklist(ai: SiteAi): ChecklistRow[] {
     : preparation === 'ready'
       ? { id: 'prepared', tone: 'ok', fix: null }
       : preparation === 'partial'
-        ? { id: 'prepared', tone: 'warning', fix: 'prepare' }
+        ? { id: 'prepared', tone: 'warning', fix: prepare }
         : preparation === 'running'
           ? { id: 'prepared', tone: 'working', fix: null }
           : // Not prepared yet only fails readers once answers are on; turning them on starts it.
-            { id: 'prepared', tone: status.answersOn || preparation === 'failed' ? 'problem' : 'idle', fix: 'prepare' };
+            { id: 'prepared', tone: status.answersOn || preparation === 'failed' ? 'problem' : 'idle', fix: prepare };
   const problem = sourceProblem(ai);
   const source: ChecklistRow =
     checklistSource(ai) === null
       ? // Nothing chosen and nothing usable yet (every key still to add): the fix is adding one.
         { id: 'source', tone: 'idle', fix: sourceOptions(ai, 'admin').some((option) => option.decision.kind === 'allowed') ? null : 'addKey' }
       : problem
-        ? { id: 'source', tone: 'problem', fix: SOURCE_FIX[problem] ?? null }
-        : { id: 'source', tone: status.answersOn ? 'ok' : 'idle', fix: null };
+        ? { id: 'source', tone: 'problem', fix: SOURCE_FIX[problem] ?? null, problem }
+        : sourceRateLimited(ai)
+          ? { id: 'source', tone: 'warning', fix: null }
+          : { id: 'source', tone: status.answersOn ? 'ok' : 'idle', fix: null };
   const usage: ChecklistRow = limitReached(ai)
     ? { id: 'usage', tone: 'problem', fix: 'seeUsage' }
     : { id: 'usage', tone: status.usage.answersToday === null ? 'idle' : 'ok', fix: null };

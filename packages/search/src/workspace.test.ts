@@ -1,15 +1,22 @@
 import { decodeEncryptionKey, encryptSecret } from '@nibleaf/shared/crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const db = vi.hoisted(() => ({ project: vi.fn(), connection: vi.fn() }));
-vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: db.project }, projectIntegration: { findUnique: db.connection } } }));
+const db = vi.hoisted(() => ({ project: vi.fn(), connection: vi.fn(), update: vi.fn(async (_args: unknown) => ({ count: 1 })) }));
+vi.mock('@nibleaf/database', () => ({
+  prisma: { project: { findUnique: db.project }, projectIntegration: { findUnique: db.connection, updateMany: db.update } },
+}));
 
 import {
   type ChatCostSink,
   costReportingFetch,
+  KEY_RETRY_AFTER_MS,
+  keyHealthFetch,
   knownChatCost,
+  providerKeyOutcome,
+  recordProviderKeyOutcome,
   resolveWorkspaceAi,
   resolveWorkspaceAiConfiguration,
+  type WorkspaceAiRuntime,
   workspaceChatModelOptions,
 } from './workspace';
 
@@ -198,5 +205,160 @@ describe('OpenRouter cost reporting', () => {
     await Promise.all(sink.pending ?? []);
     expect(sink.costUsd).toBeUndefined();
     expect(knownChatCost(sink)).toBeUndefined();
+  });
+});
+
+describe("a site's own key follows what its requests get (#566 council)", () => {
+  beforeEach(() => vi.clearAllMocks());
+  const runtime = (overrides = {}) => ({
+    providerId: 'openai' as const,
+    apiKey: 'workspace-owned-secret',
+    answerModel: 'gpt-test',
+    embeddingModel: 'openai/text-embedding-3-small',
+    revision: 'connection-a:7',
+    answersEnabled: true,
+    ...overrides,
+  });
+  const reply = (status: number, body: unknown = {}) => Response.json(body, { status });
+  const settled = () => new Promise((done) => setTimeout(done, 0));
+
+  it.each([
+    { status: 200, body: {}, outcome: 'ok' },
+    { status: 401, body: {}, outcome: 'keyRefused' },
+    { status: 403, body: {}, outcome: 'keyRefused' },
+    { status: 402, body: {}, outcome: 'outOfCredit' },
+    { status: 429, body: { error: { code: 'insufficient_quota' } }, outcome: 'outOfCredit' },
+    { status: 429, body: { error: { code: 'rate_limit_exceeded' } }, outcome: 'rateLimited' },
+    { status: 500, body: {}, outcome: 'other' },
+  ])('reads $status as $outcome, leaving the body for the caller', async ({ status, body, outcome }) => {
+    const response = reply(status, body);
+    await expect(providerKeyOutcome(response)).resolves.toBe(outcome);
+    await expect(response.json()).resolves.toEqual(body);
+  });
+
+  it('marks a refused or out-of-credit key, only at the revision that was used, restarting its rest each time', async () => {
+    await recordProviderKeyOutcome('connection-a:7', 'keyRefused');
+    await recordProviderKeyOutcome('connection-a:7', 'outOfCredit');
+    expect(db.update.mock.calls.map(([call]) => call)).toEqual([
+      {
+        where: { id: 'connection-a', revision: 7 },
+        data: { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: 'integration:credentials_invalid', lastVerifiedAt: expect.any(Date) },
+      },
+      {
+        where: { id: 'connection-a', revision: 7 },
+        data: { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: 'integration:quota_exhausted', lastVerifiedAt: expect.any(Date) },
+      },
+    ]);
+  });
+
+  it('notes a rate limit without stopping the key, and clears it once a request gets through', async () => {
+    await recordProviderKeyOutcome('connection-a:7', 'rateLimited');
+    await recordProviderKeyOutcome('connection-a:7', 'ok');
+    expect(db.update.mock.calls.map(([call]) => call)).toEqual([
+      {
+        where: { id: 'connection-a', revision: 7, lastVerificationStatus: 'HEALTHY' },
+        data: { lastVerificationCode: 'integration:rate_limited', lastVerifiedAt: expect.any(Date) },
+      },
+      {
+        where: {
+          id: 'connection-a',
+          revision: 7,
+          OR: [
+            { lastVerificationStatus: 'HEALTHY', lastVerificationCode: 'integration:rate_limited' },
+            { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: { in: ['integration:credentials_invalid', 'integration:quota_exhausted'] } },
+          ],
+        },
+        data: { lastVerificationStatus: 'HEALTHY', lastVerificationCode: null, lastVerifiedAt: expect.any(Date) },
+      },
+    ]);
+  });
+
+  it("never records anything for the server's own key or a passing provider error", async () => {
+    await recordProviderKeyOutcome('instance', 'keyRefused');
+    await recordProviderKeyOutcome('connection-a:7', 'other');
+    expect(db.update).not.toHaveBeenCalled();
+    expect(keyHealthFetch(runtime({ revision: 'instance' }))).toBeUndefined();
+  });
+
+  it('records what a reader request learns, without changing what the reader gets', async () => {
+    const fetcher = keyHealthFetch(runtime(), async () => reply(401, { error: 'nope' }));
+    const response = await fetcher?.('https://api.openai.com/v1/chat/completions');
+    await expect(response?.json()).resolves.toEqual({ error: 'nope' });
+    await settled();
+    expect(db.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ lastVerificationCode: 'integration:credentials_invalid' }) }),
+    );
+  });
+
+  it('writes nothing for a success unless a rate limit is on record', async () => {
+    await keyHealthFetch(runtime(), async () => reply(200))?.('https://api.openai.com/v1/embeddings');
+    await settled();
+    expect(db.update).not.toHaveBeenCalled();
+    await keyHealthFetch(runtime({ recovering: true }), async () => reply(200))?.('https://api.openai.com/v1/embeddings');
+    await settled();
+    expect(db.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ lastVerificationCode: null }) }));
+  });
+
+  it('carries a recorded rate limit into the runtime, so the next success clears it', async () => {
+    vi.stubEnv('INTEGRATION_CREDENTIAL_ENCRYPTION_KEY', key);
+    vi.stubEnv('INTEGRATION_CREDENTIAL_PREVIOUS_KEYS', '');
+    vi.stubEnv('SEARCH_EMBEDDING_MODEL', 'openai/text-embedding-3-small');
+    db.project.mockResolvedValue({ config: { search: { aiProvider: 'openai', aiAnswers: true } } });
+    db.connection.mockResolvedValue(connection({ lastVerificationCode: 'integration:rate_limited' }));
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toMatchObject({ recovering: true });
+    vi.unstubAllEnvs();
+  });
+});
+
+describe('a refusal rests the key, then readers try it again (#566 council)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('INTEGRATION_CREDENTIAL_ENCRYPTION_KEY', key);
+    vi.stubEnv('INTEGRATION_CREDENTIAL_PREVIOUS_KEYS', '');
+    vi.stubEnv('SEARCH_EMBEDDING_MODEL', 'openai/text-embedding-3-small');
+    db.project.mockResolvedValue({ config: { search: { aiProvider: 'openai', aiAnswers: true } } });
+  });
+  afterEach(() => vi.unstubAllEnvs());
+  const refused = (minutesAgo: number, code = 'integration:credentials_invalid') =>
+    connection({ lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: code, lastVerifiedAt: new Date(Date.now() - minutesAgo * 60_000) });
+  const reply = (status: number) => Response.json({}, { status });
+  const settled = () => new Promise((done) => setTimeout(done, 0));
+
+  it('refused, blocked during the rest, retried after it, cleared by a success; a fresh refusal rests it again', async () => {
+    // Refused just now: readers get "answers unavailable", not the key.
+    db.connection.mockResolvedValue(refused(1));
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+    // Rested for longer than KEY_RETRY_AFTER_MS: the next request tries it again.
+    expect(KEY_RETRY_AFTER_MS).toBe(15 * 60_000);
+    db.connection.mockResolvedValue(refused(16));
+    const retried = (await resolveWorkspaceAi('workspace-a')) as WorkspaceAiRuntime;
+    expect(retried).toMatchObject({ apiKey: 'workspace-owned-secret', recovering: true });
+    // It works again: the record is cleared.
+    await keyHealthFetch(retried, async () => reply(200))?.('https://api.openai.com/v1/chat/completions');
+    await settled();
+    expect(db.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: { lastVerificationStatus: 'HEALTHY', lastVerificationCode: null, lastVerifiedAt: expect.any(Date) } }),
+    );
+    // Refused again instead: the rest starts over.
+    await keyHealthFetch(retried, async () => reply(401))?.('https://api.openai.com/v1/chat/completions');
+    await settled();
+    expect(db.update).toHaveBeenLastCalledWith({
+      where: { id: 'connection-a', revision: 1 },
+      data: { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: 'integration:credentials_invalid', lastVerifiedAt: expect.any(Date) },
+    });
+  });
+
+  it('an out-of-credit key rests the same way', async () => {
+    db.connection.mockResolvedValue(refused(1, 'integration:quota_exhausted'));
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+    db.connection.mockResolvedValue(refused(16, 'integration:quota_exhausted'));
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toMatchObject({ recovering: true });
+  });
+
+  it('other failures (a withdrawn model, a switched-off key) still wait for a check', async () => {
+    db.connection.mockResolvedValue(refused(60, 'integration:model_unavailable'));
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+    db.connection.mockResolvedValue({ ...refused(60), status: 'INACTIVE' });
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
   });
 });

@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   aiAccess,
   aiPageState,
+  canPrepare,
   checklist,
   checklistSource,
   offeredSources,
   preparesOnTurnOn,
+  problemFix,
   type SiteAi,
   selectionRequest,
   sourceChoiceRequest,
@@ -278,6 +280,37 @@ describe('checklist', () => {
       expected: { source: 'idle:addKey' },
     },
     {
+      name: 'production today, never prepared: nothing to prepare with yet, so no "Prepare now" (#566 council)',
+      ai: siteAi({ capabilities: noManaged, status: { preparation: { state: 'none', pages: 0, expectedPages: 0, at: null } } }),
+      expected: { prepared: 'idle', source: 'idle:addKey' },
+    },
+    {
+      name: 'a refused key, answers off: the source row still fails (#566 council)',
+      ai: siteAi({ status: { source: 'openai', connections: [key('openai', 'rejected')] } }),
+      expected: { source: 'problem:replaceKey' },
+    },
+    {
+      name: 'out of credit: fails with its own fix (#566 council)',
+      ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'outOfCredit')] } }),
+      expected: { source: 'problem:checkAgain' },
+    },
+    {
+      name: 'rate-limited: still answers, with a warning (#566 council)',
+      ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'rateLimited')] } }),
+      expected: { source: 'warning' },
+    },
+    {
+      name: 'a refused key never offers "Prepare now" (#566 council)',
+      ai: siteAi({
+        status: {
+          source: 'openai',
+          connections: [key('openai', 'rejected')],
+          preparation: { state: 'failed', pages: 0, expectedPages: 0, at: null },
+        },
+      }),
+      expected: { prepared: 'problem' },
+    },
+    {
       name: 'no Nibleaf AI, a working key, answers off',
       ai: siteAi({ capabilities: noManaged, status: { connections: [key('openai')] } }),
       expected: { source: 'idle' },
@@ -426,7 +459,7 @@ describe('CodeRabbit review on #513', () => {
         status: { ...on, source: 'openai', connections: [key('openai', state)] },
       });
       expect(aiPageState(ai)).toEqual({ kind: 'notWorking', problem: 'sourceNotOffered' });
-      expect(checklist(ai).find(({ id }) => id === 'source')).toEqual({ id: 'source', tone: 'problem', fix: 'chooseSource' });
+      expect(checklist(ai).find(({ id }) => id === 'source')).toMatchObject({ id: 'source', tone: 'problem', fix: 'chooseSource' });
       // It is no longer listed, and the others still are.
       expect(sourceOptions(ai, 'admin').map(({ id }) => id)).toEqual(['managed', 'openrouter']);
     },
@@ -434,7 +467,7 @@ describe('CodeRabbit review on #513', () => {
 
   it('still offers "Check key" for a re-checkable key whose provider is offered', () => {
     const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'needsRecheck')] } });
-    expect(checklist(ai).find(({ id }) => id === 'source')).toEqual({ id: 'source', tone: 'problem', fix: 'checkKey' });
+    expect(checklist(ai).find(({ id }) => id === 'source')).toMatchObject({ id: 'source', tone: 'problem', fix: 'checkKey' });
   });
 });
 
@@ -490,5 +523,39 @@ describe('what the controls send', () => {
       },
     });
     expect(preparesOnTurnOn(ai)).toBe(prepares);
+  });
+});
+
+describe('honest key states (#566 council)', () => {
+  it('a key out of credit stops answers, and says so apart from a refused key', () => {
+    const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'outOfCredit')] } });
+    expect(aiPageState(ai)).toEqual({ kind: 'notWorking', problem: 'keyOutOfCredit' });
+    expect(checklist(ai).find(({ id }) => id === 'source')).toMatchObject({ problem: 'keyOutOfCredit' });
+  });
+
+  it('a rate-limited key still answers and can still be chosen', () => {
+    const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'rateLimited')] } });
+    expect(aiPageState(ai)).toEqual({ kind: 'on' });
+    expect(sourceOptions(ai, 'admin').find(({ id }) => id === 'openai')?.decision).toEqual({ kind: 'allowed' });
+  });
+});
+
+describe('preparing needs a source that works (#566 council)', () => {
+  it.each([
+    { name: 'Nibleaf AI offered', ai: siteAi(), can: true },
+    { name: 'a working key selected', ai: siteAi({ status: { source: 'openai', connections: [key('openai')] } }), can: true },
+    { name: 'production today: no Nibleaf AI, no key', ai: siteAi({ capabilities: noManaged }), can: false },
+    { name: 'a refused key selected', ai: siteAi({ status: { source: 'openai', connections: [key('openai', 'rejected')] } }), can: false },
+    { name: 'nothing published', ai: siteAi({ status: { published: null } }), can: false },
+  ])('$name: $can', ({ ai, can }) => {
+    expect(canPrepare(ai)).toBe(can);
+  });
+
+  it("the callout leads with its own problem's fix, and never offers preparing without a source", () => {
+    const failed = { preparation: { state: 'failed' as const, pages: 0, expectedPages: 0, at: null } };
+    expect(problemFix(siteAi({ status: { ...on, ...failed } }), 'preparationFailed')).toBe('prepare');
+    expect(problemFix(siteAi({ capabilities: noManaged, status: { ...on, ...failed } }), 'preparationFailed')).toBeNull();
+    expect(problemFix(siteAi({ status: { ...on, published: null } }), 'notPublished')).toBe('publish');
+    expect(problemFix(siteAi(), 'keyRejected')).toBe('replaceKey');
   });
 });

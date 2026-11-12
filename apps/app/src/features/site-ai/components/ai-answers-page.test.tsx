@@ -331,3 +331,46 @@ describe('AI answers controls', () => {
     expect(document.querySelector('[data-key-form="openrouter"]')).not.toBeNull();
   });
 });
+
+describe('honest state (#566 council)', () => {
+  it('a key refused while answers are off never reads as working', async () => {
+    await show(cloud({ status: { source: 'openai', connections: [key('openai', 'rejected')] } }));
+    expect(check('source')?.getAttribute('data-tone')).toBe('problem');
+    expect(check('source')?.textContent).toContain('settings.ai.problem.keyRejected');
+    expect(check('source')?.textContent).not.toContain('settings.ai.check.source.key');
+    expect(button('settings.ai.fix.replaceKey', check('source') ?? document)).toBeDefined();
+    const card = document.querySelector('[data-source="openai"]');
+    expect(card?.textContent).toContain('settings.ai.key.notWorking');
+    expect(card?.textContent).not.toContain('settings.ai.key.works');
+  });
+
+  it.each([
+    { state: 'outOfCredit' as const, badge: 'settings.ai.key.outOfCredit', row: 'settings.ai.problem.keyOutOfCredit', tone: 'problem' },
+    { state: 'rateLimited' as const, badge: 'settings.ai.key.rateLimited', row: 'settings.ai.check.source.rateLimited', tone: 'warning' },
+  ])('a key that is $state says so on its card and in the checklist', async ({ state, badge, row, tone }) => {
+    await show(cloud({ status: { ...on, source: 'openai', connections: [key('openai', state)] } }));
+    const card = document.querySelector('[data-source="openai"]');
+    expect(card?.textContent).toContain(badge);
+    expect(card?.textContent).not.toContain('settings.ai.key.works');
+    expect(check('source')?.getAttribute('data-tone')).toBe(tone);
+    expect(check('source')?.textContent).toContain(row);
+  });
+
+  it('production today: never offers preparing before there is a source to prepare with', async () => {
+    await show(selfHosted({ status: { preparation: { state: 'none', pages: 0, expectedPages: 0, at: null } } }));
+    expect(button('settings.ai.fix.prepare')).toBeUndefined();
+    expect(check('prepared')?.textContent).toContain('settings.ai.check.needsSource');
+    expect(button('settings.ai.key.add', check('source') ?? document)).toBeDefined();
+  });
+
+  it('Editors and Viewers see why they cannot prepare, and pressing does nothing', async () => {
+    mocks.access = 'notAdmin';
+    await show(cloud({ status: { ...on, preparation: { state: 'failed', pages: 0, expectedPages: 128, at: null } } }));
+    const inCallout = button('settings.ai.fix.prepare', document.querySelector('[role="alert"], [data-tone="danger"]') ?? document);
+    const inChecklist = button('settings.ai.fix.prepare', check('prepared') ?? document);
+    for (const fix of [inCallout, inChecklist]) expect(isDisabled(fix)).toBe(true);
+    expect(text()).toContain('settings.ai.adminOnly');
+    await act(async () => inChecklist?.click());
+    expect(mocks.prepare.mutate).not.toHaveBeenCalled();
+  });
+});

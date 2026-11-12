@@ -23,14 +23,17 @@ import { usePrepareDocsForAi, useSelectAiSource, useSiteAi } from '../api/hooks'
 import {
   type AiKeyProvider,
   type AiPageState,
+  type AiProblem,
   type AiSource,
   aiPageState,
   type ChecklistFix,
   type ChecklistRow,
+  canPrepare,
   checklist,
   checklistSource,
   offeredSources,
   preparesOnTurnOn,
+  problemFix,
   type SiteAi,
   type SourceOption,
   sourceChoiceRequest,
@@ -88,6 +91,8 @@ function AiAnswersBody({ ai, projectId, access }: { ai: SiteAi; projectId: strin
   const showSources = () => sourcesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const startPreparing = () => prepare.mutate(undefined, { onSuccess: () => toast.success(t('settings.ai.toast.preparing')) });
   const onFix = (fix: ChecklistFix) => {
+    // Fixes change the site's settings: only Admins (the buttons say so to everyone else).
+    if (access !== 'admin') return;
     if (fix === 'prepare') return startPreparing();
     if (fix === 'chooseSource') return showSources();
     // Key fixes open the selected provider's key form, or the first one offered when nothing is chosen yet.
@@ -101,7 +106,7 @@ function AiAnswersBody({ ai, projectId, access }: { ai: SiteAi; projectId: strin
 
   return (
     <>
-      {state.kind === 'notWorking' ? <NotWorkingCallout ai={ai} onFix={onFix} problem={state.problem} projectId={projectId} /> : null}
+      {state.kind === 'notWorking' ? <NotWorkingCallout access={access} ai={ai} onFix={onFix} problem={state.problem} projectId={projectId} /> : null}
       <SwitchSection
         access={access}
         ai={ai}
@@ -134,7 +139,7 @@ function AiAnswersBody({ ai, projectId, access }: { ai: SiteAi; projectId: strin
           setOpenKey={setOpenKey}
         />
       </div>
-      <ChecklistSection ai={ai} onFix={onFix} preparing={prepare.isPending} projectId={projectId} />
+      <ChecklistSection access={access} ai={ai} onFix={onFix} preparing={prepare.isPending} projectId={projectId} />
       <p className="flex items-start gap-2 text-muted-foreground text-xs">
         <ShieldCheck aria-hidden className="size-4 shrink-0" />
         {t('settings.ai.security')}
@@ -147,27 +152,28 @@ function AiAnswersBody({ ai, projectId, access }: { ai: SiteAi; projectId: strin
 function useProblemText(ai: SiteAi) {
   const { t } = useLocale();
   const provider = ai.status.source && ai.status.source !== 'managed' ? PROVIDER_NAME[ai.status.source] : '';
-  return (problem: keyof typeof PROBLEM) => t(PROBLEM[problem], { provider, limit: ai.status.usage.limit });
+  return (problem: AiProblem) => t(PROBLEM[problem], { provider, limit: ai.status.usage.limit });
 }
 
 function NotWorkingCallout({
   ai,
+  access,
   problem,
   projectId,
   onFix,
 }: {
   ai: SiteAi;
-  problem: keyof typeof PROBLEM;
+  access: SiteAdminState;
+  problem: AiProblem;
   projectId: string;
   onFix: (fix: ChecklistFix) => void;
 }) {
   const { t } = useLocale();
   const text = useProblemText(ai);
-  // The checklist row that carries this problem's fix.
-  const fix = checklist(ai).find((row) => row.tone === 'problem')?.fix ?? null;
+  const fix = problemFix(ai, problem);
   return (
     <Callout
-      action={fix ? <FixAction fix={fix} onFix={onFix} projectId={projectId} /> : undefined}
+      action={fix ? <FixAction access={access} fix={fix} onFix={onFix} projectId={projectId} /> : undefined}
       title={t('settings.ai.notWorking.title')}
       tone="danger"
     >
@@ -302,7 +308,7 @@ function SourceCard({
           </>
         ) : (
           <>
-            {connection?.state === 'ok' ? <StatusBadge tone="success">{t('settings.ai.key.works')}</StatusBadge> : null}
+            {connection ? <KeyStateBadge state={connection.state} /> : null}
             {connection?.keyHint ? (
               // The hint stays left-to-right inside any sentence (U+2066…U+2069 isolate it).
               <StatusBadge>{t('settings.ai.key.hint', { hint: `⁦…${connection.keyHint}⁩` })}</StatusBadge>
@@ -333,11 +339,13 @@ function SourceCard({
 
 function ChecklistSection({
   ai,
+  access,
   projectId,
   preparing,
   onFix,
 }: {
   ai: SiteAi;
+  access: SiteAdminState;
   projectId: string;
   preparing: boolean;
   onFix: (fix: ChecklistFix) => void;
@@ -348,7 +356,7 @@ function ChecklistSection({
     <SettingsSection description={t('settings.ai.check.description')} title={t('settings.ai.check.title')}>
       <DataList>
         {rows.map((row) => (
-          <ChecklistItem ai={ai} key={row.id} onFix={onFix} preparing={preparing} projectId={projectId} row={row} />
+          <ChecklistItem access={access} ai={ai} key={row.id} onFix={onFix} preparing={preparing} projectId={projectId} row={row} />
         ))}
       </DataList>
       {ai.status.published ? (
@@ -369,12 +377,14 @@ function ChecklistSection({
 
 function ChecklistItem({
   ai,
+  access,
   row,
   projectId,
   preparing,
   onFix,
 }: {
   ai: SiteAi;
+  access: SiteAdminState;
   row: ChecklistRow;
   projectId: string;
   preparing: boolean;
@@ -384,7 +394,6 @@ function ChecklistItem({
   const { number } = useDateFormat();
   const text = useProblemText(ai);
   const { status } = ai;
-  const state = aiPageState(ai);
   const { title, detail } = ((): { title: string; detail?: ReactNode } => {
     if (row.id === 'published') {
       return status.published
@@ -395,6 +404,8 @@ function ChecklistItem({
       const pages = number(status.preparation.pages);
       const expected = number(status.preparation.expectedPages);
       if (!status.published) return { title: t('settings.ai.check.notPrepared'), detail: t('settings.ai.check.waitsForPublish') };
+      // Preparing reads the docs with the selected source: without one that works, say what comes first.
+      const needsSource = canPrepare(ai) ? undefined : t('settings.ai.check.needsSource');
       switch (status.preparation.state) {
         case 'ready':
           return { title: t('settings.ai.check.prepared'), detail: t('settings.ai.check.preparedDetail', { pages }) };
@@ -407,15 +418,22 @@ function ChecklistItem({
         case 'partial':
           return { title: t('settings.ai.check.partial'), detail: t('settings.ai.check.partialDetail', { pages, expected }) };
         case 'failed':
-          return { title: t('settings.ai.check.failed'), detail: t('settings.ai.check.failedDetail') };
+          return { title: t('settings.ai.check.failed'), detail: needsSource ?? t('settings.ai.check.failedDetail') };
         default:
-          return { title: t('settings.ai.check.notPrepared') };
+          return { title: t('settings.ai.check.notPrepared'), detail: needsSource };
       }
     }
     if (row.id === 'source') {
       const source = checklistSource(ai);
       if (source === null) return { title: t('settings.ai.check.source.none') };
-      if (row.tone === 'problem' && state.kind === 'notWorking') return { title: t('settings.ai.check.source.problem'), detail: text(state.problem) };
+      // A broken source says so whether or not answers are on.
+      if (row.problem) return { title: t('settings.ai.check.source.problem'), detail: text(row.problem) };
+      if (row.tone === 'warning' && source !== 'managed') {
+        return {
+          title: t('settings.ai.check.source.rateLimited', { provider: PROVIDER_NAME[source] }),
+          detail: t('settings.ai.check.source.rateLimitedDetail'),
+        };
+      }
       const title =
         source === 'managed' ? t('settings.ai.check.source.managed') : t('settings.ai.check.source.key', { provider: PROVIDER_NAME[source] });
       return { title, detail: row.tone === 'idle' ? t('settings.ai.check.source.idle') : undefined };
@@ -452,9 +470,22 @@ function ChecklistItem({
       description={detail}
       leading={<CheckIcon tone={row.tone} />}
       title={title}
-      trailing={row.fix ? <FixAction fix={row.fix} onFix={onFix} pending={row.fix === 'prepare' && preparing} projectId={projectId} /> : undefined}
+      trailing={
+        row.fix ? (
+          <FixAction access={access} fix={row.fix} onFix={onFix} pending={row.fix === 'prepare' && preparing} projectId={projectId} />
+        ) : undefined
+      }
     />
   );
+}
+
+/** How a saved key stands, on its card: only a key that works says "works". */
+function KeyStateBadge({ state }: { state: SiteAi['status']['connections'][number]['state'] }) {
+  const { t } = useLocale();
+  if (state === 'ok') return <StatusBadge tone="success">{t('settings.ai.key.works')}</StatusBadge>;
+  if (state === 'rateLimited') return <StatusBadge tone="warning">{t('settings.ai.key.rateLimited')}</StatusBadge>;
+  if (state === 'outOfCredit') return <StatusBadge tone="danger">{t('settings.ai.key.outOfCredit')}</StatusBadge>;
+  return <StatusBadge tone="danger">{t('settings.ai.key.notWorking')}</StatusBadge>;
 }
 
 /** A step's state at a glance; its title says the same in words. */
@@ -473,11 +504,13 @@ const CHECK_ICON_TONE: Record<ChecklistRow['tone'], string> = {
 
 /** The one fix for a failing step: a link where the fix lives elsewhere, a button where it happens here. */
 function FixAction({
+  access,
   fix,
   projectId,
   pending = false,
   onFix,
 }: {
+  access: SiteAdminState;
   fix: ChecklistFix;
   projectId: string;
   pending?: boolean;
@@ -505,7 +538,16 @@ function FixAction({
     );
   }
   return (
-    <Button id={id} loading={pending} onClick={() => onFix(fix)} size="sm" type="button" variant="outline">
+    <Button
+      // Fixes here change the site's settings; everyone else sees why they can't.
+      disabledReason={access === 'admin' ? undefined : t('settings.ai.adminOnly')}
+      id={id}
+      loading={pending}
+      onClick={() => onFix(fix)}
+      size="sm"
+      type="button"
+      variant="outline"
+    >
       {t(FIX[fix])}
     </Button>
   );

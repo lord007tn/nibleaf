@@ -108,7 +108,7 @@ function KeyForm({
           <li className="flex items-start gap-2" data-done={step.done || undefined} key={step.key}>
             <span
               aria-hidden
-              className={`grid size-4.5 shrink-0 place-items-center rounded-full border text-[10px] tabular-nums ${step.done ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
+              className={`grid size-4.5 shrink-0 place-items-center rounded-full border text-xs tabular-nums ${step.done ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
             >
               {step.done ? <Check className="size-3" /> : index + 1}
             </span>

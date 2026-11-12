@@ -49,7 +49,12 @@ export const resolveWorkspaceAiConfiguration = async (projectId: string, options
       : null;
   const resolveConnection = async (providerId: z.infer<typeof aiProviderIdSchema>): Promise<WorkspaceAiRuntime | null> => {
     const connection = await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId } } });
-    if (connection?.status !== 'ACTIVE' || connection.lastVerificationStatus !== 'HEALTHY') return null;
+    if (connection?.status !== 'ACTIVE') return null;
+    // A key a request found refused or out of credit rests for a cooldown (readers get
+    // "answers unavailable"), then the next request tries it again: a provider's own
+    // incident can refuse a good key once, and that must not switch answers off for good.
+    const retrying = keyRestedEnough(connection);
+    if (connection.lastVerificationStatus !== 'HEALTHY' && !retrying) return null;
     const config = aiConnectionConfigSchema.safeParse(connection.config);
     if (!config.success) return null;
     // Search and answers query the instance's index, so they need its embedding model.
@@ -67,6 +72,8 @@ export const resolveWorkspaceAiConfiguration = async (projectId: string, options
         ...config.data,
         revision: `${connection.id}:${connection.revision}`,
         answersEnabled: answersSwitchedOn,
+        // A rate limit doesn't stop the key; the next request that gets through clears it, as it clears a retried key.
+        ...(retrying || connection.lastVerificationCode === KEY_OUTCOME_CODE.rateLimited ? { recovering: true } : {}),
       };
     } catch {
       return null;
@@ -87,7 +94,115 @@ export interface WorkspaceAiRuntime {
   embeddingModel: string;
   revision: string;
   answersEnabled: boolean;
+  /** A failure of the site's own key is on record (a rate limit, or a refusal being retried); the next success clears it. */
+  recovering?: boolean;
 }
+
+/** How long a key a request found refused or out of credit rests before readers' requests try it again. */
+export const KEY_RETRY_AFTER_MS = 15 * 60_000;
+
+/** Codes a reader request (or a check) can leave that the cooldown retries. Other failures wait for a check. */
+const RETRIED_CODES: readonly string[] = ['integration:credentials_invalid', 'integration:quota_exhausted'];
+
+/** Whether a key marked refused or out of credit has rested long enough to be tried again. */
+const keyRestedEnough = (
+  connection: { lastVerificationStatus: string; lastVerificationCode: string | null; lastVerifiedAt: Date | null },
+  now = Date.now(),
+) =>
+  connection.lastVerificationStatus === 'UNHEALTHY' &&
+  RETRIED_CODES.includes(connection.lastVerificationCode ?? '') &&
+  connection.lastVerifiedAt !== null &&
+  now - connection.lastVerifiedAt.getTime() >= KEY_RETRY_AFTER_MS;
+
+/**
+ * What a provider's reply says about the key that sent the request. Only the
+ * HTTP status (and, for a 429, whether it means an exhausted quota) is read:
+ * provider text can carry secrets and is never kept.
+ */
+export type ProviderKeyOutcome = 'ok' | 'keyRefused' | 'outOfCredit' | 'rateLimited' | 'other';
+
+/** How a stored key's outcome is kept (`ProjectIntegration.lastVerificationCode`). */
+export const KEY_OUTCOME_CODE = {
+  keyRefused: 'integration:credentials_invalid',
+  outOfCredit: 'integration:quota_exhausted',
+  rateLimited: 'integration:rate_limited',
+} as const;
+
+/** OpenAI answers an exhausted quota with 429 `insufficient_quota`; OpenRouter answers out-of-credit with 402. */
+const QUOTA_EXHAUSTED = /insufficient_quota|exceeded your current quota/i;
+
+export const providerKeyOutcome = async (response: Response): Promise<ProviderKeyOutcome> => {
+  if (response.ok) return 'ok';
+  if (response.status === 401 || response.status === 403) return 'keyRefused';
+  if (response.status === 402) return 'outOfCredit';
+  if (response.status !== 429) return 'other';
+  // Cloned before anything reads the body, so the caller still gets all of it.
+  const body = await response
+    .clone()
+    .text()
+    .catch(() => '');
+  return QUOTA_EXHAUSTED.test(body.slice(0, 4096)) ? 'outOfCredit' : 'rateLimited';
+};
+
+/**
+ * Remember what a request learned about a site's own key, against the exact
+ * key revision that sent it (a newer key is never marked by an older one's
+ * failure). A refused or out-of-credit key rests for `KEY_RETRY_AFTER_MS`, and
+ * each fresh refusal starts the rest again; a rate limit is only noted. The next
+ * request that gets through clears either. The server's own key (`instance`)
+ * has nothing stored.
+ */
+export const recordProviderKeyOutcome = async (revision: string, outcome: ProviderKeyOutcome) => {
+  const match = /^(.+):(\d+)$/.exec(revision);
+  if (!match || outcome === 'other') return;
+  const where = { id: match[1] as string, revision: Number(match[2]) };
+  if (outcome === 'keyRefused' || outcome === 'outOfCredit') {
+    const code = KEY_OUTCOME_CODE[outcome];
+    await prisma.projectIntegration.updateMany({
+      where,
+      data: { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: code, lastVerifiedAt: new Date() },
+    });
+  } else if (outcome === 'rateLimited') {
+    await prisma.projectIntegration.updateMany({
+      where: { ...where, lastVerificationStatus: 'HEALTHY' },
+      data: { lastVerificationCode: KEY_OUTCOME_CODE.rateLimited, lastVerifiedAt: new Date() },
+    });
+  } else {
+    await prisma.projectIntegration.updateMany({
+      where: {
+        ...where,
+        OR: [
+          { lastVerificationStatus: 'HEALTHY', lastVerificationCode: KEY_OUTCOME_CODE.rateLimited },
+          { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: { in: [...RETRIED_CODES] } },
+        ],
+      },
+      data: { lastVerificationStatus: 'HEALTHY', lastVerificationCode: null, lastVerifiedAt: new Date() },
+    });
+  }
+};
+
+/**
+ * A fetch for every call made with a site's own key, so its stored state follows
+ * what readers actually get: a revoked or out-of-credit key stops reading "works".
+ * Recording never delays or changes the response. Undefined for the server's key.
+ */
+export const keyHealthFetch = (runtime: WorkspaceAiRuntime, base: typeof fetch = fetch): typeof fetch | undefined => {
+  if (!/:\d+$/.test(runtime.revision)) return undefined;
+  let recovering = runtime.recovering === true;
+  return async (input, init) => {
+    const response = await base(input, init);
+    // Successes are only worth a write while a failure is on record.
+    if (!response.ok || recovering) {
+      void providerKeyOutcome(response)
+        .then((outcome) => {
+          if (outcome !== 'other') recovering = outcome !== 'ok';
+          return recordProviderKeyOutcome(runtime.revision, outcome);
+        })
+        .catch(() => undefined);
+    }
+    return response;
+  };
+};
 
 /** Plain Markdown generation with the same provider credentials as search/chat.
  * Drafting keeps the SDK timeouts: OpenRouter has no SDK deadline; direct OpenAI
@@ -136,6 +251,7 @@ export const workspaceEmbeddingProvider = (runtime: WorkspaceAiRuntime) => {
     model: runtime.embeddingModel,
     dimensions: env.SEARCH_EMBEDDING_DIMENSIONS,
     timeoutMs: env.SEARCH_EMBEDDING_TIMEOUT_MS,
+    fetch: keyHealthFetch(runtime),
   };
   return runtime.providerId === 'openai'
     ? new OpenAIEmbeddingProvider({ ...options, model: options.model.replace(/^openai\//, '') })
@@ -143,20 +259,23 @@ export const workspaceEmbeddingProvider = (runtime: WorkspaceAiRuntime) => {
 };
 
 export const workspaceAnswerProvider = (runtime: WorkspaceAiRuntime) => {
-  const options = { apiKey: runtime.apiKey, model: runtime.answerModel, timeoutMs: keys().SEARCH_ANSWER_TIMEOUT_MS };
+  const options = { apiKey: runtime.apiKey, model: runtime.answerModel, timeoutMs: keys().SEARCH_ANSWER_TIMEOUT_MS, fetch: keyHealthFetch(runtime) };
   return runtime.providerId === 'openai' ? new OpenAIChatProvider(options) : new OpenRouterChatProvider(options);
 };
 
 /** Direct OpenAI uses precisely the model id used by OpenAIChatProvider. */
-export const workspaceChatAdapter = (runtime: WorkspaceAiRuntime, cost?: ChatCostSink) =>
-  openaiCompatibleText(runtime.answerModel, {
+export const workspaceChatAdapter = (runtime: WorkspaceAiRuntime, cost?: ChatCostSink) => {
+  const health = keyHealthFetch(runtime);
+  const fetcher = runtime.providerId === 'openrouter' && cost ? costReportingFetch(cost, health) : health;
+  return openaiCompatibleText(runtime.answerModel, {
     baseURL: runtime.providerId === 'openai' ? 'https://api.openai.com/v1' : 'https://openrouter.ai/api/v1',
     apiKey: runtime.apiKey,
     api: 'chat-completions',
     timeout: keys().SEARCH_ANSWER_TIMEOUT_MS,
     maxRetries: 0,
-    ...(runtime.providerId === 'openrouter' && cost ? { fetch: costReportingFetch(cost) } : {}),
+    ...(fetcher ? { fetch: fetcher } : {}),
   });
+};
 
 /** Accumulates provider-reported spend across the calls of one chat turn. */
 export interface ChatCostSink {

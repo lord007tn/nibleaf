@@ -96,14 +96,19 @@ export const siteAiStatusSchema = z
           id: aiProviderIdSchema,
           /** The stored connection's revision, which choosing this key as the source must name. */
           revision: z.number().int().positive(),
-          state: z.enum(['ok', 'rejected', 'unreachable', 'modelWithdrawn', 'needsRecheck', 'unreadable']),
           /**
-           * Why the last check of this key failed, as a code (never provider
-           * error text, which can carry secrets), and when.
+           * Whether it answers readers, from the reader's own checks and from
+           * what its last check or reader request learned. `rateLimited` still
+           * serves; `outOfCredit` and `rejected` rest, and readers try them again after a cooldown.
+           */
+          state: z.enum(['ok', 'rateLimited', 'rejected', 'outOfCredit', 'unreachable', 'modelWithdrawn', 'needsRecheck', 'unreadable']),
+          /**
+           * What went wrong at its last check or reader request, as a code
+           * (never provider error text, which can carry secrets), and when.
            */
           failure: z
             .object({
-              reason: z.enum(['keyRefused', 'providerUnreachable', 'modelWithdrawn', 'checkFailed']),
+              reason: z.enum(['keyRefused', 'outOfCredit', 'rateLimited', 'providerUnreachable', 'modelWithdrawn', 'checkFailed']),
               checkedAt: z.iso.datetime().nullable(),
             })
             .strict()

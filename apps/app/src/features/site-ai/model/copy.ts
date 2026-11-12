@@ -32,6 +32,7 @@ export const REASON: Record<AiBlockReason, MessageKey> = {
 export const PROBLEM: Record<AiProblem, MessageKey> = {
   keyMissing: 'settings.ai.problem.keyMissing',
   keyRejected: 'settings.ai.problem.keyRejected',
+  keyOutOfCredit: 'settings.ai.problem.keyOutOfCredit',
   keyUnreachable: 'settings.ai.problem.keyUnreachable',
   modelWithdrawn: 'settings.ai.problem.modelWithdrawn',
   sourceNotOffered: 'settings.ai.problem.sourceNotOffered',
