@@ -69,6 +69,9 @@ export const sanitizeSchema: SanitizeOptions = {
     // Keep only the code classes used by highlighting and the trusted math
     // renderer. MathML and layout styles are generated after sanitization.
     code: [['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang'],
+    // How an image loads: only the values browsers define (set by
+    // rehypeImageLoading, or written by an author to override it).
+    img: [...(defaultSchema.attributes?.img ?? []), ['loading', 'eager', 'lazy'], ['decoding', 'sync', 'async', 'auto']],
   },
 };
 

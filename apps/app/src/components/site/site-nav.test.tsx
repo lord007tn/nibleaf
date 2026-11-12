@@ -238,12 +238,33 @@ describe('SiteNav long titles', () => {
     expect(container.querySelector('.truncate')).toBeNull();
   });
 
-  it('shows the whole title on hover when two lines are not enough', () => {
+  it('shows the whole title on hover or focus only when two lines are not enough', async () => {
     const container = document.createElement('div');
-    container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />);
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () => root.render(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />));
+    const labelFor = (prefix: string) =>
+      [...container.querySelectorAll<HTMLElement>('[data-nav-label]')].find((span) => span.textContent === `${prefix}: ${long}`);
+    // No tooltips until the reader points at a label: the server HTML has none.
+    expect(container.querySelector('[data-nav-label][title]')).toBeNull();
     for (const prefix of ['Section', 'Group', 'Page']) {
-      const label = [...container.querySelectorAll('span')].find((span) => span.textContent === `${prefix}: ${long}`);
-      expect(label?.getAttribute('title'), prefix).toBe(`${prefix}: ${long}`);
+      const label = labelFor(prefix);
+      if (!label) throw new Error(`Missing ${prefix} label`);
+      const control = label.closest('a, button') as HTMLElement;
+      const name = control.textContent;
+      // Clamped (jsdom has no layout, so the sizes are given): the whole title.
+      Object.defineProperties(label, { scrollHeight: { configurable: true, value: 60 }, clientHeight: { configurable: true, value: 40 } });
+      act(() => control.focus());
+      expect(label.getAttribute('title'), prefix).toBe(`${prefix}: ${long}`);
+      // Fits: no tooltip repeating what's on screen.
+      act(() => control.blur());
+      Object.defineProperties(label, { scrollHeight: { configurable: true, value: 40 } });
+      act(() => control.focus());
+      expect(label.hasAttribute('title'), prefix).toBe(false);
+      // The control's accessible name (its text) is unchanged.
+      expect(control.textContent).toBe(name);
+      expect(control.hasAttribute('title')).toBe(false);
     }
   });
 });

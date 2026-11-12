@@ -239,11 +239,12 @@ export function MarkdownRenderer({
         rehypePlugins={[
           ...extraRehypePlugins,
           rehypeAuthoredComponentProps,
+          // Before the sanitizer: it reads authored sizes and light/dark classes
+          // to pick the image that loads at once; the rest load as the reader scrolls.
+          rehypeImageLoading,
           [rehypeSanitize, sanitizeSchema],
           ...afterSanitizePlugins,
           rehypeMermaid,
-          // The first image loads at once; the rest load as the reader scrolls to them.
-          rehypeImageLoading,
           // Each block lays out by its own script; code stays left to right.
           rehypeBlockDirection,
           rehypeSlug,

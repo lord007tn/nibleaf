@@ -40,8 +40,14 @@ const designSystemAliases = (tokens: ThemeColorTokens): Record<string, string> =
 // Derived (non-contract) variables: the accent as drawn on the always-dark
 // code surface (Signal's rail, code-block chrome) is nudged towards white until
 // it passes AA there, since a light-mode accent rarely reads on near-black.
+// The footer's small print ("Made with Nibleaf · Report abuse") uses the muted
+// token nudged until it clears AA with room to spare on the page canvas: a
+// palette accepted at 4.5:1 would otherwise put 12px text right at the limit.
+const FOOTER_TEXT_CONTRAST = 4.7;
+const footerMuted = (tokens: ThemeColorTokens): string => readableOnBackground(tokens.mutedForeground, tokens.canvas, FOOTER_TEXT_CONTRAST);
+
 const derivedDeclarations = (tokens: ThemeColorTokens): string =>
-  `--theme-code-accent:${readableOnBackground(tokens.accent, tokens.code)};--theme-code-muted:${readableOnBackground(tokens.mutedForeground, tokens.code)}`;
+  `--theme-code-accent:${readableOnBackground(tokens.accent, tokens.code)};--theme-code-muted:${readableOnBackground(tokens.mutedForeground, tokens.code)};--theme-footer-muted:${footerMuted(tokens)}`;
 
 // The token contract names multi-word variables after their camelCase keys
 // (`--theme-mutedForeground`), while reader styles read the kebab-case names
@@ -91,6 +97,8 @@ const legacyTokenDeclarations = (accent: string): string =>
     '--theme-danger:var(--destructive)',
     `--theme-code-accent:color-mix(in oklab,${accent} 55%,white)`,
     '--theme-code-muted:#a3aab8',
+    // The legacy light palette's muted grey is 4.54:1 on its #fafafa canvas; this is 4.74:1.
+    '--theme-footer-muted:#707070',
   ].join(';');
 
 const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
@@ -128,7 +136,7 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
       ]
     : [
         `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent)};--primary:${legacyAccent};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
-        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--ring:${legacyDarkAccent}}`,
+        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--ring:${legacyDarkAccent};--theme-footer-muted:var(--muted-foreground)}`,
       ];
   return [
     ...colorRules,
@@ -150,6 +158,7 @@ export const projectThemeVariables = (config?: ProjectConfig | null, mode: 'ligh
     ...kebabTokenAliases(tokens),
     '--theme-code-accent': readableOnBackground(tokens.accent, tokens.code),
     '--theme-code-muted': readableOnBackground(tokens.mutedForeground, tokens.code),
+    '--theme-footer-muted': footerMuted(tokens),
     ...designSystemAliases(tokens),
     '--radius': radiusValue(theme.layout.radius),
     color: tokens.foreground,

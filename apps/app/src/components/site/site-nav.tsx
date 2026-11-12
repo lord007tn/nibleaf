@@ -6,6 +6,17 @@ import { PageIcon } from '@/components/site/page-icon';
 import type { NavNode } from '@/hooks/api';
 import { siteHref } from '@/lib/site-paths';
 
+/** A label two lines can't hold shows its whole title on hover or focus. A label
+ *  that fits gets none, so a screen reader doesn't hear the title twice and the
+ *  pointer doesn't raise a tooltip that repeats what's on screen. Measured at
+ *  that moment, after layout; the control's accessible name doesn't change. */
+const showClampedTitle = (event: { currentTarget: HTMLElement }) => {
+  const label = event.currentTarget.querySelector<HTMLElement>('[data-nav-label]');
+  if (!label) return;
+  if (label.scrollHeight > label.clientHeight + 1) label.title = label.textContent ?? '';
+  else label.removeAttribute('title');
+};
+
 /** First navigable page in document order — used to highlight the home page's entry. */
 export function firstLeafPath(nodes: NavNode[]): string | undefined {
   for (const node of nodes) {
@@ -65,6 +76,8 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
       <div className="flex items-start gap-0.5 pointer-coarse:items-center">
         <a
           id={linkId}
+          onFocus={showClampedTitle}
+          onPointerEnter={showClampedTitle}
           href={siteHref(projectId, node.path, { lang, version: isVersionIndependentNavNode(node) ? undefined : version })}
           aria-current={active ? 'page' : undefined}
           className={cn(
@@ -77,7 +90,7 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
         >
           <PageIcon name={node.icon} className={cn('mt-0.5 size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/80')} />
           {/* Long titles wrap onto a second line instead of losing their end to an ellipsis. */}
-          <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} title={node.title}>
+          <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} data-nav-label>
             {node.title}
           </span>
           {node.tag ? (
@@ -136,10 +149,12 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        onFocus={showClampedTitle}
+        onPointerEnter={showClampedTitle}
         aria-expanded={open}
         className="group flex w-full cursor-pointer items-start justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
-        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} title={node.title}>
+        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} data-nav-label>
           {node.title}
         </span>
         {/* Resting state hides the chevron on fine pointers only; keyboard focus,
@@ -184,12 +199,14 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        onFocus={showClampedTitle}
+        onPointerEnter={showClampedTitle}
         aria-expanded={open}
         className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
         <ChevronRight className={cn('mt-[3px] size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
         {node.icon ? <PageIcon name={node.icon} className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/80" /> : null}
-        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} title={node.title}>
+        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)} data-nav-label>
           {node.title}
         </span>
       </button>
