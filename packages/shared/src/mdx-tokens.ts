@@ -96,9 +96,12 @@ const tagEnd = (source: string, start: number): number => {
 };
 
 /** The last `"` and `'` in the source being read, found once per document. */
-let quoteBounds: { source: string; double: number; single: number } | null = null;
+/** The last `"` and `'` in the prose being scanned, found once per scan. Reset
+ *  where a scan starts (`tokenizeProse`, `activeBlockEnd`) rather than keyed by
+ *  the text: comparing two equal texts reads them whole, on every lookup. */
+let quoteBounds: { double: number; single: number } | null = null;
 const lastQuote = (source: string, quote: string): number => {
-  if (quoteBounds?.source !== source) quoteBounds = { source, double: source.lastIndexOf('"'), single: source.lastIndexOf("'") };
+  quoteBounds ??= { double: source.lastIndexOf('"'), single: source.lastIndexOf("'") };
   return quote === '"' ? quoteBounds.double : quoteBounds.single;
 };
 
@@ -158,6 +161,7 @@ const activeEnd = (source: string, start: number, limit: number): number => {
  *  of the text: what the tokenizer finds for an active block opened at `start`. */
 export const activeBlockEnd = (source: string, start: number): number => {
   scanBudget = 64 * source.length + 65_536;
+  quoteBounds = null;
   return activeEnd(source, start, source.length);
 };
 
@@ -214,6 +218,7 @@ const escapedAt = (source: string, index: number): boolean => {
 /** Tokenize one stretch of prose that holds no fence. `components` holds the lowercase names read
  *  as components; like HTML, tag names match whatever their case. */
 const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: MdxToken[]): void => {
+  quoteBounds = null;
   // Text between tokens is always one contiguous stretch of the source, so it is
   // taken as a single slice when a token (or the end) closes it. Building it one
   // character at a time is quadratic in V8 on long prose (hundreds of KB).
