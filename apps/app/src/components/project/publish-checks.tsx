@@ -119,7 +119,10 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
       ) : (
         <>
           <Callout className="py-2.5" title={summary.filter(Boolean).join(' · ')} tone={errors ? 'danger' : 'warning'} />
-          <ScrollArea className="max-h-72 rounded-xl border border-border">
+          {/* The height limit goes on the viewport: on the root, the viewport's
+              100% height can't resolve against a max-height, so a long list ran
+              past the border instead of scrolling. */}
+          <ScrollArea className="rounded-xl border border-border [&>[data-slot=scroll-area-viewport]]:max-h-72">
             <div className="divide-y divide-border">
               {groups.map((group) => {
                 const meta = CHECK_META[group.code];
