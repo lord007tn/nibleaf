@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'page', unknown>);
+const search = vi.hoisted(() => ({}) as { pageId?: string });
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
@@ -12,7 +13,7 @@ vi.mock('@tanstack/react-router', () => ({
     options,
     fullPath: '/app/projects/$projectId/preview',
     useParams: () => ({ projectId: 'project-1' }),
-    useSearch: () => ({}),
+    useSearch: () => search,
   }),
   Link: ({ children }: { children?: ReactNode }) => <a href="/link">{children}</a>,
   useNavigate: () => vi.fn(),
@@ -35,7 +36,7 @@ vi.mock('@/components/site/page-icon', () => ({ PageIcon: () => null }));
 vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/lib/site-theme', () => ({ projectThemeStyle: () => ({}), projectThemeVariables: () => ({}), resolveProjectTheme: () => undefined }));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
-  DocumentationThemeProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DocumentationThemeProvider: ({ children }: { children?: ReactNode }) => <div data-site-theme="">{children}</div>,
   DocumentationProjectPreviewLayout: ({ content }: { content: ReactNode }) => <div>{content}</div>,
 }));
 
@@ -54,6 +55,7 @@ describe('preview content', () => {
     root = createRoot(container);
     queries.project = { data: { id: 'project-1', config: {} } };
     queries.page = { data: undefined, isPending: false, isError: false };
+    search.pageId = undefined;
   });
 
   afterEach(async () => {
@@ -76,5 +78,62 @@ describe('preview content', () => {
     await act(async () => root.render(<ProjectPreview />));
     expect(container.textContent).toContain('preview.empty');
     expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('shows an untitled page as "Untitled", as readers will see it', async () => {
+    const untitled = {
+      id: 'p1',
+      kind: 'PAGE',
+      title: '',
+      path: 'untitled-2',
+      slug: 'untitled-2',
+      icon: null,
+      description: null,
+      content: 'Body',
+      parentId: null,
+      position: 0,
+      hidden: false,
+    };
+    queries.pages = { data: [untitled], isPending: false, isError: false };
+    queries.page = { data: untitled, isPending: false, isError: false };
+    await act(async () => root.render(<ProjectPreview />));
+    expect(container.querySelector('h1')?.textContent).toBe('Untitled');
+  });
+
+  it('opens each page at its top, not where the previous one was scrolled to', async () => {
+    const pageA = {
+      id: 'a',
+      kind: 'PAGE',
+      title: 'A',
+      path: 'a',
+      slug: 'a',
+      icon: null,
+      description: null,
+      content: 'A',
+      parentId: null,
+      position: 0,
+      hidden: false,
+    };
+    const pageB = { ...pageA, id: 'b', title: 'B', path: 'b', slug: 'b', position: 1 };
+    queries.pages = { data: [pageA, pageB], isPending: false, isError: false };
+    queries.page = { data: pageA, isPending: false, isError: false };
+    search.pageId = 'a';
+    await act(async () => root.render(<ProjectPreview />));
+    const content = container.querySelector<HTMLElement>('[data-theme-region="preview-main"]');
+    if (!content) throw new Error('Preview content not rendered');
+    content.scrollTop = 480;
+    search.pageId = 'b';
+    queries.page = { data: pageB, isPending: false, isError: false };
+    await act(async () => root.render(<ProjectPreview />));
+    expect(content.scrollTop).toBe(0);
+  });
+
+  it('keeps the authoring chrome outside the site theme', async () => {
+    queries.pages = { data: [], isPending: false, isError: false };
+    await act(async () => root.render(<ProjectPreview />));
+    const chrome = container.querySelector('[data-preview-app-chrome]');
+    expect(chrome).not.toBeNull();
+    expect(chrome?.closest('[data-site-theme]')).toBeNull();
+    expect(container.querySelector('[data-site-theme]')).not.toBeNull();
   });
 });

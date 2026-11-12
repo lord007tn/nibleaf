@@ -119,6 +119,10 @@ describe('buildNavTree', () => {
     ]);
     expect(tree.map((n) => n.title)).toEqual(['Short', 'Plain']);
   });
+  it('labels an untitled page "Untitled" in its language, never an empty link', () => {
+    const tree = buildNavTree([page({ id: 'a', title: '' }), page({ id: 'b', title: '', languageCode: 'ar', position: 1 })]);
+    expect(tree.map((n) => n.title)).toEqual(['Untitled', 'صفحة بدون عنوان']);
+  });
   it('filters pages strictly by language', () => {
     const tree = buildNavTree([page({ id: 'en1', languageCode: 'en' }), page({ id: 'ar1', languageCode: 'ar' })], 'en');
     expect(tree.map((n) => n.id)).toEqual(['en1']);

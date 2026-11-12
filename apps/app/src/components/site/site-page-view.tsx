@@ -382,6 +382,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     <DocumentationPageLayout
       article={article}
       tableOfContents={showToc ? <TableOfContents headings={page.headings} label={tArticle('onThisPage')} /> : undefined}
+      reserveTocColumn={mode === 'default'}
     />
   );
 }

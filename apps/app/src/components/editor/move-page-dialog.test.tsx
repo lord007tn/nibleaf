@@ -87,6 +87,14 @@ describe('moveDestinations', () => {
     expect(keys).toEqual(['language:en', 'Install', 'Reference', 'language:ar', 'مقدمة']);
   });
 
+  it('lists an untitled page by the untitled label, never as an empty row', () => {
+    const pages = [...PAGES, node('blank', { title: '', position: 3 })];
+    const blank = moveDestinations(PAGES[0] as PageNode, pages, LANGUAGES, '', topLevel, 'Untitled').find(
+      (destination) => destination.key === 'blank',
+    );
+    expect(blank?.label).toBe('Untitled');
+  });
+
   it('marks the current place, which is listed but not offered', () => {
     const destinations = moveDestinations(PAGES[3] as PageNode, PAGES, LANGUAGES, '', topLevel);
     expect(destinations.filter((destination) => destination.current).map((destination) => destination.key)).toEqual(['Deploy']);

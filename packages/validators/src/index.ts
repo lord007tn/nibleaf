@@ -657,7 +657,7 @@ export const createPageBody = z.object({
   languageId: z.string().optional(),
   branchId: z.string().optional(),
   kind: pageKindEnum.optional(),
-  title: z.string().min(1).max(200),
+  title: z.string().max(200),
   slug: z.string().max(200).optional(),
   icon: z.string().max(64).nullable().optional(),
   description: z.string().max(500).nullable().optional(),
@@ -699,7 +699,7 @@ export type MergeBranchBody = z.infer<typeof mergeBranchBody>;
 export const updatePageBody = z.object({
   expectedUpdatedAt: z.iso.datetime({ offset: true }).optional(),
   parentId: z.string().nullable().optional(),
-  title: z.string().min(1).max(200).optional(),
+  title: z.string().max(200).optional(),
   slug: z.string().max(200).optional(),
   icon: z.string().max(64).nullable().optional(),
   description: z.string().max(500).nullable().optional(),

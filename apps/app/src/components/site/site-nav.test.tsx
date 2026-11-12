@@ -45,6 +45,19 @@ describe('isVersionIndependentNavNode', () => {
 });
 
 describe('SiteNav page subtrees', () => {
+  it('omits empty groups, including nested empty groups, without grouping the following page', () => {
+    const group = (id: string, children: NavNode[] = []): NavNode => ({ ...page(id, children), kind: 'GROUP' });
+    const nodes = [group('Guides', [group('Empty nested group')]), page('Quickstart'), group('Reference', [page('API')])];
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={nodes} projectId="docs" currentPath="Quickstart" toggleLabel="Toggle" />);
+    expect(container.textContent).not.toContain('Guides');
+    expect(container.textContent).not.toContain('Empty nested group');
+    expect(container.textContent).toContain('Reference');
+    const quickstart = container.querySelector('a');
+    expect(quickstart?.textContent).toBe('Quickstart');
+    expect(quickstart?.closest('ul')?.parentElement?.tagName).toBe('NAV');
+  });
+
   it('collapses pages with subpages unless the current page is inside them', async () => {
     const { container } = await renderNav('faq');
     expect(visibleTitles(container)).toEqual(['guide', 'faq']);
@@ -236,5 +249,38 @@ describe('SiteNav long titles', () => {
       expect(label?.className).not.toContain('truncate');
     }
     expect(container.querySelector('.truncate')).toBeNull();
+  });
+
+  it('shows the whole title on hover or focus only when two lines are not enough', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () => root.render(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />));
+    const labelFor = (prefix: string) =>
+      [...container.querySelectorAll<HTMLElement>('[data-nav-label]')].find((span) => span.textContent === `${prefix}: ${long}`);
+    // No tooltips until the reader points at a label: the server HTML has none.
+    expect(container.querySelector('[data-nav-label][title]')).toBeNull();
+    for (const prefix of ['Section', 'Group', 'Page']) {
+      const label = labelFor(prefix);
+      if (!label) throw new Error(`Missing ${prefix} label`);
+      const control = label.closest('a, button') as HTMLElement;
+      const name = control.textContent;
+      // Clamped (jsdom has no layout, so the sizes are given): the whole title.
+      Object.defineProperties(label, { scrollHeight: { configurable: true, value: 60 }, clientHeight: { configurable: true, value: 40 } });
+      act(() => control.focus());
+      expect(label.getAttribute('title'), prefix).toBe(`${prefix}: ${long}`);
+      // Fits: no tooltip repeating what's on screen.
+      act(() => control.blur());
+      Object.defineProperties(label, { scrollHeight: { configurable: true, value: 40 } });
+      act(() => control.focus());
+      expect(label.hasAttribute('title'), prefix).toBe(false);
+      // Keyboard focus shows no native tooltip, so the focused control's label unclamps instead.
+      expect(label.className).toContain('in-focus-visible:line-clamp-none');
+      expect(control.contains(label)).toBe(true);
+      // The control's accessible name (its text) is unchanged.
+      expect(control.textContent).toBe(name);
+      expect(control.hasAttribute('title')).toBe(false);
+    }
   });
 });

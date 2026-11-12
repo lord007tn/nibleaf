@@ -1,5 +1,6 @@
 import { STARTER_GETTING_STARTED_CONTENT, STARTER_GETTING_STARTED_ICON, STARTER_GETTING_STARTED_TITLE } from '@nibleaf/auth/starter-content';
 import { Prisma, prisma } from '@nibleaf/database';
+import { importedPageIcon } from '@nibleaf/shared/page-icons';
 import { exceedsUtf8Bytes, MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { type PageConfig, pageConfigSchema } from '@nibleaf/validators';
 import { getDefaultBranch } from '../branches';
@@ -149,13 +150,23 @@ export const ensureGroupPage = async (
     parentId: group.parentId,
     languageId,
     branchId,
-    ...(group.icon !== undefined ? { icon: group.icon } : {}),
+    // Only icons the reader draws; an unknown one is dropped, never an import failure.
+    ...(group.icon !== undefined ? { icon: importedPageIcon(group.icon) } : {}),
     ...(group.position !== undefined ? { position: group.position } : {}),
   });
   return created.id;
 };
 
 export type UpsertOutcome = 'imported' | 'updated';
+
+/** An imported config with its category icon kept only when the reader draws
+ *  it (or the page already had it). */
+const withImportedCategoryIcon = (config: PageConfig, existing?: string): PageConfig => {
+  if (config.categoryIcon === undefined) return config;
+  const { categoryIcon, ...rest } = config;
+  const kept = importedPageIcon(categoryIcon, existing);
+  return kept ? { ...rest, categoryIcon: kept } : rest;
+};
 
 export interface ImportedPage {
   parentId: string | null;
@@ -185,17 +196,19 @@ export const upsertPage = async (target: ImportTarget, page: ImportedPage): Prom
   // uniqueSiblingSlug in createPage) suffixes the slug instead.
   const found = await prisma.page.findFirst({
     where: { projectId, branchId, languageId, parentId: page.parentId, slug: page.slug, kind: 'PAGE' },
-    select: { id: true, config: true },
+    select: { id: true, config: true, icon: true },
   });
   if (found) {
     const parsedConfig = pageConfigSchema.safeParse(found.config);
     const existingConfig: PageConfig = parsedConfig.success ? parsedConfig.data : {};
+    const config = page.config && withImportedCategoryIcon(page.config, existingConfig.categoryIcon);
     const data = {
       title: page.title,
       content: page.content,
       ...(page.description !== undefined ? { description: page.description } : {}),
-      ...(page.icon !== undefined ? { icon: page.icon } : {}),
-      ...(page.config !== undefined ? { config: { ...existingConfig, ...page.config } } : {}),
+      // Only icons the reader draws (or the one the page already had); others are dropped.
+      ...(page.icon !== undefined ? { icon: importedPageIcon(page.icon, found.icon) } : {}),
+      ...(config !== undefined ? { config: { ...existingConfig, ...config } } : {}),
       ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
       ...(page.position !== undefined ? { position: page.position } : {}),
       ...(page.hidden !== undefined ? { hidden: page.hidden } : {}),
@@ -222,8 +235,8 @@ export const upsertPage = async (target: ImportTarget, page: ImportedPage): Prom
     languageId,
     branchId,
     ...(page.description !== undefined ? { description: page.description } : {}),
-    ...(page.icon !== undefined ? { icon: page.icon } : {}),
-    ...(page.config !== undefined ? { config: page.config } : {}),
+    ...(page.icon !== undefined ? { icon: importedPageIcon(page.icon) } : {}),
+    ...(page.config !== undefined ? { config: withImportedCategoryIcon(page.config) } : {}),
     ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
     ...(page.position !== undefined ? { position: page.position } : {}),
   });
