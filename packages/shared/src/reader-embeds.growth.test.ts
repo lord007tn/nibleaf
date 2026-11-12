@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pageContentFacts } from './publish-checks';
+import { offsetInRanges, pageContentFacts } from './publish-checks';
 import { rewriteReaderEmbeds } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growth';
@@ -56,4 +56,26 @@ describe.runIf(growthTestsEnabled)('reader embed growth', () => {
     const page = '<iframe src="https://codepen.io/x"></iframe>\n\n<video src="http://cdn.example.com/a.mp4"></video>\n\n';
     linear((content) => pageContentFacts(content, false), sizes(page, 100));
   });
+
+  it('checks embeds and links against many raw HTML title ranges in linear time', () => {
+    // Every <title> is a range the checks skip; every <video> and link after one is checked against them.
+    const videos = '<title>t</title>\n\n<video src="http://cdn.example.com/a.mp4"></video>\n\n';
+    linear((content) => pageContentFacts(content, false), sizes(videos, 250));
+    const links = '<title>t</title>\n\n<a href="/guide">Guide</a>\n\n';
+    linear((content) => pageContentFacts(content, false), sizes(links, 250));
+  }, 120_000);
+
+  it('looks up many offsets in many skipped ranges in linear time', () => {
+    // The lookup the embed and link checks use: one range per <title>, one offset per element, in document order.
+    const page = (count: number) => ({
+      ranges: Array.from({ length: count }, (_, index) => ({ start: index * 10, end: index * 10 + 4 })),
+      offsets: Array.from({ length: count }, (_, index) => index * 10 + 6),
+    });
+    const lookup = ({ ranges, offsets }: ReturnType<typeof page>) => {
+      const inRange = offsetInRanges(ranges);
+      return offsets.filter(inRange).length;
+    };
+    const [smallMs, largeMs] = growthMs(lookup, page(4000), page(16_000));
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+  }, 120_000);
 });

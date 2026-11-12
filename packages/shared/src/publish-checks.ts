@@ -187,6 +187,34 @@ const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: n
   return ranges;
 };
 
+/**
+ * Whether an offset lies inside any of the ranges, answered in O(log n) per
+ * offset: the ranges are sorted once by start, with the largest end seen so
+ * far, so a page with many contexts and many links or embeds stays linear.
+ * Same answer as checking every range (an unclosed context can overlap later ones).
+ */
+export const offsetInRanges = (ranges: { start: number; end: number }[]): ((offset: number) => boolean) => {
+  if (ranges.length === 0) return () => false;
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const starts = sorted.map((range) => range.start);
+  const maxEnds: number[] = [];
+  for (const range of sorted) maxEnds.push(Math.max(range.end, maxEnds.at(-1) ?? range.end));
+  return (offset) => {
+    // The last range starting at or before the offset.
+    let low = 0;
+    let high = starts.length - 1;
+    let last = -1;
+    while (low <= high) {
+      const middle = (low + high) >> 1;
+      if ((starts[middle] as number) <= offset) {
+        last = middle;
+        low = middle + 1;
+      } else high = middle - 1;
+    }
+    return last >= 0 && (maxEnds[last] as number) > offset;
+  };
+};
+
 /** A raw HTML node that may open one of the NON_LINK_CONTEXTS (it can span later nodes). */
 const NON_LINK_TAG = new RegExp(`<(?:${[...NON_LINK_CONTEXTS].join('|')})(?![a-z0-9-])`, 'i');
 
@@ -248,7 +276,7 @@ const htmlLinks = (tree: Root, content: string, embeds: EmbedFacts): string[] =>
     markdownLinks(tree as MarkdownNode);
     return links;
   }
-  const suppressed = hasNonLinkContext ? htmlNonLinkRanges(tree, content) : [];
+  const suppressed = offsetInRanges(hasNonLinkContext ? htmlNonLinkRanges(tree, content) : []);
   // HAST percent-encodes Markdown destinations (`/دليل` → `/%D8%AF…`). Carry the
   // authored one through, so the checks report what the author wrote.
   const markAuthored = (node: MarkdownNode) => {
@@ -269,7 +297,7 @@ const htmlLinks = (tree: Root, content: string, embeds: EmbedFacts): string[] =>
     if (node.tagName && NON_LINK_CONTEXTS.has(node.tagName)) return;
     if (node.tagName && (LINK_ELEMENTS.has(node.tagName) || EMBED_ELEMENTS.has(node.tagName))) {
       const offset = node.position?.start.offset;
-      if (offset !== undefined && suppressed.some((range) => offset >= range.start && offset < range.end)) return;
+      if (offset !== undefined && suppressed(offset)) return;
       collectEmbed(node, parent, embeds);
     }
     if (node.tagName && LINK_ELEMENTS.has(node.tagName)) {
