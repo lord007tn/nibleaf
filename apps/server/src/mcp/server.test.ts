@@ -1,5 +1,5 @@
 import { InMemoryTransport, type JSONRPCMessage, LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/server';
-import { MCP_SCOPES, MCP_TOOL_SCOPES } from '@nibleaf/shared/mcp';
+import { MCP_PRESET_SCOPES, MCP_SCOPES, MCP_TOOL_SCOPES, type McpScope } from '@nibleaf/shared/mcp';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
@@ -8,6 +8,7 @@ import { version } from '../../package.json';
 import { createNibleafMcpServer, MAX_MCP_TOOL_INPUT_ELEMENTS } from './server';
 import type { McpPrincipal } from './types';
 
+const analyticsMode = vi.hoisted(() => ({ value: 'clickhouse' }));
 const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
   getProject: vi.fn(),
@@ -46,6 +47,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit }));
+vi.mock('@nibleaf/clickhouse', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@nibleaf/clickhouse')>();
+  return { ...original, keys: () => ({ ...original.keys(), ANALYTICS_MODE: analyticsMode.value }) };
+});
 vi.mock('@/actions/projects', () => ({ getProject: mocks.getProject }));
 vi.mock('@/actions/pages', () => ({
   listPages: mocks.listPages,
@@ -459,7 +464,103 @@ describe('Nibleaf MCP protocol surface', () => {
     expect(write.instructions).not.toContain('read-only actions');
     const read = await discover(reader);
     expect(read.data.mode).toBe('read_only_with_preview');
-    expect(read.data.unavailable.map(({ domain }) => domain)).toContain('content_writes');
+    expect(read.data.unavailable.map(({ domain }) => domain)).toEqual(expect.arrayContaining(['page_drafts', 'publishing']));
+  });
+
+  it('names the website, the permission level, and why each missing job is missing', async () => {
+    type Job = { domain: string; kind: string; unlockedBy?: string[] };
+    type Capabilities = { website: { id: string; name: string; dashboardUrl: string }; permission: string; unavailable: Job[] };
+    const discover = async (scopes: McpScope[], actor: McpPrincipal['actor'] = { userId: 'user-1', role: 'member' }) => {
+      const { server, clientTransport, request } = await createProtocolClient({
+        ...principal,
+        actor,
+        credential: { ...principal.credential, scopes },
+      });
+      const response = await request<{ structuredContent: { data: Capabilities } }>('tools/call', { name: 'get_capabilities', arguments: {} });
+      await clientTransport.close();
+      await server.close();
+      return response.result?.structuredContent.data as Capabilities;
+    };
+    const job = (data: Capabilities, domain: string) => data.unavailable.find((entry) => entry.domain === domain);
+    try {
+      analyticsMode.value = 'clickhouse';
+      const readOnly = await discover([...MCP_PRESET_SCOPES.read_only]);
+      expect(readOnly.website).toEqual({
+        id: principal.project.id,
+        name: principal.project.name,
+        dashboardUrl: expect.stringMatching(/\/app\/projects\/project-1$/),
+      });
+      expect(readOnly.permission).toBe('read_only');
+      // Each job is unlocked by exactly the scope its tool needs, never more.
+      expect(job(readOnly, 'search_terms')).toMatchObject({ kind: 'permission', unlockedBy: ['analytics:search_terms'] });
+      expect(job(readOnly, 'page_drafts')).toMatchObject({ kind: 'permission', unlockedBy: ['pages:write'] });
+      expect(job(readOnly, 'publishing')).toMatchObject({ kind: 'permission', unlockedBy: ['deployments:publish'] });
+      expect(job(readOnly, 'page_deletion')?.kind).toBe('dashboard_only');
+
+      const writer = await discover([...MCP_PRESET_SCOPES.support_writer]);
+      expect(writer.permission).toBe('support_writer');
+      for (const domain of ['search_terms', 'page_drafts', 'publishing']) expect(job(writer, domain), domain).toBeUndefined();
+
+      // A draft-only key still learns why it can't publish, and the reverse.
+      const draftsOnly = await discover([...MCP_PRESET_SCOPES.read_only, 'pages:write']);
+      expect(job(draftsOnly, 'page_drafts')).toBeUndefined();
+      expect(job(draftsOnly, 'publishing')).toMatchObject({ kind: 'permission', unlockedBy: ['deployments:publish'] });
+      const publishOnly = await discover([...MCP_PRESET_SCOPES.read_only, 'deployments:publish']);
+      expect(job(publishOnly, 'publishing')).toBeUndefined();
+      expect(job(publishOnly, 'page_drafts')).toMatchObject({ kind: 'permission', unlockedBy: ['pages:write'] });
+
+      expect((await discover(['mcp:connect', 'pages:read'])).permission).toBe('custom');
+      // No live creator: writes are blocked by the key, whatever its scopes.
+      const orphan = await discover([...MCP_PRESET_SCOPES.support_writer], null);
+      expect(job(orphan, 'page_drafts')?.kind).toBe('credential');
+      expect(job(orphan, 'publishing')?.kind).toBe('credential');
+      expect(job(orphan, 'search_terms')).toBeUndefined();
+    } finally {
+      analyticsMode.value = 'clickhouse';
+    }
+  });
+
+  it.each([
+    ['clickhouse', 'read_only', 'permission'],
+    ['clickhouse', 'support_writer', null],
+    ['dual_write', 'read_only', 'data'],
+    ['dual_write', 'support_writer', 'data'],
+    ['shadow_read', 'read_only', 'data'],
+    ['disabled', 'support_writer', 'data'],
+  ] as const)('reports search terms on %s analytics with %s as %s: data limits come before permission advice', async (mode, preset, kind) => {
+    analyticsMode.value = mode;
+    try {
+      const { server, clientTransport, request } = await createProtocolClient({
+        ...principal,
+        actor: { userId: 'user-1', role: 'member' },
+        credential: { ...principal.credential, scopes: [...MCP_PRESET_SCOPES[preset]] },
+      });
+      const response = await request<{
+        structuredContent: { data: { unavailable: Array<{ domain: string; kind: string; unlockedBy?: string[] }> } };
+      }>('tools/call', { name: 'get_capabilities', arguments: {} });
+      await clientTransport.close();
+      await server.close();
+      const entry = response.result?.structuredContent.data.unavailable.find(({ domain }) => domain === 'search_terms');
+      if (kind === null) expect(entry).toBeUndefined();
+      else expect(entry?.kind).toBe(kind);
+      // A data gap never suggests a permission that wouldn't help.
+      if (kind === 'data') expect(entry?.unlockedBy).toBeUndefined();
+    } finally {
+      analyticsMode.value = 'clickhouse';
+    }
+  });
+
+  it('tells the assistant to hand dashboard links to the person', async () => {
+    const { server, clientTransport, request } = await createProtocolClient();
+    const initialized = await request<{ instructions?: string }>('initialize', {
+      protocolVersion: LATEST_PROTOCOL_VERSION,
+      capabilities: {},
+      clientInfo: { name: 'nibleaf-test', version: '1.0.0' },
+    });
+    expect(initialized.result?.instructions).toContain('reviewUrl, publishDialogUrl or deploymentUrl');
+    expect(initialized.result?.instructions).toContain('Opening a link never publishes anything');
+    await clientTransport.close();
+    await server.close();
   });
 
   it('returns protocol content plus structured content with ISO dates and redacted fields', async () => {

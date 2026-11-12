@@ -8,7 +8,7 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { type McpOAuthAuthorization, useCreateMcpOAuthGrant, useMcpOAuthAuthorization } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { AuthLayout } from '@/layouts/auth';
-import { consentLines, currentOAuthQuery, oauthStepHref } from '@/lib/mcp-oauth';
+import { consentLines, currentOAuthQuery, groupByOrganization, oauthStepHref } from '@/lib/mcp-oauth';
 import { useSession } from '@/services/auth-client';
 
 /** POST to a Better Auth OAuth endpoint with the page's signed query and go
@@ -143,6 +143,8 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
   const [error, setError] = useState<string | null>(null);
   const client = clientLabel(authorization, t('oauth.unknownClient'));
   const presetAllowed = Boolean(project?.presets.includes(preset));
+  const groups = groupByOrganization(projects);
+  const grouped = groups.length > 1;
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -178,28 +180,48 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
       <p className="text-muted-foreground text-sm leading-relaxed">{t('oauth.project.description', { client })}</p>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-medium text-sm">{t('oauth.project.projectLabel')}</legend>
-        {projects.map((candidate) => (
-          <label
-            className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-            key={candidate.id}
-          >
-            <input
-              checked={projectId === candidate.id}
-              name="mcp-oauth-project"
-              onChange={() => {
-                setProjectId(candidate.id);
-                if (!candidate.presets.includes(preset)) setPreset('read_only');
-              }}
-              type="radio"
-            />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <bdi className="truncate font-medium">{candidate.name}</bdi>
-              <bdi className="truncate text-muted-foreground text-xs">
-                {candidate.workspace} · {candidate.slug}
-              </bdi>
-            </span>
-          </label>
-        ))}
+        {groups.map((group) => {
+          const rows = group.sites.map((candidate) => (
+            <label
+              className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+              key={candidate.id}
+            >
+              <input
+                checked={projectId === candidate.id}
+                name="mcp-oauth-project"
+                onChange={() => {
+                  setProjectId(candidate.id);
+                  if (!candidate.presets.includes(preset)) setPreset('read_only');
+                }}
+                type="radio"
+              />
+              <span className="flex min-w-0 flex-1 flex-col">
+                {/* The block keeps the page direction (start-aligned in Arabic); the inline
+                    <bdi> only isolates the Latin name or address inside it. */}
+                <span className="truncate text-start font-medium">
+                  <bdi>{candidate.name}</bdi>
+                </span>
+                <span className="truncate text-start text-muted-foreground text-xs">
+                  <bdi dir="ltr">{candidate.slug}</bdi>
+                </span>
+              </span>
+            </label>
+          ));
+          // One fieldset per organization when there's more than one, named by
+          // its legend; the websites under it keep one radio group (same name).
+          return grouped ? (
+            <fieldset className="flex flex-col gap-2" data-slot="organization-group" key={group.id}>
+              <legend className="mt-1 mb-2 w-full text-start font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                <bdi>{group.name}</bdi>
+              </legend>
+              {rows}
+            </fieldset>
+          ) : (
+            <div className="flex flex-col gap-2" data-slot="organization-group" key={group.id}>
+              {rows}
+            </div>
+          );
+        })}
       </fieldset>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 font-medium text-sm">{t('oauth.project.permissionLabel')}</legend>
