@@ -41,9 +41,14 @@ const waitFor = async (url) => {
   throw new Error(`${url} did not start`);
 };
 
-const lock = await acquireDevstackLock('reader-video-embeds browser check');
 const children = [];
 let browser;
+/** Stop what this run started: the browser and both servers. */
+const cleanup = async () => {
+  await browser?.close().catch(() => undefined);
+  for (const child of children) child.kill();
+};
+const lock = await acquireDevstackLock('reader-video-embeds browser check', { onInterrupt: cleanup });
 const failures = [];
 try {
   children.push(spawn(process.execPath, ['scripts/site-preview-mock.mjs', '--port', '4311'], { cwd: ROOT, stdio: 'ignore' }));
@@ -53,7 +58,7 @@ try {
   await waitFor(`${MOCK}/api/public/sites/preview-harbor`);
   await waitFor(APP);
   if (captureDir) await mkdir(captureDir, { recursive: true });
-  browser = await chromium.launch({ executablePath: chromiumExecutable() });
+  browser = await chromium.launch({ executablePath: chromiumExecutable(), handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
 
   /** A page on the tour with every request recorded and provider responses stubbed. */
   const open = async ({ lang = 'en', width = 1440, javaScriptEnabled = true } = {}) => {
@@ -144,8 +149,7 @@ try {
     await context.close();
   });
 } finally {
-  await browser?.close();
-  for (const child of children) child.kill();
+  await cleanup();
   await lock.release();
 }
 

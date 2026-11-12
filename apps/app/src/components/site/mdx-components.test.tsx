@@ -2,12 +2,33 @@
 
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Accordion } from './mdx/accordion';
+import { Card } from './mdx/cards';
 import { CodeGroup } from './mdx/code-group';
 import { Expandable } from './mdx/fields';
 import { Tab, Tabs } from './mdx/tabs';
 import { Tooltip } from './mdx/tooltip';
+
+describe('cards', () => {
+  it('shows a known icon, an emoji as written, and a neutral page icon instead of a letter for anything else', () => {
+    const icons = (icon: string) => {
+      const container = document.createElement('div');
+      container.innerHTML = renderToString(
+        <Card title="Help" icon={icon} href="/help">
+          Body
+        </Card>,
+      );
+      const slot = container.querySelector('[data-theme-component="card"] > span');
+      return { svg: Boolean(slot?.querySelector('svg')), text: slot?.textContent ?? '' };
+    };
+    expect(icons('book-open')).toEqual({ svg: true, text: '' });
+    expect(icons('📘')).toEqual({ svg: false, text: '📘' });
+    // An unrecognized name used to show its first letter ("H"), which read as a broken tile.
+    expect(icons('house-of-cards')).toEqual({ svg: true, text: '' });
+  });
+});
 
 describe('interactive MDX components', () => {
   let container: HTMLDivElement;

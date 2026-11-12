@@ -28,6 +28,10 @@ interface StudioPreviewSlots {
 interface PageSlots {
   article: ReactNode;
   tableOfContents?: ReactNode;
+  /** Keep the outline column even when this page has no outline, so the article
+   *  doesn't jump sideways between pages of the same layout that have one and
+   *  pages that don't. Wide and centered pages leave it out on purpose. */
+  reserveTocColumn?: boolean;
 }
 
 export interface DocumentationThemeTemplate {
@@ -109,9 +113,9 @@ const HarborTemplate: DocumentationThemeTemplate = {
       </div>
     </>
   ),
-  PageLayout: ({ article, tableOfContents }) => (
+  PageLayout: ({ article, tableOfContents, reserveTocColumn }) => (
     <div
-      className={cn('grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12', tableOfContents && 'xl:grid-cols-[minmax(0,1fr)_13rem]')}
+      className={cn('grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12', (tableOfContents || reserveTocColumn) && 'xl:grid-cols-[minmax(0,1fr)_13rem]')}
       data-documentation-layout="harbor-reference-page"
       data-theme-region="page-shell"
     >
@@ -189,11 +193,11 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
       </div>
     </div>
   ),
-  PageLayout: ({ article, tableOfContents }) => (
+  PageLayout: ({ article, tableOfContents, reserveTocColumn }) => (
     <div
       className={cn(
         'grid min-w-0 grid-cols-1 justify-center gap-10 px-5 py-10 sm:px-8 lg:py-14',
-        tableOfContents && 'xl:grid-cols-[11rem_minmax(0,44rem)] xl:gap-14',
+        (tableOfContents || reserveTocColumn) && 'xl:grid-cols-[11rem_minmax(0,44rem)] xl:gap-14',
       )}
       data-documentation-layout="manuscript-editorial-page"
       data-theme-region="page-shell"
@@ -202,6 +206,9 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
         <aside className="hidden xl:block" data-theme-region="toc">
           {tableOfContents}
         </aside>
+      ) : reserveTocColumn ? (
+        // The outline column stays, empty, so the article starts where it does on pages with one.
+        <div aria-hidden className="hidden xl:block" />
       ) : null}
       {article}
     </div>

@@ -50,6 +50,8 @@
     "./markdown-code-usage": "./src/markdown-code-usage.ts",
     "./page-history": "./src/page-history.ts",
     "./page-limits": "./src/page-limits.ts",
+    "./page-title": "./src/page-title.ts",
+    "./page-icons": "./src/page-icons.ts",
     "./testing/growth": "./src/testing/growth.ts",
     "./reader-headings": "./src/reader-headings.ts",
     "./reader-heading-ids": "./src/reader-heading-ids.ts",
@@ -66,6 +68,7 @@
     "test:growth": "vitest run --mode growth --no-file-parallelism --maxWorkers=1 growth"
   },
   "dependencies": {
+    "@nibleaf/i18n": "workspace:*",
     "github-slugger": "^2.0.0",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm": "^3.1.0",

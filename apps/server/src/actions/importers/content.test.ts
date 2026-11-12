@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseFrontmatter, serializeGitPage } from './content';
+import { deriveTitle, parseFrontmatter, serializeGitPage } from './content';
 
 describe('frontmatter round trip', () => {
   it('reads back exactly the title, description and icon it wrote', () => {
@@ -27,5 +27,18 @@ describe('frontmatter round trip', () => {
       ),
     );
     expect(meta).toEqual({ title: 'Plain title', description: "It's single-quoted", icon: 'C:\\docs\\x', sidebartitle: 'Not \\q JSON' });
+  });
+});
+
+describe('deriveTitle', () => {
+  it.each([
+    ['an empty title', { title: '' }, 'Body.', 'untitled-2', ''],
+    ['no title under an untitled-N file name', {}, 'Body.', 'untitled-3', ''],
+    ['no title, but an H1', {}, '# Install\n\nBody.', 'untitled-3', 'Install'],
+    ['an empty title, but an H1', { title: '' }, '# Install', 'untitled', 'Install'],
+    ['no title under an ordinary file name', {}, 'Body.', 'getting-started', 'Getting Started'],
+    ['a real title', { title: 'Setup' }, 'Body.', 'untitled', 'Setup'],
+  ])('%s', (_case, meta: Record<string, string>, body, name, title) => {
+    expect(deriveTitle(meta, body, name)).toBe(title);
   });
 });

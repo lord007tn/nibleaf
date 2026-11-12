@@ -16,7 +16,7 @@ It runs on the mock's `guides/video-tour` page in English and Arabic at 1440
 and 390 pixels wide. Provider responses are stubbed with `page.route`, so the
 run never reaches the providers; the page's requests are still recorded.
 
-It needs a production build of the app. The script takes the dev-stack lock
+It needs a production build of the app. The script takes the dev-stack lock (released on Ctrl+C too)
 (`NIBLEAF_DEVSTACK_LOCK`), starts the dependency-free public site mock (:4311)
 and the built app (:4310) itself, and stops both and releases the lock when it
 ends. No database or real API is involved.

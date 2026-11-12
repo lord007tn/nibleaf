@@ -41,6 +41,59 @@ describe('Markdown renderer — default element renderers', () => {
     expect(html).toMatch(/<img[^>]*src="\/plain\.png"[^>]*alt=""|<img[^>]*alt=""[^>]*src="\/plain\.png"/);
     expect(html).toMatch(/<img[^>]*class="[^"]*rounded-xl[^"]*block dark:hidden[^"]*"/);
   });
+
+  it('loads the first image at once and the rest as the reader scrolls to them, all decoded off the main thread', async () => {
+    for (const language of [undefined, 'en']) {
+      const html = await render(['Intro', '![](/first.png)', 'Text', '![](/second.png)', '![](/third.png)'].join('\n\n'), language);
+      const images = html.match(/<img [^>]*>/g) ?? [];
+      expect(images, String(language)).toHaveLength(3);
+      expect(images[0]).toContain('loading="eager"');
+      for (const image of images.slice(1)) expect(image).toContain('loading="lazy"');
+      for (const image of images) expect(image).toContain('decoding="async"');
+    }
+  });
+
+  const imagesOf = (html: string) =>
+    (html.match(/<img [^>]*>/g) ?? []).map((tag) => ({
+      src: tag.match(/src="([^"]*)"/)?.[1],
+      loading: tag.match(/loading="([^"]*)"/)?.[1],
+      decoding: tag.match(/decoding="([^"]*)"/)?.[1],
+    }));
+
+  it("keeps an author's own loading and decoding, and only the values browsers define", async () => {
+    const html = await render(
+      [
+        '<img src="/lazy-hero.png" alt="" loading="lazy" />',
+        '<img src="/eager-later.png" alt="" loading="eager" decoding="sync" />',
+        '<img src="/made-up.png" alt="" loading="soon" decoding="never" />',
+      ].join('\n\n'),
+      'en',
+    );
+    expect(imagesOf(html)).toEqual([
+      // An authored lazy hero stays lazy; it still counts as the first image.
+      { src: '/lazy-hero.png', loading: 'lazy', decoding: 'async' },
+      { src: '/eager-later.png', loading: 'eager', decoding: 'sync' },
+      { src: '/made-up.png', loading: 'lazy', decoding: 'async' },
+    ]);
+  });
+
+  it('loads both images of a leading light/dark pair at once, and skips tiny icons for that slot', async () => {
+    const html = await render(
+      [
+        '<img src="/icon.png" alt="" width="24" height="24" />',
+        '<img src="/hero-light.png" alt="" class="block dark:hidden" />',
+        '<img src="/hero-dark.png" alt="" class="hidden dark:block" />',
+        '![](/next.png)',
+      ].join('\n\n'),
+      'en',
+    );
+    expect(imagesOf(html).map(({ src, loading }) => `${src} ${loading}`)).toEqual([
+      '/icon.png lazy',
+      '/hero-light.png eager',
+      '/hero-dark.png eager',
+      '/next.png lazy',
+    ]);
+  });
 });
 
 describe('Markdown renderer — Mintlify component parity', () => {

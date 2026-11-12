@@ -278,6 +278,22 @@ describe('pending changes: up to date', () => {
     expect(pending).toMatchObject({ hasBaseline: false, upToDate: false, changes: [] });
   });
 
+  it('never lists groups as URL changes but still publishes their navigation metadata', async () => {
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    mocks.deploymentFindFirst.mockResolvedValue(null);
+    const group = { ...page, id: 'group-1', kind: 'GROUP', title: 'Guides', slug: 'guides', path: 'guides' };
+    mocks.pageFindMany.mockResolvedValue([group, page]);
+    const pending = await getPendingChanges('project-1');
+    expect(pending.changes.map((change) => change.id)).toEqual([page.id]);
+
+    const published = await getCurrentSnapshot('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-1', version: 1, status: 'READY', snapshot: published, completedAt: new Date() });
+    mocks.pageFindMany.mockResolvedValue([{ ...group, title: 'Tutorials' }, page]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ upToDate: false, changes: [] });
+    mocks.pageFindMany.mockResolvedValue([page]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ upToDate: false, changes: [] });
+  });
+
   it('is up to date only when the draft would publish exactly what is live', async () => {
     mocks.projectFindUnique.mockResolvedValue(project([]));
     const published = await getCurrentSnapshot('project-1');
@@ -291,6 +307,39 @@ describe('pending changes: up to date', () => {
     mocks.projectFindUnique.mockResolvedValue(project([]));
     mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Edited' }]);
     expect(await getPendingChanges('project-1')).toMatchObject({ upToDate: false, changes: [expect.objectContaining({ status: 'modified' })] });
+  });
+
+  it('says when navigation groups change, also alongside page changes', async () => {
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    const group = { ...page, id: 'group-1', kind: 'GROUP', title: 'Guides', slug: 'guides', path: 'guides' };
+    mocks.pageFindMany.mockResolvedValue([group, page]);
+    const published = await getCurrentSnapshot('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-1', version: 1, status: 'READY', snapshot: published, completedAt: new Date() });
+
+    mocks.pageFindMany.mockResolvedValue([group, { ...page, content: 'Edited' }]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ groupsChanged: false, changes: [expect.objectContaining({ status: 'modified' })] });
+
+    mocks.pageFindMany.mockResolvedValue([
+      { ...group, title: 'Tutorials' },
+      { ...page, content: 'Edited' },
+    ]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ groupsChanged: true, changes: [expect.objectContaining({ status: 'modified' })] });
+
+    mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Edited' }]);
+    expect(await getPendingChanges('project-1')).toMatchObject({ groupsChanged: true });
+  });
+
+  it('reports removed and added URLs when Git sync converts a page into a group or back', async () => {
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    const published = await getCurrentSnapshot('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'd1', version: 1, status: 'READY', snapshot: published, completedAt: new Date() });
+    mocks.pageFindMany.mockResolvedValue([{ ...page, kind: 'GROUP' }]);
+    expect((await getPendingChanges('project-1')).changes).toMatchObject([{ id: page.id, status: 'removed', kind: 'PAGE' }]);
+
+    const grouped = await getCurrentSnapshot('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'd2', version: 2, status: 'READY', snapshot: grouped, completedAt: new Date() });
+    mocks.pageFindMany.mockResolvedValue([page]);
+    expect((await getPendingChanges('project-1')).changes).toMatchObject([{ id: page.id, status: 'added', kind: 'PAGE' }]);
   });
 
   it("carries a moved page's live address, so a copied link opens until the next publish", async () => {

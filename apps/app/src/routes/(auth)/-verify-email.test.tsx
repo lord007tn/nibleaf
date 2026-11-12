@@ -23,7 +23,7 @@ vi.mock('@nibleaf/i18n/react', async () => {
   // One function for every render, like the real hook's memoized translator.
   const t = (key: keyof typeof MESSAGE_IDS, variables?: Record<string, string>) =>
     String((mocks.locale === 'ar' ? ar : en)[MESSAGE_IDS[key] as keyof typeof en]).replace(/\{(\w+)\}/g, (_, name) => variables?.[name] ?? '');
-  return { useT: () => t };
+  return { useT: () => t, useLocale: () => ({ t, locale: mocks.locale }) };
 });
 // Stable like the real router, so the link check runs once.
 const router = { history: { push: (path: string) => mocks.push(path) } };

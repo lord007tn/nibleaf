@@ -147,3 +147,12 @@ describe('buildLlmsFullTxt', () => {
     expect(buildLlmsFullTxt(snap, BASE)).not.toContain('TOP SECRET');
   });
 });
+
+describe('an untitled page in llms.txt', () => {
+  it('is listed and headed as "Untitled", never as an empty link', () => {
+    const snap = snapshot([page({ id: 'draft', title: '' })]);
+    expect(buildLlmsTxt(snap, BASE)).toContain('- [Untitled](');
+    expect(buildLlmsTxt(snap, BASE)).not.toContain('[](');
+    expect(buildLlmsFullTxt(snap, BASE)).toContain('# Untitled');
+  });
+});
