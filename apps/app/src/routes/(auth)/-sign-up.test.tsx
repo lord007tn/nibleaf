@@ -5,16 +5,19 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ publicMeta: vi.fn(), refetch: vi.fn(), navigate: vi.fn(), send: vi.fn(), social: vi.fn(), verify: vi.fn() }));
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@nibleaf/i18n/react', () => {
+  const t = (key: string) => key;
+  return { useT: () => t, useLocale: () => ({ t, locale: 'en' }) };
+});
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}) }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}), useLoaderData: () => null }),
   useNavigate: () => mocks.navigate,
   useRouter: () => ({ history: { push: mocks.navigate, replace: mocks.navigate } }),
   Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 vi.mock('@/hooks/api/public', () => ({ useGetPublicMeta: mocks.publicMeta }));
 vi.mock('@/hooks/api/query-options', () => ({ getPublicMetaQueryOptions: () => ({ queryKey: ['public', 'meta'] }) }));
-vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ loadRouteData: vi.fn() }));
 vi.mock('@/layouts/auth', () => ({ AuthLayout: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
 vi.mock('@/services/auth-client', () => ({
   authClient: { signIn: { emailOtp: mocks.verify }, emailOtp: { sendVerificationOtp: mocks.send } },
@@ -124,11 +127,14 @@ describe('sign-up availability', () => {
         container.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
       });
     await submit();
-    expect(mocks.send).toHaveBeenCalledWith({ email: 'ada@example.test', type: 'sign-in' });
+    expect(mocks.send).toHaveBeenCalledWith({ email: 'ada@example.test', type: 'sign-in' }, expect.anything());
     expect(container.querySelector('form')?.textContent).toContain('auth.legal.continuePrefix');
     await setInput('#otp', '123456');
     // InputOTP may auto-submit on completion; form submission uses the same path.
     if (!mocks.verify.mock.calls.length) await submit();
-    expect(mocks.verify).toHaveBeenCalledWith(expect.objectContaining({ email: 'ada@example.test', otp: '123456', acceptTerms: true }));
+    expect(mocks.verify).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'ada@example.test', otp: '123456', acceptTerms: true }),
+      expect.anything(),
+    );
   });
 });

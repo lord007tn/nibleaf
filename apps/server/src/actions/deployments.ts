@@ -10,6 +10,7 @@ import { AppError, badRequest, notFound } from '@/errors';
 import { collectPublishChecks, type PublishCheck } from '@/lib/publish-checks';
 import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
 import { logPlatformEvent } from './platform-events';
+import { hasRealPageContent } from './project-starters';
 import { assertProjectInOrg } from './projects';
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
@@ -57,6 +58,8 @@ interface PendingChange extends DeploymentPageDiff {}
 
 /** What will change on the next publish, vs. the last READY deployment. */
 export interface PendingChanges {
+  /** A content page differs from the untouched new-site starters. */
+  hasRealContent: boolean;
   reviewedStateHash: string;
   /** false = never published, so everything counts as new. */
   hasBaseline: boolean;
@@ -386,11 +389,13 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const validation = validateSnapshotRedirects(draftSnapshot ?? (await getCurrentSnapshot(projectId)));
   const currentSnapshot = validation.snapshot;
   const current = currentSnapshot.pages.filter((page) => page.kind === 'PAGE');
+  const hasRealContent = hasRealPageContent(currentSnapshot.pages);
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
     const firstSpecChange = openApiSummary(currentSnapshot.openapi, null, currentSnapshot.project.languages[0]?.code ?? 'en');
     return {
+      hasRealContent,
       reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
       hasBaseline: false,
       upToDate: false,
@@ -438,6 +443,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const reviewedStateHash = reviewedSnapshotDigest(currentSnapshot);
   return {
     reviewedStateHash,
+    hasRealContent,
     hasBaseline: true,
     groupsChanged,
     // The page list only compares pages; settings, redirects and languages also
