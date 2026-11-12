@@ -37,6 +37,14 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const port = /** @type {import('node:net').AddressInfo} */ (server.address()).port;
 const origin = `http://127.0.0.1:${port}`;
+// A second loopback listener no capture allows: it must never be reached.
+let unlistedRequests = 0;
+const other = createServer((_request, response) => {
+  unlistedRequests += 1;
+  response.writeHead(200, { 'content-type': 'text/html' }).end(html(''));
+});
+await new Promise((resolve) => other.listen(0, '127.0.0.1', resolve));
+const unlisted = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (other.address()).port}`;
 
 /** Every address outside loopback in a NetLog file: a resolved name or a connection. */
 const outsideAddresses = (log) =>
@@ -88,23 +96,44 @@ try {
   const context = await local.browser.newContext();
   const page = await context.newPage();
   // No way around the guard: no browser-level CDP, the context leads back only to
-  // the facade, and page-level CDP is refused.
+  // the facade, and page-level DevTools is the narrow page tools.
   assert.equal(typeof local.browser.newBrowserCDPSession, 'undefined', 'the facade has no newBrowserCDPSession');
   assert.equal(context.browser(), local.browser, 'context.browser() is the facade');
   assert.equal(typeof context.browser().newBrowserCDPSession, 'undefined');
-  await assert.rejects(context.newCDPSession(page), /not available in captures/);
+  const tools = await context.newCDPSession(page);
+  await tools.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await assert.rejects(tools.send('Target.createTarget', { url: 'about:blank' }), /not available in captures/);
+  assert.throws(() => tools.on('Target.attachedToTarget', () => undefined), /not available in captures/);
   const direct = await page.goto(`${origin}/ok`);
   const mapped = await page.goto('http://docs.capture-fixture.test/ok');
-  await local.close();
+
+  // Removing routes never removes the guard: an unlisted loopback port stays blocked.
+  await context.unrouteAll();
+  await context.unroute('**/*');
+  await page.goto(`${unlisted}/after-unroute`).catch(() => undefined);
+  const unlistedAttempted = local.attempted.some((line) => line.includes(`${unlisted}/after-unroute`));
+  let unrouteError = null;
+  try {
+    await local.close();
+  } catch (error) {
+    unrouteError = error instanceof Error ? error.message.split('\n')[0] : String(error);
+  }
   results.push({ name: 'allowed: local origin and mapped custom domain', statuses: [direct?.status(), mapped?.status()] });
+  results.push({ name: 'unroute and unrouteAll keep the guard', unlistedAttempted, unlistedRequests, unrouteError });
 } finally {
   server.close();
+  other.close();
   await rm(scratch, { recursive: true, force: true });
 }
 
 console.log(JSON.stringify(results, null, 2));
-for (const result of results.slice(0, -1)) assert.deepEqual(result.outside, [], `${result.name}: reached ${result.outside.join(', ')}`);
-assert.deepEqual(results.at(-1)?.statuses, [200, 200], 'allowed hosts load');
+for (const result of results.filter((candidate) => candidate.outside)) {
+  assert.deepEqual(result.outside, [], `${result.name}: reached ${result.outside.join(', ')}`);
+}
+assert.deepEqual(results.find((result) => result.statuses)?.statuses, [200, 200], 'allowed hosts load');
+const unrouted = results.find((result) => result.name === 'unroute and unrouteAll keep the guard');
+assert.ok(unrouted?.unlistedAttempted && unrouted.unrouteError, 'after unroute/unrouteAll, an unlisted loopback port is recorded and fails the run');
+assert.equal(unrouted.unlistedRequests, 0, 'the unlisted loopback listener was never reached');
 // Where Playwright can see the attempt, the guard records it and fails the run.
 for (const name of [
   'navigation redirect to an outside host',

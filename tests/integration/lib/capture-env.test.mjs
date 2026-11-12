@@ -12,6 +12,7 @@ import {
   launchLocalOnlyBrowser,
   localHostKeys,
   localOnlyBrowserArgs,
+  pageTools,
 } from './capture-env.mjs';
 
 // The guard's behaviour in a real browser (redirects, WebSockets, prefetch,
@@ -198,5 +199,45 @@ describe('no capture launches Chromium around the guard', () => {
       .filter(Boolean)
       .filter((line) => !allowed.has(line.slice(0, line.indexOf(':'))));
     assert.deepEqual(offenders, [], 'launch Chromium through withLocalOnlyBrowser (tests/integration/lib/capture-env.mjs)');
+  });
+});
+
+describe('pageTools: the only DevTools a capture gets', () => {
+  const sent = [];
+  const listeners = [];
+  const session = {
+    send: async (method, params) => {
+      sent.push([method, params]);
+      return {};
+    },
+    on: (event) => listeners.push(event),
+    detach: async () => undefined,
+  };
+  const tools = pageTools(session);
+
+  it('passes CPU throttling, screencast and IME input through', async () => {
+    await tools.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    await tools.send('Page.startScreencast', { format: 'jpeg' });
+    await tools.send('Page.screencastFrameAck', { sessionId: 1 });
+    await tools.send('Page.stopScreencast');
+    await tools.send('Input.imeSetComposition', { text: 'か' });
+    await tools.send('Input.insertText', { text: '課' });
+    tools.on('Page.screencastFrame', () => undefined);
+    assert.equal(sent.length, 6);
+    assert.deepEqual(listeners, ['Page.screencastFrame']);
+  });
+
+  it('refuses anything that could open a target or context or touch the network', async () => {
+    for (const method of ['Target.createTarget', 'Target.createBrowserContext', 'Network.enable', 'Fetch.enable', 'Runtime.evaluate']) {
+      await assert.rejects(tools.send(method, {}), /not available in captures/, method);
+    }
+    assert.throws(() => tools.on('Target.attachedToTarget', () => undefined), /not available in captures/);
+    assert.equal(sent.length, 6);
+  });
+
+  it('keeps the raw session out of reach', () => {
+    assert.deepEqual(Object.keys(tools).sort(), ['detach', 'on', 'send']);
+    assert.equal(Object.getPrototypeOf(tools), null);
+    assert.ok(Object.isFrozen(tools));
   });
 });
