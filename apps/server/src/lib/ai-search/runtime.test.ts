@@ -320,4 +320,13 @@ describe('server-derived Qdrant scope', () => {
       chunk: { headingPath: ['إعداد API_URL'] },
     });
   });
+
+  it('reads the section anchor recorded at index time, and keeps a point whose anchor is unusable or missing', () => {
+    expect(chunkFromPoint(point({ anchor: 'إعداد-api_url' }), scope())?.chunk.anchor).toBe('إعداد-api_url');
+    const malformed = chunkFromPoint(point({ anchor: 42 }), scope());
+    expect(malformed).not.toBeNull();
+    expect(malformed?.chunk).not.toHaveProperty('anchor');
+    // Indexed before anchors were recorded.
+    expect(chunkFromPoint(point(), scope())?.chunk).not.toHaveProperty('anchor');
+  });
 });

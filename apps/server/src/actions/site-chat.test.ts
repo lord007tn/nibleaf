@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   release: vi.fn(),
   settle: vi.fn(),
   quota: vi.fn(),
+  served: vi.fn(async () => undefined),
   recordTurn: vi.fn(),
   recordFeedback: vi.fn(),
   // Whether this instance can archive question text (see readerChatPolicy below).
@@ -19,6 +20,13 @@ const mocks = vi.hoisted(() => ({
   suggest: vi.fn(),
   recordEvents: vi.fn(),
   extend: vi.fn(),
+  // Section resolution has its own tests (lib/ai-search/sections.test.ts); turns
+  // here keep every retrieved source unless a test uses the real resolver.
+  sections: vi.fn(
+    (_pages?: unknown, _deploymentId?: unknown) =>
+      (source: unknown): unknown =>
+        source,
+  ),
   adapter: vi.fn((runtime: { answerModel: string }) => ({ kind: runtime.answerModel })),
   extras: {
     SEARCH_CHAT_HISTORY_MESSAGES: 6,
@@ -42,7 +50,8 @@ vi.mock('@/lib/ai-search/chat-budget', () => ({
   releaseChatTurn: mocks.release,
   settleChatSpend: mocks.settle,
 }));
-vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota }));
+vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota, recordAnswerServed: mocks.served }));
+vi.mock('@/lib/ai-search/sections', () => ({ publishedSections: mocks.sections }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({
   recordAiChatTurn: mocks.recordTurn,
   recordAiChatFeedback: mocks.recordFeedback,
@@ -82,6 +91,7 @@ vi.mock('@nibleaf/search', async (importOriginal) => {
     chatSourcesTokens: actual.chatSourcesTokens,
     fitChatContext: actual.fitChatContext,
     fitChatSources: actual.fitChatSources,
+    sectionHeadingKey: actual.sectionHeadingKey,
     condenseFollowUp: mocks.condense,
     streamGroundedChat: mocks.stream,
     suggestFollowUps: mocks.suggest,
@@ -314,8 +324,8 @@ describe('reader AI chat stream', () => {
     ]);
     const final = aiChatFinalEventSchema.parse(events.find((event) => event.name === AI_CHAT_EVENT.final)?.value);
     expect(final).toMatchObject({ status: 'answered', answer: 'Run the installer. [S1]', limits: { turnsRemaining: 19, quotaRemaining: 41 } });
-    // The citation links to the exact section, with the reader TOC's heading id.
-    expect(final.citations[0]).toMatchObject({ heading: 'With npm', anchor: 'with-npm' });
+    // Citations are the checked answer's own, from sources resolved to their sections before generation.
+    expect(final.citations[0]).toMatchObject({ heading: 'With npm' });
     expect(aiChatFollowUpsEventSchema.parse(events.find((event) => event.name === AI_CHAT_EVENT.followUps)?.value)).toEqual({
       turnId: final.turnId,
       questions: ['Can I install it offline?'],
@@ -324,6 +334,9 @@ describe('reader AI chat stream', () => {
     // The page the reader asked from is passed as a narrowing hint only.
     expect(mocks.retrieve.mock.calls[0]?.[4]).toMatchObject({ page: { id: 'page-1', title: 'Install' } });
     await settle();
+    // A completed answer counts toward today's answers shown on the AI answers page.
+    // Counted at the time its final event went out, so a turn finishing near midnight UTC counts on that day.
+    expect(mocks.served).toHaveBeenCalledWith('project-1', expect.any(Date));
     // The turn reserved the most it can read and write before it ran, measured
     // from the prompts it sends (the reader's page included), then settles to what
     // the answer and suggestion calls spent. One short source fits the least
@@ -355,6 +368,29 @@ describe('reader AI chat stream', () => {
       expect.objectContaining({ name: 'answer_completed', promptTokens: 130 }),
       expect.anything(),
     );
+  });
+
+  it('gives the model only sources resolved to a section the published page renders', async () => {
+    const actual = await vi.importActual<typeof import('@/lib/ai-search/sections')>('@/lib/ai-search/sections');
+    mocks.sections.mockImplementationOnce(
+      (pages?: unknown, deploymentId?: unknown) => actual.publishedSections(pages as never, String(deploymentId)) as (source: unknown) => unknown,
+    );
+    const indexed = { ...searchChunk(1, 'Run the installer.'), heading: 'With npm', anchor: 'with-npm' };
+    const unknownSection = { ...searchChunk(2, 'An old section.'), heading: 'Removed section', headingPath: ['Removed section'] };
+    const otherPage = { ...searchChunk(3, 'Not in this version.'), pageId: 'page-from-another-version' };
+    mocks.retrieve.mockResolvedValue({ chunks: [indexed, unknownSection, otherPage], hits: [], confidence: 0.8, cacheHit: false });
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        // A declined answer streams no text.
+      })(),
+      result: Promise.resolve({ status: 'no_answer', answer: 'No.', citations: [], droppedParagraphs: 0, model: 'm', latencyMs: 1 }),
+    });
+    await readEvents(await chatSite('project-1', body()));
+    const read = mocks.stream.mock.calls[0]?.[0].chunks as SearchChunk[];
+    // The section's heading as the table of contents shows it (inline Markdown stripped), and its rendered id.
+    expect(read.map(({ id, heading, anchor }) => ({ id, heading, anchor }))).toEqual([{ id: 'c1', heading: 'With npm', anchor: 'with-npm' }]);
+    // Resolved against the turn's published deployment, whose headings are read once.
+    expect(mocks.sections).toHaveBeenCalledWith(expect.any(Array), 'deploy-1');
   });
 
   it('uses the Arabic question language throughout a turn on an English reader', async () => {
@@ -823,9 +859,40 @@ describe('reader AI chat stream', () => {
     for (let i = 0; i < 5; i++) await settle();
     const turn = mocks.recordTurn.mock.calls.at(-1)?.[0];
     expect(turn).toMatchObject({ status: 'answered', utilityInputTokens: 37, utilityOutputTokens: 11, utilityCostUsd: 0.000_123 });
+    // The reader got the checked answer before leaving: it counts.
+    expect(mocks.served).toHaveBeenCalledWith('project-1', expect.any(Date));
     expect(turn).not.toHaveProperty('usageEstimated');
     expect(turn).not.toHaveProperty('utilityUsageEstimated');
     mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
+  });
+
+  it('does not count an answered turn whose reader left before the final event', async () => {
+    const leave = new AbortController();
+    mocks.request.current = new Request('http://localhost/api/public/sites/p/chat', { method: 'POST', signal: leave.signal });
+    // The checked result is in (the turn is "answered"), but the reader leaves
+    // when the text ends, before the final event that carries it.
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        yield 'Run the installer. [S1]';
+      })(),
+      result: Promise.resolve({
+        status: 'answered',
+        answer: 'Run the installer. [S1]',
+        citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
+        droppedParagraphs: 0,
+        usage: { inputTokens: 900, outputTokens: 120 },
+        model: 'openai/test-answer-model',
+      }),
+    });
+    const reader = (await chatSite('project-1', body())).body?.getReader();
+    if (!reader) throw new Error('expected a stream');
+    const seen = await readUntil(reader, (text) => text.includes('TEXT_MESSAGE_END'));
+    leave.abort();
+    await reader.cancel().catch(() => undefined);
+    for (let i = 0; i < 5; i++) await settle();
+    expect(seen).not.toContain(AI_CHAT_EVENT.final);
+    expect(mocks.recordTurn.mock.calls.at(-1)?.[0]).toMatchObject({ status: 'answered' });
+    expect(mocks.served).not.toHaveBeenCalled();
   });
 
   it.each(['failed', 'cancelled'] as const)('starts no suggestions for an answer that is %s', async (status) => {
@@ -1009,6 +1076,8 @@ describe('reader AI chat stream', () => {
     expect(mocks.recordTurn).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'generation' }));
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', outcome: 'failed' });
+    // A failed generation spent quota but is not a served answer.
+    expect(mocks.served).not.toHaveBeenCalled();
   });
 
   it('ignores a page context the reader cannot see', async () => {

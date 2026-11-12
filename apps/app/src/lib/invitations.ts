@@ -26,16 +26,39 @@ export const safeReturnPath = (value: unknown): string | null => {
   return path && /^\/app(?:[/?#]|$)/.test(path) ? path : null;
 };
 
-/** Copy text with the standard Clipboard API. */
+/** Copy text with the standard Clipboard API, falling back to a selected
+ *  off-screen field where that API is missing or refused (an insecure origin,
+ *  an older browser, a denied permission). */
 export async function copyToClipboard(text: string): Promise<boolean> {
-  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
-    return false;
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Try the fallback below.
+    }
   }
+  return copyWithSelection(text);
+}
+
+function copyWithSelection(text: string): boolean {
+  if (typeof document === 'undefined' || typeof document.execCommand !== 'function') return false;
+  const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const field = document.createElement('textarea');
+  field.value = text;
+  field.setAttribute('readonly', '');
+  field.style.position = 'fixed';
+  field.style.opacity = '0';
+  document.body.append(field);
+  field.focus({ preventScroll: true });
+  field.select();
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    return document.execCommand('copy');
   } catch {
     return false;
+  } finally {
+    field.remove();
+    previous?.focus();
   }
 }
 

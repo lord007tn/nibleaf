@@ -1,0 +1,52 @@
+[
+  {
+    "name": "en-1440-light-before",
+    "href": "cli?lang=en#install",
+    "hash": "#install"
+  },
+  {
+    "name": "en-1440-light-after",
+    "href": "cli?lang=en#install-1",
+    "hash": "#install-1"
+  },
+  {
+    "name": "en-1440-dark-after",
+    "href": "cli?lang=en#install-1",
+    "hash": "#install-1"
+  },
+  {
+    "name": "en-390-light-before",
+    "href": "cli?lang=en#install",
+    "hash": "#install"
+  },
+  {
+    "name": "en-390-light-after",
+    "href": "cli?lang=en#install-1",
+    "hash": "#install-1"
+  },
+  {
+    "name": "ar-1440-light-before",
+    "href": "cli?lang=ar#التثبيت",
+    "hash": "#التثبيت"
+  },
+  {
+    "name": "ar-1440-light-after",
+    "href": "cli?lang=ar#التثبيت-1",
+    "hash": "#التثبيت-1"
+  },
+  {
+    "name": "ar-390-light-before",
+    "href": "cli?lang=ar#التثبيت",
+    "hash": "#التثبيت"
+  },
+  {
+    "name": "ar-390-light-after",
+    "href": "cli?lang=ar#التثبيت-1",
+    "hash": "#التثبيت-1"
+  },
+  {
+    "name": "ar-390-dark-after",
+    "href": "cli?lang=ar#التثبيت-1",
+    "hash": "#التثبيت-1"
+  }
+]

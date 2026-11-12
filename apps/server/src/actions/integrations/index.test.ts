@@ -48,6 +48,8 @@ vi.mock('@/env', () => ({
 const runtime = vi.hoisted(() => ({
   /** SEARCH_ANSWER_ENABLED: whether the server allows AI answers at all. */
   answersEnabled: false,
+  /** SEARCH_ANSWER_DAILY_PER_PROJECT: answers a site may get per day. */
+  dailyAnswers: 200,
   /** SEARCH_EMBEDDING_MODEL: what a stored AI key must be built for. */
   embeddingModel: 'embedding',
   /**
@@ -82,6 +84,7 @@ vi.mock('@nibleaf/search/keys', () => ({
     SEARCH_EMBEDDING_MODEL: runtime.embeddingModel,
     SEARCH_ANSWER_MODEL: 'answer',
     SEARCH_ANSWER_ENABLED: runtime.answersEnabled,
+    SEARCH_ANSWER_DAILY_PER_PROJECT: runtime.dailyAnswers,
   }),
 }));
 vi.mock('@nibleaf/storage/keys', () => ({ keys: () => ({ STORAGE_PROVIDER: 'minio' }) }));
@@ -804,6 +807,7 @@ describe('the server-managed OpenRouter entry', () => {
   afterEach(() => {
     mutableEnv.OPENROUTER_API_KEY = undefined;
     runtime.answersEnabled = false;
+    runtime.dailyAnswers = 200;
   });
 
   // Matches Smart AI's badge: "Active" only while this site's readers get answers from it.
@@ -828,8 +832,15 @@ describe('the server-managed OpenRouter entry', () => {
     { name: 'the site uses its own OpenAI key', search: { aiProvider: 'openai', aiAnswers: true }, answersEnabled: true },
     { name: 'the site turned AI off', search: { aiProvider: 'disabled', aiAnswers: false }, answersEnabled: true },
     { name: 'the server does not allow answers', search: { aiProvider: 'instance', aiAnswers: true }, answersEnabled: false },
-  ])('is inactive when $name', async ({ search, answersEnabled }) => {
+    {
+      name: 'the server allows no answers a day',
+      search: { aiProvider: 'instance', aiAnswers: true },
+      answersEnabled: true,
+      dailyAnswers: 0,
+    },
+  ])('is inactive when $name', async ({ search, answersEnabled, dailyAnswers = 200 }) => {
     runtime.answersEnabled = answersEnabled;
+    runtime.dailyAnswers = dailyAnswers;
     mutableEnv.OPENROUTER_API_KEY = 'operator-secret-key';
 
     const openrouter = (await listFor({ search })).find(({ id }) => id === 'openrouter');

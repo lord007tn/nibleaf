@@ -13,6 +13,12 @@ const mocks = vi.hoisted(() => ({
   runPublishedSearch: vi.fn(),
   getCachedIndex: vi.fn(),
   warn: vi.fn(),
+  /** The reader's request: aborted once they leave. */
+  request: { controller: new AbortController() },
+  answerAvailable: vi.fn(async () => false),
+  answerPublishedSearch: vi.fn(),
+  consumeAnswerQuota: vi.fn(),
+  recordAnswerServed: vi.fn(async () => undefined),
   // Whether this instance can encrypt and write conversation text.
   storageReady: true,
 }));
@@ -38,9 +44,11 @@ vi.mock('@nibleaf/search', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nibleaf/search')>()),
   searchDocs: vi.fn(async () => []),
 }));
-vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: { headers: new Headers() } } }) }));
+vi.mock('hono/context-storage', () => ({
+  getContext: () => ({ req: { raw: { headers: new Headers(), signal: mocks.request.controller.signal } } }),
+}));
 vi.mock('@/env', () => ({ env: { APP_URL: 'https://app.example.test' } }));
-vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
+vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.consumeAnswerQuota, recordAnswerServed: mocks.recordAnswerServed }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({
   readerQuestionStorage: (captureSetting: boolean) =>
     captureSetting && mocks.storageReady
@@ -48,8 +56,8 @@ vi.mock('@/lib/ai-search/conversation-archive', () => ({
       : { storesQuestions: false, questionRetentionDays: null },
 }));
 vi.mock('@/lib/ai-search/runtime', () => ({
-  answerPublishedSearch: vi.fn(),
-  answerSearchAvailable: vi.fn(async () => false),
+  answerPublishedSearch: mocks.answerPublishedSearch,
+  answerSearchAvailable: mocks.answerAvailable,
   runPublishedSearch: mocks.runPublishedSearch,
 }));
 vi.mock('@/lib/search-cache', () => ({ getCachedIndex: mocks.getCachedIndex }));
@@ -63,6 +71,7 @@ vi.mock('./projects', () => ({ assertProjectInOrg: vi.fn(async () => ({ takedown
 import { rollbackDeployment } from './deployments';
 
 import {
+  answerSite,
   getProjectAssetAccess,
   getSite,
   getSiteChangelog,
@@ -683,5 +692,35 @@ describe('private asset authorization', () => {
   it('refuses page-scoped access when the site has no live deployment', async () => {
     mocks.deploymentFindFirst.mockImplementation(async () => assetMetadata(null));
     await expect(getProjectAssetAccess('project-1', key('child-shot.png'), new Headers())).resolves.toBeNull();
+  });
+});
+
+describe('completed AI answers', () => {
+  beforeEach(() => {
+    mocks.request.controller = new AbortController();
+    mocks.answerAvailable.mockResolvedValue(true);
+    mocks.consumeAnswerQuota.mockResolvedValue({ allowed: true, remaining: 10 });
+    // Like a cached answer: it returns without looking at the request's signal.
+    mocks.answerPublishedSearch.mockResolvedValue({ answer: 'Use the pricing page.', citations: [] });
+    mocks.recordAnswerServed.mockClear();
+    // The site has AI answers on.
+    invalidatePublishedSiteConfig('project-1');
+    mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
+      'name' in select ? liveChrome({ search: { aiAnswers: true } }) : { id: 'project-1' },
+    );
+  });
+
+  it('counts an answer that reached the reader', async () => {
+    await answerSite('project-1', 'pricing');
+    expect(mocks.recordAnswerServed).toHaveBeenCalledWith('project-1');
+  });
+
+  it('does not count a cached answer whose reader already left', async () => {
+    mocks.answerPublishedSearch.mockImplementation(async () => {
+      mocks.request.controller.abort();
+      return { answer: 'Use the pricing page.', citations: [] };
+    });
+    await answerSite('project-1', 'pricing');
+    expect(mocks.recordAnswerServed).not.toHaveBeenCalled();
   });
 });

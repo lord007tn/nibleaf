@@ -1,3 +1,4 @@
+import { replaceHtmlTags } from '@nibleaf/shared/reader-rich';
 import { create, insertMultiple, type Orama, search } from '@orama/orama';
 import { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
 import { cleanSearchText } from './hybrid';
@@ -346,13 +347,14 @@ const ARABIC_SNIPPET_WORD = /[\u0621-\u063a\u0640-\u065f\u0670\u0671\u06d6-\u06e
 /** Strip common Markdown/MDX syntax so a search snippet reads as clean prose
  *  instead of showing literal `# heading`, `**bold**`, fenced code, etc. */
 export function stripMarkdown(src: string): string {
-  return src
+  const withoutCodeAndLinks = src
     .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks
     .replace(/~~~[\s\S]*?~~~/g, ' ')
     .replace(/`([^`]+)`/g, '$1') // inline code
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // images
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links → text
-    .replace(/<\/?[A-Za-z][^>]*>/g, ' ') // html / MDX component tags
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1'); // links → text
+  // HTML / MDX component tags, read in one pass (shared with the reader's detection).
+  return replaceHtmlTags(withoutCodeAndLinks, ' ')
     .replace(/\[!\w+\]/g, ' ') // admonition markers ([!NOTE])
     .replace(/^\s{0,3}#{1,6}\s+/gm, '') // ATX headings
     .replace(/^\s{0,3}>\s?/gm, '') // blockquote markers

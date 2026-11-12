@@ -1,7 +1,7 @@
+import { growthMs, growthMsAsync, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
-import { findBrokenInternalLinks, findInboundPageLinks } from './publish-checks';
+import { buildInboundPageLinkMap, buildInboundPageLinkMapAsync, findBrokenInternalLinks, findInboundPageLinks } from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
-import { growthTestsEnabled } from './testing/growth';
 
 let sequence = 0;
 const page = (overrides: Partial<SnapshotPage> & Pick<SnapshotPage, 'path'>): SnapshotPage => {
@@ -39,6 +39,38 @@ const site = (pages: SnapshotPage[]): SiteSnapshot => ({
   },
   pages,
   generatedAt: '2026-11-01T00:00:00.000Z',
+});
+
+describe.runIf(growthTestsEnabled)('cold inbound page map: growth', () => {
+  const run = Math.random().toString(36).slice(2);
+  const coldSite = ({ count, rep, mode }: { count: number; rep: number; mode: string }) =>
+    site(
+      Array.from({ length: count }, (_, i) =>
+        page({
+          id: `cold-${i}`,
+          path: `cold-${i}`,
+          content: `# Topic ${run}-${mode}-${count}-${rep}-${i}\n\n[Next](/cold-${(i + 1) % count})\n\n${'Reference documentation for this topic. '.repeat(30)}`,
+        }),
+      ),
+    );
+  const small = { count: 550, rep: 0, mode: 'sync' };
+  const large = { count: 2200, rep: 0, mode: 'sync' };
+  // Vary only an O(1) token; fixture construction and parsing are measured.
+  // Every call has unique bodies and a fresh snapshot, bypassing both caches.
+  const options = { vary: (input: typeof small, rep: number) => ({ ...input, rep }) };
+  it('builds the synchronous map for 4x the cold pages in linear time', () => {
+    const [smallMs, largeMs] = growthMs((input) => buildInboundPageLinkMap(coldSite(input)), small, large, options);
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+  }, 120_000);
+  it('builds the yielding map for 4x the cold pages in linear time', async () => {
+    const [smallMs, largeMs] = await growthMsAsync(
+      (input) => buildInboundPageLinkMapAsync(coldSite(input)),
+      { ...small, mode: 'async' },
+      { ...large, mode: 'async' },
+      options,
+    );
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+  }, 120_000);
 });
 
 // Timing bounds, run on their own (pnpm test:growth; see testing/growth).
