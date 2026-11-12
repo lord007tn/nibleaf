@@ -262,6 +262,9 @@ describe('SiteNav long titles', () => {
       Object.defineProperties(label, { scrollHeight: { configurable: true, value: 40 } });
       act(() => control.focus());
       expect(label.hasAttribute('title'), prefix).toBe(false);
+      // Keyboard focus shows no native tooltip, so the focused control's label unclamps instead.
+      expect(label.className).toContain('in-focus-visible:line-clamp-none');
+      expect(control.contains(label)).toBe(true);
       // The control's accessible name (its text) is unchanged.
       expect(control.textContent).toBe(name);
       expect(control.hasAttribute('title')).toBe(false);
