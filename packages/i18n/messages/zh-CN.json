@@ -2165,6 +2165,8 @@
   "site_previous": "上一页",
   "site_next": "下一页",
   "site_onthispage": "在此页面上",
+  "site_navshowall": "显示全部",
+  "site_navshowless": "收起",
   "site_minreadcount": [
     {
       "declarations": ["input count", "input form"],
