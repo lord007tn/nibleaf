@@ -35,7 +35,7 @@ const random = (seed: number) => {
 const ALPHABET = ['<', '>', '/', 'a', 'Z', '$', '\\', '`', '``', '```', '\n', ' ', 'x', '~~~', '- ', '> ', '1. ', '\t', '#', 'é'];
 
 /** The kinds of input the comparison must reach, so a smaller run still covers each. */
-const ALL_CASES = [
+const ALL_CASES: string[] = [
   'tag',
   'math',
   'plain',
@@ -46,7 +46,7 @@ const ALL_CASES = [
   'container fence',
   'code hides tag or math',
   'tags replaced',
-] as const;
+];
 const caseClasses = (content: string): string[] => {
   const prose = referenceWithoutCode(content);
   const classes: string[] = [];
