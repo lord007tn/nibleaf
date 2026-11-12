@@ -4,6 +4,8 @@ import { getSessionFn } from '@/functions/session';
 const WelcomeNamePage = lazyRouteComponent(() => import('@/components/welcome-name-page'));
 
 export const Route = createFileRoute('/welcome/name')({
+  // <html lang dir> follows the interface language (lib/root-document.ts).
+  staticData: { interfaceLocale: true },
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
     redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
   }),
