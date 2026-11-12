@@ -441,6 +441,8 @@
   "editor_format_underline": "रेखांकित करें",
   "editor_format_subscript": "सबस्क्रिप्ट",
   "editor_format_superscript": "सुपरस्क्रिप्ट",
+  "editor_format_turninto": "इसमें बदलें",
+  "editor_format_toolbar": "टेक्स्ट फ़ॉर्मेटिंग",
   "editor_link_save": "लिंक सहेजें",
   "editor_link_open": "नए टैब में खोलें",
   "editor_link_openrelativehint": "आपकी प्रकाशित साइट पर संबंधित लिंक खुलते हैं",

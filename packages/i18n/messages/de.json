@@ -450,6 +450,8 @@
   "editor_format_underline": "Unterstreichen",
   "editor_format_subscript": "Tiefgestellt",
   "editor_format_superscript": "Hochgestellt",
+  "editor_format_turninto": "Umwandeln in",
+  "editor_format_toolbar": "Textformatierung",
   "editor_link_save": "Link speichern",
   "editor_link_open": "In neuem Tab öffnen",
   "editor_link_openrelativehint": "Auf Ihrer veröffentlichten Website werden relative Links geöffnet",

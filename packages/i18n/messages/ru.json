@@ -452,6 +452,8 @@
   "editor_format_underline": "Подчеркнуть",
   "editor_format_subscript": "Индекс",
   "editor_format_superscript": "Надстрочный индекс",
+  "editor_format_turninto": "Преобразовать в",
+  "editor_format_toolbar": "Форматирование текста",
   "editor_link_save": "Сохранить ссылку",
   "editor_link_open": "Открыть в новой вкладке",
   "editor_link_openrelativehint": "Относительные ссылки открываются на опубликованном вами сайте.",

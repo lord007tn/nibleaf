@@ -893,6 +893,8 @@ export const MESSAGE_IDS = {
   'editor.format.underline': 'editor_format_underline',
   'editor.format.subscript': 'editor_format_subscript',
   'editor.format.superscript': 'editor_format_superscript',
+  'editor.format.turnInto': 'editor_format_turninto',
+  'editor.format.toolbar': 'editor_format_toolbar',
   'editor.link.save': 'editor_link_save',
   'editor.link.open': 'editor_link_open',
   'editor.link.openRelativeHint': 'editor_link_openrelativehint',

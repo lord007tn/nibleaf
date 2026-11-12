@@ -441,6 +441,8 @@
   "editor_format_underline": "Garis bawahi",
   "editor_format_subscript": "Berlangganan",
   "editor_format_superscript": "Superskrip",
+  "editor_format_turninto": "Ubah menjadi",
+  "editor_format_toolbar": "Format teks",
   "editor_link_save": "Simpan tautan",
   "editor_link_open": "Buka di tab baru",
   "editor_link_openrelativehint": "Tautan relatif terbuka di situs yang Anda terbitkan",

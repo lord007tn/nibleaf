@@ -441,6 +441,8 @@
   "editor_format_underline": "下划线",
   "editor_format_subscript": "下标",
   "editor_format_superscript": "上标",
+  "editor_format_turninto": "转换为",
+  "editor_format_toolbar": "文本格式",
   "editor_link_save": "保存链接",
   "editor_link_open": "在新选项卡中打开",
   "editor_link_openrelativehint": "相关链接在您发布的网站上打开",
