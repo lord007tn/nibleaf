@@ -24,10 +24,12 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { RowActionsItem } from '@nibleaf/design-system/components/ui/data-list';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLinkItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
@@ -36,7 +38,24 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import type { MovePageBody } from '@nibleaf/validators';
-import { ChevronRight, CornerDownRight, FileText, Folder, GripVertical, MoreHorizontal, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
+import {
+  ChevronRight,
+  CopyPlus,
+  CornerDownRight,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  FileText,
+  Folder,
+  FolderInput,
+  GripVertical,
+  Link2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Settings2,
+  Trash2,
+} from 'lucide-react';
 import {
   createContext,
   type KeyboardEvent,
@@ -348,6 +367,8 @@ interface TreeDndState {
   parentIds: Set<string>;
   collapsed: Set<string>;
   toggleCollapse: (id: string) => void;
+  /** Expand `id` and every row above it, so it (and a page added inside it) is on screen. */
+  reveal: (id: string | null) => void;
   dropHint: string | null;
   sourceLanguageId: string | null;
 }
@@ -360,6 +381,9 @@ const useTreeDnd = () => {
   if (!value) throw new Error('SortablePageTree must be rendered inside PageTreeDndProvider.');
   return value;
 };
+
+/** Expand a row and its ancestors, e.g. the destination of a move made from a dialog. */
+export const usePageTreeReveal = () => useTreeDnd().reveal;
 
 export function PageTreeDndProvider({
   pages,
@@ -477,6 +501,24 @@ export function PageTreeDndProvider({
     [visible, draggingId, overId, dragOffset],
   );
   const pageById = useMemo(() => new Map(pages.map((page) => [page.id, page])), [pages]);
+  const reveal = useCallback(
+    (id: string | null) => {
+      const node = id ? pageById.get(id) : undefined;
+      if (node) onExpandLanguage?.(node.languageId);
+      setCollapsed((current) => {
+        const next = new Set(current);
+        let parent = id;
+        const seen = new Set<string>();
+        while (parent && !seen.has(parent)) {
+          seen.add(parent);
+          next.delete(parent);
+          parent = pageById.get(parent)?.parentId ?? null;
+        }
+        return next.size === current.size ? current : next;
+      });
+    },
+    [pageById, onExpandLanguage],
+  );
   const claimFocus = useCallback(
     (id: string) => {
       const ancestors: string[] = [];
@@ -604,17 +646,7 @@ export function PageTreeDndProvider({
     if (!before || !operation || !changed) return;
     // Reveal the destination before the optimistic re-parent can remove the
     // focused row. Remembered page IDs survive React's subtree remount.
-    setCollapsed((current) => {
-      const next = new Set(current);
-      let parent = finalProjection.parentId;
-      const seen = new Set<string>();
-      while (parent && !seen.has(parent)) {
-        seen.add(parent);
-        next.delete(parent);
-        parent = pageById.get(parent)?.parentId ?? null;
-      }
-      return next;
-    });
+    reveal(finalProjection.parentId);
     onExpandLanguage?.(finalProjection.languageId);
     pendingMove.current = true;
     setSaving(true);
@@ -682,6 +714,7 @@ export function PageTreeDndProvider({
     parentIds,
     collapsed: filtering ? new Set() : collapsed,
     toggleCollapse,
+    reveal,
     dropHint,
     sourceLanguageId,
   };
@@ -775,6 +808,12 @@ export function SortablePageTree({
   onSettings,
   onRename,
   onDelete,
+  onDuplicate,
+  onCopyLink,
+  onMoveTo,
+  onToggleHidden,
+  pageHref,
+  creating = false,
 }: {
   languageId: string;
   activeId: string | null;
@@ -784,6 +823,18 @@ export function SortablePageTree({
   /** `field` is the name the row shows: the sidebar title when the page has one, else its title. */
   onRename?: (id: string, title: string, field: RenameField) => void;
   onDelete?: (id: string) => void;
+  /** Copy the page (not the pages inside it) right after itself. */
+  onDuplicate?: (id: string) => void;
+  /** Copy the page's published address. Viewers have it too. */
+  onCopyLink?: (id: string) => void;
+  /** Open the "Move to…" dialog for the page. */
+  onMoveTo?: (id: string) => void;
+  /** Hide the page from the site's navigation, or show it again. */
+  onToggleHidden?: (id: string) => void;
+  /** The editor address of a page, for "Open in new tab". Viewers have it too. */
+  pageHref?: (id: string) => string;
+  /** A page is being created or duplicated: those actions wait for it. */
+  creating?: boolean;
 }) {
   const {
     readOnly,
@@ -797,10 +848,19 @@ export function SortablePageTree({
     parentIds,
     collapsed,
     toggleCollapse,
+    reveal,
     projection,
     draggingId,
     dropHint,
   } = useTreeDnd();
+  // A page added inside a collapsed row must show up where the writer asked for it.
+  const addChild = useCallback(
+    (parentId: string) => {
+      reveal(parentId);
+      onAddChild(parentId);
+    },
+    [reveal, onAddChild],
+  );
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -884,9 +944,16 @@ export function SortablePageTree({
         collapsed={collapsed.has(item.id)}
         onToggleCollapse={toggleCollapse}
         onSelect={onSelect}
-        onAddChild={readOnly ? undefined : onAddChild}
+        onAddChild={readOnly ? undefined : addChild}
         onSettings={readOnly ? undefined : onSettings}
         onDelete={readOnly ? undefined : onDelete}
+        onDuplicate={readOnly ? undefined : onDuplicate}
+        onMoveTo={readOnly ? undefined : onMoveTo}
+        onToggleHidden={readOnly ? undefined : onToggleHidden}
+        onCopyLink={onCopyLink}
+        href={pageHref?.(item.id)}
+        creating={creating}
+        movePending={movePending}
         readOnly={readOnly}
         dragDisabled={movePending || Boolean(filter.trim())}
         filter={filter}
@@ -983,6 +1050,14 @@ interface RowProps {
   onAddChild?: (parentId: string) => void;
   onSettings?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onDuplicate?: (id: string) => void;
+  onCopyLink?: (id: string) => void;
+  onMoveTo?: (id: string) => void;
+  onToggleHidden?: (id: string) => void;
+  /** The page's editor address ("Open in new tab"). */
+  href?: string;
+  creating?: boolean;
+  movePending?: boolean;
   renaming?: boolean;
   onStartRename?: (id: string) => void;
   onRename?: (id: string, title: string | null, field: RenameField) => void;
@@ -1012,6 +1087,13 @@ const RowPresentation = memo(function RowPresentation({
   onAddChild,
   onSettings,
   onDelete,
+  onDuplicate,
+  onCopyLink,
+  onMoveTo,
+  onToggleHidden,
+  href,
+  creating,
+  movePending,
   renaming,
   onStartRename,
   onRename,
@@ -1021,6 +1103,8 @@ const RowPresentation = memo(function RowPresentation({
   const isGroup = node.kind === 'GROUP';
   // Renaming edits the name the row shows (the sidebar title when there is one).
   const { label, field: nameField } = rowName(node);
+  const hiddenLabel = t('editor.pageSettings.hidden');
+  const hasMenu = Boolean(onSettings || onCopyLink || href);
   const collapsible = Boolean(hasChildren && onToggleCollapse);
   const dragging = placeholder !== undefined;
   const iconClass = cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground');
@@ -1029,7 +1113,9 @@ const RowPresentation = memo(function RowPresentation({
   // the rename field replaces the menu, that would steal focus from the field
   // and send the next keystrokes into that page. So from the moment Rename is
   // chosen until the rename ends, the menu restores focus nowhere, through its
-  // whole close and unmount, and the field focuses itself.
+  // whole close and unmount, and the field focuses itself. Adding a page inside
+  // and duplicating hold it the same way: they open another page, whose title
+  // takes focus, and a trigger regaining it would take the next keystrokes.
   const holdMenuFocus = useRef(false);
   // Most rows never open a menu. Mount its focus/portal machinery on demand.
   const [menuMounted, setMenuMounted] = useState(false);
@@ -1042,7 +1128,7 @@ const RowPresentation = memo(function RowPresentation({
       aria-hidden={overlay || undefined}
       role="treeitem"
       tabIndex={overlay ? undefined : focused ? 0 : -1}
-      aria-label={label}
+      aria-label={node.hidden ? `${label}, ${hiddenLabel}` : label}
       aria-level={overlay ? undefined : depth + 1}
       aria-expanded={!overlay && hasChildren ? !collapsed : undefined}
       aria-selected={overlay ? undefined : Boolean(active)}
@@ -1170,9 +1256,15 @@ const RowPresentation = memo(function RowPresentation({
               <FileText className={iconClass} />
             )}
             {/* Only the title follows its own script's direction. */}
-            <span className="truncate" dir="auto">
+            <span className={cn('truncate', node.hidden && 'text-muted-foreground')} dir="auto">
               <MatchText text={label} query={filter} />
             </span>
+            {node.hidden ? (
+              // Hidden from the site's navigation: say so on the row, not only in its settings.
+              <span className="flex shrink-0 text-muted-foreground" title={hiddenLabel} data-hidden-indicator="">
+                <EyeOff aria-hidden className="size-3" />
+              </span>
+            ) : null}
             {filter && pageMatchRanges(node.path, filter).length > 0 ? (
               <span className="truncate text-xs text-muted-foreground" dir="auto">
                 <MatchText text={node.path} query={filter} />
@@ -1194,9 +1286,15 @@ const RowPresentation = memo(function RowPresentation({
             </span>
           </span>
         ) : null}
-        {!overlay && !dragging && !renaming && onSettings ? (
+        {!overlay && !dragging && !renaming && hasMenu ? (
           menuMounted ? (
-            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenu
+              open={menuOpen}
+              onOpenChange={(open) => {
+                if (open) holdMenuFocus.current = false;
+                setMenuOpen(open);
+              }}
+            >
               <DropdownMenuTrigger
                 render={
                   <Button
@@ -1211,7 +1309,52 @@ const RowPresentation = memo(function RowPresentation({
               >
                 <MoreHorizontal className="size-3.5" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52" finalFocus={() => !holdMenuFocus.current} onFocus={() => onFocusRow?.(node.id)}>
+              <DropdownMenuContent
+                align="end"
+                className="w-auto min-w-44 max-w-72"
+                finalFocus={() => !holdMenuFocus.current}
+                onFocus={() => onFocusRow?.(node.id)}
+              >
+                {/* Reach the page: everyone, Viewers included. */}
+                {href ? (
+                  <DropdownMenuLinkItem href={href} target="_blank" rel="noopener" closeOnClick>
+                    <ExternalLink /> {t('editor.link.open')}
+                  </DropdownMenuLinkItem>
+                ) : null}
+                {/* A group is a navigation heading with no address of its own. */}
+                {onCopyLink && !isGroup ? (
+                  <DropdownMenuItem onClick={() => onCopyLink(node.id)}>
+                    <Link2 /> {t('settings.members.copyLink')}
+                  </DropdownMenuItem>
+                ) : null}
+                {/* Make pages from this one. */}
+                {onAddChild || onDuplicate ? <DropdownMenuSeparator /> : null}
+                {onAddChild ? (
+                  <RowActionsItem
+                    icon={<Plus />}
+                    disabledReason={creating ? t('editor.creatingPage') : undefined}
+                    onSelect={() => {
+                      holdMenuFocus.current = true;
+                      onAddChild(node.id);
+                    }}
+                  >
+                    {t('editor.addPageInside')}
+                  </RowActionsItem>
+                ) : null}
+                {onDuplicate ? (
+                  <RowActionsItem
+                    icon={<CopyPlus />}
+                    disabledReason={creating ? t('editor.creatingPage') : undefined}
+                    onSelect={() => {
+                      holdMenuFocus.current = true;
+                      onDuplicate(node.id);
+                    }}
+                  >
+                    {hasChildren ? t('editor.duplicatePageOnly') : t('editor.duplicate')}
+                  </RowActionsItem>
+                ) : null}
+                {/* Organise it. */}
+                {onStartRename || onMoveTo || onToggleHidden || onSettings ? <DropdownMenuSeparator /> : null}
                 {onStartRename ? (
                   <DropdownMenuItem
                     onClick={() => {
@@ -1223,14 +1366,26 @@ const RowPresentation = memo(function RowPresentation({
                     <Pencil /> {t('editor.rename')}
                   </DropdownMenuItem>
                 ) : null}
-                {isGroup && onAddChild ? (
-                  <DropdownMenuItem onClick={() => onAddChild(node.id)}>
-                    <Plus /> {t('editor.addPageInside')}
+                {onMoveTo ? (
+                  <RowActionsItem
+                    icon={<FolderInput className="rtl:-scale-x-100" />}
+                    disabledReason={movePending ? t('editor.tree.moveBusy') : undefined}
+                    onSelect={() => onMoveTo(node.id)}
+                  >
+                    {t('editor.moveTo')}
+                  </RowActionsItem>
+                ) : null}
+                {onToggleHidden ? (
+                  <DropdownMenuItem onClick={() => onToggleHidden(node.id)}>
+                    {node.hidden ? <Eye /> : <EyeOff />} {node.hidden ? t('editor.showInNav') : t('editor.hideFromNav')}
                   </DropdownMenuItem>
                 ) : null}
-                <DropdownMenuItem onClick={() => onSettings(node.id)}>
-                  <Settings2 /> {isGroup ? t('editor.groupSettings') : t('editor.pageSettings.title')}
-                </DropdownMenuItem>
+                {onSettings ? (
+                  <DropdownMenuItem onClick={() => onSettings(node.id)}>
+                    <Settings2 /> {isGroup ? t('editor.groupSettings') : t('editor.pageSettings.title')}
+                  </DropdownMenuItem>
+                ) : null}
+                {/* Destructive, and always last. */}
                 {onDelete ? (
                   <>
                     <DropdownMenuSeparator />
