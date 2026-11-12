@@ -1,0 +1,231 @@
+---
+title: 'AI assistant (MCP) reference'
+description: 'Permission levels, what get_capabilities reports, dashboard links in results, page-writing rules, analytics limits, error codes, and every MCP tool and prompt.'
+audience: 'documentation editors, support leads and developers connecting AI assistants'
+content_type: 'reference'
+last_reviewed: '2026-11-12'
+verified_against: 'apps/server/src/mcp (capabilities.ts, links.ts, result.ts, prompts.ts), packages/shared/src/mcp.ts (MCP_PRESET_SCOPES, MCP_TOOL_SCOPES), packages/clickhouse/src/redaction.ts, and packages/i18n/messages'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'reference/mcp'
+---
+
+This page lists everything an AI assistant can do with a Nibleaf website over
+the Model Context Protocol (MCP), and why it sometimes can't. To connect an
+assistant and learn what to ask it, start with
+[Use Nibleaf from your AI assistant](/product/ai-assistants).
+
+## Permission levels
+
+Every connection, signed in or by personal key, has one permission level. The
+person who connects chooses it, and it can never exceed what their own role on
+the website allows. Nibleaf re-checks their role on every request.
+
+| Level | Who can choose it | Scopes |
+| --- | --- | --- |
+| **Read only** | Editors, Admins and Owners | `mcp:connect`, `projects:read`, `pages:read`, `languages:read`, `versions:read`, `analytics:read`, `search:read`, `deployments:read` |
+| **Support writer** | Editors, Admins and Owners | Read only plus `analytics:search_terms`, `pages:write`, `deployments:publish` |
+| **Full admin** | Admins and Owners | Every MCP scope |
+| **Custom** | Editors, Admins and Owners, through a personal key's **Advanced** permissions | Any set that includes `mcp:connect` and that the person's role allows |
+
+Viewers can't connect an assistant yet.
+
+## What get_capabilities reports
+
+`get_capabilities` is the first call an assistant should make. Besides the tools,
+resources and prompts this connection can use, it reports:
+
+- `website`: the one website the connection works on, with its `id`, `name` and
+  `dashboardUrl`.
+- `permission`: `read_only`, `support_writer`, `full_admin` or `custom`.
+- `unavailable`: each job the connection can't do, with its `kind`. Nibleaf
+  checks the kinds in this order and reports the first one that applies:
+
+| `kind` | Means | What helps |
+| --- | --- | --- |
+| `data` | This server doesn't keep what the job needs. Without ClickHouse analytics, for example, there are no individual search terms or failed searches. | Nothing about the connection. The response never suggests a permission. |
+| `credential` | The personal key has no live creator, so it can only read. | A new key, created by a current member. |
+| `permission` | The connection lacks one scope. `unlockedBy` names exactly that scope: `pages:write` for drafts, `deployments:publish` for publishing, `analytics:search_terms` for search terms. | A connection with that scope. |
+| `dashboard_only` | Deliberately not offered over MCP: deleting pages, changing settings or members, rolling back a publish. | The dashboard. |
+
+## Links back to the dashboard
+
+Write tools return a link to where the person can review the result in their
+dashboard. The links carry no token, and opening one never publishes anything.
+
+| Tool | Field | Opens |
+| --- | --- | --- |
+| `create_page_draft`, `update_page`, `move_page`, `translate_page`, `set_page_visibility` | `reviewUrl` | The page in the editor |
+| `preview_publish` | `publishDialogUrl` | The editor's publish dialog, which still needs the person's click |
+| `publish_changes` | `deploymentUrl` | That publish's status page |
+
+A retried request (same `clientRequestId`) returns the same links.
+
+## Saved Ask AI conversations
+
+Every permission level includes `analytics:read`, which also reads saved Ask AI
+questions and answers. Nibleaf removes email addresses, phone numbers, keys,
+long digit runs and the query part of links before it saves them. Names, street
+addresses and other personal details can remain in what readers typed.
+
+## How the assistant writes pages
+
+- **Body format.** Page bodies are Markdown or MDX, up to 128 KiB per page. A
+  leading YAML frontmatter block may set `title`, `description`, and `icon`;
+  explicit tool arguments win over frontmatter. This is the same parser Git sync
+  uses, so escaped characters in frontmatter values are not decoded, exactly as
+  in Git sync.
+- **MDX is never executed.** Readers' pages are rendered through
+  `react-markdown` with `rehype-sanitize`. MDX expressions and `import` or
+  `export` lines appear as plain text rather than running.
+- **Translations.** `translate_page` creates the translation as a draft in the
+  target language. It names the source revision it translated, so a source that
+  changed meanwhile is refused with `mcp:revision_conflict` instead of saving a
+  stale translation. If one already exists, it fails with `mcp:translation_exists`
+  and `data.pageId` names the existing page; edit that page with `update_page`.
+  To pair the pages, it may also set a shared translation key on the source page
+  and on other-language pages already paired with it by path, using the same
+  revision-safe write.
+- **Hiding a page.** After the next publish, a page hidden with
+  `set_page_visibility` leaves navigation, site search, the sitemap, and
+  `llms.txt`, and its URL stops serving it. Its child pages leave navigation but
+  stay reachable at their own URLs. A link from a visible page to a hidden page
+  fails the publish's broken-link check, so fix those links first.
+
+
+## What analytics can and cannot tell you
+
+The search tools use the same numbers and privacy rules as the **Search**
+section of the analytics dashboard:
+
+- A search counts once, as the reader's final query, not once per keystroke.
+- A term's text is shown only when at least two visitors searched for it. Rarer
+  terms are still counted, but stay hidden.
+- Failed searches are terms that found nothing, or found results nobody
+  clicked.
+
+Individual search terms exist only when all of these are true:
+
+- the instance runs ClickHouse analytics (`ANALYTICS_MODE=clickhouse`);
+- the site is public, and an admin turned on search terms for it: in
+  **Analytics → Search**, select **Turn on search terms**;
+- the reader allowed analytics, or the site does not ask for consent.
+
+When terms are missing, the tools still return totals and rates, with a hint
+that says why. Relational analytics never stores search text, result counts or
+clicks, so failed searches are unavailable there.
+
+`get_referrers` also reports AI crawler activity when the instance runs
+ClickHouse analytics: crawler requests, pages AI assistants fetched for a person,
+the crawlers, and the most crawled pages.
+
+Every preset, including **Read only**, can read saved [Ask AI](/product/ai-assistant)
+conversations with `list_ai_conversations` and `get_ai_conversation`: the
+questions readers asked, the answers, and their ratings and comments. These are
+the same conversations your team sees under **AI assistant**, and the same
+privacy rules apply. Nibleaf saves text only while
+**Save questions to improve your docs** is on, tries to remove details such as
+email addresses, phone numbers, and keys before saving, and never saves who the
+reader was. Turning saving off stops saving the text of new conversations.
+Conversations saved earlier keep their text, and the tools can still read it,
+until someone deletes the conversation or the retention period ends. For
+conversations saved while saving was off, the tools return counts, ratings, and
+costs without text.
+
+Other limits:
+
+- The **Was this page helpful?** widget has no comment field, so page feedback
+  is only helpful or not helpful votes.
+- Search, crawler and page feedback data are not split by language, so those
+  tools ignore the language filter. They say so in their response.
+
+## Error codes
+
+| What you see | Why | What to do |
+| --- | --- | --- |
+| `mcp:disabled` | MCP is off on the instance. | Ask your operator to enable it. |
+| `auth:invalid_api_key` (HTTP 401) | The key expired, was revoked, was pasted incompletely, or its owner was removed, suspended, or deleted. | Create a new key and update the client. |
+| `auth:invalid_token` (HTTP 401) | The signed-in connection was disconnected, or the person who connected it was removed or suspended. | Connect the assistant again and sign in. |
+| "This connection request expired" in the browser | More than 10 minutes passed between starting to connect and approving. | Start connecting again from the assistant. |
+| `auth:insufficient_scope`, `mcp:scope_required`, or a tool is missing | The key's preset does not include it, or your current role does not allow it. | Create a key with a larger preset, or ask an admin about your role. |
+| `auth:insufficient_role` | Your current role no longer allows this change. | Ask an admin about your role. |
+| `mcp:actor_required` | The key has no live owner, so it cannot write. | Create a new key of your own. |
+| `mcp:revision_conflict` | Someone changed the page after the assistant read it. The error data includes `currentRevision`. | Ask the assistant to read the page again with `get_page`, merge its change, and retry with the new revision. |
+| `mcp:translation_exists` | The page already has a translation in that language; `data.pageId` names it. | Edit that page with `update_page`. |
+| `mcp:preview_stale` | Something changed after `preview_publish`. | Run `preview_publish` again, review the new list, then confirm. |
+| `mcp:preview_expired` | The preview token is older than 10 minutes. | Run `preview_publish` again. |
+| `mcp:preview_invalid` | The token is not valid for this person and website. | Run `preview_publish` again and use the new token. |
+| `mcp:confirmation_required` | `publish_changes` was called without `confirm: true`. | Confirm only after you approved the preview. |
+| `mcp:nothing_to_publish` | There are no unpublished changes. | Nothing to do. |
+| `mcp:publish_blocked` | The publish is blocked, for example by redirect issues, exactly as it would be in the dashboard. | Fix the issue in the dashboard, then preview again. |
+| `mcp:publish_in_progress` | A publish is still being built, so page edits and new publishes wait. Nothing was saved. | Wait until `get_deployment` reports the deployment ready or failed, then retry. |
+| `mcp:idempotency_conflict` | The same `clientRequestId` was reused with different arguments. | Use a new `clientRequestId` for a different write. |
+| `mcp:idempotency_in_progress` | A request with the same `clientRequestId` is still running. | Retry shortly. |
+| `http:rate_limited` | A request, write, or publish limit was reached. | Wait for `data.retryAfterSeconds` (or `Retry-After`); slow the assistant down or batch the work. |
+
+When you ask for help, share the request ID from the error, never the key, the
+`Authorization` header, or page content.
+
+## Tool and prompt catalog
+
+The assistant sees only the entries its key allows. The **Preset** column shows
+the smallest preset that includes each entry. A prompt appears only when the key
+holds every scope listed for it.
+
+| Name | Kind | Scope | Preset | Purpose |
+| --- | --- | --- | --- | --- |
+| `get_capabilities` | Tool | `mcp:connect` | Read only | List the bound website and the tools, resources, and prompts this key can use. |
+| `get_project` | Tool | `projects:read` | Read only | Read website details. |
+| `list_pages` | Tool | `pages:read` | Read only | List pages and their place in the page tree. |
+| `get_page` | Tool | `pages:read` | Read only | Read one page, including its content and current revision. |
+| `search_pages` | Tool | `pages:read` | Read only | Find existing pages by title or content before writing. |
+| `list_languages` | Tool | `languages:read` | Read only | List the website's languages. |
+| `list_versions` | Tool | `versions:read` | Read only | List documentation versions. |
+| `get_analytics_overview` | Tool | `analytics:read` | Read only | Aggregate traffic, engagement, and search counts, without terms. |
+| `get_top_pages` | Tool | `analytics:read` | Read only | Most-viewed pages for a range. |
+| `get_page_feedback` | Tool | `analytics:read` | Read only | Reader helpful and unhelpful feedback per page. |
+| `get_referrers` | Tool | `analytics:read` | Read only | Where readers come from, classified, including AI assistants, plus AI crawler activity. |
+| `list_ai_conversations` | Tool | `analytics:read` | Read only | Find saved Ask AI conversations, filtered by answer and feedback. Question text appears for conversations saved while saving questions was on, until they are deleted or expire. |
+| `get_ai_conversation` | Tool | `analytics:read` | Read only | Read one saved Ask AI conversation: redacted questions, answers, and reader feedback. |
+| `get_ai_feedback_summary` | Tool | `analytics:read` | Read only | How often Ask AI answers, reader ratings, cost, and how readers use it. |
+| `list_ai_content_gaps` | Tool | `analytics:read` | Read only | Questions Ask AI could not answer or readers rated down; candidates for new articles. |
+| `get_ai_usage` | Tool | `analytics:read` | Read only | Ask AI spend per day and model, with totals. |
+| `get_search_configuration` | Tool | `search:read` | Read only | Search settings for the website. |
+| `get_search_index_diagnostics` | Tool | `search:read` | Read only | Content-free index state and revision. |
+| `get_search_health` | Tool | `search:read` | Read only | Whether search is healthy and up to date. |
+| `list_deployments` | Tool | `deployments:read` | Read only | Recent deployments. |
+| `get_deployment` | Tool | `deployments:read` | Read only | One deployment's status, for checking a publish. |
+| `get_pending_changes` | Tool | `deployments:read` | Read only | Unpublished changes waiting in the working copy. |
+| `get_top_searches` | Tool | `analytics:search_terms` | Support writer | Most frequent reader search terms. |
+| `get_failed_searches` | Tool | `analytics:search_terms` | Support writer | Searches that found nothing, or found results nobody clicked. |
+| `create_page_draft` | Tool | `pages:write` | Support writer | Create a new page as a draft. |
+| `update_page` | Tool | `pages:write` | Support writer | Edit a page's draft; needs `expectedRevision`. |
+| `move_page` | Tool | `pages:write` | Support writer | Move a page in the page tree. |
+| `translate_page` | Tool | `pages:write` | Support writer | Create a page's translation as a draft. |
+| `set_page_visibility` | Tool | `pages:write` | Support writer | Hide or show a page. |
+| `preview_publish` | Tool | `deployments:publish` | Support writer | List everything the next publish would include and return a preview token. |
+| `publish_changes` | Tool | `deployments:publish` | Support writer | Publish after review; needs `confirm: true` and the preview token. |
+| `get_usage_summary` | Tool | `usage:read` | Full admin | Usage quantities and limits. |
+| `get_entitlements` | Tool | `entitlements:read` | Full admin | Plan entitlements. |
+| `check_entitlement` | Tool | `entitlements:read` | Full admin | Check one entitlement. |
+| `list_addons` | Tool | `addons:read` | Full admin | List add-ons and their state. |
+| `get_addon` | Tool | `addons:read` | Full admin | Read one add-on. |
+| `list_addon_audit_events` | Tool | `addons:read` | Full admin | Add-on change history. |
+| `get_theme_template` | Tool | `themes:read` | Full admin | Read the theme template. |
+| `get_theme_catalog` | Tool | `themes:read` | Full admin | List available themes. |
+| `preview_theme_import` | Tool | `themes:read` | Full admin | Validate and preview a theme without saving it. |
+| `list_exports` | Tool | `exports:read` | Full admin | List export jobs. |
+| `get_export` | Tool | `exports:read` | Full admin | Read one export job. |
+| `get_git_integration_status` | Tool | `integrations:read` | Full admin | Git sync status. |
+| `list_integrations` | Tool | `integrations:read` | Full admin | List integrations. |
+| `get_integration` | Tool | `integrations:read` | Full admin | Read one integration. |
+| `find_content_gaps` | Prompt | `analytics:search_terms`, `pages:read`, `search:read`, `pages:write`, `deployments:publish` | Support writer | Turn failed searches into a list of missing pages, draft the chosen ones, and stop at a publish preview. |
+| `weekly_docs_health_report` | Prompt | `analytics:read`, `search:read`, `deployments:read` | Read only | Summarize traffic, feedback, referrers, search health, and pending changes for the week. Without `analytics:search_terms` it says failed searches are unavailable to the key. |
+| `draft_article` | Prompt | `pages:read`, `search:read`, `pages:write` | Support writer | Draft a new article after checking for an existing one. |
+| `translate_article` | Prompt | `pages:read`, `pages:write` | Support writer | Draft a translation of an existing page. |
+| `review_unhelpful_pages` | Prompt | `analytics:read`, `pages:read`, `pages:write` | Support writer | Review pages readers marked unhelpful and propose revision-safe edits. |
+| `nibleaf://projects/{projectId}/pages/{pageId}/markdown` | Resource | `pages:read` | Read only | One page as `text/markdown` with frontmatter, in the same format as Git sync. |
+
+Analytics tools take a range of `24h`, `7d`, `30d`, or `90d`, or a `from` and
+`to` date no more than 90 days apart. Prompts only describe steps; they never
+publish on their own.
