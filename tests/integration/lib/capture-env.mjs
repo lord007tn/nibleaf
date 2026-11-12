@@ -1,5 +1,6 @@
 // Shared settings for the browser capture scripts under tests/integration.
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { rmSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -16,20 +17,62 @@ const devstackLockPath = () => process.env.NIBLEAF_DEVSTACK_LOCK || join(tmpdir(
 
 /**
  * Take the machine-wide dev-stack lock: a directory created atomically, so only
- * one capture or dev stack runs at a time. Throws when another run holds it.
- * The returned release removes the lock only if this call created it.
+ * one capture or dev stack runs at a time. Throws (EEXIST) when another run
+ * holds it; the lock is never borrowed or removed unless this call created it.
+ *
+ * The lock is released however the run ends. `release()` is idempotent; an
+ * interrupt (Ctrl+C, SIGTERM) first runs `onInterrupt` (stop the services and
+ * browser the script started), then releases and exits; and a process that
+ * exits without releasing removes it on the way out. The interrupt handlers
+ * are installed before the lock is taken, so there is no moment where a held
+ * lock has no way to be released. Launch Playwright with `handleSIGINT: false`
+ * (and SIGTERM/SIGHUP) so `onInterrupt` closes the browser itself.
  */
-export async function acquireDevstackLock(owner) {
+export async function acquireDevstackLock(owner, { onInterrupt } = {}) {
   const path = devstackLockPath();
-  await mkdir(path); // EEXIST while another run holds the lock; never borrow it.
-  let held = true;
-  await writeFile(join(path, 'owner.txt'), `${owner}\npid=${process.pid}\nstarted=${new Date().toISOString()}\n`);
+  let held = false;
+  const releaseNow = () => {
+    if (!held) return;
+    held = false;
+    rmSync(path, { recursive: true, force: true });
+  };
+  let interrupted = false;
+  const onSignal = (signal) => {
+    if (interrupted) return;
+    interrupted = true;
+    void (async () => {
+      try {
+        await onInterrupt?.();
+      } catch (error) {
+        console.error('Cleanup after interrupt failed:', error);
+      } finally {
+        releaseNow();
+        process.exit(signal === 'SIGINT' ? 130 : 143);
+      }
+    })();
+  };
+  const detach = () => {
+    process.off('SIGINT', onSignal);
+    process.off('SIGTERM', onSignal);
+    process.off('exit', releaseNow);
+  };
+  process.on('SIGINT', onSignal);
+  process.on('SIGTERM', onSignal);
+  process.on('exit', releaseNow);
+  try {
+    await mkdir(path); // EEXIST while another run holds the lock; never borrow it.
+    held = true;
+    await writeFile(join(path, 'owner.txt'), `${owner}\npid=${process.pid}\nstarted=${new Date().toISOString()}\n`);
+  } catch (error) {
+    releaseNow();
+    detach();
+    throw error;
+  }
   return {
     path,
     release: async () => {
-      if (!held) return;
-      held = false;
-      await rm(path, { recursive: true, force: true });
+      detach();
+      releaseNow();
     },
   };
 }

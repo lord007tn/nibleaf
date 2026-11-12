@@ -597,3 +597,35 @@ describe('exports share the public Markdown projection (#341)', () => {
     expect(pdf).not.toContain('&amp;amp;');
   });
 });
+
+describe('an untitled page in exports', () => {
+  const untitled: SiteSnapshot = {
+    ...snapshot,
+    pages: snapshot.pages.map((page) => (page.id === 'intro' ? { ...page, title: '', slug: 'untitled-2', path: 'untitled-2' } : page)),
+  };
+  const untitledAr = 'صفحة بدون عنوان';
+
+  it('reads "Untitled" in the page language in the static site: heading, title, navigation, pager and search', () => {
+    const files = unzipSync(renderStaticHtml(untitled, assets).bytes);
+    const page = text(
+      required(
+        files['main/ar/untitled-2/index.html'] ?? Object.entries(files).find(([name]) => name.includes('untitled-2') && name.endsWith('.html'))?.[1],
+      ),
+    );
+    expect(page).toContain(`<h1>${untitledAr}</h1>`);
+    expect(page).toContain(`<title>${untitledAr} – `);
+    expect(page).not.toMatch(/<a[^>]*>\s*<\/a>/);
+    const setup = text(required(Object.entries(files).find(([name]) => name.includes('setup') && name.endsWith('.html'))?.[1]));
+    // The other page's navigation and pager name the untitled one.
+    expect(setup).toContain(`>${untitledAr}</a>`);
+    expect(text(required(files['theme/theme.js']))).toContain(untitledAr);
+    expect(text(required(files['llms.txt']))).toContain(`- [${untitledAr}](`);
+  });
+
+  it('writes no title line in the Markdown export, so re-importing keeps it untitled', () => {
+    const files = unzipSync(renderMarkdownZip(untitled, assets).bytes);
+    const markdown = text(required(Object.entries(files).find(([name]) => name.endsWith('untitled-2.md'))?.[1]));
+    expect(markdown.startsWith('---\n---\n')).toBe(true);
+    expect(markdown).not.toContain('title:');
+  });
+});

@@ -45,6 +45,19 @@ describe('isVersionIndependentNavNode', () => {
 });
 
 describe('SiteNav page subtrees', () => {
+  it('omits empty groups, including nested empty groups, without grouping the following page', () => {
+    const group = (id: string, children: NavNode[] = []): NavNode => ({ ...page(id, children), kind: 'GROUP' });
+    const nodes = [group('Guides', [group('Empty nested group')]), page('Quickstart'), group('Reference', [page('API')])];
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={nodes} projectId="docs" currentPath="Quickstart" toggleLabel="Toggle" />);
+    expect(container.textContent).not.toContain('Guides');
+    expect(container.textContent).not.toContain('Empty nested group');
+    expect(container.textContent).toContain('Reference');
+    const quickstart = container.querySelector('a');
+    expect(quickstart?.textContent).toBe('Quickstart');
+    expect(quickstart?.closest('ul')?.parentElement?.tagName).toBe('NAV');
+  });
+
   it('collapses pages with subpages unless the current page is inside them', async () => {
     const { container } = await renderNav('faq');
     expect(visibleTitles(container)).toEqual(['guide', 'faq']);

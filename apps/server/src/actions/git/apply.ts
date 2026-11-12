@@ -1,4 +1,5 @@
 import { Prisma } from '@nibleaf/database';
+import { importedPageIcon } from '@nibleaf/shared/page-icons';
 import { MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
 import { themeContentLocation } from '@nibleaf/shared/theme-repository';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
@@ -109,13 +110,15 @@ const sameRevision = (a: Revision, b: Revision) =>
   a.description === b.description &&
   a.icon === b.icon;
 
-const pageData = (raw: string) => {
+/** A pulled file's page fields. Only icons the reader draws are written, or the
+ *  icon the page already had (an older value round-trips unchanged). */
+const pageData = (raw: string, existingIcon?: string | null) => {
   const parsed = parseFrontmatter(raw);
   return {
     content: parsed.body,
     ...(parsed.meta.title ? { title: parsed.meta.title.slice(0, 200) } : {}),
     description: parsed.meta.description?.slice(0, 500) ?? null,
-    icon: parsed.meta.icon?.slice(0, 64) ?? null,
+    icon: importedPageIcon(parsed.meta.icon?.slice(0, 64), existingIcon),
   };
 };
 
@@ -223,7 +226,7 @@ class PageCreator {
     const created = await this.insert(parent, 'PAGE', deriveTitle(parsed.meta, parsed.body, leafName), this.uniqueSlug(parent.id, leafName, 'page'), {
       content: parsed.body,
       description: parsed.meta.description?.slice(0, 500) ?? null,
-      icon: parsed.meta.icon?.slice(0, 64) ?? null,
+      icon: importedPageIcon(parsed.meta.icon?.slice(0, 64)),
     });
     return created.id;
   }
@@ -348,7 +351,10 @@ export const applyGitContentChanges = async (
       continue;
     }
     if (change.pageId && seen) {
-      const updated = await tx.page.updateMany({ where: { id: change.pageId, projectId, ...revisionWhere(seen) }, data: pageData(change.content) });
+      const updated = await tx.page.updateMany({
+        where: { id: change.pageId, projectId, ...revisionWhere(seen) },
+        data: pageData(change.content, seen.icon),
+      });
       // A miss means the page was saved or deleted after the merge read it.
       if (updated.count === 0) conflicts.push(change.path);
       pageIds.set(change.path, change.pageId);

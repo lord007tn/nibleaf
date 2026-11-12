@@ -108,3 +108,12 @@ describe('authorization-scoped search indexes', () => {
     expect(estimateIndexBytes([doc])).toBe(64 * 1024 + 10 * 1006);
   });
 });
+
+describe('an untitled page in reader search', () => {
+  it('is found and titled "Untitled", not an empty result', async () => {
+    const untitled = { ...page('draft', 'Rotate the signing keys every quarter.'), title: '' };
+    const index = await getCachedIndex('untitled-search', 'deploy-1:main', 'en', [untitled], null);
+    const [hit] = await searchDocs(index, 'signing keys', { relevance: 'reader' });
+    expect(hit).toMatchObject({ id: 'draft', title: 'Untitled' });
+  });
+});

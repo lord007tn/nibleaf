@@ -1,18 +1,19 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ getCurrentSnapshot: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getCurrentSnapshot: vi.fn(), project: vi.fn(), pages: vi.fn() }));
 const templates = [
   ['harbor', 'HarborLayout'],
   ['manuscript', 'ManuscriptLayout'],
   ['signal', 'SignalLayout'],
 ] as const;
 
-vi.mock('@nibleaf/database', () => ({ prisma: {} }));
+vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: mocks.project }, page: { findMany: mocks.pages } } }));
 vi.mock('@/errors', () => ({ notFound: vi.fn() }));
 vi.mock('./deployments', () => ({ getCurrentSnapshot: mocks.getCurrentSnapshot }));
 
-import { exportProjectThemeRepository } from './export';
+import { exportProjectMarkdown, exportProjectThemeRepository } from './export';
+import { deriveTitle, parseFrontmatter } from './importers/content';
 
 const snapshotFor = (template: (typeof templates)[number][0]) => ({
   project: {
@@ -95,5 +96,34 @@ describe('theme repository export', () => {
     });
 
     await expect(exportProjectThemeRepository('project_123')).rejects.toThrow(/same theme repository path/);
+  });
+});
+
+describe('Markdown export of an untitled page', () => {
+  it('writes no title line, so importing the file again keeps the page untitled', async () => {
+    mocks.project.mockResolvedValue({ name: 'Acme Docs', slug: 'acme-docs', description: null, languages: [], branches: [] });
+    const row = (id: string, title: string, slug: string) => ({
+      id,
+      kind: 'PAGE',
+      title,
+      slug,
+      path: slug,
+      description: null,
+      icon: null,
+      hidden: false,
+      content: 'Body text.',
+      language: { code: 'en' },
+      branch: { name: 'main' },
+    });
+    mocks.pages.mockResolvedValue([row('a', '', 'untitled-2'), row('b', 'Getting started', 'getting-started')]);
+    const files = unzipSync((await exportProjectMarkdown('project_123')).data);
+
+    const untitled = strFromU8(files['main/en/untitled-2.md'] as Uint8Array);
+    expect(untitled).not.toContain('title:');
+    const parsed = parseFrontmatter(untitled);
+    expect(deriveTitle(parsed.meta, parsed.body, 'untitled-2')).toBe('');
+
+    const titled = parseFrontmatter(strFromU8(files['main/en/getting-started.md'] as Uint8Array));
+    expect(deriveTitle(titled.meta, titled.body, 'getting-started')).toBe('Getting started');
   });
 });

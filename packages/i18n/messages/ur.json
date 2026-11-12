@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "اس صفحے کو منتقل کرنے کے لیے سائٹ میں ایک اور زبان شامل کریں۔",
+  "editor_pagesettings_invalidicon": "تعاون یافتہ آئیکن کا نام منتخب کریں، جیسے rocket، book-open یا code۔",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "مسودہ سازی کے کنکشن",
   "analytics_drafting_description": "منتخب مدت میں مسودہ سازی شروع ہونے، مکمل ہونے اور ناکام ہونے کے واقعات۔",
@@ -494,6 +496,7 @@
   "editor_pageunpublished": "غیر شائع شدہ تبدیلیاں",
   "editor_pagepublished": "شائع شدہ",
   "editor_unpublishedcount": "اس سائٹ پر غیر شائع شدہ تبدیلیاں: {count}۔ قارئین کو دکھانے کے لیے انہیں شائع کریں۔",
+  "editor_unpublishedsitechanges": "اس سائٹ کی نیویگیشن یا ترتیبات میں غیر شائع شدہ تبدیلیاں ہیں۔ قارئین کو دکھانے کے لیے شائع کریں۔",
   "editor_neverpublished": "یہ سائٹ ابھی شائع نہیں ہوئی۔ جب تک آپ اسے شائع نہیں کرتے، قارئین اسے نہیں دیکھ سکتے۔",
   "editor_creatingpage": "صفحہ بنایا جا رہا ہے…",
   "editor_openingpage": "صفحہ کھولا جا رہا ہے…",

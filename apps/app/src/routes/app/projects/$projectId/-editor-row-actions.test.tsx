@@ -103,7 +103,10 @@ vi.mock('@/components/editor/comments-panel', () => ({ CommentsPanel: () => null
 vi.mock('@/components/editor/language-settings-dialog', () => ({ LanguageSettingsDialog: () => null }));
 vi.mock('@/components/editor/markdown-source-editor', () => ({ MarkdownSourceEditor: () => null }));
 vi.mock('@/components/editor/page-settings-dialog', () => ({ PageSettingsDialog: () => null }));
-vi.mock('@/components/editor/sortable-page-tree', () => ({
+vi.mock('@/components/editor/sortable-page-tree', async () => ({
+  // The real label helper, so the toasts read the row's shown name.
+  shownRowName: (await vi.importActual<typeof import('@/components/editor/sortable-page-tree')>('@/components/editor/sortable-page-tree'))
+    .shownRowName,
   SortablePageTree: (props: Record<string, unknown>) => {
     mocks.tree = props;
     return null;
