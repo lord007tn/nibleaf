@@ -17,8 +17,8 @@ import { isRtl } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
 import { useDebouncer } from '@tanstack/react-pacer';
-import { type QueryClient, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
+import { type QueryClient, type UseQueryResult, useQueries, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, Link, useBlocker, useRouter } from '@tanstack/react-router';
 import {
   ChevronLeft,
   ChevronRight,
@@ -62,9 +62,11 @@ import {
   shouldFlushDraft,
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
+import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
 import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
+import { useLinkedPageHistory } from '@/components/editor/linked-page-history';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
 import { MovePageDialog } from '@/components/editor/move-page-dialog';
 import { pagePublicLink } from '@/components/editor/page-public-link';
@@ -97,6 +99,7 @@ import {
   useDomains,
   useDuplicatePage,
   useLanguages,
+  useOpenApiConfiguration,
   usePage,
   usePages,
   usePendingChanges,
@@ -107,7 +110,13 @@ import {
   useUploadAsset,
 } from '@/hooks/api';
 import { assetUploadErrorMessage } from '@/hooks/api/client-helpers';
-import { aiDraftCapabilityQueryOptions, commentsQueryOptions, pageQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
+import {
+  aiDraftCapabilityQueryOptions,
+  commentsQueryOptions,
+  pageQueryOptions,
+  pagesQueryOptions,
+  projectMembersQueryOptions,
+} from '@/hooks/api/query-options';
 import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
@@ -147,6 +156,13 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
     }
   },
   component: EditorPage,
+});
+
+/** The other docs versions' pages for link resolution, and whether all of them loaded. Stable, so
+ *  `useQueries` keeps the same result until a query changes. */
+const combineVersionPages = (results: UseQueryResult<PageNode[]>[]) => ({
+  pages: results.flatMap((result) => result.data ?? []),
+  complete: results.every((result) => result.isSuccess),
 });
 
 function EditorPage() {
@@ -845,6 +861,48 @@ function EditorPage() {
     deepLinkedPageId.current = pageParam;
     openNode(pageParam);
   }, [pageParam]);
+  // A link in the page to another page of the site opens that page here, as a
+  // ?page= deep link does (the page being left is saved first), in its own
+  // history entry: Back returns to this page where it was scrolled.
+  const openLinkedPage = useLinkedPageHistory({ projectId, pageId: page?.id, canvas: () => canvasRef.current });
+  const { data: openApi } = useOpenApiConfiguration(projectId);
+  // The other docs versions' pages, loaded once a link may lead into one of them.
+  const [linkVersionsWanted, setLinkVersionsWanted] = useState(false);
+  const otherBranchIds = useMemo(
+    () => (branches ?? []).filter((branch) => branch.id !== activeBranchId).map((branch) => branch.id),
+    [branches, activeBranchId],
+  );
+  const otherVersions = useQueries({
+    queries: (linkVersionsWanted ? otherBranchIds : []).map((id) => pagesQueryOptions(projectId, undefined, id)),
+    combine: combineVersionPages,
+  });
+  const allVersionsLoaded = otherBranchIds.length === 0 || (linkVersionsWanted && otherVersions.complete);
+  const linkSiteFor = useCallback(
+    (pages: readonly PageNode[]) =>
+      project && languages && branches && activeBranchId
+        ? editorSiteSnapshot({ project, languages, branches, pages, branchId: activeBranchId, openApi })
+        : null,
+    [project, languages, branches, activeBranchId, openApi],
+  );
+  const linkSite = useMemo(
+    () => (allPages ? linkSiteFor([...allPages, ...otherVersions.pages]) : null),
+    [allPages, otherVersions.pages, linkSiteFor],
+  );
+  const router = useRouter();
+  const editorLinks = useMemo<EditorLinks>(
+    () => ({
+      resolve: editorLinkResolver(linkSite, page?.id, { allVersions: allVersionsLoaded }),
+      open: (id) => void openLinkedPage(id),
+      href: (id) => router.buildLocation({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: id } }).href,
+      loadVersions: () => setLinkVersionsWanted(true),
+      resolveAsync: async (href) => {
+        setLinkVersionsWanted(true);
+        const lists = await Promise.all(otherBranchIds.map((id) => queryClient.ensureQueryData(pagesQueryOptions(projectId, undefined, id))));
+        return editorLinkResolver(allPages ? linkSiteFor([...allPages, ...lists.flat()]) : null, page?.id)(href);
+      },
+    }),
+    [linkSite, page?.id, allVersionsLoaded, openLinkedPage, router, projectId, otherBranchIds, queryClient, allPages, linkSiteFor],
+  );
   useEffect(() => {
     const decision = deepLinkBranchDecision({ deepLinkedPageId: deepLinkedPageId.current, page, activeBranchId, branches });
     if (decision.kind === 'wait') return;
@@ -1941,28 +1999,30 @@ function EditorPage() {
                   // document can never linger across a page switch.
                   // The link picker searches the version this page belongs to.
                   <ActiveBranchContext.Provider value={page.branchId ?? activeBranchId ?? undefined}>
-                    <TiptapEditor
-                      // Remounts once access is known, so block controls render for that access.
-                      key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
-                      value={content}
-                      onChange={canEditContent ? setContent : ignoreEdit}
-                      editable={canEditContent}
-                      className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
-                      dir={activeLangDir}
-                      lang={activeLanguage?.code}
-                      style={typographyVars(project?.config?.typography)}
-                      onUpload={onUploadImage}
-                      comments={commentMarkers}
-                      activeCommentId={activeCommentId}
-                      commentMode={commentMode}
-                      onAddComment={(anchor) => {
-                        setPendingAnchor(anchor);
-                        openRail();
-                        setRailTab('comments');
-                      }}
-                      titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
-                      variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
-                    />
+                    <EditorLinksContext.Provider value={editorLinks}>
+                      <TiptapEditor
+                        // Remounts once access is known, so block controls render for that access.
+                        key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
+                        value={content}
+                        onChange={canEditContent ? setContent : ignoreEdit}
+                        editable={canEditContent}
+                        className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
+                        dir={activeLangDir}
+                        lang={activeLanguage?.code}
+                        style={typographyVars(project?.config?.typography)}
+                        onUpload={onUploadImage}
+                        comments={commentMarkers}
+                        activeCommentId={activeCommentId}
+                        commentMode={commentMode}
+                        onAddComment={(anchor) => {
+                          setPendingAnchor(anchor);
+                          openRail();
+                          setRailTab('comments');
+                        }}
+                        titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
+                        variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
+                      />
+                    </EditorLinksContext.Provider>
                   </ActiveBranchContext.Provider>
                 ) : (
                   <MarkdownSourceEditor

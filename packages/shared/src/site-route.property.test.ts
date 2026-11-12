@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultLanguage, type SiteSnapshot, type SnapshotPage } from './site';
+import { defaultLanguage, isPageTranslation, type SiteSnapshot, type SnapshotPage } from './site';
 import {
   activeLanguageCode,
   activeVersion,
@@ -28,24 +28,35 @@ const referenceResolver = (snapshot: SiteSnapshot) => {
     const normalized = sitePathWithinVersion(snapshot, path, version);
     const activeLanguage = activeLanguageCode(snapshot, lang);
     const docsVersion = explicitVersion ?? activeVersion(snapshot, version);
-    const findIn = (langCode: string) => {
-      const key = `${docsVersion.id}|${langCode}|${normalized}`;
-      if (scans.has(key)) return scans.get(key);
+    const defaultCode = defaultLanguage(snapshot.project).code;
+    const pagesIn = (langCode: string) => {
       const scope = `${docsVersion.id}|${langCode}`;
       let langPages = langPagesByScope.get(scope);
       if (!langPages) {
         langPages = pagesForLanguage(pagesForVersion(snapshot, docsVersion), langCode);
         langPagesByScope.set(scope, langPages);
       }
+      return langPages;
+    };
+    // The site root: the translation of the default language's home, else the language's first page.
+    const homeIn = (langPages: SnapshotPage[], langCode: string) => {
+      const defaultHome = langCode === defaultCode ? undefined : firstPage(pagesIn(defaultCode), defaultCode);
+      return (
+        (defaultHome && langPages.find((p) => p.kind === 'PAGE' && !p.hidden && isPageTranslation(defaultHome, p))) || firstPage(langPages, langCode)
+      );
+    };
+    const findIn = (langCode: string) => {
+      const key = `${docsVersion.id}|${langCode}|${normalized}`;
+      if (scans.has(key)) return scans.get(key);
+      const langPages = pagesIn(langCode);
       const found =
         langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
-        (normalized === '' ? firstPage(langPages, langCode) : undefined) ??
+        (normalized === '' ? homeIn(langPages, langCode) : undefined) ??
         firstPageUnder(langPages, langCode, normalized);
       const result = found ? { page: found, pages: langPages } : undefined;
       scans.set(key, result);
       return result;
     };
-    const defaultCode = defaultLanguage(snapshot.project).code;
     const match = findIn(activeLanguage) ?? (activeLanguage === defaultCode ? undefined : findIn(defaultCode));
     return match ? { ...match, docsVersion, normalized } : null;
   };
@@ -81,7 +92,8 @@ const randomSite = (seed: number): { snapshot: SiteSnapshot; paths: string[] } =
       description: null,
       content: '',
       config: null,
-      translationKey: null,
+      // A few shared keys pair pages across languages (and homes); the rest pair by path.
+      translationKey: pick([null, null, 'start', 'guide', 'setup']),
       position: Math.floor(next() * 10),
       hidden: next() > 0.85,
     } as SnapshotPage;
@@ -153,6 +165,7 @@ const compareOn = (seeds: number) => {
           const found = reference(path, lang, version);
           if (found && found.normalized !== '' && found.page.path !== found.normalized) covered.add('section prefix hit');
           if (!found && path.includes('/')) covered.add('section prefix miss');
+          if (found && found.normalized === '' && found.page !== firstPage(found.pages, found.page.languageCode)) covered.add('translated home');
           const expected = JSON.stringify(shape(found));
           if (actual !== expected && mismatches.length < 5)
             mismatches.push(`seed ${seed} path ${path} lang ${lang} version ${version}: ${actual} vs ${expected}`);
@@ -182,6 +195,7 @@ const ALL_CASES = [
   'second version',
   'section prefix hit',
   'section prefix miss',
+  'translated home',
 ];
 
 describe('resolveSitePage against the linear-scan reference', () => {

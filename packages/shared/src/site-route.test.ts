@@ -125,3 +125,47 @@ describe('resolveSitePage lookups', () => {
     expect(resolveSitePage(withArabic(true), 'setup', 'ar')?.page.id).toBe('ar-setup');
   });
 });
+
+describe('the site root in another language (READER-20)', () => {
+  const bilingual = (pages: SnapshotPage[]): SiteSnapshot => ({
+    ...site,
+    project: {
+      ...site.project,
+      languages: [...site.project.languages, { code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null }],
+    },
+    pages,
+  });
+  const at = (path: string, extra: Partial<SnapshotPage>): SnapshotPage => ({ ...page(path), ...extra });
+  const englishHome = at('get-started', { id: 'en-home', position: 0, translationKey: 'start' });
+  const arabicSettings = at('settings-tags', { id: 'ar-settings', languageCode: 'ar', position: 0 });
+
+  it('serves the Arabic translation of the English home, not the first Arabic page', () => {
+    const arabicHome = at('ابدأ', { id: 'ar-home', languageCode: 'ar', position: 5, translationKey: 'start' });
+    const snapshot = bilingual([englishHome, at('reservations', { id: 'en-2', position: 1 }), arabicSettings, arabicHome]);
+    expect(resolveSitePage(snapshot, '', 'ar')?.page.id).toBe('ar-home');
+    expect(resolveSitePage(snapshot, '/', 'ar')?.page.id).toBe('ar-home');
+    expect(resolveSitePage(snapshot, '')?.page.id).toBe('en-home');
+    // Every other Arabic path is unchanged.
+    expect(resolveSitePage(snapshot, 'settings-tags', 'ar')?.page.id).toBe('ar-settings');
+  });
+
+  it('pairs by path when the English home has no translation key', () => {
+    const snapshot = bilingual([
+      at('get-started', { id: 'en-home', position: 0 }),
+      arabicSettings,
+      at('get-started', { id: 'ar-home', languageCode: 'ar', position: 5 }),
+    ]);
+    expect(resolveSitePage(snapshot, '', 'ar')?.page.id).toBe('ar-home');
+  });
+
+  it("falls back to the language's first page when the home has no visible translation", () => {
+    for (const translation of [[], [at('ابدأ', { id: 'ar-hidden', languageCode: 'ar', position: 5, translationKey: 'start', hidden: true })]]) {
+      const snapshot = bilingual([englishHome, arabicSettings, ...translation]);
+      expect(resolveSitePage(snapshot, '', 'ar')?.page.id).toBe('ar-settings');
+    }
+  });
+
+  it('serves the English home when Arabic has no pages at all', () => {
+    expect(resolveSitePage(bilingual([englishHome]), '', 'ar')?.page.id).toBe('en-home');
+  });
+});

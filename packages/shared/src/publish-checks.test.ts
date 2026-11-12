@@ -285,7 +285,9 @@ describe('inbound draft page links', () => {
     expect(result.pages.at(-1)?.id).toBe('source-19');
   });
 
-  it('opens a 300-page site twice with the same answer (its cost: publish-checks.growth.test.ts)', () => {
+  // Correctness only: this parses 300 pages, which can pass Vitest's 5 s default
+  // on a loaded CI runner. Its cost is measured serially in publish-checks.growth.test.ts.
+  it('opens a 300-page site twice with the same answer (its cost: publish-checks.growth.test.ts)', { timeout: 30_000 }, () => {
     const snapshot = site([
       ...Array.from({ length: 298 }, (_, i) =>
         page({
