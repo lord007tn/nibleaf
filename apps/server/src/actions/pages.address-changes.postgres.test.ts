@@ -106,6 +106,19 @@ describe.skipIf(process.env.PAGE_ADDRESS_INTEGRATION !== '1')('page address tran
     items: [{ id: f.target.id, parentId: f.source.id, position: 0 }],
   });
 
+  it.each([
+    { state: 'never published', deployment: null, adopts: true },
+    { state: 'in the live version', deployment: 'READY', adopts: false },
+    { state: 'in a publish still building', deployment: 'BUILDING', adopts: false },
+  ] as const)('an untitled page $state adopts its first title as its address: $adopts', async ({ deployment, adopts }) => {
+    const f = await fixture(2, deployment === 'READY');
+    await db.prisma.page.update({ where: { id: f.target.id }, data: { title: '', slug: 'untitled-2', path: 'untitled-2' } });
+    if (deployment === 'BUILDING') await db.prisma.deployment.create({ data: { projectId: f.project.id, version: 1, status: 'BUILDING' } });
+    const updated = await actions.updatePage(f.project.id, f.target.id, { title: 'Getting started' });
+    expect(updated.title).toBe('Getting started');
+    expect(updated.slug).toBe(adopts ? 'getting-started' : 'untitled-2');
+  });
+
   it('a pure bulk reorder succeeds while another page saves, without parsing links', async () => {
     const f = await fixture();
     const parses = metrics.parses;

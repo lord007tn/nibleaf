@@ -63,6 +63,9 @@ export interface PendingChanges {
   /** true = a publish now would put out exactly what is live: no page, settings,
    *  navigation, redirect or API reference change. Only with a baseline. */
   upToDate: boolean;
+  /** Navigation groups were added, removed or changed. `changes` lists pages
+   *  only, so a publish that also reshapes the navigation says so here. */
+  groupsChanged: boolean;
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
@@ -346,13 +349,14 @@ export const getDeploymentDiff = async (projectId: string, id: string) => {
   });
 
   const currentSnapshot = deployment.snapshot as unknown as SiteSnapshot;
+  const currentPages = currentSnapshot.pages.filter((page) => page.kind === 'PAGE');
   const previousSnapshot = previousDeployment?.snapshot ? (previousDeployment.snapshot as unknown as SiteSnapshot) : null;
-  const previousPages = previousSnapshot ? previousSnapshot.pages : [];
+  const previousPages = previousSnapshot ? previousSnapshot.pages.filter((page) => page.kind === 'PAGE') : [];
   const previousById = new Map(previousPages.map((page) => [page.id, page]));
-  const currentIds = new Set(currentSnapshot.pages.map((page) => page.id));
+  const currentIds = new Set(currentPages.map((page) => page.id));
   const changes: DeploymentPageDiff[] = [];
 
-  for (const page of currentSnapshot.pages) {
+  for (const page of currentPages) {
     const previous = previousById.get(page.id);
     if (!previous) {
       changes.push(pageSummary(page, 'added'));
@@ -381,7 +385,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const latest = await getLatestReadyDeployment(projectId);
   const validation = validateSnapshotRedirects(draftSnapshot ?? (await getCurrentSnapshot(projectId)));
   const currentSnapshot = validation.snapshot;
-  const current = currentSnapshot.pages;
+  const current = currentSnapshot.pages.filter((page) => page.kind === 'PAGE');
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
@@ -390,6 +394,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
       reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
       hasBaseline: false,
       upToDate: false,
+      groupsChanged: currentSnapshot.pages.some((page) => page.kind === 'GROUP'),
       lastVersion: null,
       lastPublishedAt: null,
       changes: [...current.map((p) => pageSummary(p, 'added')), ...(firstSpecChange ? [firstSpecChange] : [])],
@@ -399,7 +404,8 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   }
 
   const snap = latest.snapshot as unknown as SiteSnapshot;
-  const prevById = new Map(snap.pages.map((p) => [p.id, p]));
+  const previous = snap.pages.filter((page) => page.kind === 'PAGE');
+  const prevById = new Map(previous.map((p) => [p.id, p]));
   const currentIds = new Set(current.map((p) => p.id));
   const changes: PendingChange[] = [];
 
@@ -411,7 +417,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
       changes.push(pageSummary(p, 'modified', prev));
     }
   }
-  for (const prev of snap.pages) {
+  for (const prev of previous) {
     if (!currentIds.has(prev.id)) {
       changes.push(pageSummary(prev, 'removed', prev));
     }
@@ -419,10 +425,21 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   const specChange = openApiSummary(currentSnapshot.openapi, snap.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
   if (specChange) changes.push(specChange);
 
+  const groups = (pages: SnapshotPage[]) => new Map(pages.filter((page) => page.kind === 'GROUP').map((page) => [page.id, page]));
+  const currentGroups = groups(currentSnapshot.pages);
+  const previousGroups = groups(snap.pages);
+  const groupsChanged =
+    currentGroups.size !== previousGroups.size ||
+    [...currentGroups].some(([id, group]) => {
+      const before = previousGroups.get(id);
+      return !before || pageChanged(group, before);
+    });
+
   const reviewedStateHash = reviewedSnapshotDigest(currentSnapshot);
   return {
     reviewedStateHash,
     hasBaseline: true,
+    groupsChanged,
     // The page list only compares pages; settings, redirects and languages also
     // ship with a publish. The live snapshot is the reviewed input the worker
     // stored, so equal output digests mean nothing at all would change.

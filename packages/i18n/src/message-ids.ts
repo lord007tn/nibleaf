@@ -1,5 +1,7 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'editor.pageSettings.oneLanguage': 'editor_pagesettings_onelanguage',
+  'editor.pageSettings.invalidIcon': 'editor_pagesettings_invalidicon',
   'editor.history.title': 'editor_history_title',
   'editor.history.description': 'editor_history_description',
   'editor.history.revisions': 'editor_history_revisions',
@@ -959,6 +961,7 @@ export const MESSAGE_IDS = {
   'editor.pageUnpublished': 'editor_pageunpublished',
   'editor.pagePublished': 'editor_pagepublished',
   'editor.unpublishedCount': 'editor_unpublishedcount',
+  'editor.unpublishedSiteChanges': 'editor_unpublishedsitechanges',
   'editor.neverPublished': 'editor_neverpublished',
   'editor.creatingPage': 'editor_creatingpage',
   'editor.openingPage': 'editor_openingpage',

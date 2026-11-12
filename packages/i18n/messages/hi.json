@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "इस पेज को स्थानांतरित करने के लिए साइट में एक और भाषा जोड़ें।",
+  "editor_pagesettings_invalidicon": "समर्थित आइकन का नाम चुनें, जैसे rocket, book-open या code।",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "मसौदा कनेक्शन",
   "analytics_drafting_description": "चुनी गई अवधि में मसौदा शुरू होने, पूरा होने और विफल होने की घटनाएँ।",
@@ -485,6 +487,7 @@
   "editor_pageunpublished": "अप्रकाशित बदलाव",
   "editor_pagepublished": "प्रकाशित",
   "editor_unpublishedcount": "इस साइट पर अप्रकाशित बदलाव: {count}। पाठकों को दिखाने के लिए इन्हें प्रकाशित करें।",
+  "editor_unpublishedsitechanges": "इस साइट के नेविगेशन या सेटिंग्स में अप्रकाशित बदलाव हैं। पाठकों को दिखाने के लिए प्रकाशित करें।",
   "editor_neverpublished": "यह साइट अभी प्रकाशित नहीं हुई है। जब तक आप इसे प्रकाशित नहीं करते, पाठक इसे नहीं देख सकते।",
   "editor_creatingpage": "पेज बनाया जा रहा है…",
   "editor_openingpage": "पेज खोला जा रहा है…",

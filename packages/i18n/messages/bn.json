@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "এই পৃষ্ঠাটি সরাতে সাইটে আরেকটি ভাষা যোগ করুন।",
+  "editor_pagesettings_invalidicon": "সমর্থিত আইকনের নাম বেছে নিন, যেমন rocket, book-open বা code।",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "খসড়া সংযোগ",
   "analytics_drafting_description": "নির্বাচিত সময়ে খসড়া শুরু, সম্পন্ন ও ব্যর্থ হওয়ার ঘটনা।",
@@ -485,6 +487,7 @@
   "editor_pageunpublished": "অপ্রকাশিত পরিবর্তন",
   "editor_pagepublished": "প্রকাশিত",
   "editor_unpublishedcount": "এই সাইটে অপ্রকাশিত পরিবর্তন: {count}। পাঠকদের দেখাতে প্রকাশ করুন।",
+  "editor_unpublishedsitechanges": "এই সাইটের নেভিগেশন বা সেটিংসে অপ্রকাশিত পরিবর্তন আছে। পাঠকদের দেখাতে প্রকাশ করুন।",
   "editor_neverpublished": "এই সাইটটি এখনও প্রকাশিত হয়নি। আপনি প্রকাশ না করা পর্যন্ত পাঠকেরা এটি দেখতে পাবেন না।",
   "editor_creatingpage": "পৃষ্ঠা তৈরি হচ্ছে…",
   "editor_openingpage": "পৃষ্ঠা খোলা হচ্ছে…",

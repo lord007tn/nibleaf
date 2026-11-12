@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "添加另一种网站语言后即可移动此页面。",
+  "editor_pagesettings_invalidicon": "请选择支持的图标名称，例如 rocket、book-open 或 code。",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "起草连接",
   "analytics_drafting_description": "所选期间内起草开始、完成和失败的事件。",
@@ -485,6 +487,7 @@
   "editor_pageunpublished": "有未发布的更改",
   "editor_pagepublished": "已发布",
   "editor_unpublishedcount": "此站点有未发布的更改：{count} 项。发布后读者才能看到。",
+  "editor_unpublishedsitechanges": "此站点的导航或设置有未发布的更改。发布后读者即可看到。",
   "editor_neverpublished": "此站点尚未发布。在你发布之前，读者无法看到它。",
   "editor_creatingpage": "正在创建页面…",
   "editor_openingpage": "正在打开页面…",

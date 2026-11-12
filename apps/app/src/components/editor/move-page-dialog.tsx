@@ -8,7 +8,7 @@ import { type KeyboardEvent, useId, useMemo, useState } from 'react';
 import type { PageNode } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { filterPageIds, pageMatchesSearch, pageStructureRevision, subtreeIds } from './page-tree-utils';
-import { flatten, rowName, usePageTreeReveal } from './sortable-page-tree';
+import { flatten, shownRowName, usePageTreeReveal } from './sortable-page-tree';
 
 /** Confirmed without choosing a destination. */
 class NoDestination extends Error {}
@@ -35,6 +35,8 @@ export function moveDestinations(
   languages: ReadonlyArray<{ id: string; label: string }>,
   query: string,
   topLevel: (language: string) => string,
+  /** How an untitled page is listed, in the writer's language. */
+  untitled = 'Untitled',
 ): Destination[] {
   const excluded = subtreeIds(pages, page.id);
   const candidates = pages.filter((node) => !excluded.has(node.id));
@@ -56,7 +58,7 @@ export function moveDestinations(
         key: item.id,
         parentId: item.id,
         languageId: language.id,
-        label: rowName(item.node).label,
+        label: shownRowName(item.node, untitled),
         depth: item.depth + 1,
         icon: item.node.kind === 'GROUP' ? ('group' as const) : ('page' as const),
         current: page.parentId === item.id,
@@ -92,8 +94,13 @@ export function MovePageDialog({
   const [selected, setSelected] = useState<string | null>(null);
   const destinations = useMemo(
     () =>
-      moveDestinations(page, pages, languages, query, (language) =>
-        languages.length > 1 ? t('editor.dnd.topLevelIn', { language }) : t('editor.dnd.topLevel'),
+      moveDestinations(
+        page,
+        pages,
+        languages,
+        query,
+        (language) => (languages.length > 1 ? t('editor.dnd.topLevelIn', { language }) : t('editor.dnd.topLevel')),
+        t('editor.untitled'),
       ),
     [page, pages, languages, query, t],
   );
@@ -124,11 +131,11 @@ export function MovePageDialog({
       }}
       className="sm:max-w-md"
       initialFocus="content"
-      title={t('editor.moveTitle', { title: rowName(page).label })}
+      title={t('editor.moveTitle', { title: shownRowName(page, t('editor.untitled')) })}
       description={t('editor.moveHint')}
       confirmLabel={t('editor.pageSettings.moveLanguage.confirm')}
       cancelLabel={t('common.cancel')}
-      pendingLabel={t('editor.tree.moving', { title: rowName(page).label })}
+      pendingLabel={t('editor.tree.moving', { title: shownRowName(page, t('editor.untitled')) })}
       fallbackErrorMessage={t('editor.reorderFailed')}
       errorMessage={(error) => (error instanceof NoDestination ? t('editor.moveChoose') : friendlyErrorMessage(t, error, 'editor.reorderFailed'))}
       onConfirm={async () => {
@@ -156,7 +163,7 @@ export function MovePageDialog({
           onKeyDown={onSearchKey}
         />
         <fieldset className="max-h-72 min-w-0 overflow-y-auto rounded-md border border-border p-1">
-          <legend className="sr-only">{t('editor.moveTitle', { title: rowName(page).label })}</legend>
+          <legend className="sr-only">{t('editor.moveTitle', { title: shownRowName(page, t('editor.untitled')) })}</legend>
           {destinations.map((destination) => {
             const Icon = destination.icon === 'language' ? Languages : destination.icon === 'group' ? Folder : FileText;
             const checked = selectedKey === destination.key && !destination.current;

@@ -25,6 +25,7 @@ import { useStore } from '@tanstack/react-form';
 import { ChevronRight, CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck, TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import type { PageConfig, PageNode } from '@/hooks/api';
 import { friendlyErrorMessage, useReorderPages, useUpdatePage } from '@/hooks/api';
 import { usePageSearchDescription } from '@/hooks/api/page-search-description';
@@ -174,6 +175,22 @@ export function PageSettingsDialog({
 
   const [slugTouched, setSlugTouched] = useState(false);
   const [section, setSection] = useState<PageSettingsSection>('general');
+  // "More options" starts open when the page uses one of them, and opens to show
+  // a field that blocks saving.
+  const [moreOpen, setMoreOpen] = useState(() => hasMoreOptions(page));
+  const [focusField, setFocusField] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset per page and per opening, not on every refetch.
+  useEffect(() => {
+    setMoreOpen(hasMoreOptions(page));
+  }, [page.id, open]);
+  useEffect(() => {
+    if (!focusField || section !== 'general' || !moreOpen) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(focusField)?.focus();
+      setFocusField(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusField, section, moreOpen]);
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
   const modeOptions = [
     { value: 'default', label: t('editor.pageSettings.mode.default') },
@@ -190,6 +207,14 @@ export function PageSettingsDialog({
     identity: [page.id, open ? 'open' : 'closed'],
     source,
     onSubmit: async (value, outcome) => {
+      const invalidIcon = (['categoryIcon', 'icon'] as const).find((key) => value[key] !== source[key] && value[key].trim() && !hasIcon(value[key]));
+      if (invalidIcon) {
+        // The field may sit on another tab or in the closed "More options": show it.
+        setSection('general');
+        setMoreOpen(true);
+        setFocusField(invalidIcon === 'icon' ? 'page-icon' : 'page-category-icon');
+        return 'invalid';
+      }
       try {
         const result = await update.mutateAsync({ pageId: page.id, body: pageSettingsBody(value) });
         outcome.succeeded();
@@ -229,7 +254,6 @@ export function PageSettingsDialog({
     tags,
     category,
     categoryIcon,
-    categoryOrder,
     metaTitle,
     metaDescription,
     ogImage,
@@ -378,7 +402,11 @@ export function PageSettingsDialog({
                       }}
                       disabled={languageOptions.length < 2 || reorder.isPending}
                     >
-                      <SelectTrigger id="page-language" className="w-full">
+                      <SelectTrigger
+                        id="page-language"
+                        className="w-full"
+                        aria-describedby={languageOptions.length < 2 ? 'page-language-reason' : undefined}
+                      >
                         <SelectValue>{languageOptions.find((option) => option.value === page.languageId)?.label}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -389,6 +417,11 @@ export function PageSettingsDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    {languageOptions.length < 2 ? (
+                      <p id="page-language-reason" className="text-muted-foreground text-xs">
+                        {t('editor.pageSettings.oneLanguage')}
+                      </p>
+                    ) : null}
                   </Field>
                   <Field label={t('editor.pageSettings.description')} htmlFor="page-desc">
                     <Textarea
@@ -407,7 +440,7 @@ export function PageSettingsDialog({
                     onCheckedChange={(checked) => set('hidden', checked)}
                   />
                   {/* Rarely needed fields stay out of the way until asked for. */}
-                  <Collapsible className="border-border border-t pt-3" defaultOpen={hasMoreOptions(page)}>
+                  <Collapsible className="border-border border-t pt-3" open={moreOpen} onOpenChange={setMoreOpen}>
                     <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-1.5 rounded-sm py-1 text-start font-medium text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                       <ChevronRight aria-hidden className="size-4 transition-transform group-data-[panel-open]:rotate-90 rtl:-scale-x-100" />
                       {t('editor.pageSettings.more')}
@@ -427,33 +460,15 @@ export function PageSettingsDialog({
                       <Field label={t('editor.pageSettings.tags')} hint={t('editor.pageSettings.tagsHint')} htmlFor="page-tags">
                         <Input id="page-tags" value={tags} onChange={(e) => set('tags', e.target.value)} placeholder="Getting started, Guide" />
                       </Field>
-                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
-                        <Field label={t('editor.pageSettings.category')} hint={t('editor.pageSettings.categoryHint')} htmlFor="page-category">
-                          <Input
-                            id="page-category"
-                            value={category}
-                            onChange={(e) => set('category', e.target.value)}
-                            placeholder="Getting started"
-                          />
-                        </Field>
-                        <Field label={t('editor.pageSettings.categoryOrder')} htmlFor="page-category-order">
-                          <Input
-                            id="page-category-order"
-                            type="number"
-                            min={0}
-                            max={999}
-                            value={categoryOrder}
-                            onChange={(e) => set('categoryOrder', e.target.value)}
-                            placeholder="0"
-                          />
-                        </Field>
-                      </div>
+                      <Field label={t('editor.pageSettings.category')} hint={t('editor.pageSettings.categoryHint')} htmlFor="page-category">
+                        <Input id="page-category" value={category} onChange={(e) => set('category', e.target.value)} placeholder="Getting started" />
+                      </Field>
                       <Field
                         label={t('editor.pageSettings.categoryIcon')}
                         hint={t('editor.pageSettings.categoryIconHint')}
                         htmlFor="page-category-icon"
                       >
-                        <Input
+                        <IconNameInput
                           id="page-category-icon"
                           value={categoryIcon}
                           onChange={(e) => set('categoryIcon', e.target.value)}
@@ -461,7 +476,7 @@ export function PageSettingsDialog({
                         />
                       </Field>
                       <Field label={t('editor.pageSettings.icon')} htmlFor="page-icon">
-                        <Input id="page-icon" value={icon} onChange={(e) => set('icon', e.target.value)} placeholder="rocket" />
+                        <IconNameInput id="page-icon" value={icon} onChange={(e) => set('icon', e.target.value)} placeholder="rocket" />
                       </Field>
                     </CollapsibleContent>
                   </Collapsible>
@@ -599,6 +614,24 @@ function Field({ label, hint, htmlFor, children }: { label: string; hint?: strin
       {children}
       {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
     </div>
+  );
+}
+
+function IconNameInput(props: React.ComponentProps<typeof Input> & { value: string; id: string }) {
+  const t = useT();
+  const invalid = props.value.trim() !== '' && !hasIcon(props.value);
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <Input {...props} aria-invalid={invalid || undefined} aria-describedby={invalid ? `${props.id}-error` : undefined} />
+        <PageIcon name={props.value} className="size-5 shrink-0" />
+      </div>
+      {invalid ? (
+        <p id={`${props.id}-error`} role="status" className="text-destructive text-xs">
+          {t('editor.pageSettings.invalidIcon')}
+        </p>
+      ) : null}
+    </>
   );
 }
 

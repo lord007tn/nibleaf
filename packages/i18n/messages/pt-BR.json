@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "Adicione outro idioma ao site para mover esta página.",
+  "editor_pagesettings_invalidicon": "Escolha um nome de ícone disponível, como rocket, book-open ou code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "Conexões de redação",
   "analytics_drafting_description": "Eventos de redação iniciados, concluídos e com falha no período selecionado.",
@@ -494,6 +496,7 @@
   "editor_pageunpublished": "Alterações não publicadas",
   "editor_pagepublished": "Publicado",
   "editor_unpublishedcount": "Alterações não publicadas neste site: {count}. Publique para que os leitores as vejam.",
+  "editor_unpublishedsitechanges": "Alterações não publicadas na navegação ou nas configurações deste site. Publique para mostrá-las aos leitores.",
   "editor_neverpublished": "Este site ainda não foi publicado. Os leitores só poderão vê-lo depois que você publicar.",
   "editor_creatingpage": "Criando página…",
   "editor_openingpage": "Abrindo página…",

@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "Add another site language to move this page.",
+  "editor_pagesettings_invalidicon": "Choose a supported icon name, such as rocket, book-open or code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "Drafting connections",
   "analytics_drafting_description": "Started, completed, and failed drafting events in the selected period.",
@@ -528,6 +530,7 @@
   "editor_pageunpublished": "Unpublished changes",
   "editor_pagepublished": "Published",
   "editor_unpublishedcount": "Unpublished changes on this site: {count}. Publish to show them to readers.",
+  "editor_unpublishedsitechanges": "Unpublished changes to this site's navigation or settings. Publish to show them to readers.",
   "editor_neverpublished": "This site isn't published yet. Readers can't see it until you publish.",
   "editor_creatingpage": "Creating page…",
   "editor_openingpage": "Opening page…",

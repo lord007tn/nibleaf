@@ -1,4 +1,6 @@
 {
+  "editor_pagesettings_onelanguage": "Добавьте ещё один язык сайта, чтобы переместить эту страницу.",
+  "editor_pagesettings_invalidicon": "Выберите поддерживаемое имя значка, например rocket, book-open или code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "analytics_drafting_title": "Подключения для черновиков",
   "analytics_drafting_description": "События начала, завершения и сбоя создания черновиков за выбранный период.",
@@ -496,6 +498,7 @@
   "editor_pageunpublished": "Неопубликованные изменения",
   "editor_pagepublished": "Опубликовано",
   "editor_unpublishedcount": "Неопубликованных изменений на сайте: {count}. Опубликуйте их, чтобы читатели их увидели.",
+  "editor_unpublishedsitechanges": "Неопубликованные изменения навигации или настроек сайта. Опубликуйте их, чтобы читатели их увидели.",
   "editor_neverpublished": "Этот сайт ещё не опубликован. Читатели не увидят его, пока вы его не опубликуете.",
   "editor_creatingpage": "Создание страницы…",
   "editor_openingpage": "Открытие страницы…",

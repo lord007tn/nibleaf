@@ -1,5 +1,6 @@
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { excerpt, pageDescription } from '@nibleaf/shared/markdown-text';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { defaultLanguage, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
 /**
@@ -84,7 +85,7 @@ export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string, options: Llms
     lines.push('', languages.length > 1 ? `## Docs (${oneLine(language.label)})` : '## Docs', '');
     for (const page of langPages) {
       const description = oneLine(pageDescription(page));
-      lines.push(`- [${oneLine(page.title)}](${llmsPageUrl(snapshot, page, base)})${description ? `: ${description}` : ''}`);
+      lines.push(`- [${oneLine(displayTitle(page))}](${llmsPageUrl(snapshot, page, base)})${description ? `: ${description}` : ''}`);
     }
   }
   return `${lines.join('\n')}\n`;
@@ -94,7 +95,7 @@ export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string, options: Llms
  *  a per-page header and source URL so consumers can attribute content. */
 export const buildLlmsFullTxt = (snapshot: SiteSnapshot, base: string, options: LlmsOptions = {}): string => {
   const sections = llmsIndexablePages(snapshot, options).map((page) => {
-    const header = [`# ${oneLine(page.title)}`, '', `Source: ${llmsPageUrl(snapshot, page, base)}`];
+    const header = [`# ${oneLine(displayTitle(page))}`, '', `Source: ${llmsPageUrl(snapshot, page, base)}`];
     const description = page.config?.seo?.metaDescription?.trim() || page.description?.trim();
     if (description) {
       header.push('', `> ${excerpt(description)}`);
