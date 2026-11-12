@@ -140,8 +140,9 @@ and lists exactly what this connection can and can't do, and why.
 
 ## Use a personal key instead
 
-Use a key for scripts, for apps that can't sign in, or when the page says an app
-needs a secure (HTTPS) address. Select **Use a personal key**, choose a
+Use a key for scripts and for apps that can't sign in. ChatGPT and claude.ai
+require HTTPS sign-in. Otherwise, use Claude Code, Cursor or VS Code with a
+personal key. Select **Use a personal key**, choose a
 permission level, name the key after where it will be used (for example "Laptop
 – Claude Code") and choose when it expires. Then select **Create key**.
 
@@ -201,7 +202,7 @@ listed, and needs at least the permission shown.
 
 | Ask | Tools it leads to | Needs |
 | --- | --- | --- |
-| What did readers search for in the last 7 days and not find? Group similar searches and tell me which pages are missing. | `get_failed_searches`, `search_pages` | Support writer |
+| What did readers search for in the last 7 days and not find? Group similar searches and tell me which pages are missing. | `get_failed_searches`, `search_pages` | Read only plus `analytics:search_terms` through a custom personal key, or Support writer |
 | Write this week's docs health report. | `get_analytics_overview`, `get_top_pages`, `get_page_feedback`, `get_search_health`, `get_pending_changes` | Read only |
 | Which questions couldn't Ask AI answer this month? Suggest an article for each. | `list_ai_content_gaps`, `get_ai_conversation` | Read only |
 | Which pages did readers mark as unhelpful? Read them and propose edits, but don't save anything yet. | `get_page_feedback`, `get_page` | Read only |
@@ -238,11 +239,10 @@ Some assistants also list Nibleaf's ready-made prompts, such as
 
 ## What it can read about your readers
 
-Every permission level, including Read only, can read saved Ask AI questions and
-answers. Before saving them, Nibleaf removes email addresses, phone numbers, keys,
-long runs of digits and the query part of links. Names, addresses and other
-personal details can remain in what readers typed. This is the same wording the
-**Allow access?** page shows. Individual search terms are a separate permission
+Every preset, including Read only, can read saved Ask AI questions and answers;
+custom keys can read them only when granted `analytics:read`. Email addresses,
+phone numbers and keys are removed, but names, addresses and other personal
+details may remain. This is the same wording the **Allow access?** page shows. Individual search terms are a separate permission
 and follow the rules in
 [What analytics can and cannot tell you](/reference/mcp#what-analytics-can-and-cannot-tell-you).
 
@@ -251,8 +251,9 @@ and follow the rules in
 **Connections** lists everything that can use the website on someone's behalf:
 apps that signed in and personal keys, most recently used first. Each row shows
 its permission level, when it was last used and what it last did. A key that
-expires within a week says so. Expired and revoked keys move under **Inactive**,
-where you can still rotate or remove them.
+expires within a week says so. Expired and revoked keys move under **Inactive**.
+Expired keys can be rotated or revoked. Revoked keys remain listed under Inactive
+without further actions.
 
 Admins and Owners see everyone's connections and can filter by person; others
 see their own. **Disconnect** stops an app at once, **Revoke** stops a key at

@@ -63,10 +63,10 @@ A retried request (same `clientRequestId`) returns the same links.
 
 ## Saved Ask AI conversations
 
-Every permission level includes `analytics:read`, which also reads saved Ask AI
-questions and answers. Nibleaf removes email addresses, phone numbers, keys,
-long digit runs and the query part of links before it saves them. Names, street
-addresses and other personal details can remain in what readers typed.
+Every preset includes `analytics:read`; custom keys can read saved conversations
+only when granted that scope. `analytics:read` reads saved Ask AI questions and
+answers. Email addresses, phone numbers and keys are removed, but names, addresses
+and other personal details may remain.
 
 ## How the assistant writes pages
 
