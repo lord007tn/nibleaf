@@ -164,6 +164,33 @@ const closerFinder = (text: string) => {
   };
 };
 
+/**
+ * Finds blank lines (a line of only spaces and tabs) at or after a position, for
+ * positions that only grow, the same way as `closerFinder`: each character is
+ * read once per scan. Answers the index of the newline that ends the last line
+ * before the blank one.
+ */
+const blankLineFinder = (text: string) => {
+  let found = -2; // not searched yet
+  let searchedFrom = 0;
+  return (from: number): number => {
+    if (found === -1 && from >= searchedFrom) return -1;
+    if (found >= from) return found;
+    searchedFrom = from;
+    for (let at = text.indexOf('\n', from); at >= 0; ) {
+      let index = at + 1;
+      while (index < text.length && (text[index] === ' ' || text[index] === '\t' || text[index] === '\r')) index++;
+      if (text[index] === '\n') {
+        found = at;
+        return found;
+      }
+      at = text.indexOf('\n', index);
+    }
+    found = -1;
+    return -1;
+  };
+};
+
 const clip = (value: string | undefined, length: number): string => (value ?? '').replace(/\s+/g, ' ').trim().slice(0, length);
 
 /** The reader element for one iframe's attributes. */
@@ -193,11 +220,14 @@ const oneLine = (tag: string): string => tag.replace(/\s+/g, ' ');
  *
  * What sits between an iframe's tags is never shown (a browser reads it as text
  * and doesn't render it), so it is dropped with the iframe: a link in it must not
- * start to render. An iframe with no closer is left as written, as before.
+ * start to render. The closer must end before the next blank line, in the
+ * opener's own Markdown block. An iframe without one is left as written, as on
+ * main: the sanitizer drops that tag alone, and the blocks after it render.
  */
 export const rewriteReaderEmbeds = (text: string): string => {
   if (!text.includes('<')) return text;
   const closerEnd = closerFinder(text);
+  const blankLine = blankLineFinder(text);
   let output = '';
   let kept = 0;
   for (let at = text.indexOf('<'); at >= 0; at = text.indexOf('<', at + 1)) {
@@ -205,7 +235,13 @@ export const rewriteReaderEmbeds = (text: string): string => {
     if (!iframe && !opens(text, at, VIDEO_OPENER)) continue;
     const tag = readTag(text, at + (iframe ? OPENER : VIDEO_OPENER).length);
     if (!tag) continue;
-    const end = iframe && !tag.selfClosing ? closerEnd(tag.end) : tag.end;
+    let end = tag.end;
+    if (iframe && !tag.selfClosing) {
+      end = closerEnd(tag.end);
+      const blank = blankLine(tag.end);
+      // A closer past a blank line belongs to a later block: this iframe has none.
+      if (end >= 0 && blank >= 0 && end > blank) end = -1;
+    }
     if (end < 0) continue;
     output += text.slice(kept, at) + (iframe ? readerEmbedElement(tag.attributes) : oneLine(text.slice(at, end)));
     kept = end;

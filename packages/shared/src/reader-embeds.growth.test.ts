@@ -65,6 +65,12 @@ describe.runIf(growthTestsEnabled)('reader embed growth', () => {
     linear((content) => pageContentFacts(content, false), sizes(links, 250));
   }, 120_000);
 
+  it('rewrites many unclosed iframes, each followed by text, with one closer at the end, in linear time', () => {
+    const unclosed = (count: number) => `${'<iframe src="https://youtu.be/dQw4w9WgXcQ">\n\nSome text after it.\n\n'.repeat(count)}</iframe>`;
+    linear(rewriteReaderEmbeds, [unclosed(20_000), unclosed(80_000)]);
+    linear(normalizeMdxBlocks, [unclosed(2000), unclosed(8000)]);
+  }, 120_000);
+
   it('looks up many offsets in many skipped ranges in linear time', () => {
     // The lookup the embed and link checks use: one range per <title>, one offset per element, in document order.
     const page = (count: number) => ({

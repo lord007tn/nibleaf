@@ -139,11 +139,31 @@ describe('normalizeMdxBlocks rewrites authored iframes', () => {
     }
   });
 
-  it('drops what sits between an iframe’s tags, which a browser never shows', () => {
-    const content = `<iframe src="https://youtu.be/${YT}" title="Tour">\n\n[Hidden](/hidden) <a href="/hidden-anchor">x</a> <iframe src="https://evil.example/">\n\n</IFRAME >\n\n[Visible](/visible)`;
+  it('drops what sits between an iframe’s tags in the same block, which a browser never shows', () => {
+    const content = `<iframe src="https://youtu.be/${YT}" title="Tour">\n[Hidden](/hidden) <a href="/hidden-anchor">x</a> <iframe src="https://evil.example/">\n</IFRAME >\n\n[Visible](/visible)`;
     expect(rewriteReaderEmbeds(content)).toBe(`<mdxembed provider="youtube" videoid="${YT}" title="Tour"></mdxembed>\n\n[Visible](/visible)`);
     const links = elements(render(content), 'a').map((link) => link.properties?.href);
     expect(links).toEqual(['/visible']);
+  });
+
+  it('leaves an iframe whose closer is past a blank line as written, and keeps the content between', () => {
+    const OTHER = 'M7lc1UVf-VE';
+    const content = `<iframe src="https://youtu.be/${YT}">\n\n## Install\n\nRun it.\n\n<iframe src="https://youtu.be/${OTHER}"></iframe>`;
+    expect(rewriteReaderEmbeds(content)).toBe(
+      `<iframe src="https://youtu.be/${YT}">\n\n## Install\n\nRun it.\n\n<mdxembed provider="youtube" videoid="${OTHER}"></mdxembed>`,
+    );
+    const tree = render(content);
+    expect(text(tree)).toContain('Install');
+    expect(text(tree)).toContain('Run it.');
+    expect(elements(tree, 'mdxembed').map((embed) => embed.properties?.videoId ?? embed.properties?.videoid)).toEqual([OTHER]);
+    expect(elements(tree, 'iframe')).toEqual([]);
+  });
+
+  it('pairs an iframe with a closer in its own block even when an earlier one has none', () => {
+    const content = `<iframe src="https://youtu.be/${YT}">\n\nBetween\n\n<iframe src="https://maps.example.com/live">\n</iframe>\n\nAfter`;
+    expect(rewriteReaderEmbeds(content)).toBe(
+      `<iframe src="https://youtu.be/${YT}">\n\nBetween\n\n<mdxembed href="https://maps.example.com/live"></mdxembed>\n\nAfter`,
+    );
   });
 
   it('leaves an iframe with no closer as written, which the sanitizer drops', () => {
