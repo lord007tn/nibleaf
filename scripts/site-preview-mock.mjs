@@ -919,7 +919,8 @@ Need more headroom? Enterprise plans include dedicated capacity and per-endpoint
     },
   },
   // Authored iframes as Mintlify writes them: two allowlisted video players (a
-  // click-to-load facade on the reader) and a frame from another site (a link).
+  // click-to-load facade on the reader), a frame from another site (a link), and a
+  // <video> with the autoplay attributes Mintlify pages often carry (dropped).
   {
     group: 'guides',
     slug: 'video-tour',
@@ -947,7 +948,20 @@ Need more headroom? Enterprise plans include dedicated capacity and per-endpoint
 
 Our partner hosts the live container map.
 
-<iframe src="https://maps.example.com/tidewater/live" title="Live container map"></iframe>`,
+<iframe src="https://maps.example.com/tidewater/live" title="Live container map"></iframe>
+
+## Tracking a shipment
+
+A short clip of the tracking screen, hosted with our other media.
+
+<video
+  controls
+  className="w-full aspect-video rounded-xl"
+  src="https://media.example.com/tidewater/tracking.mp4"
+  autoPlay
+  muted
+  loop
+></video>`,
     },
     ar: {
       title: 'جولة بالفيديو',
@@ -972,7 +986,20 @@ Our partner hosts the live container map.
 
 يستضيف شريكنا خريطة الحاويات المباشرة.
 
-<iframe src="https://maps.example.com/tidewater/live" title="خريطة الحاويات المباشرة"></iframe>`,
+<iframe src="https://maps.example.com/tidewater/live" title="خريطة الحاويات المباشرة"></iframe>
+
+## تتبع شحنة
+
+مقطع قصير لشاشة التتبع، مستضاف مع وسائطنا الأخرى.
+
+<video
+  controls
+  className="w-full aspect-video rounded-xl"
+  src="https://media.example.com/tidewater/tracking.mp4"
+  autoPlay
+  muted
+  loop
+></video>`,
     },
   },
 ];
