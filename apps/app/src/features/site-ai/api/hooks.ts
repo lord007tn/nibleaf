@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useCreateProjectSearchReindex } from '@/hooks/api';
 import { workspaceAiQueryOptions } from '@/hooks/api/query-options';
 import { useSaveWorkspaceAiConnection, useSelectWorkspaceAi, useWorkspaceAiModels } from '@/hooks/api/workspace-ai';
@@ -18,30 +18,8 @@ export const useSelectAiSource = (projectId: string) => useSelectWorkspaceAi(pro
 /** Queues preparing the published docs for AI (a search reindex); the overview then follows the run. */
 export const usePrepareDocsForAi = (projectId: string) => useCreateProjectSearchReindex(projectId);
 
-/**
- * Checks a key with its provider and lists the models it offers. A new key
- * isn't saved; checking the saved key records what the check learned (works,
- * refused, out of credit, model withdrawn), so the page's status is read again
- * once the check settles either way.
- */
-export const useAiKeyModels = (projectId: string) => {
-  const client = useQueryClient();
-  const models = useWorkspaceAiModels(projectId);
-  const refresh = (body: { apiKey?: string }) => {
-    if (!body.apiKey) void client.invalidateQueries({ queryKey: workspaceAiQueryOptions(projectId).queryKey });
-  };
-  return {
-    ...models,
-    mutate: (body: Parameters<typeof models.mutate>[0], options?: Parameters<typeof models.mutate>[1]) =>
-      models.mutate(body, {
-        ...options,
-        onSettled: (...args) => {
-          refresh(body);
-          options?.onSettled?.(...args);
-        },
-      }),
-  };
-};
+/** Checks a key with its provider and lists its models; checking the saved key refreshes the status (see `useWorkspaceAiModels`). */
+export const useAiKeyModels = (projectId: string) => useWorkspaceAiModels(projectId);
 
 /** Saves a key (or a new model for a saved key) after checking it with the provider. */
 export const useSaveAiKey = (projectId: string) => useSaveWorkspaceAiConnection(projectId);

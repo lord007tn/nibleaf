@@ -225,7 +225,9 @@ describe("a site's own key follows what its requests get (#566 council)", () => 
   it.each([
     { status: 200, body: {}, outcome: 'ok' },
     { status: 401, body: {}, outcome: 'keyRefused' },
-    { status: 403, body: {}, outcome: 'keyRefused' },
+    { status: 403, body: { error: { message: 'Your API key is disabled.' } }, outcome: 'keyRefused' },
+    { status: 403, body: { error: { code: 403, message: 'Input was flagged by moderation' } }, outcome: 'other' },
+    { status: 403, body: { error: { message: 'Key limit exceeded for this request' } }, outcome: 'other' },
     { status: 402, body: {}, outcome: 'outOfCredit' },
     { status: 429, body: { error: { code: 'insufficient_quota' } }, outcome: 'outOfCredit' },
     { status: 429, body: { error: { code: 'rate_limit_exceeded' } }, outcome: 'rateLimited' },
@@ -360,5 +362,25 @@ describe('a refusal rests the key, then readers try it again (#566 council)', ()
     await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
     db.connection.mockResolvedValue({ ...refused(60), status: 'INACTIVE' });
     await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+  });
+});
+
+describe('a request blocked by the provider says nothing about the key (CodeRabbit on #566)', () => {
+  beforeEach(() => vi.clearAllMocks());
+  it('a moderation 403 leaves the key healthy and answering', async () => {
+    const runtime = {
+      providerId: 'openrouter' as const,
+      apiKey: 'workspace-owned-secret',
+      answerModel: 'openai/gpt-test',
+      embeddingModel: 'openai/text-embedding-3-small',
+      revision: 'connection-a:7',
+      answersEnabled: true,
+    };
+    const blocked = await keyHealthFetch(runtime, async () =>
+      Response.json({ error: { code: 403, message: 'Input was flagged by moderation' } }, { status: 403 }),
+    )?.('https://openrouter.ai/api/v1/chat/completions');
+    expect(blocked?.status).toBe(403);
+    await new Promise((done) => setTimeout(done, 0));
+    expect(db.update).not.toHaveBeenCalled();
   });
 });

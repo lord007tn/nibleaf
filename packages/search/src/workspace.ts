@@ -131,17 +131,30 @@ export const KEY_OUTCOME_CODE = {
 /** OpenAI answers an exhausted quota with 429 `insufficient_quota`; OpenRouter answers out-of-credit with 402. */
 const QUOTA_EXHAUSTED = /insufficient_quota|exceeded your current quota/i;
 
+/**
+ * A 403 that says the key itself is invalid or disabled. Other 403s are about
+ * one request (OpenRouter's guardrail and moderation blocks, a per-request
+ * budget), so they say nothing about the key.
+ */
+const KEY_INVALID = /invalid[ _-]?api[ _-]?key|(?:api[ _-]?)?key (?:is |was |has been )?(?:invalid|disabled|revoked|deactivated)/i;
+
+/** The start of a reply's body, read from a clone so the caller still gets all of it. */
+const replyText = async (response: Response) =>
+  (
+    await response
+      .clone()
+      .text()
+      .catch(() => '')
+  ).slice(0, 4096);
+
 export const providerKeyOutcome = async (response: Response): Promise<ProviderKeyOutcome> => {
   if (response.ok) return 'ok';
-  if (response.status === 401 || response.status === 403) return 'keyRefused';
+  // An invalid or disabled key is a 401; a 403 counts only when it says so.
+  if (response.status === 401) return 'keyRefused';
+  if (response.status === 403) return KEY_INVALID.test(await replyText(response)) ? 'keyRefused' : 'other';
   if (response.status === 402) return 'outOfCredit';
   if (response.status !== 429) return 'other';
-  // Cloned before anything reads the body, so the caller still gets all of it.
-  const body = await response
-    .clone()
-    .text()
-    .catch(() => '');
-  return QUOTA_EXHAUSTED.test(body.slice(0, 4096)) ? 'outOfCredit' : 'rateLimited';
+  return QUOTA_EXHAUSTED.test(await replyText(response)) ? 'outOfCredit' : 'rateLimited';
 };
 
 /**

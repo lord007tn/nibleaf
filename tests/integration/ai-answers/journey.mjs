@@ -10,12 +10,16 @@
 //                              phase's stacks (e.g. check out main's sources for "before")
 //   MAILPIT_URL   the stack's Mailpit API, where the sign-in code arrives
 //   APP_URL       the dashboard (default http://localhost:4310)
+//   API_URL       its API (default http://localhost:4410); the browser may reach only these two
 //   PHASES        before,after (default); each label goes on its files
 //   SERVERS       the server types to capture (default: each phase's own list)
 //   OUTPUT        where the JPEGs go (default .github/assets/feat-ai-answers-page)
 //
 // One invocation owns the machine-wide dev-stack lock (NIBLEAF_DEVSTACK_LOCK sets
-// its path) for the whole run, both phases included. It refuses to start a stack
+// its path) for the whole run, both phases included; an interrupt stops the
+// stack before the lock goes. The browser runs through withLocalOnlyBrowser, so
+// it can reach only the dashboard and its API, and the run says how many
+// requests it tried to make anywhere else (it should be 0). It refuses to start a stack
 // while something already answers on APP_URL, and it keeps the lock if the
 // stack is still answering after STACK_DOWN, so a stack never runs unlocked.
 // It never presses anything that reaches an AI provider: turning answers on only
@@ -25,13 +29,13 @@ import { readFileSync, rmSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright-core';
-import { acquireDevstackLock, chromiumExecutable } from '../lib/capture-env.mjs';
+import { acquireDevstackLock, hostKey, withLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const root = resolve(import.meta.dirname, '../../..');
 const { STACK_UP, STACK_RESET, STACK_DOWN, STACK_SOURCES, MAILPIT_URL } = process.env;
 if (!STACK_UP || !STACK_RESET || !STACK_DOWN || !MAILPIT_URL) throw new Error('Set STACK_UP, STACK_RESET, STACK_DOWN and MAILPIT_URL');
 const APP = process.env.APP_URL ?? 'http://localhost:4310';
+const API = process.env.API_URL ?? 'http://localhost:4410';
 const PHASES = (process.env.PHASES ?? 'before,after').split(',').filter((phase) => phase === 'before' || phase === 'after');
 const OUTPUT = resolve(root, process.env.OUTPUT ?? '.github/assets/feat-ai-answers-page');
 // Server types: managed (the server runs the AI), own-key (no server AI, a saved
@@ -202,29 +206,51 @@ async function capture(browser, phase, server) {
 }
 
 await mkdir(OUTPUT, { recursive: true });
-const lock = await acquireDevstackLock(`feat/ai-answers-page journey (${PHASES.join(', ')})\n${root}`);
 let browser;
-try {
-  browser = await chromium.launch({ executablePath: chromiumExecutable() });
-  for (const phase of PHASES) {
-    if (STACK_SOURCES) {
-      console.log(`sources: ${phase}`);
-      run(`${STACK_SOURCES} ${phase}`);
-    }
-    const servers = process.env.SERVERS ? process.env.SERVERS.split(',') : PLAN[phase].servers;
-    for (const server of servers) await capture(browser, phase, server);
-  }
-  console.log(`shots in ${OUTPUT}`);
-} finally {
-  await browser?.close();
+/** Stops what the run started; a failure here never hides the run's own. */
+const teardown = () => {
   try {
     run(STACK_DOWN);
   } catch (error) {
-    // Never hide the run's own failure behind a teardown problem.
     console.error(`teardown: ${error instanceof Error ? error.message : error}`);
   }
+};
+// An interrupt (Ctrl+C) closes the browser and stops the stack before the lock goes.
+const lock = await acquireDevstackLock(
+  `feat/ai-answers-page journey (${PHASES.join(', ')})
+${root}`,
+  {
+    onInterrupt: async () => {
+      await browser?.close().catch(() => undefined);
+      teardown();
+    },
+  },
+);
+try {
+  // Chromium itself is kept on this machine; only the dashboard and its API are reachable.
+  const attempted = await withLocalOnlyBrowser(
+    { allowedHosts: [hostKey(APP), hostKey(API)], launch: { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false } },
+    async ({ browser: local, attempted }) => {
+      browser = local;
+      for (const phase of PHASES) {
+        if (STACK_SOURCES) {
+          console.log(`sources: ${phase}`);
+          run(`${STACK_SOURCES} ${phase}`);
+        }
+        const servers = process.env.SERVERS ? process.env.SERVERS.split(',') : PLAN[phase].servers;
+        for (const server of servers) await capture(local, phase, server);
+      }
+      return attempted;
+    },
+  );
+  console.log(`shots in ${OUTPUT}; attempted outside the local stack: ${attempted.length}`);
+} finally {
+  browser = undefined;
+  teardown();
   if (await appAnswers()) {
-    // Releasing now would leave a stack running unlocked; stop it by hand, then remove the lock.
+    // Releasing now would leave a stack running unlocked: keep the lock (no exit handler frees it)
+    // until the stack is stopped by hand.
+    lock.keep();
     console.error(`teardown left ${APP} answering; keeping the lock at ${lock.path}`);
     process.exitCode = 1;
   } else {

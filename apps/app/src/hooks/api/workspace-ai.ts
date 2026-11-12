@@ -17,12 +17,22 @@ const useProviderErrorMessage = () => {
       : friendlyErrorMessage(t, error, 'settings.smartAi.error', { 409: 'settings.smartAi.conflict' });
 };
 
+/**
+ * Checks a key with its provider and lists its models. A new key being tried
+ * isn't stored; a check of the saved key (no `apiKey`) records what it learned
+ * on the server, so the site's AI status is read again once it settles, either
+ * way. That lives on the mutation, so it runs even if the form has gone.
+ */
 export const useWorkspaceAiModels = (projectId: string) => {
+  const client = useQueryClient();
   const errorMessage = useProviderErrorMessage();
   return useMutation({
     gcTime: 0,
     mutationFn: async (json: WorkspaceAiModelsBody) =>
       mutateData(await api.app.projects[':projectId'].settings.ai.models.$post({ param: { projectId }, json }), 'Could not verify the provider.'),
+    onSettled: async (_data, _error, json) => {
+      if (!json.apiKey) await client.invalidateQueries({ queryKey: queryKeys.workspaceAi.detail(projectId) });
+    },
     meta: { errorMessage },
   });
 };
