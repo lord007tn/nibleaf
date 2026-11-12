@@ -26,6 +26,11 @@ type PublishCheckCode =
   | 'unreadable-slug'
   | 'empty-page'
   | 'duplicate-title'
+  | 'embed-untitled'
+  | 'embed-as-link'
+  | 'video-not-https'
+  | 'embed-unclosed'
+  | 'video-poster-hidden'
   | 'home-untranslated'
   | 'blog-root-group';
 
@@ -37,9 +42,10 @@ export interface PublishCheck {
   title: string;
   path: string;
   /** The evidence: the link, the image source, the stray text, the slug, the
-   *  path of the other page with the same title, or (`home-untranslated`) the
-   *  language and the page its readers land on as `language|title`. Empty for an
-   *  untitled or empty page, or a "Blog" section, where the page is the evidence. */
+   *  path of the other page with the same title, the video or embed address, or
+   *  (`home-untranslated`) JSON naming where that language's readers land and the
+   *  home page's translation key and path. Empty for an untitled or empty page, or
+   *  a "Blog" section, where the page itself is the evidence. */
   detail: string;
   /** Why a link is broken, when it isn't a missing page: too long to serve. */
   reason?: 'path-too-long';
@@ -209,6 +215,11 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
     addEach(page, 'broken-internal-link', brokenLinks.get(page.id) ?? [], linkSeverity);
     addEach(page, 'missing-alt', facts.imagesWithoutAlt);
     addEach(page, 'stray-characters', facts.strayText);
+    addEach(page, 'embed-untitled', facts.untitledEmbeds);
+    addEach(page, 'embed-as-link', facts.embedsAsLinks);
+    addEach(page, 'video-not-https', facts.insecureVideos);
+    addEach(page, 'embed-unclosed', facts.unclosedEmbeds);
+    addEach(page, 'video-poster-hidden', facts.hiddenPosters);
   }
   for (const siblings of siblingsByTitle.values()) {
     if (siblings.length < 2) continue;

@@ -259,6 +259,11 @@ export interface PublishCheck {
     | 'unreadable-slug'
     | 'empty-page'
     | 'duplicate-title'
+    | 'embed-untitled'
+    | 'embed-as-link'
+    | 'video-not-https'
+    | 'embed-unclosed'
+    | 'video-poster-hidden'
     | 'home-untranslated'
     | 'blog-root-group';
   severity: 'error' | 'warning';
