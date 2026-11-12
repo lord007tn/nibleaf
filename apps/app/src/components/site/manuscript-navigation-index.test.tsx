@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
@@ -104,6 +106,46 @@ describe('Manuscript navigation index (#536)', () => {
   it('adds nothing when the whole index fits, or when no labels are given', async () => {
     expect((await mount(200, labels)).toggle()).toBeNull();
     expect((await mount(900, undefined)).toggle()).toBeNull();
+  });
+
+  it('opens in full without JavaScript: the server HTML lifts the collapse with a no-script rule', () => {
+    const html = renderToString(layout(labels));
+    expect(html).toContain(
+      '<noscript><style>.documentation-manuscript-navigation[data-collapsed]{max-block-size:none;overflow:visible}</style></noscript>',
+    );
+    // The rule it lifts sits in a cascade layer, so the unlayered no-script rule wins.
+    const css = readFileSync(resolve(import.meta.dirname, '../../styles.css'), 'utf8');
+    const layer = css.slice(css.lastIndexOf('@layer components {', css.indexOf('.documentation-manuscript-navigation[data-collapsed] {')));
+    expect(layer.startsWith('@layer components {')).toBe(true);
+    expect(layer).toMatch(/\.documentation-manuscript-navigation\[data-collapsed\] \{\s*max-block-size: min\(35dvh, 20rem\);\s*overflow: hidden;/);
+  });
+
+  it('keeps the same button, and its focus, when the index is folded again', async () => {
+    const { index, toggle } = await mount(900, labels);
+    const button = toggle();
+    await act(async () => {
+      button?.focus();
+      button?.click();
+    });
+    // Expanded, everything fits: a new measurement must not take the button away.
+    Object.defineProperty(index, 'scrollHeight', { configurable: true, value: 900 });
+    Object.defineProperty(index, 'clientHeight', { configurable: true, value: 900 });
+    await act(async () => resize?.());
+    expect(toggle()).toBe(button);
+    await act(async () => button?.click());
+    expect(toggle()).toBe(button);
+    expect(button?.textContent).toBe('Show all');
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('opens the whole index when a keyboard reaches a link inside the fade at its end', async () => {
+    const { container, index } = await mount(900, labels);
+    const link = [...container.querySelectorAll('a')][10] as HTMLElement;
+    index.getBoundingClientRect = () => ({ top: 0, bottom: 320 }) as DOMRect;
+    // Ends 2px above the bottom: inside the 4rem fade, not below the index.
+    link.getBoundingClientRect = () => ({ top: 298, bottom: 318 }) as DOMRect;
+    await act(async () => link.focus());
+    expect(index.hasAttribute('data-collapsed')).toBe(false);
   });
 
   it('opens the whole index when a keyboard reaches a link below the visible part', async () => {

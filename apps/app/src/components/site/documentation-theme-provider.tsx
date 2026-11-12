@@ -138,6 +138,11 @@ const HarborTemplate: DocumentationThemeTemplate = {
  * its end fades and a button shows the rest (and folds it again), so no page is
  * out of reach. Server HTML keeps every link; collapsing is presentation only.
  */
+/** The height of the fade at the end of a collapsed index (styles.css: `calc(100% - 4rem)`). */
+const FADE_REM = 4;
+/** Unlayered, so it wins over the collapse rule in `@layer components`. */
+const NO_SCRIPT_INDEX = '.documentation-manuscript-navigation[data-collapsed]{max-block-size:none;overflow:visible}';
+
 function ManuscriptNavigationIndex({ labels, children }: { labels?: ReaderSlots['navigationLabels']; children: ReactNode }) {
   const content = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -146,15 +151,21 @@ function ManuscriptNavigationIndex({ labels, children }: { labels?: ReaderSlots[
   useEffect(() => {
     const element = content.current;
     if (!element || typeof ResizeObserver === 'undefined') return;
-    const measure = () => setOverflows(element.scrollHeight > element.clientHeight + 1);
+    // Measured only while collapsed: expanded, the index always fits, and the
+    // button must stay (with its focus) to fold it again.
+    const measure = () => {
+      if (element.hasAttribute('data-collapsed')) setOverflows(element.scrollHeight > element.clientHeight + 1);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     for (const child of element.children) observer.observe(child);
-    // A link reached by keyboard past the visible height opens the whole index.
+    // A link reached by keyboard that ends inside the fade (the last 4rem) or
+    // below it opens the whole index, so a focused link is never masked.
     const reveal = (event: FocusEvent) => {
       if (!element.hasAttribute('data-collapsed') || !(event.target instanceof Element)) return;
-      if (event.target.getBoundingClientRect().bottom > element.getBoundingClientRect().bottom) setExpanded(true);
+      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      if (event.target.getBoundingClientRect().bottom > element.getBoundingClientRect().bottom - FADE_REM * rem) setExpanded(true);
     };
     element.addEventListener('focusin', reveal);
     return () => {
@@ -165,6 +176,10 @@ function ManuscriptNavigationIndex({ labels, children }: { labels?: ReaderSlots[
   const collapsible = Boolean(labels) && (overflows || expanded);
   return (
     <aside className="documentation-manuscript-reader-navigation hidden lg:block" data-theme-region="sidebar">
+      {/* Without JavaScript there's no button: the server's collapsed index opens in full. */}
+      <noscript>
+        <style>{NO_SCRIPT_INDEX}</style>
+      </noscript>
       <div
         className="documentation-manuscript-navigation py-6"
         data-collapsed={expanded ? undefined : ''}
