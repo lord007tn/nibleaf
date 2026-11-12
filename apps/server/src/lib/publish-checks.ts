@@ -137,13 +137,17 @@ const siteStructureChecks = (
   if (!version) return;
   const versionPages = pagesForVersion(snapshot, version);
   const defaultCode = defaultLanguage(snapshot.project).code;
-  const home = firstPage(pagesForLanguage(versionPages, defaultCode), defaultCode);
+  // The home page as the reader serves the site root: a visible page with an
+  // empty path wins over the first page in the navigation.
+  const home = resolveSitePage(snapshot, '', defaultCode, version.slug)?.page;
   for (const code of served) {
     const pages = pagesForLanguage(versionPages, code);
     const nav = buildNavTree(pages, code);
     const first = nav[0];
     const firstGroup = first && first.kind === 'GROUP' ? pages.find((page) => page.id === first.id) : undefined;
-    if (firstGroup && IMPORTED_BLOG_TITLES.has(firstGroup.title.trim().normalize('NFC').toLocaleLowerCase())) add(firstGroup, 'blog-root-group');
+    // The name readers see in the sidebar (a sidebar title wins over the page
+    // title, as buildNavTree resolves it), on the group's own row.
+    if (firstGroup && first && IMPORTED_BLOG_TITLES.has(first.title.trim().normalize('NFC').toLocaleLowerCase())) add(firstGroup, 'blog-root-group');
     if (!home || code === defaultCode) continue;
     // Only a language with pages of its own: otherwise readers get the default language's home.
     if (!firstPage(pages, code)) continue;

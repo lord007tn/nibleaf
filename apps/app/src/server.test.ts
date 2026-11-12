@@ -434,10 +434,17 @@ describe('/sites/<slug> on the platform host', () => {
   it("sends an address written with a live site's slug to the site, keeping the path and query", async () => {
     const response = await server.fetch(new Request('http://localhost:4310/sites/JOOD-PMS/guide/setup?lang=ar'));
     expect(response.status).toBe(301);
-    expect(response.headers.get('location')).toBe('http://localhost:4310/sites/cmsiteid0001/guide/setup?lang=ar');
+    // Relative: the browser keeps the scheme and host it used, whatever the proxy forwarded.
+    expect(response.headers.get('location')).toBe('/sites/cmsiteid0001/guide/setup?lang=ar');
     // A slug can be renamed and taken by another site: the browser must not keep this redirect.
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(mocks.startHandler).not.toHaveBeenCalled();
+  });
+
+  it('keeps the Markdown address the reader asked for', async () => {
+    const response = await server.fetch(new Request('http://localhost:4310/sites/jood-pms/guide/setup.md'));
+    expect(response.status).toBe(301);
+    expect(response.headers.get('location')).toBe('/sites/cmsiteid0001/guide/setup.md');
   });
 
   it('renders the page as before when no live site has that slug', async () => {

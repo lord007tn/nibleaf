@@ -762,6 +762,9 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
 
   // Stable `.md` aliases render the same published/marketing document as the
   // canonical HTML path. `/pricing.md` remains its dedicated product artifact.
+  // The path as the reader asked for it, before the alias below rewrites it:
+  // a redirect keeps the representation they asked for (`/guide.md` stays `.md`).
+  const requestedPathname = url.pathname;
   const markdownAliasCanonical = isGetLike && url.pathname !== '/pricing.md' ? canonicalPathFromMarkdownAlias(url.pathname) : null;
   let routedRequest = request;
   if (markdownAliasCanonical) {
@@ -913,11 +916,15 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
             }
             const projectId = await resolveSiteSlug(slug.toLowerCase());
             if (projectId && projectId !== siteMatch[1]) {
-              // Not cached by the browser: a slug can be renamed and then taken by
-              // another site, and a cached 301 would keep sending readers to the old one.
+              // Everything after the slug as the reader wrote it, `.md` included.
+              const slugPrefix = `/sites/${siteMatch[1]}`;
+              const suffix = requestedPathname.startsWith(slugPrefix) ? requestedPathname.slice(slugPrefix.length) : (siteMatch[2] ?? '');
+              // Relative, so the browser keeps the scheme and host it used (behind a
+              // TLS proxy the server's own URL may say otherwise). Not cached: a slug
+              // can be renamed and then taken by another site.
               return new Response(null, {
                 status: 301,
-                headers: { location: `${url.origin}/sites/${projectId}${siteMatch[2] ?? ''}${url.search}`, 'cache-control': 'no-store' },
+                headers: { location: `/sites/${projectId}${suffix}${url.search}`, 'cache-control': 'no-store' },
               });
             }
           }

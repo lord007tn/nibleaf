@@ -406,6 +406,27 @@ describe('blog-root-group', () => {
     ]);
     expect(codes(site, 'blog-root-group')).toEqual([]);
   });
+
+  it('reads the name readers see: a sidebar title wins over the stored title', () => {
+    const shownAsBlog = group('Docs', { id: 'shown-blog', config: { sidebarTitle: 'Blog' } });
+    expect(codes(snapshot([shownAsBlog, page({ path: 'blog/a', title: 'A', parentId: 'shown-blog' })]), 'blog-root-group')).toEqual([
+      expect.objectContaining({ pageId: 'shown-blog' }),
+    ]);
+    const renamed = group('Blog', { id: 'renamed', config: { sidebarTitle: 'Guides' } });
+    expect(codes(snapshot([renamed, page({ path: 'blog/a', title: 'A', parentId: 'renamed' })]), 'blog-root-group')).toEqual([]);
+  });
+});
+
+describe('home-untranslated with a home page at the site root', () => {
+  it('compares against the page the reader serves at the root, not the first page in the navigation', () => {
+    const first = page({ path: 'overview', title: 'Overview', position: 0 });
+    const root = page({ path: '', title: 'Welcome', translationKey: 'welcome', position: 5 });
+    const rootArabic = page({ path: '', title: 'مرحبا', languageCode: 'ar', translationKey: 'welcome', position: 0 });
+    const site = snapshot([first, root, rootArabic, page({ path: 'tags', title: 'الوسوم', languageCode: 'ar', position: 1 })]);
+    expect(resolveSitePage(site, '', 'en')?.page.id).toBe(root.id);
+    expect(resolveSitePage(site, '', 'ar')?.page.id).toBe(rootArabic.id);
+    expect(codes(site, 'home-untranslated')).toEqual([]);
+  });
 });
 
 describe('collectPublishChecks', () => {
