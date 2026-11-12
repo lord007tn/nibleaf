@@ -1,6 +1,6 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { useT } from '@nibleaf/i18n/react';
-import { Cloud, Globe2, Languages, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Cloud, Globe2, Languages, ShieldCheck } from 'lucide-react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { InterfaceLanguageButton } from '@/components/interface-language-dialog';
 
@@ -8,7 +8,12 @@ import { InterfaceLanguageButton } from '@/components/interface-language-dialog'
  * Auth chrome — a premium split: a dark, brand-led panel (plain-language value
  * props, localized, hidden below lg) beside a focused form card. The form's h1
  * is the localized `subtitle` each page passes, so pages must not add another.
+ *
+ * The logo and "Back to Nibleaf" lead to the marketing home. Every install
+ * serves it from this app at `/` (cloud and self-hosted alike), so the link is
+ * same-origin and needs no configured marketing address.
  */
+const HOME_HREF = '/';
 const BRAND_POINTS: { icon: ComponentType<SVGProps<SVGSVGElement>>; key: 'auth.brand.domains' | 'auth.brand.hosting' | 'auth.brand.multilingual' }[] =
   [
     { icon: Cloud, key: 'auth.brand.hosting' },
@@ -36,10 +41,10 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
           className="pointer-events-none absolute inset-0 opacity-[0.14]"
           style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.35) 1px, transparent 1px)', backgroundSize: '22px 22px' }}
         />
-        <div className="relative flex items-center gap-2.5">
+        <a className="relative flex items-center gap-2.5 self-start rounded-md" href={HOME_HREF}>
           <NibleafMark className="size-8 text-white" variant="bare" />
           <span className="font-semibold text-lg tracking-tight">Nibleaf</span>
-        </div>
+        </a>
         <div className="relative">
           <h2 className="font-semibold text-[2rem] leading-[1.15] tracking-tight">{t('auth.brand.heading')}</h2>
           <p className="mt-3 max-w-md text-sm text-white/65 leading-relaxed">{t('auth.brand.description')}</p>
@@ -65,13 +70,23 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
 
       {/* Form panel */}
       <div className="relative grid place-items-center bg-background px-6 py-12">
-        <InterfaceLanguageButton className="absolute top-4 end-4 max-w-[calc(100%-2rem)]" />
+        <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-2">
+          <a
+            className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:text-foreground"
+            data-slot="auth-back-home"
+            href={HOME_HREF}
+          >
+            <ArrowLeft aria-hidden className="size-4 shrink-0 rtl:-scale-x-100" />
+            <span className="truncate">{t('auth.backToSite', { site: 'Nibleaf' })}</span>
+          </a>
+          <InterfaceLanguageButton className="min-w-0 max-w-[60%]" />
+        </div>
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
-            <div className="inline-flex items-center gap-2">
+            <a className="inline-flex items-center gap-2 rounded-md" href={HOME_HREF}>
               <NibleafMark className="size-7" />
               <span className="font-semibold text-2xl tracking-tight">Nibleaf</span>
-            </div>
+            </a>
           </div>
           {subtitle ? <h1 className="mb-6 text-center font-semibold text-2xl tracking-tight lg:text-start">{subtitle}</h1> : null}
           {children}
