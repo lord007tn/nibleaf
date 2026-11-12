@@ -8,16 +8,37 @@
  * writer always wins (council): a landing still pending never moves the caret
  * or focus once the writer has acted, and an unknown section is looked up once.
  *
- * Animation frames are controlled here (`settle` runs them), never slept on.
+ * Animation frames are controlled here (`until` runs them), never slept on.
+ * Each step waits for its real signal: the page's editor seeded, the reader's
+ * headings looked up, the landing done, the frame queue quiet. The reader's
+ * heading pass (the editor loads it lazily) is loaded with this file, so no
+ * test waits on its transform, which under full-suite load can take seconds.
  */
+// The reader's heading pass (mocked below with the real module) loads with the file, so the
+// editor's lazy `import()` of it resolves at once instead of waiting on a transform under load.
+import '@nibleaf/shared/reader-headings';
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { act, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver } from './editor-links';
+import { editorIn } from './editor-sections';
 import { type LinkedPages, useLinkedPageHistory } from './linked-page-history';
 import { buildEditorExtensions, seedMarkdown } from './tiptap-editor';
+
+// The reader's real heading pass, counting its calls: a call is the landing looking its section up.
+const lookups = vi.hoisted(() => ({ count: 0 }));
+vi.mock('@nibleaf/shared/reader-headings', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@nibleaf/shared/reader-headings')>();
+  return {
+    ...real,
+    readerHeadings: (content: string) => {
+      lookups.count += 1;
+      return real.readerHeadings(content);
+    },
+  };
+});
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -108,10 +129,15 @@ let reducedMotion: boolean;
 /** Animation frames requested and not run yet. */
 const frames = new Map<number, FrameRequestCallback>();
 let nextFrame = 0;
+/** Animation frames requested in this test. */
+let requestedFrames = 0;
 
 beforeEach(() => {
   frames.clear();
+  requestedFrames = 0;
+  lookups.count = 0;
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    requestedFrames += 1;
     nextFrame += 1;
     frames.set(nextFrame, callback);
     return nextFrame;
@@ -148,15 +174,34 @@ const runFrame = () => {
   frames.clear();
   for (const [, callback] of due) callback(performance.now());
 };
-/** Let the page settle: `count` frames, each followed by pending imports and promises. */
-const settle = (count = 8) =>
-  act(async () => {
-    for (let i = 0; i < count; i++) {
-      runFrame();
-      await vi.dynamicImportSettled();
-      await new Promise((done) => setTimeout(done, 0));
-    }
-  });
+/** How long one step may take to reach its signal: well over what a step takes, under load included, and inside the test's own 5 s. */
+const STEP_BOUND_MS = 4000;
+/**
+ * Wait until `ready()`: each round runs the due animation frames (unless
+ * `runFrames` is false, for a step that must happen before the next frame), then
+ * lets React, promises and timers settle, and checks again.
+ */
+const until = (ready: () => boolean, what: string, { runFrames = true } = {}) =>
+  vi.waitFor(
+    async () => {
+      await act(async () => {
+        if (runFrames) runFrame();
+        await new Promise((done) => setTimeout(done, 0));
+      });
+      if (!ready()) throw new Error(`Still waiting for ${what}`);
+    },
+    { timeout: STEP_BOUND_MS, interval: 1 },
+  );
+
+/** The canvas shows `pageId` in an editor that holds its content (seeded). */
+const shows = (pageId: string) => {
+  const canvas = document.querySelector<HTMLDivElement>('[data-testid="canvas"]');
+  return canvas?.dataset.page === pageId && harness.editors.has(pageId) && editorIn(canvas) === harness.editors.get(pageId);
+};
+/** Nothing is waiting for a frame. */
+const quiet = () => frames.size === 0;
+/** The landing has looked its section up (the reader's headings were read since `before`), and nothing waits for a frame. */
+const lookedUp = (before: number) => lookups.count > before && quiet();
 
 /** The writer types `text` at the caret: the key and input events, then the edit. */
 const type = (editor: import('@tiptap/core').Editor, text: string) =>
@@ -186,7 +231,8 @@ async function renderEditor(start = '/app/projects/project-1/editor') {
   roots.push(root);
   await act(async () => root.render(<RouterProvider router={router} />));
   await act(async () => router.load());
-  await settle();
+  const first = new URL(start, 'https://app.invalid').searchParams.get('page') ?? 'page-a';
+  await until(() => shows(first), `the editor to show ${first}`);
   const canvas = () => container.querySelector<HTMLDivElement>('[data-testid="canvas"]') as HTMLDivElement;
   const scroll = async (top: number) => {
     canvas().scrollTop = top;
@@ -217,7 +263,7 @@ describe('following a link to a section of another page (#553)', () => {
   it('opens the page, scrolls to the matching heading and puts the caret, with focus, at its start', async () => {
     const { router, canvas, editor } = await renderEditor();
     await act(async () => harness.pages?.open('page-b', 'install'));
-    await settle();
+    await until(() => shows('page-b') && scrolled.length > 0, 'the landing on page B');
     expect(router.state.location.search).toEqual({ page: 'page-b' });
     expect(router.state.location.hash).toBe('install');
     expect(canvas().dataset.page).toBe('page-b');
@@ -231,7 +277,7 @@ describe('following a link to a section of another page (#553)', () => {
   it('a repeated heading is found by the reader’s suffix', async () => {
     const { canvas, editor } = await renderEditor();
     await act(async () => harness.pages?.open('page-b', 'setup-1'));
-    await settle();
+    await until(() => shows('page-b') && scrolled.length > 0, 'the landing on page B');
     expect(scrolled.at(-1)?.element).toBe(heading(canvas(), 'Setup', 1));
     expect(caret(editor()).block).toBe('Setup');
     // The second "Setup": the caret is in the heading after "The first setup."
@@ -242,7 +288,7 @@ describe('following a link to a section of another page (#553)', () => {
   it('finds an Arabic heading from an encoded or a plain fragment', async () => {
     const { canvas } = await renderEditor();
     await act(async () => harness.pages?.open('page-b', 'تثبيت-الأداة'));
-    await settle();
+    await until(() => shows('page-b') && scrolled.length > 0, 'the landing on page B');
     expect(scrolled.at(-1)?.element).toBe(heading(canvas(), 'تثبيت الأداة'));
   });
 
@@ -250,8 +296,9 @@ describe('following a link to a section of another page (#553)', () => {
     const errors = vi.spyOn(console, 'error');
     const { router, canvas, scroll, editor } = await renderEditor();
     await scroll(300);
+    const before = lookups.count;
     await act(async () => harness.pages?.open('page-b', 'no-such-section'));
-    await settle();
+    await until(() => shows('page-b') && lookedUp(before), 'page B and its section looked up');
     expect(router.state.location.search).toEqual({ page: 'page-b' });
     expect(canvas().dataset.page).toBe('page-b');
     expect(scrolled).toEqual([]);
@@ -265,7 +312,7 @@ describe('following a link to a section of another page (#553)', () => {
     const { canvas, scroll } = await renderEditor();
     await scroll(300);
     await act(async () => harness.pages?.open('page-b'));
-    await settle();
+    await until(() => shows('page-b') && quiet(), 'page B');
     expect(scrolled).toEqual([]);
     expect(canvas().scrollTop).toBe(0);
   });
@@ -274,7 +321,7 @@ describe('following a link to a section of another page (#553)', () => {
     reducedMotion = true;
     const { canvas } = await renderEditor();
     await act(async () => harness.pages?.open('page-b', 'install'));
-    await settle();
+    await until(() => shows('page-b') && scrolled.length > 0, 'the landing on page B');
     expect(scrolled.at(-1)?.element).toBe(heading(canvas(), 'Install'));
     expect(scrolled.at(-1)?.options).toMatchObject({ block: 'start', behavior: 'auto' });
   });
@@ -283,7 +330,7 @@ describe('following a link to a section of another page (#553)', () => {
     harness.editable = false;
     const { canvas } = await renderEditor();
     await act(async () => harness.pages?.open('page-b', 'install'));
-    await settle();
+    await until(() => shows('page-b') && scrolled.length > 0, 'the landing on page B');
     const target = heading(canvas(), 'Install');
     expect(scrolled.at(-1)?.element).toBe(target);
     expect(document.activeElement).toBe(target);
@@ -299,7 +346,7 @@ describe('a #section link on the page being read (#553)', () => {
     if (!link) throw new Error('No #usage link');
     const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, detail: 0 });
     await act(async () => link.dispatchEvent(event));
-    await settle();
+    await until(() => scrolled.length > 0, 'the landing on Usage');
     expect(event.defaultPrevented).toBe(true);
     expect(router.state.location.search).toEqual({ page: 'page-a' });
     expect(router.state.location.hash).toBe('usage');
@@ -314,7 +361,7 @@ describe('a #section link on the page being read (#553)', () => {
   it('jumps within the page from the editing view too', async () => {
     const { router, canvas, editor } = await renderEditor();
     await act(async () => harness.pages?.open('page-a', 'details'));
-    await settle();
+    await until(() => scrolled.length > 0, 'the landing on Details');
     expect(router.state.location.hash).toBe('details');
     expect(scrolled.at(-1)?.element).toBe(heading(canvas(), 'Details'));
     expect(caret(editor())).toEqual({ block: 'Details', type: 'heading', atStart: true });
@@ -326,20 +373,20 @@ describe('Back and Forward around a section link (#553)', () => {
     const { history, router, canvas, scroll } = await renderEditor();
     await scroll(420);
     await act(async () => harness.pages?.open('page-b', 'install'));
-    await settle();
+    await until(() => shows('page-b') && scrolled.length > 0, 'the landing on page B');
     expect(router.state.location.hash).toBe('install');
     // Where the jump left the page.
     await scroll(640);
 
     await act(async () => history.back());
-    await settle();
+    await until(() => shows('page-a') && quiet(), 'page A again');
     expect(router.state.location.search).toEqual({ page: 'page-a' });
     expect(router.state.location.hash).toBe('');
     expect(canvas().dataset.page).toBe('page-a');
     expect(canvas().scrollTop).toBe(420);
 
     await act(async () => history.forward());
-    await settle();
+    await until(() => shows('page-b') && quiet(), 'page B again');
     expect(router.state.location.search).toEqual({ page: 'page-b' });
     expect(router.state.location.hash).toBe('install');
     expect(canvas().dataset.page).toBe('page-b');
@@ -350,16 +397,17 @@ describe('Back and Forward around a section link (#553)', () => {
     const { history, router, canvas, scroll } = await renderEditor();
     await scroll(120);
     await act(async () => harness.pages?.open('page-a', 'usage'));
-    await settle();
+    await until(() => scrolled.length > 0, 'the landing on Usage');
     await scroll(500);
     await act(async () => history.back());
-    await settle();
+    await until(() => router.state.location.hash === '' && quiet(), 'the entry before the jump');
     expect(router.state.location.hash).toBe('');
     expect(canvas().scrollTop).toBe(120);
   });
 
   it('an editor opened at page#section (a new tab, a reload) lands on the section', async () => {
     const { canvas } = await renderEditor('/app/projects/project-1/editor?page=page-b#setup-1');
+    await until(() => scrolled.length > 0, 'the landing on the second Setup');
     expect(canvas().dataset.page).toBe('page-b');
     expect(scrolled.at(-1)?.element).toBe(heading(canvas(), 'Setup', 1));
   });
@@ -368,17 +416,18 @@ describe('Back and Forward around a section link (#553)', () => {
 describe('the writer always wins over a pending landing (#553 council)', () => {
   it('an unknown #detailsx, then a click on Details and typing xY, gives DetailsxY with the caret kept', async () => {
     const { canvas, editor } = await renderEditor();
+    const before = lookups.count;
     await act(async () => harness.pages?.open('page-a', 'detailsx'));
-    await settle();
+    await until(() => lookedUp(before), 'the section looked up');
     expect(scrolled).toEqual([]);
     await act(async () => heading(canvas(), 'Details').dispatchEvent(new Event('pointerdown', { bubbles: true })));
     const end = headingEnd(editor(), 'Details');
     await act(async () => editor().commands.setTextSelection(end));
     await type(editor(), 'x');
     // The renamed heading now reads "Detailsx": a landing still looking would find it here.
-    await settle();
+    await until(quiet, 'no frame pending');
     await type(editor(), 'Y');
-    await settle();
+    await until(quiet, 'no frame pending');
     expect(heading(canvas(), 'DetailsxY')).toBeTruthy();
     expect(caret(editor())).toEqual({ block: 'DetailsxY', type: 'heading', atStart: false });
     expect(editor().state.selection.from).toBe(end + 2);
@@ -389,12 +438,12 @@ describe('the writer always wins over a pending landing (#553 council)', () => {
     harness.deferSeed = true;
     const { editor } = await renderEditor();
     await act(async () => harness.pages?.open('page-b', 'install'));
-    // Page B is on screen, its seed not run yet: the writer starts typing.
-    await act(async () => undefined);
+    // Page B is on screen, its seed not run yet (no frame has run): the writer starts typing.
+    await until(() => harness.editors.has('page-b') && !shows('page-b'), 'page B before its seed', { runFrames: false });
     await type(editor(), 'z');
-    await settle(1);
+    await until(() => shows('page-b'), 'the seed of page B');
     const after = editor().state.selection.from;
-    await settle();
+    await until(quiet, 'no frame pending');
     expect(editor().state.selection.from).toBe(after);
     expect(caret(editor()).block).not.toBe('Install');
     expect(scrolled).toEqual([]);
@@ -408,7 +457,7 @@ describe('the writer always wins over a pending landing (#553 council)', () => {
     document.body.append(field);
     await act(async () => harness.pages?.open('page-b', 'install'));
     field.focus();
-    await settle();
+    await until(() => shows('page-b') && quiet(), 'page B, seeded');
     expect(document.activeElement).toBe(field);
     expect(caret(editor()).block).not.toBe('Install');
     expect(scrolled).toEqual([]);
@@ -417,11 +466,14 @@ describe('the writer always wins over a pending landing (#553 council)', () => {
   it('an unknown section is looked up once, after the seed, and requests no further frames', async () => {
     harness.deferSeed = true;
     await renderEditor();
+    const before = lookups.count;
     await act(async () => harness.pages?.open('page-b', 'no-such-section'));
-    await settle(3);
+    await until(() => shows('page-b') && lookups.count > before, 'the section looked up');
+    // Looked up: nothing waits for a frame now, and nothing asks for one later.
     expect(frames.size).toBe(0);
-    await settle(3);
-    expect(frames.size).toBe(0);
+    const requested = requestedFrames;
+    await until(quiet, 'no frame pending');
+    expect(requestedFrames).toBe(requested);
     expect(scrolled).toEqual([]);
   });
 });
