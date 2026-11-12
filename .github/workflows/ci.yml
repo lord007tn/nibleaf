@@ -397,6 +397,9 @@ jobs:
         shell: bash
         env:
           APP_URL: https://nibleaf.com
+          # The auth pages load Better Auth, which refuses an empty secret in
+          # production (check-ssr-locale.mjs renders /sign-in and /sign-up).
+          BETTER_AUTH_SECRET: ci-app-runtime-smoke-only-0123456789abcdef
         run: |
           pnpm --filter @nibleaf/app start > /tmp/nibleaf-app-runtime.log 2>&1 &
           app_pid=$!
