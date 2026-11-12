@@ -4742,6 +4742,8 @@
   "publish_checks_homeuntranslated": "होम पेज का अनुवाद नहीं है",
   "publish_checks_homeuntranslatedhint": "जो पाठक इन भाषाओं में आपकी साइट खोलते हैं, वे किसी दूसरे पेज पर पहुँचते हैं। पेज सेटिंग में अपने होम पेज और उसके अनुवाद को एक ही अनुवाद कुंजी दें।",
   "publish_checks_homeuntranslatedlanding": "{language} में आपकी साइट खोलने वाले पाठक “{title}” पर पहुँचते हैं।",
+  "publish_checks_homeuntranslatedfixkey": "ठीक करने के लिए, पेज सेटिंग में {language} होम पेज की अनुवाद कुंजी “{key}” रखें।",
+  "publish_checks_homeuntranslatedfixpath": "ठीक करने के लिए, {language} होम पेज का पता “{path}” रखें, या पेज सेटिंग में दोनों पेजों को एक ही अनुवाद कुंजी दें।",
   "publish_checks_blogrootgroup": "“Blog” के अंतर्गत दस्तावेज़",
   "publish_checks_blogrootgrouphint": "पाठकों को यह नाम साइडबार के ऊपर और हर ब्रेडक्रंब में दिखता है। सेक्शन का नाम उसके पेजों के अनुसार बदलें, जैसे “गाइड”।",
   "publish_checks_emptypage": "खाली पेज",

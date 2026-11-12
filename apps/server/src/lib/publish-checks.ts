@@ -5,7 +5,7 @@ import { site_importblog } from '@nibleaf/i18n/messages/site_importblog';
 import { hasTextOutsideComments } from '@nibleaf/shared/markup-scan';
 import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, snapshotContentFacts } from '@nibleaf/shared/publish-checks';
 import { buildNavTree, defaultLanguage, isPageTranslation, publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
-import { firstPage, pagesForLanguage, pagesForVersion } from '@nibleaf/shared/site-route';
+import { firstPage, pagesForLanguage, pagesForVersion, resolveSitePage } from '@nibleaf/shared/site-route';
 
 /**
  * Pre-publish quality checks, computed from the exact draft snapshot the
@@ -118,9 +118,12 @@ const IMPORTED_BLOG_TITLES = new Set<string>(
 /**
  * Checks about the site as readers enter it, in its default version:
  * - `home-untranslated`: readers who open the site in another language land on
- *   that language's own first page when the home page has no translation there
- *   (same rule as the reader, `resolveSitePage`). One per language, on the home
- *   page, with the language and the page they land on as `language|title`.
+ *   a page that isn't a translation of the home page. Where they land is asked
+ *   of the reader's own route resolution (`resolveSitePage` with an empty path),
+ *   so the warning clears exactly when the landing page changes. One per
+ *   language, on the home page; the detail is JSON with the language, the page
+ *   they land on, and the home page's translation key and path, so the dialog
+ *   can name the exact change.
  * - `blog-root-group`: the first section of a language's navigation is the
  *   importer's "Blog", so every docs page reads as a blog post in the sidebar
  *   and the breadcrumbs.
@@ -142,9 +145,11 @@ const siteStructureChecks = (
     const firstGroup = first && first.kind === 'GROUP' ? pages.find((page) => page.id === first.id) : undefined;
     if (firstGroup && IMPORTED_BLOG_TITLES.has(firstGroup.title.trim().normalize('NFC').toLocaleLowerCase())) add(firstGroup, 'blog-root-group');
     if (!home || code === defaultCode) continue;
-    const translated = pages.some((page) => page.kind === 'PAGE' && !page.hidden && isPageTranslation(home, page));
-    const landing = translated ? undefined : firstPage(pages, code);
-    if (landing) add(home, 'home-untranslated', `${code}|${landing.title}`);
+    // Only a language with pages of its own: otherwise readers get the default language's home.
+    if (!firstPage(pages, code)) continue;
+    const landing = resolveSitePage(snapshot, '', code, version.slug)?.page;
+    if (!landing || landing.languageCode !== code || isPageTranslation(home, landing)) continue;
+    add(home, 'home-untranslated', JSON.stringify({ language: code, landing: landing.title, key: home.translationKey ?? null, path: home.path }));
   }
 };
 

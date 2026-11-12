@@ -4807,6 +4807,8 @@
   "publish_checks_homeuntranslated": "Startseite nicht übersetzt",
   "publish_checks_homeuntranslatedhint": "Wer Ihre Website in diesen Sprachen öffnet, landet auf einer anderen Seite. Geben Sie Ihrer Startseite und ihrer Übersetzung in den Seiteneinstellungen denselben Übersetzungsschlüssel.",
   "publish_checks_homeuntranslatedlanding": "Leser auf {language}, die Ihre Website öffnen, landen auf „{title}“.",
+  "publish_checks_homeuntranslatedfixkey": "So beheben Sie es: Setzen Sie in den Seiteneinstellungen den Übersetzungsschlüssel der Startseite auf {language} auf „{key}“.",
+  "publish_checks_homeuntranslatedfixpath": "So beheben Sie es: Geben Sie der Startseite auf {language} die Adresse „{path}“ oder beiden Seiten in den Seiteneinstellungen denselben Übersetzungsschlüssel.",
   "publish_checks_blogrootgroup": "Dokumentation unter „Blog“",
   "publish_checks_blogrootgrouphint": "Leser sehen diesen Namen oben in der Seitenleiste und in jedem Navigationspfad. Benennen Sie den Bereich nach seinen Seiten um, etwa „Anleitungen“.",
   "publish_checks_emptypage": "Leere Seiten",

@@ -1,5 +1,6 @@
 import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
-import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { buildSnapshot, isPageTranslation, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { resolveSitePage } from '@nibleaf/shared/site-route';
 import { describe, expect, it } from 'vitest';
 import { collectPublishChecks } from './publish-checks';
 
@@ -329,9 +330,35 @@ describe('home-untranslated', () => {
       snapshot([home(), arabicFirst(), page({ path: 'intro', title: 'مقدمة', languageCode: 'ar', position: 3 })]),
       'home-untranslated',
     );
-    expect(checks).toEqual([
-      expect.objectContaining({ title: 'Get started', path: 'get-started', languageCode: 'en', detail: 'ar|كيف نضيف وسما', severity: 'warning' }),
-    ]);
+    expect(checks).toEqual([expect.objectContaining({ title: 'Get started', path: 'get-started', languageCode: 'en', severity: 'warning' })]);
+    // Where they land, and what to change: the home page's translation key (or its path).
+    expect(JSON.parse(checks[0]?.detail ?? '')).toEqual({ language: 'ar', landing: 'كيف نضيف وسما', key: 'start', path: 'get-started' });
+    const keyless = codes(snapshot([page({ path: 'get-started', title: 'Get started', position: 0 }), arabicFirst()]), 'home-untranslated');
+    expect(JSON.parse(keyless[0]?.detail ?? '')).toMatchObject({ key: null, path: 'get-started' });
+  });
+
+  it('follows where the reader actually lands: a translated home anywhere in the list clears it', () => {
+    // The Arabic "Tags" page first, the translated home fifth: the reader opens the translation.
+    const translated = page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', position: 5 });
+    const site = snapshot([home(), arabicFirst(), page({ path: 'b', title: 'ب', languageCode: 'ar', position: 2 }), translated]);
+    expect(resolveSitePage(site, '', 'ar')?.page.id).toBe(translated.id);
+    expect(codes(site, 'home-untranslated')).toEqual([]);
+  });
+
+  it('warns exactly when the page Arabic readers land on is not a translation of the home page', () => {
+    const variants = [
+      [home(), arabicFirst()],
+      [home(), arabicFirst(), page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', position: 5 })],
+      [home(), arabicFirst(), page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', hidden: true, position: 5 })],
+      [home(), arabicFirst(), page({ path: 'get-started', title: 'ابدأ', languageCode: 'ar', position: 9 })],
+      [home(), arabicFirst(), page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'other', position: 5 })],
+    ];
+    for (const pages of variants) {
+      const site = snapshot(pages);
+      const landing = resolveSitePage(site, '', 'ar')?.page;
+      const lands = Boolean(landing && landing.languageCode === 'ar' && !isPageTranslation(pages[0] as SnapshotPage, landing));
+      expect(codes(site, 'home-untranslated').length > 0, pages.map((item) => item.path).join(',')).toBe(lands);
+    }
   });
 
   it('stays quiet when the home page has a translation (by key or by path), or the language has no pages', () => {

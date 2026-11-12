@@ -4807,6 +4807,8 @@
   "publish_checks_homeuntranslated": "Page d’accueil non traduite",
   "publish_checks_homeuntranslatedhint": "Les lecteurs qui ouvrent votre site dans ces langues arrivent sur une autre page. Donnez à votre page d’accueil et à sa traduction la même clé de traduction dans les paramètres des pages.",
   "publish_checks_homeuntranslatedlanding": "Les lecteurs en {language} qui ouvrent votre site arrivent sur « {title} ».",
+  "publish_checks_homeuntranslatedfixkey": "Pour corriger, donnez à la page d’accueil en {language} la clé de traduction « {key} » dans les paramètres des pages.",
+  "publish_checks_homeuntranslatedfixpath": "Pour corriger, donnez à la page d’accueil en {language} l’adresse « {path} », ou donnez aux deux pages la même clé de traduction dans les paramètres des pages.",
   "publish_checks_blogrootgroup": "Documentation rangée sous « Blog »",
   "publish_checks_blogrootgrouphint": "Les lecteurs voient ce nom en haut de la barre latérale et dans chaque fil d’Ariane. Renommez la section d’après ses pages, par exemple « Guides ».",
   "publish_checks_emptypage": "Pages vides",

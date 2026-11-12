@@ -27,7 +27,7 @@ vi.mock('@/env.server', () => ({
   },
 }));
 
-import server from './server';
+import server, { resolveSiteSlug, slugCacheSize } from './server';
 
 const upstream = (body: unknown, statusCode = 200) => ({ body, ok: statusCode >= 200 && statusCode < 300, statusCode, headers: {} });
 
@@ -435,6 +435,8 @@ describe('/sites/<slug> on the platform host', () => {
     const response = await server.fetch(new Request('http://localhost:4310/sites/JOOD-PMS/guide/setup?lang=ar'));
     expect(response.status).toBe(301);
     expect(response.headers.get('location')).toBe('http://localhost:4310/sites/cmsiteid0001/guide/setup?lang=ar');
+    // A slug can be renamed and taken by another site: the browser must not keep this redirect.
+    expect(response.headers.get('cache-control')).toBe('no-store');
     expect(mocks.startHandler).not.toHaveBeenCalled();
   });
 
@@ -442,5 +444,30 @@ describe('/sites/<slug> on the platform host', () => {
     const response = await server.fetch(new Request('http://localhost:4310/sites/nobody-here'));
     expect(response.status).toBe(200);
     expect(mocks.startHandler).toHaveBeenCalled();
+  });
+
+  it('looks up only what can be a slug', async () => {
+    for (const address of ['a_b', 'has space', 'x'.repeat(64), '-leading', 'dé', '']) {
+      mocks.got.mockClear();
+      expect(await resolveSiteSlug(address), address).toBeNull();
+      expect(
+        mocks.got.mock.calls.some(([url]) => String(url).includes('/domains/slug')),
+        address,
+      ).toBe(false);
+    }
+  });
+
+  it('keeps at most 1,000 slug answers, and never keeps a failed lookup', async () => {
+    mocks.got.mockImplementation(async () => upstream({ data: { projectId: null } }));
+    for (let index = 0; index < 1100; index += 1) await resolveSiteSlug(`unknown-${index}`);
+    expect(slugCacheSize()).toBe(1000);
+
+    mocks.got.mockReset().mockRejectedValue(new Error('upstream down'));
+    const before = slugCacheSize();
+    expect(await resolveSiteSlug('fresh-slug')).toBeNull();
+    expect(slugCacheSize()).toBe(before);
+    mocks.got.mockReset().mockImplementation(async () => upstream({ data: { projectId: 'cmsiteid0002' } }));
+    // Tried again, not answered from a remembered failure.
+    expect(await resolveSiteSlug('fresh-slug')).toBe('cmsiteid0002');
   });
 });

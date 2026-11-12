@@ -4739,6 +4739,8 @@
   "publish_checks_homeuntranslated": "首页未翻译",
   "publish_checks_homeuntranslatedhint": "用这些语言打开网站的读者会进入另一个页面。请在页面设置中为首页及其译文设置相同的翻译键。",
   "publish_checks_homeuntranslatedlanding": "用{language}打开网站的读者会进入“{title}”。",
+  "publish_checks_homeuntranslatedfixkey": "修复方法：在页面设置中，将{language}首页的翻译键设为“{key}”。",
+  "publish_checks_homeuntranslatedfixpath": "修复方法：将{language}首页的地址设为“{path}”，或在页面设置中为两个页面设置相同的翻译键。",
   "publish_checks_blogrootgroup": "文档放在“Blog”下",
   "publish_checks_blogrootgrouphint": "读者会在侧边栏顶部和每条导航路径中看到这个名称。请按页面内容重命名该分区，例如“指南”。",
   "publish_checks_emptypage": "空白页面",

@@ -1202,16 +1202,16 @@ export const resolveDomainHost = async (host: string): Promise<string | null> =>
 };
 
 /** The id of the site served at `/sites/<slug>` on the platform host, so the app
- *  edge can send an address written with the site's slug to the site. Only a site
- *  that is live (published, not taken down) answers: a slug never tells anyone
- *  that an unpublished project exists. */
+ *  edge can send an address written with the site's slug to the site. Only a
+ *  site anyone may read answers: public, not taken down, and live. A private
+ *  site (readers or workspace only), an unpublished one and an unknown slug all
+ *  get the same answer after the same single lookup, so a slug never tells
+ *  anyone that a site exists. */
 export const resolveSiteSlug = async (slug: string): Promise<string | null> => {
   const clean = (slug ?? '').trim().toLowerCase();
   if (!clean || clean.length > 128) return null;
-  const project = await prisma.project.findUnique({ where: { slug: clean }, select: { id: true } });
-  if (!project) return null;
-  const live = await getLiveChrome(project.id);
-  if (!live || live.takedownAt) return null;
+  const project = await prisma.project.findUnique({ where: { slug: clean }, select: { id: true, accessMode: true, takedownAt: true } });
+  if (project?.accessMode !== 'PUBLIC' || project.takedownAt) return null;
   return (await loadLiveDeployment(project.id)) ? project.id : null;
 };
 

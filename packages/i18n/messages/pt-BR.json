@@ -4808,6 +4808,8 @@
   "publish_checks_homeuntranslated": "Página inicial sem tradução",
   "publish_checks_homeuntranslatedhint": "Quem abre seu site nesses idiomas chega a outra página. Dê à sua página inicial e à tradução dela a mesma chave de tradução nas Configurações da página.",
   "publish_checks_homeuntranslatedlanding": "Leitores em {language} que abrem seu site chegam a “{title}”.",
+  "publish_checks_homeuntranslatedfixkey": "Para corrigir, defina “{key}” como chave de tradução da página inicial em {language} nas Configurações da página.",
+  "publish_checks_homeuntranslatedfixpath": "Para corrigir, dê à página inicial em {language} o endereço “{path}”, ou dê às duas páginas a mesma chave de tradução nas Configurações da página.",
   "publish_checks_blogrootgroup": "Documentação dentro de “Blog”",
   "publish_checks_blogrootgrouphint": "Os leitores veem esse nome no topo da barra lateral e em cada trilha de navegação. Renomeie a seção de acordo com as páginas dela, como “Guias”.",
   "publish_checks_emptypage": "Páginas vazias",

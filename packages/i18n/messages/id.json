@@ -4739,6 +4739,8 @@
   "publish_checks_homeuntranslated": "Beranda belum diterjemahkan",
   "publish_checks_homeuntranslatedhint": "Pembaca yang membuka situs Anda dalam bahasa ini sampai di halaman lain. Beri beranda Anda dan terjemahannya kunci terjemahan yang sama di Pengaturan halaman.",
   "publish_checks_homeuntranslatedlanding": "Pembaca {language} yang membuka situs Anda sampai di “{title}”.",
+  "publish_checks_homeuntranslatedfixkey": "Untuk memperbaikinya, atur kunci terjemahan beranda {language} menjadi “{key}” di Pengaturan halaman.",
+  "publish_checks_homeuntranslatedfixpath": "Untuk memperbaikinya, beri beranda {language} alamat “{path}”, atau beri kedua halaman kunci terjemahan yang sama di Pengaturan halaman.",
   "publish_checks_blogrootgroup": "Dokumentasi di bawah “Blog”",
   "publish_checks_blogrootgrouphint": "Pembaca melihat nama ini di atas bilah samping dan di setiap breadcrumb. Ganti nama bagian sesuai isi halamannya, misalnya “Panduan”.",
   "publish_checks_emptypage": "Halaman kosong",

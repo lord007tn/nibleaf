@@ -4861,6 +4861,8 @@
   "publish_checks_homeuntranslated": "الصفحة الرئيسية غير مترجمة",
   "publish_checks_homeuntranslatedhint": "القرّاء الذين يفتحون موقعك بهذه اللغات يصلون إلى صفحة أخرى. أعطِ صفحتك الرئيسية وترجمتها «مفتاح الترجمة» نفسه في «إعدادات الصفحة».",
   "publish_checks_homeuntranslatedlanding": "قرّاء {language} الذين يفتحون موقعك يصلون إلى «{title}».",
+  "publish_checks_homeuntranslatedfixkey": "للإصلاح، اجعل «مفتاح الترجمة» للصفحة الرئيسية بلغة {language} هو «{key}» في «إعدادات الصفحة».",
+  "publish_checks_homeuntranslatedfixpath": "للإصلاح، أعطِ الصفحة الرئيسية بلغة {language} العنوان «{path}»، أو أعطِ الصفحتين «مفتاح الترجمة» نفسه في «إعدادات الصفحة».",
   "publish_checks_blogrootgroup": "مستندات ضمن قسم «المدونة»",
   "publish_checks_blogrootgrouphint": "يرى القرّاء هذا الاسم أعلى الشريط الجانبي وفي كل مسار تنقّل. سمِّ القسم بما تحويه صفحاته، مثل «الأدلة».",
   "publish_checks_emptypage": "صفحات فارغة",

@@ -4807,6 +4807,8 @@
   "publish_checks_homeuntranslated": "Home page not translated",
   "publish_checks_homeuntranslatedhint": "Readers who open your site in these languages land on another page. Give your home page and its translation the same Translation key in Page settings.",
   "publish_checks_homeuntranslatedlanding": "{language} readers who open your site land on “{title}”.",
+  "publish_checks_homeuntranslatedfixkey": "To fix it, set the Translation key of the {language} home page to “{key}” in Page settings.",
+  "publish_checks_homeuntranslatedfixpath": "To fix it, give the {language} home page the address “{path}”, or give both pages the same Translation key in Page settings.",
   "publish_checks_blogrootgroup": "Docs filed under “Blog”",
   "publish_checks_blogrootgrouphint": "Readers see this name at the top of the sidebar and in every breadcrumb. Rename the section to what its pages are, such as Guides.",
   "publish_checks_emptypage": "Empty pages",

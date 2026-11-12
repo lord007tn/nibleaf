@@ -4807,6 +4807,8 @@
   "publish_checks_homeuntranslated": "Página de inicio sin traducir",
   "publish_checks_homeuntranslatedhint": "Quienes abren tu sitio en estos idiomas llegan a otra página. Da a tu página de inicio y a su traducción la misma clave de traducción en Configuración de página.",
   "publish_checks_homeuntranslatedlanding": "Los lectores en {language} que abren tu sitio llegan a «{title}».",
+  "publish_checks_homeuntranslatedfixkey": "Para solucionarlo, pon «{key}» como clave de traducción de la página de inicio en {language} en Configuración de página.",
+  "publish_checks_homeuntranslatedfixpath": "Para solucionarlo, da a la página de inicio en {language} la dirección «{path}», o da a ambas páginas la misma clave de traducción en Configuración de página.",
   "publish_checks_blogrootgroup": "Documentación dentro de «Blog»",
   "publish_checks_blogrootgrouphint": "Los lectores ven este nombre arriba en la barra lateral y en cada ruta de navegación. Cambia el nombre de la sección por lo que contienen sus páginas, como «Guías».",
   "publish_checks_emptypage": "Páginas vacías",

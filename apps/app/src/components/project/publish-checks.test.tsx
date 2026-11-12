@@ -28,7 +28,13 @@ describe('site structure checks in the publish dialog', () => {
     const container = document.createElement('div');
     container.innerHTML = renderToStaticMarkup(
       <PublishChecks
-        checks={[check({ code: 'home-untranslated', detail: 'ar|كيف نضيف وسما' }), check({ code: 'home-untranslated', detail: 'fr|Étiquettes' })]}
+        checks={[
+          check({
+            code: 'home-untranslated',
+            detail: JSON.stringify({ language: 'ar', landing: 'كيف نضيف وسما', key: 'start', path: 'get-started' }),
+          }),
+          check({ code: 'home-untranslated', detail: JSON.stringify({ language: 'fr', landing: 'Étiquettes', key: null, path: 'get-started' }) }),
+        ]}
         loading={false}
         onFix={() => undefined}
         projectId="project-1"
@@ -37,6 +43,11 @@ describe('site structure checks in the publish dialog', () => {
     expect(container.textContent).toContain('Home page not translated');
     expect(container.textContent).toContain('Arabic readers who open your site land on “كيف نضيف وسما”.');
     expect(container.textContent).toContain('French readers who open your site land on “Étiquettes”.');
+    // The exact change: the home page's translation key, or (without one) its address.
+    expect(container.textContent).toContain('To fix it, set the Translation key of the Arabic home page to “start” in Page settings.');
+    expect(container.textContent).toContain(
+      'To fix it, give the French home page the address “/get-started”, or give both pages the same Translation key in Page settings.',
+    );
     // One row for the home page, with its Fix link.
     expect([...container.querySelectorAll('a[href*="editor"]')].map((link) => link.getAttribute('href'))).toEqual([
       '/app/projects/project-1/editor?page=home',

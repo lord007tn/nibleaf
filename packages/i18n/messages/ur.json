@@ -4798,6 +4798,8 @@
   "publish_checks_homeuntranslated": "ہوم پیج کا ترجمہ نہیں ہوا",
   "publish_checks_homeuntranslatedhint": "جو قارئین ان زبانوں میں آپ کی سائٹ کھولتے ہیں وہ کسی دوسرے صفحے پر پہنچتے ہیں۔ صفحہ کی ترتیبات میں اپنے ہوم پیج اور اس کے ترجمے کو ترجمے کی ایک ہی کلید دیں۔",
   "publish_checks_homeuntranslatedlanding": "{language} میں آپ کی سائٹ کھولنے والے قارئین «{title}» پر پہنچتے ہیں۔",
+  "publish_checks_homeuntranslatedfixkey": "درست کرنے کے لیے، صفحہ کی ترتیبات میں {language} ہوم پیج کی ترجمے کی کلید “{key}” رکھیں۔",
+  "publish_checks_homeuntranslatedfixpath": "درست کرنے کے لیے، {language} ہوم پیج کو پتا “{path}” دیں، یا صفحہ کی ترتیبات میں دونوں صفحات کو ترجمے کی ایک ہی کلید دیں۔",
   "publish_checks_blogrootgroup": "«Blog» کے تحت دستاویزات",
   "publish_checks_blogrootgrouphint": "قارئین یہ نام سائیڈبار کے اوپر اور ہر بریڈکرمب میں دیکھتے ہیں۔ حصے کا نام اس کے صفحات کے مطابق رکھیں، جیسے «رہنما»۔",
   "publish_checks_emptypage": "خالی صفحات",

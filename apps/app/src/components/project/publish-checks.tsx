@@ -189,6 +189,16 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
   );
 }
 
+/** A `home-untranslated` detail: JSON from the server's check. */
+const homeLanding = (detail: string): { language: string; landing: string; key: string | null; path: string } => {
+  try {
+    const parsed = JSON.parse(detail) as Partial<{ language: string; landing: string; key: string | null; path: string }>;
+    return { language: parsed.language ?? '', landing: parsed.landing ?? '', key: parsed.key ?? null, path: parsed.path ?? '' };
+  } catch {
+    return { language: detail, landing: '', key: null, path: '' };
+  }
+};
+
 /** The evidence under a row: the broken links, image sources or stray text,
  *  read left to right as code; or, for a duplicate, the other page. */
 function CheckDetails({ code, details, tooLong = [] }: { code: CheckCode; details: string[]; tooLong?: string[] }) {
@@ -198,18 +208,21 @@ function CheckDetails({ code, details, tooLong = [] }: { code: CheckCode; detail
     return <span>{t('publish.checks.duplicateOf', { path: `/${details[0] ?? ''}` })}</span>;
   }
   if (code === 'home-untranslated') {
-    // `language|title`: who lands where instead of on a translation of this page.
+    // Who lands where instead of on a translation of this page, and the exact
+    // change that sends them to one.
     return (
       <span className="flex flex-col gap-0.5">
         {details.map((detail) => {
-          const split = detail.indexOf('|');
-          const code = split < 0 ? detail : detail.slice(0, split);
+          const landing = homeLanding(detail);
+          const language = languageName(landing.language, undefined, locale);
           return (
-            <span key={detail}>
-              {t('publish.checks.homeUntranslatedLanding', {
-                language: languageName(code, undefined, locale),
-                title: split < 0 ? '' : detail.slice(split + 1),
-              })}
+            <span className="flex flex-col gap-0.5" key={detail}>
+              <span>{t('publish.checks.homeUntranslatedLanding', { language, title: landing.landing })}</span>
+              <span>
+                {landing.key
+                  ? t('publish.checks.homeUntranslatedFixKey', { language, key: landing.key })
+                  : t('publish.checks.homeUntranslatedFixPath', { language, path: `/${landing.path}` })}
+              </span>
             </span>
           );
         })}

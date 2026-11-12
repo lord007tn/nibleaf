@@ -4681,6 +4681,8 @@ export const MESSAGE_IDS = {
   'publish.checks.homeUntranslated': 'publish_checks_homeuntranslated',
   'publish.checks.homeUntranslatedHint': 'publish_checks_homeuntranslatedhint',
   'publish.checks.homeUntranslatedLanding': 'publish_checks_homeuntranslatedlanding',
+  'publish.checks.homeUntranslatedFixKey': 'publish_checks_homeuntranslatedfixkey',
+  'publish.checks.homeUntranslatedFixPath': 'publish_checks_homeuntranslatedfixpath',
   'publish.checks.blogRootGroup': 'publish_checks_blogrootgroup',
   'publish.checks.blogRootGroupHint': 'publish_checks_blogrootgrouphint',
   'publish.checks.emptyPage': 'publish_checks_emptypage',
