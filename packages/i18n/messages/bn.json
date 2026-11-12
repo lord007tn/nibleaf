@@ -4777,5 +4777,10 @@
   "publishes_truncated": "{total}টি পরিবর্তিত পৃষ্ঠার মধ্যে প্রথম {shown}টি দেখানো হচ্ছে।",
   "overview_activity_viewall": "সব দেখুন",
   "publishes_toolarge": "এই সংস্করণটি এখানে তুলনা করার জন্য খুব বড়।",
-  "publishes_nosnapshot": "এই সংস্করণের প্রকাশিত কপি আর সংরক্ষিত নেই, তাই এটি তুলনা করা বা ফিরিয়ে আনা যাবে না।"
+  "publishes_nosnapshot": "এই সংস্করণের প্রকাশিত কপি আর সংরক্ষিত নেই, তাই এটি তুলনা করা বা ফিরিয়ে আনা যাবে না।",
+  "overview_nudge_progress": "3টির মধ্যে {count}টি সম্পন্ন",
+  "overview_live_willbeliveat": "প্রকাশের পর সাইটের ঠিকানা হবে {url}",
+  "overview_live_availableafterpublish": "প্রথমবার প্রকাশের পর এই ঠিকানাটি খোলা যাবে।",
+  "overview_nudge_connecting": "সংযোগ হচ্ছে — ডোমেইন সেটআপ সম্পূর্ণ করুন।",
+  "overview_nudge_stepdone": "সম্পন্ন: {step}"
 }

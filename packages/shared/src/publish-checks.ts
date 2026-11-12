@@ -32,6 +32,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { documentationComponentContractEntries, documentationReaderTag } from './documentation-component-contract';
+import { matchTags } from './markup-scan';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
 import { createLinkResolver } from './site-links';
@@ -237,7 +238,8 @@ const htmlLinks = (tree: Root, content: string): string[] => {
 
 /** Raw `<img>` tags (as rehype-raw renders them) without a usable alt. */
 const htmlImagesWithoutAlt = (html: string): string[] =>
-  [...html.matchAll(HTML_IMAGE)].flatMap(([tag]) => {
+  // matchTags: the same tags as matchAll, read in linear time when a `>` is missing.
+  matchTags(html, HTML_IMAGE).flatMap(([tag]) => {
     const alt = /\balt\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(tag);
     if (alt && (alt[1] ?? alt[2] ?? '').trim()) return [];
     return [
