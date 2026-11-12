@@ -473,7 +473,8 @@ export interface SitePage {
   languages: Array<{ code: string; isDefault: boolean; path: string | null }>;
   /** Reader-facing date and language names, formatted once on the server (see lib/reader-text.ts). */
   readerText?: ReaderText;
-  breadcrumbs: Array<{ title: string; path: string }>;
+  /** `section`: a group or category heading, shown as text rather than a link. */
+  breadcrumbs: Array<{ title: string; path: string; section?: true }>;
   prev: { title: string; path: string } | null;
   next: { title: string; path: string } | null;
 }
