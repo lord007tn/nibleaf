@@ -15,6 +15,13 @@ provider. No dev server or container is started. Personal Chrome and the shared
 preview host were unavailable in the capture environment, so captures use
 Playwright's installed Chromium.
 
+The final batch was captured together on 2026-11-12: eight journeys, eight GIFs,
+and 44 PNGs. Assertions cover 0 → 1 → 2 progress, Publish becoming the current
+step, clipboard readback, saved content, a connecting domain, no browser errors,
+and no horizontal page overflow. Screenshots settle CSS animations before
+capture. The standalone build uses the browser halves of the origin helpers;
+unused public reader search throws if invoked instead of returning a fake result.
+
 Each `before|after-en|ar-1440|390.gif` shows one journey. PNGs show the initial,
 edited, and domain states, with intermediate editor/form/copy frames. GIFs are
 checked below 5 MB. `evidence.json` records the requests and assertions.

@@ -54,13 +54,18 @@ try {
         {
           name: 'overview-journey',
           enforce: 'pre',
-          resolveId(source, importer) {
+          resolveId(source) {
             if (source.startsWith('@nibleaf/')) return appRequire.resolve(source);
-            if (source === './api-origin' && importer?.replaceAll('\\', '/').endsWith('/services/api.ts')) return '\0fixture-api-origin';
-            if (source === './api-origin' && importer?.replaceAll('\\', '/').endsWith('/services/auth-client.ts')) return '\0fixture-api-origin';
           },
           load(file) {
-            if (file === '\0fixture-api-origin') return 'export const apiOrigin = () => window.location.origin;';
+            // Plain Vite has no Start import-protection transform. Use the
+            // browser halves of the origin helpers in the client-only harness.
+            if (file.replaceAll('\\', '/').endsWith('/src/services/api-origin.ts')) return 'export const apiOrigin = () => window.location.origin;';
+            if (file.replaceAll('\\', '/').endsWith('/src/lib/site-origin.ts')) return 'export const customDomainOrigin = () => undefined;';
+            // The API barrel also exports public reader search, outside this
+            // dashboard journey. Fail if it is unexpectedly invoked.
+            if (file.replaceAll('\\', '/').endsWith('/src/functions/site-search.ts'))
+              return 'export const searchSiteFn = () => { throw new Error("Reader search is outside this dashboard fixture"); };';
             if (phase === 'before' && file.replaceAll('\\', '/').endsWith(`/${overviewFile}`)) return beforeSource;
           },
         },
@@ -177,7 +182,7 @@ try {
         const frames = [];
         const frame = async (state) => {
           const path = resolve(output, `${name}-${state}.png`);
-          await page.screenshot({ path });
+          await page.screenshot({ path, animations: 'disabled' });
           frames.push(path);
         };
         const heading = () => page.getByRole('heading', { name: project.name, exact: true });
@@ -185,7 +190,10 @@ try {
         await page.goto(`${origin}${overview}?locale=${locale}`);
         await heading().waitFor();
         await page.getByText(catalog.overview_nudge_title, { exact: true }).waitFor();
-        if (phase === 'after') await count().waitFor();
+        if (phase === 'after') {
+          await count().waitFor();
+          assert.equal(await count().textContent(), locale === 'ar' ? 'اكتمل 0 من أصل 3' : '0 of 3 done');
+        }
         await frame('initial');
         if (phase === 'after') {
           await page.getByRole('button', { name: catalog.deploy_copyaddress, exact: true }).click();
@@ -207,7 +215,11 @@ try {
         await frame('editing');
         await page.getByRole('link', { name: catalog.overview_title, exact: true }).first().click();
         await heading().waitFor();
-        if (phase === 'after') await page.locator('ol [role="img"]').waitFor();
+        if (phase === 'after') {
+          await page.locator('ol [role="img"]').waitFor();
+          assert.equal(await count().textContent(), locale === 'ar' ? 'اكتملت خطوة واحدة من أصل 3' : '1 of 3 done');
+          assert.equal(await page.locator('ol li[aria-current="step"]').getByRole('link').getAttribute('aria-label'), catalog.overview_nudge_step2);
+        }
         await frame('edited');
         await page.getByRole('link', { name: catalog.overview_nudge_step3, exact: true }).click();
         const domainInput = page.getByPlaceholder('docs.yoursite.com');
