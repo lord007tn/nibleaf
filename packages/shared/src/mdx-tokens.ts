@@ -37,7 +37,9 @@ const FORMATTING_TAGS: ReadonlySet<string> = new Set(['sub', 'sup', 'u']);
 const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/;
 
 const ACTIVE_OPEN = /^<(script|style|iframe|object|embed)\b/i;
-const ACTIVE_TAG = /<(\/?)(script|style|iframe|object|embed)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
+/** Where an `ACTIVE_TAG` match (`/<(\/?)(script|style|iframe|object|embed)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi`)
+ *  can start; `nextActiveTag` reads the rest. */
+const ACTIVE_TAG_OPEN = /<(\/?)(script|style|iframe|object|embed)\b/gi;
 const ESM_LINE = /^\s*(?:import|export)(?:\s|\{|\*)/;
 /** A component tag or expression longer than this reads as text. */
 const MAX_TAG_LENGTH = 8192;
@@ -93,20 +95,72 @@ const tagEnd = (source: string, start: number): number => {
   return -1;
 };
 
-/** The end of an active block opened at `start`: after the close tag that balances it, or at
- *  `limit` (the next fence), so an unclosed `<style>` hides at most its own stretch of prose. */
-const activeEnd = (source: string, start: number, limit: number): number => {
-  ACTIVE_TAG.lastIndex = start;
-  let depth = 0;
-  for (let match = ACTIVE_TAG.exec(source); match && match.index < limit; match = ACTIVE_TAG.exec(source)) {
-    const end = match.index + match[0].length;
-    if (match[1]) {
-      depth -= 1;
-      if (depth <= 0) return Math.min(end, limit);
-    } else if (!match[0].endsWith('/>')) depth += 1;
-    else if (depth === 0) return end;
+/** The last `"` and `'` in the source being read, found once per document. */
+/** The last `"` and `'` in the prose being scanned, found once per scan. Reset
+ *  where a scan starts (`tokenizeProse`, `activeBlockEnd`) rather than keyed by
+ *  the text: comparing two equal texts reads them whole, on every lookup. */
+let quoteBounds: { double: number; single: number } | null = null;
+const lastQuote = (source: string, quote: string): number => {
+  quoteBounds ??= { double: source.lastIndexOf('"'), single: source.lastIndexOf("'") };
+  return quote === '"' ? quoteBounds.double : quoteBounds.single;
+};
+
+/**
+ * The next match of `ACTIVE_TAG` at or after `from`, as `ACTIVE_TAG.exec` would
+ * find it, or null. Read by hand and charged to the scan budget, so the time
+ * stays linear in the text's length. `'spent'` once the budget is used up.
+ */
+const nextActiveTag = (source: string, from: number): { index: number; end: number; closing: boolean } | null | 'spent' => {
+  for (let at = from; ; ) {
+    ACTIVE_TAG_OPEN.lastIndex = at;
+    const open = ACTIVE_TAG_OPEN.exec(source);
+    if (!open) return null;
+    // `(?:[^>"']|"[^"]*"|'[^']*')*>`: a quote must close before the `>` counts.
+    let index = open.index + open[0].length;
+    let end = -1;
+    while (index < source.length) {
+      const character = source[index] as string;
+      if (character === '>') {
+        end = index + 1;
+        break;
+      }
+      if (character === '"' || character === "'") {
+        const close = lastQuote(source, character) > index ? source.indexOf(character, index + 1) : -1;
+        if (close < 0) break;
+        index = close;
+      }
+      index += 1;
+    }
+    scanBudget -= index - open.index;
+    if (end >= 0) return { index: open.index, end, closing: open[1] === '/' };
+    if (scanBudget < 0) return 'spent';
+    at = open.index + 1;
   }
-  return limit;
+};
+
+/** The end of an active block opened at `start`: after the close tag that balances it, or at
+ *  `limit` (the next fence), so an unclosed `<style>` hides at most its own stretch of prose.
+ *  Once the scan budget is spent, the block runs to `limit`: what can't be read stays hidden. */
+const activeEnd = (source: string, start: number, limit: number): number => {
+  let depth = 0;
+  for (let from = start; ; ) {
+    const match = nextActiveTag(source, from);
+    if (match === 'spent' || !match || match.index >= limit) return limit;
+    if (match.closing) {
+      depth -= 1;
+      if (depth <= 0) return Math.min(match.end, limit);
+    } else if (source[match.end - 2] !== '/') depth += 1;
+    else if (depth === 0) return match.end;
+    from = match.end;
+  }
+};
+
+/** `activeEnd` for a document read on its own (its own scan budget), to the end
+ *  of the text: what the tokenizer finds for an active block opened at `start`. */
+export const activeBlockEnd = (source: string, start: number): number => {
+  scanBudget = 64 * source.length + 65_536;
+  quoteBounds = null;
+  return activeEnd(source, start, source.length);
 };
 
 /** The end of a balanced `{…}` expression at `start`, or -1: an unbalanced brace is text. */
@@ -162,6 +216,7 @@ const escapedAt = (source: string, index: number): boolean => {
 /** Tokenize one stretch of prose that holds no fence. `components` holds the lowercase names read
  *  as components; like HTML, tag names match whatever their case. */
 const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: MdxToken[]): void => {
+  quoteBounds = null;
   // Text between tokens is always one contiguous stretch of the source, so it is
   // taken as a single slice when a token (or the end) closes it. Building it one
   // character at a time is quadratic in V8 on long prose (hundreds of KB).
