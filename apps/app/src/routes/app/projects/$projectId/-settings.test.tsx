@@ -146,7 +146,7 @@ vi.mock('@/features/people/components/site-team-page', () => ({ SiteTeamPage: ()
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
 vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
 vi.mock('@/components/project-settings/smart-ai-section', () => ({ SmartAiSection: () => <div data-testid="smart-ai-settings" /> }));
-vi.mock('@/components/settings/api-keys-tab', () => ({ ApiKeysTab: () => null }));
+vi.mock('@/features/ai-assistants/components/ai-assistants-page', () => ({ AiAssistantsPage: () => null }));
 vi.mock('@/components/settings/git-tab', () => ({ GitTab: () => null }));
 vi.mock('@/components/settings/import-tab', () => ({ ImportTab: () => null }));
 vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => null }));
