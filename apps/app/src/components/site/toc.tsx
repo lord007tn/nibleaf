@@ -18,16 +18,19 @@ export function selectActiveHeading(headings: { id: string; top: number }[], thr
 
 type LanguageAttributes = { lang?: string; dir?: 'ltr' | 'rtl' };
 
-/** `labelLanguage`: the reader's `lang`/`dir` for the label, when the article
- *  (and so its headings) is in another language, as on a fallback page. */
+/** `labelLanguage`: the reader's `lang`/`dir` for the label (the summary and
+ *  the outline's name), and `itemsLanguage` the article's for its headings, when
+ *  the two differ, as on a fallback page. */
 export function MobileTableOfContents({
   headings,
   label,
   labelLanguage,
+  itemsLanguage,
 }: {
   headings: TocHeading[];
   label: string;
   labelLanguage?: LanguageAttributes;
+  itemsLanguage?: LanguageAttributes;
 }) {
   if (!headings.some((heading) => heading.depth <= 3)) return null;
   return (
@@ -36,23 +39,26 @@ export function MobileTableOfContents({
         {label}
       </summary>
       <div className="max-h-[50dvh] overflow-y-auto px-4 pb-3">
-        <TableOfContents headings={headings} label={label} mobile />
+        <TableOfContents headings={headings} label={label} mobile labelLanguage={labelLanguage} itemsLanguage={itemsLanguage} />
       </div>
     </details>
   );
 }
 
 /** `itemsLanguage`: the article's `lang`/`dir` for the headings listed, when it
- *  differs from the reader's (the label around them stays in the reader's). */
+ *  differs from the reader's; `labelLanguage`: the reader's for the outline's own
+ *  name, where it sits inside the article (the mobile outline). */
 export function TableOfContents({
   headings,
   label,
   mobile = false,
+  labelLanguage,
   itemsLanguage,
 }: {
   headings: TocHeading[];
   label: string;
   mobile?: boolean;
+  labelLanguage?: LanguageAttributes;
   itemsLanguage?: LanguageAttributes;
 }) {
   const items = headings.filter((heading) => heading.depth <= 3);
@@ -99,6 +105,7 @@ export function TableOfContents({
   return (
     <nav
       aria-label={label}
+      {...labelLanguage}
       data-theme-component="toc"
       className={cn(
         !mobile && 'sticky top-[calc(var(--site-header-h,4rem)+3rem)] max-h-[calc(100vh-var(--site-header-h,4rem)-4rem)] overflow-y-auto',

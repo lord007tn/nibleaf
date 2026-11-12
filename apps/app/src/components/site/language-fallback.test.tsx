@@ -266,6 +266,13 @@ describe('everything around a fallback article follows the reader (#481)', () =>
     const outline = view.querySelector('[data-theme-region="mobile-toc"] > summary');
     expect(outline?.textContent).toBe(ar('onThisPage'));
     expect(outline?.getAttribute('lang')).toBe('ar');
+    // Inside the mobile outline: the nav is named in Arabic and marked so; its headings stay English.
+    const mobileNav = view.querySelector('[data-theme-region="mobile-toc"] nav');
+    expect(mobileNav?.getAttribute('aria-label')).toBe(ar('onThisPage'));
+    expect(mobileNav?.getAttribute('lang')).toBe('ar');
+    expect(mobileNav?.getAttribute('dir')).toBe('rtl');
+    expect(mobileNav?.querySelector('ul')?.getAttribute('lang')).toBe('en');
+    expect(mobileNav?.querySelector('ul')?.getAttribute('dir')).toBe('ltr');
     const pager = view.querySelector('[data-theme-region="pager"]');
     expect(pager?.getAttribute('lang')).toBe('ar');
     expect(pager?.textContent).toContain(ar('previous'));
@@ -296,6 +303,30 @@ describe('everything around a fallback article follows the reader (#481)', () =>
     ]);
     expect([...(crumbs?.querySelectorAll('a') ?? [])].map((link) => link.textContent)).toEqual(['Front desk']);
   });
+
+  it('marks labels the reader generates inside the article as Arabic, and leaves authored titles English', async () => {
+    const content = [
+      '<Expandable>\n\nNested fields.\n\n</Expandable>',
+      '<Accordion title="Authored question">\n\nAnswer.\n\n</Accordion>',
+      '<Tabs>\n<Tab>\n\nOne\n\n</Tab>\n<Tab title="Second">\n\nTwo\n\n</Tab>\n</Tabs>',
+    ].join('\n\n');
+    const data = page({ page: { ...page().page, content } });
+    await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(content);
+    const view = await renderPage(data, shell('ar'));
+    const ar = siteContentT('ar');
+    const generated = [...view.querySelectorAll('article [lang="ar"]')].map((label) => [label.textContent, label.getAttribute('dir')]);
+    expect(generated).toEqual(
+      expect.arrayContaining([
+        [ar('showProperties'), 'rtl'],
+        [`${ar('tab')} 1`, 'rtl'],
+      ]),
+    );
+    // Authored titles are content: no reader language on them.
+    for (const authored of ['Authored question', 'Second']) {
+      const element = [...view.querySelectorAll('article button, article span')].find((node) => node.textContent === authored);
+      expect(element?.closest('[lang]')?.getAttribute('lang'), authored).toBe('en');
+    }
+  }, 60_000);
 
   it('keeps links in the article in Arabic and labels its controls in Arabic', async () => {
     const content = ['See [the front desk](/front-desk).', '## Open the calendar', '```js\nopen();\n```'].join('\n\n');

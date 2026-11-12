@@ -346,7 +346,12 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
       {/* Below the wide breakpoint the outline sits after the page header, where readers look for it. */}
       {showToc ? (
         <div className="mt-6">
-          <MobileTableOfContents headings={page.headings} label={tReader('onThisPage')} labelLanguage={chromeLanguage} />
+          <MobileTableOfContents
+            headings={page.headings}
+            label={tReader('onThisPage')}
+            labelLanguage={chromeLanguage}
+            itemsLanguage={contentLanguage}
+          />
         </div>
       ) : null}
       <ArticleBody
