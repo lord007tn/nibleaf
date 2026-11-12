@@ -33,13 +33,22 @@ const TARGETS: Record<string, EditorLinkTarget> = {
   '/guides/setup#install': { kind: 'page', pageId: 'page-setup' },
   '/nowhere': { kind: 'missing' },
   'https://example.com/docs': { kind: 'web' },
+  // Into another docs version whose pages aren't loaded yet.
+  '/v2/setup': { kind: 'unknown' },
+  '#options': { kind: 'other' },
+  '/files/guide.pdf': { kind: 'other' },
 };
+/** Where links lead once every version's pages are loaded. */
+const RESOLVED: Record<string, EditorLinkTarget> = { '/v2/setup': { kind: 'page', pageId: 'page-v2-setup' } };
 
-const makeLinks = (): EditorLinks & { open: ReturnType<typeof vi.fn> } => ({
-  resolve: (href) => TARGETS[href] ?? { kind: 'other' },
-  open: vi.fn(),
-  href: (pageId) => `/app/projects/project-1/editor?page=${pageId}`,
+const makeLinks = () => ({
+  resolve: (href: string): EditorLinkTarget => TARGETS[href] ?? { kind: 'other' },
+  open: vi.fn<(pageId: string) => void>(),
+  href: (pageId: string) => `/app/projects/project-1/editor?page=${pageId}`,
+  resolveAsync: vi.fn(async (href: string): Promise<EditorLinkTarget> => RESOLVED[href] ?? TARGETS[href] ?? { kind: 'other' }),
+  loadVersions: vi.fn(),
 });
+type TestLinks = ReturnType<typeof makeLinks>;
 
 const roots: Array<ReturnType<typeof createRoot>> = [];
 const editors: Editor[] = [];
@@ -65,7 +74,7 @@ afterEach(async () => {
 });
 
 /** An editor whose only paragraph is a link to `href`. */
-function editorWithLink(href: string, { links, editable = true }: { links?: EditorLinks | null; editable?: boolean } = {}) {
+function editorWithLink(href: string, { links, editable = true }: { links?: TestLinks | null; editable?: boolean } = {}) {
   const host = document.createElement('div');
   host.lang = 'en';
   document.body.append(host);
@@ -252,5 +261,85 @@ describe('internal links keep their address (PUBLIC-18)', () => {
     editor.commands.selectAll();
     const { dom } = editor.view.serializeForClipboard(editor.state.selection.content());
     expect(dom.querySelector('a')?.getAttribute('href')).toBe('/guides/setup#install');
+  });
+});
+
+describe('council fixes: clicks that edit, and links that keep their default (PUBLIC-18)', () => {
+  it('an #anchor click and a /files/guide.pdf click keep the browser’s behaviour', () => {
+    const links = makeLinks();
+    for (const href of ['#options', '/files/guide.pdf']) {
+      const { anchor } = editorWithLink(href, { links });
+      expect(click(anchor).defaultPrevented).toBe(false);
+      expect(click(anchor, { ctrlKey: true }).defaultPrevented).toBe(false);
+      expect(click(anchor, { button: 1 }, 'auxclick').defaultPrevented).toBe(false);
+    }
+    expect(windowOpen).not.toHaveBeenCalled();
+  });
+
+  it('page and missing-page clicks are prevented', () => {
+    const links = makeLinks();
+    expect(click(editorWithLink('configuration', { links }).anchor).defaultPrevented).toBe(true);
+    expect(click(editorWithLink('/nowhere', { links }).anchor).defaultPrevented).toBe(true);
+  });
+
+  it('Shift+click that extends a selection selects, and opens no tab', () => {
+    const links = makeLinks();
+    const { editor, anchor } = editorWithLink('configuration', { links });
+    editor.commands.setTextSelection({ from: 1, to: 4 });
+    expect(click(anchor, { shiftKey: true }).defaultPrevented).toBe(true);
+    expect(windowOpen).not.toHaveBeenCalled();
+    expect(links.open).not.toHaveBeenCalled();
+  });
+
+  it('a Ctrl+click while composing text (IME) opens no tab', () => {
+    const links = makeLinks();
+    const { editor, anchor } = editorWithLink('configuration', { links });
+    Object.defineProperty(editor.view, 'composing', { configurable: true, get: () => true });
+    click(anchor, { ctrlKey: true });
+    click(anchor, { button: 1 }, 'auxclick');
+    expect(windowOpen).not.toHaveBeenCalled();
+  });
+
+  it('a drag-select that ends on a link opens no tab', () => {
+    const links = makeLinks();
+    const { anchor } = editorWithLink('configuration', { links });
+    // jsdom has no layout: ProseMirror's own mousedown handling asks for one.
+    Object.assign(document, { elementFromPoint: () => null });
+    anchor.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0, clientX: 10, clientY: 10, detail: 1 }));
+    click(anchor, { ctrlKey: true, clientX: 180, clientY: 12, detail: 1 });
+    expect(windowOpen).not.toHaveBeenCalled();
+    // A click where the pointer went down still opens.
+    anchor.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0, clientX: 40, clientY: 10, detail: 1 }));
+    click(anchor, { ctrlKey: true, clientX: 41, clientY: 10, detail: 1 });
+    expect(windowOpen).toHaveBeenCalledWith('/app/projects/project-1/editor?page=page-config', '_blank', 'noopener');
+  });
+});
+
+describe('council fixes: links into another docs version (PUBLIC-18)', () => {
+  it('a link to /v2/<page> is not marked missing: Open stays available, loads the version, and opens the page', async () => {
+    const links = makeLinks();
+    const { open, onDone } = await renderPanel('/v2/setup', links);
+    expect(open.getAttribute('aria-label')).toBe(translate('editor.link.openPage'));
+    expect(open.getAttribute('aria-disabled') === 'true' || open.hasAttribute('disabled')).toBe(false);
+    expect(reasonOf(open)).toBe('');
+    expect(links.loadVersions).toHaveBeenCalled();
+    await act(async () => open.click());
+    expect(links.resolveAsync).toHaveBeenCalledWith('/v2/setup');
+    expect(onDone).toHaveBeenCalled();
+    expect(links.open).toHaveBeenCalledWith('page-v2-setup');
+  });
+
+  it('Ctrl+click on a link into another version opens that page’s editor in a new tab once resolved', async () => {
+    const links = makeLinks();
+    const tab = { opener: {} as unknown, location: { replace: vi.fn() }, close: vi.fn() };
+    windowOpen.mockReturnValue(tab);
+    const { anchor } = editorWithLink('/v2/setup', { links });
+    expect(click(anchor, { ctrlKey: true }).defaultPrevented).toBe(true);
+    // Opened during the click, so the browser allows it, then sent to the page.
+    expect(windowOpen).toHaveBeenCalledWith('about:blank', '_blank');
+    await act(() => Promise.resolve()); // Let the resolution settle.
+    expect(tab.opener).toBeNull();
+    expect(tab.location.replace).toHaveBeenCalledWith('/app/projects/project-1/editor?page=page-v2-setup');
+    expect(tab.close).not.toHaveBeenCalled();
   });
 });

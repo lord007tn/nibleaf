@@ -119,6 +119,22 @@ describe('editor link resolution (PUBLIC-18)', () => {
     expect(resolveFrom('v2-intro', site)('/new-in-v2')).toEqual({ kind: 'page', pageId: 'v2-new' });
   });
 
+  it('does not call a link into another docs version missing before that version’s pages load', () => {
+    // Editing the default version: only its pages are loaded.
+    const loading = editorSiteSnapshot({ project, languages, branches, pages, branchId: 'main' });
+    expect(editorLinkResolver(loading, 'intro', { allVersions: false })('/v2/new-in-v2')).toEqual({ kind: 'unknown' });
+    // Once every version's pages are in, it resolves for real: a page, or missing.
+    const v2Pages = [node('v2-new', 'new-in-v2', { branchId: 'v2' })];
+    const loaded = editorSiteSnapshot({ project, languages, branches, pages: [...pages, ...v2Pages], branchId: 'main' });
+    expect(editorLinkResolver(loaded, 'intro', { allVersions: true })('/v2/new-in-v2')).toEqual({ kind: 'page', pageId: 'v2-new' });
+    expect(editorLinkResolver(loaded, 'intro', { allVersions: true })('/v2/nowhere')).toEqual({ kind: 'missing' });
+  });
+
+  it('a site with one version knows a missing link is missing without loading more', () => {
+    const single = editorSiteSnapshot({ project, languages, branches: branches.filter((branch) => branch.isDefault), pages, branchId: 'main' });
+    expect(editorLinkResolver(single, 'intro', { allVersions: false })('/nowhere')).toEqual({ kind: 'missing' });
+  });
+
   it('claims nothing about a site link while the pages load', () => {
     expect(editorLinkResolver(null, 'intro')('/configuration')).toEqual({ kind: 'unknown' });
     expect(editorLinkResolver(null, 'intro')('https://example.com')).toEqual({ kind: 'web' });

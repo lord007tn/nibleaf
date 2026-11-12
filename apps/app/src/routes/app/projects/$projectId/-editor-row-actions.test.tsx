@@ -49,7 +49,11 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: mocks.toast, success: mocks.success } }));
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ getQueryData: () => undefined }) }));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ getQueryData: () => undefined }),
+  useQueries: ({ combine }: { combine: (results: unknown[]) => unknown }) => combine([]),
+}));
+vi.mock('@/components/editor/linked-page-history', () => ({ useLinkedPageHistory: () => vi.fn() }));
 vi.mock('@/hooks/api', async () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Test site', config: {} } }),
   useProjectMembers: () => ({ data: { members: [{ role: mocks.role, user: { id: 'user-1' } }] }, isPending: mocks.membersPending }),
@@ -78,6 +82,7 @@ vi.mock('@/hooks/api', async () => ({
 vi.mock('@/hooks/api/query-options', () => ({
   aiDraftCapabilityQueryOptions: (id: string) => ({ queryKey: ['workspace-ai', id, 'draft-capability'] }),
   commentsQueryOptions: vi.fn(),
+  pagesQueryOptions: vi.fn(),
   pageQueryOptions: vi.fn(),
   projectMembersQueryOptions: (id: string) => ({ queryKey: ['members', id] }),
 }));

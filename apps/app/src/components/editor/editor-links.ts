@@ -16,7 +16,9 @@ import type { Branch, Language, OpenApiConfiguration, PageNode, Project } from '
  * - `missing`: a link into the site that reaches nothing there.
  * - `other`: a site link that isn't a page in the editor: an in-page `#anchor`,
  *   a file, or a route such as the changelog or the API reference.
- * - `unknown`: the site's pages are still loading.
+ * - `unknown`: not known yet: the site's pages are still loading, or the link
+ *   may lead into another docs version whose pages haven't been loaded. It may
+ *   be a page, so it can be followed (`resolveAsync` loads what it needs).
  */
 export type EditorLinkTarget = { kind: 'web' } | { kind: 'page'; pageId: string } | { kind: 'missing' } | { kind: 'other' } | { kind: 'unknown' };
 
@@ -28,6 +30,10 @@ export interface EditorLinks {
   open: (pageId: string) => void;
   /** A page's editor address, for opening it in a new tab. */
   href: (pageId: string) => string;
+  /** Where `href` leads once every docs version's pages are loaded (loads them when needed). */
+  resolveAsync: (href: string) => Promise<EditorLinkTarget>;
+  /** Start loading the other docs versions' pages, so `resolve` can answer for links into them. */
+  loadVersions: () => void;
 }
 
 /** Provided by the page editor route. Without it (other editors, tests) a site link opens nothing. */
@@ -109,8 +115,16 @@ export function editorSiteSnapshot(input: EditorSiteInput): SiteSnapshot | null 
 /**
  * Resolve the links of one page against the editor's site. The resolver caches
  * each destination, so build it once per site and page.
+ *
+ * The editor loads the pages of the version it edits. Until the other versions'
+ * pages are in `site` too (`allVersions`), a link that reaches nothing may still
+ * lead into one of them (`/v2/setup`), so it is `unknown`, never `missing`.
  */
-export function editorLinkResolver(site: SiteSnapshot | null, fromPageId: string | undefined): (href: string) => EditorLinkTarget {
+export function editorLinkResolver(
+  site: SiteSnapshot | null,
+  fromPageId: string | undefined,
+  { allVersions = true }: { allVersions?: boolean } = {},
+): (href: string) => EditorLinkTarget {
   const from = site?.pages.find((page) => page.id === fromPageId);
   const resolveLink = site ? createLinkResolver(site) : null;
   return (href) => {
@@ -119,7 +133,7 @@ export function editorLinkResolver(site: SiteSnapshot | null, fromPageId: string
     if (!trimmed || trimmed.startsWith('#')) return { kind: 'other' };
     if (!(resolveLink && from)) return { kind: 'unknown' };
     const destination = resolveLink(trimmed, from);
-    if (destination === false) return { kind: 'missing' };
+    if (destination === false) return !allVersions && (site?.project.versions.length ?? 0) > 1 ? { kind: 'unknown' } : { kind: 'missing' };
     if (destination === null || destination === true || destination.kind !== 'PAGE') return { kind: 'other' };
     return { kind: 'page', pageId: destination.id };
   };

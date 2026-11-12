@@ -26,6 +26,7 @@ import {
   Unlink,
 } from 'lucide-react';
 import { type ComponentType, type KeyboardEvent, lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
 import { isWebAddress, useEditorLinks } from './editor-links';
 import { selectionMenuApplies, selectionMenuRequest } from './extensions/selection-shortcuts';
@@ -138,14 +139,21 @@ export function LinkEditorPanel({
   const openHref = normalized && isWebAddress(normalized) ? normalized : null;
   const target = normalized && !openHref && links ? links.resolve(normalized) : null;
   const linkedPageId = target?.kind === 'page' ? target.pageId : null;
-  const openLabel = linkedPageId ? t('editor.link.openPage') : t('editor.link.open');
+  // Not resolved yet (pages loading, or a link into another docs version): it
+  // may be a page, so Open stays available and resolves on the way.
+  const unresolved = target?.kind === 'unknown';
+  const openLabel = linkedPageId || unresolved ? t('editor.link.openPage') : t('editor.link.open');
   const openDisabledReason =
-    !normalized || openHref || linkedPageId
+    !normalized || openHref || linkedPageId || unresolved
       ? undefined
       : target?.kind === 'missing'
         ? t('editor.link.missingPage')
         : t('editor.link.openRelativeHint');
   const iconButton = 'size-7 shrink-0 text-foreground/80';
+  // Load the other docs versions' pages when a link may lead into one of them.
+  useEffect(() => {
+    if (unresolved) links?.loadVersions();
+  }, [unresolved, links]);
 
   return (
     <div className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-1 p-0.5">
@@ -203,7 +211,7 @@ export function LinkEditorPanel({
       <TooltipButton
         aria-label={openLabel}
         className={iconButton}
-        disabled={!(openHref || linkedPageId)}
+        disabled={!(openHref || linkedPageId || unresolved)}
         disabledReason={openDisabledReason}
         onClick={() => {
           if (openHref) {
@@ -211,6 +219,12 @@ export function LinkEditorPanel({
           } else if (linkedPageId && links) {
             onDone();
             links.open(linkedPageId);
+          } else if (unresolved && links && normalized) {
+            onDone();
+            void links.resolveAsync(normalized).then((resolved) => {
+              if (resolved.kind === 'page') links.open(resolved.pageId);
+              else if (resolved.kind === 'missing') toast.error(t('editor.link.missingPage'));
+            });
           }
         }}
         size="icon-xs"
@@ -218,7 +232,7 @@ export function LinkEditorPanel({
         type="button"
         variant="ghost"
       >
-        {linkedPageId ? <FileText className="size-4" /> : <ExternalLink className="size-4" />}
+        {linkedPageId || unresolved ? <FileText className="size-4" /> : <ExternalLink className="size-4" />}
       </TooltipButton>
       <Suspense fallback={null}>
         <PageLinkPicker
