@@ -1,19 +1,10 @@
 import { useT } from '@nibleaf/i18n/react';
 import type { SaveWorkspaceAiConnectionBody, WorkspaceAiModelsBody, WorkspaceAiSelectionBody } from '@nibleaf/validators';
-import { useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
 import { ApiResponseError, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
 import { queryKeys } from './query-keys';
-import { workspaceAiQueryOptions } from './query-options';
-
-/** While an index run is queued or running, the section follows its status. */
-export const useWorkspaceAi = (projectId: string) =>
-  useQuery({
-    ...workspaceAiQueryOptions(projectId),
-    refetchInterval: (query) => (['PENDING', 'RUNNING'].includes(query.state.data?.index.status ?? '') ? 3000 : false),
-  });
 
 /** What a failed provider request means, in plain words: a refused key and a
  * change made in another session get their own message. Toasted once by the

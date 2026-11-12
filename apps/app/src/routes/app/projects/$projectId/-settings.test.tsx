@@ -145,7 +145,8 @@ vi.mock('@/components/project-settings/languages-section', () => ({
 vi.mock('@/features/people/components/site-team-page', () => ({ SiteTeamPage: () => null }));
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
 vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
-vi.mock('@/components/project-settings/smart-ai-section', () => ({ SmartAiSection: () => <div data-testid="smart-ai-settings" /> }));
+vi.mock('@/features/site-ai/components/ai-answers-page', () => ({ AiAnswersPage: () => <div data-testid="ai-answers-settings" /> }));
+vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => <div data-testid="integrations-settings" /> }));
 vi.mock('@/components/settings/api-keys-tab', () => ({ ApiKeysTab: () => null }));
 vi.mock('@/components/settings/git-tab', () => ({ GitTab: () => null }));
 vi.mock('@/components/settings/import-tab', () => ({ ImportTab: () => null }));
@@ -430,7 +431,7 @@ describe('site settings permissions', () => {
     expect(heading?.getAttribute('tabindex')).toBe('-1');
   });
 
-  it.each(['general', 'danger', 'smartAi'])('explains an explicit restricted %s link without redirecting', async (section) => {
+  it.each(['general', 'danger', 'integrations'])('explains an explicit restricted %s link without redirecting', async (section) => {
     mocks.section = section;
     await act(async () => root.render(<SettingsPage />));
     expect(mocks.navigate).not.toHaveBeenCalled();
@@ -439,7 +440,7 @@ describe('site settings permissions', () => {
     expect(container.textContent).toContain(section === 'danger' ? 'settings.permissions.dangerBody' : 'settings.permissions.body');
     expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.languages');
     expect(
-      container.querySelector('[data-testid="general-settings"], [data-testid="danger-settings"], [data-testid="smart-ai-settings"]'),
+      container.querySelector('[data-testid="general-settings"], [data-testid="danger-settings"], [data-testid="integrations-settings"]'),
     ).toBeNull();
   });
 
@@ -460,7 +461,7 @@ describe('site settings permissions', () => {
   });
   it.each([
     { section: 'danger', testId: 'danger-settings' },
-    { section: 'smartAi', testId: 'smart-ai-settings' },
+    { section: 'integrations', testId: 'integrations-settings' },
   ])('explains a restricted $section direct link and provides working alternatives to an editor', async ({ section, testId }) => {
     mocks.section = section;
     await act(async () => root.render(<SettingsPage />));
@@ -474,6 +475,20 @@ describe('site settings permissions', () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
+  it('lets an editor open AI answers, which shows editors where answers stand read-only', async () => {
+    mocks.section = 'ai';
+    await act(async () => root.render(<SettingsPage />));
+
+    expect(container.querySelector('[data-testid="ai-answers-settings"]')).not.toBeNull();
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(container.querySelector('nav')?.textContent).toContain('settings.ai');
+  });
+
+  it('opens AI answers from an old Smart AI link', () => {
+    const validate = Route.options.validateSearch as (search: Record<string, unknown>) => { section?: string };
+    expect(validate({ section: 'smartAi' })).toEqual({ section: 'ai' });
+  });
+
   it('lets an editor manage content languages', async () => {
     mocks.section = 'languages';
     await act(async () => root.render(<SettingsPage />));
@@ -484,7 +499,7 @@ describe('site settings permissions', () => {
 
   it.each([
     { section: 'general', testId: 'general-settings' },
-    { section: 'smartAi', testId: 'smart-ai-settings' },
+    { section: 'ai', testId: 'ai-answers-settings' },
   ])('keeps $section settings available to a site administrator', async ({ section, testId }) => {
     mocks.section = section;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });

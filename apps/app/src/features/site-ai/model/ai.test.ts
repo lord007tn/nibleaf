@@ -1,9 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { aiAccess, aiPageState, checklist, offeredSources, type SiteAi, sourceOptions, switchDecision } from './ai';
+import {
+  aiAccess,
+  aiPageState,
+  checklist,
+  checklistSource,
+  offeredSources,
+  preparesOnTurnOn,
+  type SiteAi,
+  selectionRequest,
+  sourceChoiceRequest,
+  sourceOptions,
+  switchDecision,
+  switchRequest,
+} from './ai';
 
 type Connection = SiteAi['status']['connections'][number];
 const key = (id: Connection['id'], state: Connection['state'] = 'ok'): Connection => ({
   id,
+  revision: 3,
   state,
   failure: null,
   keyHint: '4f2a',
@@ -249,9 +263,24 @@ describe('checklist', () => {
       expected: { prepared: 'working' },
     },
     {
-      name: 'never prepared',
+      name: 'never prepared, answers off (turning them on prepares)',
       ai: siteAi({ status: { preparation: { state: 'none', pages: 0, expectedPages: 0, at: null } } }),
+      expected: { prepared: 'idle:prepare' },
+    },
+    {
+      name: 'never prepared, answers on',
+      ai: siteAi({ status: { ...on, preparation: { state: 'none', pages: 0, expectedPages: 0, at: null } } }),
       expected: { prepared: 'problem:prepare' },
+    },
+    {
+      name: 'production today: no Nibleaf AI, no key saved, answers off',
+      ai: siteAi({ capabilities: noManaged }),
+      expected: { source: 'idle:addKey' },
+    },
+    {
+      name: 'no Nibleaf AI, a working key, answers off',
+      ai: siteAi({ capabilities: noManaged, status: { connections: [key('openai')] } }),
+      expected: { source: 'idle' },
     },
     {
       name: 'preparation failed',
@@ -310,6 +339,21 @@ describe('checklist', () => {
 
   it('always lists the four steps in reader order', () => {
     expect(checklist(siteAi()).map(({ id }) => id)).toEqual(['published', 'prepared', 'source', 'usage']);
+  });
+});
+
+describe('checklistSource', () => {
+  it('is the saved source while the server offers it', () => {
+    expect(checklistSource(siteAi())).toBe('managed');
+    expect(checklistSource(siteAi({ status: { source: 'openai', connections: [key('openai')] } }))).toBe('openai');
+  });
+
+  it('counts a saved source the server no longer offers as no choice while answers are off', () => {
+    expect(checklistSource(siteAi({ capabilities: noManaged }))).toBeNull();
+  });
+
+  it('keeps it once answers are on, so the problem shows', () => {
+    expect(checklistSource(siteAi({ capabilities: noManaged, status: on }))).toBe('managed');
   });
 });
 
@@ -391,5 +435,60 @@ describe('CodeRabbit review on #513', () => {
   it('still offers "Check key" for a re-checkable key whose provider is offered', () => {
     const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'needsRecheck')] } });
     expect(checklist(ai).find(({ id }) => id === 'source')).toEqual({ id: 'source', tone: 'problem', fix: 'checkKey' });
+  });
+});
+
+describe('what the controls send', () => {
+  it.each([
+    { name: 'Nibleaf AI', source: 'managed', expected: { providerId: 'instance', answersEnabled: true } },
+    { name: 'an own key, with its revision', source: 'openai', expected: { providerId: 'openai', answersEnabled: true, expectedRevision: 3 } },
+    { name: 'no source', source: null, expected: { providerId: 'disabled', answersEnabled: false } },
+  ] as const)('selects $name', ({ source, expected }) => {
+    const ai = siteAi({ status: { connections: [key('openai')] } });
+    expect(selectionRequest(ai, source, true)).toEqual(expected);
+  });
+
+  it.each([false, true])('choosing a source never changes whether answers are on (they are %s)', (answersOn) => {
+    const ai = siteAi({ status: { answersOn, connections: [key('openrouter')] } });
+    expect(sourceChoiceRequest(ai, 'openrouter').answersEnabled).toBe(answersOn);
+    expect(sourceChoiceRequest(ai, 'managed').answersEnabled).toBe(answersOn);
+  });
+
+  it('turns answers on with the source the switch picked', () => {
+    expect(switchRequest(siteAi(), true, 'admin')).toEqual({ providerId: 'instance', answersEnabled: true });
+    const selfHosted = siteAi({ capabilities: noManaged, status: { source: 'openrouter', connections: [key('openrouter')] } });
+    expect(switchRequest(selfHosted, true, 'admin')).toEqual({ providerId: 'openrouter', answersEnabled: true, expectedRevision: 3 });
+  });
+
+  it('turns answers off keeping a source that still works, so turning on again resumes it', () => {
+    const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai')] } });
+    expect(switchRequest(ai, false, 'admin')).toEqual({ providerId: 'openai', answersEnabled: false, expectedRevision: 3 });
+  });
+
+  it('turns AI off for the site when the selected source cannot be chosen any more', () => {
+    const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'rejected')] } });
+    expect(switchRequest(ai, false, 'admin')).toEqual({ providerId: 'disabled', answersEnabled: false });
+  });
+
+  it('sends nothing when the switch may not change', () => {
+    expect(switchRequest(siteAi({ status: { published: null } }), true, 'admin')).toBeNull();
+    expect(switchRequest(siteAi(), true, 'notAdmin')).toBeNull();
+  });
+
+  it.each([
+    { state: 'none', published: true, prepares: true },
+    { state: 'failed', published: true, prepares: true },
+    { state: 'ready', published: true, prepares: false },
+    { state: 'running', published: true, prepares: false },
+    { state: 'partial', published: true, prepares: false },
+    { state: 'none', published: false, prepares: false },
+  ] as const)('starts preparing on turn-on when docs are $state (published: $published) → $prepares', ({ state, published, prepares }) => {
+    const ai = siteAi({
+      status: {
+        published: published ? { version: 1, at: null } : null,
+        preparation: { state, pages: 0, expectedPages: 4, at: null },
+      },
+    });
+    expect(preparesOnTurnOn(ai)).toBe(prepares);
   });
 });

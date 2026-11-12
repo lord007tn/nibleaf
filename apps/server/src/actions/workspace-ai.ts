@@ -221,6 +221,7 @@ const siteAiStatus = (
     const failure = storedAiKeyFailure(connection);
     return {
       id,
+      revision: connection.revision,
       state: storedAiKeyState(connection, id),
       failure: failure ? { reason: failure, checkedAt: connection.lastVerifiedAt?.toISOString() ?? null } : null,
       keyHint: canManage ? (connection.credentialHint ?? null) : null,

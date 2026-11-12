@@ -13,7 +13,7 @@ import type { SiteAiCapabilities, SiteAiStatus } from '@nibleaf/validators';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 
 export type AiSource = 'managed' | 'openai' | 'openrouter';
-type AiKeyProvider = Exclude<AiSource, 'managed'>;
+export type AiKeyProvider = Exclude<AiSource, 'managed'>;
 
 /** The server's answer for one site: what it can offer, where the site stands, and what this person may change. */
 export type SiteAi = { capabilities: SiteAiCapabilities; status: SiteAiStatus; viewer: { canManage: boolean } };
@@ -22,11 +22,11 @@ export type SiteAi = { capabilities: SiteAiCapabilities; status: SiteAiStatus; v
 export const aiAccess = (ai: SiteAi | undefined): SiteAdminState => (!ai ? 'pending' : ai.viewer.canManage ? 'admin' : 'notAdmin');
 
 /** Why a control can't be used. */
-type AiBlockReason = 'serverUnavailable' | 'publishFirst' | 'addKeyFirst' | 'keyNotWorking';
+export type AiBlockReason = 'serverUnavailable' | 'publishFirst' | 'addKeyFirst' | 'keyNotWorking';
 export type Decision = { kind: 'allowed' } | { kind: 'locked' } | { kind: 'denied'; reason: AiBlockReason };
 
 /** The one thing stopping answers, when they are on but readers get none. */
-type AiProblem =
+export type AiProblem =
   | 'keyMissing'
   | 'keyRejected'
   /** The selected own-key provider isn't offered by this server any more (e.g. after an embedding change). */
@@ -148,7 +148,7 @@ export function switchDecision(ai: SiteAi, access: SiteAdminState): { decision: 
 
 /** `warning`: answers work, but something needs a look (some pages couldn't be prepared). */
 type ChecklistTone = 'ok' | 'working' | 'warning' | 'problem' | 'idle';
-type ChecklistFix = 'publish' | 'prepare' | 'replaceKey' | 'checkKey' | 'checkAgain' | 'changeModel' | 'chooseSource' | 'addKey' | 'seeUsage';
+export type ChecklistFix = 'publish' | 'prepare' | 'replaceKey' | 'checkKey' | 'checkAgain' | 'changeModel' | 'chooseSource' | 'addKey' | 'seeUsage';
 export type ChecklistRow = { id: 'published' | 'prepared' | 'source' | 'usage'; tone: ChecklistTone; fix: ChecklistFix | null };
 
 const SOURCE_FIX: Partial<Record<AiProblem, ChecklistFix>> = {
@@ -160,6 +160,17 @@ const SOURCE_FIX: Partial<Record<AiProblem, ChecklistFix>> = {
   keyUnreadable: 'replaceKey',
   keyNeedsRecheck: 'checkKey',
 };
+
+/**
+ * The source "Is it working?" reports on. With answers off, a saved source this
+ * server doesn't offer (e.g. Nibleaf AI on a server without an AI key) counts as
+ * no choice yet: nothing is broken until readers depend on it.
+ */
+export function checklistSource(ai: SiteAi): AiSource | null {
+  const problem = sourceProblem(ai);
+  if (!ai.status.answersOn && (problem === 'managedUnavailable' || problem === 'sourceNotOffered')) return null;
+  return ai.status.source;
+}
 
 /** "Is it working?": each step answers need, with the one fix for a failing step. */
 export function checklist(ai: SiteAi): ChecklistRow[] {
@@ -174,11 +185,13 @@ export function checklist(ai: SiteAi): ChecklistRow[] {
         ? { id: 'prepared', tone: 'warning', fix: 'prepare' }
         : preparation === 'running'
           ? { id: 'prepared', tone: 'working', fix: null }
-          : { id: 'prepared', tone: 'problem', fix: 'prepare' };
+          : // Not prepared yet only fails readers once answers are on; turning them on starts it.
+            { id: 'prepared', tone: status.answersOn || preparation === 'failed' ? 'problem' : 'idle', fix: 'prepare' };
   const problem = sourceProblem(ai);
   const source: ChecklistRow =
-    status.source === null
-      ? { id: 'source', tone: 'idle', fix: null }
+    checklistSource(ai) === null
+      ? // Nothing chosen and nothing usable yet (every key still to add): the fix is adding one.
+        { id: 'source', tone: 'idle', fix: sourceOptions(ai, 'admin').some((option) => option.decision.kind === 'allowed') ? null : 'addKey' }
       : problem
         ? { id: 'source', tone: 'problem', fix: SOURCE_FIX[problem] ?? null }
         : { id: 'source', tone: status.answersOn ? 'ok' : 'idle', fix: null };
@@ -187,3 +200,43 @@ export function checklist(ai: SiteAi): ChecklistRow[] {
     : { id: 'usage', tone: status.usage.answersToday === null ? 'idle' : 'ok', fix: null };
   return [published, prepared, source, usage];
 }
+
+/** What a source choice sends to the server (`PATCH …/settings/ai`). */
+export type AiSelectionRequest = {
+  providerId: 'instance' | AiKeyProvider | 'disabled';
+  answersEnabled: boolean;
+  expectedRevision?: number;
+};
+
+/**
+ * The request that makes `source` the site's source. `answersEnabled` is the
+ * value to save: choosing a source passes the current one through, so only the
+ * switch (`switchRequest`) ever changes whether readers get answers.
+ */
+export function selectionRequest(ai: SiteAi, source: AiSource | null, answersEnabled: boolean): AiSelectionRequest {
+  if (source === null) return { providerId: 'disabled', answersEnabled: false };
+  if (source === 'managed') return { providerId: 'instance', answersEnabled };
+  const revision = connectionOf(ai, source)?.revision;
+  return { providerId: source, answersEnabled, ...(revision ? { expectedRevision: revision } : {}) };
+}
+
+/** Choosing another source in "What powers AI answers": the switch stays where it is. */
+export const sourceChoiceRequest = (ai: SiteAi, source: AiSource): AiSelectionRequest => selectionRequest(ai, source, ai.status.answersOn);
+
+/**
+ * The one AI answers switch. On: the source `switchDecision` picked. Off: keep
+ * the selected source when it can still be chosen (turning on again resumes
+ * it), else turn AI off for the site.
+ */
+export function switchRequest(ai: SiteAi, on: boolean, access: SiteAdminState): AiSelectionRequest | null {
+  if (on) {
+    const { decision, turnsOnWith } = switchDecision(ai, access);
+    return decision.kind === 'allowed' && turnsOnWith ? selectionRequest(ai, turnsOnWith, true) : null;
+  }
+  const current = sourceOptions(ai, access).find((option) => option.selected && option.decision.kind === 'allowed');
+  return selectionRequest(ai, current ? current.id : null, false);
+}
+
+/** D10: turning answers on starts preparing the docs right away when they aren't prepared (or the last try failed). */
+export const preparesOnTurnOn = (ai: SiteAi): boolean =>
+  Boolean(ai.status.published) && (ai.status.preparation.state === 'none' || ai.status.preparation.state === 'failed');

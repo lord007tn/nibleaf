@@ -94,6 +94,8 @@ export const siteAiStatusSchema = z
       z
         .object({
           id: aiProviderIdSchema,
+          /** The stored connection's revision, which choosing this key as the source must name. */
+          revision: z.number().int().positive(),
           state: z.enum(['ok', 'rejected', 'unreachable', 'modelWithdrawn', 'needsRecheck', 'unreadable']),
           /**
            * Why the last check of this key failed, as a code (never provider

@@ -244,6 +244,7 @@ describe('status', () => {
     expect(status.connections).toEqual([
       {
         id: 'openai',
+        revision: 1,
         state: 'ok',
         failure: null,
         keyHint: '4f2a',
