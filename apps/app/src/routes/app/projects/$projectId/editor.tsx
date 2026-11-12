@@ -18,7 +18,7 @@ import { useLocale, useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { type QueryClient, type UseQueryResult, useQueries, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, Link, useBlocker, useRouter } from '@tanstack/react-router';
+import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
 import {
   ChevronLeft,
   ChevronRight,
@@ -863,8 +863,9 @@ function EditorPage() {
   }, [pageParam]);
   // A link in the page to another page of the site opens that page here, as a
   // ?page= deep link does (the page being left is saved first), in its own
-  // history entry: Back returns to this page where it was scrolled.
-  const openLinkedPage = useLinkedPageHistory({ projectId, pageId: page?.id, canvas: () => canvasRef.current });
+  // history entry: Back returns to this page where it was scrolled. A link to a
+  // section (`setup#install`) lands on that heading.
+  const linkedPages = useLinkedPageHistory({ projectId, pageId: page?.id, canvas: () => canvasRef.current });
   const { data: openApi } = useOpenApiConfiguration(projectId);
   // The other docs versions' pages, loaded once a link may lead into one of them.
   const [linkVersionsWanted, setLinkVersionsWanted] = useState(false);
@@ -888,12 +889,11 @@ function EditorPage() {
     () => (allPages ? linkSiteFor([...allPages, ...otherVersions.pages]) : null),
     [allPages, otherVersions.pages, linkSiteFor],
   );
-  const router = useRouter();
   const editorLinks = useMemo<EditorLinks>(
     () => ({
       resolve: editorLinkResolver(linkSite, page?.id, { allVersions: allVersionsLoaded }),
-      open: (id) => void openLinkedPage(id),
-      href: (id) => router.buildLocation({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: id } }).href,
+      open: (id, section) => void linkedPages.open(id, section),
+      href: linkedPages.href,
       loadVersions: () => setLinkVersionsWanted(true),
       resolveAsync: async (href) => {
         setLinkVersionsWanted(true);
@@ -901,7 +901,7 @@ function EditorPage() {
         return editorLinkResolver(allPages ? linkSiteFor([...allPages, ...lists.flat()]) : null, page?.id)(href);
       },
     }),
-    [linkSite, page?.id, allVersionsLoaded, openLinkedPage, router, projectId, otherBranchIds, queryClient, allPages, linkSiteFor],
+    [linkSite, page?.id, allVersionsLoaded, linkedPages, projectId, otherBranchIds, queryClient, allPages, linkSiteFor],
   );
   useEffect(() => {
     const decision = deepLinkBranchDecision({ deepLinkedPageId: deepLinkedPageId.current, page, activeBranchId, branches });

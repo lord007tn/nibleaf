@@ -279,7 +279,11 @@ export function siteHead(site: SiteShell | null | undefined, requestOrigin?: str
 export const siteRobotsHeaders = (site: SiteShell | null | undefined): Record<string, string> | undefined =>
   !site || site.project.config?.visibility === 'private' ? { 'X-Robots-Tag': 'noindex, nofollow' } : undefined;
 
-type UnavailableShell = { site?: SiteShell | null; unavailable?: 'private'; gate?: { language?: { code: string } | null } };
+/** Why the API refused a site's shell: `private` (sign-in screen), `missing` (no
+ *  live site at this address), or not given (a site that isn't published yet). */
+type UnavailableReason = 'private' | 'missing' | undefined;
+
+type UnavailableShell = { site?: SiteShell | null; unavailable?: UnavailableReason; gate?: { language?: { code: string } | null } };
 
 /** A child route's <head> when the site shell itself was refused (a private or
  *  unpublished site): the same title as the site's own screen, in the visitor's
@@ -295,10 +299,11 @@ export const unavailableSiteHeadFromMatches = (
 
 /** <head> for a site whose shell the API refused: a private site, or one
  *  that is not published. No Nibleaf branding, never indexed. */
-export function unavailableSiteHead(reason: 'private' | undefined, lang?: string): Head {
+export function unavailableSiteHead(reason: UnavailableReason, lang?: string): Head {
   const t = siteT(lang);
+  const title = reason === 'private' ? 'privateTitle' : reason === 'missing' ? 'noSiteTitle' : 'notPublishedTitle';
   return {
-    meta: [{ title: t(reason === 'private' ? 'privateTitle' : 'notPublishedTitle') }, { name: 'robots', content: 'noindex,nofollow' }],
+    meta: [{ title: t(title) }, { name: 'robots', content: 'noindex,nofollow' }],
     links: [{ rel: 'icon', href: '/favicon.svg' }],
   };
 }
