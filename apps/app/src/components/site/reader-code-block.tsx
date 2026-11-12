@@ -38,6 +38,7 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
       type="button"
       onClick={copy}
       aria-label={copied ? t('copied') : t('copyCode')}
+      lang={locale}
       className={cn(
         // [direction:ltr] keeps `end-2` physical-right even inside an RTL page,
         // matching the force-LTR code content (else it collides with the badge).
@@ -70,7 +71,11 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
         </>
       )}
       {/* Announced through the shared live region; the visible hint helps sighted readers copy by hand. */}
-      {failed ? <p className="reader-code-copy-failed px-4 py-2 text-sm text-white">{t('copyFailed')}</p> : null}
+      {failed ? (
+        <p className="reader-code-copy-failed px-4 py-2 text-sm text-white" lang={locale}>
+          {t('copyFailed')}
+        </p>
+      ) : null}
       <pre dir="ltr" ref={ref} className={title ? undefined : 'reader-code-untitled'} {...props} />
     </div>
   );
