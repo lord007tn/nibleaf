@@ -1,27 +1,56 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@nibleaf/design-system/components/ui/dropdown-menu';
+import { DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@nibleaf/design-system/components/ui/dropdown-menu-radio';
+import { IconButton } from '@nibleaf/design-system/components/ui/icon-button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import type { Editor } from '@tiptap/core';
-import { NodeSelection } from '@tiptap/pm/state';
-import { CellSelection } from '@tiptap/pm/tables';
+import type { Editor, EditorEvents } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
-import { BubbleMenu } from '@tiptap/react/menus';
-import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link as LinkIcon, Strikethrough, Unlink } from 'lucide-react';
-import { type ComponentType, lazy, Suspense, useEffect, useId, useState } from 'react';
+import { BubbleMenu, type BubbleMenuProps } from '@tiptap/react/menus';
+import {
+  Bold,
+  Check,
+  ChevronDown,
+  Code,
+  ExternalLink,
+  Highlighter,
+  Italic,
+  Link as LinkIcon,
+  MessageSquarePlus,
+  Pilcrow,
+  Strikethrough,
+  Unlink,
+} from 'lucide-react';
+import { type ComponentType, type KeyboardEvent, lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
+import { selectionMenuApplies, selectionMenuRequest } from './extensions/selection-shortcuts';
 import { isPageQuery, normalizeLinkUrl, type PageLinkMatch } from './link-utils';
+import { currentTurnIntoKind, TURN_INTO_OPTIONS, type TurnIntoKind, turnInto } from './turn-into';
 
 const PageLinkPicker = lazy(() => import('./extensions/page-link-picker'));
 
+/** The anchor the comment flow attaches a new comment to. */
+export interface CommentAnchor {
+  quote: string;
+  from: number;
+  to: number;
+}
+
 interface EditorBubbleMenuProps {
   editor: Editor;
+  /** Starts the page's comment flow for the selection. Without it (comments
+   *  unavailable to this writer) the menu offers no Comment action. */
+  onComment?: (anchor: CommentAnchor) => void;
 }
 
 interface MarkButton {
   labelKey: MessageKey;
   icon: ComponentType<{ className?: string }>;
   active: boolean;
+  /** Letter of the Ctrl/⌘ shortcut, shown in the label. */
+  shortcut?: string;
   run: () => void;
 }
 
@@ -202,14 +231,40 @@ export function LinkEditorPanel({
   );
 }
 
+const isApplePlatform = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
+/** The text menu's bubble plugin; it also reads a 'hide' meta under this key. */
+const TEXT_MENU_KEY = 'nibleaf-text-menu';
+
+/** Marks the Turn into popup, which is portaled out of the menu but belongs to it. */
+const MENU_POPUP_ATTRIBUTE = 'data-text-menu-popup';
+
+/** Whether a node is in the menu, including its portaled Turn into popup. */
+const inMenu = (menu: Element | null | undefined, node: Node | null): boolean =>
+  node !== null && (Boolean(menu?.contains(node)) || (node instanceof Element && node.closest(`[${MENU_POPUP_ATTRIBUTE}]`) !== null));
+
+/** The toolbar's own controls, in order, for arrow-key movement. */
+const TOOLBAR_ITEM = '[data-toolbar-item]:not([disabled])';
+
 /**
- * Inline formatting toolbar that floats above the current text selection:
- * bold / italic / strike / code / highlight / link. Also appears when the
- * caret rests inside a link (as a link inspector with the URL prefilled).
+ * Inline formatting toolbar that floats under the current text selection:
+ * Turn into, bold / italic / strike / code / highlight, link and comment. Also
+ * appears when the caret rests inside a link (as a link inspector with the URL
+ * prefilled).
+ *
+ * Keyboard: Ctrl/⌘+K in the page opens the link field; Alt+F10 moves focus into
+ * the toolbar, Arrow keys and Home/End move between its controls, and Escape
+ * returns to the text with the selection intact.
  */
-export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
+export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
   const t = useT();
   const [linkOpen, setLinkOpen] = useState(false);
+  // Shown by the bubble plugin (it attaches the menu after a short delay).
+  const [visible, setVisible] = useState(false);
+  // A keyboard request waiting for the menu to be on screen.
+  const [pendingFocus, setPendingFocus] = useState<'link' | 'toolbar' | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -221,6 +276,7 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
       link: current.isActive('link'),
       href: (current.getAttributes('link').href as string | undefined) ?? '',
       empty: current.state.selection.empty,
+      kind: currentTurnIntoKind(current),
     }),
   });
 
@@ -235,82 +291,275 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
     }
   }, [state.empty, state.link]);
 
+  // Ctrl/⌘+K and Alt+F10 from the page (extensions/selection-shortcuts.ts).
+  useEffect(() => {
+    const onTransaction = ({ transaction }: EditorEvents['transaction']) => {
+      const request = selectionMenuRequest(transaction);
+      if (request === 'link') setLinkOpen(true);
+      if (request) setPendingFocus(request);
+    };
+    editor.on('transaction', onTransaction);
+    return () => {
+      editor.off('transaction', onTransaction);
+    };
+  }, [editor]);
+
+  // A request is for this editing session: once focus leaves both the page and
+  // the menu, it is dropped, so it can never pull focus back later.
+  useEffect(() => {
+    const leftBoth = (next: EventTarget | null) => !(next instanceof Node && (editor.view.dom.contains(next) || inMenu(menuRef.current, next)));
+    const onBlur = ({ event }: EditorEvents['blur']) => {
+      if (leftBoth(event.relatedTarget)) setPendingFocus(null);
+    };
+    const menu = menuRef.current;
+    const onMenuFocusOut = (event: FocusEvent) => {
+      if (leftBoth(event.relatedTarget)) setPendingFocus(null);
+    };
+    editor.on('blur', onBlur);
+    menu?.addEventListener('focusout', onMenuFocusOut);
+    return () => {
+      editor.off('blur', onBlur);
+      menu?.removeEventListener('focusout', onMenuFocusOut);
+    };
+  }, [editor]);
+
+  // Move focus once the menu is attached: the link field, or the toolbar's tab
+  // stop. While a link is inspected the menu holds only the link field, so a
+  // toolbar request goes there, as Ctrl/⌘+K on a link does.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the link field appears with showLinkPanel.
+  useEffect(() => {
+    if (!visible || !pendingFocus) return;
+    const target =
+      pendingFocus === 'link' || inspectingLink
+        ? menuRef.current?.querySelector<HTMLInputElement>('input[role="combobox"]')
+        : (toolbarRef.current?.querySelector<HTMLElement>(`${TOOLBAR_ITEM}[tabindex="0"]`) ??
+          toolbarRef.current?.querySelector<HTMLElement>(TOOLBAR_ITEM));
+    // A request for a control that isn't there is dropped, never kept for later.
+    setPendingFocus(null);
+    if (!target) return;
+    target.focus();
+    if (target instanceof HTMLInputElement) target.select();
+  }, [visible, pendingFocus, showLinkPanel, inspectingLink]);
+
+  // Shown only while the writer is in the page or the menu, as TipTap's default
+  // rule does, so a delayed update never shows it over another field.
+  const shouldShow = useCallback<NonNullable<BubbleMenuProps['shouldShow']>>(
+    ({ editor: current, view, element }) =>
+      current.isEditable && (view.hasFocus() || inMenu(element, document.activeElement)) && selectionMenuApplies(current.state),
+    [],
+  );
+  const options = useMemo<BubbleMenuProps['options']>(
+    () => ({
+      placement: 'bottom',
+      onShow: () => setVisible(true),
+      onHide: () => {
+        setVisible(false);
+        setPendingFocus(null);
+      },
+    }),
+    [],
+  );
+
+  const modifier = isApplePlatform() ? '⌘' : 'Ctrl+';
+  const withShortcut = (labelKey: MessageKey, shortcut?: string) => `${t(labelKey)}${shortcut ? ` (${modifier}${shortcut})` : ''}`;
   const buttons: MarkButton[] = [
-    { labelKey: 'editor.format.bold', icon: Bold, active: state.bold, run: () => editor.chain().focus().toggleBold().run() },
-    { labelKey: 'editor.format.italic', icon: Italic, active: state.italic, run: () => editor.chain().focus().toggleItalic().run() },
+    { labelKey: 'editor.format.bold', icon: Bold, active: state.bold, shortcut: 'B', run: () => editor.chain().focus().toggleBold().run() },
+    { labelKey: 'editor.format.italic', icon: Italic, active: state.italic, shortcut: 'I', run: () => editor.chain().focus().toggleItalic().run() },
     { labelKey: 'editor.format.strikethrough', icon: Strikethrough, active: state.strike, run: () => editor.chain().focus().toggleStrike().run() },
     { labelKey: 'editor.format.code', icon: Code, active: state.code, run: () => editor.chain().focus().toggleCode().run() },
     { labelKey: 'editor.format.highlight', icon: Highlighter, active: state.highlight, run: () => editor.chain().focus().toggleHighlight().run() },
   ];
 
+  // Roving tabindex: the toolbar is one Tab stop, on the control last focused
+  // (the first one at the start); the arrow keys move along it.
+  const itemKeys = ['turnInto', ...buttons.map((button) => button.labelKey), 'link', ...(onComment ? ['comment'] : [])];
+  const [rovingKey, setRovingKey] = useState('turnInto');
+  const tabStop = itemKeys.includes(rovingKey) ? rovingKey : 'turnInto';
+  const rovingProps = (key: string) => ({
+    'data-toolbar-item': key,
+    tabIndex: key === tabStop ? 0 : -1,
+    onFocus: () => setRovingKey(key),
+  });
+
+  const comment = () => {
+    const { from, to } = editor.state.selection;
+    const quote = editor.state.doc.textBetween(from, to, ' ').trim();
+    if (!quote || !onComment) return;
+    onComment({ quote, from, to });
+    // The writer continues in the comment composer: put the menu away until
+    // they come back to the text.
+    editor.view.dispatch(editor.state.tr.setMeta(TEXT_MENU_KEY, 'hide').setMeta('addToHistory', false));
+  };
+
+  // Arrow keys move along the toolbar in reading order (mirrored in RTL). Read in
+  // the capture phase, so an open tooltip cannot swallow Escape.
+  const onToolbarKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(TOOLBAR_ITEM));
+    const index = items.indexOf(event.target as HTMLElement);
+    // Keys inside the Turn into menu (a portal) belong to the menu.
+    if (index < 0) return;
+    const rtl = event.currentTarget.closest('[dir]')?.getAttribute('dir') === 'rtl';
+    const forward = rtl ? 'ArrowLeft' : 'ArrowRight';
+    const backward = rtl ? 'ArrowRight' : 'ArrowLeft';
+    let next: number;
+    if (event.key === forward) next = (index + 1) % items.length;
+    else if (event.key === backward) next = (index - 1 + items.length) % items.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = items.length - 1;
+    else if (event.key === 'Escape') {
+      event.preventDefault();
+      editor.commands.focus();
+      return;
+    } else return;
+    event.preventDefault();
+    items[next]?.focus();
+  };
+
+  const iconButton = (active: boolean) => cn('size-7 text-foreground/80', active && 'bg-muted text-foreground');
+
   return (
     <BubbleMenu
+      ref={menuRef}
       data-editor-bubble-menu=""
+      {...{ [MOD_K_OWNER_ATTRIBUTE]: '' }}
       editor={editor}
-      pluginKey="nibleaf-text-menu"
-      options={{ placement: 'bottom' }}
-      // Show for a text selection (the classic formatting bar) or whenever the
-      // caret is inside a link (link inspector). Never inside code blocks —
-      // those have their own language menu and marks don't apply there.
-      shouldShow={({ editor: current }) => {
-        if (!current.isEditable || current.isActive('codeBlock')) {
-          return false;
-        }
-        // Table cell selections get the table menu only — bail before the link
-        // early-return so both menus never stack over the same selection.
-        if (current.state.selection instanceof CellSelection) {
-          return false;
-        }
-        if (current.isActive('link')) {
-          return true;
-        }
-        const { selection } = current.state;
-        return !selection.empty && !(selection instanceof NodeSelection);
-      }}
-      className="flex flex-col rounded-lg border border-border bg-card p-1 shadow-lg"
+      pluginKey={TEXT_MENU_KEY}
+      options={options}
+      shouldShow={shouldShow}
+      className="flex max-w-[calc(100vw-1rem)] flex-col rounded-lg border border-border bg-card p-1 shadow-lg"
     >
       {!inspectingLink ? (
-        <div className="flex items-center gap-0.5">
+        <div
+          ref={toolbarRef}
+          role="toolbar"
+          aria-label={t('editor.format.toolbar')}
+          aria-keyshortcuts="Alt+F10"
+          className="flex flex-wrap items-center gap-0.5"
+          onKeyDownCapture={onToolbarKeyDown}
+        >
+          <TurnIntoMenu editor={editor} kind={state.kind} rovingProps={rovingProps('turnInto')} />
+          <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
           {buttons.map((button) => {
             const Icon = button.icon;
-            const key = button.labelKey === 'editor.format.bold' ? 'B' : button.labelKey === 'editor.format.italic' ? 'I' : null;
-            const modifier = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
-            const label = `${t(button.labelKey)}${key ? ` (${modifier}${key})` : ''}`;
             return (
-              <Button
-                aria-label={label}
+              <IconButton
                 aria-pressed={button.active}
-                className={cn('size-7 text-foreground/80', button.active && 'bg-muted text-foreground')}
+                className={iconButton(button.active)}
+                {...rovingProps(button.labelKey)}
                 key={button.labelKey}
+                label={withShortcut(button.labelKey, button.shortcut)}
                 onClick={button.run}
                 onMouseDown={(event) => event.preventDefault()}
                 size="icon-xs"
-                title={label}
                 type="button"
-                variant="ghost"
               >
                 <Icon className="size-4" />
-              </Button>
+              </IconButton>
             );
           })}
-          <span className="mx-0.5 h-5 w-px bg-border" />
-          <Button
+          <span aria-hidden className="mx-0.5 h-5 w-px bg-border" />
+          <IconButton
             aria-expanded={showLinkPanel}
-            aria-label={t('editor.format.link')}
             aria-pressed={state.link}
-            className={cn('size-7 text-foreground/80', state.link && 'bg-muted text-foreground')}
+            className={iconButton(state.link)}
+            {...rovingProps('link')}
+            label={withShortcut('editor.format.link', 'K')}
             onClick={() => setLinkOpen((open) => !open)}
             onMouseDown={(event) => event.preventDefault()}
             size="icon-xs"
-            title={t('editor.format.link')}
             type="button"
-            variant="ghost"
           >
             <LinkIcon className="size-4" />
-          </Button>
+          </IconButton>
+          {onComment ? (
+            <IconButton
+              className={iconButton(false)}
+              {...rovingProps('comment')}
+              label={t('editor.comment')}
+              onClick={comment}
+              onMouseDown={(event) => event.preventDefault()}
+              size="icon-xs"
+              type="button"
+            >
+              <MessageSquarePlus className="size-4" />
+            </IconButton>
+          ) : null}
         </div>
       ) : null}
       {showLinkPanel ? <LinkEditorPanel editor={editor} initialUrl={state.href} onDone={() => setLinkOpen(false)} autoFocus={linkOpen} /> : null}
     </BubbleMenu>
+  );
+}
+
+/**
+ * "Turn into": the block type of the selection, as a menu of the common types.
+ * The current type is the checked choice; choosing one keeps the selection and
+ * returns focus to the text.
+ */
+function TurnIntoMenu({
+  editor,
+  kind,
+  rovingProps,
+}: {
+  editor: Editor;
+  kind: TurnIntoKind | null;
+  /** The toolbar's roving tabindex for this control. */
+  rovingProps: { 'data-toolbar-item': string; tabIndex: number; onFocus: () => void };
+}) {
+  const t = useT();
+  const current = TURN_INTO_OPTIONS.find((option) => option.kind === kind);
+  const CurrentIcon = current?.icon ?? Pilcrow;
+  // Focus goes back to the text after a choice, and to the trigger otherwise.
+  const chose = useRef(false);
+  return (
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open) chose.current = false;
+      }}
+    >
+      <DropdownMenuTrigger
+        render={
+          <Button
+            className="h-7 gap-1 px-1.5 text-foreground/80"
+            {...rovingProps}
+            size="xs"
+            title={t('editor.format.turnInto')}
+            type="button"
+            variant="ghost"
+          />
+        }
+      >
+        {/* The visible type is part of the name, so speaking what is shown works. */}
+        <span className="sr-only">{t('editor.format.turnInto')}: </span>
+        <CurrentIcon aria-hidden className="size-4" />
+        <span className="hidden max-w-24 truncate text-xs sm:inline">{current ? t(current.labelKey) : t('editor.format.turnInto')}</span>
+        <ChevronDown aria-hidden className="size-3 opacity-60" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        {...{ [MENU_POPUP_ATTRIBUTE]: '' }}
+        aria-label={t('editor.format.turnInto')}
+        className="w-44"
+        finalFocus={() => !chose.current}
+      >
+        <DropdownMenuRadioGroup
+          value={kind ?? ''}
+          onValueChange={(value) => {
+            chose.current = true;
+            turnInto(editor, value as TurnIntoKind);
+          }}
+        >
+          {TURN_INTO_OPTIONS.map((option) => {
+            const Icon = option.icon;
+            return (
+              <DropdownMenuRadioItem closeOnClick key={option.kind} value={option.kind}>
+                <Icon aria-hidden />
+                {t(option.labelKey)}
+              </DropdownMenuRadioItem>
+            );
+          })}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

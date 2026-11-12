@@ -122,6 +122,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
         ]),
         pages.reorderPages(setup.project.id, { items: order.map((page, position) => ({ id: page.id, parentId: null, position })) }),
       ]);
+      expect(results[1]?.status).toBe('fulfilled');
       for (const result of results) if (result.status === 'rejected') failures.push(result.reason);
     }
     // A reorder that commits first legitimately turns the sync into a revision

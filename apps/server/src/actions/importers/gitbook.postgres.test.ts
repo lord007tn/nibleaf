@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+// #517: one cold start exceeded 60 s and passed on repeat; allow 180 s per test.
 describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real PostgreSQL and the app', () => {
   let db: typeof import('@nibleaf/database');
   let branches: typeof import('../branches');
@@ -41,7 +42,7 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).content).toBe('Concurrent edit');
     expect(await db.prisma.branch.findUnique({ where: { id: replacement.id } })).not.toBeNull();
     console.info('Snapshot conflict: 409, edited draft and replacement retained');
-  });
+  }, 180_000);
 
   it('maps a real PostgreSQL 40001 through adapter-pg to P2034', async () => {
     const { page } = await fixture();
@@ -75,7 +76,7 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     expect(await outcome).toMatchObject({ code: 'P2034' });
     expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).content).toBe('Committed writer');
     console.info('Serializable adapter receipt: concurrent update -> P2034; committed writer retained');
-  });
+  }, 180_000);
 
   it('rejects a promotion racing with an edit after its fingerprint read', async () => {
     const { project, page } = await fixture();
@@ -126,7 +127,7 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).content).toBe('Edit while promoting');
     expect(await db.prisma.branch.findUnique({ where: { id: replacement.id } })).not.toBeNull();
     console.info('Promotion race: real blocking DELETE -> serialization rejection -> HTTP 409; edit preserved');
-  });
+  }, 180_000);
 
   it('imports a real public GitBook folder through the authenticated app route', async () => {
     const { project, org, main } = await fixture();
@@ -155,5 +156,5 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     expect(pages[0]?.content).toContain('init.lua');
     expect(await db.prisma.branch.count({ where: { projectId: project.id, isDefault: false } })).toBe(0);
     console.info('Authenticated app -> GitHub commit snapshot -> 1 public page -> PostgreSQL promotion; no assets or third-party images');
-  }, 60_000);
+  }, 180_000);
 });

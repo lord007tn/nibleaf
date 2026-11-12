@@ -13,34 +13,27 @@ import { AppError, notFound } from '@/errors';
 import { preparePageLinks } from './rewrite-page-links';
 
 /** Parsing happens before entering the structural transaction. */
-export const prepareAddressLinks = async (
-  projectId: string,
-  override?: { id: string; content?: string },
-  reorderItems?: { id: string; parentId: string | null; languageId?: string }[],
-) => {
-  const pages = await prisma.page.findMany({
-    where: { projectId },
-    select: { id: true, content: true, updatedAt: true, parentId: true, languageId: true },
-  });
-  const byId = new Map(pages.map((page) => [page.id, page]));
-  const parse =
-    !reorderItems ||
-    reorderItems.some((item) => {
-      const page = byId.get(item.id);
-      return !page || page.parentId !== item.parentId || (item.languageId !== undefined && item.languageId !== page.languageId);
-    });
+export const prepareAddressLinks = async (projectId: string, override?: { id: string; content?: string }) => {
+  const pages = await prisma.page.findMany({ where: { projectId }, select: { id: true, content: true, updatedAt: true } });
   return new Map(
     pages.map((page) => [
       page.id,
       {
         content: page.content,
         updatedAt: page.updatedAt,
-        links: parse ? preparePageLinks(override?.id === page.id && override.content !== undefined ? override.content : page.content) : undefined,
+        links: preparePageLinks(override?.id === page.id && override.content !== undefined ? override.content : page.content),
       },
     ]),
   );
 };
 type PreparedAddressLinks = Awaited<ReturnType<typeof prepareAddressLinks>>;
+
+const addressLinkRace = () =>
+  new AppError({
+    code: 'page:address_conflict',
+    message: 'Pages changed while links were prepared. Try the address change again.',
+    details: { reason: 'address_raced' },
+  });
 
 export const assertAddressLinkRevisions = async (projectId: string, prepared: PreparedAddressLinks, tx: Prisma.TransactionClient) => {
   const pages = await tx.page.findMany({ where: { projectId }, select: { id: true, content: true, updatedAt: true } });
@@ -51,11 +44,7 @@ export const assertAddressLinkRevisions = async (projectId: string, prepared: Pr
       return !base || base.updatedAt.getTime() !== page.updatedAt.getTime() || base.content !== page.content;
     })
   )
-    throw new AppError({
-      code: 'page:address_conflict',
-      message: 'Pages changed while links were prepared. Try the address change again.',
-      details: { reason: 'address_raced' },
-    });
+    throw addressLinkRace();
 };
 
 const redirectFailure = (issues: import('@nibleaf/shared/redirects').RedirectValidationIssue[]) =>
@@ -70,16 +59,8 @@ export interface PagePathChange {
   path: string;
 }
 
-/** Called with the project and page locks held, after recomputing draft paths. */
-export const preservePageAddresses = async (
-  projectId: string,
-  changes: PagePathChange[],
-  tx: Prisma.TransactionClient,
-  prepared: PreparedAddressLinks,
-) => {
-  const counts = { redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 };
-  if (changes.length === 0) return counts;
-  const project = await tx.project.findUnique({
+const loadAddressContext = async (projectId: string, db: Prisma.TransactionClient) => {
+  const project = await db.project.findUnique({
     where: { id: projectId },
     include: {
       languages: { orderBy: { position: 'asc' } },
@@ -87,7 +68,7 @@ export const preservePageAddresses = async (
     },
   });
   if (!project) throw notFound('project', { id: projectId });
-  const pages = await tx.page.findMany({ where: { projectId }, include: { language: { select: { code: true } } } });
+  const pages = await db.page.findMany({ where: { projectId }, include: { language: { select: { code: true } } } });
   const snapshot = buildSnapshot(
     project,
     pages.map(({ language, createdAt, updatedAt, ...page }) => ({
@@ -98,10 +79,12 @@ export const preservePageAddresses = async (
     })),
     new Date().toISOString(),
   );
-  const latest = await tx.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
-  const live = latest?.snapshot as unknown as SiteSnapshot | null;
+  return { project, pages, snapshot };
+};
+
+const addressMappings = (snapshot: SiteSnapshot, languagesInput: { id: string; code: string; isDefault: boolean }[], changes: PagePathChange[]) => {
   const versions = new Map(snapshot.project.versions.map((version) => [version.id, version]));
-  const languages = new Map(project.languages.map((language) => [language.id, language]));
+  const languages = new Map(languagesInput.map((language) => [language.id, language]));
   const mappings = changes.flatMap((change) => {
     const version = versions.get(change.branchId);
     const language = languages.get(change.oldLanguageId ?? change.languageId);
@@ -164,6 +147,97 @@ export const preservePageAddresses = async (
     return `/${destination}${query}${split[3] ?? ''}`;
   };
 
+  return { mappings, options, occupied, defaultCode, rewriteHref, languages };
+};
+
+const rewriteAddressDocument = (
+  page: { id: string; path: string; branchId: string; languageId: string },
+  changes: PagePathChange[],
+  context: ReturnType<typeof addressMappings>,
+  links: ReturnType<typeof preparePageLinks>,
+) => {
+  const { languages, rewriteHref } = context;
+  const previousLanguageId = changes.find((change) => change.id === page.id)?.oldLanguageId;
+  const sourceLanguage = languages.get(previousLanguageId ?? page.languageId)?.code ?? '';
+  const oldPath = changes.find((change) => change.id === page.id)?.old ?? page.path;
+  return links.rewrite((href) => {
+    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\?)/i.test(href)) return href;
+    if (href.startsWith('/')) return rewriteHref(href, sourceLanguage, page.branchId);
+    if (href.includes('\\')) return href;
+    const absolute = new URL(href, `https://nibleaf.invalid/${oldPath}`);
+    if (absolute.origin !== 'https://nibleaf.invalid') return href;
+    const resolved = `${absolute.pathname}${absolute.search}${absolute.hash}`;
+    const rewritten = rewriteHref(resolved, sourceLanguage, page.branchId);
+    return rewritten !== resolved || oldPath !== page.path ? rewritten : href;
+  });
+};
+
+/** Parse outside locks and retain a revision baseline for every document in the affected branches. */
+export const prepareReorderAddressLinks = async (projectId: string, changes: PagePathChange[]) => {
+  const { project, pages, snapshot } = await loadAddressContext(projectId, prisma);
+  const nextSnapshot = {
+    ...snapshot,
+    pages: snapshot.pages.map((page) => {
+      const change = changes.find((entry) => entry.id === page.id);
+      return change
+        ? {
+            ...page,
+            path: change.path,
+            languageCode: project.languages.find((language) => language.id === change.languageId)?.code ?? page.languageCode,
+          }
+        : page;
+    }),
+  };
+  const context = addressMappings(nextSnapshot, project.languages, changes);
+  const prepared: PreparedAddressLinks = new Map();
+  const revisions = new Map<string, Date>();
+  for (const page of pages) {
+    if (!changes.some((change) => change.branchId === page.branchId)) continue;
+    revisions.set(page.id, page.updatedAt);
+    const links = preparePageLinks(page.content);
+    const path = changes.find((change) => change.id === page.id)?.path ?? page.path;
+    if (!rewriteAddressDocument({ ...page, path }, changes, context, links).linksUpdated) continue;
+    prepared.set(page.id, { content: page.content, updatedAt: page.updatedAt, links });
+  }
+  return {
+    documents: prepared,
+    assertRevisions: async (tx: Prisma.TransactionClient) => {
+      const current = await tx.page.findMany({
+        where: { projectId, id: { in: [...revisions.keys()] } },
+        select: { id: true, updatedAt: true },
+      });
+      if (current.length !== revisions.size) throw addressLinkRace();
+      const changedIds = current.filter((page) => page.updatedAt.getTime() !== revisions.get(page.id)?.getTime()).map((page) => page.id);
+      if (!changedIds.length) return;
+      const changed = await tx.page.findMany({
+        where: { projectId, id: { in: changedIds } },
+        select: { id: true, path: true, branchId: true, languageId: true, content: true },
+      });
+      if (changed.length !== changedIds.length) throw addressLinkRace();
+      for (const page of changed) {
+        const path = changes.find((change) => change.id === page.id)?.path ?? page.path;
+        const result = rewriteAddressDocument({ ...page, path }, changes, context, preparePageLinks(page.content));
+        // A fresh preparation must replace any stale patch or newly relevant link.
+        if (prepared.has(page.id) || result.linksUpdated) throw addressLinkRace();
+      }
+    },
+  };
+};
+
+/** Called with the project and page locks held, after recomputing draft paths. */
+export const preservePageAddresses = async (
+  projectId: string,
+  changes: PagePathChange[],
+  tx: Prisma.TransactionClient,
+  prepared: PreparedAddressLinks,
+) => {
+  const counts = { redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 };
+  if (changes.length === 0) return counts;
+  const { project, pages, snapshot } = await loadAddressContext(projectId, tx);
+  const latest = await tx.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
+  const live = latest?.snapshot as unknown as SiteSnapshot | null;
+  const context = addressMappings(snapshot, project.languages, changes);
+  const { mappings, options, occupied, defaultCode, rewriteHref } = context;
   const raw = snapshot.project.config?.redirects;
   // Use the shared validator to reject malformed existing rows without losing them.
   const existingValidation = validateSnapshotRedirects({
@@ -254,21 +328,9 @@ export const preservePageAddresses = async (
   const patches: { id: string; content: string; updatedAt: string }[] = [];
   for (const page of pages) {
     if (!changes.some((change) => change.branchId === page.branchId)) continue;
-    const previousLanguageId = changes.find((change) => change.id === page.id)?.oldLanguageId;
-    const sourceLanguage = (previousLanguageId ? languages.get(previousLanguageId)?.code : undefined) ?? page.language.code;
-    const oldPath = changes.find((change) => change.id === page.id)?.old ?? page.path;
     const document = prepared.get(page.id);
-    if (!document?.links) throw new AppError({ code: 'page:address_conflict', details: { reason: 'address_raced' } });
-    const result = document.links.rewrite((href) => {
-      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\?)/i.test(href)) return href;
-      if (href.startsWith('/')) return rewriteHref(href, sourceLanguage, page.branchId);
-      if (href.includes('\\')) return href;
-      const absolute = new URL(href, `https://nibleaf.invalid/${oldPath}`);
-      if (absolute.origin !== 'https://nibleaf.invalid') return href;
-      const resolved = `${absolute.pathname}${absolute.search}${absolute.hash}`;
-      const rewritten = rewriteHref(resolved, sourceLanguage, page.branchId);
-      return rewritten !== resolved || oldPath !== page.path ? rewritten : href;
-    });
+    if (!document?.links) continue;
+    const result = rewriteAddressDocument(page, changes, context, document.links);
     counts.documentsSkipped += result.documentsSkipped;
     if (!result.linksUpdated) continue;
     // Rewritten links must not grow a page past the size cap (the shared rule,

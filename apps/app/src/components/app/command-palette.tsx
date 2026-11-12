@@ -37,6 +37,7 @@ import { createContext, Fragment, type ReactNode, useContext, useEffect, useMemo
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useOrganizationSwitcherProjects, usePages, useSwitcher } from '@/hooks/api';
+import { insideModKOwner } from '@/lib/mod-k-owner';
 import { resolveProjectSettingsAccess } from '@/lib/project-settings-access';
 import { OrgAvatar } from './org-switcher/org-avatar';
 import { useSwitcherControls } from './org-switcher/switcher-context';
@@ -128,7 +129,11 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     const onKey = (event: KeyboardEvent) => {
       // A focused widget that already claimed the shortcut keeps it.
       if (event.defaultPrevented) return;
+      // Keys that confirm or move an IME composition belong to the IME.
+      if (event.isComposing || event.keyCode === 229) return;
       if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey) {
+        // In the page editor the key adds a link (AUTH-10).
+        if (insideModKOwner(event.target)) return;
         event.preventDefault();
         onOpenChange(!open);
       }

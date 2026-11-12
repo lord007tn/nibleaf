@@ -73,6 +73,7 @@
     "linkedom": "^0.18.15",
     "lowlight": "3.3.0",
     "lucide-react": "^1.70.0",
+    "mdast-util-from-markdown": "^2.0.3",
     "mermaid": "^12.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
