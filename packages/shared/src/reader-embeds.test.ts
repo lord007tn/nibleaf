@@ -5,7 +5,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { describe, expect, it } from 'vitest';
-import { readerEmbedSource, rewriteReaderEmbeds, scanAuthoredEmbeds } from './reader-embeds';
+import { readerEmbedSource, rewriteReaderEmbeds, scanAuthoredEmbeds, withEmbedAttribute } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { readerSanitizeSchema } from './reader-sanitize';
 
@@ -295,5 +295,33 @@ describe('readerEmbedSource', () => {
     expect(readerEmbedSource('javascript:alert(1)')).toEqual({ kind: 'text', text: 'javascript:alert(1)' });
     expect(readerEmbedSource('  ')).toBeNull();
     expect(readerEmbedSource(undefined)).toBeNull();
+  });
+});
+
+describe('withEmbedAttribute changes one attribute, read as the reader reads it', () => {
+  const src = `src="https://www.youtube.com/embed/${YT}"`;
+  it('ends an HTML value at its quote: no backslash escapes', () => {
+    expect(withEmbedAttribute(`<iframe ${src} title="Old\\" allowFullScreen>`, 'title', 'New')).toBe(`<iframe ${src} title="New" allowFullScreen>`);
+  });
+  it('gives a bare attribute a value, and keeps what follows', () => {
+    expect(withEmbedAttribute(`<iframe title ${src} allowFullScreen>`, 'title', 'New')).toBe(`<iframe title="New" ${src} allowFullScreen>`);
+  });
+  it('replaces a JSX value, and only the first of a repeated name', () => {
+    expect(withEmbedAttribute(`<iframe title={"Old"} ${src} title="Second">`, 'title', 'A "b" & <c>')).toBe(
+      `<iframe title="A &quot;b&quot; &amp; &lt;c&gt;" ${src} title="Second">`,
+    );
+  });
+  it('removes an attribute with the space before it', () => {
+    expect(withEmbedAttribute(`<iframe ${src} title="Old" allowFullScreen>`, 'title', '')).toBe(`<iframe ${src} allowFullScreen>`);
+  });
+  it('adds a missing attribute before the end of the tag', () => {
+    expect(withEmbedAttribute(`<iframe ${src}>`, 'title', 'New')).toBe(`<iframe ${src} title="New">`);
+    expect(withEmbedAttribute(`<iframe ${src} />`, 'title', 'New')).toBe(`<iframe ${src}  title="New"/>`);
+    expect(withEmbedAttribute(`<video controls src="a.mp4">`, 'src', 'https://cdn.example.com/b.mp4')).toBe('<video controls src="https://cdn.example.com/b.mp4">');
+  });
+  it('answers null for a tag the reader cannot read', () => {
+    expect(withEmbedAttribute(`<iframe ${src} title="a < b">`, 'title', 'x')).toBeNull();
+    expect(withEmbedAttribute(`<iframe ${src}`, 'title', 'x')).toBeNull();
+    expect(withEmbedAttribute('not a tag', 'title', 'x')).toBeNull();
   });
 });

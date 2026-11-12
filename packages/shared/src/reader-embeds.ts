@@ -81,7 +81,7 @@ const expression = (text: string, start: number, limit: number): { value: string
 
 /** The attributes of a tag whose name ends at `from`, up to its `>`; null when
  *  the tag doesn't end before the next `<` or within MAX_TAG_LENGTH. */
-const readTag = (text: string, from: number): Scan | null => {
+const readTag = (text: string, from: number, spans?: Map<string, { start: number; end: number }>): Scan | null => {
   const attributes = new Map<string, string>();
   const limit = Math.min(text.length, from + MAX_TAG_LENGTH);
   let index = from;
@@ -111,7 +111,10 @@ const readTag = (text: string, from: number): Scan | null => {
     let next = index;
     while (next < limit && isSpace(text[next])) next++;
     if (text[next] !== '=') {
-      if (!attributes.has(name)) attributes.set(name, '');
+      if (!attributes.has(name)) {
+        attributes.set(name, '');
+        spans?.set(name, { start: nameStart, end: index });
+      }
       continue;
     }
     next++;
@@ -126,7 +129,10 @@ const readTag = (text: string, from: number): Scan | null => {
       value = end > next ? { value: text.slice(next, end), end } : null;
     }
     if (!value) return null;
-    if (!attributes.has(name)) attributes.set(name, decode(value.value));
+    if (!attributes.has(name)) {
+      attributes.set(name, decode(value.value));
+      spans?.set(name, { start: nameStart, end: value.end });
+    }
     index = value.end;
   }
   return null;
@@ -317,4 +323,35 @@ export const scanAuthoredEmbeds = (text: string): AuthoredEmbed[] => {
     at = (closed ? end : tag.end) - 1;
   }
   return found;
+};
+
+/**
+ * An `<iframe>` or `<video>` opener with one attribute set to `value`, or removed
+ * when `value` is empty, read with the reader's own rules: an HTML value ends at
+ * its closing quote (HTML has no backslash escapes), a JSX value at its closing
+ * brace, and the first of a repeated name is the one that counts. Only that
+ * attribute's characters change; a new one goes before the tag's `>` (or `/>`).
+ * Null when the reader can't read the tag.
+ */
+export const withEmbedAttribute = (opener: string, name: string, value: string): string | null => {
+  const tagName = opener.startsWith('<') ? /^<[A-Za-z]+/.exec(opener)?.[0] : undefined;
+  if (!tagName) return null;
+  const spans = new Map<string, { start: number; end: number }>();
+  const tag = readTag(opener, tagName.length, spans);
+  if (!tag || tag.end !== opener.length) return null;
+  const span = spans.get(name.toLowerCase());
+  const written = `${name}="${escapeAttribute(value)}"`;
+  if (span) {
+    if (value) return `${opener.slice(0, span.start)}${written}${opener.slice(span.end)}`;
+    let start = span.start;
+    while (start > 0 && isSpace(opener[start - 1])) start--;
+    return `${opener.slice(0, start)}${opener.slice(span.end)}`;
+  }
+  if (!value) return opener;
+  let close = tag.end - 1;
+  if (tag.selfClosing) {
+    close--;
+    while (close > 0 && opener[close] !== '/') close--;
+  }
+  return `${opener.slice(0, close)} ${written}${opener.slice(close)}`;
 };

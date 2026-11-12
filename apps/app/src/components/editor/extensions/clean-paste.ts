@@ -8,7 +8,7 @@ import { allowedURL, escapeImageAttribute, IMAGE_UPLOAD_PLACEHOLDER_PREFIX, imag
 import { imageAttributeNames } from './image-source';
 import { canEditImages, type ImageUploader, uploadEditorImage } from './image-upload';
 import { fileFromPastedImage } from './pasted-image';
-import { pastedVideoEmbedAttributes, VIDEO_EMBED_NODE, type VideoEmbedAttributes } from './video-embed';
+import { pastedVideoEmbedAttributes, VIDEO_EMBED_CLIPBOARD_ATTRIBUTES, VIDEO_EMBED_NODE, type VideoEmbedAttributes } from './video-embed';
 import { embedTargetFor } from './video-embed-url';
 
 // Clipboard HTML is public. A nonce only identifies a candidate: the matching
@@ -222,9 +222,18 @@ export function cleanPasteDOM(root: HTMLElement, fallbackDir: 'ltr' | 'rtl' = 'l
       attributes['data-type'] = taskType;
       if (element.localName === 'li') attributes['data-checked'] = String(element.getAttribute('data-checked') === 'true');
     }
+    // A Video/Embed block copied from another editor keeps its portable fields only;
+    // the block's parse rule validates the address again (pastedVideoEmbedAttributes).
+    const videoEmbed = element.localName === 'div' && element.hasAttribute('data-video-embed');
+    if (videoEmbed)
+      for (const key of VIDEO_EMBED_CLIPBOARD_ATTRIBUTES) {
+        const value = element.getAttribute(key);
+        if (value !== null) attributes[key] = value;
+      }
     for (const attribute of Array.from(element.attributes)) element.removeAttribute(attribute.name);
     for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-    if (element.localName === 'div' && !element.querySelector(blocks)) {
+    if (videoEmbed) element.replaceChildren();
+    else if (element.localName === 'div' && !element.querySelector(blocks)) {
       const paragraph = doc.createElement('p');
       paragraph.append(...element.childNodes);
       element.replaceWith(paragraph);

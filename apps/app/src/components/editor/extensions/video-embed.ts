@@ -1,4 +1,4 @@
-import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
+import { scanAuthoredEmbeds, withEmbedAttribute } from '@nibleaf/shared/reader-embeds';
 import { type Editor, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { ReactNodeViewRenderer } from '@tiptap/react';
@@ -81,8 +81,6 @@ const canonicalMedia = ({ kind, src, title }: Values): string =>
     ? `<video controls src="${escapeAttribute(src)}"></video>`
     : `<iframe src="${escapeAttribute(src)}"${title ? ` title="${escapeAttribute(title)}"` : ''}></iframe>`;
 
-const tagName = (opener: string): string => /^<([A-Za-z][\w.:-]*)/.exec(opener)?.[1] ?? '';
-
 /** What the block saves: its authored source while unchanged, otherwise that source with only the changed values rewritten. */
 const videoEmbedMarkdown = (attributes: VideoEmbedAttributes): string => {
   const current = valuesOf(attributes);
@@ -104,23 +102,19 @@ const videoEmbedMarkdown = (attributes: VideoEmbedAttributes): string => {
   // The authored whitespace around the media inside its Frame.
   const lead = authored ? inner.slice(0, authored.start) : '';
   const trail = authored ? inner.slice(authored.end) : '';
-  let media: string;
-  if (authored && original && authored.kind === current.kind) {
-    let opener = inner.slice(authored.start, authored.openEnd);
-    const name = tagName(opener);
-    if (current.src !== original.src) opener = replaceOpeningAttribute(opener, name, 'src', current.src);
-    if (current.kind === 'iframe' && current.title !== original.title) opener = replaceOpeningAttribute(opener, name, 'title', current.title);
-    media = `${opener}${inner.slice(authored.openEnd, authored.end)}`;
-  } else {
-    media = canonicalMedia(current);
-  }
+  let opener: string | null = authored && original && authored.kind === current.kind ? inner.slice(authored.start, authored.openEnd) : null;
+  if (opener !== null && original && current.src !== original.src) opener = withEmbedAttribute(opener, 'src', current.src);
+  if (opener !== null && original && current.kind === 'iframe' && current.title !== original.title)
+    opener = withEmbedAttribute(opener, 'title', current.title);
+  // The reader read this tag when the block opened, so it reads it now; canonical HTML otherwise.
+  const media = authored && opener !== null ? `${opener}${inner.slice(authored.openEnd, authored.end)}` : canonicalMedia(current);
 
   if (frameOpener) {
-    let opener = frameOpener;
-    if (current.caption !== original?.caption) opener = replaceOpeningAttribute(opener, 'Frame', 'caption', current.caption);
+    let frame = frameOpener;
+    if (current.caption !== original?.caption) frame = replaceOpeningAttribute(frame, 'Frame', 'caption', current.caption);
     // Removing the caption from a Frame that has nothing else to say removes the Frame.
-    if (!current.caption && current.caption !== original?.caption && /^<Frame\s*>$/.test(opener)) return media;
-    return `${opener}${lead}${media}${trail}${frameCloser}`;
+    if (!current.caption && current.caption !== original?.caption && /^<Frame\s*>$/.test(frame)) return media;
+    return `${frame}${lead}${media}${trail}${frameCloser}`;
   }
   return current.caption ? `<Frame caption="${escapeAttribute(current.caption)}">\n  ${media}\n</Frame>` : media;
 };
@@ -130,11 +124,24 @@ const videoEmbedMarkdown = (attributes: VideoEmbedAttributes): string => {
  * Markdown) keeps none of its authored source: only an address the block
  * accepts, written canonically, with its title and caption. Null drops it.
  */
-export const pastedVideoEmbedAttributes = (attributes: VideoEmbedAttributes): Partial<VideoEmbedAttributes> | null => {
-  const target = embedTargetFor(attributes.src, 'embed');
+export const pastedVideoEmbedAttributes = (
+  attributes: Pick<VideoEmbedAttributes, 'src' | 'title' | 'caption'>,
+): Partial<VideoEmbedAttributes> | null => {
+  const target = embedTargetFor(String(attributes.src ?? ''), 'embed');
   if (!target) return null;
-  return { kind: target.kind, src: target.src, title: target.kind === 'iframe' ? attributes.title : '', caption: attributes.caption };
+  return {
+    kind: target.kind,
+    src: target.src,
+    title: target.kind === 'iframe' ? String(attributes.title ?? '') : '',
+    caption: String(attributes.caption ?? ''),
+  };
 };
+
+/** The block's portable fields on the clipboard: a copy pasted into another
+ *  editor (another tab) is rebuilt from these, validated again. */
+const CLIPBOARD_FIELDS = { src: 'data-src', title: 'data-title', caption: 'data-caption' } as const;
+/** The attributes the clipboard cleaner keeps on the block's `<div>`. */
+export const VIDEO_EMBED_CLIPBOARD_ATTRIBUTES: readonly string[] = ['data-video-embed', ...Object.values(CLIPBOARD_FIELDS)];
 
 /**
  * Turn the video link the caret is on into the Video block, asking for its
@@ -194,8 +201,26 @@ export const VideoEmbed = Node.create({
           element.getAttribute('data-caption') ?? '',
         ) ?? false,
     },
+    {
+      // A block copied from another editor: only its validated address, title and caption.
+      tag: 'div[data-video-embed]',
+      getAttrs: (element) =>
+        pastedVideoEmbedAttributes({
+          src: element.getAttribute(CLIPBOARD_FIELDS.src) ?? '',
+          title: element.getAttribute(CLIPBOARD_FIELDS.title) ?? '',
+          caption: element.getAttribute(CLIPBOARD_FIELDS.caption) ?? '',
+        }) ?? false,
+    },
   ],
-  renderHTML: ({ node }) => ['div', { 'data-video-embed': String(node.attrs.kind), 'data-src': String(node.attrs.src) }],
+  renderHTML: ({ node }) => [
+    'div',
+    {
+      'data-video-embed': String(node.attrs.kind),
+      [CLIPBOARD_FIELDS.src]: String(node.attrs.src),
+      [CLIPBOARD_FIELDS.title]: String(node.attrs.title),
+      [CLIPBOARD_FIELDS.caption]: String(node.attrs.caption),
+    },
+  ],
   addNodeView: () => ReactNodeViewRenderer(VideoEmbedView),
   addStorage: () => ({
     markdown: {
