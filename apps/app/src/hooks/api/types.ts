@@ -263,7 +263,9 @@ export interface PublishCheck {
     | 'embed-as-link'
     | 'video-not-https'
     | 'embed-unclosed'
-    | 'video-poster-hidden';
+    | 'video-poster-hidden'
+    | 'home-untranslated'
+    | 'blog-root-group';
   severity: 'error' | 'warning';
   pageId: string;
   languageCode: string;
