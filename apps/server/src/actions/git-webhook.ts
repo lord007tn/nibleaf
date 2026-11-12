@@ -102,14 +102,21 @@ const enqueueWebhookPublish = async (organizationId: string, projectId: string, 
     const last = await prisma.deployment.aggregate({ where: { projectId }, _max: { version: true } });
     version = (last._max.version ?? 0) + 1;
     try {
-      const deployment = await prisma.deployment.create({
-        data: {
-          projectId,
-          version,
-          status: 'PENDING',
-          createdById: owner?.userId ?? null,
-          commitMessage: `Sync from git push (${branch})`,
-        },
+      // The worker reads the drafts after this row exists. Created under the
+      // project lock like createDeployment's row (FOR SHARE), so a first-title
+      // address adoption in progress commits first, and a later one sees this
+      // PENDING row and keeps the address being published.
+      const deployment = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR SHARE`;
+        return tx.deployment.create({
+          data: {
+            projectId,
+            version,
+            status: 'PENDING',
+            createdById: owner?.userId ?? null,
+            commitMessage: `Sync from git push (${branch})`,
+          },
+        });
       });
       deploymentId = deployment.id;
       break;

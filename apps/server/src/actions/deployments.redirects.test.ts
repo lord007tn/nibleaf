@@ -13,12 +13,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, QueueNames: { PUBLISH: 'publish' } }));
-vi.mock('@nibleaf/database', () => ({
-  // The canonical free plan as seeded in production: no entitlement rows.
-  deliveryPlanSelect: {},
-  loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
-  Prisma: { PrismaClientKnownRequestError: class extends Error {} },
-  prisma: {
+vi.mock('@nibleaf/database', () => {
+  const prisma = {
     project: { findFirst: mocks.projectFindFirst, findUnique: mocks.projectFindUnique },
     page: { findMany: mocks.pageFindMany },
     deployment: {
@@ -28,8 +24,19 @@ vi.mock('@nibleaf/database', () => ({
       updateMany: mocks.deploymentUpdateMany,
     },
     platformEvent: { create: mocks.platformEventCreate },
-  },
-}));
+    // The publish input is read under the project lock (covered in PostgreSQL
+    // by deployments.address-adoption.postgres.test.ts); here it is a no-op.
+    $queryRaw: async () => [],
+    $transaction: (work: (tx: unknown) => Promise<unknown>) => work(prisma),
+  };
+  return {
+    // The canonical free plan as seeded in production: no entitlement rows.
+    deliveryPlanSelect: {},
+    loadDefaultDeliveryPlan: async () => ({ key: 'free', active: true, entitlements: [] }),
+    Prisma: { PrismaClientKnownRequestError: class extends Error {} },
+    prisma,
+  };
+});
 
 import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
 import { createDeployment, getCurrentSnapshot, getPendingChanges, rollbackDeployment } from './deployments';

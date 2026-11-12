@@ -102,9 +102,10 @@ export interface DeploymentPageDiff {
 
 /** Read the complete effective publish input once and compose the same snapshot
  * shape the worker will validate. Keeping preflight and worker inputs aligned
- * prevents the dashboard from approving a different route graph. */
-export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapshot> => {
-  const project = await prisma.project.findUnique({
+ * prevents the dashboard from approving a different route graph. A publish
+ * passes its transaction, so the read happens under the project lock. */
+export const getCurrentSnapshot = async (projectId: string, db: Prisma.TransactionClient = prisma): Promise<SiteSnapshot> => {
+  const project = await db.project.findUnique({
     where: { id: projectId },
     include: {
       languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
@@ -129,7 +130,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
     throw notFound('project', { projectId });
   }
   const branchIds = project.branches.map((branch) => branch.id);
-  const pages = await prisma.page.findMany({
+  const pages = await db.page.findMany({
     where: { projectId, branchId: { in: branchIds } },
     orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     include: { language: { select: { code: true } } },
@@ -141,7 +142,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
     updatedAt: updatedAt.toISOString(),
   }));
   return buildSnapshot(
-    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan, await loadDefaultDeliveryPlan()) },
+    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan, await loadDefaultDeliveryPlan(db)) },
     pageRows,
     new Date().toISOString(),
   );
@@ -454,16 +455,23 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
 
 const MAX_VERSION_RETRIES = 5;
 
-/** Allocate the next version and create a deployment, retrying when a concurrent
- *  publish/rollback grabs the same version. `max(version)+1` then `create` is a
- *  read-then-write race; the `@@unique([projectId, version])` constraint turns a
- *  collision into a P2002 we recompute-and-retry instead of surfacing as a 500. */
-async function createWithNextVersion<T>(projectId: string, build: (version: number) => Promise<T>): Promise<T> {
+/** The publish-input transaction may wait for a structural page save to
+ *  release the project lock, then reads every page: the same bound as those
+ *  saves (STRUCTURAL_UPDATE_TIMEOUT_MS in ./pages) rather than Prisma's 5 s. */
+const PUBLISH_INPUT_TIMEOUT_MS = 30_000;
+
+const nextVersion = async (db: Prisma.TransactionClient, projectId: string) =>
+  ((await db.deployment.aggregate({ where: { projectId }, _max: { version: true } }))._max.version ?? 0) + 1;
+
+/** Run `create` (allocate the next version, create a deployment) again when a
+ *  concurrent publish/rollback grabs the same version. `max(version)+1` then
+ *  `create` is a read-then-write race; the `@@unique([projectId, version])`
+ *  constraint turns a collision into a P2002 we recompute-and-retry instead of
+ *  surfacing as a 500. */
+async function retryVersionConflicts<T>(create: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
-    const last = await prisma.deployment.aggregate({ where: { projectId }, _max: { version: true } });
-    const version = (last._max.version ?? 0) + 1;
     try {
-      return await build(version);
+      return await create();
     } catch (err) {
       const isVersionConflict = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
       if (isVersionConflict && attempt < MAX_VERSION_RETRIES - 1) {
@@ -473,6 +481,39 @@ async function createWithNextVersion<T>(projectId: string, build: (version: numb
     }
   }
 }
+
+const createWithNextVersion = <T>(projectId: string, build: (version: number) => Promise<T>): Promise<T> =>
+  retryVersionConflicts(async () => build(await nextVersion(prisma, projectId)));
+
+/** Whether a page of a reviewed `input` (read before the publish took the
+ *  project lock) that is not live has another draft address (path or
+ *  language) than the one `input` holds. Such a move records no redirect (the
+ *  first-title adoption in ./pages, or any move of a page readers have not
+ *  seen), so publishing `input` would put the page live at an address its
+ *  draft no longer has. A live page that moved is left alone: its move
+ *  recorded a redirect, and it stays where readers already find it. Run under
+ *  the project lock. */
+const unpublishedPageMoved = async (tx: Prisma.TransactionClient, projectId: string, input: SiteSnapshot): Promise<boolean> => {
+  const drafts = await tx.$queryRaw<Array<{ id: string; path: string; code: string }>>`
+    SELECT draft.id, draft.path, lang.code FROM "page" draft JOIN "language" lang ON lang.id = draft."languageId"
+    WHERE draft."projectId" = ${projectId}`;
+  const draftById = new Map(drafts.map((draft) => [draft.id, draft]));
+  const moved = input.pages.flatMap((page) => {
+    const draft = draftById.get(page.id);
+    return draft && (draft.path !== page.path || draft.code !== page.languageCode) ? [page.id] : [];
+  });
+  if (moved.length === 0) return false;
+  const live = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT page ->> 'id' AS id FROM (
+      SELECT snapshot FROM "deployment" WHERE "projectId" = ${projectId} AND status = 'READY' ORDER BY version DESC LIMIT 1
+    ) latest, jsonb_array_elements(latest.snapshot -> 'pages') page
+    WHERE page ->> 'id' IN (${Prisma.join(moved)})`;
+  const liveIds = new Set(live.map((row) => row.id));
+  return moved.some((id) => !liveIds.has(id));
+};
+
+const reviewStale = () =>
+  new AppError({ code: 'mcp:preview_stale', message: 'Your site changed since you reviewed it. Review the changes again before publishing.' });
 
 /** Dashboard publish options. `skipGrammarChecks` lets the user publish past the
  *  grammar linter after reviewing its findings — broken links still block. */
@@ -525,27 +566,47 @@ export const createDeployment = async (
     }
     reviewedInput = reviewed.approvedSnapshot as unknown as SiteSnapshot;
   }
-  const redirectValidation = validateSnapshotRedirects(reviewedInput ?? (await getCurrentSnapshot(projectId)));
-  if (redirectValidation.issues.length > 0) {
-    throw badRequest(summarizeRedirectIssues(redirectValidation.issues), { redirectIssues: redirectValidation.issues });
-  }
-  if (body.reviewedStateHash && body.reviewedStateHash !== reviewedSnapshotDigest(redirectValidation.snapshot)) {
-    throw new AppError({
-      code: 'mcp:preview_stale',
-      message: 'Your site changed since you reviewed it. Review the changes again before publishing.',
-    });
-  }
-  const deployment = await createWithNextVersion(projectId, (version) =>
-    prisma.deployment.create({
-      data: {
-        projectId,
-        version,
-        status: 'PENDING',
-        approvedSnapshot: redirectValidation.snapshot as unknown as Prisma.InputJsonValue,
-        createdById: userId,
-        ...(body.message ? { commitMessage: body.message } : {}),
+  // The input is read and the PENDING row created under the project lock, in
+  // one transaction. A first-title address adoption (updatePage in ./pages)
+  // runs under the same lock and is refused once a publish is pending, so it
+  // either commits before the read (and goes live at its new address) or
+  // waits for the row (and keeps the address being published). Without the
+  // lock it could commit between the two steps: live at the old address, the
+  // draft at the new one, and no redirect. A reviewed input was read before
+  // the lock, so its unpublished addresses are re-checked under it instead.
+  //
+  // Lock order: the project row only. Structural page writes take it FOR NO
+  // KEY UPDATE and then page rows; this takes it FOR SHARE, which conflicts
+  // with them but not with other publishes, saves that do not move a page, or
+  // inserts that reference the project. It then only reads and inserts this
+  // row, locking no page or deployment row, so a transaction waiting on it
+  // holds nothing it needs. Held for the read and the insert only; the worker
+  // builds after the commit.
+  const deployment = await retryVersionConflicts(() =>
+    prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR SHARE`;
+        if (reviewedInput && (await unpublishedPageMoved(tx, projectId, reviewedInput))) throw reviewStale();
+        const redirectValidation = validateSnapshotRedirects(reviewedInput ?? (await getCurrentSnapshot(projectId, tx)));
+        if (redirectValidation.issues.length > 0) {
+          throw badRequest(summarizeRedirectIssues(redirectValidation.issues), { redirectIssues: redirectValidation.issues });
+        }
+        if (body.reviewedStateHash && body.reviewedStateHash !== reviewedSnapshotDigest(redirectValidation.snapshot)) {
+          throw reviewStale();
+        }
+        return tx.deployment.create({
+          data: {
+            projectId,
+            version: await nextVersion(tx, projectId),
+            status: 'PENDING',
+            approvedSnapshot: redirectValidation.snapshot as unknown as Prisma.InputJsonValue,
+            createdById: userId,
+            ...(body.message ? { commitMessage: body.message } : {}),
+          },
+        });
       },
-    }),
+      { timeout: PUBLISH_INPUT_TIMEOUT_MS },
+    ),
   );
   const jobData: PublishDeploymentJobData = {
     deploymentId: deployment.id,

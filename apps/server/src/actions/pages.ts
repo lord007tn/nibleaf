@@ -447,7 +447,9 @@ const adoptsFirstTitle = (page: { title: string; slug: string }, body: UpdatePag
  *  live snapshot, or a publish is still pending or building (it may be about
  *  to put the page live at its current address). The same "published" the
  *  dashboard uses (pending changes against the newest live version). Read
- *  under the structural lock, which publishing also takes. */
+ *  under the structural lock (project row FOR NO KEY UPDATE). A publish takes
+ *  the same row FOR SHARE while it reads the drafts and creates its PENDING row
+ *  (createDeployment in ./deployments), so the two never interleave. */
 const pageAddressMayBeLive = async (tx: Prisma.TransactionClient, projectId: string, pageId: string): Promise<boolean> => {
   const [row] = await tx.$queryRaw<Array<{ live: boolean }>>`
     SELECT EXISTS (
