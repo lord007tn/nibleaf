@@ -17,10 +17,9 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { chromium } from 'playwright-core';
 import { getDb } from '../../../packages/database/src/client.ts';
 import { MESSAGE_IDS } from '../../../packages/i18n/src/message-ids.ts';
-import { acquireDevstackLock, chromiumExecutable } from '../lib/capture-env.mjs';
+import { acquireDevstackLock, hostKey, withLocalOnlyBrowser } from '../lib/capture-env.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const APP = 'http://localhost:4310';
@@ -140,6 +139,8 @@ const failures = [];
 const evidence = [];
 /** The page a journey is on, for a screenshot when it fails. */
 let current;
+/** What the local-only browser recorded as attempted outside the stack (the PR's evidence; 0). */
+let outsideAttempts = -1;
 try {
   await mkdir(OUTPUT, { recursive: true });
   await mkdir(LOGS, { recursive: true });
@@ -153,14 +154,30 @@ try {
     data: { userId: user.id, token, expiresAt: new Date(Date.now() + 3_600_000), activeOrganizationId: member.organizationId },
   });
   const signed = encodeURIComponent(`${token}.${createHmac('sha256', process.env.BETTER_AUTH_SECRET).update(token).digest('base64')}`);
-  browser = await chromium.launch({
-    executablePath: chromiumExecutable(),
-    headless: true,
-    handleSIGINT: false,
-    handleSIGTERM: false,
-    handleSIGHUP: false,
-  });
+  // #565's local-only browser: default-deny at Chromium's network layer, and any
+  // attempt to reach outside the stack fails the run. Only the app is allowed; the
+  // provider and example.com hosts are answered by this script's own routes.
+  await withLocalOnlyBrowser(
+    { allowedHosts: [hostKey(APP)], launch: { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false } },
+    async ({ browser: local, attempted }) => {
+      browser = local;
+      await runPhases(signed, member);
+      outsideAttempts = attempted.length;
+      console.log(`Attempts outside the local stack: ${attempted.length}`);
+    },
+  );
+  await writeFile(resolve(OUTPUT, 'request-log.json'), `${JSON.stringify({ outsideAttempts, profiles: evidence }, null, 2)}\n`);
+} finally {
+  await cleanup();
+  await lock.release();
+}
+if (failures.length) {
+  console.log(`\n${failures.length} failed: ${failures.join(', ')}`);
+  process.exit(1);
+}
+console.log('\nAll editor video block checks passed.');
 
+async function runPhases(signed, member) {
   const phases = process.env.NIBLEAF_BEFORE_APP ? ['before', 'after'] : ['after'];
   for (const phase of phases) {
     const before = phase === 'before';
@@ -191,16 +208,7 @@ try {
     await stop(app);
     await stop(api);
   }
-  await writeFile(resolve(OUTPUT, 'request-log.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-} finally {
-  await cleanup();
-  await lock.release();
 }
-if (failures.length) {
-  console.log(`\n${failures.length} failed: ${failures.join(', ')}`);
-  process.exit(1);
-}
-console.log('\nAll editor video block checks passed.');
 
 async function journey({ phase, locale, width, member, signed }) {
   const before = phase === 'before';
@@ -258,28 +266,10 @@ async function journey({ phase, locale, width, member, signed }) {
   ]);
   let stage = 'editor';
   const requests = [];
-  const offLocalNavigations = [];
-  context.on('request', (request) => {
-    requests.push({ stage, url: request.url() });
-    // A page never leaves localhost. (The player's frame after play is the mocked request counted below.)
-    if (request.isNavigationRequest() && !request.frame().parentFrame() && !isLocal(request.url())) offLocalNavigations.push(request.url());
-  });
-  // A redirect that would leave localhost (a custom domain's 301, say) fails the run.
-  context.on('response', (response) => {
-    const location = response.headers().location;
-    if (
-      response.request().isNavigationRequest() &&
-      response.status() >= 300 &&
-      response.status() < 400 &&
-      location &&
-      !isLocal(new URL(location, response.url()).href)
-    )
-      offLocalNavigations.push(`${response.url()} → ${location}`);
-  });
-  // Default deny: every request to a host other than localhost is aborted. Routes
-  // added later take precedence, so the in-process mocks below still answer the
-  // provider and example.com hosts; nothing leaves the machine.
-  await context.route('**/*', (route) => (isLocal(route.request().url()) ? route.fallback() : route.abort('blockedbyclient')));
+  context.on('request', (request) => requests.push({ stage, url: request.url() }));
+  // The local-only browser denies everything outside the app (redirects and
+  // sockets included); these routes answer the provider and example.com hosts
+  // in-process, so the pages' requests to them are still recorded below.
   await context.route(isProvider, (route) =>
     route.fulfill({ status: 200, contentType: 'text/html', body: STUB(new URL(route.request().url()).hostname) }),
   );
@@ -365,11 +355,18 @@ async function journey({ phase, locale, width, member, signed }) {
     await shot('facade-editor');
   }
 
-  // The save reaches the database as canonical HTML.
+  // Wait for the saved state itself: the editor says the draft is saved, and the
+  // stored source holds the final values (the title and caption, not just the
+  // address) and stays the same across two reads, so no autosave is still pending.
+  const expected = before ? ['youtube.com/watch'] : ['youtube-nocookie.com/embed/', `title="${words.title}"`, `caption="${words.caption}"`];
+  let previous = '';
   const saved = await until(async () => {
-    const row = await db.page.findUniqueOrThrow({ where: { id: tour.id } });
-    return before ? row.content.includes('youtube.com/watch') && row.content : row.content.includes('youtube-nocookie.com/embed/') && row.content;
-  }, 'the page to save');
+    const status = await page.getByRole('status').filter({ hasText: t('editor.savedShort') }).count();
+    const { content } = await db.page.findUniqueOrThrow({ where: { id: tour.id } });
+    const settled = status > 0 && content === previous && expected.every((part) => content.includes(part));
+    previous = content;
+    return settled && content;
+  }, 'the final draft to save');
   if (!before)
     assert.ok(
       saved.includes(
@@ -453,7 +450,6 @@ async function journey({ phase, locale, width, member, signed }) {
     assert.deepEqual(afterPlay, [`https://www.youtube-nocookie.com/embed/${YT}?start=30&autoplay=1`], 'play loads exactly the chosen player');
   }
   await context.close();
-  assert.deepEqual(offLocalNavigations, [], 'no navigation or redirect left localhost');
   return {
     phase,
     locale,
