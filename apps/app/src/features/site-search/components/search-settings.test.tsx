@@ -82,12 +82,12 @@ vi.mock('@/hooks/api', async () => {
     },
   };
 });
-vi.mock('@/hooks/api/workspace-ai', () => ({ useWorkspaceAi: () => ({ data: mocks.ai }) }));
+vi.mock('@/features/site-ai/api/hooks', () => ({ useSiteAi: () => ({ data: mocks.ai }) }));
 vi.mock('@/hooks/api/errors', () => ({ friendlyErrorMessage: () => 'Could not save' }));
 vi.mock('@/hooks/use-project-admin-status', () => ({ useProjectAdminStatus: () => ({ status: mocks.status, edit: 'edit' }) }));
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, className }: AnchorHTMLAttributes<HTMLAnchorElement> & { children: ReactNode }) => (
-    <a className={className} href="/settings?section=smartAi">
+  Link: ({ children, className, search }: AnchorHTMLAttributes<HTMLAnchorElement> & { children?: ReactNode; search?: { section?: string } }) => (
+    <a className={className} href={`/settings?section=${search?.section ?? ''}`}>
       {children}
     </a>
   ),
@@ -96,12 +96,24 @@ vi.mock('@tanstack/react-router', () => ({
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
 const project = { id: 'site-1' } as Project;
+/** AI answers on with Nibleaf AI, as `useSiteAi` returns it. */
 const aiReady = {
-  infrastructureConfigured: true,
-  selectedProvider: 'instance',
-  instanceConfigured: true,
-  instanceAnswersEnabled: true,
-  providers: [],
+  capabilities: {
+    managed: { available: true, reason: null, model: null, dailyAnswerLimit: 200 },
+    ownKey: { available: true, reason: null },
+    providers: [],
+    answers: { available: true, reason: null },
+  },
+  status: {
+    answersOn: true,
+    source: 'managed',
+    sourceReady: true,
+    connections: [],
+    published: { version: 3, at: null },
+    preparation: { state: 'ready', pages: 4, expectedPages: 4, at: null },
+    usage: { answersToday: 0, spent: 0, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
+  },
+  viewer: { canManage: true },
 };
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
@@ -318,17 +330,16 @@ describe('SearchSettings', () => {
     expect(region()).not.toBeNull();
   });
 
-  it('says why grounded answers cannot be turned on, with the way to fix it', async () => {
-    await act(async () => root.unmount());
-    mocks.ai = { ...aiReady, instanceAnswersEnabled: false };
-    root = createRoot(container);
-    await render();
-    const answers = controlFor('settings.search.aiAnswers.label');
-    const toggle = answers.closest('[data-slot="settings-row"]')?.querySelector('[role="switch"]');
-    expect(toggle?.hasAttribute('data-disabled')).toBe(true);
-    const reason = container.querySelector('[data-slot="settings-row-reason"]');
-    expect(reason?.textContent).toContain('settings.search.aiAnswers.needsConnection');
-    expect(reason?.querySelector('a')?.textContent).toBe('settings.search.aiAnswers.openSmartAi');
+  it('shows where AI answers stand, read-only, with the way to the one switch on the AI answers page', async () => {
+    const row = [...container.querySelectorAll('[data-slot="settings-row"]')].find((item) => item.textContent?.includes('settings.ai'));
+    expect(row?.textContent).toContain('settings.ai.state.on');
+    expect(row?.textContent).toContain('settings.ai.switch.on');
+    // No switch here: AI answers has the only control that turns answers on or off.
+    expect(row?.querySelector('[role="switch"]')).toBeNull();
+    expect(container.textContent).not.toContain('settings.search.aiAnswers.label');
+    const manage = row?.querySelector('a');
+    expect(manage?.textContent).toBe('settings.search.aiAnswers.manage');
+    expect(manage?.getAttribute('href')).toBe('/settings?section=ai');
   });
 
   it('shows the page read-only to non-Admins, with one note saying why', async () => {

@@ -244,6 +244,7 @@ describe('status', () => {
     expect(status.connections).toEqual([
       {
         id: 'openai',
+        revision: 1,
         state: 'ok',
         failure: null,
         keyHint: '4f2a',
@@ -461,6 +462,22 @@ describe('a key whose last check failed', () => {
     expect(overview.status.sourceReady).toBe(false);
     // Provider text is never passed through.
     expect(JSON.stringify(overview)).not.toContain('leaked');
+  });
+
+  it('a key the provider says is out of credit stops serving, and says so apart from a refused key (#566 council)', async () => {
+    state.config = { search: { aiProvider: 'openai', aiAnswers: true } };
+    state.connections = [storedKey('openai', { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: 'integration:quota_exhausted' })];
+    const overview = await getWorkspaceAi(ctx, 'site');
+    expect(overview.status.connections[0]).toMatchObject({ state: 'outOfCredit', failure: { reason: 'outOfCredit' } });
+    expect(overview.status.sourceReady).toBe(false);
+  });
+
+  it('a rate-limited key still serves, with the limit on record (#566 council)', async () => {
+    state.config = { search: { aiProvider: 'openai', aiAnswers: true } };
+    state.connections = [storedKey('openai', { lastVerificationCode: 'integration:rate_limited' })];
+    const overview = await getWorkspaceAi(ctx, 'site');
+    expect(overview.status.connections[0]).toMatchObject({ state: 'rateLimited', failure: { reason: 'rateLimited' } });
+    expect(overview.status.sourceReady).toBe(true);
   });
 });
 
