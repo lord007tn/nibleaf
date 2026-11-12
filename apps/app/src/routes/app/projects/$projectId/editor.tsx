@@ -950,7 +950,10 @@ function EditorPage() {
   const pageTitleInput = (
     <PageTitleField
       label={t('editor.pageTitlePlaceholder')}
+      placeholder={t('editor.untitled')}
       lang={activeLanguage?.code}
+      // In visual mode the title sits outside the body that carries these.
+      style={typographyVars(project?.config?.typography)}
       onChange={canEditContent ? setTitle : ignoreEdit}
       readOnly={!canEditContent}
       onEnter={() => focusBodyStart(canvasRef.current)}

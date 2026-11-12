@@ -15,25 +15,40 @@ import {
 } from './site-route';
 
 /** The page lookup as it was before the per-snapshot index: linear scans over the
- *  snapshot, built from the exported helpers (unchanged). The reference oracle. */
-const referenceResolveSitePage = (snapshot: SiteSnapshot, path: string, lang?: string, version?: string) => {
-  if (sitePathTooLong(path)) return null;
-  const explicitVersion = matchingVersion(snapshot, version);
-  const normalized = sitePathWithinVersion(snapshot, path, version);
-  const activeLanguage = activeLanguageCode(snapshot, lang);
-  const docsVersion = explicitVersion ?? activeVersion(snapshot, version);
-  const versionPages = pagesForVersion(snapshot, docsVersion);
-  const findIn = (langCode: string) => {
-    const langPages = pagesForLanguage(versionPages, langCode);
-    const found =
-      langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
-      (normalized === '' ? firstPage(langPages, langCode) : undefined) ??
-      firstPageUnder(langPages, langCode, normalized);
-    return found ? { page: found, pages: langPages } : undefined;
+ *  snapshot, built from the exported helpers (unchanged). The reference oracle.
+ *  Each scan (a version and language's pages, and the page found at a normalized
+ *  path) runs once per site and is reused across queries, so the test's cost is
+ *  the queries, not the oracle re-scanning per query. */
+const referenceResolver = (snapshot: SiteSnapshot) => {
+  const scans = new Map<string, { page: SnapshotPage; pages: SnapshotPage[] } | undefined>();
+  const langPagesByScope = new Map<string, SnapshotPage[]>();
+  return (path: string, lang?: string, version?: string) => {
+    if (sitePathTooLong(path)) return null;
+    const explicitVersion = matchingVersion(snapshot, version);
+    const normalized = sitePathWithinVersion(snapshot, path, version);
+    const activeLanguage = activeLanguageCode(snapshot, lang);
+    const docsVersion = explicitVersion ?? activeVersion(snapshot, version);
+    const findIn = (langCode: string) => {
+      const key = `${docsVersion.id}|${langCode}|${normalized}`;
+      if (scans.has(key)) return scans.get(key);
+      const scope = `${docsVersion.id}|${langCode}`;
+      let langPages = langPagesByScope.get(scope);
+      if (!langPages) {
+        langPages = pagesForLanguage(pagesForVersion(snapshot, docsVersion), langCode);
+        langPagesByScope.set(scope, langPages);
+      }
+      const found =
+        langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
+        (normalized === '' ? firstPage(langPages, langCode) : undefined) ??
+        firstPageUnder(langPages, langCode, normalized);
+      const result = found ? { page: found, pages: langPages } : undefined;
+      scans.set(key, result);
+      return result;
+    };
+    const defaultCode = defaultLanguage(snapshot.project).code;
+    const match = findIn(activeLanguage) ?? (activeLanguage === defaultCode ? undefined : findIn(defaultCode));
+    return match ? { ...match, docsVersion, normalized } : null;
   };
-  const defaultCode = defaultLanguage(snapshot.project).code;
-  const match = findIn(activeLanguage) ?? (activeLanguage === defaultCode ? undefined : findIn(defaultCode));
-  return match ? { ...match, docsVersion, normalized } : null;
 };
 
 const random = (seed: number) => {
@@ -86,7 +101,7 @@ const randomSite = (seed: number): { snapshot: SiteSnapshot; paths: string[] } =
       languages: [
         { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null },
         { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, config: null },
-        { code: 'fr', label: 'Français', direction: 'LTR', isDefault: false, config: next() > 0.5 ? { enabled: false } : null },
+        { code: 'fr', label: 'Français', direction: 'LTR', isDefault: false, config: null, enabled: next() > 0.5 ? false : undefined },
       ],
       versions: [
         { id: 'v1', name: 'Latest', slug: 'latest', isDefault: true },
@@ -102,7 +117,7 @@ const randomSite = (seed: number): { snapshot: SiteSnapshot; paths: string[] } =
     paths.push(page.path, `/${page.path}/`, `v2/${page.path}`, page.path.split('/')[0] ?? '');
     if (page.path.includes('/')) paths.push(page.path.split('/').slice(0, 2).join('/'));
   }
-  return { snapshot, paths };
+  return { snapshot, paths: [...new Set(paths)] };
 };
 
 const shape = (resolved: ReturnType<typeof resolveSitePage>) =>
@@ -110,31 +125,83 @@ const shape = (resolved: ReturnType<typeof resolveSitePage>) =>
     ? { page: resolved.page.id, pages: resolved.pages.map((page) => page.id), version: resolved.docsVersion.id, normalized: resolved.normalized }
     : null;
 
-describe('resolveSitePage against the linear-scan reference', () => {
-  it('answers every path, language and version exactly as the linear scans did, on randomized sites', () => {
-    let checks = 0;
-    const mismatches: string[] = [];
-    for (let seed = 1; seed <= 40; seed += 1) {
-      const { snapshot, paths } = randomSite(seed);
-      for (const path of paths) {
-        for (const lang of [undefined, 'en', 'ar', 'fr', 'de']) {
-          for (const version of [undefined, 'latest', 'v2', 'nope', path.split('/')[0]]) {
-            const actual = JSON.stringify(shape(resolveSitePage(snapshot, path, lang, version)));
-            const expected = JSON.stringify(shape(referenceResolveSitePage(snapshot, path, lang, version)));
-            if (actual !== expected) mismatches.push(`seed ${seed} path ${path} lang ${lang} version ${version}: ${actual} vs ${expected}`);
-            checks += 1;
-          }
-          // The route serves the page the lookup finds (it passes the first segment as the version).
-          const route = resolveSiteRoute(snapshot, path, { lang });
-          const splat = path.replace(/^\/+|\/+$/g, '');
-          const expected = referenceResolveSitePage(snapshot, splat, lang, splat ? splat.split('/')[0] : undefined);
-          if ((route.kind === 'page' ? route.page.id : null) !== (expected?.page.id ?? null))
-            mismatches.push(`route seed ${seed} path ${path} lang ${lang}`);
+/** Every path, language and version option on `seeds` random sites, against the
+ *  reference; returns the number of checks and the first mismatches. */
+const compareOn = (seeds: number) => {
+  let checks = 0;
+  const mismatches: string[] = [];
+  // Which of the cases the generator aims for these seeds actually reached.
+  const covered = new Set<string>();
+  for (let seed = 1; seed <= seeds; seed += 1) {
+    const { snapshot, paths } = randomSite(seed);
+    const reference = referenceResolver(snapshot);
+    const seen = new Set<string>();
+    for (const page of snapshot.pages) {
+      if (page.hidden) covered.add('hidden page');
+      if (page.kind === 'GROUP') covered.add('group');
+      if (page.versionId === 'v2') covered.add('second version');
+      if (page.path.includes('/')) covered.add('nested path');
+      const scope = `${page.versionId}|${page.languageCode}|${page.path}`;
+      if (seen.has(scope)) covered.add('duplicate path');
+      seen.add(scope);
+    }
+    if (snapshot.project.languages.some((language) => language.enabled === false)) covered.add('disabled language');
+    for (const path of paths) {
+      for (const lang of [undefined, 'en', 'ar', 'fr', 'de']) {
+        for (const version of [undefined, 'latest', 'v2', 'nope', path.split('/')[0]]) {
+          const actual = JSON.stringify(shape(resolveSitePage(snapshot, path, lang, version)));
+          const found = reference(path, lang, version);
+          if (found && found.normalized !== '' && found.page.path !== found.normalized) covered.add('section prefix hit');
+          if (!found && path.includes('/')) covered.add('section prefix miss');
+          const expected = JSON.stringify(shape(found));
+          if (actual !== expected && mismatches.length < 5)
+            mismatches.push(`seed ${seed} path ${path} lang ${lang} version ${version}: ${actual} vs ${expected}`);
           checks += 1;
         }
+        // The route serves the page the lookup finds (it passes the first segment as the version).
+        const route = resolveSiteRoute(snapshot, path, { lang });
+        if (route.kind === 'redirect') covered.add(`${route.reason} redirect`);
+        const splat = path.replace(/^\/+|\/+$/g, '');
+        const expected = reference(splat, lang, splat ? splat.split('/')[0] : undefined);
+        if ((route.kind === 'page' ? route.page.id : null) !== (expected?.page.id ?? null) && mismatches.length < 5)
+          mismatches.push(`route seed ${seed} path ${path} lang ${lang}`);
+        checks += 1;
       }
     }
-    expect(mismatches.slice(0, 5)).toEqual([]);
-    expect(checks).toBeGreaterThan(10_000);
+  }
+  return { checks, mismatches, covered: [...covered].sort() };
+};
+
+const ALL_CASES = [
+  'configured redirect',
+  'disabled language',
+  'duplicate path',
+  'group',
+  'hidden page',
+  'nested path',
+  'second version',
+  'section prefix hit',
+  'section prefix miss',
+];
+
+describe('resolveSitePage against the linear-scan reference', () => {
+  it('answers every path, language and version exactly as the linear scans did, on randomized sites', () => {
+    const { checks, mismatches, covered } = compareOn(12);
+    expect(mismatches).toEqual([]);
+    expect(checks).toBeGreaterThan(5000);
+    // Fewer seeds than the deep run, still every kind of case.
+    expect(covered).toEqual(expect.arrayContaining(ALL_CASES));
   }, 30_000);
+
+  // The same comparison on 400 sites, for a change to the resolver or the index:
+  // NIBLEAF_PROPERTY_DEEP=1 pnpm --filter @nibleaf/shared exec vitest run site-route.property
+  it.runIf(process.env.NIBLEAF_PROPERTY_DEEP === '1')(
+    'agrees on 400 randomized sites (opt-in deep run)',
+    () => {
+      const { checks, mismatches } = compareOn(400);
+      expect(mismatches).toEqual([]);
+      expect(checks).toBeGreaterThan(200_000);
+    },
+    300_000,
+  );
 });
