@@ -231,6 +231,7 @@ describe('reader content ergonomics', () => {
   });
   it('recognizes lucide aliases and leaves unknown authored icons to the caller', async () => {
     for (const name of ['life-buoy', 'lifebuoy', 'LifeBuoy', 'circle-help']) expect(hasIcon(name)).toBe(true);
+    for (const name of ['constructor', '__proto__', 'unknown-icon']) expect(hasIcon(name)).toBe(false);
     await act(async () => root.render(<PageIcon name="life-buoy" />));
     expect(container.querySelector('svg')).not.toBeNull();
     // Unknown names render nothing, so inline <Icon> and the sidebar don't show a stray document icon.

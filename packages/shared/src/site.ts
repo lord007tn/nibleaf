@@ -1,6 +1,7 @@
 import GithubSlugger from 'github-slugger';
 import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
 import { fencedMarkdownLines } from './markdown-code';
+import { displayTitle } from './page-title';
 import { stripMarkdownLinks } from './utils';
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
@@ -382,7 +383,7 @@ export const buildNavTree = (pages: readonly SnapshotPage[], languageCode?: stri
       id: page.id,
       kind: page.kind,
       // Mintlify-style: a short sidebar label overrides the full page title in nav.
-      title: page.config?.sidebarTitle?.trim() || page.title,
+      title: page.config?.sidebarTitle?.trim() || displayTitle(page),
       path: page.path,
       icon: page.icon,
       tag: page.config?.tag?.trim() || null,

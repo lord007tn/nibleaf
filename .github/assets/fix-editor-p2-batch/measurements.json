@@ -1,0 +1,248 @@
+[
+  {
+    "phase": "before",
+    "locale": "en",
+    "width": 1440,
+    "layout": {
+      "titleTop": 173,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "headerWidth": 1425
+    },
+    "previewPublishColour": "rgb(37, 99, 235)",
+    "projectId": "cmwcvxyra0001a4yo47w3bj1m",
+    "frames": [
+      "before-en-1440-editor.png",
+      "before-en-1440-settings-general.png",
+      "before-en-1440-settings.png",
+      "before-en-1440-group-tree.png",
+      "before-en-1440-preview.png",
+      "before-en-1440-publish-diff.png",
+      "before-en-1440-published-sidebar.png",
+      "before-en-1440-new-page.png",
+      "before-en-1440-untitled-tree.png",
+      "before-en-1440-named-page.png",
+      "before-en-1440-language.png"
+    ],
+    "videos": {
+      "editor": "page@91bb33d6dee9c18c5799a2b36d029bf4.webm",
+      "preview": "page@2ae36601aba5976a645d1f0f3e7b067b.webm"
+    }
+  },
+  {
+    "phase": "before",
+    "locale": "en",
+    "width": 390,
+    "layout": {
+      "titleTop": 186,
+      "viewport": 390,
+      "documentWidth": 390,
+      "headerWidth": 390
+    },
+    "previewPublishColour": "rgb(37, 99, 235)",
+    "projectId": "cmwcvyd7f000ba4yolhxhwhcb",
+    "frames": [
+      "before-en-390-editor.png",
+      "before-en-390-settings-general.png",
+      "before-en-390-settings.png",
+      "before-en-390-group-tree.png",
+      "before-en-390-preview.png",
+      "before-en-390-publish-diff.png",
+      "before-en-390-published-sidebar.png",
+      "before-en-390-new-page.png",
+      "before-en-390-untitled-tree.png",
+      "before-en-390-named-page.png",
+      "before-en-390-language.png"
+    ],
+    "videos": {
+      "editor": "page@507c95fdd6b8395f6e785d8fe77a714b.webm",
+      "preview": "page@d06d9c0097181e85316864e38aabefd0.webm"
+    }
+  },
+  {
+    "phase": "before",
+    "locale": "ar",
+    "width": 1440,
+    "layout": {
+      "titleTop": 173,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "headerWidth": 1425
+    },
+    "previewPublishColour": "rgb(37, 99, 235)",
+    "projectId": "cmwcvyowv000la4yop1a3nsvq",
+    "frames": [
+      "before-ar-1440-editor.png",
+      "before-ar-1440-settings-general.png",
+      "before-ar-1440-settings.png",
+      "before-ar-1440-group-tree.png",
+      "before-ar-1440-preview.png",
+      "before-ar-1440-publish-diff.png",
+      "before-ar-1440-published-sidebar.png",
+      "before-ar-1440-new-page.png",
+      "before-ar-1440-untitled-tree.png",
+      "before-ar-1440-named-page.png",
+      "before-ar-1440-language.png"
+    ],
+    "videos": {
+      "editor": "page@097b82260cfc41a5b556554415c1f79a.webm",
+      "preview": "page@7deaa7fcaf9f46824862ce1cd1120e34.webm"
+    }
+  },
+  {
+    "phase": "before",
+    "locale": "ar",
+    "width": 390,
+    "layout": {
+      "titleTop": 170,
+      "viewport": 390,
+      "documentWidth": 390,
+      "headerWidth": 390
+    },
+    "previewPublishColour": "rgb(37, 99, 235)",
+    "projectId": "cmwcvyygk000va4yo8b7jdgub",
+    "frames": [
+      "before-ar-390-editor.png",
+      "before-ar-390-settings-general.png",
+      "before-ar-390-settings.png",
+      "before-ar-390-group-tree.png",
+      "before-ar-390-preview.png",
+      "before-ar-390-publish-diff.png",
+      "before-ar-390-published-sidebar.png",
+      "before-ar-390-new-page.png",
+      "before-ar-390-untitled-tree.png",
+      "before-ar-390-named-page.png",
+      "before-ar-390-language.png"
+    ],
+    "videos": {
+      "editor": "page@2003baf1f7753128f1aa3aed3dcbf35b.webm",
+      "preview": "page@9f71d3ba5a919b9e40e70a00de66db3c.webm"
+    }
+  },
+  {
+    "phase": "after",
+    "locale": "en",
+    "width": 1440,
+    "layout": {
+      "titleTop": 173,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "headerWidth": 1425
+    },
+    "previewPublishColour": "rgb(194, 65, 12)",
+    "projectId": "cmwcvzh560015a4yovoy8ewlw",
+    "frames": [
+      "after-en-1440-editor.png",
+      "after-en-1440-settings-general.png",
+      "after-en-1440-icon-validation.png",
+      "after-en-1440-settings.png",
+      "after-en-1440-group-tree.png",
+      "after-en-1440-preview.png",
+      "after-en-1440-publish-diff.png",
+      "after-en-1440-published-sidebar.png",
+      "after-en-1440-new-page.png",
+      "after-en-1440-untitled-tree.png",
+      "after-en-1440-named-page.png",
+      "after-en-1440-language.png"
+    ],
+    "videos": {
+      "editor": "page@18ffa36406f0de532c5b8ee0005c929f.webm",
+      "preview": "page@5f0dd0c4d9cd5cdd2a8d7af42c31f0b6.webm"
+    }
+  },
+  {
+    "phase": "after",
+    "locale": "en",
+    "width": 390,
+    "layout": {
+      "titleTop": 129,
+      "viewport": 390,
+      "documentWidth": 390,
+      "headerWidth": 390
+    },
+    "previewPublishColour": "rgb(194, 65, 12)",
+    "projectId": "cmwcvzss6001fa4yoc5asr1du",
+    "frames": [
+      "after-en-390-editor.png",
+      "after-en-390-menu.png",
+      "after-en-390-settings-general.png",
+      "after-en-390-icon-validation.png",
+      "after-en-390-settings.png",
+      "after-en-390-group-tree.png",
+      "after-en-390-preview.png",
+      "after-en-390-publish-diff.png",
+      "after-en-390-published-sidebar.png",
+      "after-en-390-new-page.png",
+      "after-en-390-untitled-tree.png",
+      "after-en-390-named-page.png",
+      "after-en-390-language.png"
+    ],
+    "videos": {
+      "editor": "page@4fb235fe4aea2c5457599c07a89cc044.webm",
+      "preview": "page@a7b5239f1f10b93170f72c5573b8971d.webm"
+    }
+  },
+  {
+    "phase": "after",
+    "locale": "ar",
+    "width": 1440,
+    "layout": {
+      "titleTop": 173,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "headerWidth": 1425
+    },
+    "previewPublishColour": "rgb(194, 65, 12)",
+    "projectId": "cmwcw02qw001pa4yooqnfnyvm",
+    "frames": [
+      "after-ar-1440-editor.png",
+      "after-ar-1440-settings-general.png",
+      "after-ar-1440-icon-validation.png",
+      "after-ar-1440-settings.png",
+      "after-ar-1440-group-tree.png",
+      "after-ar-1440-preview.png",
+      "after-ar-1440-publish-diff.png",
+      "after-ar-1440-published-sidebar.png",
+      "after-ar-1440-new-page.png",
+      "after-ar-1440-untitled-tree.png",
+      "after-ar-1440-named-page.png",
+      "after-ar-1440-language.png"
+    ],
+    "videos": {
+      "editor": "page@a040baaa620e0b9eb8b075cee9370236.webm",
+      "preview": "page@46b1d0c4f48eb2d4dc713193b489c5ce.webm"
+    }
+  },
+  {
+    "phase": "after",
+    "locale": "ar",
+    "width": 390,
+    "layout": {
+      "titleTop": 113,
+      "viewport": 390,
+      "documentWidth": 390,
+      "headerWidth": 390
+    },
+    "previewPublishColour": "rgb(194, 65, 12)",
+    "projectId": "cmwcw0ccm001za4yoksjd5y86",
+    "frames": [
+      "after-ar-390-editor.png",
+      "after-ar-390-menu.png",
+      "after-ar-390-settings-general.png",
+      "after-ar-390-icon-validation.png",
+      "after-ar-390-settings.png",
+      "after-ar-390-group-tree.png",
+      "after-ar-390-preview.png",
+      "after-ar-390-publish-diff.png",
+      "after-ar-390-published-sidebar.png",
+      "after-ar-390-new-page.png",
+      "after-ar-390-untitled-tree.png",
+      "after-ar-390-named-page.png",
+      "after-ar-390-language.png"
+    ],
+    "videos": {
+      "editor": "page@d1b81eeef50d5196868b5cc842107841.webm",
+      "preview": "page@41e6a41a4d5f20c620f9b3bf852bb683.webm"
+    }
+  }
+]

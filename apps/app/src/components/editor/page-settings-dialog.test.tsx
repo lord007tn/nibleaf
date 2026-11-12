@@ -104,6 +104,59 @@ describe('page settings draft', () => {
     expect(document.querySelector<HTMLInputElement>('#page-title')?.value).toBe('Other page');
   });
 
+  it('removes the numeric ordering control, preserves existing headings and order, and validates icon names', async () => {
+    const configured = { ...page, config: { category: 'Guides', categoryOrder: 7, categoryIcon: 'rocket' } };
+    await act(async () => root.render(<PageSettingsDialog onOpenChange={vi.fn()} open page={configured} projectId="project-a" />));
+    expect(document.querySelector('input[type="number"]')).toBeNull();
+    expect(document.querySelector('#page-language-reason')?.textContent).toBe('editor.pageSettings.oneLanguage');
+    const icon = document.querySelector<HTMLInputElement>('#page-category-icon');
+    if (!icon) throw new Error('Heading icon not rendered');
+    expect(icon.parentElement?.querySelector('svg')).not.toBeNull();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(icon, 'not-an-icon');
+      icon.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(icon.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(icon.getAttribute('aria-describedby') ?? '')?.textContent).toBe('editor.pageSettings.invalidIcon');
+    const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
+    if (!save) throw new Error('Save not rendered');
+    await act(async () => save.click());
+    expect(mocks.update).not.toHaveBeenCalled();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(icon, 'book-open');
+      icon.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => save.click());
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ config: expect.objectContaining({ category: 'Guides', categoryOrder: 7, categoryIcon: 'book-open' }) }),
+      }),
+    );
+  });
+
+  it('shows and focuses the icon field that blocks saving, from another tab and a closed "More options"', async () => {
+    await act(async () => root.render(<PageSettingsDialog onOpenChange={vi.fn()} open page={page} projectId="project-a" />));
+    const more = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.more'));
+    await act(async () => more?.click());
+    const icon = document.querySelector<HTMLInputElement>('#page-icon');
+    if (!icon) throw new Error('Icon field not rendered');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(icon, 'not-an-icon');
+      icon.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    // Close "More options" and move to SEO, so the invalid field is unmounted.
+    await act(async () => more?.click());
+    const seo = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.seo'));
+    await act(async () => seo?.click());
+    expect(document.querySelector('#page-icon')).toBeNull();
+    const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
+    await act(async () => save?.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(document.activeElement?.id).toBe('page-icon');
+    expect(document.activeElement?.getAttribute('aria-invalid')).toBe('true');
+  });
+
   it.each([
     [{ addressChanged: true, redirectsAdded: 1, linksUpdated: 2 }, 'editor.pageSettings.addressChanged'],
     [{ addressChanged: false, redirectsAdded: 0, linksUpdated: 0 }, 'editor.pageSettings.saved'],

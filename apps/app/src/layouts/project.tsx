@@ -61,9 +61,13 @@ export function PublishControl({
   const changeCount = pending.data?.changes.length ?? 0;
   const latest = deployments.data?.[0];
   const building = latest?.status === 'PENDING' || latest?.status === 'BUILDING';
+  // A change only to navigation groups or site settings lists no page, but the
+  // site is still not up to date: show that too instead of hiding the work.
+  const siteChangesOnly = changeCount === 0 && pending.data?.hasBaseline === true && pending.data.upToDate === false;
   // The number on the button is the site's unpublished-change count. Say what it
   // means on hover, and to keyboard and screen-reader users as the description.
-  const countLabel = changeCount > 0 ? t('editor.unpublishedCount', { count: changeCount }) : undefined;
+  const countLabel =
+    changeCount > 0 ? t('editor.unpublishedCount', { count: changeCount }) : siteChangesOnly ? t('editor.unpublishedSiteChanges') : undefined;
 
   return (
     <div className="flex items-center gap-2">
@@ -98,6 +102,8 @@ export function PublishControl({
           <span aria-hidden className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">
             {changeCount}
           </span>
+        ) : siteChangesOnly ? (
+          <span aria-hidden className="size-1.5 rounded-full bg-primary-foreground" data-site-changes="" />
         ) : null}
       </Button>
       {countLabel ? (

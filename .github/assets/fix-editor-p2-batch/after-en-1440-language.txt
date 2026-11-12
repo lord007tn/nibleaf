@@ -1,0 +1,12 @@
+- dialog "Add a language":
+  - heading "Add a language" [level=2]
+  - paragraph: Create a new localized version of this site's pages.
+  - text: Search languages…
+  - group:
+    - combobox "Search languages…" [expanded]: Arab
+    - group
+  - listbox "Suggestions":
+    - group:
+      - option "العربية Arabic ar RTL" [selected]
+  - button "Add a language not listed"
+  - button "Close"
