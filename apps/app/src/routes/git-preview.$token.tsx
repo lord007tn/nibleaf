@@ -2,7 +2,7 @@ import { Button, buttonVariants } from '@nibleaf/design-system/components/ui/but
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Sheet, SheetContent, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
-import { getLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
+import { getLocale, renderedLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
 import { isRtl, type Locale, resolveLocale } from '@nibleaf/i18n/locales';
 import {
   gitpreview_close,
@@ -47,12 +47,8 @@ export const Route = createFileRoute('/git-preview/$token')({
 /** A bad, expired or replaced preview link, in the visitor's own interface language. */
 function GitPreviewUnavailable() {
   const router = useRouter();
-  // The server renders English, then the browser switches to the visitor's interface language.
-  const locale = useSyncExternalStore(
-    subscribeLanguage,
-    () => getLocale() as Locale,
-    () => 'en' as Locale,
-  );
+  // The server renders the visitor's interface language (the request's locale).
+  const locale = useSyncExternalStore(subscribeLanguage, () => getLocale() as Locale, renderedLocale);
   const [retrying, setRetrying] = useState(false);
   return (
     <main className="grid min-h-screen place-items-center bg-background px-4 py-10" dir={isRtl(locale) ? 'rtl' : 'ltr'} lang={locale}>

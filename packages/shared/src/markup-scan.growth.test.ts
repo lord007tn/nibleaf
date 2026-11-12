@@ -48,6 +48,13 @@ describe.runIf(growthTestsEnabled)('linear tag and link scanning: growth', () =>
     }
   }, 60_000);
 
+  it('stays linear on case L (normalizePublicMarkdownContent, portablePublicMdxMarkdown)', () => {
+    const project = (source: string) => [md(source), portable(source)];
+    const build = (n: number) => `<Card title="${'`'.repeat(n)}${' a'.repeat(n)}">x</Card>`;
+    const [small, large] = growthMs(project, build(600), build(2400), { vary: unique });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  }, 60_000);
+
   it('stays linear on case K (pageContentFacts)', () => {
     const [small, large] = growthMs(
       (source: string) => pageContentFacts(source, false),

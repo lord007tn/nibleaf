@@ -1,4 +1,4 @@
-import { getLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
+import { getLocale, renderedLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
 import { useSyncExternalStore } from 'react';
 import { localeTag, parseCalendarDate, useFormatters } from '@/lib/format';
 import type { Delta, MetricKind } from './metrics';
@@ -13,7 +13,7 @@ export const UNKNOWN = '—';
  */
 export function useInsightFormat() {
   const base = useFormatters();
-  const locale = useSyncExternalStore(subscribeLanguage, getLocale, () => 'en');
+  const locale = useSyncExternalStore(subscribeLanguage, getLocale, renderedLocale);
   const tag = localeTag(locale);
   const unit = (value: number, unitName: string, maximumFractionDigits = 0) =>
     new Intl.NumberFormat(tag, { style: 'unit', unit: unitName, unitDisplay: 'short', maximumFractionDigits }).format(value);
