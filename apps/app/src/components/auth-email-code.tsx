@@ -24,7 +24,7 @@ const WEBMAIL: Record<string, { app: string; href: string }> = {
   'live.com': { app: 'Outlook', href: 'https://outlook.live.com/mail/0/' },
 };
 
-export const webmailFor = (email: string) => WEBMAIL[email.slice(email.lastIndexOf('@') + 1).toLowerCase()] ?? null;
+const webmailFor = (email: string) => WEBMAIL[email.slice(email.lastIndexOf('@') + 1).toLowerCase()] ?? null;
 
 /**
  * The email-code step shared by sign-in and sign-up: send and resend, check the
@@ -161,7 +161,7 @@ export function useEmailCode({
 type EmailCode = ReturnType<typeof useEmailCode>;
 
 /** "We sent a 6-digit code to", then the address on its own line: left-to-right, isolated, and broken only when it can't fit. */
-export function CodeSentTo({ email, className }: { email: string; className?: string }) {
+function CodeSentTo({ email, className }: { email: string; className?: string }) {
   const { t } = useLocale();
   const webmail = webmailFor(email);
   return (
