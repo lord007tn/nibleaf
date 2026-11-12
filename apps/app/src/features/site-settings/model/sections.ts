@@ -10,7 +10,7 @@ export const SETTINGS_GROUPS = [
   { id: 'website', labelKey: 'settings.group.website', sections: ['general', 'appearance', 'languages', 'domain', 'authentication', 'addons'] },
   { id: 'content', labelKey: 'settings.group.content', sections: ['seo', 'redirects', 'variables', 'search'] },
   { id: 'publishing', labelKey: 'settings.group.publishing', sections: ['git', 'openapi', 'contentImport', 'exports'] },
-  { id: 'ai', labelKey: 'settings.group.ai', sections: ['smartAi', 'apiKeys', 'integrations'] },
+  { id: 'ai', labelKey: 'settings.group.ai', sections: ['ai', 'apiKeys', 'integrations'] },
   { id: 'team', labelKey: 'settings.group.team', sections: ['members'] },
   { id: 'usage', labelKey: 'settings.group.usage', sections: ['usage'] },
   { id: 'danger', labelKey: null, sections: ['danger'] },
@@ -21,15 +21,16 @@ export const sectionLabelKey = (id: SectionId): MessageKey => (id === 'appearanc
 
 /**
  * Content languages, team visibility, usage, one-time exports and API keys
- * are open to editors. Everything else writes operational settings guarded by
- * the site Admin role.
+ * are open to editors, and AI answers to everyone on the site (read-only below
+ * Admin: where answers stand, never a key). Everything else writes operational
+ * settings guarded by the site Admin role.
  */
-const EDITOR_SECTIONS: ReadonlySet<SectionId> = new Set(['languages', 'members', 'usage', 'exports', 'apiKeys']);
+const EDITOR_SECTIONS: ReadonlySet<SectionId> = new Set(['languages', 'members', 'usage', 'exports', 'apiKeys', 'ai']);
 /**
  * Viewers see the same sections read-only, except API keys: a key carries its
  * creator's write access, and the server refuses Viewers the key list.
  */
-const VIEWER_SECTIONS: ReadonlySet<SectionId> = new Set(['languages', 'members', 'usage', 'exports']);
+const VIEWER_SECTIONS: ReadonlySet<SectionId> = new Set(['languages', 'members', 'usage', 'exports', 'ai']);
 
 export type SettingsAccess = {
   /** Site Admin or Owner. */

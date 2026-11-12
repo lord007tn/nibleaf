@@ -1,5 +1,6 @@
 import type { ProjectIntegration } from '@nibleaf/database';
 import { keys as searchKeys } from '@nibleaf/search/keys';
+import { KEY_OUTCOME_CODE } from '@nibleaf/search/workspace';
 import { aiConnectionConfigSchema, aiCredentialSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { z } from 'zod';
 import { env } from '@/env';
@@ -14,6 +15,7 @@ import { decryptIntegrationSecret } from './integrations/crypto';
  */
 
 export type AiKeyProvider = 'openai' | 'openrouter';
+export type StoredAiKeyState = 'ok' | 'rateLimited' | 'rejected' | 'outOfCredit' | 'unreachable' | 'modelWithdrawn' | 'needsRecheck' | 'unreadable';
 type StoredAiKey = Pick<
   ProjectIntegration,
   'projectId' | 'status' | 'lastVerificationStatus' | 'lastVerificationCode' | 'config' | 'credentialEncrypted'
@@ -44,41 +46,53 @@ const storedAiKeyReadable = (stored: Pick<StoredAiKey, 'projectId' | 'credential
 };
 
 /** Why a key's last check failed, as a code: a provider's own error text can carry secrets and is never kept or shown. */
-export type StoredAiKeyFailure = 'keyRefused' | 'providerUnreachable' | 'modelWithdrawn' | 'checkFailed';
+export type StoredAiKeyFailure = 'keyRefused' | 'outOfCredit' | 'rateLimited' | 'providerUnreachable' | 'modelWithdrawn' | 'checkFailed';
 
 const FAILURE_BY_CODE: Readonly<Record<string, StoredAiKeyFailure>> = {
-  'integration:credentials_invalid': 'keyRefused',
+  [KEY_OUTCOME_CODE.keyRefused]: 'keyRefused',
+  [KEY_OUTCOME_CODE.outOfCredit]: 'outOfCredit',
   'integration:provider_unavailable': 'providerUnreachable',
   'integration:model_unavailable': 'modelWithdrawn',
 };
 
-/** The failed last check of a stored key, if its last check failed. */
-export const storedAiKeyFailure = (stored: Pick<StoredAiKey, 'lastVerificationStatus' | 'lastVerificationCode'>): StoredAiKeyFailure | null =>
-  stored.lastVerificationStatus === 'UNHEALTHY' ? (FAILURE_BY_CODE[stored.lastVerificationCode ?? ''] ?? 'checkFailed') : null;
+/**
+ * What went wrong at a stored key's last check or reader request, if anything.
+ * A rate limit is kept on a key that still serves; a refusal or an empty account
+ * rests it (readers try it again after `KEY_RETRY_AFTER_MS`); anything else stops it.
+ */
+export const storedAiKeyFailure = (stored: Pick<StoredAiKey, 'lastVerificationStatus' | 'lastVerificationCode'>): StoredAiKeyFailure | null => {
+  if (stored.lastVerificationStatus === 'UNHEALTHY') return FAILURE_BY_CODE[stored.lastVerificationCode ?? ''] ?? 'checkFailed';
+  return stored.lastVerificationStatus === 'HEALTHY' && stored.lastVerificationCode === KEY_OUTCOME_CODE.rateLimited ? 'rateLimited' : null;
+};
 
 /**
- * Whether a site's stored key can answer readers, by the reader's own checks:
+ * Whether a site's stored key can answer readers, by the reader's own checks
+ * and by what its last check or reader request learned:
  * - `rejected`: switched off, marked broken, or the provider refused it;
+ * - `outOfCredit`: the provider account behind it has no credit left;
+ * - `rateLimited`: it serves, but the provider limited its last request;
  * - `unreachable`: its last check couldn't reach the provider;
  * - `modelWithdrawn`: the provider no longer offers its model;
  * - `needsRecheck`: it was checked for another embedding model than the server uses now;
  * - `unreadable`: it can't be decrypted for this site with the current keyring;
  * - `ok`: usable.
  */
-export const storedAiKeyState = (
-  stored: StoredAiKey,
-  providerId: AiKeyProvider,
-): 'ok' | 'rejected' | 'unreachable' | 'modelWithdrawn' | 'needsRecheck' | 'unreadable' => {
+export const storedAiKeyState = (stored: StoredAiKey, providerId: AiKeyProvider): StoredAiKeyState => {
   const failure = storedAiKeyFailure(stored);
   if (failure === 'providerUnreachable') return 'unreachable';
   if (failure === 'modelWithdrawn') return 'modelWithdrawn';
+  if (failure === 'outOfCredit') return 'outOfCredit';
   if (stored.status !== 'ACTIVE' || stored.lastVerificationStatus !== 'HEALTHY') return 'rejected';
   const embeddingModel = aiConnectionConfigSchema.safeParse(stored.config).data?.embeddingModel;
   if (embeddingModel !== searchKeys().SEARCH_EMBEDDING_MODEL || (providerId === 'openai' && !embeddingModel.startsWith('openai/'))) {
     return 'needsRecheck';
   }
-  return storedAiKeyReadable(stored, providerId) ? 'ok' : 'unreadable';
+  if (!storedAiKeyReadable(stored, providerId)) return 'unreadable';
+  return failure === 'rateLimited' ? 'rateLimited' : 'ok';
 };
+
+/** The states in which a stored key answers readers. */
+export const storedAiKeyServes = (state: StoredAiKeyState) => state === 'ok' || state === 'rateLimited';
 
 /**
  * One AI source's status for a site:
@@ -94,5 +108,5 @@ export const aiSourceStatus = (source: 'instance' | AiKeyProvider, projectConfig
   if (source === 'instance') return selectedAndOn && managedAiServes() ? 'active' : 'inactive';
   if (stored?.status === 'ERROR') return 'error';
   if (!selectedAndOn) return 'inactive';
-  return stored && storedAiKeyState(stored, source) === 'ok' ? 'active' : 'error';
+  return stored && storedAiKeyServes(storedAiKeyState(stored, source)) ? 'active' : 'error';
 };

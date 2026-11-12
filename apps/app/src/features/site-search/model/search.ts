@@ -57,7 +57,6 @@ export type SearchValues = {
   maxResults: string;
   hotkey: SearchHotkey;
   versionFilterEnabled: boolean;
-  aiAnswers: boolean;
   aiConversationCapture: boolean;
   /** One question per line. */
   aiStarterQuestions: string;
@@ -82,7 +81,6 @@ export function searchValues(configuration: SearchConfigurationLike, languages: 
     maxResults: String(configuration.maxResults),
     hotkey: configuration.hotkey,
     versionFilterEnabled: configuration.versionFilterEnabled,
-    aiAnswers: configuration.aiAnswers,
     aiConversationCapture: configuration.aiConversationCapture,
     aiStarterQuestions: configuration.aiStarterQuestions.join('\n'),
     aiSupportUrl: configuration.aiSupportUrl ?? '',
@@ -140,7 +138,6 @@ export type SearchConfigurationPatch = {
   maxResults?: number;
   hotkey?: SearchHotkey;
   versionFilterEnabled?: boolean;
-  aiAnswers?: boolean;
   aiConversationCapture?: boolean;
   aiStarterQuestions?: string[];
   aiSupportUrl?: string | null;
@@ -166,7 +163,6 @@ export function searchSaveRequests(
   if (before.maxResults !== after.maxResults) patch.maxResults = Number(after.maxResults);
   if (before.hotkey !== after.hotkey) patch.hotkey = after.hotkey;
   if (before.versionFilterEnabled !== after.versionFilterEnabled) patch.versionFilterEnabled = after.versionFilterEnabled;
-  if (before.aiAnswers !== after.aiAnswers) patch.aiAnswers = after.aiAnswers;
   if (before.aiConversationCapture !== after.aiConversationCapture) patch.aiConversationCapture = after.aiConversationCapture;
   if (before.aiStarterQuestions !== after.aiStarterQuestions) patch.aiStarterQuestions = starterQuestions(after.aiStarterQuestions);
   if (before.aiSupportUrl !== after.aiSupportUrl) patch.aiSupportUrl = after.aiSupportUrl || null;
@@ -199,34 +195,6 @@ export const readOnlyNote = (status: SiteAdminState): MessageKey | null => (stat
 
 /** The form's fields: Admins only; locked while access is unknown. */
 export const fieldsDecision = (status: SiteAdminState): Decision => (status === 'admin' ? allowed : locked);
-
-/** `groundedAnswersState` (lib/grounded-answers.ts): whether the site can serve grounded answers. */
-export type GroundedAnswersState = 'available' | 'needsConnection' | 'needsServer' | 'pending';
-
-const GROUNDED_ANSWERS_MISSING: Partial<Record<GroundedAnswersState, MessageKey>> = {
-  needsConnection: 'settings.search.aiAnswers.needsConnection',
-  needsServer: 'settings.search.aiAnswers.needsServer',
-};
-
-/**
- * The grounded-answers switch. It can be turned on only when the site has a
- * working AI connection; when it is already on it can always be turned off.
- * `note` says what is missing when the switch stays usable anyway (on, but
- * not served); a denied switch carries the same words as its reason.
- * `linkToSmartAi`: the fix is in this site's Smart AI settings.
- */
-export function aiAnswersControl(
-  state: GroundedAnswersState,
-  savedOn: boolean,
-  status: SiteAdminState,
-): { decision: Decision; note: MessageKey | null; linkToSmartAi: boolean } {
-  const missing = GROUNDED_ANSWERS_MISSING[state] ?? null;
-  const linkToSmartAi = state === 'needsConnection' && status === 'admin';
-  if (status !== 'admin') return { decision: locked, note: null, linkToSmartAi: false };
-  if (state === 'available' || savedOn) return { decision: allowed, note: missing, linkToSmartAi };
-  if (missing) return { decision: denied(missing), note: null, linkToSmartAi };
-  return { decision: locked, note: null, linkToSmartAi: false };
-}
 
 /** A decision as the props a control takes: disabled, with the reason when there is one. */
 export function decisionProps(decision: Decision): { disabled: boolean; reason?: MessageKey } {

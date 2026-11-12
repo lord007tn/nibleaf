@@ -251,6 +251,18 @@ describe('SiteNav long titles', () => {
     expect(container.querySelector('.truncate')).toBeNull();
   });
 
+  it('puts a tag on its own line under the title, so the title keeps the whole row (#537)', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />);
+    const tag = container.querySelector<HTMLElement>('[data-nav-tag]');
+    expect(tag?.textContent).toBe('New');
+    // Directly under the title in one column, not a fixed column beside it.
+    expect(tag?.previousElementSibling?.hasAttribute('data-nav-label')).toBe(true);
+    expect(tag?.parentElement?.className).toContain('flex-col');
+    expect(tag?.parentElement?.className).toContain('flex-1');
+    expect(tag?.className).not.toMatch(/\b(shrink-0|ms-auto)\b/);
+  });
+
   it('shows the whole title on hover or focus only when two lines are not enough', async () => {
     const container = document.createElement('div');
     document.body.append(container);
