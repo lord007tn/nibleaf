@@ -1321,7 +1321,8 @@ const RowPresentation = memo(function RowPresentation({
                     <ExternalLink /> {t('editor.link.open')}
                   </DropdownMenuLinkItem>
                 ) : null}
-                {onCopyLink ? (
+                {/* A group is a navigation heading with no address of its own. */}
+                {onCopyLink && !isGroup ? (
                   <DropdownMenuItem onClick={() => onCopyLink(node.id)}>
                     <Link2 /> {t('settings.members.copyLink')}
                   </DropdownMenuItem>

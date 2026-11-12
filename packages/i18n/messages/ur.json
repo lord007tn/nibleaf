@@ -4706,6 +4706,7 @@
   "editor_visibilityfailed": "صفحے کی نمائش تبدیل نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
   "editor_linkcopied": "لنک کاپی ہو گیا",
   "editor_linkcopiedunpublished": "لنک کاپی ہو گیا۔ یہ صفحہ ابھی شائع نہیں ہوا، اس لیے لنک اشاعت کے بعد کام کرے گا۔",
+  "editor_linkcopiedhidden": "لنک کاپی ہو گیا۔ یہ صفحہ پوشیدہ ہے، اس لیے لنک شائع شدہ سائٹ پر نہیں کھلے گا۔",
   "newsite_address": "سائٹ کا پتہ",
   "newsite_editaddress": "پتہ تبدیل کریں",
   "newsite_language": "مرکزی زبان",

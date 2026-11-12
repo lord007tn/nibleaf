@@ -4649,6 +4649,7 @@
   "editor_visibilityfailed": "无法更改页面的可见性，请重试。",
   "editor_linkcopied": "链接已复制",
   "editor_linkcopiedunpublished": "链接已复制。此页面尚未发布，发布后链接即可使用。",
+  "editor_linkcopiedhidden": "链接已复制。此页面已隐藏，因此链接在已发布的网站上无法打开。",
   "newsite_address": "网站地址",
   "newsite_editaddress": "编辑地址",
   "newsite_language": "主要语言",

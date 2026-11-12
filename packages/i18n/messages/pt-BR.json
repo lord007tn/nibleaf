@@ -4716,6 +4716,7 @@
   "editor_visibilityfailed": "Não foi possível alterar a visibilidade da página. Tente novamente.",
   "editor_linkcopied": "Link copiado",
   "editor_linkcopiedunpublished": "Link copiado. Esta página ainda não foi publicada; o link funcionará depois que você publicar.",
+  "editor_linkcopiedhidden": "Link copiado. Esta página está oculta, então o link não abrirá no site publicado.",
   "newsite_address": "Endereço do site",
   "newsite_editaddress": "Editar endereço",
   "newsite_language": "Idioma principal",

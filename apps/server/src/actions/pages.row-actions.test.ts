@@ -245,6 +245,14 @@ describe('duplicatePage', () => {
     expect((await duplicatePage('site', 'long', 'en')).title).toHaveLength(200);
   });
 
+  it('never cuts a character in half at the limit', async () => {
+    // 199 units, then an emoji (two units) that the 200-unit cut would split.
+    site.pages.push(page({ id: 'emoji', title: `${'L'.repeat(199)}😀`, position: 21 }));
+    const { title } = await duplicatePage('site', 'emoji', 'en');
+    expect(title).toBe('L'.repeat(199));
+    expect(title).not.toMatch(/[\uD800-\uDBFF]$/);
+  });
+
   it('refuses to copy a page over the 2 MiB cap with a 413, before writing', async () => {
     site.pages.push(page({ id: 'huge', content: 'x'.repeat(MAX_PAGE_CONTENT_BYTES + 1), position: 30 }));
     await expect(duplicatePage('site', 'huge', 'en')).rejects.toMatchObject({ status: 413, code: 'page:too_large' });

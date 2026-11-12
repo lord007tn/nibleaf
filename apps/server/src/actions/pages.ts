@@ -309,7 +309,10 @@ export const duplicatePage = async (projectId: string, id: string, interfaceLoca
       assertPageContentFits(source.content);
       const scope = { projectId, branchId: source.branchId, languageId: source.languageId, parentId: source.parentId };
       const locale = resolveLocale(source.language.code) ?? resolveLocale(interfaceLocale) ?? DEFAULT_LOCALE;
-      const title = editor_duplicatetitle({ title: source.title }, { locale }).slice(0, 200);
+      // Cut to the 200-unit title limit without leaving half of a surrogate pair.
+      const title = editor_duplicatetitle({ title: source.title }, { locale })
+        .slice(0, 200)
+        .replace(/[\uD800-\uDBFF]$/, '');
       const slug = await uniqueSiblingSlug(tx, projectId, source.languageId, source.branchId, source.parentId, source.slug);
       const parent = await parentInfo(tx, projectId, source.parentId);
       // Siblings in tree order. The copy takes the next position; later siblings

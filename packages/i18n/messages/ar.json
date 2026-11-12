@@ -4761,6 +4761,7 @@
   "editor_visibilityfailed": "تعذّر تغيير ظهور الصفحة للقرّاء. حاول مجددًا.",
   "editor_linkcopied": "نُسخ الرابط",
   "editor_linkcopiedunpublished": "نُسخ الرابط. هذه الصفحة غير منشورة بعد، لذا سيعمل الرابط بعد النشر.",
+  "editor_linkcopiedhidden": "نُسخ الرابط. هذه الصفحة مخفية، لذا لن يفتح الرابط على الموقع المنشور.",
   "newsite_address": "عنوان الموقع",
   "newsite_editaddress": "تعديل العنوان",
   "newsite_language": "اللغة الرئيسية",

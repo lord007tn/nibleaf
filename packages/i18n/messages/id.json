@@ -4649,6 +4649,7 @@
   "editor_visibilityfailed": "Tidak dapat mengubah visibilitas halaman. Coba lagi.",
   "editor_linkcopied": "Tautan disalin",
   "editor_linkcopiedunpublished": "Tautan disalin. Halaman ini belum dipublikasikan, jadi tautannya berfungsi setelah Anda memublikasikan.",
+  "editor_linkcopiedhidden": "Tautan disalin. Halaman ini tersembunyi, jadi tautannya tidak akan terbuka di situs yang dipublikasikan.",
   "newsite_address": "Alamat situs",
   "newsite_editaddress": "Edit alamat",
   "newsite_language": "Bahasa utama",

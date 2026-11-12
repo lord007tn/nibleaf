@@ -76,6 +76,7 @@ export const MESSAGE_IDS = {
   'editor.visibilityFailed': 'editor_visibilityfailed',
   'editor.linkCopied': 'editor_linkcopied',
   'editor.linkCopiedUnpublished': 'editor_linkcopiedunpublished',
+  'editor.linkCopiedHidden': 'editor_linkcopiedhidden',
   'editor.tree.search': 'editor_tree_search',
   'editor.tree.noResults': 'editor_tree_noresults',
   'editor.tree.filterReason': 'editor_tree_filterreason',

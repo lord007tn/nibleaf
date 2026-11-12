@@ -4650,6 +4650,7 @@
   "editor_visibilityfailed": "पृष्ठ की दृश्यता नहीं बदली जा सकी। फिर से कोशिश करें।",
   "editor_linkcopied": "लिंक कॉपी हो गया",
   "editor_linkcopiedunpublished": "लिंक कॉपी हो गया। यह पृष्ठ अभी प्रकाशित नहीं हुआ है, इसलिए लिंक प्रकाशित करने के बाद काम करेगा।",
+  "editor_linkcopiedhidden": "लिंक कॉपी हो गया। यह पृष्ठ छिपा हुआ है, इसलिए लिंक प्रकाशित साइट पर नहीं खुलेगा।",
   "newsite_address": "साइट का पता",
   "newsite_editaddress": "पता बदलें",
   "newsite_language": "मुख्य भाषा",

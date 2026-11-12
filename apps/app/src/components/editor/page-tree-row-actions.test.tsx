@@ -182,6 +182,13 @@ describe('page tree row menu (AUTH-38)', () => {
     expect(actions[handler]).toHaveBeenCalledExactlyOnceWith('Install');
   });
 
+  it('offers no Copy link on a group, which has no address on the site', async () => {
+    const { container } = await renderTree();
+    const outline = menuOutline(await openMenu(container, 'Guides'));
+    expect(outline).not.toContain(translate('settings.members.copyLink'));
+    expect(outline).toContain(translate('editor.link.open'));
+  });
+
   it('says a duplicate leaves the pages inside behind', async () => {
     const { container } = await renderTree();
     expect(menuOutline(await openMenu(container, 'Guides'))).toContain(translate('editor.duplicatePageOnly'));

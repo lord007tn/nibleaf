@@ -231,6 +231,27 @@ describe('page tree row actions in the editor (AUTH-38)', () => {
     expect(mocks.success).toHaveBeenCalledWith(message);
   });
 
+  it("says a hidden page's link won't open on the published site", async () => {
+    mocks.neverPublished = false;
+    mocks.pages = [open, { ...other, hidden: true }];
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    await render();
+    await act(async () => tree().onCopyLink?.('page-2'));
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(mocks.success).toHaveBeenCalledWith('editor.linkCopiedHidden');
+  });
+
+  it('copies nothing for a group, which has no address of its own', async () => {
+    mocks.pages = [open, { ...other, kind: 'GROUP' }];
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    await render();
+    await act(async () => tree().onCopyLink?.('page-2'));
+    expect(writeText).not.toHaveBeenCalled();
+    expect(mocks.success).not.toHaveBeenCalled();
+  });
+
   it('links each row to its page in the editor, for a new tab', async () => {
     await render();
     expect(tree().pageHref?.('page-2')).toBe('/app/projects/project-1/editor?page=page-2');

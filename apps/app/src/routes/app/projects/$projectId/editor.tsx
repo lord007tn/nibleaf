@@ -910,7 +910,7 @@ function EditorPage() {
   // live domain, the version prefix and the language (left out for the default one).
   const copyPageLink = async (id: string) => {
     const node = (allPages ?? []).find((p) => p.id === id);
-    if (!node || !project) return;
+    if (!node || node.kind === 'GROUP' || !project) return;
     const url = pagePublicLink(projectId, node, {
       slug: project.slug,
       primaryDomain: domains ? pickLiveDomain(domains)?.domain : undefined,
@@ -921,7 +921,15 @@ function EditorPage() {
       toast.error(t('settings.members.copyFailed'));
       return;
     }
-    toast.success(pageNeverPublished(id, pendingChanges) ? t('editor.linkCopiedUnpublished') : t('editor.linkCopied'));
+    // A hidden page's address doesn't open on the published site; say so rather
+    // than let the writer share a link that leads nowhere.
+    toast.success(
+      node.hidden
+        ? t('editor.linkCopiedHidden')
+        : pageNeverPublished(id, pendingChanges)
+          ? t('editor.linkCopiedUnpublished')
+          : t('editor.linkCopied'),
+    );
   };
   const pageHref = useCallback((id: string) => `/app/projects/${encodeURIComponent(projectId)}/editor?page=${encodeURIComponent(id)}`, [projectId]);
   // Hidden pages stay in the editor and leave the site's navigation on the next

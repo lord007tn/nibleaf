@@ -4715,6 +4715,7 @@
   "editor_visibilityfailed": "Couldn't change whether readers see this page. Try again.",
   "editor_linkcopied": "Link copied",
   "editor_linkcopiedunpublished": "Link copied. This page isn't published yet, so the link works after you publish.",
+  "editor_linkcopiedhidden": "Link copied. This page is hidden, so the link won't open on the published site.",
   "newsite_address": "Site address",
   "newsite_editaddress": "Edit address",
   "newsite_language": "Main language",
