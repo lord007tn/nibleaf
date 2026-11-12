@@ -1,8 +1,8 @@
 import { translateFn } from '@nibleaf/i18n';
 import { DOCUMENTATION_COMPONENTS, type DocumentationComponentDefinition } from '@nibleaf/shared/documentation-components';
+import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
-import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 
 type SerializeState = {

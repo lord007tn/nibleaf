@@ -361,7 +361,10 @@ async function journey({ phase, locale, width, member, signed }) {
   const expected = before ? ['youtube.com/watch'] : ['youtube-nocookie.com/embed/', `title="${words.title}"`, `caption="${words.caption}"`];
   let previous = '';
   const saved = await until(async () => {
-    const status = await page.getByRole('status').filter({ hasText: t('editor.savedShort') }).count();
+    const status = await page
+      .getByRole('status')
+      .filter({ hasText: t('editor.savedShort') })
+      .count();
     const { content } = await db.page.findUniqueOrThrow({ where: { id: tour.id } });
     const settled = status > 0 && content === previous && expected.every((part) => content.includes(part));
     previous = content;

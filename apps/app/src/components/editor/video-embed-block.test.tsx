@@ -356,7 +356,12 @@ describe('copying the block to another editor', () => {
     const { dom } = from.view.serializeForClipboard(from.state.selection.content());
     await act(async () => to.view.pasteHTML(dom.innerHTML, new Event('paste') as ClipboardEvent));
     expect(blocks(to)).toEqual([
-      expect.objectContaining({ kind: 'iframe', src: `https://www.youtube-nocookie.com/embed/${YT}`, title: 'Tour', caption: 'From start to finish' }),
+      expect.objectContaining({
+        kind: 'iframe',
+        src: `https://www.youtube-nocookie.com/embed/${YT}`,
+        title: 'Tour',
+        caption: 'From start to finish',
+      }),
     ]);
     expect(getMarkdown(to)).toBe(
       `<Frame caption="From start to finish">\n  <iframe src="https://www.youtube-nocookie.com/embed/${YT}" title="Tour"></iframe>\n</Frame>`,

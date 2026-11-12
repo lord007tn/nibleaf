@@ -317,7 +317,9 @@ describe('withEmbedAttribute changes one attribute, read as the reader reads it'
   it('adds a missing attribute before the end of the tag', () => {
     expect(withEmbedAttribute(`<iframe ${src}>`, 'title', 'New')).toBe(`<iframe ${src} title="New">`);
     expect(withEmbedAttribute(`<iframe ${src} />`, 'title', 'New')).toBe(`<iframe ${src}  title="New"/>`);
-    expect(withEmbedAttribute(`<video controls src="a.mp4">`, 'src', 'https://cdn.example.com/b.mp4')).toBe('<video controls src="https://cdn.example.com/b.mp4">');
+    expect(withEmbedAttribute(`<video controls src="a.mp4">`, 'src', 'https://cdn.example.com/b.mp4')).toBe(
+      '<video controls src="https://cdn.example.com/b.mp4">',
+    );
   });
   it('answers null for a tag the reader cannot read', () => {
     expect(withEmbedAttribute(`<iframe ${src} title="a < b">`, 'title', 'x')).toBeNull();

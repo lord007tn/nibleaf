@@ -314,7 +314,9 @@ describe('council fix 4: editing a title changes only that attribute', () => {
 
   it('gives a value to a bare title, keeping the attributes after it', () => {
     const src = `https://www.youtube.com/embed/${YT}`;
-    expect(setTitle(`<iframe title src="${src}" allowFullScreen></iframe>`, 'New')).toBe(`<iframe title="New" src="${src}" allowFullScreen></iframe>`);
+    expect(setTitle(`<iframe title src="${src}" allowFullScreen></iframe>`, 'New')).toBe(
+      `<iframe title="New" src="${src}" allowFullScreen></iframe>`,
+    );
   });
 
   it('keeps every attribute after the title as written', () => {
