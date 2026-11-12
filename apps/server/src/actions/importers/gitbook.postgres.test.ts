@@ -158,12 +158,12 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
   // this folder are served locally (the same requests the importer makes: the
   // commit, the recursive tree, raw files); the route, importer and database are real.
   it('imports a GitBook folder from GitHub through the authenticated app route', async () => {
-    const githubRequests: string[] = [];
+    const githubRequests: Array<{ host: string; path: string }> = [];
     const realFetch = globalThis.fetch;
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
       if (url.hostname === 'api.github.com' || url.hostname === 'raw.githubusercontent.com') {
-        githubRequests.push(`${url.hostname}${url.pathname}`);
+        githubRequests.push({ host: url.hostname, path: url.pathname });
         return recordedGitHub(url);
       }
       return realFetch(input, init);
@@ -174,12 +174,13 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
       fetchSpy.mockRestore();
     }
     // The importer took the same path as against GitHub: a commit, its tree, then the page.
-    expect(githubRequests).toEqual([
+    const requested = githubRequests.map(({ host, path }) => `${host}${path}`);
+    expect(requested).toEqual([
       `api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.name}/commits/main`,
       `api.github.com/repos/${GITHUB_REPO.owner}/${GITHUB_REPO.name}/git/trees/${GITHUB_REPO.commit}`,
-      ...githubRequests.filter((request) => request.startsWith('raw.githubusercontent.com')),
+      ...githubRequests.filter(({ host }) => host === 'raw.githubusercontent.com').map(({ host, path }) => `${host}${path}`),
     ]);
-    expect(githubRequests).toContain(
+    expect(requested).toContain(
       `raw.githubusercontent.com/${GITHUB_REPO.owner}/${GITHUB_REPO.name}/${GITHUB_REPO.commit}/${GITHUB_REPO.folder}/readme.md`,
     );
     console.info('Authenticated app -> recorded GitHub commit snapshot -> 1 page -> PostgreSQL promotion; no network');
