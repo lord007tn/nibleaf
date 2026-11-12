@@ -49,7 +49,7 @@ import {
 import { type ComponentType, type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
-import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
+import { type CommentAnchor, EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
 import { BlockImage, LegacyImage } from './extensions/block-image';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
@@ -60,9 +60,11 @@ import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions
 import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { MarkdownBlockquote } from './extensions/quote';
+import { SelectionShortcuts } from './extensions/selection-shortcuts';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
+import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
 
 // Register a small set of common languages for code-block highlighting.
 const lowlight = createLowlight(common);
@@ -390,6 +392,7 @@ export function buildEditorExtensions({
       onUpload: onUpload ? (...args: Parameters<ImageUploader>) => (getUpload?.() ?? onUpload)(...args) : undefined,
     }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
+    SelectionShortcuts,
   ];
 }
 
@@ -807,6 +810,8 @@ export function TiptapEditor({
           // published page (content-blocks.css).
           class: 'nibleaf-content focus:outline-none',
           dir,
+          // Ctrl/⌘+K here adds a link instead of opening the command palette (AUTH-10).
+          [MOD_K_OWNER_ATTRIBUTE]: '',
         },
         handleTextInput: () => commentModeRef.current,
         handleKeyDown: (_view, event) => {
@@ -893,6 +898,9 @@ export function TiptapEditor({
     });
   }, [comments, activeCommentId, commentMode, editor]);
 
+  // The selection menu's Comment starts the same flow as review mode's Comment.
+  const startComment = useCallback((anchor: CommentAnchor) => onAddCommentRef.current?.(anchor), []);
+
   // Formatting menus and block controls only make sense while the page can change.
   const tools = editable && !commentMode;
   return (
@@ -906,7 +914,7 @@ export function TiptapEditor({
       {editor && variant === 'wysiwyg' && tools ? <DocumentToolbar editor={editor} /> : null}
       {editor && tools ? <CalloutMenu editor={editor} /> : null}
       {editor && tools ? <ImageControls editor={editor} dir={dir} /> : null}
-      {editor && tools ? <EditorBubbleMenu editor={editor} /> : null}
+      {editor && tools ? <EditorBubbleMenu editor={editor} onComment={onAddComment ? startComment : undefined} /> : null}
       {editor && tools ? <TableBubbleMenu editor={editor} dir={dir} /> : null}
       {editor && tools ? <CodeBlockMenu editor={editor} /> : null}
       {editor && commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}

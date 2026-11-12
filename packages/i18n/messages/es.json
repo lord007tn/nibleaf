@@ -448,6 +448,8 @@
   "editor_format_underline": "subrayado",
   "editor_format_subscript": "Subíndice",
   "editor_format_superscript": "Superíndice",
+  "editor_format_turninto": "Convertir en",
+  "editor_format_toolbar": "Formato de texto",
   "editor_link_save": "Guardar enlace",
   "editor_link_open": "Abrir en nueva pestaña",
   "editor_link_openrelativehint": "Enlaces relativos abiertos en su sitio publicado",
