@@ -1,4 +1,5 @@
-import { replaceMarkdownImages, replaceMarkdownLinksWithLabels, replaceTags } from '@nibleaf/shared/markup-scan';
+import { replaceMarkdownImages, replaceMarkdownLinksWithLabels } from '@nibleaf/shared/markup-scan';
+import { replaceHtmlTags } from '@nibleaf/shared/reader-rich';
 import { create, insertMultiple, type Orama, search } from '@orama/orama';
 import { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
 import { cleanSearchText } from './hybrid';
@@ -361,12 +362,10 @@ export function stripMarkdown(src: string): string {
     .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks
     .replace(/~~~[\s\S]*?~~~/g, ' ')
     .replace(/`([^`]+)`/g, '$1'); // inline code
-  const prose = replaceTags(
-    replaceMarkdownLinksWithLabels(replaceMarkdownImages(withoutCode, ' ')), // images, then links → text
-    /<\/?[A-Za-z][^>]*>/g, // html / MDX component tags
-    ' ',
-  );
-  return prose
+  // Images, then links → text (`/!\[[^\]]*\]\([^)]*\)/g`, `/\[([^\]]+)\]\([^)]*\)/g`).
+  const withoutLinks = replaceMarkdownLinksWithLabels(replaceMarkdownImages(withoutCode, ' '));
+  // HTML / MDX component tags, read in one pass (shared with the reader's detection).
+  return replaceHtmlTags(withoutLinks, ' ')
     .replace(/\[!\w+\]/g, ' ') // admonition markers ([!NOTE])
     .replace(/^\s{0,3}#{1,6}\s+/gm, '') // ATX headings
     .replace(/^\s{0,3}>\s?/gm, '') // blockquote markers

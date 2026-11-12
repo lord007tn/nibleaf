@@ -6,6 +6,7 @@ import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantIndexedPoint, type QdrantPoint } from '@nibleaf/qdrant';
 import { chunkSearchDocument, type SearchChunk, type SearchChunkSource, searchEmbeddingText, sparseVectorForChunk } from '@nibleaf/search';
 import { resolveWorkspaceAi, workspaceEmbeddingProvider } from '@nibleaf/search/workspace';
+import { readerSections } from '@nibleaf/shared/reader-headings';
 import { extractHeadings, type SiteSnapshot } from '@nibleaf/shared/site';
 import { buildUsageEvent, deterministicUsageEventId } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
@@ -30,17 +31,22 @@ const deploymentFilter = (projectId: string, deploymentId: string): QdrantFilter
   ],
 });
 
-const sourceFromPage = (page: SiteSnapshot['pages'][number]): SearchChunkSource => ({
-  id: page.id,
-  title: page.title,
-  path: page.path,
-  description: page.description ?? '',
-  headings: extractHeadings(page.content).map((heading) => heading.text),
-  content: page.content,
-  icon: page.icon ?? undefined,
-  language: page.languageCode,
-  visible: page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex,
-});
+const sourceFromPage = (page: SiteSnapshot['pages'][number]): SearchChunkSource => {
+  return {
+    id: page.id,
+    title: page.title,
+    path: page.path,
+    description: page.description ?? '',
+    headings: extractHeadings(page.content).map((heading) => heading.text),
+    // The headings the reader renders, read by the parser its renderer shares, at
+    // the lines they are written: sections are cut there and record their DOM ids.
+    sections: readerSections(page.content).map(({ line, depth, id }) => ({ line, depth, id })),
+    content: page.content,
+    icon: page.icon ?? undefined,
+    language: page.languageCode,
+    visible: page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex,
+  };
+};
 
 const payloadFromChunk = (
   chunk: SearchChunk,
@@ -59,6 +65,7 @@ const payloadFromChunk = (
   description: chunk.description,
   heading: chunk.heading,
   heading_path: chunk.headingPath,
+  ...(chunk.anchor ? { anchor: chunk.anchor } : {}),
   content: chunk.content,
   content_hash: chunk.contentHash,
   direction: chunk.direction,
@@ -86,6 +93,9 @@ const payloadSignature = (payload: Record<string, unknown>) =>
     payload.description,
     payload.heading,
     payload.heading_path,
+    // New in the payload: points indexed before it get it as a metadata update,
+    // without a new embedding, on the next index run.
+    payload.anchor ?? null,
     payload.content,
     payload.content_hash,
     payload.direction,
