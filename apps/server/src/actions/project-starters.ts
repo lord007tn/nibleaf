@@ -1,5 +1,5 @@
 import type { Prisma } from '@nibleaf/database';
-import { resolveLocale } from '@nibleaf/i18n/locales';
+import { INTERFACE_LOCALES, resolveLocale } from '@nibleaf/i18n/locales';
 // One module per message: the full catalog index is thousands of modules,
 // too heavy for everything that imports site creation (route guards included).
 import { newsite_starter_faq_content } from '@nibleaf/i18n/messages/newsite_starter_faq_content';
@@ -13,6 +13,29 @@ import { newsite_starter_guides_title } from '@nibleaf/i18n/messages/newsite_sta
 import { newsite_starter_welcome_content } from '@nibleaf/i18n/messages/newsite_starter_welcome_content';
 import { newsite_starter_welcome_title } from '@nibleaf/i18n/messages/newsite_starter_welcome_title';
 import type { CreateProjectBody } from '@nibleaf/validators';
+
+const normalizedBody = (content: string) => content.replace(/\s+/g, ' ').trim();
+const starterBodies = new Set(
+  INTERFACE_LOCALES.flatMap(({ code: locale }) =>
+    [
+      newsite_starter_welcome_content,
+      newsite_starter_gettingstarted_content,
+      newsite_starter_guides_content,
+      newsite_starter_firstguide_content,
+      newsite_starter_faq_content,
+    ].map((message) => normalizedBody(message(undefined, { locale }))),
+  ),
+);
+
+/** Current authored content, not page count or edit timestamps. Ignore empty
+ * bodies and untouched new-site starters in every locale, including whitespace
+ * changes made by the Markdown editor's round trip. */
+export const hasRealPageContent = (pages: readonly { kind: string; content: string }[]) =>
+  pages.some((page) => {
+    if (page.kind !== 'PAGE') return false;
+    const body = normalizedBody(page.content);
+    return body.length > 0 && !starterBodies.has(body);
+  });
 
 /** Draft pages share the new site's transaction, language and default branch. */
 export async function createStarterPages(

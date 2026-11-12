@@ -275,7 +275,16 @@ describe('pending changes: up to date', () => {
     mocks.deploymentFindFirst.mockResolvedValue(null);
     mocks.pageFindMany.mockResolvedValue([]);
     const pending = await getPendingChanges('project-1');
-    expect(pending).toMatchObject({ hasBaseline: false, upToDate: false, changes: [] });
+    expect(pending).toMatchObject({ hasRealContent: false, hasBaseline: false, upToDate: false, changes: [] });
+  });
+
+  it('derives content completion before the first publish diff is truncated', async () => {
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    mocks.deploymentFindFirst.mockResolvedValue(null);
+    mocks.pageFindMany.mockResolvedValue([{ ...page, content: `${'An authored line.\n'.repeat(500)}The final instruction.` }]);
+    const pending = await getPendingChanges('project-1');
+    expect(pending.hasRealContent).toBe(true);
+    expect(pending.changes[0]?.truncated).toBe(true);
   });
 
   it('never lists groups as URL changes but still publishes their navigation metadata', async () => {

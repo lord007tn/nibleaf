@@ -8,6 +8,8 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   ArrowRight,
   BarChart3,
+  Check,
+  Copy,
   CreditCard,
   Eye,
   FileText,
@@ -32,7 +34,6 @@ import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { InlineSkeleton } from '@/components/inline-skeleton';
 import { ViewOnlyBanner } from '@/components/project/view-only-notice';
 import { QueryErrorState } from '@/components/query-error-state';
-import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import {
   friendlyErrorMessage,
@@ -40,6 +41,7 @@ import {
   useDeployments,
   useDomains,
   usePages,
+  usePendingChanges,
   useProject,
   useProjectMembers,
   usePublishAnyway,
@@ -52,7 +54,9 @@ import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { isolate } from '@/lib/bidi';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters } from '@/lib/format';
+import { copyToClipboard } from '@/lib/invitations';
 import type { SiteAdminState } from '@/lib/project-settings-access';
+import { canonicalSiteBase } from '@/lib/site-seo';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
 
@@ -67,10 +71,6 @@ export const Route = createFileRoute('/app/projects/$projectId/')({
   component: SiteOverviewPage,
 });
 
-// Only present a `slug.<base>` free-subdomain host when a base domain is actually
-// configured for this deployment; otherwise it 404s, so we fall back to /sites/:id.
-const siteBaseDomain = () => env.VITE_SITE_BASE_DOMAIN?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
-const siteUrl = (domain: string | null, projectId: string) => (domain ? `https://${domain}` : `/sites/${projectId}`);
 const ACTIVITY_SKELETON_ROWS = ['a', 'b', 'c'];
 const RECENT_PAGE_SKELETON_ROWS = ['a', 'b', 'c', 'd'];
 
@@ -118,11 +118,9 @@ function SiteOverviewPage() {
   // (or broken) would greet the owner with a browser error, so link the default address.
   const primaryDomain = pickLiveDomain(domains ?? []);
   const connectingDomain = primaryDomain ? undefined : domains?.[0];
-  const baseDomain = siteBaseDomain();
-  // Prefer a live custom domain; else a configured free-subdomain host; else
-  // the always-working internal /sites/:id path (never a hardcoded fake host).
-  const liveDomain = primaryDomain?.domain ?? (project && baseDomain ? `${project.slug}.${baseDomain}` : null);
-  const liveHref = siteUrl(liveDomain, projectId);
+  const liveDomain = primaryDomain?.domain;
+  // The publish dialog uses this same resolver, including its internal URL fallback.
+  const liveHref = canonicalSiteBase(projectId, { slug: project?.slug, primaryDomain: liveDomain });
   // Against the equal window right before this one; hidden when either side isn't known.
   const viewsDelta = analyticsUnknown
     ? null
@@ -261,9 +259,24 @@ function SiteOverviewPage() {
                 <p className="text-muted-foreground text-sm">{t('overview.live.loadError')}</p>
               ) : (
                 <>
-                  <p className="text-muted-foreground text-sm">{t('overview.live.unavailable')}</p>
+                  <div className="flex items-start gap-2">
+                    <p className="min-w-0 break-words text-muted-foreground text-sm">{t('overview.live.willBeLiveAt', { url: isolate(liveHref) })}</p>
+                    <Button
+                      aria-label={t('deploy.copyAddress')}
+                      className="shrink-0 pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+                      onClick={async () => {
+                        if (await copyToClipboard(liveHref)) toast.success(t('settings.apiKeys.urlCopied'));
+                        else toast.error(t('settings.members.copyFailed'));
+                      }}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Copy aria-hidden="true" className="size-3.5" />
+                    </Button>
+                  </div>
                   <p className="mt-1 text-muted-foreground text-xs">
-                    {t('overview.live.publishHint')}{' '}
+                    {t('overview.live.availableAfterPublish')}{' '}
                     <Link
                       className="font-medium text-primary hover:underline"
                       params={{ projectId }}
@@ -696,6 +709,14 @@ function PublishNudge({
 }) {
   const t = useT();
   const [dismissed, setDismissed] = useState(true);
+  const { count } = useFormatters();
+  const content = usePendingChanges(projectId, { enabled: !dismissed });
+  const domains = useDomains(projectId);
+  const editDone = content.data?.hasRealContent === true;
+  const domainDone = (domains.data?.length ?? 0) > 0;
+  const domainConnecting = domainDone && !pickLiveDomain(domains.data ?? []);
+  const progressKnown = content.data?.hasRealContent !== undefined && domains.data !== undefined;
+  const doneCount = Number(editDone) + Number(domainDone);
   useEffect(() => {
     try {
       setDismissed(window.localStorage.getItem(nudgeDismissKey(projectId)) === '1');
@@ -733,13 +754,22 @@ function PublishNudge({
         <div className="leading-snug">
           <div className="font-semibold text-sm">{t('overview.nudge.title')}</div>
           <p className="mt-0.5 text-muted-foreground text-sm">{t('overview.nudge.body')}</p>
+          <p aria-atomic="true" className="mt-0.5 text-muted-foreground text-sm" role="status">
+            {progressKnown ? t('overview.nudge.progress', count(doneCount)) : null}
+          </p>
         </div>
       </div>
       <ol className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <NudgeStep n={1} title={t('overview.nudge.step1')} desc={t('overview.nudge.step1Desc')}>
+        <NudgeStep
+          n={1}
+          done={editDone}
+          current={content.data?.hasRealContent === false}
+          title={t('overview.nudge.step1')}
+          desc={t('overview.nudge.step1Desc')}
+        >
           <Link className="absolute inset-0" aria-label={t('overview.nudge.step1')} to="/app/projects/$projectId/editor" params={{ projectId }} />
         </NudgeStep>
-        <NudgeStep n={2} title={t('overview.nudge.step2')} desc={t('overview.nudge.step2Desc')}>
+        <NudgeStep n={2} current={editDone} title={t('overview.nudge.step2')} desc={t('overview.nudge.step2Desc')}>
           <Link
             className="absolute inset-0"
             aria-label={t('overview.nudge.step2')}
@@ -750,10 +780,12 @@ function PublishNudge({
         </NudgeStep>
         <NudgeStep
           n={3}
+          done={domainDone}
           title={t('overview.nudge.step3')}
           desc={
             <>
               {t('overview.nudge.step3Desc')}
+              {domainConnecting ? <p className="mt-1">{t('overview.nudge.connecting')}</p> : null}
               {settingsAccess === 'notAdmin' ? <p className="mt-1">{t('overview.settings.askAdmin')}</p> : null}
               {permissionError}
             </>
@@ -774,10 +806,34 @@ function PublishNudge({
   );
 }
 
-function NudgeStep({ n, title, desc, children }: { n: number; title: string; desc: React.ReactNode; children: React.ReactNode }) {
+function NudgeStep({
+  n,
+  done,
+  current,
+  title,
+  desc,
+  children,
+}: {
+  n: number;
+  done?: boolean;
+  current?: boolean;
+  title: string;
+  desc: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const t = useT();
   return (
-    <li className="relative flex items-start gap-3 rounded-lg border border-border bg-card p-3.5 transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-muted/40 [&_a]:outline-none">
-      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-[12px] text-primary">{n}</span>
+    <li
+      aria-current={current ? 'step' : undefined}
+      className={cn(
+        'relative flex items-start gap-3 rounded-lg border border-border bg-card p-3.5 transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-muted/40 [&_a]:outline-none',
+        current && 'border-primary',
+      )}
+    >
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-[12px] text-primary">
+        {/* Named with its step, so a list of checks says which ones are finished. */}
+        {done ? <Check aria-label={t('overview.nudge.stepDone', { step: title })} className="size-4" role="img" /> : n}
+      </span>
       <div className="min-w-0 leading-snug">
         <div className="font-medium text-sm">{title}</div>
         <div className="mt-0.5 text-muted-foreground text-xs">{desc}</div>

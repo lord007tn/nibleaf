@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 
+import { computeAccessibleName } from 'dom-accessibility-api';
 import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
 const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
-const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' | 'deployments' | 'domains' | 'session', unknown>);
+const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' | 'deployments' | 'domains' | 'session' | 'content', unknown>);
+const clipboard = vi.hoisted(() => ({ copy: vi.fn(), success: vi.fn(), error: vi.fn() }));
+const translation = vi.hoisted(() => ({ real: false }));
 /** The settings-access tests' name for the same mocked members and publishes. */
 const navigation = queries;
 /** Signed in as the `viewer` the settings-access tests give a role to. */
@@ -14,7 +17,16 @@ const viewer = { data: { user: { id: 'viewer' } }, isPending: false };
 /** A site the server says has never gone live. */
 const neverPublishedSite = { data: { id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 0 }, isPending: false };
 
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@nibleaf/i18n/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@nibleaf/i18n/react')>();
+  return {
+    ...actual,
+    useT: () => (key: Parameters<typeof actual.translateFn>[0], variables?: Record<string, string | number>) =>
+      translation.real ? actual.translateFn(key, variables, 'en') : key,
+  };
+});
+vi.mock('@/lib/invitations', () => ({ copyToClipboard: clipboard.copy }));
+vi.mock('sonner', () => ({ toast: { success: clipboard.success, error: clipboard.error } }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ projectId: 'project-1' }) }),
   Link: ({
@@ -54,6 +66,7 @@ vi.mock('@/hooks/api', async () => ({
   useDeployments: () => queries.deployments,
   useDomains: () => queries.domains,
   usePages: () => queries.pages,
+  usePendingChanges: () => queries.content ?? pending,
   useProject: () => queries.project,
   useProjectMembers: () => queries.members,
   usePublishAnyway: () => ({ mutate: vi.fn(), isPending: false }),
@@ -76,6 +89,7 @@ vi.mock('@/components/analytics/views-area-chart', () => ({
 }));
 
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { canonicalSiteBase } from '@/lib/site-seo';
 import { Route } from './index';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -261,6 +275,139 @@ const domain = (patch: Record<string, unknown>) => ({
   ...patch,
 });
 
+describe('first-publish checklist and reserved address', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    translation.real = true;
+    vi.stubEnv('VITE_SITE_BASE_DOMAIN', '');
+    window.localStorage.clear();
+    clipboard.copy.mockResolvedValue(true);
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    analytics.hook.mockReturnValue(pending);
+    Object.assign(queries, {
+      project: neverPublishedSite,
+      pages: loaded([]),
+      content: loaded({ hasRealContent: false }),
+      members: loaded({ members: [{ role: 'admin', user: { id: 'viewer' } }] }),
+      deployments: loaded([]),
+      domains: loaded([]),
+      session: viewer,
+    });
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    translation.real = false;
+    queries.content = undefined;
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    { label: 'no pages', pages: [], edited: false, domains: [], done: 0 },
+    { label: 'two starter pages', pages: [{ kind: 'PAGE' }, { kind: 'PAGE' }], edited: false, domains: [], done: 0 },
+    { label: 'an edited page', pages: [{ kind: 'PAGE' }], edited: true, domains: [], done: 1 },
+    {
+      label: 'a connecting domain',
+      pages: [{ kind: 'PAGE' }],
+      edited: true,
+      domains: [domain({ dnsStatus: 'PENDING', sslStatus: 'PENDING' })],
+      done: 2,
+    },
+    { label: 'a live domain', pages: [{ kind: 'PAGE' }], edited: true, domains: [domain({})], done: 2 },
+  ])('shows accessible completed steps and progress for $label', async (fixture) => {
+    Object.assign(queries, {
+      pages: loaded(fixture.pages.map((page, index) => ({ ...page, id: `page-${index}`, updatedAt: '2026-11-01T00:00:00Z' }))),
+      content: loaded({ hasRealContent: fixture.edited }),
+      domains: loaded(fixture.domains),
+    });
+    await act(async () => root.render(<SiteOverviewPage />));
+    const steps = container.querySelectorAll('ol li');
+    expect(steps).toHaveLength(3);
+    expect(steps[0]?.querySelector('[role="img"]') !== null).toBe(fixture.edited);
+    expect(steps[1]?.querySelector('[role="img"]')).toBeNull();
+    expect(steps[2]?.querySelector('[role="img"]') !== null).toBe(fixture.domains.length > 0);
+    // Each check names its own step, so a screen reader can tell which ones finished.
+    for (const step of steps) {
+      const check = step.querySelector('[role="img"]');
+      if (check) expect(computeAccessibleName(check)).toBe(`Done: ${step.querySelector('.font-medium')?.textContent}`);
+    }
+    expect(steps[fixture.edited ? 1 : 0]?.getAttribute('aria-current')).toBe('step');
+    expect(container.querySelector('ol a[aria-label="Edit a page"]')).not.toBeNull();
+    expect(container.querySelector('ol a[aria-label="Connect a custom domain"]')).not.toBeNull();
+    const progress = [...container.querySelectorAll('[role="status"]')].find((node) => node.textContent?.includes('of 3 done'));
+    expect(progress?.textContent).toBe(`${fixture.done} of 3 done`);
+    expect(progress?.getAttribute('aria-atomic')).toBe('true');
+    expect(container.textContent?.includes('Connecting — finish domain setup.')).toBe(fixture.label === 'a connecting domain');
+    // Re-rendering unchanged query data leaves the live-region text unchanged.
+    const observer = vi.fn();
+    const mutations = new MutationObserver(observer);
+    if (progress) mutations.observe(progress, { childList: true, subtree: true, characterData: true });
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(observer).not.toHaveBeenCalled();
+    mutations.disconnect();
+  });
+
+  it.each([
+    { base: '', domains: [], expected: 'http://localhost:3000/sites/project-1' },
+    { base: '*.docs.example.test.', domains: [], expected: 'https://docs.docs.example.test' },
+    { base: 'docs.example.test', domains: [domain({ sslStatus: 'PROVISIONING' })], expected: 'https://docs.docs.example.test' },
+    { base: 'docs.example.test', domains: [domain({})], expected: 'https://docs.example.com' },
+  ])('uses the publish dialog address $expected without a premature live link, and copies it', async ({ base, domains, expected }) => {
+    vi.stubEnv('VITE_SITE_BASE_DOMAIN', base);
+    queries.domains = loaded(domains);
+    await act(async () => root.render(<SiteOverviewPage />));
+    // This is the resolver and input selection used by PublishModal.
+    const primary = domains.find((item) => item.sslStatus === 'ACTIVE');
+    expect(canonicalSiteBase('project-1', { slug: 'docs', primaryDomain: primary?.domain })).toBe(expected);
+    expect(container.textContent).toContain(`Will be live at ⁨${expected}⁩`);
+    expect(container.textContent).toContain('This address opens after the first publish.');
+    expect(container.querySelector(`a[href="${expected}"]`)).toBeNull();
+    const copy = container.querySelector<HTMLButtonElement>('button[aria-label="Copy address"]');
+    expect(copy).not.toBeNull();
+    await act(async () => copy?.click());
+    expect(clipboard.copy).toHaveBeenCalledWith(expected);
+    expect(clipboard.success).toHaveBeenCalledWith('URL copied');
+  });
+
+  it('reports a failed copy without a success toast', async () => {
+    clipboard.copy.mockResolvedValue(false);
+    await act(async () => root.render(<SiteOverviewPage />));
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Copy address"]')?.click());
+    expect(clipboard.error).toHaveBeenCalledWith('Could not copy the link');
+    expect(clipboard.success).not.toHaveBeenCalled();
+  });
+
+  it('withholds progress while content or domains are unknown, including failed requests', async () => {
+    for (const state of [{ content: pending }, { content: failed() }, { content: loaded({ hasRealContent: false }), domains: failed() }]) {
+      Object.assign(queries, state);
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).not.toContain('of 3 done');
+    }
+  });
+
+  it('keeps the nudge hidden for viewers and asks non-admins to contact an admin', async () => {
+    queries.members = loaded({ members: [{ role: 'member', user: { id: 'viewer' } }] });
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('ol')?.textContent).toContain('Ask a site owner or Admin');
+    expect(container.querySelector('ol a[aria-label="Connect a custom domain"]')).toBeNull();
+    queries.members = loaded({ members: [{ role: 'viewer', user: { id: 'viewer' } }] });
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('ol')).toBeNull();
+  });
+
+  it('hides the nudge after the first READY publish', async () => {
+    queries.deployments = loaded([readyDeployment]);
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('ol')).toBeNull();
+  });
+});
+
 describe('site overview when something fails or is still connecting', () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -327,7 +474,7 @@ describe('site overview when something fails or is still connecting', () => {
         deployments: loaded(failedAttempts(50)),
       });
       await act(async () => root.render(<SiteOverviewPage />));
-      expect(liveLink()?.getAttribute('href')).toBe('/sites/project-1');
+      expect(liveLink()?.getAttribute('href')).toBe('http://localhost:3000/sites/project-1');
       expect(container.textContent).not.toContain('overview.live.unavailable');
       expect(container.textContent).not.toContain('overview.nudge.title');
       // Publishes that went live, not attempts listed.
@@ -342,7 +489,7 @@ describe('site overview when something fails or is still connecting', () => {
       await act(async () => root.render(<SiteOverviewPage />));
       expect(tile('overview.stats.deploys')).toBe('0');
       expect(liveLink()).toBeNull();
-      expect(container.textContent).toContain('overview.live.unavailable');
+      expect(container.textContent).toContain('overview.live.willBeLiveAt');
     });
 
     it('still links the live site when the publish list fails to load', async () => {
@@ -351,7 +498,7 @@ describe('site overview when something fails or is still connecting', () => {
         deployments: failed(),
       });
       await act(async () => root.render(<SiteOverviewPage />));
-      expect(liveLink()?.getAttribute('href')).toBe('/sites/project-1');
+      expect(liveLink()?.getAttribute('href')).toBe('http://localhost:3000/sites/project-1');
       expect(container.textContent).not.toContain('overview.live.loadError');
       expect(tile('overview.stats.deploys')).toBe('4');
     });
@@ -397,7 +544,7 @@ describe('site overview when something fails or is still connecting', () => {
         deployments: loaded([readyDeployment]),
       });
       await act(async () => root.render(<SiteOverviewPage />));
-      expect(liveLink()?.getAttribute('href')).toBe('/sites/project-1');
+      expect(liveLink()?.getAttribute('href')).toBe('http://localhost:3000/sites/project-1');
       expect(container.textContent).not.toContain('overview.nudge.title');
     });
   });
@@ -415,8 +562,8 @@ describe('site overview when something fails or is still connecting', () => {
   ])('keeps readers on the default address while the domain is not ready: %o', async (status) => {
     queries.domains = loaded([domain(status)]);
     await act(async () => root.render(<SiteOverviewPage />));
-    expect(liveLink()?.getAttribute('href')).toBe('/sites/project-1');
-    expect(container.querySelector('[aria-label="overview.viewSite"]')?.getAttribute('href')).toBe('/sites/project-1');
+    expect(liveLink()?.getAttribute('href')).toBe('http://localhost:3000/sites/project-1');
+    expect(container.querySelector('[aria-label="overview.viewSite"]')?.getAttribute('href')).toBe('http://localhost:3000/sites/project-1');
     expect(container.textContent).toContain('overview.live.domainConnecting');
   });
 
