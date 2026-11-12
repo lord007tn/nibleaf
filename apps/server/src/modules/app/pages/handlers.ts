@@ -60,7 +60,7 @@ const app = new Hono<HonoEnv>()
   })
   .get('/:id/inbound-links', ...pagesRoutes.inboundLinks, async (ctx) => {
     const projectId = await projectScope(ctx);
-    return ctx.json({ data: await getPageInboundLinks(projectId, ctx.req.param('id')) }, 200);
+    return ctx.json({ data: await getPageInboundLinks(projectId, ctx.req.param('id'), ctx.req.raw.signal) }, 200);
   })
   .get('/:id/history', ...pagesRoutes.get, validator('query', pageHistoryQuery), async (ctx) => {
     const projectId = await projectScope(ctx);

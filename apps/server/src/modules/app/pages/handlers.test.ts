@@ -151,6 +151,14 @@ describe('GET /pages/:id/inbound-links through the real routes and guards', () =
     expect(await response.json()).toEqual({ data: { total: 1, pages: [{ id: 'source', title: 'source', path: 'source' }] } });
     expect(database.pageFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'site-a', branchId: 'main' } }));
   });
+  it('passes request cancellation to the advisory before reading page bodies', async () => {
+    await app.request('/api/app/projects/site-a/pages/page-a/inbound-links', {
+      headers: { 'x-test-user': 'viewer' },
+      signal: AbortSignal.abort(),
+    });
+    expect(database.pageFindFirst).not.toHaveBeenCalled();
+    expect(database.pageFindMany).not.toHaveBeenCalled();
+  });
   it('returns 404 to outsiders and 401 without a session before reading any snapshot', async () => {
     expect((await request('site-a', 'page-a', 'outsider')).status).toBe(404);
     expect((await request('site-a', 'page-a', null)).status).toBe(401);

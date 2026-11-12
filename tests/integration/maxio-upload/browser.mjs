@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
+import { chromiumExecutable } from '../lib/capture-env.mjs';
 
 const fixture = JSON.parse(readFileSync(new URL('./.local.json', import.meta.url)));
 const dir = new URL('../../../.github/assets/maxio-upload-proxy/', import.meta.url);
 mkdirSync(dir, { recursive: true });
 const browser = await chromium.launch({
-  executablePath: `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1248/chrome-win64/chrome.exe`,
+  executablePath: chromiumExecutable(),
   headless: true,
 });
 try {
