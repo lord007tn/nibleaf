@@ -29,11 +29,16 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => mocks.navigate,
   }),
   useBlocker: () => undefined,
+  useRouter: () => ({ buildLocation: () => ({ href: '' }) }),
   Link: ({ children, to: _to, params: _params, ...props }: { children: ReactNode; to: string; params: unknown }) => <a {...props}>{children}</a>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
 vi.mock('@tanstack/react-pacer', () => ({ useDebouncer: () => ({ maybeExecute: mocks.schedule, cancel: vi.fn() }) }));
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({}),
+  useQueries: ({ combine }: { combine: (results: unknown[]) => unknown }) => combine([]),
+}));
+vi.mock('@/components/editor/linked-page-history', () => ({ useLinkedPageHistory: () => vi.fn() }));
 vi.mock('@/hooks/api', () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Test site', config: {} } }),
   useProjectMembers: () => ({ data: { members: [{ role: mocks.role, user: { id: 'user-1' } }] }, isPending: mocks.membersPending }),
@@ -44,6 +49,7 @@ vi.mock('@/hooks/api', () => ({
   pagePublishState: () => 'unchanged',
   queryKeys: { pages: { allForProject: (id: string) => ['pages', id] } },
   useBranches: () => ({}),
+  useOpenApiConfiguration: () => ({}),
   useLanguages: () => ({}),
   usePages: () => ({ data: mocks.pages, isPending: false }),
   usePage: () => ({ data: mocks.page }),
@@ -61,6 +67,7 @@ vi.mock('@/hooks/api', () => ({
 vi.mock('@/hooks/api/query-options', () => ({
   aiDraftCapabilityQueryOptions: (id: string) => ({ queryKey: ['workspace-ai', id, 'draft-capability'] }),
   commentsQueryOptions: vi.fn(),
+  pagesQueryOptions: vi.fn(),
   pageQueryOptions: vi.fn(),
   projectMembersQueryOptions: (id: string) => ({ queryKey: ['members', id] }),
 }));

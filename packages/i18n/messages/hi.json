@@ -446,6 +446,8 @@
   "editor_link_save": "लिंक सहेजें",
   "editor_link_open": "नए टैब में खोलें",
   "editor_link_openrelativehint": "आपकी प्रकाशित साइट पर संबंधित लिंक खुलते हैं",
+  "editor_link_openpage": "यह पेज खोलें",
+  "editor_link_missingpage": "यह पेज इस साइट पर मौजूद नहीं है",
   "editor_link_remove": "लिंक हटाएँ",
   "editor_link_invalid": "एक वैध यूआरएल दर्ज करें: https, mailto, tel, #anchor, या / से शुरू होने वाला पथ।",
   "editor_toolbar_undo": "पूर्ववत करें",

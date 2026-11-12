@@ -455,6 +455,8 @@
   "editor_link_save": "Link speichern",
   "editor_link_open": "In neuem Tab öffnen",
   "editor_link_openrelativehint": "Auf Ihrer veröffentlichten Website werden relative Links geöffnet",
+  "editor_link_openpage": "Diese Seite öffnen",
+  "editor_link_missingpage": "Diese Seite gibt es auf dieser Website nicht",
   "editor_link_remove": "Link entfernen",
   "editor_link_invalid": "Geben Sie eine gültige URL ein: https, mailto, tel, #anchor oder einen Pfad, der mit / beginnt.",
   "editor_toolbar_undo": "Rückgängig machen",

@@ -455,6 +455,8 @@
   "editor_link_save": "Enregistrer le lien",
   "editor_link_open": "Ouvrir dans un nouvel onglet",
   "editor_link_openrelativehint": "Liens relatifs ouverts sur votre site publié",
+  "editor_link_openpage": "Ouvrir cette page",
+  "editor_link_missingpage": "Cette page n'existe pas sur ce site",
   "editor_link_remove": "Supprimer le lien",
   "editor_link_invalid": "Saisissez une URL valide : https, mailto, tel, #anchor ou un chemin commençant par /.",
   "editor_toolbar_undo": "Annuler",

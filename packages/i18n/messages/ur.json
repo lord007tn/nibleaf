@@ -455,6 +455,8 @@
   "editor_link_save": "لنک محفوظ کریں۔",
   "editor_link_open": "نئے ٹیب میں کھولیں۔",
   "editor_link_openrelativehint": "آپ کی شائع شدہ سائٹ پر متعلقہ لنکس کھلتے ہیں۔",
+  "editor_link_openpage": "یہ صفحہ کھولیں",
+  "editor_link_missingpage": "یہ صفحہ اس سائٹ پر موجود نہیں ہے",
   "editor_link_remove": "لنک ہٹا دیں۔",
   "editor_link_invalid": "ایک درست URL درج کریں: https، mailto، tel، #anchor، یا / سے شروع ہونے والا راستہ۔",
   "editor_toolbar_undo": "کالعدم",
