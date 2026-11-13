@@ -114,6 +114,42 @@ export function clearPendingInvitation(): void {
   clearPendingDestination();
 }
 
+/** sessionStorage: this tab chose "Create an account to accept" or "Log in to accept". */
+const ACCEPT_INTENT_KEY = 'nibleaf.acceptInvitationAfterAuth';
+
+/**
+ * Remember that the visitor asked to accept this invitation once they are
+ * signed in, so they are not asked a second time on their way back (P3-JRN-003).
+ * Only an action on the accept page sets it, and only for this tab: a link
+ * alone can never accept an invitation for someone.
+ */
+export function rememberAcceptIntent(invitationId: string): void {
+  try {
+    window.sessionStorage.setItem(ACCEPT_INTENT_KEY, invitationId);
+  } catch {
+    // Without storage they press Accept once more, as before.
+  }
+}
+
+/** True once, when this tab asked to accept this invitation; the intent is used up. */
+export function takeAcceptIntent(invitationId: string): boolean {
+  try {
+    if (window.sessionStorage.getItem(ACCEPT_INTENT_KEY) !== invitationId) return false;
+    window.sessionStorage.removeItem(ACCEPT_INTENT_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function forgetAcceptIntent(): void {
+  try {
+    window.sessionStorage.removeItem(ACCEPT_INTENT_KEY);
+  } catch {
+    // ignore storage failures
+  }
+}
+
 /**
  * Where a visitor goes right after authenticating: the invitation named in the
  * auth page's URL, else the dashboard page that sent them to sign in (`next`),

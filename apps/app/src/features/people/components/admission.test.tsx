@@ -165,6 +165,70 @@ describe('accept invitation page', () => {
   });
 });
 
+// P3-JRN-003: after signing up from an invitation, the invitee had to press
+// "Accept invitation" a second time.
+describe('invitee journey: invitation, sign-up, then into the site', () => {
+  const backFromAuth = async () => {
+    await act(async () => root.unmount());
+    document.body.replaceChildren();
+    signedIn();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+  };
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    mocks.invitation.mockResolvedValue(invitation);
+    mocks.accept.mockResolvedValue({ organizationId: 'org-1', landing: { projectId: 'p-1' } });
+  });
+
+  it.each([
+    ['people.admission.createToAccept', '/sign-up'],
+    ['people.admission.logInToAccept', '/sign-in'],
+  ])('accepts once, without a second press, after "%s", and lands in the site', async (label, to) => {
+    signedOut();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    const choice = [...host.querySelectorAll('a')].find((link) => link.textContent === label);
+    expect(choice?.getAttribute('href')).toBe(to);
+    await act(async () => choice?.click());
+    expect(mocks.accept).not.toHaveBeenCalled();
+
+    // Signed up (or in) as the invited address, back on the invitation.
+    await backFromAuth();
+    expect(mocks.accept).toHaveBeenCalledTimes(1);
+    expect(mocks.accept).toHaveBeenCalledWith('inv-1');
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/projects/$projectId', params: { projectId: 'p-1' } });
+
+    // The intent is used up: coming back later asks again.
+    await backFromAuth();
+    expect(mocks.accept).toHaveBeenCalledTimes(1);
+  });
+
+  it('never accepts on a visit alone: a link cannot accept an invitation for someone', async () => {
+    signedIn();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    expect(mocks.accept).not.toHaveBeenCalled();
+    expect(buttons().some((label) => label?.startsWith('people.admission.accept'))).toBe(true);
+  });
+
+  it('ignores an intent recorded for another invitation', async () => {
+    window.sessionStorage.setItem('nibleaf.acceptInvitationAfterAuth', 'inv-other');
+    signedIn();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    expect(mocks.accept).not.toHaveBeenCalled();
+  });
+
+  it('says why when the automatic acceptance fails, and offers Accept without retrying on its own', async () => {
+    mocks.accept.mockRejectedValueOnce(new ApiResponseError('boom', 500));
+    signedOut();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    await act(async () => [...host.querySelectorAll('a')].find((link) => link.textContent === 'people.admission.createToAccept')?.click());
+    await backFromAuth();
+    expect(mocks.accept).toHaveBeenCalledTimes(1);
+    expect(host.textContent).toContain('people.admission.acceptFailed');
+    expect(buttons().some((label) => label?.startsWith('people.admission.accept'))).toBe(true);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+});
+
 describe('join link page', () => {
   const preview = {
     organizationId: 'org-1',

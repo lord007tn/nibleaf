@@ -7,7 +7,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { JOIN_LINK_COOKIE, JOIN_LINK_COOKIE_MAX_AGE_SECONDS, joinLinkPath } from '@nibleaf/shared/join-links';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { QueryErrorState } from '@/components/query-error-state';
 import { acceptInvitation } from '@/hooks/api/admissions';
@@ -24,10 +24,13 @@ import { AuthLayout } from '@/layouts/auth';
 import {
   clearPendingDestination,
   clearPendingInvitation,
+  forgetAcceptIntent,
   readPendingDestination,
   readPendingInvitation,
+  rememberAcceptIntent,
   setPendingDestination,
   setPendingInvitation,
+  takeAcceptIntent,
 } from '@/lib/invitations';
 import { useSession } from '@/services/auth-client';
 import { signOutDashboard } from '@/services/dashboard-session';
@@ -194,7 +197,39 @@ export function AcceptInvitationView({ invitationId }: { invitationId: string })
   useEffect(() => {
     if (state.kind === 'invalid' || state.kind === 'expired' || state.kind === 'used') {
       if (readPendingInvitation() === invitationId) clearPendingInvitation();
+      forgetAcceptIntent();
     } else if (state.kind === 'signedOut') setPendingInvitation(invitationId);
+  }, [state.kind, invitationId]);
+
+  const organizationName = invitation.data?.organizationName ?? '';
+  const accept = async () => {
+    setAccepting(true);
+    setFailure(null);
+    try {
+      const accepted = await acceptInvitation(invitationId);
+      clearPendingInvitation();
+      toast.success(t('people.admission.joinedToast', { org: organizationName }));
+      await land(accepted.landing);
+    } catch (error) {
+      if (error instanceof ApiResponseError && error.status === 404) {
+        if (readPendingInvitation() === invitationId) clearPendingInvitation();
+        void invitation.refetch();
+      }
+      setFailure(t('people.admission.acceptFailed'));
+    } finally {
+      setAccepting(false);
+    }
+  };
+
+  // Back from "Create an account to accept" or "Log in to accept", signed in as
+  // the invited address: they already said yes, so accept without asking again
+  // (P3-JRN-003). If it fails, the page offers Accept with the reason.
+  const autoAccepted = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once, when the invitation becomes acceptable.
+  useEffect(() => {
+    if (state.kind !== 'ready' || autoAccepted.current || !takeAcceptIntent(invitationId)) return;
+    autoAccepted.current = true;
+    void accept();
   }, [state.kind, invitationId]);
 
   const title =
@@ -261,10 +296,19 @@ export function AcceptInvitationView({ invitationId }: { invitationId: string })
         <div className="grid gap-4">
           {card}
           <p className="text-muted-foreground text-sm">{t('people.admission.forEmail', { email: info.email })}</p>
-          <Button className="w-full" nativeButton={false} render={<Link search={search} to="/sign-up" />}>
+          <Button
+            className="w-full"
+            nativeButton={false}
+            render={<Link onClick={() => rememberAcceptIntent(invitationId)} search={search} to="/sign-up" />}
+          >
             {t('people.admission.createToAccept')}
           </Button>
-          <Button className="w-full" nativeButton={false} render={<Link search={search} to="/sign-in" />} variant="outline">
+          <Button
+            className="w-full"
+            nativeButton={false}
+            render={<Link onClick={() => rememberAcceptIntent(invitationId)} search={search} to="/sign-in" />}
+            variant="outline"
+          >
             {t('people.admission.logInToAccept')}
           </Button>
           <AboutNibleaf />
@@ -280,6 +324,7 @@ export function AcceptInvitationView({ invitationId }: { invitationId: string })
       try {
         await signOutDashboard(queryClient, async () => {
           setPendingInvitation(invitationId);
+          rememberAcceptIntent(invitationId);
           await navigate({ to: '/sign-in', search: { invite: invitationId, email: info.email } });
         });
       } catch {
@@ -305,24 +350,6 @@ export function AcceptInvitationView({ invitationId }: { invitationId: string })
     );
   }
 
-  const accept = async () => {
-    setAccepting(true);
-    setFailure(null);
-    try {
-      const accepted = await acceptInvitation(invitationId);
-      clearPendingInvitation();
-      toast.success(t('people.admission.joinedToast', { org: info.organizationName }));
-      await land(accepted.landing);
-    } catch (error) {
-      if (error instanceof ApiResponseError && error.status === 404) {
-        if (readPendingInvitation() === invitationId) clearPendingInvitation();
-        void invitation.refetch();
-      }
-      setFailure(t('people.admission.acceptFailed'));
-    } finally {
-      setAccepting(false);
-    }
-  };
   const note =
     state.note === 'alreadyMember'
       ? t('people.admission.noteMember', { org: info.organizationName })
@@ -340,7 +367,20 @@ export function AcceptInvitationView({ invitationId }: { invitationId: string })
         <Button className="w-full" loading={accepting} loadingText={t('auth.invite.accepting')} onClick={() => void accept()} type="button">
           {t('people.admission.accept')}
         </Button>
-        <Button className="w-full" nativeButton={false} render={<Link onClick={clearPendingInvitation} to="/app" />} variant="ghost">
+        <Button
+          className="w-full"
+          nativeButton={false}
+          render={
+            <Link
+              onClick={() => {
+                clearPendingInvitation();
+                forgetAcceptIntent();
+              }}
+              to="/app"
+            />
+          }
+          variant="ghost"
+        >
           {t('people.admission.notNow')}
         </Button>
       </div>
