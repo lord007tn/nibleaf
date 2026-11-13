@@ -387,13 +387,16 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
   const openapi = new Set(['swagger', 'openapi', 'openapi-operation', 'openapi-webhook', 'openapi-schemas']);
   let cursor = 0;
   const nextLineEnd = forwardIndexOf(protectedCode.content, '\n');
+  const nextMediaLineEnd = forwardIndexOf(protectedCode.content, '\n');
   let lineStart = 0;
+  let previousLine = '';
   let lineEnd = nextLineEnd(0);
   let containerPrefix = importContainerPrefix(protectedCode.content.slice(0, lineEnd < 0 ? undefined : lineEnd));
   for (let index = 0; index < tokens.length; index++) {
     const token = tokens[index];
     if (!token || token.start < cursor) continue;
     while (lineEnd >= 0 && lineEnd < token.start) {
+      previousLine = protectedCode.content.slice(lineStart, lineEnd);
       lineStart = lineEnd + 1;
       lineEnd = nextLineEnd(lineStart);
       containerPrefix = importContainerPrefix(protectedCode.content.slice(lineStart, lineEnd < 0 ? undefined : lineEnd));
@@ -453,11 +456,19 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
           token.name === 'video' ? 'video' : undefined,
         );
         const media = caption ? `<Frame caption="${attr(plainGitBookText(caption))}">\n\n${frame}\n\n</Frame>` : frame;
-        // The first prefix is already copied before the token. Prefix every
-        // additional line, including blank lines, without opening a root block.
-        output.push(
-          containerPrefix && token.start === lineStart + containerPrefix.length ? media.replaceAll('\n', `\n${containerPrefix}`) : block(media),
-        );
+        if (containerPrefix && token.start === lineStart + containerPrefix.length) {
+          // The first prefix is already copied. Keep HTML block separators
+          // inside the container, reusing any blank lines the author supplied.
+          const blank = (line: string) => !line.trim() || line.trim() === containerPrefix.trim();
+          if (!blank(previousLine)) output.push(`\n${containerPrefix}`);
+          output.push(media.replaceAll('\n', `\n${containerPrefix}`));
+          const mediaLineEnd = nextMediaLineEnd(cursor);
+          if (mediaLineEnd >= 0) {
+            const afterEnd = nextMediaLineEnd(mediaLineEnd + 1);
+            const after = protectedCode.content.slice(mediaLineEnd + 1, afterEnd < 0 ? undefined : afterEnd);
+            if (!blank(after)) output.push(`\n${containerPrefix.trimEnd()}`);
+          }
+        } else output.push(block(media));
       } else {
         const src = attributes.src ?? '';
         if (src) {

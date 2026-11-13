@@ -51,7 +51,9 @@ const importFenceBody = (line: string, containers: readonly ImportContainer[]): 
     const start = cursor;
     if (container.kind === 'list') {
       while (cursor - start < container.indent && line[cursor] === ' ') cursor++;
-      if (cursor - start !== container.indent) return undefined;
+      // A blank after the matched quote markers continues a list fence even
+      // when the line omits the list's indentation.
+      if (cursor - start !== container.indent) return line.slice(cursor).trim() ? undefined : '';
     } else {
       while (line[cursor] === ' ') cursor++;
       if (cursor - start > container.indent + 3 || line[cursor] !== '>') return undefined;
