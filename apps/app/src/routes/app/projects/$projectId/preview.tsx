@@ -75,7 +75,7 @@ function ProjectPreview() {
   // The same tree readers get once this is published, so the order matches the editor's.
   const nav = useMemo(() => previewNavTree(pages, activeLanguage?.code), [pages, activeLanguage?.code]);
   const selected = useMemo(() => {
-    const homeId = previewHomeId(nav);
+    const homeId = previewHomeId(pages, nav);
     return pages?.find((page) => page.id === search.pageId) ?? pages?.find((page) => page.id === homeId);
   }, [nav, pages, search.pageId]);
   // The content column stays mounted between pages; start each page at its top,

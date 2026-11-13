@@ -8,11 +8,12 @@ import { buildNavTree, type NavNode, type NavSourcePage } from '@nibleaf/shared/
 import type { PageNode } from '@/hooks/api/types';
 
 /** A draft page in the shape navigation is built from. */
-export const navSourcePage = (page: PageNode, languageCode: string | undefined): NavSourcePage => ({
+export const navSourcePage = (page: PageNode, languageCode: string): NavSourcePage => ({
   id: page.id,
   parentId: page.parentId,
-  // The preview lists one language at a time; its code only picks the "Untitled" wording.
-  languageCode: languageCode ?? '',
+  // The preview lists one language at a time; its code picks the "Untitled"
+  // wording and the language of inferred category names.
+  languageCode,
   kind: page.kind,
   title: page.title,
   slug: page.slug,
@@ -31,16 +32,31 @@ export const navSourcePage = (page: PageNode, languageCode: string | undefined):
   hidden: page.hidden,
 });
 
-/** The previewed language's navigation, exactly as readers will get it once published. */
+/** The previewed language's navigation, as readers will get it once published.
+ *  Empty until the language is known: its pages are scoped to it, and an
+ *  imported collection's category names are worded in it. */
 export const previewNavTree = (pages: readonly PageNode[] | undefined, languageCode: string | undefined): NavNode[] =>
-  buildNavTree((pages ?? []).map((page) => navSourcePage(page, languageCode)));
+  languageCode ? buildNavTree((pages ?? []).map((page) => navSourcePage(page, languageCode))) : [];
 
-/** The page the preview opens on: the live site's home, the first page in nav order. */
-export function previewHomeId(nodes: readonly NavNode[]): string | undefined {
+const firstNavPage = (nodes: readonly NavNode[]): string | undefined => {
   for (const node of nodes) {
     if (node.kind === 'PAGE') return node.id;
-    const child = previewHomeId(node.children);
+    const child = firstNavPage(node.children);
     if (child) return child;
   }
   return undefined;
+};
+
+/**
+ * The page the preview opens on, chosen as the reader chooses this language's
+ * home (`resolveSitePage` for the root): a visible page with an empty path
+ * wins, otherwise the first page in nav order. Not covered: a translated site
+ * root that sends readers to the default home's translation.
+ */
+export function previewHomeId(pages: readonly PageNode[] | undefined, nodes: readonly NavNode[]): string | undefined {
+  const visible = new Set(navOrderIds(nodes));
+  const root = pages?.find((page) => page.kind === 'PAGE' && page.path === '' && visible.has(page.id));
+  return root?.id ?? firstNavPage(nodes);
 }
+
+const navOrderIds = (nodes: readonly NavNode[]): string[] => nodes.flatMap((node) => [node.id, ...navOrderIds(node.children)]);

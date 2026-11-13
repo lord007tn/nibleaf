@@ -85,7 +85,7 @@ describe('one navigation order (P1-DASH-002, P1-DASH-003)', () => {
   it('lists the starter site as the author arranged it and opens on its first page, like the live site', () => {
     const tree = previewNavTree(starter, 'en');
     expect(tree.map((node) => node.title)).toEqual(['Getting started', 'Installation', 'Components tour', 'API reference', 'FAQ']);
-    expect(previewHomeId(tree)).toBe('start');
+    expect(previewHomeId(starter, tree)).toBe('start');
     expect(firstPage(starter.map(published))?.id).toBe('start');
   });
 
@@ -99,7 +99,7 @@ describe('one navigation order (P1-DASH-002, P1-DASH-003)', () => {
       ],
       'en',
     );
-    expect(previewHomeId(tree)).toBe('deep');
+    expect(previewHomeId(undefined, tree)).toBe('deep');
   });
 
   it('keeps a draft page’s sidebar label and virtual category, as the reader does', () => {
@@ -114,6 +114,40 @@ describe('one navigation order (P1-DASH-002, P1-DASH-003)', () => {
       ['PAGE', 'Short'],
       ['GROUP', 'Billing'],
     ]);
+  });
+
+  it('opens on the page with an empty address when there is one, as the reader serves the site root', () => {
+    const pages = [
+      draft({ id: 'first', kind: 'PAGE', title: 'First', parentId: null, position: 0 }),
+      { ...draft({ id: 'root', kind: 'PAGE', title: 'Root', parentId: null, position: 1 }), path: '' },
+    ];
+    expect(previewHomeId(pages, previewNavTree(pages, 'en'))).toBe('root');
+    // A hidden empty-address page is not the home.
+    const hidden = pages.map((page) => (page.id === 'root' ? { ...page, hidden: true } : page));
+    expect(previewHomeId(hidden, previewNavTree(hidden, 'en'))).toBe('first');
+  });
+
+  // Sol review of #614: the preview built the tree before its language loaded,
+  // and inferring categories for a large flat import threw on an empty locale.
+  it('builds no tree until the previewed language is known, and never throws for a large flat import', () => {
+    const flat = Array.from({ length: 30 }, (_, index) =>
+      draft({ id: `p${index}`, kind: 'PAGE', title: `Guide ${index}`, parentId: null, position: index }),
+    );
+    expect(previewNavTree(flat, undefined)).toEqual([]);
+    expect(previewNavTree(flat, 'en').length).toBeGreaterThan(0);
+    expect(() => buildNavTree(flat.map((page) => ({ ...published(page), languageCode: '' })))).not.toThrow();
+  });
+
+  it('keeps virtual categories together where their first page sits, ordered by categoryOrder (not in the editor tree)', () => {
+    const pages = [
+      draft({ id: 'a', kind: 'PAGE', title: 'A', parentId: null, position: 0, config: { category: 'Later', categoryOrder: 2 } }),
+      draft({ id: 'g', kind: 'GROUP', title: 'G', parentId: null, position: 1 }),
+      draft({ id: 'g1', kind: 'PAGE', title: 'G1', parentId: 'g', position: 0 }),
+      draft({ id: 'b', kind: 'PAGE', title: 'B', parentId: null, position: 2, config: { category: 'Sooner', categoryOrder: 1 } }),
+    ];
+    const preview = previewNavTree(pages, 'en');
+    expect(preview.map((node) => node.title)).toEqual(['Sooner', 'Later', 'G']);
+    expect(navOrder(preview)).toEqual(navOrder(buildNavTree(pages.map(published))));
   });
 
   it('labels an untitled draft in the previewed language', () => {

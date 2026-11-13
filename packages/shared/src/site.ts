@@ -272,6 +272,16 @@ export interface ResolvedPageCategory {
 
 const LARGE_FLAT_COLLECTION = 24;
 
+/** Lowercase in the page's language; a code that is not a usable language tag
+ *  (empty, or custom) falls back to the default case mapping instead of throwing. */
+const localeLower = (text: string, languageCode: string): string => {
+  try {
+    return text.toLocaleLowerCase(languageCode || undefined);
+  } catch {
+    return text.toLowerCase();
+  }
+};
+
 /** The page fields navigation is built from: a published snapshot page, or a
  *  draft page in the dashboard preview (which has no content or version). */
 export type NavSourcePage = Pick<
@@ -295,7 +305,7 @@ export const resolvePageCategory = (page: NavSourcePage, siblingPageCount: numbe
     return null;
   }
 
-  const haystack = `${page.title} ${page.slug}`.toLocaleLowerCase(page.languageCode);
+  const haystack = localeLower(`${page.title} ${page.slug}`, page.languageCode);
   const ar = page.languageCode.toLowerCase().startsWith('ar');
   const rules: Array<{ title: string; icon: string; order: number; keywords: string[] }> = ar
     ? [
@@ -377,8 +387,12 @@ export const resolvePageCategory = (page: NavSourcePage, siblingPageCount: numbe
  *  When `languageCode` is given, only that language's pages are included.
  *
  *  Siblings keep the author's order (`position`), groups and pages alike: the
- *  order the editor's page tree shows is the order readers get, and the site's
- *  home is the first page in it. */
+ *  order the editor's page tree shows. One exception: virtual categories
+ *  (importer metadata, or inferred for flat collections of 24+ pages) are not
+ *  in the editor tree; they sit together where their first page sits, ordered
+ *  among themselves by `categoryOrder`, so a categorized page can move ahead of
+ *  later siblings. The site's home is resolved separately (`resolveSitePage`):
+ *  a page with an empty path wins, otherwise the first page in this order. */
 export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], languageCode?: string): NavNode[] => {
   const visible = pages.filter((p) => !p.hidden && (!languageCode || p.languageCode === languageCode));
   const byParent = new Map<string | null, T[]>();
