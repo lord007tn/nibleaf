@@ -21,6 +21,19 @@ export function starterSlugCandidates(
   return candidates.filter((slug) => isProjectHostnameAllowed(slug, configuredHosts));
 }
 
+/** The last-resort starter address, for when every candidate was taken or a
+ *  unique-constraint race used them up: a timestamp, then random suffixes,
+ *  until one is allowed on this deployment. */
+export function starterFallbackSlug(
+  configuredHosts: ReadonlyArray<string | undefined> = projectSystemHosts(process.env),
+  now: () => number = Date.now,
+  randomSuffix: () => string = () => randomBytes(4).toString('hex'),
+): string {
+  let candidate = `${STARTER_SLUG_BASE}-${now().toString(36)}`;
+  while (!isProjectHostnameAllowed(candidate, configuredHosts)) candidate = `${STARTER_SLUG_BASE}-${now().toString(36)}-${randomSuffix()}`;
+  return candidate;
+}
+
 /** The first free starter address. `isTaken` is one global lookup per call;
  *  the caller still retries on the unique constraint, since this only pre-checks. */
 export async function pickStarterSlug(
@@ -30,5 +43,5 @@ export async function pickStarterSlug(
   for (const candidate of starterSlugCandidates(configuredHosts)) {
     if (!(await isTaken(candidate))) return candidate;
   }
-  return `${STARTER_SLUG_BASE}-${Date.now().toString(36)}`;
+  return starterFallbackSlug(configuredHosts);
 }

@@ -34,7 +34,7 @@ import {
   STARTER_GETTING_STARTED_ICON,
   STARTER_GETTING_STARTED_TITLE,
 } from './starter-content';
-import { pickStarterSlug, STARTER_SLUG_BASE } from './starter-slug';
+import { pickStarterSlug, starterFallbackSlug } from './starter-slug';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
@@ -456,7 +456,7 @@ async function createStarterProject(organizationId: string, actorUserId: string)
   // time, and fall back to a timestamped slug so provisioning never fails here.
   const createProjectWithInvariants = async () => {
     for (let attempt = 0; attempt < 5; attempt++) {
-      const slug = attempt < 4 ? await uniqueStarterSlug() : `${STARTER_SLUG_BASE}-${Date.now().toString(36)}`;
+      const slug = attempt < 4 ? await uniqueStarterSlug() : starterFallbackSlug();
       try {
         return await prisma.$transaction(async (tx) => {
           // Project.dataTenantId gets an independent cuid from the Prisma default (§3).

@@ -487,7 +487,25 @@ describe('site creation language, starters and address availability', () => {
       slug,
       description: 'Renamed',
     });
-    expect(mocks.projectUpdate).toHaveBeenCalledWith({ where: { id: 'project-legacy' }, data: { name: 'Docs', slug, description: 'Renamed' } });
+    // The unchanged address is not written back.
+    expect(mocks.projectUpdate).toHaveBeenCalledWith({ where: { id: 'project-legacy' }, data: { name: 'Docs', description: 'Renamed' } });
+  });
+  it('never writes back an unchanged reserved address over a rename that landed after it was read', async () => {
+    // The stale request read `docs`; a rename to `handbook` commits before its write.
+    let stored = 'docs';
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => {
+      if (!where.id) return null;
+      const snapshot = { id: 'project-legacy', organizationId: 'org-a', slug: stored };
+      stored = 'handbook';
+      return snapshot;
+    });
+    mocks.projectUpdate.mockImplementation(async ({ data }) => {
+      if (data.slug !== undefined) stored = data.slug;
+      return { id: 'project-legacy', slug: stored, ...data };
+    });
+    await updateProject('org-a', 'project-legacy', { slug: 'docs', description: 'Edited' });
+    expect(mocks.projectUpdate).toHaveBeenCalledWith({ where: { id: 'project-legacy' }, data: { description: 'Edited' } });
+    expect(stored).toBe('handbook');
   });
   it('still refuses moving a site with a reserved address to another reserved address', async () => {
     mocks.projectFindFirst.mockImplementation(async ({ where }) =>

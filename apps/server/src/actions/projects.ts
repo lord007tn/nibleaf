@@ -336,8 +336,11 @@ export const updateProject = async (organizationId: string, id: string, body: Up
   const project = await assertProjectInOrg(organizationId, id);
   // Only a new address is judged: a site keeps the one it has even when that
   // address was reserved after it was given (the first sign-up's starter site
-  // was once `docs`), so saving other fields never fails on it.
-  if (body.slug !== undefined && body.slug !== project.slug) {
+  // was once `docs`), so saving other fields never fails on it. An unchanged
+  // address is also never written back, so a stale request cannot restore a
+  // reserved address over a rename that landed in between.
+  const slugChanged = body.slug !== undefined && body.slug !== project.slug;
+  if (slugChanged && body.slug !== undefined) {
     assertProjectSlug(body.slug);
     const existing = await prisma.project.findFirst({ where: { slug: body.slug, id: { not: id } }, select: { id: true } });
     if (existing) {
@@ -347,7 +350,7 @@ export const updateProject = async (organizationId: string, id: string, body: Up
 
   const projectData = {
     ...(body.name === undefined ? {} : { name: body.name }),
-    ...(body.slug === undefined ? {} : { slug: body.slug }),
+    ...(slugChanged ? { slug: body.slug } : {}),
     ...(body.description === undefined ? {} : { description: body.description }),
     ...(body.icon === undefined ? {} : { icon: body.icon }),
   };

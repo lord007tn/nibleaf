@@ -1,6 +1,6 @@
 import { isProjectHostnameAllowed, RESERVED_PROJECT_HOSTNAMES } from '@nibleaf/shared/project-hostname';
 import { describe, expect, it } from 'vitest';
-import { pickStarterSlug, STARTER_SLUG_BASE, starterSlugCandidates } from './starter-slug';
+import { pickStarterSlug, STARTER_SLUG_BASE, starterFallbackSlug, starterSlugCandidates } from './starter-slug';
 
 const takenBy = (slugs: string[]) => async (slug: string) => slugs.includes(slug);
 
@@ -33,5 +33,15 @@ describe('starter site address (P0-DASH-001)', () => {
     const slug = await pickStarterSlug(async () => true, []);
     expect(slug).toMatch(/^documentation-[a-z0-9]+$/);
     expect(isProjectHostnameAllowed(slug)).toBe(true);
+  });
+
+  it('never falls back to a timestamp address this deployment reserves', () => {
+    const now = () => 1_700_000_000_000;
+    const stamped = `documentation-${now().toString(36)}`;
+    const hosts = [`https://${stamped}.example.test`];
+    const slug = starterFallbackSlug(hosts, now, () => 'feedbeef');
+    expect(slug).toBe(`${stamped}-feedbeef`);
+    expect(isProjectHostnameAllowed(slug, hosts)).toBe(true);
+    expect(starterFallbackSlug([], now)).toBe(stamped);
   });
 });
