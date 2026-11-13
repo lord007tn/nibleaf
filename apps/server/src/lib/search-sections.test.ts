@@ -3,6 +3,8 @@ import {
   CODERABBIT_REPROS,
   CONTINUATION_FENCE_REPROS,
   FENCE_CONTAINER_REPROS,
+  HTML_BLOCK_HEADING_REPROS,
+  HTML_BLOCK_REPEATED_HEADING,
   INDENTED_FENCE_AFTER_QUOTE,
   LAZY_INLINE_HTML_REPROS,
 } from '@nibleaf/shared/testing/fence-cases';
@@ -126,6 +128,25 @@ ${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${fille
   it.each(CODERABBIT_REPROS)('finds the section after %s (#590 CodeRabbit review)', (_name, example) => {
     const page = { title: 'Guide', content: `${example}\n\nThe after section mentions zebras.` };
     expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
+  });
+
+  it.each(HTML_BLOCK_HEADING_REPROS)('finds the section after %s, not a heading inside it (#593)', (_name, source) => {
+    const page = {
+      title: 'Guide',
+      content: `${source}
+
+The after section mentions zebras.`,
+    };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
+    // An `##` line inside the HTML block must not become a section (search skips `#` headings).
+    const inHtml = { title: 'Guide', content: source.replace('# literal', '## literal') };
+    expect(matchedSearchSection(inHtml, 'literal')).toBeUndefined();
+  });
+
+  it('cuts the section at the real heading, not at its repeat inside an HTML block (#593)', () => {
+    const page = { title: 'Guide', content: HTML_BLOCK_REPEATED_HEADING };
+    // One `After` heading, so its id has no duplicate suffix (`after-1`).
+    expect(matchedSearchSection(page, 'zebras')).toEqual({ section: { id: 'after', title: 'After' }, snippet: 'The after section mentions zebras.' });
   });
 
   it.each(LAZY_INLINE_HTML_REPROS)('finds the section after %s, not the code after it (#590 lazy inline HTML)', (_name, example) => {

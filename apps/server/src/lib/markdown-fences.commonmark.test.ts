@@ -1,4 +1,6 @@
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
+import { readerSections } from '@nibleaf/shared/reader-headings';
+import { extractHeadings } from '@nibleaf/shared/site';
 import {
   CODERABBIT_REPROS,
   CONTINUATION_FENCE_REPROS,
@@ -6,6 +8,8 @@ import {
   type DifferentialCategory,
   differentialCases,
   fenceCases,
+  HTML_BLOCK_HEADING_REPROS,
+  HTML_BLOCK_REPEATED_HEADING,
   HTML_COMMENT_WITH_BANG_CLOSER,
   indentedLookalikeCases,
   LAZY_INLINE_HTML_REPROS,
@@ -122,4 +126,55 @@ it('reads ordered siblings, thematic breaks, lazy lines, setext underlines and H
     expect(commonMarkCode(lines).fence.map(Number).join(''), name).toBe(code);
     expect(mainFencedMarkdownLines(lines).map(Number).join(''), `${name}: main`).toBe(code);
   }
+});
+
+/** markdown-it's headings: text and source line of each `heading_open`. */
+const commonMarkHeadings = (source: string) => {
+  const tokens = markdown.parse(source, {});
+  return tokens.flatMap((token, index) =>
+    token.type === 'heading_open' && token.map ? [{ text: tokens[index + 1]?.content ?? '', line: token.map[0] }] : [],
+  );
+};
+
+it('lists the headings markdown-it renders, none from inside an HTML block (#593)', () => {
+  for (const [name, source] of [...HTML_BLOCK_HEADING_REPROS, ['a repeated heading inside an HTML block', HTML_BLOCK_REPEATED_HEADING] as const]) {
+    const expected = commonMarkHeadings(source);
+    expect(
+      extractHeadings(source).map(({ text }) => text),
+      name,
+    ).toEqual(expected.map(({ text }) => text));
+    expect(
+      readerSections(source).map(({ text, line }) => ({ text, line })),
+      name,
+    ).toEqual(expected);
+  }
+});
+
+it('never lists a heading that markdown-it puts inside an HTML block, across the differential cases (#593)', ({ task }) => {
+  const tallies = new Map<string, { cases: number; agree: number; listedFromHtml: number }>();
+  const failures: Array<{ index: number; source: string; ours: string[]; markdownIt: string[] }> = [];
+  for (const { index, category, source } of differentialCases()) {
+    const ours = extractHeadings(source).map(({ text }) => text);
+    const theirs = commonMarkHeadings(source).map(({ text }) => text);
+    // A heading the outline lists that markdown-it does not render: one inside an HTML block.
+    const unmatched = [...theirs];
+    const listedFromHtml = ours.filter((text) => {
+      const at = unmatched.indexOf(text);
+      if (at < 0) return true;
+      unmatched.splice(at, 1);
+      return false;
+    });
+    for (const key of [category, 'all categories']) {
+      const tally = tallies.get(key) ?? { cases: 0, agree: 0, listedFromHtml: 0 };
+      tally.cases++;
+      if (ours.join('\n') === theirs.join('\n')) tally.agree++;
+      if (listedFromHtml.length > 0) tally.listedFromHtml++;
+      tallies.set(key, tally);
+    }
+    if (listedFromHtml.length > 0) failures.push({ index, source, ours, markdownIt: theirs });
+  }
+  const table = Object.fromEntries(tallies);
+  Object.assign(task.meta, { headingsAgainstMarkdownIt: table });
+  console.info('extractHeadings against markdown-it:', table);
+  expect(failures.slice(0, 8), `${failures.length} cases list a heading from inside an HTML block`).toEqual([]);
 });

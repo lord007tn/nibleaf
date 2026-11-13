@@ -390,3 +390,24 @@ export const LAZY_INLINE_HTML_REPROS: ReadonlyArray<readonly [name: string, sour
 /** #592: a tab before `>` inside a list item continues the item and opens a
  * quoted fence there (CommonMark; markdown-it reads `011100`, main `000000`). */
 export const TAB_BEFORE_QUOTE_IN_ITEM = ['- item\n\t> ```js\n\t> const x = 1;\n\t> ```\n\n## After', '011100'] as const;
+
+const htmlWrapped = (open: string, close: string) => `${open}\n\`\`\`md\n# literal\n\`\`\`\n${close}\n\n## After`;
+/** #593: a `#` line inside an HTML block is HTML, not a heading, so the outline
+ * lists only `After` (markdown-it renders no other heading). Each wrapper sits
+ * inside a list item and at the top level. */
+export const HTML_BLOCK_HEADING_REPROS: ReadonlyArray<readonly [name: string, source: string]> = [
+  ['a `<div>` in a list item (#593)', `- item\n${htmlWrapped('<div>', '</div>')}`],
+  ['a top-level `<div>`', htmlWrapped('<div>', '</div>')],
+  ['a `<details>` in a list item', `- item\n${htmlWrapped('<details>', '</details>')}`],
+  ['a top-level `<details>`', htmlWrapped('<details>', '</details>')],
+  ['a `<table>` in a list item', `- item\n${htmlWrapped('<table>', '</table>')}`],
+  ['a top-level `<table>`', htmlWrapped('<table>', '</table>')],
+  ['an HTML comment in a list item', `- item\n${htmlWrapped('<!--', '-->')}`],
+  ['a top-level HTML comment', htmlWrapped('<!--', '-->')],
+  // CodeRabbit on #590: an HTML block of type 1 holds a `##` line too.
+  ['a top-level `<pre>`', '<pre>\n```md\n## Literal\n```\n</pre>\n\n## After'],
+  ['a `<pre>` in a list item', '- item\n<pre>\n```md\n## Literal\n```\n</pre>\n\n## After'],
+];
+/** A heading line inside an HTML block that repeats a later real heading: the
+ * section starts at the real one (line 4), as markdown-it reads it. */
+export const HTML_BLOCK_REPEATED_HEADING = '<div>\n## After\n</div>\n\n## After\n\nThe after section mentions zebras.';

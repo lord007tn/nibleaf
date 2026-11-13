@@ -6,7 +6,7 @@ import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
-import { fencedMarkdownLines } from './markdown-code';
+import { markdownLineKinds } from './markdown-code';
 import { type ReaderHastNode, readerHastText, readerHeadingRank, rehypeReaderHeadingIds } from './reader-heading-ids';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { readerRenderMode } from './reader-render-mode';
@@ -103,12 +103,12 @@ const atxHeading = (line: string): { depth: number; text: string } | undefined =
 const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/;
 const QUIET_LINE = /^ {0,3}(?:[-*+>]|\d{1,9}[.)]|$)/;
 
-/** The heading lines of a page's source, outside fenced code (the shared fence parser). */
+/** The heading lines of a page's source, outside fenced code and HTML blocks (the shared scanner). */
 const sourceHeadings = (lines: readonly string[]) => {
-  const fenced = fencedMarkdownLines(lines);
+  const kinds = markdownLineKinds(lines);
   const found: { line: number; depth: number; text: string }[] = [];
   for (let index = 0; index < lines.length; index += 1) {
-    if (fenced[index]) continue;
+    if (kinds[index] !== 'prose') continue;
     const line = (lines[index] ?? '').replace(/\r$/, '');
     const atx = atxHeading(line);
     if (atx) {
@@ -116,7 +116,7 @@ const sourceHeadings = (lines: readonly string[]) => {
       continue;
     }
     const next = (lines[index + 1] ?? '').replace(/\r$/, '');
-    if (!fenced[index + 1] && SETEXT_UNDERLINE.test(next) && line.trim() && !QUIET_LINE.test(line))
+    if (kinds[index + 1] === 'prose' && SETEXT_UNDERLINE.test(next) && line.trim() && !QUIET_LINE.test(line))
       found.push({ line: index, depth: next.trim().startsWith('=') ? 1 : 2, text: line.trim() });
   }
   return found;
@@ -132,7 +132,7 @@ const renderedSourceText = (depth: number, text: string): string => {
 /**
  * The page's rendered headings, each at the source line where it is written, so
  * the indexer can cut sections at real headings and record their real ids. The
- * source's heading lines (outside fenced code, by the shared fence parser) are
+ * source's heading lines (outside fenced code and HTML blocks, by the shared scanner) are
  * matched to the rendered headings in document order: each takes the next
  * rendered heading of the same level whose text matches, or, when it holds math
  * (which renders differently on its own), the rendered heading at the same place
