@@ -408,8 +408,12 @@
     }
 
     /* Horizontal scroll for any wide block. Wrap it and the wrapper owns the
-       flow margin. Tables shrink to fit, so widen the table to make it scroll
-       instead of compress. */
+       flow margin. A table fits the column first, its cells wrapping at word
+       boundaries; it scrolls only when a column cannot get narrower than a
+       readable minimum (a cell's longest word, and never under 8ch), so a
+       many-column table scrolls instead of stacking one word per line. The
+       wrapper then shows an edge fade and takes keyboard focus
+       ([data-scroll-region], scroll-region.tsx). */
     &:where(.typeset-scroll) {
       overflow-x: auto;
       margin-block-start: var(--typeset-flow);
@@ -418,13 +422,26 @@
       margin-block-start: 0;
     }
     &:where(.typeset-scroll table) {
-      width: max-content;
+      width: auto;
+      min-width: 100%;
       max-width: none;
+    }
+    &:where(.typeset-scroll :is(th, td)) {
+      min-width: 8ch;
+    }
+    /* A column of running prose keeps a readable measure (the renderer marks
+       long cells); past that the table scrolls. */
+    &:where(.typeset-scroll [data-cell-prose]) {
+      min-width: 14em;
+    }
+    /* Inline code in a cell is a value to read and copy whole: an identifier
+       or a flag never breaks at its hyphens. */
+    &:where(.typeset-scroll :is(th, td) code) {
+      white-space: nowrap;
     }
     &:where(thead th) {
       font-weight: 500;
       text-align: start;
-      white-space: nowrap;
       padding: 0.65em 1em;
     }
     &:where(:is(tbody, tfoot) :is(td, th)) {
@@ -534,6 +551,48 @@
 .reader-heading > :is(h2, h3, h4) {
   display: block;
   margin-block: 0;
+}
+/* A block that overflows its column (scroll-region.tsx marks it only while it
+ * does): a fade on each edge where content waits, mirrored for right-to-left
+ * blocks, and the reader's 2px focus outline drawn inside the box so the
+ * scroller's own clipping can't hide it. The fade is a mask, so it works over
+ * any surface (tinted cells, the code panel, a theme's table cards). While the
+ * region has keyboard focus the fade steps aside: the outline marks it then,
+ * and arrow keys reveal the rest. */
+[data-scroll-region] {
+  --scroll-fade-size: 2.5rem;
+  --scroll-fade-start: 0px;
+  --scroll-fade-end: 0px;
+  --scroll-fade-to: right;
+}
+[data-scroll-region]:dir(rtl) {
+  --scroll-fade-to: left;
+}
+[data-scroll-region][data-fade-start] {
+  --scroll-fade-start: var(--scroll-fade-size);
+}
+[data-scroll-region][data-fade-end] {
+  --scroll-fade-end: var(--scroll-fade-size);
+}
+[data-scroll-region]:is([data-fade-start], [data-fade-end]):not(
+  :focus-visible
+) {
+  mask-image: linear-gradient(
+    to var(--scroll-fade-to),
+    transparent,
+    #000 var(--scroll-fade-start),
+    #000 calc(100% - var(--scroll-fade-end)),
+    transparent
+  );
+}
+[data-scroll-region]:focus-visible {
+  outline: 2px solid var(--ring, currentColor);
+  outline-offset: -2px;
+}
+@media print {
+  [data-scroll-region] {
+    mask-image: none !important;
+  }
 }
 .reader-control {
   cursor: pointer;

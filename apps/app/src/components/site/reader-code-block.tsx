@@ -3,6 +3,7 @@ import { siteContentT } from '@nibleaf/i18n/site-content';
 import { Check, Copy } from 'lucide-react';
 import { type ComponentProps, useRef, useState } from 'react';
 import { announce } from '@/components/site/reader-content-controls';
+import { scrollRegionProps, useScrollOverflow } from '@/components/site/scroll-region';
 
 /** A code block with a one-click copy button (Mintlify-style). When the fence
  *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
@@ -20,6 +21,10 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
   const cls = child?.props?.className ?? '';
   const lang = /language-([\w+#-]+)/.exec(cls)?.[1] ?? ownProps['data-lang'] ?? child?.props?.['data-lang'];
   const title = ownProps['data-title'] ?? child?.props?.['data-title'];
+  // A long line makes the <pre> a named region a keyboard can scroll, with a
+  // fade on the edge where the line continues.
+  const overflow = useScrollOverflow(ref);
+  const name = title ?? lang;
   const copy = async () => {
     setCopied(false);
     setFailed(false);
@@ -76,7 +81,13 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
           {t('copyFailed')}
         </p>
       ) : null}
-      <pre dir="ltr" ref={ref} className={title ? undefined : 'reader-code-untitled'} {...props} />
+      <pre
+        dir="ltr"
+        ref={ref}
+        className={title ? undefined : 'reader-code-untitled'}
+        {...props}
+        {...scrollRegionProps(overflow, name ? t('codeOf', { name }) : t('code'))}
+      />
     </div>
   );
 }
