@@ -17,6 +17,7 @@ import { tabsSlashItems } from './tabs';
 import { tooltipSlashItems } from './tooltip';
 import type { SlashItem, UploadFn } from './types';
 import { updateSlashItems } from './update';
+import { videoSlashItems } from './video';
 
 /** Every slash menu item in authored order; slash-command.tsx sorts them into sections.
  *  Component items are grouped by family, matching extensions/mdx/ and site/mdx/. */
@@ -40,4 +41,5 @@ export const unsortedSlashItems = (onUpload?: UploadFn): SlashItem[] => [
   ...layoutSlashItems,
   ...dividerSlashItems,
   ...mediaSlashItems(onUpload),
+  ...videoSlashItems,
 ];

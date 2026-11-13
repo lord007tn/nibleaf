@@ -32,7 +32,7 @@ export const createSlashItems = (onUpload?: UploadFn): SlashItem[] => unsortedSl
 // images/tables, then notes & warnings; everything else (to-dos, quotes, code,
 // cards…) is listed afterwards under "Advanced".
 const basic = ['text', 'h1', 'h2', 'h3', 'bulletList', 'numberedList'];
-const media = ['image', 'table'];
+const media = ['image', 'video', 'embed', 'table'];
 const callouts = ['note', 'tip', 'info', 'check', 'warning', 'danger'];
 const itemName = (item: SlashItem) => item.titleKey.split('.')[2] ?? '';
 export const slashSection = (item: SlashItem): MessageKey => {

@@ -8,6 +8,8 @@ import { allowedURL, escapeImageAttribute, IMAGE_UPLOAD_PLACEHOLDER_PREFIX, imag
 import { imageAttributeNames } from './image-source';
 import { canEditImages, type ImageUploader, uploadEditorImage } from './image-upload';
 import { fileFromPastedImage } from './pasted-image';
+import { pastedVideoEmbedAttributes, VIDEO_EMBED_CLIPBOARD_ATTRIBUTES, VIDEO_EMBED_NODE, type VideoEmbedAttributes } from './video-embed';
+import { embedTargetFor } from './video-embed-url';
 
 // Clipboard HTML is public. A nonce only identifies a candidate: the matching
 // plain text and this in-memory Slice are the authority, never returned HTML.
@@ -220,9 +222,18 @@ export function cleanPasteDOM(root: HTMLElement, fallbackDir: 'ltr' | 'rtl' = 'l
       attributes['data-type'] = taskType;
       if (element.localName === 'li') attributes['data-checked'] = String(element.getAttribute('data-checked') === 'true');
     }
+    // A Video/Embed block copied from another editor keeps its portable fields only;
+    // the block's parse rule validates the address again (pastedVideoEmbedAttributes).
+    const videoEmbed = element.localName === 'div' && element.hasAttribute('data-video-embed');
+    if (videoEmbed)
+      for (const key of VIDEO_EMBED_CLIPBOARD_ATTRIBUTES) {
+        const value = element.getAttribute(key);
+        if (value !== null) attributes[key] = value;
+      }
     for (const attribute of Array.from(element.attributes)) element.removeAttribute(attribute.name);
     for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
-    if (element.localName === 'div' && !element.querySelector(blocks)) {
+    if (videoEmbed) element.replaceChildren();
+    else if (element.localName === 'div' && !element.querySelector(blocks)) {
       const paragraph = doc.createElement('p');
       paragraph.append(...element.childNodes);
       element.replaceWith(paragraph);
@@ -364,7 +375,12 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
           .join(' ');
         return Array.from(DOMParser.fromSchema(editor.schema).parseSlice(rootFor(`<img ${attributes} />`, internal)).content.content);
       }
-      if (internal && ['mdxOpaqueBlock', 'mdxOpaqueInline'].includes(node.type.name)) return [node];
+      if (internal && ['mdxOpaqueBlock', 'mdxOpaqueInline', VIDEO_EMBED_NODE].includes(node.type.name)) return [node];
+      if (node.type.name === VIDEO_EMBED_NODE) {
+        // Nothing authored crosses the clipboard boundary: only an address the block accepts, written canonically.
+        const attrs = pastedVideoEmbedAttributes(node.attrs as VideoEmbedAttributes);
+        return attrs ? [node.type.create(attrs)] : [];
+      }
       if (node.type.name === 'mdxOpaqueBlock' || node.type.name === 'mdxOpaqueInline') {
         const clean = DOMParser.fromSchema(editor.schema).parseSlice(rootFor(String(node.attrs.source ?? '')));
         if (node.isInline)
@@ -557,6 +573,19 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
               selection.$to.parent.type.allowsMarkType(link)
             ) {
               editor.chain().setLink({ href: url }).run();
+              return true;
+            }
+            // A bare video link on an empty line becomes the Video block, which asks for its title.
+            // Inside text it stays a link; the link's menu offers to embed it.
+            const video = embedTargetFor(url, 'video');
+            if (
+              video &&
+              selection.empty &&
+              selection.$from.parent.type.name === 'paragraph' &&
+              !selection.$from.parent.content.size &&
+              editor.schema.nodes[VIDEO_EMBED_NODE]
+            ) {
+              editor.commands.insertContent({ type: VIDEO_EMBED_NODE, attrs: { ...video, intent: 'video', focus: 'title' } });
               return true;
             }
             if (

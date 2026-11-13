@@ -59,6 +59,7 @@
     "./reader-heading-ids": "./src/reader-heading-ids.ts",
     "./reader-render-mode": "./src/reader-render-mode.ts",
     "./reader-rich": "./src/reader-rich.ts",
+    "./reader-embeds": "./src/reader-embeds.ts",
     "./reader-sanitize": "./src/reader-sanitize.ts",
     "./video-embeds": "./src/video-embeds.ts",
     "./uuid": "./src/uuid.ts"

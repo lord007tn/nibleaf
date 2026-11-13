@@ -1,5 +1,6 @@
 import { translateFn } from '@nibleaf/i18n';
 import { DOCUMENTATION_COMPONENTS, type DocumentationComponentDefinition } from '@nibleaf/shared/documentation-components';
+import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
@@ -866,6 +867,39 @@ function effectiveAttributes(definition: SupportedDefinition, attrs: AttributeTo
   return result;
 }
 
+/** The element the editor's Video and Embed block (`./video-embed`) is parsed from. */
+export const VIDEO_EMBED_ELEMENT = 'nibleaf-video-embed';
+
+/**
+ * The Video/Embed block for a raw HTML range, or null to keep the range opaque.
+ * Only an opaque block that is exactly one embed the reader reads qualifies: an
+ * `<iframe>` or `<video>` the shared scanner accepts as closed in its own
+ * Markdown block (`scanAuthoredEmbeds`, the reader's own rules), alone or as the
+ * only child of a `<Frame>` that raw HTML widened to. Anything else (code, which
+ * never becomes an opaque range; inline HTML; an unclosed or unreadable tag; a
+ * raw table around it; a Frame with a caption expression) stays #573's opaque,
+ * byte-for-byte block. The block keeps the range's source and saves it back
+ * unchanged until the writer edits it.
+ */
+function videoEmbedPlaceholder(range: SourceRange, frame: { open: TagToken; close: TagToken } | undefined): string | null {
+  if (!range.block) return null;
+  let frameOpen = 0;
+  let frameClose = range.source.length;
+  let caption = '';
+  if (frame) {
+    const value = attributeValue(parseAttributes(frame.open.raw, frame.open.name), 'caption');
+    if (typeof value === 'string' && value.startsWith('{')) return null;
+    caption = typeof value === 'string' ? value : '';
+    frameOpen = frame.open.end - range.start;
+    frameClose = frame.close.start - range.start;
+  } else if (range.name !== 'iframe' && range.name !== 'video') return null;
+  const inner = range.source.slice(frameOpen, frameClose);
+  const embeds = scanAuthoredEmbeds(inner);
+  const embed = embeds[0];
+  if (embeds.length !== 1 || !embed?.closed || inner.slice(0, embed.start).trim() || inner.slice(embed.end).trim()) return null;
+  return `<${VIDEO_EMBED_ELEMENT} data-source="${encodeMdxSource(range.source)}" data-frame-open="${frameOpen}" data-frame-close="${frameClose}" data-caption="${escapeHtmlAttribute(caption)}"></${VIDEO_EMBED_ELEMENT}>`;
+}
+
 function placeholder(range: SourceRange): string {
   const tag = range.block ? 'nibleaf-mdx-opaque-block' : 'nibleaf-mdx-opaque-inline';
   return `<${tag} data-source="${encodeMdxSource(range.source)}" data-name="${escapeHtmlAttribute(range.name)}"></${tag}>`;
@@ -957,10 +991,18 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
   }
   opaque = outermostRanges([...opaque, ...modules, ...expressions]);
 
+  // A Frame that raw HTML widened to, found by its opening tag (for the Video block).
+  const tokenAt = new Map(tokens.map((token, index) => [token.start, index]));
+  const frameOf = (range: SourceRange) => {
+    const index = range.name === 'Frame' ? tokenAt.get(range.start) : undefined;
+    const open = index === undefined ? undefined : tokens[index];
+    const close = index === undefined ? undefined : tokens[pairs.get(index) ?? -1];
+    return open && close && !open.closing && !open.selfClosing && close.end === range.end ? { open, close } : undefined;
+  };
   const replacements: Array<{ start: number; end: number; value: string }> = opaque.map((range) => ({
     start: range.start,
     end: range.end,
-    value: placeholder(range),
+    value: videoEmbedPlaceholder(range, frameOf(range)) ?? placeholder(range),
   }));
   const coveredByOpaque = spanIndex(opaque);
   for (let i = 0; i < tokens.length; i++) {
@@ -1050,12 +1092,13 @@ export function sourceMetadataAttributes() {
 
 const equalSourceValue = (left: unknown, right: unknown): boolean => String(left ?? '') === String(right ?? '');
 
-function replaceOpeningAttribute(raw: string, componentName: string, name: string, value: unknown): string {
+export function replaceOpeningAttribute(raw: string, componentName: string, name: string, value: unknown): string {
   const attrs = parseAttributes(raw, componentName);
   const existing = attrs.find((attr) => attr.name.toLowerCase() === name.toLowerCase());
   const remove = value == null || value === '' || value === false;
   if (existing) {
-    if (remove) return `${raw.slice(0, existing.start)}${raw.slice(existing.end)}`;
+    // A removed attribute takes the space before it along, so no double space is left.
+    if (remove) return `${raw.slice(0, existing.start).trimEnd()}${raw.slice(existing.end)}`;
     const rendered =
       value === true
         ? existing.name
