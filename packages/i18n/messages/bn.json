@@ -642,7 +642,6 @@
   "settings_general_customdomain_hint": "পাঠকেরা কি আপনার নিজের ডোমেইন ব্যবহার করুক, চান?",
   "settings_general_customdomain_link": "কাস্টম ডোমেইন সেট আপ করুন",
   "settings_general_url_taken": "অন্য একটি সাইট ইতিমধ্যে এই ঠিকানা ব্যবহার করছে। অন্য একটি চেষ্টা করুন।",
-  "settings_general_url_reserved": "এই ঠিকানাটি সিস্টেমের জন্য সংরক্ষিত। অন্য একটি বেছে নিন।",
   "settings_branding_title": "ব্র্যান্ডিং",
   "settings_branding_upload": "আপলোড করুন",
   "settings_branding_uploaded": "আপলোড করা হয়েছে",

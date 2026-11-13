@@ -1,8 +1,6 @@
-import { randomBytes } from 'node:crypto';
 import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
-import { isProjectHostnameAllowed, projectSystemHosts } from '@nibleaf/shared/project-hostname';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { type AdminListInput, adminSitePage } from '@/lib/admin-lists';
@@ -23,24 +21,17 @@ type InviteOrganizationInput = {
   delivery: 'email' | 'link';
 };
 
-/** A free address for an admin-provisioned site. A reserved one (a site named
- *  "Docs", or a configured system host) is skipped for its numbered form, so
- *  the new owner's General settings can save it (P0-DASH-001). */
-export async function uniqueAdminProjectSlug(desired: string): Promise<string> {
-  const systemHosts = projectSystemHosts(env);
-  const base = (slugify(desired) || 'documentation').slice(0, MAX_PROJECT_SLUG_LENGTH).replace(/-+$/g, '') || 'documentation';
+async function uniqueAdminProjectSlug(desired: string): Promise<string> {
+  const base = (slugify(desired) || 'docs').slice(0, MAX_PROJECT_SLUG_LENGTH).replace(/-+$/g, '') || 'docs';
   for (let index = 0; index < 100; index++) {
     const suffix = index === 0 ? '' : `-${index + 1}`;
     const candidate = `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '')}${suffix}`;
-    if (!isProjectHostnameAllowed(candidate, systemHosts)) continue;
     const clash = await prisma.project.findUnique({ where: { slug: candidate }, select: { id: true } });
     if (!clash) {
       return candidate;
     }
   }
-  let fallback = `${base.slice(0, 50).replace(/-+$/g, '')}-${Date.now().toString(36)}`;
-  while (!isProjectHostnameAllowed(fallback, systemHosts)) fallback = `${fallback.slice(0, 54)}-${randomBytes(4).toString('hex')}`;
-  return fallback;
+  return `${base.slice(0, 50)}-${Date.now().toString(36)}`;
 }
 
 /** Create a site's organization boundary and invite its first owner. The admin

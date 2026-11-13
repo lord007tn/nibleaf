@@ -531,15 +531,6 @@ export const projectSlug = z
     'Use an available address with lowercase letters, numbers, and hyphens. System hostnames and xn-- labels are reserved.',
   );
 
-/** An address in DNS-label form, without the reserved-name rule. Updates use
- *  it because the API judges reservation only when the address changes: a site
- *  keeps an address that was reserved after it was given. */
-export const projectSlugFormat = z
-  .string()
-  .min(1)
-  .max(63)
-  .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.');
-
 export const projectAvailabilityQuery = z
   .object({ organizationId: z.string().min(1).optional(), name: z.string().trim().min(1).max(120), slug: projectSlug.optional() })
   .strict();
@@ -562,7 +553,7 @@ export type CreateProjectBody = z.infer<typeof createProjectBody>;
 export const updateProjectBody = z
   .object({
     name: z.string().min(1).max(120).optional(),
-    slug: projectSlugFormat.optional(),
+    slug: projectSlug.optional(),
     description: z.string().max(500).nullable().optional(),
     icon: z.string().max(64).nullable().optional(),
     config: projectConfigUpdateSchema.optional(),

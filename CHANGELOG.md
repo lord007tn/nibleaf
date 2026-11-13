@@ -17,12 +17,6 @@ manifest remains the authority for the latest published artifact.
 
 ### Fixed
 
-- The first account's starter site gets the address `documentation` instead of
-  the reserved `docs`, so its General settings save on a fresh install. Sites
-  that already have a reserved address keep it: the API judges reservation only
-  when the address changes. The General form now sends only the fields that
-  changed and shows a taken, reserved or invalid address on the field.
-
 - Let app SSR processes exit after HTTP shutdown by avoiding request-local
   query cache timers. Bound default web shutdown to nine seconds and preserve
   failed or forced child exit status (#391).

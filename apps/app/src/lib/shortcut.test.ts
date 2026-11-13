@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { detectShortcutPlatform, searchShortcutLabel, useSearchShortcutLabel } from './shortcut';
+import { askAiShortcutLabel, detectShortcutPlatform, searchShortcutLabel, useAskAiShortcutLabel, useSearchShortcutLabel } from './shortcut';
 
 const MAC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15';
 const WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
@@ -40,6 +40,15 @@ describe('searchShortcutLabel', () => {
   it('uses the command glyph on Apple platforms and Ctrl elsewhere', () => {
     expect(searchShortcutLabel('apple')).toBe('⌘K');
     expect(searchShortcutLabel('other')).toBe('Ctrl K');
+  });
+});
+
+describe('askAiShortcutLabel', () => {
+  it('uses the command glyph on Apple platforms and Ctrl elsewhere', () => {
+    expect(askAiShortcutLabel('apple')).toBe('⌘I');
+    expect(askAiShortcutLabel('other')).toBe('Ctrl I');
+    const Label = () => createElement('kbd', null, useAskAiShortcutLabel());
+    expect(renderToStaticMarkup(createElement(Label))).toBe('<kbd>Ctrl I</kbd>');
   });
 });
 

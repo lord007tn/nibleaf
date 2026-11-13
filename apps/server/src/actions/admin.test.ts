@@ -19,7 +19,7 @@ vi.mock('./members', () => ({ inviteMember: vi.fn() }));
 vi.mock('./usage', () => ({ getProjectUsage: vi.fn() }));
 vi.mock('./workspace', () => ({ parseWorkspaceMetadata: () => ({ plan: 'free' }) }));
 
-import { getAdminOperations, getAdminSite, getAdminUser, uniqueAdminProjectSlug } from './admin';
+import { getAdminOperations, getAdminSite, getAdminUser } from './admin';
 
 describe('admin operations privacy boundary', () => {
   beforeEach(() => {
@@ -116,21 +116,4 @@ it('filters unresolved operations in the database before applying page limits', 
       skip: 1,
     }),
   );
-});
-
-describe('admin-provisioned site address', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.prisma.project.findUnique.mockResolvedValue(null);
-  });
-
-  // P0-DASH-001: an invited site named "Docs" must not get the reserved `docs`.
-  it.each([
-    ['docs', 'docs-2'],
-    ['nibleaf', 'nibleaf-2'],
-    ['', 'documentation'],
-    ['handbook', 'handbook'],
-  ])('gives %j the address %s', async (desired, slug) => {
-    await expect(uniqueAdminProjectSlug(desired)).resolves.toBe(slug);
-  });
 });

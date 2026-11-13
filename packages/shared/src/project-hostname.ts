@@ -2,25 +2,6 @@
  * plus Nibleaf application endpoints. Keep the SQL audit list in sync. */
 export const RESERVED_PROJECT_HOSTNAMES = ['www', 'admin', 'api', 'app', 'docs', 'storage', 'cname', 'status', 'mail'] as const;
 
-/** The deployment settings whose hostnames a site address must not shadow
- *  (the app, API, admin, storage and CDN endpoints, and the site base domain).
- *  The API's address check and the sign-up starter site read the same list. */
-export const PROJECT_SYSTEM_HOST_ENV_KEYS = [
-  'APP_URL',
-  'API_URL',
-  'ADMIN_URL',
-  'SITE_BASE_DOMAIN',
-  'CUSTOM_DOMAIN_CNAME_TARGET',
-  'STORAGE_PUBLIC_URL',
-  'CDN_URL',
-  'BETTER_AUTH_URL',
-  'STORAGE_PUBLIC_ENDPOINT',
-] as const;
-
-/** The configured system hosts, read from an environment object. */
-export const projectSystemHosts = (source: Partial<Record<(typeof PROJECT_SYSTEM_HOST_ENV_KEYS)[number], string | undefined>>) =>
-  PROJECT_SYSTEM_HOST_ENV_KEYS.map((key) => source[key]);
-
 /** Config values may be URLs or bare hosts (including wildcard base domains). */
 export function configuredProjectHostnameLabels(hosts: ReadonlyArray<string | undefined>) {
   return hosts.flatMap((host) => {

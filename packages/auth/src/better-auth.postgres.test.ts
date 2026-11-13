@@ -3,7 +3,6 @@ import { performance } from 'node:perf_hooks';
 import { diffSchema, getExpectedSchema } from '@better-auth/core/db/internal';
 import { prisma } from '@nibleaf/database';
 import { TERMS_VERSION } from '@nibleaf/shared/legal';
-import { isProjectHostnameAllowed } from '@nibleaf/shared/project-hostname';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const { ADMIN_ORIGIN, APP_ORIGIN, AUTH_SECRET, GOOGLE_CLIENT_ID, mocks } = vi.hoisted(() => {
@@ -575,8 +574,6 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     const { organizationId } = await prisma.member.findFirstOrThrow({ where: { role: 'owner', userId } });
     const starter = await prisma.project.findFirstOrThrow({ where: { organizationId } });
     expect(starter.dataTenantId).not.toBe(organizationId);
-    // P0-DASH-001: the starter's address is one its own settings form can save.
-    expect(isProjectHostnameAllowed(starter.slug)).toBe(true);
 
     expect((await send('/sign-out', { body: {}, cookie })).status).toBe(200);
     expect(await readSession(cookie)).toBeNull();

@@ -652,7 +652,6 @@
   "settings_general_customdomain_hint": "¿Quieres que los lectores usen tu propio dominio?",
   "settings_general_customdomain_link": "Configurar un dominio personalizado",
   "settings_general_url_taken": "Otro sitio ya usa esta dirección. Prueba con otra.",
-  "settings_general_url_reserved": "Esta dirección está reservada para el sistema. Elige otra.",
   "settings_branding_title": "Marca",
   "settings_branding_upload": "Subir",
   "settings_branding_uploaded": "subido",

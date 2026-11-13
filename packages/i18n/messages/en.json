@@ -702,7 +702,6 @@
   "settings_general_customdomain_hint": "Want readers to use your own domain?",
   "settings_general_customdomain_link": "Set up a custom domain",
   "settings_general_url_taken": "Another site already uses this address. Try a different one.",
-  "settings_general_url_reserved": "This address is reserved by the system. Choose a different one.",
   "settings_branding_title": "Branding",
   "settings_branding_upload": "Upload",
   "settings_branding_uploaded": "Uploaded",

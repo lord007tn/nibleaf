@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SettingsRow } from '@nibleaf/design-system/components/ui/settings-row';
 import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-section';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
-import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { slugify } from '@nibleaf/shared/utils';
 import { useStore } from '@tanstack/react-form';
@@ -28,27 +27,17 @@ import {
   GENERAL_ICON_CHOICES,
   type GeneralValues,
   generalValues,
+  isSlugTaken,
   nameProblem,
   normalizeBaseDomain,
   normalizeGeneral,
   orderLanguages,
-  type SlugProblem,
-  type SlugRefusal,
   siteAddressPreview,
   slugProblem,
-  slugRefusal,
   translationChooser,
 } from '../model/general';
 
 const baseDomain = normalizeBaseDomain(env.VITE_SITE_BASE_DOMAIN);
-
-/** What the address field says for each problem, found here or by the server. */
-const SLUG_MESSAGES = {
-  required: 'settings.general.url.error',
-  format: 'settings.general.url.error',
-  reserved: 'settings.general.url.reserved',
-  taken: 'settings.general.url.taken',
-} as const satisfies Record<SlugProblem | SlugRefusal, MessageKey>;
 
 /** The `dir` for text written in a content language, independent of the interface locale. */
 const dirOf = (language: Pick<Language, 'direction'> | undefined) => (language ? (language.direction === 'RTL' ? 'rtl' : 'ltr') : 'auto');
@@ -88,12 +77,11 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
         outcome.failed();
         // A save for a site this form no longer shows must not touch it.
         if (!outcome.isCurrent()) return 'failed';
-        const refusal = slugRefusal(error);
-        if (refusal) {
+        if (isSlugTaken(error)) {
           // The refusal is about the address that was sent. If it has been
           // changed since, the new one hasn't been judged: leave it clean.
           if (form.state.values.slug !== value.slug) return 'failed';
-          form.setFieldMeta('slug', (meta) => withServerError(meta, t(SLUG_MESSAGES[refusal])));
+          form.setFieldMeta('slug', (meta) => withServerError(meta, t('settings.general.url.taken')));
           return 'invalid';
         }
         toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
@@ -113,10 +101,7 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
   useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   const required = (value: string) => (nameProblem(value) ? t('validation.required', { label: t('settings.general.name.label') }) : undefined);
-  const slugMessage = (value: string) => {
-    const problem = slugProblem(value, project.slug);
-    return problem ? t(SLUG_MESSAGES[problem]) : undefined;
-  };
+  const slugMessage = (value: string) => (slugProblem(value) ? t('settings.general.url.error') : undefined);
 
   return (
     <form

@@ -3,11 +3,11 @@ import {
   type GeneralValues,
   generalSaveRequests,
   generalValues,
+  isSlugTaken,
   nameProblem,
   normalizeBaseDomain,
   siteAddressPreview,
   slugProblem,
-  slugRefusal,
   translationChooser,
 } from './general';
 
@@ -45,20 +45,11 @@ describe('validation', () => {
     ['-docs', 'format'],
     ['docs-', 'format'],
     ['a'.repeat(64), 'format'],
-    ['docs', 'reserved'],
-    ['www', 'reserved'],
-    ['xn--docs', 'reserved'],
-    ['documentation', undefined],
+    ['docs', undefined],
     ['my-docs-2', undefined],
     ['a'.repeat(63), undefined],
   ])('slug %j → %s', (value, problem) => {
     expect(slugProblem(value)).toBe(problem);
-  });
-
-  // P0-DASH-001: the first site on older instances was given `docs`.
-  it('accepts a reserved address the site already has, but not one it changes to', () => {
-    expect(slugProblem('docs', 'docs')).toBeUndefined();
-    expect(slugProblem('www', 'docs')).toBe('reserved');
   });
 });
 
@@ -67,18 +58,13 @@ describe('generalSaveRequests', () => {
     expect(generalSaveRequests(baseline, { ...baseline, name: ' Docs ' })).toEqual({ project: null, translations: [] });
   });
 
-  it('sends one project update with only the changed fields, trimmed, and a null empty description', () => {
+  it('sends one project update with trimmed values and a null empty description', () => {
     expect(generalSaveRequests(baseline, { ...baseline, name: ' Help ', description: '  ', icon: '🚀' }).project).toEqual({
       name: 'Help',
+      slug: 'docs',
       description: null,
       icon: '🚀',
     });
-  });
-
-  // P0-DASH-001: re-sending the unchanged `docs` made every save fail.
-  it('never re-sends an address that did not change', () => {
-    expect(generalSaveRequests(baseline, { ...baseline, description: 'Edited' }).project).toEqual({ description: 'Edited' });
-    expect(generalSaveRequests(baseline, { ...baseline, slug: ' handbook ' }).project).toEqual({ slug: 'handbook' });
   });
 
   it('sends one update per changed translation and clears an emptied one', () => {
@@ -121,17 +107,10 @@ describe('site address', () => {
     expect(normalizeBaseDomain(undefined)).toBeUndefined();
   });
 
-  it.each([
-    [{ status: 409, details: { slug: 'docs' } }, 'taken'],
-    [{ status: 400, code: 'http:bad_request', details: { reason: 'slug_reserved' } }, 'reserved'],
-    [{ status: 422, code: 'validation:failed', details: { issues: [{ path: ['slug'], message: 'Invalid' }] } }, 'format'],
-    [{ status: 422, code: 'validation:failed', details: { issues: [{ path: [{ key: 'slug' }], message: 'Invalid' }] } }, 'format'],
-    [{ status: 422, code: 'validation:failed', details: { issues: [{ path: ['name'], message: 'Too long' }] } }, undefined],
-    [{ status: 409, details: {} }, undefined],
-    [{ status: 400, details: { reason: 'other' } }, undefined],
-    [{ status: 500, details: { slug: 'docs' } }, undefined],
-    ['nope', undefined],
-  ])('reads the server refusing the address: %j → %s', (error, refusal) => {
-    expect(slugRefusal(error)).toBe(refusal);
+  it('recognizes only the server refusing a taken address', () => {
+    expect(isSlugTaken({ status: 409, details: { slug: 'docs' } })).toBe(true);
+    expect(isSlugTaken({ status: 409, details: {} })).toBe(false);
+    expect(isSlugTaken({ status: 500, details: { slug: 'docs' } })).toBe(false);
+    expect(isSlugTaken('nope')).toBe(false);
   });
 });

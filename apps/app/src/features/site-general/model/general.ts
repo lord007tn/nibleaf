@@ -4,8 +4,6 @@
  * `components/general-settings.tsx`; tested in `general.test.ts`.
  */
 
-import { isProjectHostnameAllowed } from '@nibleaf/shared/project-hostname';
-
 /** A small curated set of emoji the site can use as its icon. */
 export const GENERAL_ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'] as const;
 
@@ -62,31 +60,22 @@ export function normalizeGeneral(values: GeneralValues): GeneralValues {
 const SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 export type NameProblem = 'required';
-export type SlugProblem = 'required' | 'format' | 'reserved';
+export type SlugProblem = 'required' | 'format';
 
 export const nameProblem = (value: string): NameProblem | undefined => (value.trim() ? undefined : 'required');
 
-/**
- * What is wrong with an address, if anything. A reserved name is a problem
- * only as a change (`current` is the site's saved address): a site keeps an
- * address that was reserved after it was given, as the API does.
- */
-export function slugProblem(value: string, current?: string): SlugProblem | undefined {
-  const slug = value.trim();
-  if (!slug) return 'required';
-  if (!SLUG_PATTERN.test(slug)) return 'format';
-  return slug === current || isProjectHostnameAllowed(slug) ? undefined : 'reserved';
+export function slugProblem(value: string): SlugProblem | undefined {
+  if (!value.trim()) return 'required';
+  return SLUG_PATTERN.test(value.trim()) ? undefined : 'format';
 }
 
-/** The site fields a save changes; a field left out is not sent, so the API never re-judges it. */
-export type ProjectUpdate = Partial<{ name: string; slug: string; description: string | null; icon: string | null }>;
+export type ProjectUpdate = { name: string; slug: string; description: string | null; icon: string | null };
 export type TranslationUpdate = { id: string; translation: TranslationValues | null };
 
 /**
  * The requests a save sends for the change from `baseline` to `submitted`:
- * one project update with only the site fields that changed (none: no
- * request), and one language update per translation that changed. An emptied
- * translation clears its override.
+ * one project update when any site field changed, and one language update per
+ * translation that changed. An emptied translation clears its override.
  */
 export function generalSaveRequests(
   baseline: GeneralValues,
@@ -94,18 +83,18 @@ export function generalSaveRequests(
 ): { project: ProjectUpdate | null; translations: TranslationUpdate[] } {
   const before = normalizeGeneral(baseline);
   const after = normalizeGeneral(submitted);
-  const project: ProjectUpdate = {};
-  if (before.name !== after.name) project.name = after.name;
-  if (before.slug !== after.slug) project.slug = after.slug;
-  if (before.description !== after.description) project.description = after.description || null;
-  if (before.icon !== after.icon) project.icon = after.icon;
+  const projectChanged =
+    before.name !== after.name || before.slug !== after.slug || before.description !== after.description || before.icon !== after.icon;
   const translations: TranslationUpdate[] = [];
   for (const [id, value] of Object.entries(after.translations)) {
     const previous = before.translations[id] ?? { name: '', description: '' };
     if (previous.name === value.name && previous.description === value.description) continue;
     translations.push({ id, translation: value.name || value.description ? value : null });
   }
-  return { project: Object.keys(project).length > 0 ? project : null, translations };
+  return {
+    project: projectChanged ? { name: after.name, slug: after.slug, description: after.description || null, icon: after.icon } : null,
+    translations,
+  };
 }
 
 /**
@@ -132,29 +121,9 @@ export function siteAddressPreview(slug: string, baseDomain: string | undefined,
 /** The base domain from `VITE_SITE_BASE_DOMAIN`, without a leading wildcard or trailing dot. */
 export const normalizeBaseDomain = (value: string | undefined) => value?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
 
-/** Why the server refused the address, when a failed save was about it. */
-export type SlugRefusal = 'taken' | 'reserved' | 'format';
-
-const issuePathIsSlug = (issue: unknown) => {
-  const path = typeof issue === 'object' && issue !== null ? (issue as { path?: unknown }).path : undefined;
-  if (!Array.isArray(path) || path.length !== 1) return false;
-  const [segment] = path;
-  return segment === 'slug' || (typeof segment === 'object' && segment !== null && (segment as { key?: unknown }).key === 'slug');
-};
-
-/**
- * Whether a failed save was the server refusing the address, and why: another
- * site has it (409 naming the slug), it is reserved on this deployment (400
- * `slug_reserved`, which covers configured hosts the form cannot know), or the
- * request's address failed validation (422 with an issue on `slug`). Anything
- * else is not about the address.
- */
-export function slugRefusal(error: unknown): SlugRefusal | undefined {
-  if (typeof error !== 'object' || error === null) return undefined;
-  const { status, code, details } = error as { status?: unknown; code?: unknown; details?: unknown };
-  const detail = typeof details === 'object' && details !== null ? (details as Record<string, unknown>) : undefined;
-  if (status === 409 && detail && 'slug' in detail) return 'taken';
-  if (status === 400 && detail?.reason === 'slug_reserved') return 'reserved';
-  if (status === 422 && code === 'validation:failed' && Array.isArray(detail?.issues) && detail.issues.some(issuePathIsSlug)) return 'format';
-  return undefined;
+/** Whether a failed save was the server refusing the address because another site has it. */
+export function isSlugTaken(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const { status, details } = error as { status?: unknown; details?: unknown };
+  return status === 409 && typeof details === 'object' && details !== null && 'slug' in details;
 }
