@@ -965,7 +965,8 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
   )}"${known}`;
 }
 
-const COMPONENT_TAG_LINE = /^[ \t]*<\/?[A-Z]/;
+/** A component tag at the start of a line, read in place from `lastIndex` (sticky). */
+const COMPONENT_TAG_LINE = /[ \t]*<\/?[A-Z]/y;
 
 /**
  * Mask a fence the editor's Markdown parser reads, line by line, except a line
@@ -978,7 +979,8 @@ function maskFence(source: string, layout: MarkdownLayout, mask: Uint8Array, rea
   for (let line = lineOf(layout.lineStarts, fence.start); lineStart(layout, line) < fence.end; line++) {
     const start = lineStart(layout, line);
     const end = Math.min(lineStart(layout, line + 1), fence.end);
-    if (readerCode[start] === 1 || !COMPONENT_TAG_LINE.test(source.slice(start, end))) mask.fill(1, start, end);
+    COMPONENT_TAG_LINE.lastIndex = start;
+    if (readerCode[start] === 1 || !COMPONENT_TAG_LINE.test(source)) mask.fill(1, start, end);
   }
 }
 

@@ -133,11 +133,17 @@ const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
 export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const lines = state.src.split('\n');
   const containers: FenceContainer[] = [];
-  /** Open lists, innermost last: their open token, and whether they hold a shown paragraph or a lead. */
+  /** Open lists, innermost last: their open token, and whether they hold a shown
+   *  paragraph or a lead. A list passes both on to the list around it when it
+   *  closes, so each token touches only the innermost list. */
   const lists: Array<{ token: T; paragraph: boolean; lead: boolean }> = [];
-  const tight: T[] = [];
-  const leads: number[] = [];
-  for (const [index, token] of state.tokens.entries()) {
+  // The tokens are copied once, front to back, with the lead paragraphs in place:
+  // inserting each into the array would move every token after it.
+  const tokens: T[] = [];
+  let previous: T | undefined;
+  for (const token of state.tokens) {
+    const after = previous;
+    previous = token;
     if (token.type === 'blockquote_open') containers.push({ quote: true });
     if (token.type === 'list_item_open') {
       const line = token.map?.[0] ?? -1;
@@ -146,43 +152,57 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
     }
     if (token.type === 'blockquote_close' || token.type === 'list_item_close') containers.pop();
     if (LIST_OPEN.has(token.type)) lists.push({ token, paragraph: false, lead: false });
-    if (token.type === 'paragraph_open' && !token.hidden) for (const list of lists) list.paragraph = true;
-    if (LIST_CLOSE.has(token.type)) {
-      const list = lists.pop();
-      if (list?.lead && !list.paragraph) tight.push(list.token);
+    const list = lists[lists.length - 1];
+    if (list && token.type === 'paragraph_open' && !token.hidden) list.paragraph = true;
+    if (list && LIST_CLOSE.has(token.type)) {
+      lists.pop();
+      // tiptap-markdown reads a list as loose when it holds any <p>, so a list that
+      // was tight stays tight with its lead paragraphs.
+      if (list.lead && !list.paragraph) list.token.attrSet('data-tight', 'true');
+      const parent = lists[lists.length - 1];
+      if (parent) {
+        parent.paragraph ||= list.paragraph;
+        parent.lead ||= list.lead;
+      }
     }
-    if (token.type !== 'fence' || !token.map) continue;
-    const [first, end] = token.map;
-    const closeLine = Math.max(first, end - 1);
-    const open = (withoutContainers(lines[first] ?? '', first, containers) as LineRest).text;
-    const close = (withoutContainers(lines[closeLine] ?? '', closeLine, containers) as LineRest).text;
-    const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
-    token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
-    token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
-    token.attrSet('data-mdx-fence-language', encodeMdxSource(language));
-    token.attrSet('data-mdx-fence-lines', encodeMdxSource(lines.slice(first, closeLine + 1).join('\n')));
-    if (state.tokens[index - 1]?.type === 'list_item_open') {
-      leads.push(index);
-      for (const list of lists) list.lead = true;
+    if (token.type === 'fence' && token.map) {
+      annotateFence(token, lines, containers);
+      if (after?.type === 'list_item_open') {
+        tokens.push(...leadParagraph(state, token));
+        if (list) list.lead = true;
+      }
     }
+    tokens.push(token);
   }
-  // tiptap-markdown reads a list as loose when it holds any <p>, so a list that was
-  // tight stays tight with its lead paragraphs.
-  for (const token of tight) token.attrSet('data-tight', 'true');
-  for (const index of leads.reverse()) {
-    const fence = state.tokens[index] as T;
-    const open = new state.Token('paragraph_open', 'p', 1);
-    const inline = new state.Token('inline', '', 0);
-    const close = new state.Token('paragraph_close', 'p', -1);
-    for (const [offset, token] of [open, inline, close].entries()) {
-      token.map = fence.map;
-      token.block = true;
-      token.level = fence.level + (offset === 1 ? 1 : 0);
-    }
-    inline.content = '';
-    inline.children = [];
-    state.tokens.splice(index, 0, open, inline, close);
+  state.tokens = tokens;
+}
+
+/** The fence's source: see `annotateFences`. */
+function annotateFence(token: MarkdownToken, lines: readonly string[], containers: readonly FenceContainer[]): void {
+  const [first, end] = token.map ?? [0, 0];
+  const closeLine = Math.max(first, end - 1);
+  const open = (withoutContainers(lines[first] ?? '', first, containers) as LineRest).text;
+  const close = (withoutContainers(lines[closeLine] ?? '', closeLine, containers) as LineRest).text;
+  const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
+  token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
+  token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
+  token.attrSet('data-mdx-fence-language', encodeMdxSource(language));
+  token.attrSet('data-mdx-fence-lines', encodeMdxSource(lines.slice(first, closeLine + 1).join('\n')));
+}
+
+/** An empty paragraph, as markdown-it's tokens, to go before `fence` in its list item. */
+function leadParagraph<T extends MarkdownToken>(state: MarkdownCoreState<T>, fence: T): T[] {
+  const open = new state.Token('paragraph_open', 'p', 1);
+  const inline = new state.Token('inline', '', 0);
+  const close = new state.Token('paragraph_close', 'p', -1);
+  for (const [offset, token] of [open, inline, close].entries()) {
+    token.map = fence.map;
+    token.block = true;
+    token.level = fence.level + (offset === 1 ? 1 : 0);
   }
+  inline.content = '';
+  inline.children = [];
+  return [open, inline, close];
 }
 
 /** The parts of prosemirror-markdown's serializer state a fence is written with. */
@@ -290,7 +310,9 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
   const lines = unchanged ? sourceLinesFor(node, open, state.delim, first) : null;
   if (lines) {
     state.flushClose();
-    state.out = state.out.slice(0, state.out.length - first.length) + lines.join('\n');
+    // The source's first line has its own markers in place of the ones written.
+    if (first) state.out = state.out.slice(0, state.out.length - first.length);
+    state.out += lines.join('\n');
     state.closeBlock(node);
     return;
   }
