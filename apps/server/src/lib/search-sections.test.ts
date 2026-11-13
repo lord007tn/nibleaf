@@ -1,4 +1,4 @@
-import { AFTER_FENCE, FENCE_CONTAINER_REPROS } from '@nibleaf/shared/testing/fence-cases';
+import { AFTER_FENCE, FENCE_CONTAINER_REPROS, INDENTED_FENCE_AFTER_QUOTE } from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { matchedSearchSection } from './search-sections';
 
@@ -113,6 +113,11 @@ ${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${fille
 
   it.each(FENCE_CONTAINER_REPROS)('finds the section after %s (#587)', (_name, example) => {
     const page = { title: 'Guide', content: `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.` };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
+  });
+
+  it('finds the section after indented code that looks like a fence, once a quote has ended (#590 council)', () => {
+    const page = { title: 'Guide', content: `${INDENTED_FENCE_AFTER_QUOTE}\n\nThe after section mentions zebras.` };
     expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
   });
 });

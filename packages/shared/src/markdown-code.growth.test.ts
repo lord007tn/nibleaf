@@ -22,4 +22,13 @@ describe.runIf(growthTestsEnabled)('fencedMarkdownLines growth', () => {
     const [small, large] = growthMs(fencedMarkdownLines, page(5000), page(20_000));
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
+
+  it('reads one fence nested n list items deep in time linear in n', () => {
+    // Each list ancestor consumes only its own columns of the body's indentation;
+    // rescanning the rest of it per ancestor would be quadratic (#590 council).
+    const nested = (depth: number) => [`${'- '.repeat(depth)}\`\`\``, `${' '.repeat(2 * depth)}x`, `${' '.repeat(2 * depth)}\`\`\``, '## After'];
+    expect(fencedMarkdownLines(nested(3))).toEqual([true, true, true, false]);
+    const [small, large] = growthMs(fencedMarkdownLines, nested(4000), nested(16_000));
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
 });

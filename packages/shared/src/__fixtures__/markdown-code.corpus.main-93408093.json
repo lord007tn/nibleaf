@@ -1,0 +1,2473 @@
+{
+  "revision": "93408093dbc33d90cfdd13b909813405240dd1c5",
+  "guard": {
+    "reproHeadings": 0,
+    "reproSections": 0
+  },
+  "pages": {
+    ".github/PULL_REQUEST_TEMPLATE.md": {
+      "source": "fba4fbab21598b73",
+      "lines": "b1565b4d835edea7",
+      "headings": "f72dd36382918123",
+      "sections": "32fbbe233aa18068",
+      "open": false
+    },
+    ".github/assets/activation-flow/README.md": {
+      "source": "88f7176057ec0533",
+      "lines": "d5f28bdae4731c38",
+      "headings": "2a41320d4475d8aa",
+      "sections": "2dcd16afca91fdcd",
+      "open": false
+    },
+    ".github/assets/ai-chat-assistant/README.md": {
+      "source": "48c03ff77d712c8f",
+      "lines": "948810e2f5957905",
+      "headings": "6ad9bf884255fffb",
+      "sections": "6981c8d5da9983be",
+      "open": false
+    },
+    ".github/assets/ai-settings-data-loading/README.md": {
+      "source": "b6cbff465a316df5",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "faa7a795a000c83a",
+      "sections": "fc5fe98839b36ab9",
+      "open": false
+    },
+    ".github/assets/analytics-privacy-operations/README.md": {
+      "source": "87afccf37b87b5d0",
+      "lines": "fcdb4b423f4e5283",
+      "headings": "ac5d14593cc5101b",
+      "sections": "ee153ef8b3f13363",
+      "open": false
+    },
+    ".github/assets/article-image-count/README.md": {
+      "source": "07a6df0a70163bb3",
+      "lines": "f7b11509f4d675c3",
+      "headings": "2587595441ee073f",
+      "sections": "e84ad365d97f267c",
+      "open": false
+    },
+    ".github/assets/auth-email-localization/README.md": {
+      "source": "e01d70daf628e094",
+      "lines": "fcdb4b423f4e5283",
+      "headings": "0fecbdfbe15541a3",
+      "sections": "e3ebce971729bbd6",
+      "open": false
+    },
+    ".github/assets/bounded-pdf/README.md": {
+      "source": "7b9dfed0990a5250",
+      "lines": "3e891cde4b780e4b",
+      "headings": "f4988304ae82d37b",
+      "sections": "6a024ba0ef13fa0e",
+      "open": false
+    },
+    ".github/assets/dashboard-loading-adoption/README.md": {
+      "source": "8fcd3688fa07e3da",
+      "lines": "9c9f57efe04f8f5a",
+      "headings": "ecd85c2d3b78a3de",
+      "sections": "ed652b468e644f62",
+      "open": false
+    },
+    ".github/assets/dashboard-shell/README.md": {
+      "source": "a91bd22ab0e74bf6",
+      "lines": "3d5c1e327c23c7b9",
+      "headings": "e6335fbd9bfc207d",
+      "sections": "bc07be0bccaac668",
+      "open": false
+    },
+    ".github/assets/dashboard-ux-editor/README.md": {
+      "source": "51e704688f311b71",
+      "lines": "14bdcd6fd64180af",
+      "headings": "b635839ac6dcc05a",
+      "sections": "4389d3b7ebf51c0a",
+      "open": false
+    },
+    ".github/assets/dashboard-ux-onboarding/README.md": {
+      "source": "11251d1ede6c45e8",
+      "lines": "14bdcd6fd64180af",
+      "headings": "6a076e698eeed97d",
+      "sections": "6ffdcefc3c1603af",
+      "open": false
+    },
+    ".github/assets/dashboard-ux-settings/README.md": {
+      "source": "abcb0949771b6bf9",
+      "lines": "14bdcd6fd64180af",
+      "headings": "f200c56cc857b442",
+      "sections": "a36124dac42d46bb",
+      "open": false
+    },
+    ".github/assets/dependency-security/README.md": {
+      "source": "872c6be172c967ed",
+      "lines": "22aec58889504ab8",
+      "headings": "bbc819c9334b7bbf",
+      "sections": "05a21e5bf22301c4",
+      "open": false
+    },
+    ".github/assets/export-downloads/README.md": {
+      "source": "bb78fc432bfbee0e",
+      "lines": "8c77116bb02f1f53",
+      "headings": "cc3a94903ded80f7",
+      "sections": "9b0ef844d4c80a8e",
+      "open": false
+    },
+    ".github/assets/feat-clickhouse-analytics-parity/README.md": {
+      "source": "1b4ead150d2895f1",
+      "lines": "8b5a639c4e0c0a3d",
+      "headings": "d96a85ac359bfd55",
+      "sections": "4dc8537304c23e07",
+      "open": false
+    },
+    ".github/assets/feat-delete-inbound-links/README.md": {
+      "source": "1f119bfc7b541fd0",
+      "lines": "9f8ef876f51f5313",
+      "headings": "61a8e3b5205d3f83",
+      "sections": "b472c7fa14987f66",
+      "open": false
+    },
+    ".github/assets/feat-editor-mintlify-parity/README.md": {
+      "source": "23cde72bbf5969b8",
+      "lines": "053cfc4e5b446ce4",
+      "headings": "8c8040da12910cef",
+      "sections": "a06451633708d4b1",
+      "open": false
+    },
+    ".github/assets/feat-editor-paste-and-title/README.md": {
+      "source": "036f57672a7998f4",
+      "lines": "f08d28edd4251370",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/feat-editor-paste-images-tables/README.md": {
+      "source": "dfde43e84a91fdcb",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "bbcebcc3fc68185a",
+      "sections": "c86c15b0d6b1aa18",
+      "open": false
+    },
+    ".github/assets/feat-landing-marketing-refresh/README.md": {
+      "source": "f0e1cc1e8f481f11",
+      "lines": "58f2aa9c64010011",
+      "headings": "2363a56545f425a0",
+      "sections": "9274cf238508f165",
+      "open": false
+    },
+    ".github/assets/feat-landing-marketing-refresh/audit.md": {
+      "source": "3f4e50314f8fd441",
+      "lines": "e412b1692ac64743",
+      "headings": "1099c04c05d77f3e",
+      "sections": "151a7bf91c0f19a4",
+      "open": false
+    },
+    ".github/assets/feat-landing-marketing-refresh/fact-check/claims-audit.md": {
+      "source": "0ccac8dbad73331c",
+      "lines": "ba795410b748c655",
+      "headings": "52e7e0a1ffbd5e60",
+      "sections": "02e29be0e2983b83",
+      "open": false
+    },
+    ".github/assets/feat-landing-marketing-refresh/fact-check/competitors.md": {
+      "source": "491d53050e935b49",
+      "lines": "4edbadbac0028eba",
+      "headings": "f278db8456ebab73",
+      "sections": "2bb17bcf27e1e215",
+      "open": false
+    },
+    ".github/assets/feat-landing-marketing-refresh/fact-check/copy-notes.md": {
+      "source": "9f4d1f7fc5b47e8f",
+      "lines": "78246f3b1d07021b",
+      "headings": "ac7ea88eda45c42f",
+      "sections": "0f4f2fe79ef0b952",
+      "open": false
+    },
+    ".github/assets/feat-landing-marketing-refresh/fact-check/facts.md": {
+      "source": "c0c1301c1bc76e8e",
+      "lines": "78246f3b1d07021b",
+      "headings": "aae9d156520e702c",
+      "sections": "c86159c95b8c69aa",
+      "open": false
+    },
+    ".github/assets/feat-marketing-use-cases/README.md": {
+      "source": "0eb01eb4d14c4167",
+      "lines": "d18b431dbcc84823",
+      "headings": "6529e8834b0c8965",
+      "sections": "d2e5edcf1dac59d6",
+      "open": false
+    },
+    ".github/assets/feat-page-history/README.md": {
+      "source": "e4302052bc1ae6a0",
+      "lines": "28a816c91423ad09",
+      "headings": "a54a9615e2504442",
+      "sections": "4997ea4d2d100c37",
+      "open": false
+    },
+    ".github/assets/feat-page-tree-search-a11y/council-regressions.md": {
+      "source": "6413864df41bab23",
+      "lines": "d6e53ecd20afe319",
+      "headings": "0633fd678eaeb454",
+      "sections": "5f006b34cb961c98",
+      "open": false
+    },
+    ".github/assets/feat-search-section-anchors/README.md": {
+      "source": "a490806ec80e1b75",
+      "lines": "8b5a639c4e0c0a3d",
+      "headings": "b82bff1ebf580200",
+      "sections": "c41940cf8de9a167",
+      "open": false
+    },
+    ".github/assets/feat-search-section-anchors/demo-page-ar.md": {
+      "source": "1ccb9317604ecd9d",
+      "lines": "086d9ea300e0ebe8",
+      "headings": "45747fa811fd30c2",
+      "sections": "d58346ce667efda4",
+      "open": false
+    },
+    ".github/assets/feat-search-section-anchors/demo-page-en.md": {
+      "source": "fca641e8799e2a6d",
+      "lines": "086d9ea300e0ebe8",
+      "headings": "7f2aa69eff39dff7",
+      "sections": "a9ffea83e4da095a",
+      "open": false
+    },
+    ".github/assets/feat-support-mcp/README.md": {
+      "source": "d7d789710bfe0b5b",
+      "lines": "d5f28bdae4731c38",
+      "headings": "8b6bd1140ecf0207",
+      "sections": "cae582deeb03e8e2",
+      "open": false
+    },
+    ".github/assets/first-publish-path/README.md": {
+      "source": "493b396c8bf3f2c0",
+      "lines": "2616b5d75f586c05",
+      "headings": "a21a58524abda8a2",
+      "sections": "98e5ed91b01a3f42",
+      "open": false
+    },
+    ".github/assets/fix-analytics-query-conventions/README.md": {
+      "source": "4e83e13c6ada0cc3",
+      "lines": "fcdb4b423f4e5283",
+      "headings": "2fb30f3734a53cd9",
+      "sections": "d68f84222b78aa5d",
+      "open": false
+    },
+    ".github/assets/fix-editor-ai-draft-followups/README.md": {
+      "source": "d11d6e73b10a2059",
+      "lines": "2e6e15a38c6fe8b6",
+      "headings": "330d16a9daf9d778",
+      "sections": "5af3038ee1f8e177",
+      "open": false
+    },
+    ".github/assets/fix-editor-ai-draft-tab-switch/README.md": {
+      "source": "8597749a0cabf118",
+      "lines": "2616b5d75f586c05",
+      "headings": "9054396cb62724b6",
+      "sections": "a0ccd5f3f758f3d8",
+      "open": false
+    },
+    ".github/assets/fix-editor-save-reliability/verification.md": {
+      "source": "38857718a73a0c36",
+      "lines": "1d99a34548e6e143",
+      "headings": "cc09ba8a9bdb36f4",
+      "sections": "c41eb9ffceee2d9c",
+      "open": false
+    },
+    ".github/assets/fix-editor-settings-for-editors/README.md": {
+      "source": "4cc8858faa60f3be",
+      "lines": "2e6e15a38c6fe8b6",
+      "headings": "307337b0abed3845",
+      "sections": "b2fa166fe12a9d05",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/after-ar-1440.md": {
+      "source": "21f4c957085ae779",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/after-ar-390.md": {
+      "source": "21f4c957085ae779",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/after-en-1440.md": {
+      "source": "682f2c930e9610c4",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/after-en-390.md": {
+      "source": "682f2c930e9610c4",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/before-ar-1440.md": {
+      "source": "b4c9d41cd3039965",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/before-ar-390.md": {
+      "source": "b4c9d41cd3039965",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/before-en-1440.md": {
+      "source": "89fdb3d2cc5c6b29",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/before-en-390.md": {
+      "source": "89fdb3d2cc5c6b29",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-fix/after-ar-1440.md": {
+      "source": "d5d27a0964407ebb",
+      "lines": "415d687c468bb19a",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-fix/after-ar-390.md": {
+      "source": "d5d27a0964407ebb",
+      "lines": "415d687c468bb19a",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-fix/after-en-1440.md": {
+      "source": "12e611d0eac8d8eb",
+      "lines": "415d687c468bb19a",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-fix/after-en-390.md": {
+      "source": "12e611d0eac8d8eb",
+      "lines": "415d687c468bb19a",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-fix/before-ar-1440.md": {
+      "source": "aeb649e1dc750b62",
+      "lines": "415d687c468bb19a",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-fix/before-ar-390.md": {
+      "source": "aeb649e1dc750b62",
+      "lines": "415d687c468bb19a",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-fix/before-en-1440.md": {
+      "source": "57609cb27ac958de",
+      "lines": "415d687c468bb19a",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-fix/before-en-390.md": {
+      "source": "57609cb27ac958de",
+      "lines": "415d687c468bb19a",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-recheck/after-ar-1440.md": {
+      "source": "abf30cf2d309476a",
+      "lines": "2f9d9b76aab72fd2",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-recheck/after-ar-390.md": {
+      "source": "abf30cf2d309476a",
+      "lines": "2f9d9b76aab72fd2",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-recheck/after-en-1440.md": {
+      "source": "13d6c6911c7e81b6",
+      "lines": "2f9d9b76aab72fd2",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-recheck/after-en-390.md": {
+      "source": "13d6c6911c7e81b6",
+      "lines": "2f9d9b76aab72fd2",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-recheck/before-ar-1440.md": {
+      "source": "81bad09c0906da88",
+      "lines": "2f9d9b76aab72fd2",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-recheck/before-ar-390.md": {
+      "source": "81bad09c0906da88",
+      "lines": "2f9d9b76aab72fd2",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-recheck/before-en-1440.md": {
+      "source": "65c58b4a664817af",
+      "lines": "2f9d9b76aab72fd2",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-import-fidelity/council-recheck/before-en-390.md": {
+      "source": "65c58b4a664817af",
+      "lines": "2f9d9b76aab72fd2",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    ".github/assets/fix-marketing-facts/README.md": {
+      "source": "586c4f5a969dab3c",
+      "lines": "b1565b4d835edea7",
+      "headings": "1022a96588a1947d",
+      "sections": "cab43960abc6196a",
+      "open": false
+    },
+    ".github/assets/fix-marketing-facts/fact-log.md": {
+      "source": "05c7b3d62c5c6a1b",
+      "lines": "fdd8f0d369012a3e",
+      "headings": "89056555cb0ced38",
+      "sections": "420338486cb3a480",
+      "open": false
+    },
+    ".github/assets/fix-overview-first-publish-checklist/README.md": {
+      "source": "22071af70c97e3b6",
+      "lines": "0336144bf93fc832",
+      "headings": "f268b416315129a9",
+      "sections": "c6cd198ed01dc925",
+      "open": false
+    },
+    ".github/assets/fix-reader-chat-arabic-parity/README.md": {
+      "source": "2b3be538c2582184",
+      "lines": "22aec58889504ab8",
+      "headings": "02d19885a98b3d7c",
+      "sections": "863cb93dcb38e2b6",
+      "open": false
+    },
+    ".github/assets/fix-reader-chat-copy-and-sources/README.md": {
+      "source": "ef4830ff0f326521",
+      "lines": "c734f9bd92fd5082",
+      "headings": "e84bd9de359ef9e3",
+      "sections": "e0c668a28457da1e",
+      "open": false
+    },
+    ".github/assets/fix-reader-ux-ergonomics/README.md": {
+      "source": "50a378c17a067704",
+      "lines": "22aec58889504ab8",
+      "headings": "5c798fd2b9508564",
+      "sections": "f493fd8c7f454df8",
+      "open": false
+    },
+    ".github/assets/guide-discovery/README.md": {
+      "source": "72c39df100a27c0d",
+      "lines": "7e071fd9b023ed8f",
+      "headings": "eb3db088d771bc05",
+      "sections": "081daddb1fe1c785",
+      "open": false
+    },
+    ".github/assets/index-bootstrap-recovery/README.md": {
+      "source": "fb7ec8f35f4bbb81",
+      "lines": "af53aaf87656940f",
+      "headings": "153da17c97f85276",
+      "sections": "aee24f7a6b00d940",
+      "open": false
+    },
+    ".github/assets/issue-195-advisories/README.md": {
+      "source": "373f51c39384ead7",
+      "lines": "423287f827f0d569",
+      "headings": "4d619f5690c7dd5b",
+      "sections": "2a135cce3be8a657",
+      "open": false
+    },
+    ".github/assets/loading-and-query-foundation/README.md": {
+      "source": "d542d67f27bd2b6b",
+      "lines": "f120bb5698d520c5",
+      "headings": "4302f9baadc276ff",
+      "sections": "b9409f787246cb46",
+      "open": false
+    },
+    ".github/assets/maxio-upload-proxy/README.md": {
+      "source": "f96adcab422e32c7",
+      "lines": "9c9f57efe04f8f5a",
+      "headings": "55e5213613d34331",
+      "sections": "3ac595c0d86281c8",
+      "open": false
+    },
+    ".github/assets/mermaid-v12/README.md": {
+      "source": "4ea9906b2e567750",
+      "lines": "22aec58889504ab8",
+      "headings": "b06f7006dadaf48b",
+      "sections": "3d3be714caad193f",
+      "open": false
+    },
+    ".github/assets/mobile-navigation-privacy/README.md": {
+      "source": "1953ace5893a42f8",
+      "lines": "91b4d142823f7d20",
+      "headings": "ad3a825a6eb693c9",
+      "sections": "f9c864d09c85cf50",
+      "open": false
+    },
+    ".github/assets/node26-qualification/README.md": {
+      "source": "1a3e38696da8b8db",
+      "lines": "2e6e15a38c6fe8b6",
+      "headings": "760b755943c0b50f",
+      "sections": "92ed5703929abedf",
+      "open": false
+    },
+    ".github/assets/node26-qualification/README.pre-rebase.md": {
+      "source": "81e8a0dc56429898",
+      "lines": "a2fb4b1d893be1ec",
+      "headings": "745e422a72d06ca9",
+      "sections": "2d4304714cd7bdcd",
+      "open": false
+    },
+    ".github/assets/node26-qualification/final/README.md": {
+      "source": "235191817ab73866",
+      "lines": "8761dbf5a90ef188",
+      "headings": "002ef6befc8c7608",
+      "sections": "05922a43d8fa2bea",
+      "open": false
+    },
+    ".github/assets/organizations-people/README.md": {
+      "source": "452103306f8aabca",
+      "lines": "bd03ac1428f0ea86",
+      "headings": "d977e6791fd49aad",
+      "sections": "394522c027382af7",
+      "open": false
+    },
+    ".github/assets/organizations-shell/README.md": {
+      "source": "76bb1c30342222a6",
+      "lines": "69b3dd5a17ebbcc4",
+      "headings": "c9fd0ecdedcc8ab1",
+      "sections": "f28e0c059f270386",
+      "open": false
+    },
+    ".github/assets/page-coverage/README.md": {
+      "source": "fdfa1e368835b10d",
+      "lines": "c8e60253ee02d0b1",
+      "headings": "ab07351364b80c34",
+      "sections": "2ce519dcefc76bec",
+      "open": false
+    },
+    ".github/assets/people-checkbox-radio/README.md": {
+      "source": "1e2ee93ca536e13c",
+      "lines": "9c9f57efe04f8f5a",
+      "headings": "1118d9ffa92fab82",
+      "sections": "c4468f25e21fe783",
+      "open": false
+    },
+    ".github/assets/product-readiness/README.md": {
+      "source": "46a2dc3f55af2de8",
+      "lines": "cb0216e7ae909ac5",
+      "headings": "0cff6c10494d7880",
+      "sections": "6ed966b881abf990",
+      "open": false
+    },
+    ".github/assets/project-access/README.md": {
+      "source": "9db3dff9f9dd9cd6",
+      "lines": "2e6e15a38c6fe8b6",
+      "headings": "7508c85d2ca66191",
+      "sections": "7b412a75612b8900",
+      "open": false
+    },
+    ".github/assets/public-ui-cleanup/README.md": {
+      "source": "da5b7e871e517be0",
+      "lines": "91b4d142823f7d20",
+      "headings": "0c494b445c038e21",
+      "sections": "419fc8d6e0d2c561",
+      "open": false
+    },
+    ".github/assets/reader-accessibility/README.md": {
+      "source": "6e61028c3d8a5234",
+      "lines": "6290183ad891a5c4",
+      "headings": "d6c2af9c53f29c65",
+      "sections": "01716b72c8f85c76",
+      "open": false
+    },
+    ".github/assets/reader-hydration/README.md": {
+      "source": "86068d7a976204fd",
+      "lines": "1bd2b169a9e74a32",
+      "headings": "29c9e0894abf3584",
+      "sections": "da7e1637854c0031",
+      "open": false
+    },
+    ".github/assets/reader-throttle/README.md": {
+      "source": "b48fa2e0d9411220",
+      "lines": "fcdb4b423f4e5283",
+      "headings": "c45500f6dd5bd6ca",
+      "sections": "f4cbe283c0b8f5a9",
+      "open": false
+    },
+    ".github/assets/runtime-readiness/README.md": {
+      "source": "6d4c9e4128cf1a24",
+      "lines": "134e6543ddc35b40",
+      "headings": "860aacb5282e477b",
+      "sections": "63a698d0c9dfae1b",
+      "open": false
+    },
+    ".github/assets/search-ai-fixes/README.md": {
+      "source": "a45a51cf65ece653",
+      "lines": "f08d28edd4251370",
+      "headings": "306bc9fd60a0433c",
+      "sections": "7ca893252b3a08e3",
+      "open": false
+    },
+    ".github/assets/search-readiness/README.md": {
+      "source": "d7385411faae9017",
+      "lines": "f7b11509f4d675c3",
+      "headings": "9f2698e71af58f2a",
+      "sections": "82f72f4754ba4a9b",
+      "open": false
+    },
+    ".github/assets/search-relevance/README.md": {
+      "source": "11a62e0fad43b3e9",
+      "lines": "1bd2b169a9e74a32",
+      "headings": "d54d6a61198297d1",
+      "sections": "b6650d2d4e8c5f59",
+      "open": false
+    },
+    ".github/assets/shell-polish/README.md": {
+      "source": "2904e2afc3562110",
+      "lines": "fcdb4b423f4e5283",
+      "headings": "a117b0b6210fc461",
+      "sections": "6039442ad796d4bc",
+      "open": false
+    },
+    ".github/assets/themes/README.md": {
+      "source": "16efb0b74cf39426",
+      "lines": "2c8671c9dd2506cc",
+      "headings": "f3d722e7c795285b",
+      "sections": "acd5fd1d7177d80c",
+      "open": false
+    },
+    ".github/assets/workspace-smart-ai/README.md": {
+      "source": "95d60aab4e27084e",
+      "lines": "5e348a8a500ecf19",
+      "headings": "cbeeb97326dffeed",
+      "sections": "7cbac0253e8397e0",
+      "open": false
+    },
+    ".github/custom-domain-edge-release.md": {
+      "source": "390793ba7db76c0c",
+      "lines": "040432f91dbfbc4e",
+      "headings": "28d16c8bff9c6fd1",
+      "sections": "8ccec51bf4d0a232",
+      "open": false
+    },
+    ".github/git-native-theme-architecture.md": {
+      "source": "d94b7372386db2c0",
+      "lines": "24e3055bd2e6ce9a",
+      "headings": "a9fa02ed6d55af6a",
+      "sections": "103fa1b9e2dfd6a5",
+      "open": false
+    },
+    ".github/page-coverage.md": {
+      "source": "27cdbc1d65b263e6",
+      "lines": "f9a2ba511957122b",
+      "headings": "578bbefb73ae11a4",
+      "sections": "d9d4f13f575bc2e4",
+      "open": false
+    },
+    "CHANGELOG.md": {
+      "source": "2fdaf4ca4342653a",
+      "lines": "c8d8148ad3291538",
+      "headings": "ccd82938951b3dfd",
+      "sections": "9e3aa6975c2e26e9",
+      "open": false
+    },
+    "CODE_OF_CONDUCT.md": {
+      "source": "108eed3ede90db12",
+      "lines": "461db79c4e4a1d74",
+      "headings": "977d062fff1dac01",
+      "sections": "c8a7ec56995100c9",
+      "open": false
+    },
+    "CONTRIBUTING.md": {
+      "source": "3d7b194291516b4a",
+      "lines": "b34ad4366d2ba9e1",
+      "headings": "7cda848e42c36343",
+      "sections": "cac059a8513cee53",
+      "open": false
+    },
+    "GOVERNANCE.md": {
+      "source": "a69e2b9c59e7728b",
+      "lines": "22aec58889504ab8",
+      "headings": "a12cf091b051f7e1",
+      "sections": "5816ad6c640d004e",
+      "open": false
+    },
+    "README.md": {
+      "source": "5a93aaa872925489",
+      "lines": "af746340837236c3",
+      "headings": "ba60f0fef6be69bd",
+      "sections": "1ba2c145de33e391",
+      "open": false
+    },
+    "SECURITY.md": {
+      "source": "a3a3b9d78bb693b6",
+      "lines": "9b907493463358b9",
+      "headings": "d26245b98bc45d8f",
+      "sections": "9111c2cd3c59ea78",
+      "open": false
+    },
+    "SUPPORT.md": {
+      "source": "19af65641efd2981",
+      "lines": "c1c0605291078b71",
+      "headings": "cf5b68156af2b159",
+      "sections": "5a695c916d7fcf00",
+      "open": false
+    },
+    "TRADEMARK.md": {
+      "source": "3285f94a6a0e186d",
+      "lines": "2e1e3bfb4de9585b",
+      "headings": "4af052bb6f705425",
+      "sections": "ddbdbd854896d28f",
+      "open": false
+    },
+    "apps/app/BUNDLE_BUDGET.md": {
+      "source": "69eb65545d1f990b",
+      "lines": "7c9e724ef13ed464",
+      "headings": "e2182561de25bd2b",
+      "sections": "7e4254370d52c4a2",
+      "open": false
+    },
+    "apps/app/DATA_LOADING.md": {
+      "source": "264adb2b6ae42960",
+      "lines": "945eee2c26b8a581",
+      "headings": "ec76e0053cd5b818",
+      "sections": "450e951fcf87995e",
+      "open": false
+    },
+    "apps/app/UI_GUIDE.md": {
+      "source": "d12b9925b041aeea",
+      "lines": "6283b00611d9729f",
+      "headings": "2cb98c73131043be",
+      "sections": "0d5ac882d903617c",
+      "open": false
+    },
+    "apps/app/public/brand/README.md": {
+      "source": "c469a8823fce9c68",
+      "lines": "643706f077ee7e62",
+      "headings": "117ff273cb408be7",
+      "sections": "4a63544b436513ae",
+      "open": false
+    },
+    "apps/app/public/guides/fixtures/README.md": {
+      "source": "7500212adf70db2e",
+      "lines": "9c9f57efe04f8f5a",
+      "headings": "7e9b599226e9573f",
+      "sections": "4fa535790a64d825",
+      "open": false
+    },
+    "apps/app/public/guides/fixtures/markdown-round-trip.mdx": {
+      "source": "8e1dac2c774c88f2",
+      "lines": "2908dd2bd84f818e",
+      "headings": "d3d66c3acd1d8fdc",
+      "sections": "ea7c4a2296045a46",
+      "open": false
+    },
+    "apps/app/src/components/editor/__fixtures__/README.md": {
+      "source": "b61cfc68b027ab2f",
+      "lines": "af53aaf87656940f",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    "apps/app/src/content/blog/ai-ready-documentation-ar.mdx": {
+      "source": "8b8ee4eb63ab84da",
+      "lines": "2d4b9d0af6e25995",
+      "headings": "b55aa619980892e0",
+      "sections": "fb3aef83d7a96b11",
+      "open": false
+    },
+    "apps/app/src/content/blog/ai-ready-documentation.mdx": {
+      "source": "50e82c0d093e0720",
+      "lines": "11e6fb1d8e294477",
+      "headings": "eb5b8736a6d8ec6e",
+      "sections": "38b17c419e18f5ff",
+      "open": false
+    },
+    "apps/app/src/content/blog/arabic-documentation-rtl.mdx": {
+      "source": "06efdf41b68e4245",
+      "lines": "71149ed010b22b28",
+      "headings": "413e3ee1280d379e",
+      "sections": "5e7c7873f4d6ce2e",
+      "open": false
+    },
+    "apps/app/src/content/blog/arabic-technical-documentation-rtl-checklist.mdx": {
+      "source": "877069d3ca01392e",
+      "lines": "5c6b8e7393cc9dcf",
+      "headings": "93f707042555ba96",
+      "sections": "08aeeefd8cbd1b7c",
+      "open": false
+    },
+    "apps/app/src/content/blog/choosing-documentation-template-ar.mdx": {
+      "source": "24b4dfed7781d24f",
+      "lines": "2e3d3d68eefdb0dd",
+      "headings": "159b289864e86043",
+      "sections": "2018cf52b3021963",
+      "open": false
+    },
+    "apps/app/src/content/blog/choosing-documentation-template.mdx": {
+      "source": "1769988b43e87591",
+      "lines": "134e6543ddc35b40",
+      "headings": "564498b5297f89f2",
+      "sections": "0ed7bd2865bb1eec",
+      "open": false
+    },
+    "apps/app/src/content/blog/coolify-documentation-502-503-recovery-ar.mdx": {
+      "source": "361b37b875e34898",
+      "lines": "54f855d2841089e5",
+      "headings": "0ded3809ea07adf9",
+      "sections": "9c3ad3ad8185d6a6",
+      "open": false
+    },
+    "apps/app/src/content/blog/coolify-documentation-502-503-recovery.mdx": {
+      "source": "28616125d645294b",
+      "lines": "7c2614074fb15a79",
+      "headings": "1ddf5c2b03fea48f",
+      "sections": "fe188ad20db709c7",
+      "open": false
+    },
+    "apps/app/src/content/blog/customer-support-knowledge-base-ar.mdx": {
+      "source": "7c234b361a98e19c",
+      "lines": "c8e60253ee02d0b1",
+      "headings": "9a8ea854e549c607",
+      "sections": "4b875a688ecfc83b",
+      "open": false
+    },
+    "apps/app/src/content/blog/customer-support-knowledge-base.mdx": {
+      "source": "e8df1d025866543c",
+      "lines": "6463e32c378722ec",
+      "headings": "4f94581a45eb229c",
+      "sections": "88bbfd56720bfc1f",
+      "open": false
+    },
+    "apps/app/src/content/blog/docs-should-live-in-plain-markdown-ar.mdx": {
+      "source": "667b6cf5aa0cc965",
+      "lines": "ec85620fc1c30bd1",
+      "headings": "8a3979ea94c758c0",
+      "sections": "ad459f17dcc2100a",
+      "open": false
+    },
+    "apps/app/src/content/blog/docs-should-live-in-plain-markdown.mdx": {
+      "source": "cfe60aa81ef26634",
+      "lines": "126b980c8259a9c7",
+      "headings": "5383367a1a110f32",
+      "sections": "3a6c6a5beedf3003",
+      "open": false
+    },
+    "apps/app/src/content/blog/documentation-information-architecture-collaboration-ar.mdx": {
+      "source": "da180d1a6ba09e67",
+      "lines": "948810e2f5957905",
+      "headings": "ba258a35011d6a3e",
+      "sections": "4f3192addc685812",
+      "open": false
+    },
+    "apps/app/src/content/blog/documentation-information-architecture-collaboration.mdx": {
+      "source": "bf43c32003f78b2b",
+      "lines": "cf546047a7c62c6a",
+      "headings": "ebcbbb3be0174f9d",
+      "sections": "2770bf21d572429d",
+      "open": false
+    },
+    "apps/app/src/content/blog/documentation-migration-seo-cutover-lab-ar.mdx": {
+      "source": "f7deca36ed4e43de",
+      "lines": "8761dbf5a90ef188",
+      "headings": "0b12147e569aa85d",
+      "sections": "ae349bc394389c38",
+      "open": false
+    },
+    "apps/app/src/content/blog/documentation-migration-seo-cutover-lab.mdx": {
+      "source": "093f9190a12030a5",
+      "lines": "ba1d30bb1c3504c4",
+      "headings": "939a44d844182e90",
+      "sections": "bc7feb60ec823c33",
+      "open": false
+    },
+    "apps/app/src/content/blog/documentation-production-readiness-decision-ar.mdx": {
+      "source": "b98ddac8868f68c7",
+      "lines": "37b322ffb509a620",
+      "headings": "66d954cf450964c2",
+      "sections": "b4b7df38c9a6a76a",
+      "open": false
+    },
+    "apps/app/src/content/blog/documentation-production-readiness-decision.mdx": {
+      "source": "3284647ff8522c75",
+      "lines": "8841162c3f40d60f",
+      "headings": "3a02e18b0d83f697",
+      "sections": "0ba2eecf77c350a2",
+      "open": false
+    },
+    "apps/app/src/content/blog/documentation-templates-harbor-manuscript-signal-ar.mdx": {
+      "source": "78048d5478d921a3",
+      "lines": "277229b62f597f1a",
+      "headings": "ff0d0a15e030263b",
+      "sections": "4f1ac8e71ce6ed5f",
+      "open": false
+    },
+    "apps/app/src/content/blog/documentation-templates-harbor-manuscript-signal.mdx": {
+      "source": "3da929895c624d4f",
+      "lines": "ec313e69d1ebe441",
+      "headings": "18beceba5c213ed6",
+      "sections": "6220f7ee5f4af1eb",
+      "open": false
+    },
+    "apps/app/src/content/blog/gitbook-vs-mintlify.mdx": {
+      "source": "4e8977cf6fd95826",
+      "lines": "8761dbf5a90ef188",
+      "headings": "c4c11eb7484e21d6",
+      "sections": "cb1df5fc71b22473",
+      "open": false
+    },
+    "apps/app/src/content/blog/introducing-nibleaf-open-source-mintlify-alternative.mdx": {
+      "source": "d3685cd23535d204",
+      "lines": "421d4fcb166e4051",
+      "headings": "0c72f2a7231825d9",
+      "sections": "5ae45af608b0b11d",
+      "open": false
+    },
+    "apps/app/src/content/blog/mcp-documentation-security-threat-model-ar.mdx": {
+      "source": "45ecde9bfc7851d5",
+      "lines": "5a17d9c66bacdbda",
+      "headings": "ee0bed2c9e47a3b2",
+      "sections": "b7a9664e7281367f",
+      "open": false
+    },
+    "apps/app/src/content/blog/mcp-documentation-security-threat-model.mdx": {
+      "source": "98c16dfbc8001f53",
+      "lines": "f89b1eacf45d6ce1",
+      "headings": "5628a86bd607a58d",
+      "sections": "8422a45592b9814b",
+      "open": false
+    },
+    "apps/app/src/content/blog/nibleaf-august-2026-source-release-ar.mdx": {
+      "source": "64a986695cb0bb5c",
+      "lines": "a4238c1c9c0541b5",
+      "headings": "3a3bc1dad5ac22c6",
+      "sections": "5b238195f3e5220f",
+      "open": false
+    },
+    "apps/app/src/content/blog/nibleaf-august-2026-source-release.mdx": {
+      "source": "633cf08af991a821",
+      "lines": "28c0d8ca2ee46946",
+      "headings": "d13fbda0a56ffda2",
+      "sections": "373d725a9361b6c6",
+      "open": false
+    },
+    "apps/app/src/content/blog/nibleaf-integrations-ar.mdx": {
+      "source": "71f0b7a030590f2f",
+      "lines": "c8e60253ee02d0b1",
+      "headings": "967f31379be883e3",
+      "sections": "e08de0a9d0cc128c",
+      "open": false
+    },
+    "apps/app/src/content/blog/nibleaf-integrations.mdx": {
+      "source": "fd75d617857b4fb5",
+      "lines": "6463e32c378722ec",
+      "headings": "7af6f86d74e6cde4",
+      "sections": "74b273027d30275f",
+      "open": false
+    },
+    "apps/app/src/content/blog/open-source-documentation-tools-ar.mdx": {
+      "source": "88398c2feda9f0dc",
+      "lines": "35889be46d0d994f",
+      "headings": "1259a224fdf002fd",
+      "sections": "6f4eea74e4117b2b",
+      "open": false
+    },
+    "apps/app/src/content/blog/open-source-documentation-tools.mdx": {
+      "source": "af32c549ab7fdb38",
+      "lines": "53e8288e615c67c5",
+      "headings": "b59a235df738929e",
+      "sections": "1b5a11c8083ab54e",
+      "open": false
+    },
+    "apps/app/src/content/blog/openapi-try-it-security-versioning-ar.mdx": {
+      "source": "150537f17e6bfe42",
+      "lines": "a2fb4b1d893be1ec",
+      "headings": "bcb8d5f989a4bd29",
+      "sections": "8a211f728f6d8d94",
+      "open": false
+    },
+    "apps/app/src/content/blog/openapi-try-it-security-versioning.mdx": {
+      "source": "ba11e06a5ee2bfd0",
+      "lines": "421d4fcb166e4051",
+      "headings": "b1733f7719f04c6a",
+      "sections": "bc6b530d94c69fee",
+      "open": false
+    },
+    "apps/app/src/content/blog/private-documentation-ai-access-verification-ar.mdx": {
+      "source": "52235528ba0d2457",
+      "lines": "007dd838c6880e75",
+      "headings": "e3e6bd698dc8f966",
+      "sections": "a064d75d91454418",
+      "open": false
+    },
+    "apps/app/src/content/blog/private-documentation-ai-access-verification.mdx": {
+      "source": "90205ade90ebeef7",
+      "lines": "37b322ffb509a620",
+      "headings": "c7ed8eed944ae921",
+      "sections": "5e6d02b0eceb59b6",
+      "open": false
+    },
+    "apps/app/src/content/blog/self-host-documentation-site-docker-compose-ar.mdx": {
+      "source": "622546f51b0e3608",
+      "lines": "436b619abbaa7348",
+      "headings": "9f9f22d07e00462c",
+      "sections": "50af9f169b0465c0",
+      "open": false
+    },
+    "apps/app/src/content/blog/self-host-documentation-site-docker-compose.mdx": {
+      "source": "1dbcb9387ec1c839",
+      "lines": "7e74bfc04118b191",
+      "headings": "8d60ccb354256550",
+      "sections": "7cfb62c4e99e8722",
+      "open": false
+    },
+    "apps/app/src/content/blog/versioned-documentation-release-lifecycle-ar.mdx": {
+      "source": "62a8c89adf0b93aa",
+      "lines": "d86153b5c8541dcf",
+      "headings": "79360a6661990b7d",
+      "sections": "a70374bd2ef477dd",
+      "open": false
+    },
+    "apps/app/src/content/blog/versioned-documentation-release-lifecycle.mdx": {
+      "source": "f656e15f10f6af3a",
+      "lines": "cb0216e7ae909ac5",
+      "headings": "867a9d85e557f38b",
+      "sections": "a6eba7316b7616db",
+      "open": false
+    },
+    "apps/server/src/actions/importers/fixtures/NIBLEAF_DOCS.md": {
+      "source": "c1de7cdbbbb9a574",
+      "lines": "c2845f302abe52c5",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    "apps/server/src/actions/importers/fixtures/multilingual-linked-pages/ar/intro.mdx": {
+      "source": "995c8f62f3bd2656",
+      "lines": "5c6b73a951152540",
+      "headings": "8c8926fba79b9556",
+      "sections": "0b5c7c51b09a48b8",
+      "open": false
+    },
+    "apps/server/src/actions/importers/fixtures/multilingual-linked-pages/intro.mdx": {
+      "source": "cdfa1bedf1e0a3aa",
+      "lines": "5c6b73a951152540",
+      "headings": "17aaf159d1a1b58c",
+      "sections": "aed2924c763454ea",
+      "open": false
+    },
+    "apps/server/src/assets/og/README.md": {
+      "source": "2d8bde62b957c791",
+      "lines": "84d9c4b849506b6d",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    "ar.json#newsite_starter_faq_content": {
+      "source": "bf041cf0033a005f",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "3e345741b35b72e8",
+      "sections": "e0885a9d376b56bf",
+      "open": false
+    },
+    "ar.json#newsite_starter_firstguide_content": {
+      "source": "50ff7b452a4a30eb",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "5c74c1ccc268426d",
+      "sections": "f8eb049bbe20f404",
+      "open": false
+    },
+    "ar.json#newsite_starter_gettingstarted_content": {
+      "source": "b2dbc538c44d7c30",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "cde2ddd5d66140bb",
+      "sections": "4d8aa5d2de402882",
+      "open": false
+    },
+    "ar.json#newsite_starter_guides_content": {
+      "source": "986bf5d7348d519f",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "ffee2cfad00994e8",
+      "sections": "82256c1330f873cb",
+      "open": false
+    },
+    "ar.json#newsite_starter_welcome_content": {
+      "source": "a7a7e38f5d2f6a97",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "e1d9314566a9f3e0",
+      "sections": "a4fda1845525db17",
+      "open": false
+    },
+    "bn.json#newsite_starter_faq_content": {
+      "source": "129834054149bf93",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "8e9b9e138c4989ba",
+      "sections": "0ab769ff29aa1f7b",
+      "open": false
+    },
+    "bn.json#newsite_starter_firstguide_content": {
+      "source": "900cf1b0b42da62e",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "efb9bdac7f52516f",
+      "sections": "3f209f8c2c0a4b34",
+      "open": false
+    },
+    "bn.json#newsite_starter_gettingstarted_content": {
+      "source": "55515e25eb3afcd5",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "9eda83cc09d9dc0b",
+      "sections": "1b6e8c43efa09c63",
+      "open": false
+    },
+    "bn.json#newsite_starter_guides_content": {
+      "source": "25cdb986f90f0b32",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "73c2abefb9831998",
+      "sections": "af05d53a635132ba",
+      "open": false
+    },
+    "bn.json#newsite_starter_welcome_content": {
+      "source": "a522e15156a45ca2",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "0b87c9e7aa48b9b1",
+      "sections": "ee9b826083e38d7f",
+      "open": false
+    },
+    "de.json#newsite_starter_faq_content": {
+      "source": "00c589fc7ac85ab5",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "8de2de6a8f542da0",
+      "sections": "1e5b51d53fc526b5",
+      "open": false
+    },
+    "de.json#newsite_starter_firstguide_content": {
+      "source": "ff88358475fadd6a",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "75ec5f080dc33e83",
+      "sections": "84627bd37b8a2165",
+      "open": false
+    },
+    "de.json#newsite_starter_gettingstarted_content": {
+      "source": "d6e1d69c7373abf2",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "5a92cad67c10e8e1",
+      "sections": "c6aeed19b1f35fca",
+      "open": false
+    },
+    "de.json#newsite_starter_guides_content": {
+      "source": "976cc7b49fc1d615",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "658bef69632dedf3",
+      "sections": "3de0587105761efc",
+      "open": false
+    },
+    "de.json#newsite_starter_welcome_content": {
+      "source": "163838bae3140919",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "bc4d5b0fac0b0f6a",
+      "sections": "2fbcf24394e6e341",
+      "open": false
+    },
+    "docs/ARABIC_GLOSSARY.md": {
+      "source": "11b8914f654669ec",
+      "lines": "81b8deb7b5eebdaf",
+      "headings": "4f04004186ea4e80",
+      "sections": "8a055a24ac5aeaea",
+      "open": false
+    },
+    "docs/README.md": {
+      "source": "90afcb8394a4abab",
+      "lines": "48c1b731a7268800",
+      "headings": "f31f68087afef3a3",
+      "sections": "326234634e99641e",
+      "open": false
+    },
+    "docs/ar/contributing/documentation.mdx": {
+      "source": "c0ab5b33a750a27f",
+      "lines": "b5485f30e2eb8c24",
+      "headings": "ecb83b859e044bd1",
+      "sections": "1ce24173fb74613d",
+      "open": false
+    },
+    "docs/ar/getting-started/cloud.mdx": {
+      "source": "e55f583ec454601f",
+      "lines": "261af2fd345ea3b4",
+      "headings": "18de47c8b2f9b910",
+      "sections": "a1d6f346624b5e23",
+      "open": false
+    },
+    "docs/ar/getting-started/introduction.mdx": {
+      "source": "43d684d71663e572",
+      "lines": "0b3685746d17be54",
+      "headings": "ab168b0b02343fa9",
+      "sections": "0f0db8fbbdbb428c",
+      "open": false
+    },
+    "docs/ar/getting-started/self-hosted.mdx": {
+      "source": "5abeab706367a931",
+      "lines": "12f02cc363edd326",
+      "headings": "21bb432b62c425a3",
+      "sections": "87939d42657c40ea",
+      "open": false
+    },
+    "docs/ar/git-authoring.md": {
+      "source": "1a7e2d78507889c2",
+      "lines": "eabb501992e178d5",
+      "headings": "ee28ba8dd163e950",
+      "sections": "9fee61925ad61f95",
+      "open": false
+    },
+    "docs/ar/private-reader-access.md": {
+      "source": "cec86d4bf85a88d0",
+      "lines": "ea1e728223088e0e",
+      "headings": "222f229528237ff6",
+      "sections": "28eaa71c6236c2b2",
+      "open": false
+    },
+    "docs/ar/product/add-ons.mdx": {
+      "source": "f51b77a95b5b4641",
+      "lines": "ec313e69d1ebe441",
+      "headings": "313fe75fe225a458",
+      "sections": "0093e2f1fa92ff76",
+      "open": false
+    },
+    "docs/ar/product/ai-assistant.mdx": {
+      "source": "a110f257eb9731bf",
+      "lines": "423287f827f0d569",
+      "headings": "0913343b8cee9746",
+      "sections": "fca4c6f588c92d8c",
+      "open": false
+    },
+    "docs/ar/product/ai-assistants.mdx": {
+      "source": "df7cd0cf5357cca8",
+      "lines": "31154305f75da492",
+      "headings": "8872a8f3360ece9c",
+      "sections": "43274c73b64ac8d1",
+      "open": false
+    },
+    "docs/ar/product/analytics.mdx": {
+      "source": "e0d1a89393f0e362",
+      "lines": "6e47dc4bfc7fe81c",
+      "headings": "32f2e14e7e083f24",
+      "sections": "0a2def7155d5cff8",
+      "open": false
+    },
+    "docs/ar/product/arabic-rtl.mdx": {
+      "source": "233537919a73c7fd",
+      "lines": "acee53fedc78d813",
+      "headings": "fb8b4b4efcc60695",
+      "sections": "cd647c3e5df6762c",
+      "open": false
+    },
+    "docs/ar/product/authoring.mdx": {
+      "source": "28adbb1ef982231b",
+      "lines": "05ad927be129d7a3",
+      "headings": "b3ba251d7aa766bb",
+      "sections": "53b482cb626118da",
+      "open": false
+    },
+    "docs/ar/product/custom-domains.mdx": {
+      "source": "12b768200061999f",
+      "lines": "3a82a2f228264303",
+      "headings": "cedbab143c7ae09f",
+      "sections": "962a897fd4481ab3",
+      "open": false
+    },
+    "docs/ar/product/exports.mdx": {
+      "source": "4d749a75e17b826c",
+      "lines": "d33892389045ec82",
+      "headings": "ed566fd3b1e410ba",
+      "sections": "032c3f53e32c5806",
+      "open": false
+    },
+    "docs/ar/product/markdown-mdx.mdx": {
+      "source": "573eb908225beee4",
+      "lines": "31e9b85101dec332",
+      "headings": "31d6d0e45f4e4b9e",
+      "sections": "6a18bb184d5f60b3",
+      "open": false
+    },
+    "docs/ar/product/migration.mdx": {
+      "source": "13abee15b8b27051",
+      "lines": "918ceb84a4717ae1",
+      "headings": "1ff4c1079b680c50",
+      "sections": "e7770b281012a474",
+      "open": false
+    },
+    "docs/ar/product/publishing.mdx": {
+      "source": "457a69340b6b741a",
+      "lines": "6863135060f66567",
+      "headings": "434720b8e0a044a2",
+      "sections": "d228e84e623c59eb",
+      "open": false
+    },
+    "docs/ar/product/smart-ai.mdx": {
+      "source": "c86f655399eb08ad",
+      "lines": "4425187ba304c476",
+      "headings": "340018719cbeff3c",
+      "sections": "900e3a9d2edea79b",
+      "open": false
+    },
+    "docs/ar/product/team.mdx": {
+      "source": "af4fe5d6a3e28bd3",
+      "lines": "4edbadbac0028eba",
+      "headings": "6d9992b92010c4af",
+      "sections": "efab21a68e49069f",
+      "open": false
+    },
+    "docs/ar/product/themes.mdx": {
+      "source": "145b97ff279ac64d",
+      "lines": "ec313e69d1ebe441",
+      "headings": "2fa4393e62b63a2d",
+      "sections": "3de50493c8c91a3b",
+      "open": false
+    },
+    "docs/ar/redirects.md": {
+      "source": "21e71a949a32f458",
+      "lines": "e531ef0f96240917",
+      "headings": "dbd5c2b8cf6b081a",
+      "sections": "03191346b0ddfff9",
+      "open": false
+    },
+    "docs/ar/reference/api.mdx": {
+      "source": "9544cfd72c8f3295",
+      "lines": "3659179b94780e1a",
+      "headings": "afe01d9e1c05d1f3",
+      "sections": "6bd472dd84c58e0d",
+      "open": false
+    },
+    "docs/ar/reference/environment-variables.mdx": {
+      "source": "2634c78bbc90f9b6",
+      "lines": "0e312d06bfa4dc77",
+      "headings": "525b313360a40d58",
+      "sections": "2204b49f84eb44a1",
+      "open": false
+    },
+    "docs/ar/reference/integrations-engine.mdx": {
+      "source": "8e1b76d65c750bb1",
+      "lines": "1b08fa2ba9374a5d",
+      "headings": "e0e70c956424b245",
+      "sections": "13130bb63efe11f3",
+      "open": false
+    },
+    "docs/ar/reference/known-limitations.mdx": {
+      "source": "d0b0425466532ce7",
+      "lines": "c1b172cb0dd57cba",
+      "headings": "da5b474f565d0501",
+      "sections": "24e4fdc7c1551c93",
+      "open": false
+    },
+    "docs/ar/reference/mcp.mdx": {
+      "source": "7e321a831ec4ffbd",
+      "lines": "29781c208b853908",
+      "headings": "43fb18bc23758103",
+      "sections": "d1509e651aac5948",
+      "open": false
+    },
+    "docs/ar/reference/mintlify-parity.mdx": {
+      "source": "10a0384b3e3b2079",
+      "lines": "78246f3b1d07021b",
+      "headings": "f3496d7bcd3ce459",
+      "sections": "e441e87233655170",
+      "open": false
+    },
+    "docs/ar/releases/august-2026-capabilities.mdx": {
+      "source": "b54df4fd0b6db05c",
+      "lines": "277229b62f597f1a",
+      "headings": "db548fc321580596",
+      "sections": "ab3a00c1533c87ab",
+      "open": false
+    },
+    "docs/ar/releases/v0-2-0.mdx": {
+      "source": "7411f8dfc5e45b4f",
+      "lines": "33c4eeaf19eb5b2d",
+      "headings": "f294af5a29301740",
+      "sections": "9d2aeef168cf90e6",
+      "open": false
+    },
+    "docs/ar/releases/v0-2-1.mdx": {
+      "source": "9ed369c63403cd12",
+      "lines": "6f2e9433ab1b8ea5",
+      "headings": "ac8c53163db66c58",
+      "sections": "78413b70bf5246ff",
+      "open": false
+    },
+    "docs/ar/self-hosting/backups-upgrades.mdx": {
+      "source": "aebb814131f2d32a",
+      "lines": "def6db2a3605c944",
+      "headings": "fb22e23e74d3377b",
+      "sections": "a77e09d3d07d675b",
+      "open": false
+    },
+    "docs/ar/self-hosting/clickhouse-analytics.mdx": {
+      "source": "fe54330d45581d40",
+      "lines": "edaf54155f221679",
+      "headings": "c241b4d04e36ea02",
+      "sections": "6c5cc5f55b8f5844",
+      "open": false
+    },
+    "docs/ar/self-hosting/combined-release-migration.mdx": {
+      "source": "7ea0d5bf0e61a6f9",
+      "lines": "f1ae7f6fb32f61a6",
+      "headings": "fa8942a7bb9f28a1",
+      "sections": "7adc1c9f864e3103",
+      "open": false
+    },
+    "docs/ar/self-hosting/configuration.mdx": {
+      "source": "0b82e619e5e81ace",
+      "lines": "13f025c5a9e6d1e4",
+      "headings": "6c1ad1c51083af3f",
+      "sections": "aa4fd4cd11982824",
+      "open": false
+    },
+    "docs/ar/self-hosting/mcp.mdx": {
+      "source": "97583c7d3d3aa150",
+      "lines": "667893b17b446ff8",
+      "headings": "a3422b5a8be31611",
+      "sections": "21a022c41ecc421f",
+      "open": false
+    },
+    "docs/ar/self-hosting/production.mdx": {
+      "source": "b5c85ea70e8df2df",
+      "lines": "c854402d4f873045",
+      "headings": "d0d0178f07b0dcf5",
+      "sections": "0a7a56ea8c57d0b0",
+      "open": false
+    },
+    "docs/ar/self-hosting/search-ai.mdx": {
+      "source": "554146dc2d67321e",
+      "lines": "1c41e6a2ffe41496",
+      "headings": "e7fdeaf7cd7352d2",
+      "sections": "53a2d28630b92e16",
+      "open": false
+    },
+    "docs/ar/self-hosting/troubleshooting.mdx": {
+      "source": "7f69775ba0b40520",
+      "lines": "c98b7a2bf947ea30",
+      "headings": "a30c1443a2a08a45",
+      "sections": "3ff8987cf9221af8",
+      "open": false
+    },
+    "docs/ar/self-hosting/upgrade-v0-2.mdx": {
+      "source": "c123ba4bffafd948",
+      "lines": "8ca8f197e22892e7",
+      "headings": "30620d7693f42f56",
+      "sections": "e7a48f4505c89ef6",
+      "open": false
+    },
+    "docs/ar/self-hosting/usage-metering.mdx": {
+      "source": "3f42028d0b10b5aa",
+      "lines": "bb83cb4decbecf42",
+      "headings": "9d7223c9aef45636",
+      "sections": "d6401f7114abda3b",
+      "open": false
+    },
+    "docs/contributing/documentation.mdx": {
+      "source": "939da54a6741d40f",
+      "lines": "29ebd64b5926f7c0",
+      "headings": "c085b2965ab7cc64",
+      "sections": "be3d459d8d2b1bf9",
+      "open": false
+    },
+    "docs/getting-started/cloud.mdx": {
+      "source": "32bc54e62ff2b202",
+      "lines": "22c715cdc7ba807b",
+      "headings": "592aacba8a8e3487",
+      "sections": "d16a4ff5e5133da1",
+      "open": false
+    },
+    "docs/getting-started/introduction.mdx": {
+      "source": "c72afcb3bc1c225a",
+      "lines": "421d4fcb166e4051",
+      "headings": "738ef50bc3d6e160",
+      "sections": "e4c43a96e2bbcb32",
+      "open": false
+    },
+    "docs/getting-started/self-hosted.mdx": {
+      "source": "b8c8ba8fd04b2127",
+      "lines": "c6b80954cb924bdd",
+      "headings": "fb61eaa707d78ecd",
+      "sections": "9aab85b2177055f5",
+      "open": false
+    },
+    "docs/git-authoring.md": {
+      "source": "a8770f0c6708cd02",
+      "lines": "d8b801264e19abae",
+      "headings": "3c4854f1a67eab13",
+      "sections": "99fe8288e1f9a5e6",
+      "open": false
+    },
+    "docs/private-reader-access.md": {
+      "source": "cec5a4f8dfc561c3",
+      "lines": "95f16f6f353cd5a2",
+      "headings": "d600eba331d68352",
+      "sections": "05c3252030328768",
+      "open": false
+    },
+    "docs/product/add-ons.mdx": {
+      "source": "45c1fe9452d34e52",
+      "lines": "73c190c794a5695d",
+      "headings": "3257e394a77d69fb",
+      "sections": "e849a86adf36b876",
+      "open": false
+    },
+    "docs/product/ai-assistant.mdx": {
+      "source": "a8edf5cf6eb095d5",
+      "lines": "738caa42efcf154d",
+      "headings": "7aeb28ceb4fd4b3e",
+      "sections": "3ac81b2dac259c0c",
+      "open": false
+    },
+    "docs/product/ai-assistants.mdx": {
+      "source": "3c1c97dedfd7b5f9",
+      "lines": "c52d1df251595276",
+      "headings": "5ba20ccf8836904f",
+      "sections": "d0ae2dd0a626e423",
+      "open": false
+    },
+    "docs/product/analytics.mdx": {
+      "source": "312d450058016026",
+      "lines": "37b322ffb509a620",
+      "headings": "185033a4925827d8",
+      "sections": "ac3ee8c09aa64657",
+      "open": false
+    },
+    "docs/product/arabic-rtl.mdx": {
+      "source": "12a93ea72c9fda0a",
+      "lines": "ce807494136ce2f2",
+      "headings": "9d92617102440b1e",
+      "sections": "489a586e827911de",
+      "open": false
+    },
+    "docs/product/authoring.mdx": {
+      "source": "189f6144ceb31531",
+      "lines": "f315a3655d79730d",
+      "headings": "8d5257dc3090282b",
+      "sections": "7b4bb5fe95f269a8",
+      "open": false
+    },
+    "docs/product/custom-domains.mdx": {
+      "source": "0472fdbacc2145bd",
+      "lines": "c96e746dcdea8a7d",
+      "headings": "2573309c1f7cf0a7",
+      "sections": "6cba6b2c112e4dc2",
+      "open": false
+    },
+    "docs/product/exports.mdx": {
+      "source": "46b93c81b55d916c",
+      "lines": "ec313e69d1ebe441",
+      "headings": "b6c9e4e7924172cc",
+      "sections": "e35b09cb14fb1cc9",
+      "open": false
+    },
+    "docs/product/markdown-mdx.mdx": {
+      "source": "260b3f3230d535c3",
+      "lines": "e12f7b04fd206fa0",
+      "headings": "caa8f67e002f1d74",
+      "sections": "399b32fb36cf5b40",
+      "open": false
+    },
+    "docs/product/migration.mdx": {
+      "source": "ce43503df4543b43",
+      "lines": "d15c1314832be314",
+      "headings": "878dce98db82975a",
+      "sections": "301051523724525d",
+      "open": false
+    },
+    "docs/product/publishing.mdx": {
+      "source": "0983a31f06002ab6",
+      "lines": "33c4eeaf19eb5b2d",
+      "headings": "a80148453d1439fa",
+      "sections": "af12c4c1a9fd701d",
+      "open": false
+    },
+    "docs/product/smart-ai.mdx": {
+      "source": "cc2ba008dbfacdb3",
+      "lines": "5a0067ecaf474306",
+      "headings": "3d56fa0b6559e680",
+      "sections": "3189de66fad1b4e8",
+      "open": false
+    },
+    "docs/product/team.mdx": {
+      "source": "0100eef4a597081d",
+      "lines": "6d128d8546a9b776",
+      "headings": "4078c913c577e9e9",
+      "sections": "95f193bd12655899",
+      "open": false
+    },
+    "docs/product/themes.mdx": {
+      "source": "5ca946f9252bc223",
+      "lines": "6863135060f66567",
+      "headings": "d73b417c31256d67",
+      "sections": "4f048d2793417437",
+      "open": false
+    },
+    "docs/redirects.md": {
+      "source": "e11053d162d79374",
+      "lines": "51040c93c864067e",
+      "headings": "2d002dab18c6149e",
+      "sections": "a9658bdf1f1babf9",
+      "open": false
+    },
+    "docs/reference/api.mdx": {
+      "source": "e57f143acca2b767",
+      "lines": "abbb95ea991c56a6",
+      "headings": "086a445a2b14f911",
+      "sections": "1ad48a6fc249b5e0",
+      "open": false
+    },
+    "docs/reference/environment-variables.mdx": {
+      "source": "b2891f740391792a",
+      "lines": "9e55e907eff378f5",
+      "headings": "15c1a43ab5159b80",
+      "sections": "d03e534b0bfc17ed",
+      "open": false
+    },
+    "docs/reference/integrations-engine.mdx": {
+      "source": "349ca089876be39b",
+      "lines": "cba2f371b420ba4e",
+      "headings": "ec6deb109fda65d2",
+      "sections": "811f85ebcc3c356b",
+      "open": false
+    },
+    "docs/reference/known-limitations.mdx": {
+      "source": "d220c0aa5205e10d",
+      "lines": "f315a3655d79730d",
+      "headings": "46757ddeb7deb963",
+      "sections": "c6a1efe438754e51",
+      "open": false
+    },
+    "docs/reference/mcp.mdx": {
+      "source": "2ea1460997bae210",
+      "lines": "db7b2173fc5c17c5",
+      "headings": "c643b5cf6a4cc48a",
+      "sections": "57afd9c3ac675652",
+      "open": false
+    },
+    "docs/reference/mintlify-parity.mdx": {
+      "source": "2693306cc741e799",
+      "lines": "78246f3b1d07021b",
+      "headings": "d083137194cce254",
+      "sections": "64de83ed3690c3b9",
+      "open": false
+    },
+    "docs/releases/august-2026-capabilities.mdx": {
+      "source": "f3c5cc70cba4457f",
+      "lines": "69b3dd5a17ebbcc4",
+      "headings": "9c2adcc6b06439be",
+      "sections": "f415ad057b0736a8",
+      "open": false
+    },
+    "docs/releases/v0-2-0.mdx": {
+      "source": "945f5412e5632797",
+      "lines": "a2fb4b1d893be1ec",
+      "headings": "36d43ecff521de38",
+      "sections": "cf4bd60547223045",
+      "open": false
+    },
+    "docs/releases/v0-2-1.mdx": {
+      "source": "3b70b7d186dbcdb5",
+      "lines": "574c0f6e20161636",
+      "headings": "e247d94e76fe7eca",
+      "sections": "4d8d5dfa5470a841",
+      "open": false
+    },
+    "docs/self-hosting/backups-upgrades.mdx": {
+      "source": "091ee08155d00ffe",
+      "lines": "05da850fdb1c48c6",
+      "headings": "33139b7276161dc6",
+      "sections": "f8fec47584efef83",
+      "open": false
+    },
+    "docs/self-hosting/clickhouse-analytics.mdx": {
+      "source": "596511eb89e3b6ca",
+      "lines": "1a6b3d56c3ca1cc9",
+      "headings": "a3840d430caa1285",
+      "sections": "6b67f2ca375c383b",
+      "open": false
+    },
+    "docs/self-hosting/combined-release-migration.mdx": {
+      "source": "ecbaa90662b20814",
+      "lines": "9083de86bf9d6cb8",
+      "headings": "08502baffac6dc9b",
+      "sections": "de51ccd572c01f30",
+      "open": false
+    },
+    "docs/self-hosting/configuration.mdx": {
+      "source": "fbbfa7e05d8c0932",
+      "lines": "7864f3dd27ce78c7",
+      "headings": "77499dbf8f25cdc8",
+      "sections": "277b25b7f274bc10",
+      "open": false
+    },
+    "docs/self-hosting/mcp.mdx": {
+      "source": "2796aff1a6862236",
+      "lines": "e589e2c46c380a74",
+      "headings": "cfc4e31780b20945",
+      "sections": "837696b7419cdedb",
+      "open": false
+    },
+    "docs/self-hosting/production.mdx": {
+      "source": "c8b52808351910f6",
+      "lines": "38941175c2877294",
+      "headings": "50ad156158a5d188",
+      "sections": "d322dc4a42dd0927",
+      "open": false
+    },
+    "docs/self-hosting/search-ai.mdx": {
+      "source": "95fa78fa54d2340c",
+      "lines": "d3b1520d553fadcb",
+      "headings": "67f6455e0112184a",
+      "sections": "ccdcafc731d9036e",
+      "open": false
+    },
+    "docs/self-hosting/troubleshooting.mdx": {
+      "source": "9fda1a77857bde0f",
+      "lines": "fde59b9cab06229a",
+      "headings": "1d33325c52c55371",
+      "sections": "4edbfad0f96aae4c",
+      "open": false
+    },
+    "docs/self-hosting/upgrade-v0-2.mdx": {
+      "source": "0424ed84b23f77a2",
+      "lines": "ef5d7104eac69072",
+      "headings": "82e48e37823c37c1",
+      "sections": "039c97c9ce8ec0f0",
+      "open": false
+    },
+    "docs/self-hosting/usage-metering.mdx": {
+      "source": "b9b0467bac75c38f",
+      "lines": "08359a24435f45eb",
+      "headings": "54a7607fe165b68e",
+      "sections": "a39619910a4219da",
+      "open": false
+    },
+    "en.json#newsite_starter_faq_content": {
+      "source": "4dc7251b2aea91d9",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "ddd071eb891e226a",
+      "sections": "65a65daab6b8e835",
+      "open": false
+    },
+    "en.json#newsite_starter_firstguide_content": {
+      "source": "c6038408b9ac9807",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "c9f620223d5e1ab7",
+      "sections": "e473f96311fcec58",
+      "open": false
+    },
+    "en.json#newsite_starter_gettingstarted_content": {
+      "source": "02c7dde13bdcde77",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "6013d1c27d020e2f",
+      "sections": "4d1dc47f4f910025",
+      "open": false
+    },
+    "en.json#newsite_starter_guides_content": {
+      "source": "f19cbbd12776f663",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "9bfb096989735cc4",
+      "sections": "6bf9a24e42933929",
+      "open": false
+    },
+    "en.json#newsite_starter_welcome_content": {
+      "source": "3422d4b1edadb3a5",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "85d27d268472fd3d",
+      "sections": "5d719f2a9b764e7b",
+      "open": false
+    },
+    "es.json#newsite_starter_faq_content": {
+      "source": "aafd92f0cd91c892",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "28268f3f510da2c8",
+      "sections": "ae7ba94722aa15d2",
+      "open": false
+    },
+    "es.json#newsite_starter_firstguide_content": {
+      "source": "f1ed0125d54ec9e4",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "229fa0435390d075",
+      "sections": "83faca91804c1d8b",
+      "open": false
+    },
+    "es.json#newsite_starter_gettingstarted_content": {
+      "source": "7f5bb5cb56b59d73",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "2117e04e89984671",
+      "sections": "20d4ccdedcee85b8",
+      "open": false
+    },
+    "es.json#newsite_starter_guides_content": {
+      "source": "4cf960dc579064b3",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "ecb084df55fa3507",
+      "sections": "9e93fc2d257d8b36",
+      "open": false
+    },
+    "es.json#newsite_starter_welcome_content": {
+      "source": "b2b924fc2d3a1172",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "7de898d861dbe2a4",
+      "sections": "d58a5dbd3e785c5d",
+      "open": false
+    },
+    "fr.json#newsite_starter_faq_content": {
+      "source": "6b905606b0528a78",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "142c56eb1fec4975",
+      "sections": "4565503e8a176dec",
+      "open": false
+    },
+    "fr.json#newsite_starter_firstguide_content": {
+      "source": "37ad3d6720b72a13",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "7b22ef37534db1a2",
+      "sections": "0557440ce916e4be",
+      "open": false
+    },
+    "fr.json#newsite_starter_gettingstarted_content": {
+      "source": "0438ad7d890a681e",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "1eedfcbd26be3d64",
+      "sections": "9ea165c9d25af384",
+      "open": false
+    },
+    "fr.json#newsite_starter_guides_content": {
+      "source": "22242d49bc26fc5a",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "73ae4175cd7f093c",
+      "sections": "f90ff6691765a6f2",
+      "open": false
+    },
+    "fr.json#newsite_starter_welcome_content": {
+      "source": "8c49d4bcafa1a958",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "f65beb3a2475d1ba",
+      "sections": "0b956cd5413f3e45",
+      "open": false
+    },
+    "hi.json#newsite_starter_faq_content": {
+      "source": "4e390b1fdf8f8069",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "2c35534cd7c2be9d",
+      "sections": "0785711151cabb43",
+      "open": false
+    },
+    "hi.json#newsite_starter_firstguide_content": {
+      "source": "4ddecf416b5df914",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "dfcae54d25f66e4e",
+      "sections": "e38fb30d898ffe5d",
+      "open": false
+    },
+    "hi.json#newsite_starter_gettingstarted_content": {
+      "source": "9f12e98b94d9318c",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "29db96fdae40494a",
+      "sections": "f79f0869cb577c3b",
+      "open": false
+    },
+    "hi.json#newsite_starter_guides_content": {
+      "source": "b5e24a61d8d10e10",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "cf1cfc3b358e74e0",
+      "sections": "ac673c59034979e1",
+      "open": false
+    },
+    "hi.json#newsite_starter_welcome_content": {
+      "source": "7ec52dc1c222337c",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "2633eaea9ed4e02d",
+      "sections": "43e60229c9ee92d5",
+      "open": false
+    },
+    "id.json#newsite_starter_faq_content": {
+      "source": "0aa8c401978398bc",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "774f75d7bf7caa56",
+      "sections": "d7ee7508a07030d6",
+      "open": false
+    },
+    "id.json#newsite_starter_firstguide_content": {
+      "source": "476d69b841ed1d11",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "320c6b2b32a69b94",
+      "sections": "0b5a3e88d52ae56c",
+      "open": false
+    },
+    "id.json#newsite_starter_gettingstarted_content": {
+      "source": "9cbcd1a973782366",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "985a54d905357e29",
+      "sections": "e6780124dc475221",
+      "open": false
+    },
+    "id.json#newsite_starter_guides_content": {
+      "source": "24bef5521a201857",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "efc3e5837e689655",
+      "sections": "756c5a3cf64cf7e9",
+      "open": false
+    },
+    "id.json#newsite_starter_welcome_content": {
+      "source": "d7e83f6b1a5563cb",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "74911669ef89148c",
+      "sections": "69dda63aa050fdb6",
+      "open": false
+    },
+    "operations/bullmq-scheduler-migration.md": {
+      "source": "9e91d185396a49e4",
+      "lines": "7cf21033fe72a1fd",
+      "headings": "e3a8305a66c60b49",
+      "sections": "9b620a941d908e00",
+      "open": false
+    },
+    "operations/ci-env-gates-2026-11-11.md": {
+      "source": "7ddf625cf1622ac7",
+      "lines": "b918b22a1581fedd",
+      "headings": "1ef51b600b3c18fa",
+      "sections": "506156f261775b51",
+      "open": false
+    },
+    "operations/clickhouse-analytics.md": {
+      "source": "3407b49a00827d6c",
+      "lines": "6c0ed5afd5c3980f",
+      "headings": "9e069eaabdfb8e60",
+      "sections": "caae64a7e2c18d55",
+      "open": false
+    },
+    "operations/deploy-6-runbook.md": {
+      "source": "2aa3bb2b542cdc6c",
+      "lines": "a326fc24b7545a9b",
+      "headings": "abd3d01a8a0441f8",
+      "sections": "ad90fa09d28ede20",
+      "open": false
+    },
+    "operations/deployment-reliability.md": {
+      "source": "0e7c381cf32eb879",
+      "lines": "a4238c1c9c0541b5",
+      "headings": "f0e650cc486116fe",
+      "sections": "7462ee9a87023054",
+      "open": false
+    },
+    "operations/node26-qualification.md": {
+      "source": "5fc640f875d28936",
+      "lines": "0029e96585ee5bfa",
+      "headings": "1ef7b086e30e6a55",
+      "sections": "01aa422b57e4a989",
+      "open": false
+    },
+    "operations/organizations-design.md": {
+      "source": "5c87050deae1d7c3",
+      "lines": "1f38079f885c1796",
+      "headings": "75444eb612692d67",
+      "sections": "a85f12d86a4ccd92",
+      "open": false
+    },
+    "operations/proposal-edge-html-cache.md": {
+      "source": "e55902ce96b78f24",
+      "lines": "28c0d8ca2ee46946",
+      "headings": "76d9b3b1ceb29c66",
+      "sections": "7f8f910758421136",
+      "open": false
+    },
+    "operations/runbook-rolling-deploys.md": {
+      "source": "c640e72abffa9e75",
+      "lines": "2f5d0459a43007e4",
+      "headings": "6f41b12eb14325fd",
+      "sections": "b6128ec4c3166b41",
+      "open": false
+    },
+    "operations/runbook-subdomain-edge-route.md": {
+      "source": "db6baf6b8fe05750",
+      "lines": "208f677e8eb59179",
+      "headings": "5958bade93358b9e",
+      "sections": "0e798ddff7864f48",
+      "open": false
+    },
+    "operations/runtime-image-verification.md": {
+      "source": "0b72790aa8fecd54",
+      "lines": "7e554ceb1511a16a",
+      "headings": "dbbed1a9afb08428",
+      "sections": "16367a7f739796da",
+      "open": false
+    },
+    "operations/self-host-issues-312-287-335-329.md": {
+      "source": "af2531367dde4620",
+      "lines": "969a6b2897f13e81",
+      "headings": "abdd96e41d536836",
+      "sections": "bb95248b15bd5815",
+      "open": false
+    },
+    "operations/ui-overhaul.md": {
+      "source": "8edb28c3089fb51c",
+      "lines": "d7f7a63018f54f26",
+      "headings": "4a7db17898ec3fb1",
+      "sections": "030a5162c071bcb1",
+      "open": false
+    },
+    "operations/ux/ai-and-integrations.md": {
+      "source": "b9d8b70814cb1ee8",
+      "lines": "a0c81474c85afe80",
+      "headings": "1794c751cdeb3104",
+      "sections": "d74febcc30f1b04c",
+      "open": false
+    },
+    "operations/ux/mcp.md": {
+      "source": "38cfbaa9b1e98865",
+      "lines": "90152dc281f5582a",
+      "headings": "d5d9c7ea8b39c4bb",
+      "sections": "45a9ab296be5633d",
+      "open": false
+    },
+    "packages/auth/src/starter-content.ts#STARTER_GETTING_STARTED_CONTENT": {
+      "source": "503d152e334e076b",
+      "lines": "f120bb5698d520c5",
+      "headings": "08e72ca6ddee3771",
+      "sections": "60fdff7408cad828",
+      "open": false
+    },
+    "packages/cli/README.md": {
+      "source": "d4df1144e7e750a5",
+      "lines": "3d7eb21ef810c472",
+      "headings": "0fe8d2a8cb636f88",
+      "sections": "d20e1dca1b118bbb",
+      "open": false
+    },
+    "packages/clickhouse/README.md": {
+      "source": "153d8ac2ec17912e",
+      "lines": "45f5ca02f4bb4d38",
+      "headings": "43f8583ae8934598",
+      "sections": "1b7cacdf8aa65341",
+      "open": false
+    },
+    "packages/design-system/src/styles/vendor/README.md": {
+      "source": "30172fffa250c57d",
+      "lines": "3e891cde4b780e4b",
+      "headings": "cd52b2ea9c9f7908",
+      "sections": "01b946de67d20c59",
+      "open": false
+    },
+    "packages/design-system/src/styles/vendor/shadcn-LICENSE.md": {
+      "source": "1564074e13439397",
+      "lines": "e4bfa392b5fa6b1c",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    "packages/i18n/README.md": {
+      "source": "eb938e5beddc07c0",
+      "lines": "f7b11509f4d675c3",
+      "headings": "495463f0ef6be53d",
+      "sections": "d244f0271c1ff9af",
+      "open": false
+    },
+    "packages/search/ARABIC_MORPHOLOGY.md": {
+      "source": "22c550abace1856c",
+      "lines": "007dd838c6880e75",
+      "headings": "fbe9d275f5ac750e",
+      "sections": "7fc68e3741926373",
+      "open": false
+    },
+    "packages/search/eval/README.md": {
+      "source": "103cd8ab7409809c",
+      "lines": "1cedfeda3b293872",
+      "headings": "718ba0c4e8bfb8e1",
+      "sections": "29dd87a52701a7b1",
+      "open": false
+    },
+    "packages/search/eval/judge-rubric.md": {
+      "source": "847366662813bf4f",
+      "lines": "af53aaf87656940f",
+      "headings": "03319f27f84d656b",
+      "sections": "eae7a85deca91f3f",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/mintlify-video-embeds.imported.mdx": {
+      "source": "b3795780c7ac078a",
+      "lines": "575b83480d348cd3",
+      "headings": "7a483117d7250494",
+      "sections": "c1f85c0f94abdb6d",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/mintlify-video-embeds.mdx": {
+      "source": "8ad7faeb8e3d2057",
+      "lines": "9692e67b8378a6f6",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/blog-plain-markdown.export.md": {
+      "source": "64e6cde88f445574",
+      "lines": "8dcbc3277210b644",
+      "headings": "5383367a1a110f32",
+      "sections": "445e7e290484d693",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/blog-plain-markdown.md": {
+      "source": "ba161b8d8db0df76",
+      "lines": "ae0a85394ad52c4c",
+      "headings": "5383367a1a110f32",
+      "sections": "16a3fc827ccbbd28",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/code-preservation.export.md": {
+      "source": "63f6e6976efc05a1",
+      "lines": "8584ccb9d97c9040",
+      "headings": "d47cf4f5eb8e457e",
+      "sections": "3040e3c97e738a8a",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/code-preservation.md": {
+      "source": "63f6e6976efc05a1",
+      "lines": "8584ccb9d97c9040",
+      "headings": "d47cf4f5eb8e457e",
+      "sections": "3040e3c97e738a8a",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/component-tour.export.md": {
+      "source": "233787ffe516e63d",
+      "lines": "a0223caff62c4413",
+      "headings": "01835bc2508b9e13",
+      "sections": "a3e857eb0f7b1b24",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/component-tour.md": {
+      "source": "bc96807845c0a19a",
+      "lines": "cc0257b5ec90f742",
+      "headings": "01835bc2508b9e13",
+      "sections": "10ab85fd74430a2d",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/docs-markdown-mdx.export.md": {
+      "source": "34287911044a3da0",
+      "lines": "7c9c1bb3ba9e9f85",
+      "headings": "caa8f67e002f1d74",
+      "sections": "321d2b69537d0901",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/docs-markdown-mdx.md": {
+      "source": "2fdbc1f3cd1f630a",
+      "lines": "00a20d33daaa7a5a",
+      "headings": "caa8f67e002f1d74",
+      "sections": "af8c3267f96e672e",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/import-intro-ar.export.md": {
+      "source": "8813e4f18961efb0",
+      "lines": "690727721d95023d",
+      "headings": "8c8926fba79b9556",
+      "sections": "50f9a3b8034942eb",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/import-intro-ar.md": {
+      "source": "8813e4f18961efb0",
+      "lines": "690727721d95023d",
+      "headings": "8c8926fba79b9556",
+      "sections": "50f9a3b8034942eb",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/round-trip.export.md": {
+      "source": "a3397abc9e2258b0",
+      "lines": "c2c0502c776847c6",
+      "headings": "d3d66c3acd1d8fdc",
+      "sections": "435204f47f64223e",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/__golden__/round-trip.md": {
+      "source": "10dc14a99c9f6af3",
+      "lines": "6e2cc8735d55fa65",
+      "headings": "d3d66c3acd1d8fdc",
+      "sections": "e86dc0be437fe815",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/blog-plain-markdown.mdx": {
+      "source": "c31fcf6d127afbd6",
+      "lines": "8dcbc3277210b644",
+      "headings": "5383367a1a110f32",
+      "sections": "445e7e290484d693",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/code-preservation.mdx": {
+      "source": "8681cc16f5960fde",
+      "lines": "3e61ab3e8d458912",
+      "headings": "d47cf4f5eb8e457e",
+      "sections": "3040e3c97e738a8a",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/component-tour.mdx": {
+      "source": "f27f86cb91b4e536",
+      "lines": "fb26c47dc7ddbf2c",
+      "headings": "3f11607c282870c0",
+      "sections": "2fa800fa3c8d39b2",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/docs-markdown-mdx.mdx": {
+      "source": "34287911044a3da0",
+      "lines": "7c9c1bb3ba9e9f85",
+      "headings": "caa8f67e002f1d74",
+      "sections": "321d2b69537d0901",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/import-intro-ar.mdx": {
+      "source": "65865857eaf23aa7",
+      "lines": "1b26f7a555f5526a",
+      "headings": "8c8926fba79b9556",
+      "sections": "c75c0873a53c303a",
+      "open": false
+    },
+    "packages/shared/src/__fixtures__/public-markdown/round-trip.mdx": {
+      "source": "52be8453eccc9de5",
+      "lines": "47cb8489082eb85a",
+      "headings": "d3d66c3acd1d8fdc",
+      "sections": "435204f47f64223e",
+      "open": false
+    },
+    "pt-BR.json#newsite_starter_faq_content": {
+      "source": "a50a8ecb0241eca4",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "ce2f6f660b679b30",
+      "sections": "7a61099fd552015a",
+      "open": false
+    },
+    "pt-BR.json#newsite_starter_firstguide_content": {
+      "source": "d091704906a4c19c",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "bca317768573ab66",
+      "sections": "92dd0a67048a8379",
+      "open": false
+    },
+    "pt-BR.json#newsite_starter_gettingstarted_content": {
+      "source": "16f7da76c7934be1",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "3b9eb9ae009452f7",
+      "sections": "04272da08fc5ee10",
+      "open": false
+    },
+    "pt-BR.json#newsite_starter_guides_content": {
+      "source": "42baac691e2a0111",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "7222da6c81b5b6a5",
+      "sections": "209fedec82460e6d",
+      "open": false
+    },
+    "pt-BR.json#newsite_starter_welcome_content": {
+      "source": "42327b6aafdfe53e",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "1ef8a8b5f0c1f9d6",
+      "sections": "1d5b90338a7d5198",
+      "open": false
+    },
+    "ru.json#newsite_starter_faq_content": {
+      "source": "2e3f6f149a63c9cd",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "9cfc42ab384e3bbe",
+      "sections": "0b9ae0a3fbd895a3",
+      "open": false
+    },
+    "ru.json#newsite_starter_firstguide_content": {
+      "source": "627e5fa25788a51c",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "5f2abb85cb0a9004",
+      "sections": "069b1e3968d529a9",
+      "open": false
+    },
+    "ru.json#newsite_starter_gettingstarted_content": {
+      "source": "7f41171aa5e3b350",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "f023ceae4783ec18",
+      "sections": "b9e908379bc35cc5",
+      "open": false
+    },
+    "ru.json#newsite_starter_guides_content": {
+      "source": "20fb9bede69ef61a",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "93f2fcb00aeac03f",
+      "sections": "bb8388fed4940f42",
+      "open": false
+    },
+    "ru.json#newsite_starter_welcome_content": {
+      "source": "5edeab1b09aceab8",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "28a5238d1185684a",
+      "sections": "abe3ded354e8a442",
+      "open": false
+    },
+    "scripts/organizations-merge.md": {
+      "source": "eb8ee877ae68fd86",
+      "lines": "5dbd6b47ace77e56",
+      "headings": "71ffdc329730a783",
+      "sections": "293416810c84560a",
+      "open": false
+    },
+    "tests/integration/editor-p2/README.md": {
+      "source": "6bfffcaa3237d5e1",
+      "lines": "c85bfdc3e4c8333f",
+      "headings": "a1c26e8bb0789c85",
+      "sections": "700fbdf00791dca3",
+      "open": false
+    },
+    "tests/integration/editor-video-blocks/README.md": {
+      "source": "e19d4e8d0cfaa95a",
+      "lines": "415594237980052e",
+      "headings": "b59778f20fd1f8eb",
+      "sections": "0f5842205e6bf915",
+      "open": false
+    },
+    "tests/integration/import-fidelity/README.md": {
+      "source": "3e3e4e8a56eb00da",
+      "lines": "a6412b54f52f4910",
+      "headings": "4f53cda18c2baa0c",
+      "sections": "4f53cda18c2baa0c",
+      "open": false
+    },
+    "tests/integration/maxio-upload/README.md": {
+      "source": "6841ea62cca894f5",
+      "lines": "a7d351f3de399c74",
+      "headings": "81d1af7f03f08048",
+      "sections": "17d5c00354ea88a7",
+      "open": false
+    },
+    "tests/integration/reader-deferred-controls/README.md": {
+      "source": "7e3732d7b2273947",
+      "lines": "b763754f7df1ff90",
+      "headings": "2e7707935e297c1c",
+      "sections": "8c88d2aea9dc7cf3",
+      "open": false
+    },
+    "tests/integration/reader-navigation/README.md": {
+      "source": "39e9c50ba34a5a28",
+      "lines": "89820030b81190da",
+      "headings": "852e5d5e16452c0f",
+      "sections": "ab5d5456e0160200",
+      "open": false
+    },
+    "tests/integration/reader-search-keystrokes/README.md": {
+      "source": "780407ca35a82421",
+      "lines": "4bf5fa41550d09fd",
+      "headings": "fee5d12cb7ea3089",
+      "sections": "ba106636cab893d9",
+      "open": false
+    },
+    "tests/integration/reader-video-embeds/README.md": {
+      "source": "ee7eecd47085e583",
+      "lines": "10b43d3f1a1db59c",
+      "headings": "f090f7ca25d59709",
+      "sections": "e01a54042140e09f",
+      "open": false
+    },
+    "tests/integration/ssr-locale-direction/README.md": {
+      "source": "46c8f6f337983f03",
+      "lines": "d9914f1fe0c99c73",
+      "headings": "64c428d27d710b3a",
+      "sections": "9a55b1e2667e28b4",
+      "open": false
+    },
+    "ur.json#newsite_starter_faq_content": {
+      "source": "9bb1e36058a53034",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "fd48f100ee2d58b2",
+      "sections": "b3fd55737c108512",
+      "open": false
+    },
+    "ur.json#newsite_starter_firstguide_content": {
+      "source": "08d01508db443c5d",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "926fdd053b2ad76c",
+      "sections": "fbe624e1b0c8a779",
+      "open": false
+    },
+    "ur.json#newsite_starter_gettingstarted_content": {
+      "source": "21cb5712a781f6d3",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "aa79a227925502a2",
+      "sections": "c1044648788228fa",
+      "open": false
+    },
+    "ur.json#newsite_starter_guides_content": {
+      "source": "7125258b1fda6e31",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "9d4cca2e13118643",
+      "sections": "31a0d831d0662a71",
+      "open": false
+    },
+    "ur.json#newsite_starter_welcome_content": {
+      "source": "ef9e3e57fed9f4ad",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "c8dabc443a9e842d",
+      "sections": "55af19fe40f34cc5",
+      "open": false
+    },
+    "zh-CN.json#newsite_starter_faq_content": {
+      "source": "adc5995f17284a26",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "6b1bceef6555a4ef",
+      "sections": "76c0fe054359a660",
+      "open": false
+    },
+    "zh-CN.json#newsite_starter_firstguide_content": {
+      "source": "1064290394a25bef",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "62d97db13d608902",
+      "sections": "1be0ce522a3a0e07",
+      "open": false
+    },
+    "zh-CN.json#newsite_starter_gettingstarted_content": {
+      "source": "eb5c3d34e7b2ea07",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "c0f4321cd6325e30",
+      "sections": "cfb38d775e8bb25e",
+      "open": false
+    },
+    "zh-CN.json#newsite_starter_guides_content": {
+      "source": "357ddfe718777cd2",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "9ffc6c1a02c4ef03",
+      "sections": "ba6f5112eee66c2c",
+      "open": false
+    },
+    "zh-CN.json#newsite_starter_welcome_content": {
+      "source": "014295c63c07df4c",
+      "lines": "20fdf64da3cd2c78",
+      "headings": "fd8631215c85851d",
+      "sections": "2f033a3496d675fd",
+      "open": false
+    }
+  }
+}

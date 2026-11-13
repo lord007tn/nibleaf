@@ -50,6 +50,18 @@ describe('fencedMarkdownLines', () => {
     expect(flags('- ```md\n  example\n  - ```\n  still code\n  ```\nafter')).toBe('111110');
     expect(flags('```md\n> ```\nstill\n```\nafter')).toBe('11110');
   });
+  it('reads a line indented 4+ columns past its containers or list item as indented code, never a fence', () => {
+    expect(flags('>```js\n    [literal](/x)\n    ```\n\n## After\n\n<iframe></iframe>')).toBe('1000000');
+    expect(flags('Text\n\n    ```js\n    # x\n\n## After')).toBe('000000');
+    expect(flags('> a\n>\n>     ```js\n>     # x\n\n## After')).toBe('000000');
+    // Indented only as far as the list item it continues: a fence.
+    expect(flags('- a\n\n    ```js\n    # x\n    ```\nafter')).toBe('001110');
+    expect(flags('1. a\n   - b\n\n     ```js\n     # x\n     ```\nafter')).toBe('0001110');
+    expect(flags('> 1. a\n>\n>    ```js\n>    # x\n>    ```\nafter')).toBe('001110');
+  });
+  it('closes a fence in deeply nested list items', () => {
+    expect(flags('- - - ```\n      x\n      ```\n## After')).toBe('1110');
+  });
   it('still accepts any indentation for a fence in a component, as authors write it', () => {
     expect(flags('<Tabs>\n    ```js\n    # not a heading\n    ```\n</Tabs>\n# Heading')).toBe('011100');
   });

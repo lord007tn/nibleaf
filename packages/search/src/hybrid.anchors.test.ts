@@ -1,6 +1,6 @@
 import { readerSections } from '@nibleaf/shared/reader-headings';
 import { extractHeadings } from '@nibleaf/shared/site';
-import { AFTER_FENCE, FENCE_CONTAINER_REPROS } from '@nibleaf/shared/testing/fence-cases';
+import { AFTER_FENCE, FENCE_CONTAINER_REPROS, INDENTED_FENCE_AFTER_QUOTE } from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { validateCitedAnswer } from './answer-validation';
 import { chunkSearchDocument, type SearchChunkSource } from './hybrid';
@@ -137,6 +137,12 @@ describe('sections after a fence in a quote or list item (#587)', () => {
     const content = `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.`;
     expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
     // Without the reader's sections, the search package finds the heading itself.
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
+  });
+
+  it('index the section after indented code that looks like a fence, once a quote has ended (#590 council)', () => {
+    const content = `${INDENTED_FENCE_AFTER_QUOTE}\n\nThe after section mentions zebras.`;
+    expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
     expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
   });
 });

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { fencedMarkdownLines } from './markdown-code';
-import { FENCE_CASE_COUNT, FENCE_CASE_SEED, fenceCases } from './testing/fence-cases';
+import { FENCE_CASE_COUNT, FENCE_CASE_SEED, fenceCases, indentedLookalikeCases } from './testing/fence-cases';
 import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
 
 const overrunHash = (indices: readonly number[]) => createHash('sha256').update(indices.join(',')).digest('hex');
@@ -62,3 +62,19 @@ it('closes every generated fence in quotes and lists before the sentinel, and ke
   expect(mainOverruns).toHaveLength(606);
   expect(overrunHash(mainOverruns)).toBe('6c8f4844c08ba09312743ce66e36ff5986603630ff723a66d5b87f78e3232422');
 }, 20_000);
+
+it('never opens a fence on indented code that looks like one, in quotes and lists (#590 council)', ({ task }) => {
+  const cases = indentedLookalikeCases();
+  const failures: Array<{ index: number; reason: string; source: string }> = [];
+  let mainOverruns = 0;
+  for (const { index, source, lookalikes, fenced } of cases) {
+    const lines = source.split('\n');
+    const code = fencedMarkdownLines(lines);
+    if (code.at(-1)) failures.push({ index, reason: 'the sentinel is code', source });
+    for (const line of lookalikes) if (code[line]) failures.push({ index, reason: `indented line ${line} opened a fence`, source });
+    for (const line of fenced) if (!code[line]) failures.push({ index, reason: `fence line ${line} is exposed`, source });
+    if (mainFencedMarkdownLines(lines).at(-1)) mainOverruns++;
+  }
+  Object.assign(task.meta, { indentedLookalikes: { cases: cases.length, mainOverruns } });
+  expect(failures.slice(0, 12), `${failures.length} failures`).toEqual([]);
+});

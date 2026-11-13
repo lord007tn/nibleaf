@@ -102,3 +102,62 @@ export const FENCE_CONTAINER_REPROS: ReadonlyArray<readonly [name: string, sourc
 
 /** A heading and a video after the code, which the reader must keep (#587). */
 export const AFTER_FENCE = '\n\n## After\n\n<iframe src="https://www.youtube.com/embed/M7lc1UVf-VE" title="Tour"></iframe>';
+
+/** Council P2 on #590: after a quote ends a fence, an indented line that looks
+ * like a fence is indented code (CommonMark), not a new, unclosed fence. */
+export const INDENTED_FENCE_AFTER_QUOTE =
+  '>```js\n    [literal](/x)\n    ```\n\n## After\n\n<iframe src="https://www.youtube.com/embed/M7lc1UVf-VE"></iframe>';
+
+export interface IndentedLookalikeCase {
+  index: number;
+  source: string;
+  /** Lines that look like fences but are indented code: never fenced. */
+  lookalikes: number[];
+  /** Lines of a real fence before them. */
+  fenced: number[];
+}
+
+/**
+ * Indented code whose lines look like fences, in quotes and list items: after a
+ * blank line inside the container, or after a quote that ended a real fence.
+ * Each is followed by sentinel prose. A separate category from `fenceCases`, so
+ * that generator (and the numbers pinned on it) stays as #582 made it.
+ */
+export const indentedLookalikeCases = (seed = FENCE_CASE_SEED, count = 1024): IndentedLookalikeCase[] => {
+  let state = seed ^ 0x2f_6b_1d_47;
+  const next = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return state >>> 0;
+  };
+  const choose = <T>(values: readonly [T, ...T[]]): T => values[next() % values.length] ?? values[0];
+  const cases: IndentedLookalikeCase[] = [];
+  for (let index = 0; index < count; index++) {
+    const fence = choose(['`', '~'] as const).repeat(3 + (next() % 3));
+    const closed = next() % 2 === 0;
+    const sentinel = `[Sentinel ${index}](/sentinel)`;
+    if (index % 4 === 0) {
+      // A quoted fence that a line outside the quote ends, then indented code.
+      const quotes = Array.from({ length: 1 + (next() % 3) }, () => choose(['>', '> '] as const)).join('');
+      const lines = [`${quotes}${fence}js`, '    [literal](/x)', `    ${fence}md`, ...(closed ? [`    ${fence}`] : []), '', sentinel];
+      cases.push({ index, source: lines.join('\n'), fenced: [0], lookalikes: closed ? [2, 3] : [2] });
+      continue;
+    }
+    const parts = Array.from({ length: next() % 4 }, () => choose(['>', '> ', '- ', '1. '] as const));
+    const prefix = parts.join('');
+    const continuation = parts.map((part) => (part === '- ' ? '  ' : part === '1. ' ? '   ' : '> ')).join('');
+    const extra = ' '.repeat(next() % 3);
+    const lines = [
+      `${prefix}Example:`,
+      continuation.trimEnd(),
+      `${continuation}    ${extra}${fence}md`,
+      `${continuation}    ${extra}[Literal](/literal)`,
+      ...(closed ? [`${continuation}    ${extra}${fence}`] : []),
+      '',
+      sentinel,
+    ];
+    cases.push({ index, source: lines.join('\n'), fenced: [], lookalikes: closed ? [2, 4] : [2] });
+  }
+  return cases;
+};

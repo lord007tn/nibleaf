@@ -1,5 +1,5 @@
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
-import { fenceCases } from '@nibleaf/shared/testing/fence-cases';
+import { fenceCases, indentedLookalikeCases } from '@nibleaf/shared/testing/fence-cases';
 import MarkdownIt from 'markdown-it';
 import { expect, it } from 'vitest';
 
@@ -45,4 +45,12 @@ it('reads generated container fences as CommonMark does, except a fence indented
   }
   expect(fenced).toBe(2457);
   expect(differing).toHaveLength(33);
+});
+
+it('reads indented code that looks like a fence as CommonMark does: never a fence (#590 council)', () => {
+  const differing = indentedLookalikeCases().filter(({ source }) => {
+    const lines = source.split('\n');
+    return fencedMarkdownLines(lines).some((isCode, line) => isCode !== commonMarkCode(lines).fence[line]);
+  });
+  expect(differing.map(({ index, source }) => ({ index, source }))).toEqual([]);
 });

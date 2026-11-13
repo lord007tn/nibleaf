@@ -1,77 +1,62 @@
-import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 import { fencedMarkdownLines } from './markdown-code';
-import { AFTER_FENCE, FENCE_CONTAINER_REPROS } from './testing/fence-cases';
-import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
+import { readerSections } from './reader-headings';
+import { extractHeadings } from './site';
+import { markdownCorpus } from './testing/markdown-corpus';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
-const read = (path: string) => readFileSync(join(root, path), 'utf8');
+const REGENERATE = 'node --import tsx packages/shared/src/__fixtures__/markdown-code.corpus.generate.mjs';
 
-/** Every Markdown page in the repository: tracked .md/.mdx files (docs, blog,
- * guides, fixtures, READMEs), the starter pages in every locale, and the
- * multi-line strings of the shared JSON fixtures (component examples). */
-const corpus = (): Array<[name: string, source: string]> => {
-  const files = execFileSync('git', ['ls-files', '-z', '--', '*.md', '*.mdx'], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 26 })
-    .split('\0')
-    .filter(Boolean);
-  const documents: Array<[string, string]> = files.map((path) => [path, read(path)]);
-  for (const file of readdirSync(join(root, 'packages/i18n/messages')).filter((name) => name.endsWith('.json'))) {
-    const messages = JSON.parse(read(`packages/i18n/messages/${file}`)) as Record<string, unknown>;
-    for (const [key, value] of Object.entries(messages))
-      if (/^newsite_starter_\w+_content$/.test(key) && typeof value === 'string') documents.push([`${file}#${key}`, value]);
-  }
-  const starter = /STARTER_GETTING_STARTED_CONTENT = `([^`]*)`/.exec(read('packages/auth/src/starter-content.ts'))?.[1];
-  if (starter) documents.push(['packages/auth/src/starter-content.ts#STARTER_GETTING_STARTED_CONTENT', starter]);
-  const strings = (value: unknown, at: string): void => {
-    if (typeof value === 'string' && value.includes('\n')) documents.push([at, value]);
-    else if (value && typeof value === 'object') for (const [key, child] of Object.entries(value)) strings(child, `${at}.${key}`);
+interface MainPage {
+  source: string;
+  lines: string;
+  headings: string;
+  sections: string;
+  open: boolean;
+}
+/** Main 93408093's output for every page, recorded by the script in REGENERATE. */
+const main = JSON.parse(readFileSync(new URL('./__fixtures__/markdown-code.corpus.main-93408093.json', import.meta.url), 'utf8')) as {
+  revision: string;
+  guard: { reproHeadings: number; reproSections: number };
+  pages: Record<string, MainPage>;
+};
+const hash = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 16);
+
+it('leaves every ordinary page in the repository as main read it (#587)', () => {
+  // Main lost the heading after #587's first repro: the hashes are main's output.
+  expect(main.guard).toEqual({ reproHeadings: 0, reproSections: 0 });
+
+  const documents = markdownCorpus(root);
+  const names = new Set(documents.map(([name]) => name));
+  const pageSet = {
+    added: [...names].filter((name) => !main.pages[name]),
+    removed: Object.keys(main.pages).filter((name) => !names.has(name)),
+    changed: documents.filter(([name, source]) => main.pages[name] && main.pages[name].source !== hash(source)).map(([name]) => name),
   };
-  for (const file of readdirSync(join(root, 'packages/shared/src/__fixtures__')).filter((name) => name.endsWith('.json')))
-    strings(JSON.parse(read(`packages/shared/src/__fixtures__/${file}`)), `packages/shared/src/__fixtures__/${file}`);
-  return documents;
-};
+  expect(pageSet, `The Markdown corpus changed: regenerate main's output with \`${REGENERATE}\``).toEqual({ added: [], removed: [], changed: [] });
+  expect(documents.length).toBeGreaterThan(300);
 
-/** Whether a scanner leaves a fence open at the end of the document. */
-const leftOpen = (scan: (lines: readonly string[]) => boolean[], source: string) => Boolean(scan([...source.split('\n'), '']).at(-1));
-
-type HeadingModules = { extractHeadings: (source: string) => unknown[]; readerSections: (source: string) => unknown[] };
-const headingModules = async (): Promise<HeadingModules> => {
-  const [{ extractHeadings }, { readerSections }] = await Promise.all([import('./site'), import('./reader-headings')]);
-  return { extractHeadings, readerSections };
-};
-
-it('leaves every ordinary page in the repository as main read it (#587)', async () => {
-  const current = await headingModules();
-  vi.resetModules();
-  vi.doMock('./markdown-code', async (original) => ({
-    ...(await original<typeof import('./markdown-code')>()),
-    fencedMarkdownLines: mainFencedMarkdownLines,
-  }));
-  const main = await headingModules();
-  vi.doUnmock('./markdown-code');
-  vi.resetModules();
-  // The two module sets really differ: main loses #587's heading, the fix keeps it.
-  const repro = `${FENCE_CONTAINER_REPROS[0]?.[1]}${AFTER_FENCE}`;
-  expect([main.extractHeadings(repro), main.readerSections(repro)]).toEqual([[], []]);
-  expect([current.extractHeadings(repro).length, current.readerSections(repro).length]).toEqual([1, 1]);
-
-  const documents = corpus();
-  expect(documents.length).toBeGreaterThan(250);
-  const differing: Array<{ name: string; reason: string }> = [];
+  const differing: Array<{ name: string; reason: string; outputs: string[] }> = [];
   for (const [name, source] of documents) {
+    const page = main.pages[name] as MainPage;
     const lines = source.split('\n');
-    const same =
-      JSON.stringify(fencedMarkdownLines(lines)) === JSON.stringify(mainFencedMarkdownLines(lines)) &&
-      JSON.stringify(current.extractHeadings(source)) === JSON.stringify(main.extractHeadings(source)) &&
-      JSON.stringify(current.readerSections(source)) === JSON.stringify(main.readerSections(source));
-    if (same) continue;
-    const overran = leftOpen(mainFencedMarkdownLines, source) && !leftOpen(fencedMarkdownLines, source);
-    differing.push({ name, reason: overran ? 'main overran to the end of the page' : 'other' });
+    const sameLines = hash(fencedMarkdownLines(lines).map(Number).join('')) === page.lines;
+    const sameHeadings = hash(JSON.stringify(extractHeadings(source))) === page.headings;
+    // readerSections reads the scanner only through fencedMarkdownLines on these
+    // same lines, so with identical flags it cannot differ; its full parse (the
+    // slow part) runs only for a page whose flags changed.
+    if (sameLines && sameHeadings) continue;
+    const sameSections = hash(JSON.stringify(readerSections(source))) === page.sections;
+    const overran = page.open && !fencedMarkdownLines([...lines, '']).at(-1);
+    const outputs = [!sameLines && 'fence lines', !sameHeadings && 'extractHeadings', !sameSections && 'readerSections'].filter(
+      (output): output is string => Boolean(output),
+    );
+    differing.push({ name, reason: overran ? 'main overran to the end of the page' : 'other', outputs });
   }
-  console.info(`fence corpus: ${documents.length} documents, ${differing.length} differ`, differing);
+  console.info(`fence corpus: ${documents.length} documents, ${differing.length} differ from main ${main.revision.slice(0, 8)}`, differing);
   // Only a page where main's fence never closed may read differently now.
   expect(differing.filter(({ reason }) => reason !== 'main overran to the end of the page')).toEqual([]);
-}, 60_000);
+});
