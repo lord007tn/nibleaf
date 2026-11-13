@@ -3,7 +3,7 @@ import { eraseProject, TenantErasureProjectNotFoundError, TenantUsageDeletionPen
 import { Prisma, prisma } from '@nibleaf/database';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
-import { isProjectHostnameAllowed } from '@nibleaf/shared/project-hostname';
+import { isProjectHostnameAllowed, projectSystemHosts } from '@nibleaf/shared/project-hostname';
 import { deriveSiteSlug } from '@nibleaf/shared/site-slug';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import type { CreateProjectBody, ProjectConfigUpdate, projectAvailabilityQuery, UpdateProjectBody } from '@nibleaf/validators';
@@ -44,17 +44,7 @@ export const assertProjectInOrg = async (organizationId: string, projectId: stri
 export { resolveSiteAccess as assertProjectAccess } from '@/lib/access';
 
 // Reserve configured endpoints even when their labels differ from Cloud defaults.
-const systemHosts = [
-  env.APP_URL,
-  env.API_URL,
-  env.ADMIN_URL,
-  env.SITE_BASE_DOMAIN,
-  env.CUSTOM_DOMAIN_CNAME_TARGET,
-  env.STORAGE_PUBLIC_URL,
-  env.CDN_URL,
-  env.BETTER_AUTH_URL,
-  env.STORAGE_PUBLIC_ENDPOINT,
-];
+const systemHosts = projectSystemHosts(env);
 const assertProjectSlug = (slug: string) => {
   if (!isProjectHostnameAllowed(slug, systemHosts)) throw badRequest('That site address is reserved or invalid.', { reason: 'slug_reserved' });
 };
@@ -344,8 +334,11 @@ const mergeConfig = (existing: Record<string, unknown>, incoming: ProjectConfigU
 
 export const updateProject = async (organizationId: string, id: string, body: UpdateProjectBody) => {
   const project = await assertProjectInOrg(organizationId, id);
-  if (body.slug !== undefined) assertProjectSlug(body.slug);
+  // Only a new address is judged: a site keeps the one it has even when that
+  // address was reserved after it was given (the first sign-up's starter site
+  // was once `docs`), so saving other fields never fails on it.
   if (body.slug !== undefined && body.slug !== project.slug) {
+    assertProjectSlug(body.slug);
     const existing = await prisma.project.findFirst({ where: { slug: body.slug, id: { not: id } }, select: { id: true } });
     if (existing) {
       throw conflict('That deployment name is already in use.', { slug: body.slug });
