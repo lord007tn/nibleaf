@@ -4977,5 +4977,22 @@
   "settings_aiassistants_watch_again": "重新等待",
   "settings_aiassistants_keysloaderror": "无法加载个人密钥。已登录的应用仍会显示。",
   "settings_aiassistants_appsloaderror": "无法加载已登录的应用。个人密钥仍会显示。",
-  "oauth_consent_can_aiconversations": "读取已保存的 Ask AI 问题和回答。其中的电子邮件地址、电话号码和密钥会被删除，但姓名、地址和其他个人信息可能仍会保留。"
+  "oauth_consent_can_aiconversations": "读取已保存的 Ask AI 问题和回答。其中的电子邮件地址、电话号码和密钥会被删除，但姓名、地址和其他个人信息可能仍会保留。",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 项未发布的更改"
+      }
+    }
+  ],
+  "pending_siteonly": "导航或设置有未发布的更改",
+  "pending_readersstillsee": "读者看到的仍是版本 {version}。",
+  "pending_review": "检查并发布",
+  "pending_draft": "尚未上线",
+  "overview_col_status": "状态",
+  "pagestatus_draft": "未发布",
+  "pagestatus_changed": "已更改",
+  "pagestatus_live": "已上线"
 }

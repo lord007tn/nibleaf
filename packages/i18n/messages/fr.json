@@ -5045,5 +5045,23 @@
   "settings_aiassistants_watch_again": "Attendre à nouveau",
   "settings_aiassistants_keysloaderror": "Impossible de charger les clés personnelles. Les apps connectées restent affichées.",
   "settings_aiassistants_appsloaderror": "Impossible de charger les apps connectées. Les clés personnelles restent affichées.",
-  "oauth_consent_can_aiconversations": "Lire les questions et réponses Ask AI enregistrées. Les adresses e-mail, numéros de téléphone et clés sont retirés, mais des noms, des adresses et d’autres données personnelles peuvent subsister."
+  "oauth_consent_can_aiconversations": "Lire les questions et réponses Ask AI enregistrées. Les adresses e-mail, numéros de téléphone et clés sont retirés, mais des noms, des adresses et d’autres données personnelles peuvent subsister.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} modification non publiée",
+        "form=*": "{count} modifications non publiées"
+      }
+    }
+  ],
+  "pending_siteonly": "Modifications non publiées de la navigation ou des paramètres",
+  "pending_readersstillsee": "Les lecteurs voient toujours la version {version}.",
+  "pending_review": "Vérifier et publier",
+  "pending_draft": "Pas encore en ligne",
+  "overview_col_status": "Statut",
+  "pagestatus_draft": "Non publiée",
+  "pagestatus_changed": "Modifiée",
+  "pagestatus_live": "En ligne"
 }

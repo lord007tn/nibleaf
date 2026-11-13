@@ -5045,5 +5045,23 @@
   "settings_aiassistants_watch_again": "Volver a esperar",
   "settings_aiassistants_keysloaderror": "No se pudieron cargar las claves personales. Las apps con sesión iniciada siguen en la lista.",
   "settings_aiassistants_appsloaderror": "No se pudieron cargar las apps con sesión iniciada. Las claves personales siguen en la lista.",
-  "oauth_consent_can_aiconversations": "Leer las preguntas y respuestas guardadas de Ask AI. Se quitan los correos electrónicos, los números de teléfono y las claves, pero pueden quedar nombres, direcciones y otros datos personales."
+  "oauth_consent_can_aiconversations": "Leer las preguntas y respuestas guardadas de Ask AI. Se quitan los correos electrónicos, los números de teléfono y las claves, pero pueden quedar nombres, direcciones y otros datos personales.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} cambio sin publicar",
+        "form=*": "{count} cambios sin publicar"
+      }
+    }
+  ],
+  "pending_siteonly": "Cambios sin publicar en la navegación o la configuración",
+  "pending_readersstillsee": "Los lectores todavía ven la versión {version}.",
+  "pending_review": "Revisar y publicar",
+  "pending_draft": "Aún no publicado",
+  "overview_col_status": "Estado",
+  "pagestatus_draft": "Sin publicar",
+  "pagestatus_changed": "Modificada",
+  "pagestatus_live": "Publicada"
 }

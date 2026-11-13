@@ -12,7 +12,7 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';
-import { type CSSProperties, Fragment, type ReactNode, useId, useState } from 'react';
+import { type CSSProperties, Fragment, type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { OrganizationSwitcher } from '@/components/app/org-switcher/organization-switcher';
@@ -21,6 +21,7 @@ import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { ShellSearchButton } from '@/components/app/shell-search-button';
 import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
+import { PublishLauncherContext } from '@/features/publish/components/publish-launcher';
 import { useDeployments, useOrganizationOfProject, usePendingChanges, useProject } from '@/hooks/api';
 import type { Project } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
@@ -34,13 +35,22 @@ export function PublishControl({
   initialPublishOpen = false,
   beforePublish,
   currentPage,
+  openRequest = 0,
+  compact = false,
 }: {
   project: Project;
   currentPage?: PublishPage;
   initialPublishOpen?: boolean;
   beforePublish?: () => Promise<void> | Promise<boolean>;
+  /** Each increment asks to open the publish sheet (see `usePublishLauncher`). */
+  openRequest?: number;
+  /** Phones: the button keeps its icon and count; its name stays "Publish". */
+  compact?: boolean;
 }) {
   const [publishOpen, setPublishOpen] = useState(initialPublishOpen);
+  useEffect(() => {
+    if (openRequest > 0) setPublishOpen(true);
+  }, [openRequest]);
   const [deployOpen, setDeployOpen] = useState(false);
   const [publishedAttribution, setPublishedAttribution] = useState<FirstPublishAttribution | null>(null);
   const [publishedDeploymentId, setPublishedDeploymentId] = useState<string | null>(null);
@@ -97,7 +107,7 @@ export function PublishControl({
         size="sm"
       >
         <Rocket className="size-3.5" />
-        <span>{building ? t('project.publishing') : t('project.publish')}</span>
+        <span className={compact ? 'hidden sm:inline' : undefined}>{building ? t('project.publishing') : t('project.publish')}</span>
         {changeCount > 0 ? (
           <span aria-hidden className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">
             {changeCount}
@@ -162,8 +172,9 @@ function sectionKeysFromPathname(pathname: string): MessageKey[] {
 }
 
 /** The per-site shell: a left sidebar (switcher + sections + account) with a slim
- *  content header. Publishing lives ONLY in the editor (Mintlify-style); the
- *  dashboard header just offers a live-site preview. */
+ *  content header. The header offers Preview and Publish on every site page
+ *  (P1-DASH-005): unpublished changes are never only visible in the editor.
+ *  The editor and the draft preview render their own Publish. */
 export function ProjectLayout({ projectId, children }: { projectId: string; children: ReactNode }) {
   const t = useT();
   const { data: project } = useProject(projectId);
@@ -177,6 +188,10 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   const sectionKeys = sectionKeysFromPathname(pathname);
   // The draft preview marks its own article area as the skip target, past its page list.
   const pageOwnsSkipTarget = /\/preview\/?$/.test(pathname);
+  const [publishRequest, setPublishRequest] = useState(0);
+  // The draft preview has Publish in its own bar; one per screen.
+  const headerPublish = project && !pageOwnsSkipTarget;
+  const launcher = useMemo(() => (headerPublish ? () => setPublishRequest((count) => count + 1) : null), [headerPublish]);
   if (pathname.endsWith('/editor')) {
     return <div className="h-screen overflow-hidden">{children}</div>;
   }
@@ -237,12 +252,13 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             >
               <Eye aria-hidden className="size-3.5" /> <span className="hidden sm:inline">{t('project.preview')}</span>
             </Button>
+            {headerPublish ? <PublishControl compact openRequest={publishRequest} project={project} /> : null}
           </div>
         </header>
         {/* The page's one main landmark, after the header. The draft preview puts
             the skip target on its own article area instead. */}
         <main className="flex-1 outline-none" id={pageOwnsSkipTarget ? undefined : 'main-content'} tabIndex={pageOwnsSkipTarget ? undefined : -1}>
-          {children}
+          <PublishLauncherContext value={launcher}>{children}</PublishLauncherContext>
         </main>
       </SidebarInset>
     </SidebarProvider>
