@@ -1,10 +1,10 @@
 import { posix } from 'node:path';
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
-import { parseVideoUrl, videoEmbedSrc } from '@nibleaf/shared/video-embeds';
 import { parse as parseYaml } from 'yaml';
 import { ImportError } from '../../errors';
 import { GitBookImportBudget } from './gitbook-budget';
 import { liquidPairs, liquidTokens, stripHeadingEnd } from './gitbook-tokens';
+import { decodeImportEntities, type ImportFidelityIssue, importEmbed, normalizeImportFidelity } from './import-fidelity';
 import { markdownReferences, replaceImportReferences } from './import-references';
 
 /**
@@ -107,18 +107,8 @@ const tagAttributes = (source: string): Record<string, string> => {
 
 const htmlAttribute = (tag: string, name: string): string | undefined => {
   const value = Object.entries(tagAttributes(tag)).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];
-  return value === undefined ? undefined : decodeEntities(value);
+  return value === undefined ? undefined : decodeImportEntities(value);
 };
-
-const decodeEntities = (value: string): string =>
-  value
-    .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) => String.fromCodePoint(Math.min(0x10_ff_ff, Number.parseInt(hex, 16))))
-    .replace(/&#(\d+);/g, (_match, decimal: string) => String.fromCodePoint(Math.min(0x10_ff_ff, Number(decimal))))
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
 
 /** decodeURIComponent that keeps malformed escapes (`100%`) as written. */
 export const safeDecodeUri = (value: string): string => {
@@ -136,7 +126,7 @@ const HTML_TAGS = new Set(
 );
 
 export const plainGitBookText = (value: string): string => {
-  const decoded = decodeEntities(value);
+  const decoded = decodeImportEntities(value);
   const closingNames = new Set([...decoded.matchAll(/<\/([A-Za-z][\w-]*)>/g)].map((match) => match[1]?.toLowerCase()));
   const text: string[] = [];
   for (let index = 0; index < decoded.length; index++) {
@@ -195,6 +185,7 @@ const KNOWN_TAGS = new Set([
   'update',
   'code',
   'embed',
+  'video',
   'file',
   'content-ref',
   'include',
@@ -215,6 +206,7 @@ export interface GitBookConversionContext {
 export interface GitBookConversionResult {
   content: string;
   warnings: string[];
+  issues: ImportFidelityIssue[];
 }
 
 /** `{% code title="x" %}` annotates the fence that follows it. Fences must be
@@ -353,11 +345,13 @@ const liftHeading = (body: string): { title?: string; body: string } => {
  */
 export const convertGitBookMarkdown = (source: string, context: GitBookConversionContext): GitBookConversionResult => {
   const warnings = new Set<string>();
+  const issues: ImportFidelityIssue[] = [];
+  const unmapped = (reference: string) => issues.push({ kind: 'embed', page: '', reference });
   const protectedCode = protectMarkdownCode(applyCodeAnnotations(source.replace(/\r\n/g, '\n')), {
     maxFenceIndent: Number.POSITIVE_INFINITY,
   });
   if (!protectedCode.content.includes('{%') && !protectedCode.content.includes('<')) {
-    return { content: protectedCode.restore(protectedCode.content.replace(/\n{3,}/g, '\n\n')).trim(), warnings: [] };
+    return { content: normalizeImportFidelity(protectedCode.restore(protectedCode.content), unmapped).trim(), warnings: [], issues };
   }
   const tokens = liquidTokens(protectedCode.content);
   const pairs = liquidPairs(tokens);
@@ -411,30 +405,21 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
       output.push(`\n<Card title="${attr(label)}" href="${attr(url)}"></Card>\n`);
       cursor = closing.end;
       index = pairIndex ?? index;
-    } else if (token.name === 'embed' || token.name === 'file') {
+    } else if (token.name === 'embed' || token.name === 'video' || token.name === 'file') {
       // Optional captions contain prose only, ending at the immediately following closer.
       const caption = pairIndex === index + 1 ? inner.trim() : '';
       if (pairIndex === index + 1 && closing) {
         cursor = closing.end;
         index = pairIndex;
       }
-      if (token.name === 'embed') {
-        const url = attributes.url ?? '';
-        const video = url ? parseVideoUrl(url) : null;
-        if (video) {
-          // A video the reader plays: the canonical player frame, which the reader
-          // shows as a click-to-load player. The caption, if any, is its title and
-          // the frame's caption; without one the reader names it generically and
-          // the publish checks ask for a title.
-          const title = caption ? plainGitBookText(caption) : '';
-          const frame = `<iframe src="${attr(videoEmbedSrc(video))}"${title ? ` title="${attr(title)}"` : ''}></iframe>`;
-          output.push(block(title ? `<Frame caption="${attr(title)}">\n\n${frame}\n\n</Frame>` : frame));
-        } else if (url) {
-          const host = URL.canParse(url) ? new URL(url).hostname.replace(/^www\./, '') : url;
-          output.push(
-            `\n<Card title="${attr(caption ? plainGitBookText(caption) : host)}" href="${attr(url)}" icon="arrow-up-right-from-square"></Card>\n`,
-          );
-        }
+      if (token.name === 'embed' || token.name === 'video') {
+        const url = attributes.url ?? attributes.src ?? '';
+        const before = protectedCode.content.slice(Math.max(0, token.start - 600), token.start).trimEnd();
+        const preceding = before.slice(before.lastIndexOf('\n') + 1).slice(0, 300);
+        const title =
+          plainGitBookText(attributes.title || caption || (preceding.startsWith('{%') || preceding.startsWith('<') ? '' : preceding)) || 'Video';
+        const frame = importEmbed(url, title, () => undefined);
+        output.push(block(caption ? `<Frame caption="${attr(plainGitBookText(caption))}">\n\n${frame}\n\n</Frame>` : frame));
       } else {
         const src = attributes.src ?? '';
         if (src) {
@@ -530,7 +515,7 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
     });
 
   content = content.replace(/\n{3,}/g, '\n\n');
-  return { content: protectedCode.restore(content).trim(), warnings: [...warnings] };
+  return { content: normalizeImportFidelity(protectedCode.restore(content), unmapped).trim(), warnings: [...warnings], issues };
 };
 
 const GITBOOK_SPACE_LINK = /https?:\/\/app\.gitbook\.com\/(?:o\/[^/\s"'()<>]+\/)?s\/[A-Za-z0-9]+[^\s"'()<>]*/g;

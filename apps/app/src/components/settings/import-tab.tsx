@@ -66,7 +66,21 @@ function ImportResult({ summary, projectId }: { summary: ContentImportSummary; p
   const t = useT();
   const navigate = useNavigate();
   const [showWarnings, setShowWarnings] = useState(false);
-  const warnings = [...new Set(summary.warnings)];
+  const warnings = [
+    ...new Set(summary.warnings),
+    ...(summary.fidelityIssues ?? []).map((issue) =>
+      t(issue.kind === 'embed' ? 'settings.import.unmappedEmbed' : 'settings.import.unresolvedLink', {
+        page: issue.page,
+        reference: issue.reference,
+      }),
+    ),
+  ];
+  const occurrences = new Map<string, number>();
+  const rows = warnings.map((text) => {
+    const occurrence = (occurrences.get(text) ?? 0) + 1;
+    occurrences.set(text, occurrence);
+    return { text, key: `${text}-${occurrence}` };
+  });
   return (
     <div className="flex min-h-[220px] flex-col justify-center rounded-2xl bg-muted/25 p-5 text-sm">
       <div className="mx-auto w-full max-w-md rounded-xl border border-border bg-background p-4 shadow-sm">
@@ -93,9 +107,9 @@ function ImportResult({ summary, projectId }: { summary: ContentImportSummary; p
             </Button>
             {showWarnings ? (
               <ul className="mt-2 list-disc space-y-1 ps-5 text-muted-foreground text-xs">
-                {warnings.map((warning) => (
-                  <li dir="auto" key={warning}>
-                    {warning}
+                {rows.map((row) => (
+                  <li dir="auto" key={row.key}>
+                    {row.text}
                   </li>
                 ))}
               </ul>
@@ -145,6 +159,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const [source, setSource] = useState<ImportSource | null>(null);
   const [repo, setRepo] = useState('');
   const [branch, setBranch] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
   const [spacePath, setSpacePath] = useState('');
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [ghostUrl, setGhostUrl] = useState('');
@@ -207,8 +222,17 @@ export function ImportTab({ projectId }: { projectId?: string }) {
         toast.error(t('settings.import.mintlify.invalidRepo'));
         return;
       }
+      if (sourceUrl.trim() && !isValidHttpUrl(sourceUrl.trim())) {
+        toast.error(t('settings.import.sourceUrl'));
+        return;
+      }
       const trimmedBranch = branch.trim();
-      const body = { repo: normalizedRepo, ...(trimmedBranch ? { branch: trimmedBranch } : {}), replaceExisting };
+      const body = {
+        ...(sourceUrl.trim() ? { sourceUrl: sourceUrl.trim() } : {}),
+        repo: normalizedRepo,
+        ...(trimmedBranch ? { branch: trimmedBranch } : {}),
+        replaceExisting,
+      };
       const callbacks = { onSuccess: handleSuccess, onError: handleError };
       if (source === 'mintlify') {
         mintlify.mutate(body, callbacks);
@@ -291,6 +315,17 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                         onChange={(event) => setRepo(event.target.value)}
                         placeholder="github.com/acme/docs"
                         value={repo}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="import-source-url">{t('settings.import.sourceUrl')}</Label>
+                      <Input
+                        id="import-source-url"
+                        type="url"
+                        placeholder="https://help.example.com"
+                        value={sourceUrl}
+                        onChange={(event) => setSourceUrl(event.target.value)}
+                        disabled={pending}
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">

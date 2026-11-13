@@ -96,7 +96,7 @@ describe('convertGitBookMarkdown', () => {
     expect(warnings).toEqual([]);
   });
 
-  it('turns page links, embeds, and files into cards', () => {
+  it('keeps page and file cards and maps other HTTPS embeds to frame link cards', () => {
     const { content, warnings } = convert(
       [
         '{% content-ref url="guides/setup.md" %}',
@@ -113,8 +113,8 @@ describe('convertGitBookMarkdown', () => {
       (reference) => (reference.includes('guide') ? 'https://raw.example/guide%20%281%29.pdf' : undefined),
     );
     expect(content).toContain('<Card title="setup.md" href="guides/setup.md"></Card>');
-    expect(content).toContain('<Card title="youtube.com" href="https://www.youtube.com/watch?v=abc" icon="arrow-up-right-from-square"></Card>');
-    expect(content).toContain('<Card title="Pen caption" href="https://codepen.io/x"');
+    expect(content).toContain('<iframe src="https://www.youtube.com/watch?v=abc" title=');
+    expect(content).toContain('<iframe src="https://codepen.io/x" title="Pen caption"');
     expect(content).toContain('<Card title="guide (1).pdf" href="https://raw.example/guide%20%281%29.pdf" icon="file">\n\nThe PDF\n\n</Card>');
     expect(warnings).toEqual([]);
   });
@@ -131,15 +131,13 @@ describe('convertGitBookMarkdown', () => {
         '{% embed url="https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ" %}',
       ].join('\n'),
     );
-    expect(content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=65"></iframe>');
+    expect(content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=65" title="Video"></iframe>');
     expect(content).toContain(
       '<Frame caption="Release walkthrough">\n\n<iframe src="https://player.vimeo.com/video/76979871" title="Release walkthrough"></iframe>\n\n</Frame>',
     );
-    expect(content).toContain('<iframe src="https://www.loom.com/embed/0123456789abcdef0123456789abcdef"></iframe>');
-    expect(content).toContain('<iframe src="https://fast.wistia.net/embed/iframe/abc123def4"></iframe>');
-    expect(content).toContain(
-      '<Card title="youtube.com.evil.example" href="https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ" icon="arrow-up-right-from-square"></Card>',
-    );
+    expect(content).toContain('<iframe src="https://www.loom.com/embed/0123456789abcdef0123456789abcdef" title="Video"></iframe>');
+    expect(content).toContain('<iframe src="https://fast.wistia.net/embed/iframe/abc123def4" title="Video"></iframe>');
+    expect(content).toContain('<iframe src="https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ" title="Video"></iframe>');
     expect(content).not.toContain('endembed');
     expect(warnings).toEqual([]);
   });

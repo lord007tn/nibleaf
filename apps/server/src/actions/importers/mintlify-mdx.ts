@@ -1,5 +1,6 @@
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { replaceTags } from '@nibleaf/shared/markup-scan';
+import { normalizeImportFidelity } from './import-fidelity';
 
 const tagName = (line: string): string | null => {
   const match = line.trim().match(/^<\/?([A-Z][A-Za-z0-9.]*)\b/);
@@ -32,8 +33,8 @@ const componentHeading = (name: string, tag: string): string => {
  * they use the same first-class image rendering path as Ghost and Markdown
  * imports.
  */
-export const normalizeMintlifyMdx = (content: string): string => {
-  const componentIndents: Array<{ name: string; childIndent: number }> = [];
+export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string) => void): string => {
+  const componentIndents: Array<{ name: string; childIndent: number; keep?: boolean }> = [];
   const normalized: string[] = [];
   let fence: MarkdownFence | undefined;
   const protectedCode = protectMarkdownCode(content, { fences: false, maxFenceIndent: Number.POSITIVE_INFINITY });
@@ -61,6 +62,7 @@ export const normalizeMintlifyMdx = (content: string): string => {
 
     if (closingName && unwrappedComponents.has(closingName)) {
       const matchingIndex = componentIndents.findLastIndex((entry) => entry.name === closingName);
+      if (componentIndents[matchingIndex]?.keep) normalized.push(line);
       if (matchingIndex >= 0) componentIndents.splice(matchingIndex);
       continue;
     }
@@ -68,9 +70,11 @@ export const normalizeMintlifyMdx = (content: string): string => {
     const name = tagName(trimmed);
     const isComponentBoundary = name !== null && trimmed.startsWith(`<${name}`) && !trimmed.endsWith('/>') && !trimmed.includes(`</${name}>`);
     if (isComponentBoundary && unwrappedComponents.has(name)) {
+      const keep = name === 'Frame' && Boolean(attribute(trimmed, 'caption'));
       const heading = componentHeading(name, trimmed);
-      if (heading) normalized.push(heading);
-      componentIndents.push({ name, childIndent: leadingSpaces(rawLine) + 2 });
+      if (keep) normalized.push(line);
+      else if (heading) normalized.push(heading);
+      componentIndents.push({ name, childIndent: leadingSpaces(rawLine) + 2, keep });
       continue;
     }
 
@@ -95,5 +99,5 @@ export const normalizeMintlifyMdx = (content: string): string => {
     }
   }
 
-  return protectedCode.restore(normalized.join('\n'));
+  return normalizeImportFidelity(protectedCode.restore(normalized.join('\n')), onUnmapped);
 };

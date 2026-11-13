@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "स्रोत साइट का URL (वैकल्पिक)",
+  "settings_import_unmappedembed": "पृष्ठ {page}: एम्बेड की गई सामग्री को वीडियो में नहीं बदला जा सका। स्रोत रखा गया है: {reference}",
+  "settings_import_unresolvedlink": "पृष्ठ {page}: इस पृष्ठ लिंक का गंतव्य नहीं मिला और इसे रखा गया है: {reference}",
   "editor_pagesettings_onelanguage": "इस पेज को स्थानांतरित करने के लिए साइट में एक और भाषा जोड़ें।",
   "editor_pagesettings_invalidicon": "समर्थित आइकन का नाम चुनें, जैसे rocket, book-open या code।",
   "$schema": "https://inlang.com/schema/inlang-message-format",

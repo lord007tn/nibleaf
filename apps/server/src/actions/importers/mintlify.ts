@@ -85,7 +85,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
       const summary = emptySummary();
       // Nav page paths are relative to the config file's directory.
       const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
-      const repository = { owner, name, branch, loadText };
+      const repository = { owner, name, branch, loadText, sourceUrl: input.sourceUrl };
       const currentTarget = await defaultImportTarget(projectId);
       const defaultTarget = { ...currentTarget, branchId: replacementBranch.id };
       const assets = new RemoteAssetMigrator(projectId, 'mintlify');
@@ -287,6 +287,7 @@ const ensureLanguageTarget = async (
 };
 
 interface RepoRef {
+  sourceUrl?: string;
   owner: string;
   name: string;
   branch: string;
@@ -352,7 +353,7 @@ const discoverLinkedPages = async (
     const raw = await repo.loadText(filePath);
     if (raw === null) continue;
     const { body } = parseFrontmatter(raw);
-    for (const target of mintlifyInternalLinkTargets(body, sourcePath)) {
+    for (const target of mintlifyInternalLinkTargets(body, sourcePath, repo.sourceUrl)) {
       if (known.has(target)) continue;
       const targetFile = [`${baseDir}${target}.mdx`, `${baseDir}${target}.md`].find((candidate) => blobs.has(candidate));
       if (!targetFile) continue;
@@ -445,7 +446,14 @@ const importNodes = async (
     if (languageCode && meta.lang && meta.lang.toLowerCase() !== languageCode.toLowerCase()) {
       summary.warnings.push(`Page "${node.path}" declares lang "${meta.lang}" but is navigated under "${languageCode}".`);
     }
-    const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap);
+    const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap, {
+      sourceUrl: repo.sourceUrl,
+      appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
+      onUnresolved: (reference) => {
+        summary.fidelityIssues ??= [];
+        summary.fidelityIssues.push({ kind: 'link', page: node.path, reference });
+      },
+    });
     const assetReferences = rewriteMintlifyAssetReferences(
       linkedBody,
       filePath,
@@ -458,7 +466,10 @@ const importNodes = async (
         `Page "${node.path}" references ${assetReferences.missing.length} image${assetReferences.missing.length === 1 ? '' : 's'} not found in the repository: ${assetReferences.missing.slice(0, 3).join(', ')}.`,
       );
     }
-    const content = normalizeMintlifyMdx(await assets.rewrite(assetReferences.content));
+    const content = normalizeMintlifyMdx(await assets.rewrite(assetReferences.content), (reference) => {
+      summary.fidelityIssues ??= [];
+      summary.fidelityIssues.push({ kind: 'embed', page: node.path, reference });
+    });
     const fileBase = node.path.split('/').filter(Boolean).pop() ?? 'page';
     let slug = slugify(fileBase);
     if (!slug) {

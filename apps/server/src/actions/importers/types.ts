@@ -1,3 +1,4 @@
+import type { ImportFidelityIssue } from './import-fidelity';
 /**
  * Content-importer framework: one-way imports from other documentation
  * systems into a project's pages. Each source implements `ImporterSource`
@@ -22,6 +23,7 @@ export interface ImportSummary {
   assetsSkipped?: number;
   /** Non-fatal issues (unmatched nav entries, unparseable files, config keys kept). */
   warnings: string[];
+  fidelityIssues?: ImportFidelityIssue[];
 }
 
 /** Everything an importer needs to run: the tenant scope plus its validated input. */

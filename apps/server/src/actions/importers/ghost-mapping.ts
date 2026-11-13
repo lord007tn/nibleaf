@@ -7,6 +7,7 @@ import TurndownService from 'turndown';
 import { strikethrough, tables } from 'turndown-plugin-gfm';
 import { ghostMobiledocSchema, importDocumentSchema, nonEmptyImportStringSchema } from '@/validators/importers';
 import { stableHash } from './content';
+import { type ImportFidelityIssue, normalizeImportFidelity } from './import-fidelity';
 
 /**
  * Pure mapping logic for the Ghost importer: validate the export document's
@@ -257,12 +258,26 @@ export const isGhostPlaceholder = (item: Pick<GhostContentItem, 'title' | 'slug'
   );
 };
 
+// Turndown supplies these DOM fields; the server deliberately has no DOM lib.
+const importMediaHtml = (_content: string, node: unknown): string => {
+  const element = node as { nodeName: string; outerHTML: string; isBlock: boolean };
+  if (element.nodeName === 'IFRAME' || element.nodeName === 'VIDEO') return `\n\n${element.outerHTML}\n\n`;
+  return element.isBlock ? '\n\n' : '';
+};
+
 let turndown: TurndownService | null = null;
 const getTurndown = (): TurndownService => {
   if (!turndown) {
-    turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-', hr: '---' });
+    turndown = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+      bulletListMarker: '-',
+      hr: '---',
+      blankReplacement: importMediaHtml,
+    });
     // GFM extras: tables + strikethrough (images and fenced code are core rules).
     turndown.use([tables, strikethrough]);
+    turndown.addRule('importMedia', { filter: ['iframe', 'video'], replacement: importMediaHtml });
   }
   return turndown;
 };
@@ -328,6 +343,7 @@ export interface GhostHtmlConversion {
   usedFallback: boolean;
   /** True when the export referenced its own site via __GHOST_URL__ placeholders. */
   hadGhostUrls: boolean;
+  issues?: ImportFidelityIssue[];
 }
 
 /** Convert Ghost HTML to Markdown, falling back to plain text when turndown fails. */
@@ -342,7 +358,11 @@ export const convertGhostHtml = (html: string, ghostSourceUrl?: string): GhostHt
       ghostSourceUrl ? `${prefix}${new URL(path, ghostSourceUrl).toString()}` : `${prefix}${path}`,
     );
   try {
-    return { markdown: getTurndown().turndown(prepared).trim(), usedFallback: false, hadGhostUrls };
+    const issues: ImportFidelityIssue[] = [];
+    const markdown = normalizeImportFidelity(getTurndown().turndown(prepared).trim(), (reference) =>
+      issues.push({ kind: 'embed', page: '', reference }),
+    );
+    return { markdown, usedFallback: false, hadGhostUrls, ...(issues.length ? { issues } : {}) };
   } catch {
     return { markdown: htmlToPlainText(prepared), usedFallback: true, hadGhostUrls };
   }

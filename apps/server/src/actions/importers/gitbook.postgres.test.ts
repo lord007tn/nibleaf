@@ -134,11 +134,12 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     const { project, org, main } = await fixture();
     const user = await db.prisma.user.create({ data: { name: 'Synthetic maintainer', email: `${project.id}@example.test`, emailVerified: true } });
     await db.prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
+    // Importing the route cold can exceed the session's one-minute lifetime.
+    const { default: app } = await import('../../routes');
     const token = `synthetic-${randomUUID()}`;
     await db.prisma.session.create({ data: { token, userId: user.id, activeOrganizationId: org.id, expiresAt: new Date(Date.now() + 60_000) } });
     const { keys } = await import('@nibleaf/auth/keys.server');
     const signature = createHmac('sha256', keys().BETTER_AUTH_SECRET).update(token).digest('base64');
-    const { default: app } = await import('../../routes');
     const response = await app.request(`http://localhost:4310/api/app/projects/${project.id}/settings/import/gitbook`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: `better-auth.session_token=${encodeURIComponent(`${token}.${signature}`)}` },
@@ -150,6 +151,10 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     const pages = await db.prisma.page.findMany({ where: { projectId: project.id, branchId: main.id } });
     expect(pages).toHaveLength(1);
     expect(pages[0]?.content).toContain('init.lua');
+    expect(pages[0]?.content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Video tour:"></iframe>');
+    expect(pages[0]?.content).toContain('\n\n---\n\n');
+    expect(pages[0]?.content).not.toContain('\n/\n');
+    expect(pages[0]?.content).toContain('[Again](/introduction?lang=ar#start)');
     expect(await db.prisma.branch.count({ where: { projectId: project.id, isDefault: false } })).toBe(0);
   };
 
@@ -211,7 +216,7 @@ const RECORDED_TREE = [
 ];
 const RECORDED_FILES: Record<string, string> = {
   [`${GITHUB_REPO.folder}/readme.md`]:
-    '# Cyber Engine Tweaks\n\nA starting point for a script mod. The entry file is `tutorial_mod/init.lua`; copy the folder and rename it to begin.\n',
+    '# Cyber Engine Tweaks\n\nA starting point for a script mod. The entry file is `tutorial_mod/init.lua`; copy the folder and rename it to begin.\n\nVideo tour:\n\n{% embed url="https://youtu.be/abcdefghijk" %}\n\n/\n\n<p>---</p>\n\n[Again](https://nibleaf.com/pages/readme?lang=ar#start)\n',
   [`${GITHUB_REPO.folder}/tutorial_mod/init.lua`]: 'registerForEvent("onInit", function() print("ready") end)\n',
 };
 

@@ -959,6 +959,7 @@ export interface ContentImportSummary {
   assetsImported?: number;
   assetsSkipped?: number;
   warnings: string[];
+  fidelityIssues?: Array<{ kind: 'embed' | 'link'; page: string; reference: string }>;
 }
 
 /** One-way import of a public Mintlify GitHub docs repo (docs.json / mint.json). */

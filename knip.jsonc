@@ -12,6 +12,7 @@
     ".": {
       "entry": [
         "tests/integration/editor-p2/browser.mjs",
+        "tests/integration/import-fidelity/browser.mjs",
         "changelogithub.config.mjs",
         "scripts/docker-context-smoke.mjs",
         "scripts/graceful-web-service.mjs",

@@ -1,7 +1,9 @@
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
 import { htmlToPlainText } from './ghost-mapping';
+import { normalizeImportFidelity } from './import-fidelity';
 import { rewriteMintlifyAssetReferences } from './mintlify-assets';
+import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
 // Timing bounds, run on their own (pnpm test:growth). Imported files can be
@@ -9,6 +11,18 @@ import { normalizeMintlifyMdx } from './mintlify-mdx';
 describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
   const rewrite = (content: string) => rewriteMintlifyAssetReferences(content, 'docs/page.mdx', new Set(), (path) => `https://raw.example/${path}`);
   it.each([
+    [
+      'embed normalization',
+      normalizeImportFidelity,
+      (n: number) => 'Tour\n\n<iframe src="https://youtu.be/abcdefghijk"></iframe>\n\n/\n\n'.repeat(n),
+    ],
+    ['malformed embed openers', normalizeImportFidelity, (n: number) => '<iframe src="'.repeat(n)],
+    [
+      'source link resolution',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['next', '/guide/next']]), { sourceUrl: 'https://help.example.test' }),
+      (n: number) => '[Next](https://help.example.test/next?lang=ar#start)\n'.repeat(n),
+    ],
+    ['same-line embeds', normalizeImportFidelity, (n: number) => '<iframe src="https://youtu.be/abcdefghijk"></iframe>'.repeat(n)],
     ['case A', rewrite, (n: number) => '![a'.repeat(n)],
     ['case B', rewrite, (n: number) => '![](a "t'.repeat(n)],
     ['case C', rewrite, (n: number) => `${'<img a '.repeat(n)}>`],

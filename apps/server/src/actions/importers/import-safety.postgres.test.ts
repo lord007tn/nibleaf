@@ -49,6 +49,28 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
     return { org, project, main, language, run };
   };
 
+  it('promotes Mintlify video, divider and source/app links with per-occurrence fidelity rows', async () => {
+    const { project, run } = await fixture();
+    source.files.set(
+      'intro.mdx',
+      '---\ntitle: Tour\n---\nTour\n\n<iframe src="https://youtu.be/abcdefghijk" title="Tour"></iframe>\n\n/\n\n<p>---</p>\n\n[Next](https://nibleaf.com/pages/next?lang=ar#start)\n\n<iframe src="https://frame.example.test/tour"></iframe>\n\n[Missing](/missing)',
+    );
+    source.files.set('next.mdx', 'Next page');
+    source.files.set('docs.json', JSON.stringify({ navigation: [{ group: 'Guides', pages: ['intro', 'next'] }] }));
+    const report = await run();
+    const page = await db.prisma.page.findFirstOrThrow({ where: { projectId: project.id, slug: 'intro' } });
+    expect(page.content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Tour"></iframe>');
+    expect(page.content).toContain('\n\n---\n\n');
+    expect(page.content).not.toContain('\n/\n');
+    expect(page.content).toContain('[Next](/guides/next?lang=ar#start)');
+    expect(report.fidelityIssues).toEqual(
+      expect.arrayContaining([
+        { kind: 'link', page: 'intro', reference: '/missing' },
+        { kind: 'embed', page: 'intro', reference: 'https://frame.example.test/tour' },
+      ]),
+    );
+  });
+
   it('keeps page IDs on preserving re-import after a version was promoted', async () => {
     const { project, main, run } = await fixture();
     await run();
