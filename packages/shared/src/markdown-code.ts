@@ -149,19 +149,48 @@ const continuation = (line: string, stack: ContainerStack): Continuation => {
 };
 
 /** A line that starts a block of its own, so it cannot continue a paragraph lazily. */
-const STARTS_BLOCK = /^ {0,3}(?:>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|`{3,}|~{3,}|<|(?:[-*_][ \t]*){3,}$)/;
-/** Text that is not a paragraph line (a heading, an HTML or MDX tag, a thematic break or setext underline). */
-const NOT_PARAGRAPH = /^(?:#{1,6}(?:[ \t]|$)|<|(?:[-*_][ \t]*){3,}$|=+[ \t]*$)/;
+const STARTS_BLOCK = /^ {0,3}(?:>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|`{3,}|~{3,}|<|([-*_])(?:[ \t]*\1){2,}[ \t\r]*$)/;
+/** Text that is not a paragraph line: a heading, an HTML or MDX tag, a thematic break. */
+const NOT_PARAGRAPH = /^(?:#{1,6}(?:[ \t]|$)|<|([-*_])(?:[ \t]*\1){2,}[ \t\r]*$)/;
+/** Under a paragraph, a setext heading underline ends it. */
+const SETEXT_UNDERLINE = /^(?:=+|-+)[ \t\r]*$/;
+
+/** Where a line's thematic break (`- - -`, `***`, `_ _ _`) may start: one of
+ * -*_ three or more times, with only spaces or tabs between and after. The tail
+ * is read once per line; each query is a binary search. */
+const thematicTail = (line: string) => {
+  let index = line.length - 1;
+  if (line[index] === '\r') index--;
+  while (index >= 0 && isSpace(line[index])) index--;
+  const char = line[index];
+  const positions: number[] = [];
+  if (char === '-' || char === '*' || char === '_')
+    for (; index >= 0 && (line[index] === char || isSpace(line[index])); index--) if (line[index] === char) positions.push(index);
+  positions.reverse();
+  return (from: number): boolean => {
+    if (line[from] !== char || positions.length < 3 || from < (positions[0] ?? 0)) return false;
+    let low = 0;
+    let high = positions.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if ((positions[middle] ?? 0) < from) low = middle + 1;
+      else high = middle;
+    }
+    return positions.length - low >= 3;
+  };
+};
 
 /**
  * Opens the quotes and list items a line starts at `at`, pushing them on the
  * stack. Outside an MDX component the first marker may be indented at most 3
  * columns (4 or more is indented code); inside one, any number of spaces,
  * because authors indent there. A tab at the very start opens nothing, as on
- * main. An ordered item other than 1 does not interrupt a paragraph.
+ * main. A thematic break opens no list item. Within a paragraph, an ordered item
+ * other than 1 or an empty item does not interrupt it.
  */
 const openContainers = (line: string, at: LineCursor, stack: ContainerStack, lenient: boolean, paragraph: boolean): LineCursor => {
   let cursor = at;
+  let thematic: ((from: number) => boolean) | undefined;
   for (let opened = 0; ; opened++) {
     const space = whitespaceAhead(line, cursor, opened === 0 && lenient ? Number.POSITIVE_INFINITY : 3);
     if (cursor.index === 0 && space.columns !== space.index) break;
@@ -174,15 +203,24 @@ const openContainers = (line: string, at: LineCursor, stack: ContainerStack, len
     LIST_MARKER.lastIndex = space.index;
     const marker = LIST_MARKER.exec(line)?.[0];
     const markerEnd = space.index + (marker?.length ?? 0);
-    if (!marker || !isSpace(line[markerEnd])) break;
-    if (paragraph && opened === 0 && /^\d/.test(marker) && !/^0*1[.)]$/.test(marker)) break;
+    const empty = blankFrom(line, markerEnd);
+    if (!marker || !(empty || isSpace(line[markerEnd]))) break;
+    if (marker === '-' || marker === '*') {
+      thematic ??= thematicTail(line);
+      if (thematic(space.index)) break;
+    }
+    const interrupts = paragraph && opened === 0;
+    if (interrupts && (empty || (/^\d/.test(marker) && !/^0*1[.)]$/.test(marker)))) break;
     const item: LineCursor = { index: markerEnd, column: space.column + marker.length, spare: 0 };
     // Five or more columns after the marker: one is the item's padding and the
-    // rest indents its first line (CommonMark list items).
+    // rest indents its first line (CommonMark list items). An item that starts
+    // blank takes one column of padding.
     const spacing = whitespaceAhead(line, item, 4);
-    if (blankFrom(line, spacing.index)) break;
-    const padding = spacing.columns > 4 ? 1 : spacing.columns;
+    const blank = empty || blankFrom(line, spacing.index);
+    if (blank && interrupts) break;
+    const padding = blank || spacing.columns > 4 ? 1 : spacing.columns;
     pushContainer(stack, { kind: 'list', indent: space.columns + marker.length + padding });
+    if (blank) return { index: line.length, column: item.column, spare: 0 };
     cursor = takeColumns(line, item, padding).cursor;
   }
   return cursor;
@@ -190,6 +228,27 @@ const openContainers = (line: string, at: LineCursor, stack: ContainerStack, len
 
 const COMPONENT_OPENER = /^<([A-Z][\w.]*)/;
 const COMPONENT_CLOSER = /^<\/[A-Z]/;
+
+/** CommonMark HTML blocks (types 1 to 7) and the line that ends each, `blank`
+ * for one that ends before a blank line. A tag whose name starts with a capital
+ * letter is an MDX component, read as Markdown, not HTML. */
+const HTML_BLOCK_STARTS: ReadonlyArray<readonly [start: RegExp, end: RegExp | 'blank', interruptsParagraph: boolean]> = [
+  [/^<(?:script|pre|style|textarea)(?:[ \t>]|$)/i, /<\/(?:script|pre|style|textarea)>/i, true],
+  [/^<!--/, /-->/, true],
+  [/^<\?/, /\?>/, true],
+  [/^<![A-Za-z]/, />/, true],
+  [/^<!\[CDATA\[/, /\]\]>/, true],
+  [
+    /^<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]|\/?>|\r?$)/i,
+    'blank',
+    true,
+  ],
+  [
+    /^(?:<[a-z][A-Za-z0-9-]*(?:[ \t]+[A-Za-z_:][\w.:-]*(?:[ \t]*=[ \t]*(?:[^"'=<>`\s]+|'[^']*'|"[^"]*"))?)*[ \t]*\/?>|<\/[a-z][A-Za-z0-9-]*[ \t]*>)[ \t\r]*$/,
+    'blank',
+    false,
+  ],
+];
 
 /**
  * Flags each line that belongs to fenced code, fence lines included: same marker,
@@ -200,18 +259,20 @@ const COMPONENT_CLOSER = /^<\/[A-Z]/;
  * that item. Each body line must continue all of the fence's containers, measured
  * in columns (tabs to the next multiple of 4, the optional space after `>`, list
  * content columns); a line that leaves one ends the fence. A `>` or list marker
- * that first appears in the body is code.
+ * that first appears in the body is code. A thematic break is not a list item,
+ * and the lines of an HTML block are HTML, not fences.
  *
  * Inside an MDX component (`<Tabs>` … `</Tabs>`) a fence may sit at any
  * indentation, because authors indent there. Elsewhere a line indented 4 or more
  * columns past its containers is indented code and never opens a fence.
  *
  * One pass; each line is read at most twice (again only when it ends a fence's
- * container). Shared by the reader's MDX normalizer, heading extraction and search
- * sections, so all three agree on what is code.
+ * or HTML block's container). Shared by the reader's MDX normalizer, heading
+ * extraction and search sections, so all three agree on what is code.
  */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
   let fence: MarkdownFence | undefined;
+  let html: RegExp | 'blank' | undefined;
   const stack: ContainerStack = { items: [], quotes: [] };
   let paragraph = false;
   let components = 0;
@@ -225,7 +286,10 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
     if (continued.matched < stack.items.length) {
       // A paragraph line may continue lazily without its containers' prefixes.
       if (paragraph && !STARTS_BLOCK.test(contentAt(line, continued.cursor))) return false;
+      // Otherwise the paragraph closes with its container: what follows (a
+      // sibling item, say) does not interrupt it.
       closeContainers(stack, continued.matched);
+      paragraph = false;
     }
     const cursor = openContainers(line, continued.cursor, stack, components > 0, paragraph);
     const content = contentAt(line, cursor);
@@ -234,16 +298,26 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
       paragraph = false;
       return false;
     }
+    const indent = content.length - content.trimStart().length;
     // Indented 4 or more columns past its containers: indented code, or a lazy
     // paragraph line, but never a fence (except inside a component).
-    if (components === 0 && content.length - content.trimStart().length >= 4) return false;
+    if (components === 0 && indent >= 4) return false;
     const opening = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
     if (opening) {
       fence = opening;
       paragraph = false;
       return true;
     }
-    paragraph = !NOT_PARAGRAPH.test(text);
+    if (indent < 4 && text.startsWith('<') && !COMPONENT_OPENER.test(text) && !COMPONENT_CLOSER.test(text)) {
+      const block = HTML_BLOCK_STARTS.find(([start, , interruptsParagraph]) => (interruptsParagraph || !paragraph) && start.test(text));
+      if (block) {
+        const end = block[1];
+        html = end === 'blank' || !end.test(text) ? end : undefined;
+        paragraph = false;
+        return false;
+      }
+    }
+    paragraph = paragraph && SETEXT_UNDERLINE.test(text) ? false : !NOT_PARAGRAPH.test(text);
     // MDX component depth: the indentation exception applies inside one.
     if (pendingOpener && text.includes('>')) {
       pendingOpener = false;
@@ -260,13 +334,22 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
   };
   return lines.map((line) => {
     const continued = continuation(line, stack);
+    const inside = continued.matched === stack.items.length;
     if (fence) {
-      if (continued.matched === stack.items.length) {
+      if (inside) {
         if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, Number.POSITIVE_INFINITY)) fence = undefined;
         return true;
       }
       // The line leaves a container, which ends the fence; it starts afresh.
       fence = undefined;
+    }
+    if (html) {
+      if (inside && !(continued.blank && html === 'blank')) {
+        if (html !== 'blank' && html.test(line)) html = undefined;
+        return false;
+      }
+      // A blank line, or a line that leaves a container, ends the HTML block.
+      html = undefined;
     }
     return read(line, continued);
   });

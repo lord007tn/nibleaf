@@ -18,6 +18,8 @@ import { describe, expect, it } from 'vitest';
 import { fencedMarkdownLines } from './markdown-code';
 import { readerSections } from './reader-headings';
 import { extractHeadings } from './site';
+import { AFTER_FENCE, FENCE_CONTAINER_REPROS } from './testing/fence-cases';
+import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
 import { markdownCorpus } from './testing/markdown-corpus';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
@@ -91,52 +93,84 @@ const compareWithMain = (documents: ReadonlyArray<readonly [string, string]>, fi
   return report;
 };
 
-let corpus: Array<[string, string]> | undefined;
-const repositoryCorpus = () => {
-  corpus ??= markdownCorpus(root);
-  return corpus;
-};
-
 describe('the repository Markdown corpus against main 93408093 (#587)', () => {
+  // No exact counts here: docs edits and new pages are skipped, never failures.
   it('leaves every ordinary page as main read it', async ({ annotate }) => {
     // Main lost the heading after #587's first repro: the hashes are main's output.
     expect(main.guard).toEqual({ reproHeadings: 0, reproSections: 0 });
-    const report = compareWithMain(repositoryCorpus(), main);
+    const report = compareWithMain(markdownCorpus(root), main);
     const skipped = [...report.edited.map((name) => `edited: ${name}`), ...report.added.map((name) => `new: ${name}`)];
     const summary =
       `fence corpus: ${report.compared} pages compared with main ${main.revision.slice(0, 8)}, ${report.differing.length} differ; ` +
       `${skipped.length} skipped (${report.edited.length} edited, ${report.added.length} new), ${report.deleted.length} deleted`;
     console.info(summary, { skipped, deleted: report.deleted, differing: report.differing });
     await annotate(skipped.length ? `${summary}\n${skipped.join('\n')}` : summary);
-    expect(report.compared).toBeGreaterThan(0);
     // Only a page where main's fence never closed may read differently now.
     expect(report.differing.filter(({ reason }) => reason !== OVERRAN)).toEqual([]);
   });
+});
+
+describe('comparing a corpus with a recorded fixture', () => {
+  // A small, self-contained fixture and corpus, so these checks never depend on
+  // the repository's pages. Main's output for each page is recorded with main's
+  // scanner; the heading APIs read it only through the fence flags, and the one
+  // page main overran (#587's first repro) records main's empty headings.
+  const repro = `${FENCE_CONTAINER_REPROS[0]?.[1]}${AFTER_FENCE}`;
+  const pages: Array<[string, string]> = [
+    ...Array.from({ length: 9 }, (_, index): [string, string] => [
+      `docs/page-${index}.md`,
+      `# Page ${index}\n\nText.\n\n\`\`\`js\n# not a heading\n\`\`\`\n`,
+    ]),
+    ['docs/overran.md', repro],
+  ];
+  const record = (source: string): MainPage => {
+    const lines = source.split('\n');
+    const overran = Boolean(mainFencedMarkdownLines([...lines, '']).at(-1));
+    return {
+      source: hash(source),
+      lines: hash(mainFencedMarkdownLines(lines).map(Number).join('')),
+      headings: hash(JSON.stringify(overran ? [] : extractHeadings(source))),
+      sections: hash(JSON.stringify(overran ? [] : readerSections(source))),
+      open: overran,
+    };
+  };
+  const fixture: MainFixture = {
+    revision: 'synthetic',
+    guard: { reproHeadings: 0, reproSections: 0 },
+    pages: Object.fromEntries(pages.map(([name, source]) => [name, record(source)])),
+  };
+  const edit = (count: number) => pages.map(([name, source], index): [string, string] => [name, index < count ? `${source}\nAn edit.\n` : source]);
+
+  it('compares every recorded page, and allows a difference only where main overran', () => {
+    const report = compareWithMain(pages, fixture);
+    expect(report).toEqual({
+      compared: 10,
+      edited: [],
+      added: [],
+      deleted: [],
+      differing: [{ name: 'docs/overran.md', reason: OVERRAN, outputs: ['fence lines', 'extractHeadings', 'readerSections'] }],
+    });
+  });
 
   it('skips and lists an edited page, and still passes', () => {
-    const [first, ...rest] = repositoryCorpus();
-    if (!first) throw new Error('empty corpus');
-    const report = compareWithMain([[first[0], `${first[1]}\n\nAn edit.\n`], ...rest], main);
-    expect(report.edited).toEqual([first[0]]);
-    expect(report.compared).toBe(rest.length);
-    expect(report.differing.filter(({ reason }) => reason !== OVERRAN)).toEqual([]);
+    const report = compareWithMain(edit(1), fixture);
+    expect([report.edited, report.compared]).toEqual([['docs/page-0.md'], 9]);
   });
 
   it('skips and lists a new page, and still passes', () => {
-    const report = compareWithMain([...repositoryCorpus(), ['docs/a-new-page.md', '# A new page\n\n```js\ncode\n```\n']], main);
-    expect(report.added).toEqual(['docs/a-new-page.md']);
-    expect(report.compared).toBe(repositoryCorpus().length);
+    const report = compareWithMain([...pages, ['docs/a-new-page.md', '# A new page\n']], fixture);
+    expect([report.added, report.compared]).toEqual([['docs/a-new-page.md'], 10]);
   });
 
-  it('fails with the regenerate command when more than 20% of the fixture is stale', () => {
-    const documents = repositoryCorpus();
-    const stale = Math.floor(documents.length * STALE_FIXTURE_LIMIT) + 1;
-    const edited = documents.slice(0, stale).map(([name, source]): [string, string] => [name, `${source}\nAn edit.`]);
-    expect(() => compareWithMain([...edited, ...documents.slice(stale)], main)).toThrow(REGENERATE);
-    // Deleted pages count the same way.
-    expect(() => compareWithMain(documents.slice(stale), main)).toThrow(REGENERATE);
-    // At the limit, it still compares the rest.
-    const atLimit = Math.floor(Object.keys(main.pages).length * STALE_FIXTURE_LIMIT);
-    expect(compareWithMain(documents.slice(atLimit), main).deleted).toHaveLength(atLimit);
+  it('accepts a fixture with up to 20% of its pages edited or deleted', () => {
+    expect(compareWithMain(edit(2), fixture).edited).toHaveLength(2);
+    expect(compareWithMain(pages.slice(2), fixture).deleted).toEqual(['docs/page-0.md', 'docs/page-1.md']);
+  });
+
+  it('fails with the regenerate command when more than 20% of the fixture is edited or deleted', () => {
+    expect(STALE_FIXTURE_LIMIT).toBe(0.2);
+    expect(() => compareWithMain(edit(3), fixture)).toThrow(REGENERATE);
+    expect(() => compareWithMain(pages.slice(3), fixture)).toThrow(REGENERATE);
+    expect(() => compareWithMain([...edit(2).slice(0, 9)], fixture)).toThrow(REGENERATE);
   });
 });

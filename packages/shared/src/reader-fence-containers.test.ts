@@ -6,6 +6,7 @@ import { extractHeadings } from './site';
 import {
   AFTER_CONTINUATION,
   AFTER_FENCE,
+  CODERABBIT_REPROS,
   CONTINUATION_FENCE_REPROS,
   FENCE_CONTAINER_REPROS,
   INDENTED_FENCE_AFTER_QUOTE,
@@ -22,6 +23,14 @@ describe('a fence in a quote or list item ends where CommonMark ends it (#587)',
   });
 
   it.each(CONTINUATION_FENCE_REPROS)('the reader keeps the heading, section and embed after %s (#590 CodeRabbit)', (_name, example, code) => {
+    const source = `${example}${AFTER_CONTINUATION}`;
+    expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(`${code}00`);
+    expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
+    expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
+    expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
+  });
+
+  it.each(CODERABBIT_REPROS)('the reader keeps the heading, section and embed after %s (#590 CodeRabbit review)', (_name, example, code) => {
     const source = `${example}${AFTER_CONTINUATION}`;
     expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(`${code}00`);
     expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);

@@ -1,5 +1,15 @@
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
-import { CONTINUATION_FENCE_REPROS, continuationFenceCases, fenceCases, indentedLookalikeCases } from '@nibleaf/shared/testing/fence-cases';
+import {
+  CODERABBIT_REPROS,
+  CONTINUATION_FENCE_REPROS,
+  continuationFenceCases,
+  type DifferentialCategory,
+  differentialCases,
+  fenceCases,
+  indentedLookalikeCases,
+  ORDERED_LINE_UNDER_BULLET,
+} from '@nibleaf/shared/testing/fence-cases';
+import { mainFencedMarkdownLines } from '@nibleaf/shared/testing/markdown-code.main-reference';
 import MarkdownIt from 'markdown-it';
 import { expect, it } from 'vitest';
 
@@ -63,5 +73,38 @@ it('reads fences opened on container continuation lines as CommonMark does (#590
   expect(differing.map(({ index, source }) => ({ index, source }))).toEqual([]);
   for (const [name, source, code] of CONTINUATION_FENCE_REPROS) {
     expect(commonMarkCode(source.split('\n')).fence.map(Number).join(''), name).toBe(code);
+  }
+});
+
+it('reads ordered siblings, thematic breaks, lazy lines, setext underlines and HTML blocks as CommonMark does (#590 CodeRabbit)', ({ task }) => {
+  type Tally = { cases: number; agree: number; codeMarkdownItCallsProse: number; exposedAgainstMain: number };
+  const tallies = new Map<string, Tally>();
+  const failures: Array<{ index: number; category: DifferentialCategory; source: string; ours: string; markdownIt: string }> = [];
+  for (const { index, category, nested, source } of differentialCases()) {
+    const lines = source.split('\n');
+    const ours = fencedMarkdownLines(lines);
+    const { fence, code } = commonMarkCode(lines);
+    const main = mainFencedMarkdownLines(lines);
+    for (const key of [category, `${category} (${nested ? 'nested' : 'top level'})`]) {
+      const tally = tallies.get(key) ?? { cases: 0, agree: 0, codeMarkdownItCallsProse: 0, exposedAgainstMain: 0 };
+      tally.cases++;
+      if (ours.every((isCode, line) => isCode === fence[line])) tally.agree++;
+      // Code where markdown-it reads prose would hide a heading.
+      if (ours.some((isCode, line) => isCode && !code[line])) tally.codeMarkdownItCallsProse++;
+      // Fenced code main protected and the scanner now exposes.
+      if (main.some((isCode, line) => isCode && fence[line] && !ours[line])) tally.exposedAgainstMain++;
+      tallies.set(key, tally);
+    }
+    if (!ours.every((isCode, line) => isCode === fence[line]))
+      failures.push({ index, category, source, ours: ours.map(Number).join(''), markdownIt: fence.map(Number).join('') });
+  }
+  const table = Object.fromEntries(tallies);
+  Object.assign(task.meta, { differential: table });
+  console.info('differential against markdown-it:', table);
+  expect(failures.slice(0, 8), `${failures.length} disagreements`).toEqual([]);
+  for (const [name, source, code] of [...CODERABBIT_REPROS, ['an ordered line under a bullet item', ...ORDERED_LINE_UNDER_BULLET] as const]) {
+    const lines = source.split('\n');
+    expect(commonMarkCode(lines).fence.map(Number).join(''), name).toBe(code);
+    expect(mainFencedMarkdownLines(lines).map(Number).join(''), `${name}: main`).toBe(code);
   }
 });

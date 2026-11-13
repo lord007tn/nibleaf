@@ -229,3 +229,105 @@ export const continuationFenceCases = (seed = FENCE_CASE_SEED, count = 1024): Co
   }
   return cases;
 };
+
+/** CodeRabbit on f505b2a9: (A) a sibling ordered item may open a fence, (B) a
+ * thematic break opens no list item, (C) an ordered line under a bullet item
+ * starts a new list rather than continuing lazily. `code` is how markdown-it
+ * (and micromark) read each source; main 93408093 reads all three the same way. */
+export const CODERABBIT_REPROS: ReadonlyArray<readonly [name: string, source: string, code: string]> = [
+  ['a fence on a sibling ordered item', '1. first\n2. ```md\n   # literal\n   ```\n## After', '01110'],
+  ['a fence on a sibling ordered item starting at 3', '3. a\n4. b\n5. ```md\n   # literal\n   ```\n## After', '001110'],
+  ['a fence after a spaced `- - -` thematic break', '- - -\n  ```md\n# literal\n  ```\n## After', '01110'],
+  ['a fence after a `* * *` thematic break', '* * *\n  ```md\n# literal\n  ```\n## After', '01110'],
+  ['a fence after a `_ _ _` thematic break', '_ _ _\n```md\n# literal\n```\n## After', '01110'],
+  ['a fence after a thematic break in a quote', '> - - -\n> ```md\n> # literal\n> ```\n## After', '01110'],
+  ['a fence after an indented thematic break in an item', '- a\n  * * *\n  ```md\n  # literal\n  ```\n## After', '001110'],
+];
+/** CodeRabbit's (C): CommonMark itself reads the rest as code here, so `## After` is not a heading. */
+export const ORDERED_LINE_UNDER_BULLET = ['- item\n2. lazy\n  ```md\n  code\n## After', '00111'] as const;
+
+export type DifferentialCategory = 'ordered siblings' | 'thematic breaks' | 'lazy ordered lines' | 'setext underlines' | 'HTML blocks';
+export interface DifferentialCase {
+  index: number;
+  category: DifferentialCategory;
+  /** Whether the shape sits inside a quote or list item. */
+  nested: boolean;
+  source: string;
+}
+
+/**
+ * Shapes around a fence that exercise CommonMark's block rules: ordered items
+ * with any start number and their siblings, thematic breaks (spaced and not),
+ * lazy ordered lines and empty items, setext underlines and HTML blocks (types
+ * 1, 2, 6 and 7), each at the top level or nested in quotes and list items.
+ * Compared with markdown-it line for line.
+ */
+export const differentialCases = (seed = FENCE_CASE_SEED, perCategory = 512): DifferentialCase[] => {
+  let state = seed ^ 0x6c_1f_93_a5;
+  const next = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return state >>> 0;
+  };
+  const choose = <T>(values: readonly [T, ...T[]]): T => values[next() % values.length] ?? values[0];
+  const fence = () => choose(['`', '~'] as const).repeat(3 + (next() % 2));
+  const shapes: Record<DifferentialCategory, () => string[]> = {
+    'ordered siblings': () => {
+      const delimiter = choose(['.', ')'] as const);
+      const start = choose([0, 1, 2, 3, 7, 9, 10, 99] as const);
+      const before = next() % 3;
+      const lines = Array.from({ length: before + 1 }, (_, item) => `${start + item}${delimiter} item`);
+      const marker = `${start + before + 1}${delimiter} `;
+      const pad = ' '.repeat(marker.length);
+      const f = fence();
+      lines.push(`${marker}${f}md`, `${pad}# literal`, choose([`${pad}${f}`, f, `${pad}text`] as const));
+      return lines;
+    },
+    'thematic breaks': () => {
+      const rule = choose(['- - -', '* * *', '_ _ _', '---', '***', '___', '-  -  -', '*\t*\t*', ' - - -', '  ***', '- -', '* *', '- * -'] as const);
+      const f = fence();
+      const indent = choose(['', '  ', ' '] as const);
+      return [rule, `${indent}${f}md`, '# literal', `${indent}${f}`];
+    },
+    'lazy ordered lines': () => {
+      const item = choose(['- item', '* item', '1. item', '+ item'] as const);
+      const lazy = choose(['2. lazy', '1. lazy', '3) lazy', '10. lazy', '-', '- lazy', 'lazy text'] as const);
+      const f = fence();
+      const pad = ' '.repeat(item.indexOf(' ') + 1);
+      return [item, lazy, `${pad}${f}md`, `${pad}code`, choose([`${pad}${f}`, `${pad}text`] as const)];
+    },
+    'setext underlines': () => {
+      const underline = choose(['===', '---', '-', '=', '- -', '----   '] as const);
+      const f = fence();
+      return [choose(['para', '# heading', ''] as const), underline, `${f}md`, '# literal', f];
+    },
+    'HTML blocks': () => {
+      const open = choose(['<div>', '<details>', '<!--', '<span>', '<img src="x" />', '<pre>', '</div>', '<custom-tag a="1">', '<p'] as const);
+      const close = open === '<!--' ? '-->' : open === '<pre>' ? '</pre>' : '</div>';
+      const f = fence();
+      const before = choose(['', 'para'] as const);
+      const gap = choose(['', 'blank'] as const);
+      return [...(before ? [before] : []), open, ...(gap ? [''] : []), `${f}md`, '# literal', ...(next() % 2 ? [f] : []), close];
+    },
+  };
+  const prefixes: ReadonlyArray<readonly [first: string, rest: string]> = [
+    ['> ', '> '],
+    ['- ', '  '],
+    ['1. ', '   '],
+    ['> - ', '>   '],
+    ['- > ', '  > '],
+  ];
+  const cases: DifferentialCase[] = [];
+  let index = 0;
+  for (const category of Object.keys(shapes) as DifferentialCategory[]) {
+    for (let count = 0; count < perCategory; count++) {
+      const shape = shapes[category]();
+      const nested = next() % 2 === 0;
+      const [first, rest] = nested ? choose(prefixes as [readonly [string, string], ...(readonly [string, string])[]]) : ['', ''];
+      const body = shape.map((line, position) => (position === 0 ? first : rest) + line).map((line) => (line.trim() ? line : line.trimEnd()));
+      cases.push({ index: index++, category, nested, source: [...body, '## After', '', `[Sentinel ${index}](/sentinel)`].join('\n') });
+    }
+  }
+  return cases;
+};

@@ -1,4 +1,10 @@
-import { AFTER_FENCE, CONTINUATION_FENCE_REPROS, FENCE_CONTAINER_REPROS, INDENTED_FENCE_AFTER_QUOTE } from '@nibleaf/shared/testing/fence-cases';
+import {
+  AFTER_FENCE,
+  CODERABBIT_REPROS,
+  CONTINUATION_FENCE_REPROS,
+  FENCE_CONTAINER_REPROS,
+  INDENTED_FENCE_AFTER_QUOTE,
+} from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { matchedSearchSection } from './search-sections';
 
@@ -113,6 +119,11 @@ ${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${fille
 
   it.each(FENCE_CONTAINER_REPROS)('finds the section after %s (#587)', (_name, example) => {
     const page = { title: 'Guide', content: `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.` };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
+  });
+
+  it.each(CODERABBIT_REPROS)('finds the section after %s (#590 CodeRabbit review)', (_name, example) => {
+    const page = { title: 'Guide', content: `${example}\n\nThe after section mentions zebras.` };
     expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
   });
 

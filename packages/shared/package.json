@@ -56,6 +56,7 @@
     "./page-icons": "./src/page-icons.ts",
     "./testing/growth": "./src/testing/growth.ts",
     "./testing/fence-cases": "./src/testing/fence-cases.ts",
+    "./testing/markdown-code.main-reference": "./src/testing/markdown-code.main-reference.ts",
     "./reader-headings": "./src/reader-headings.ts",
     "./reader-heading-ids": "./src/reader-heading-ids.ts",
     "./reader-render-mode": "./src/reader-render-mode.ts",

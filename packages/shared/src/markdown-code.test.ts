@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { closesMarkdownFence, fencedMarkdownLines, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
+import { CODERABBIT_REPROS, ORDERED_LINE_UNDER_BULLET } from './testing/fence-cases';
+import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
 
 describe('fencedMarkdownLines', () => {
   it('follows CommonMark fence pairing, also inside list items and blockquotes', () => {
@@ -66,6 +68,23 @@ describe('fencedMarkdownLines', () => {
     expect(flags('> - item\n>   ```md\n>   code\n> after\n## After')).toBe('01100');
     // CommonMark: the unindented line ends the item, so its closer opens a new fence.
     expect(flags('1. Install:\n   ```bash\nnpm i\n```\n## After')).toBe('01011');
+  });
+  it('lets a sibling ordered item open a fence, and reads a thematic break as no list item, as main and CommonMark do', () => {
+    for (const [name, source, code] of CODERABBIT_REPROS) {
+      expect(flags(source), name).toBe(code);
+      expect(mainFencedMarkdownLines(source.split('\n')).map(Number).join(''), `${name}: main`).toBe(code);
+    }
+    // An ordered line under a bullet item starts a new list (markdown-it and
+    // micromark agree): the fence after it is outside the item, as on main.
+    const [source, code] = ORDERED_LINE_UNDER_BULLET;
+    expect(flags(source)).toBe(code);
+    expect(mainFencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(code);
+  });
+  it('reads the lines of an HTML block as HTML, and an empty item as a list item', () => {
+    expect(flags('<div>\n```md\n</div>\n\n## After')).toBe('00000');
+    expect(flags('<!--\n```md\n-->\n## After')).toBe('0000');
+    expect(flags('para\n<span>\n```md\n# x\n```\n## After')).toBe('001110');
+    expect(flags('- item\n-\n  ```md\n  x\n## After')).toBe('00110');
   });
   it('closes a fence in deeply nested list items', () => {
     expect(flags('- - - ```\n      x\n      ```\n## After')).toBe('1110');
