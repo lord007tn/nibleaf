@@ -348,9 +348,12 @@ export const differentialCases = (seed = FENCE_CASE_SEED, perCategory = 512): Di
       ] as const);
       const lazyHtml = next() % 2 === 0;
       const lazyFence = next() % 2 === 0;
+      // CodeRabbit (#590, markdown-code.ts:337): a lazy text line after inline HTML
+      // still continues the paragraph, so the item stays open for the fence.
+      const lazyText = next() % 3 === 0;
       const f = fence();
       const fenced = (line: string) => `${lazyFence ? '' : pad}${line}`;
-      return [item, `${lazyHtml ? '' : pad}${html}`, fenced(`${f}md`), fenced('# literal'), fenced(f)];
+      return [item, `${lazyHtml ? '' : pad}${html}`, ...(lazyText ? ['lazy text'] : []), fenced(`${f}md`), fenced('# literal'), fenced(f)];
     },
   };
   const prefixes: ReadonlyArray<readonly [first: string, rest: string]> = [
@@ -387,6 +390,43 @@ export const LAZY_INLINE_HTML_REPROS: ReadonlyArray<readonly [name: string, sour
   ['`<span>` after an ordered item starting at 2', '2. lazy\n<span>\n```md\n# literal\n```\n## After', '001110'],
 ];
 
+/** CodeRabbit on 53bb7142 (`markdown-code.ts:337`): lazy text after inline HTML
+ * still continues the list item's paragraph, so the fence belongs to the item and
+ * ends at the unindented heading. `code` is markdown-it's reading; main read
+ * `mainCode`, hiding `## After`. */
+export const LAZY_TEXT_AFTER_INLINE_HTML = {
+  source: '- item\n  <span>\nlazy text\n  ```md\n  # literal\n## After',
+  code: '000110',
+  mainCode: '000111',
+} as const;
+
 /** #592: a tab before `>` inside a list item continues the item and opens a
  * quoted fence there (CommonMark; markdown-it reads `011100`, main `000000`). */
 export const TAB_BEFORE_QUOTE_IN_ITEM = ['- item\n\t> ```js\n\t> const x = 1;\n\t> ```\n\n## After', '011100'] as const;
+
+const htmlWrapped = (open: string, close: string) => `${open}\n\`\`\`md\n# literal\n\`\`\`\n${close}\n\n## After`;
+/** #593: a `#` line inside an HTML block is HTML, not a heading, so the outline
+ * lists only `After` (markdown-it renders no other heading). Each wrapper sits
+ * inside a list item and at the top level. */
+export const HTML_BLOCK_HEADING_REPROS: ReadonlyArray<readonly [name: string, source: string]> = [
+  ['a `<div>` in a list item (#593)', `- item\n${htmlWrapped('<div>', '</div>')}`],
+  ['a top-level `<div>`', htmlWrapped('<div>', '</div>')],
+  ['a `<details>` in a list item', `- item\n${htmlWrapped('<details>', '</details>')}`],
+  ['a top-level `<details>`', htmlWrapped('<details>', '</details>')],
+  ['a `<table>` in a list item', `- item\n${htmlWrapped('<table>', '</table>')}`],
+  ['a top-level `<table>`', htmlWrapped('<table>', '</table>')],
+  ['an HTML comment in a list item', `- item\n${htmlWrapped('<!--', '-->')}`],
+  ['a top-level HTML comment', htmlWrapped('<!--', '-->')],
+  // CodeRabbit on #590: an HTML block of type 1 holds a `##` line too.
+  ['a top-level `<pre>`', '<pre>\n```md\n## Literal\n```\n</pre>\n\n## After'],
+  ['a `<pre>` in a list item', '- item\n<pre>\n```md\n## Literal\n```\n</pre>\n\n## After'],
+];
+/** A heading line inside an HTML block that repeats a later real heading: the
+ * section starts at the real one (line 4), as markdown-it reads it. */
+export const HTML_BLOCK_REPEATED_HEADING = '<div>\n## After\n</div>\n\n## After\n\nThe after section mentions zebras.';
+
+/** A `<!DOCTYPE` block (type 4) in a quote ends at a `>` in the content, not at
+ * the quote's own marker: the fence-like lines stay HTML (markdown-it). */
+export const QUOTED_DOCTYPE_BLOCK = { source: '> <!DOCTYPE\n> x\n> ```md\n> # literal\n> >\n\n## After', html: '1111100' } as const;
+/** Without a blank line, `## After` belongs to the `<div>` HTML block (CommonMark): no heading at all. */
+export const HTML_BLOCK_WITHOUT_BLANK = '- item\n<div>\n```md\n# literal\n```\n</div>\n## After';

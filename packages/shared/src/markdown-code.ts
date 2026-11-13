@@ -268,7 +268,8 @@ const interruptsParagraph = (content: string): boolean => {
 };
 
 /**
- * Flags each line that belongs to fenced code, fence lines included: same marker,
+ * Classifies each line as fenced code, a line of an HTML block, or prose. Fenced
+ * code includes the fence lines: same marker,
  * closing at least as long (CommonMark), also when the fence sits in list items
  * and blockquotes, in any nesting. Like CommonMark, it carries the open quotes and
  * list items from line to line (lazy paragraph lines and blank lines in an item
@@ -287,22 +288,22 @@ const interruptsParagraph = (content: string): boolean => {
  * or HTML block's container). Shared by the reader's MDX normalizer, heading
  * extraction and search sections, so all three agree on what is code.
  */
-export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
+const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
   let fence: MarkdownFence | undefined;
   let html: HtmlBlockEnd | undefined;
   const stack: ContainerStack = { items: [], quotes: [] };
   let paragraph = false;
   let components = 0;
   let pendingOpener = false;
-  const read = (line: string, continued: Continuation): boolean => {
+  const read = (line: string, continued: Continuation): MarkdownLineKind => {
     if (continued.blank) {
       closeContainers(stack, continued.matched);
       paragraph = false;
-      return false;
+      return 'prose';
     }
     if (continued.matched < stack.items.length) {
       // A paragraph line may continue lazily without its containers' prefixes.
-      if (paragraph && !interruptsParagraph(contentAt(line, continued.cursor))) return false;
+      if (paragraph && !interruptsParagraph(contentAt(line, continued.cursor))) return 'prose';
       // Otherwise the paragraph closes with its container: what follows (a
       // sibling item, say) does not interrupt it.
       closeContainers(stack, continued.matched);
@@ -313,17 +314,17 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
     const text = content.trim();
     if (!text) {
       paragraph = false;
-      return false;
+      return 'prose';
     }
     const indent = content.length - content.trimStart().length;
     // Indented 4 or more columns past its containers: indented code, or a lazy
     // paragraph line, but never a fence (except inside a component).
-    if (components === 0 && indent >= 4) return false;
+    if (components === 0 && indent >= 4) return 'prose';
     const opening = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
     if (opening) {
       fence = opening;
       paragraph = false;
-      return true;
+      return 'code';
     }
     if (indent < 4 && text.startsWith('<') && !COMPONENT_OPENER.test(text) && !COMPONENT_CLOSER.test(text)) {
       const block = HTML_BLOCK_STARTS.find(([start, , interruptsParagraph]) => (interruptsParagraph || !paragraph) && start.test(text));
@@ -331,10 +332,14 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
         const end = block[1];
         html = end === 'blank' || !end(text) ? end : undefined;
         paragraph = false;
-        return false;
+        return 'html';
       }
     }
-    paragraph = paragraph && SETEXT_UNDERLINE.test(text) ? false : !NOT_PARAGRAPH.test(text);
+    // An HTML-looking line that started no HTML block above (inline HTML such as
+    // `<span>` continuing a paragraph, or text like `<3`) is paragraph text, so a
+    // following lazy line still continues the paragraph. MDX component tags are not.
+    if (text.startsWith('<') && !COMPONENT_OPENER.test(text) && !COMPONENT_CLOSER.test(text)) paragraph = true;
+    else paragraph = paragraph && SETEXT_UNDERLINE.test(text) ? false : !NOT_PARAGRAPH.test(text);
     // MDX component depth: the indentation exception applies inside one.
     if (pendingOpener && text.includes('>')) {
       pendingOpener = false;
@@ -347,7 +352,7 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
         pendingOpener = !text.slice(name.length + 1).includes('>');
       }
     }
-    return false;
+    return 'prose';
   };
   return lines.map((line) => {
     const continued = continuation(line, stack);
@@ -355,15 +360,17 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
     if (fence) {
       if (inside) {
         if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, Number.POSITIVE_INFINITY)) fence = undefined;
-        return true;
+        return 'code';
       }
       // The line leaves a container, which ends the fence; it starts afresh.
       fence = undefined;
     }
     if (html) {
       if (inside && !(continued.blank && html === 'blank')) {
-        if (html !== 'blank' && html(line)) html = undefined;
-        return false;
+        // The end is looked for after the containers' prefixes: a quote's own `>`
+        // does not end a `<!DOCTYPE` block.
+        if (html !== 'blank' && html(contentAt(line, continued.cursor))) html = undefined;
+        return 'html';
       }
       // A blank line, or a line that leaves a container, ends the HTML block.
       html = undefined;
@@ -371,6 +378,17 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
     return read(line, continued);
   });
 };
+
+/** What a line is to CommonMark: `code` (a fence or its body), `html` (a line of an
+ * HTML block, types 1 to 7), or `prose` (anything else, blank lines included). */
+export type MarkdownLineKind = 'prose' | 'code' | 'html';
+
+/** Each line's kind, from the same single pass as `fencedMarkdownLines`: heading
+ * extraction skips both code and HTML-block lines, as the reader renders them. */
+export const markdownLineKinds = (lines: readonly string[]): MarkdownLineKind[] => scanMarkdownLines(lines);
+
+/** Whether each line belongs to fenced code (see `scanMarkdownLines`). */
+export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => scanMarkdownLines(lines).map((kind) => kind === 'code');
 
 /** Hide literal code from regex-based import passes, then restore exact bytes.
  * Mintlify passes may opt into structural JSX indentation before normalization.

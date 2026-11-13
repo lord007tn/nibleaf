@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
+import { markdownLineKinds } from '@nibleaf/shared/markdown-code';
 import { stripMarkdownLinks } from '@nibleaf/shared/utils';
 import { lightStemArabicToken, normalizeArabicSearchText } from './arabic';
 import type { SearchHit } from './index';
@@ -344,10 +344,11 @@ const headingText = (line: string): string => {
  * lines the reader renders as headings and records their ids: an h5 or h6 takes its
  * nearest h1–h4 ancestor's, the levels the reader links to. Without them, it finds
  * ATX headings itself. Either way fenced code (any fence length, nested fences
- * included) is never a heading: the shared fence parser decides. */
+ * included) and the lines of an HTML block are never headings: the shared
+ * scanner decides. */
 const markdownSections = (content: string, given?: SearchChunkSource['sections']): Section[] => {
   const lines = content.split('\n').map((line) => line.replace(/\r$/, ''));
-  const fenced = fencedMarkdownLines(lines);
+  const kinds = markdownLineKinds(lines);
   const atLine = given ? new Map(given.map((section) => [section.line, section])) : undefined;
   const sections: Section[] = [];
   const headingPath: string[] = [];
@@ -366,7 +367,7 @@ const markdownSections = (content: string, given?: SearchChunkSource['sections']
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? '';
     const rendered = atLine?.get(index);
-    const own = atLine ? undefined : fenced[index] ? null : markdownHeading(line);
+    const own = atLine ? undefined : kinds[index] !== 'prose' ? null : markdownHeading(line);
     if (!rendered && !own) {
       body.push(line);
       continue;

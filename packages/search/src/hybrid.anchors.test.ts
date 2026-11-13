@@ -5,8 +5,11 @@ import {
   CODERABBIT_REPROS,
   CONTINUATION_FENCE_REPROS,
   FENCE_CONTAINER_REPROS,
+  HTML_BLOCK_HEADING_REPROS,
+  HTML_BLOCK_REPEATED_HEADING,
   INDENTED_FENCE_AFTER_QUOTE,
   LAZY_INLINE_HTML_REPROS,
+  LAZY_TEXT_AFTER_INLINE_HTML,
 } from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { validateCitedAnswer } from './answer-validation';
@@ -144,6 +147,28 @@ describe('sections after a fence in a quote or list item (#587)', () => {
     const content = `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.`;
     expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
     // Without the reader's sections, the search package finds the heading itself.
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
+  });
+
+  it.each(HTML_BLOCK_HEADING_REPROS)('index no section for a heading inside %s (#593)', (_name, source) => {
+    expect(sections(page(source))).toEqual([[''], ['After', 'after']]);
+    expect(chunkSearchDocument(scope, { ...page(source), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
+  });
+
+  it('cuts the section at the real heading, not at its repeat inside an HTML block (#593)', () => {
+    const chunks = chunkSearchDocument(scope, page(HTML_BLOCK_REPEATED_HEADING));
+    // The section starts at line 4: its chunk holds no part of the HTML block.
+    expect(chunks.map(({ heading, content }) => [heading, content.includes('zebras'), content.includes('</div>')])).toEqual([
+      ['', false, true],
+      ['After', true, false],
+    ]);
+  });
+
+  it('index the code after lazy text after inline HTML in a list item as code, not as a section', () => {
+    const content = `${LAZY_TEXT_AFTER_INLINE_HTML.source.replace('# literal', '## literal')}
+
+The after section mentions zebras.`;
+    expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
     expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
   });
 
