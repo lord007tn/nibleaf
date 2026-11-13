@@ -265,6 +265,22 @@ it('re-imports the current repository docs with identical language, routes, meta
 });
 
 describe('mintlify importNodes slug collisions', () => {
+  it('discovers app destinations before source files without loading a stray page', async () => {
+    setNavigation({ languages: [{ language: 'en', pages: ['intro', 'api/next'] }] });
+    mem.repoFiles.set('intro.mdx', '[Next](https://nibleaf.com/pages/next)');
+    mem.repoFiles.set('api/next.mdx', '# Intended next page');
+    mem.repoFiles.set('next.mdx', '# Unrelated stray page');
+    const reads = vi.spyOn(mem.repoFiles, 'get');
+    try {
+      await runImport();
+      expect(mem.rows.filter((row) => row.kind === 'PAGE')).toHaveLength(2);
+      expect(mem.rows.find((row) => row.slug === 'intro')?.content).toBe('[Next](/next)');
+      expect(mem.rows.some((row) => row.content === '# Unrelated stray page')).toBe(false);
+      expect(reads).not.toHaveBeenCalledWith('next.mdx');
+    } finally {
+      reads.mockRestore();
+    }
+  });
   it.each(['> ', '- ', '1. '])('re-review 3: stores literal %s fence markers without migrating the example image', async (prefix) => {
     setNavigation([{ group: 'Docs', pages: ['intro'] }]);
     const hosted = 'https://storage.example.com/imported.png';

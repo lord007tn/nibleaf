@@ -367,6 +367,7 @@ const discoverLinkedPages = async (
   const known = navPagePaths(nodes);
   const queue = [...known];
   const additional: string[] = [];
+  const routes = buildMintlifyRouteMap(nodes);
   const currentLanguage = languageCode ?? repo.defaultLanguageCode;
   for (let index = 0; index < queue.length && known.size < MAX_IMPORT_FILES; index++) {
     const sourcePath = queue[index];
@@ -377,7 +378,15 @@ const discoverLinkedPages = async (
     const raw = await repo.loadText(filePath);
     if (raw === null) continue;
     const { body } = parseFrontmatter(raw);
-    for (const target of mintlifyInternalLinkTargets(body, sourcePath, repo.sourceUrl, repo.appOrigins, currentLanguage, repo.configuredLanguages)) {
+    for (const target of mintlifyInternalLinkTargets(
+      body,
+      sourcePath,
+      repo.sourceUrl,
+      repo.appOrigins,
+      currentLanguage,
+      repo.configuredLanguages,
+      routes,
+    )) {
       if (known.has(target)) continue;
       const targetFile = [`${baseDir}${target}.mdx`, `${baseDir}${target}.md`].find((candidate) => blobs.has(candidate));
       if (!targetFile) continue;

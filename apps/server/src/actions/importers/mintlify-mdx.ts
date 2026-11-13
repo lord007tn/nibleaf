@@ -1,7 +1,7 @@
-import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import { openingMarkdownFence } from '@nibleaf/shared/markdown-code';
 import { replaceTags } from '@nibleaf/shared/markup-scan';
 import { normalizeImportFidelity } from './import-fidelity';
-import { importCodeLines, readImportComponentTag } from './import-markdown-code';
+import { protectImportCode, readImportComponentTag } from './import-markdown-code';
 
 const tagName = (line: string): string | null => {
   const match = line.trim().match(/^<\/?([A-Z][A-Za-z0-9.]*)\b/);
@@ -43,9 +43,7 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
     normalized.push(line);
     endings.push(ending);
   };
-  let fence: MarkdownFence | undefined;
-  const protectedCode = protectMarkdownCode(content, { fences: false, maxFenceIndent: Number.POSITIVE_INFINITY });
-  const codeLines = importCodeLines(protectedCode.content);
+  const protectedCode = protectImportCode(content);
 
   const lines = protectedCode.content.split(/(\r\n|\r|\n)/);
   let sourceOffset = 0;
@@ -58,27 +56,20 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
     const inComponentTag = lineOffset < componentTagEnd;
     const closingName = inComponentTag ? undefined : trimmed.match(/^<\/([A-Z][A-Za-z0-9.]*)>\s*$/)?.[1];
     const currentIndent = componentIndents.at(-1)?.childIndent ?? 0;
-    ending = codeLines[lineIndex] ? (lines[lineIndex * 2 + 1] ?? '') : '\n';
-    if (codeLines[lineIndex] && currentIndent === 0) {
+    ending = '\n';
+    const block = protectedCode.blocks.get(rawLine);
+    if (block !== undefined) {
+      const indent = Math.min(leadingSpaces(block), currentIndent);
+      let normalizedBlock = indent > 0 ? block.replace(new RegExp(`(^|[\\r\\n]) {1,${indent}}`, 'g'), '$1') : block;
+      if (currentIndent > 0 && openingMarkdownFence(normalizedBlock.split(/\r\n|\r|\n/, 1)[0] ?? '')) {
+        normalizedBlock = normalizedBlock.replace(/^([ \t]*```[A-Za-z0-9_+-]+)[ \t]+[^\r\n]+/g, '$1');
+      }
+      protectedCode.blocks.set(rawLine, normalizedBlock);
       push(rawLine);
       continue;
     }
     const removable = Math.min(leadingSpaces(rawLine), currentIndent);
     let line = rawLine.slice(removable);
-
-    // Code examples are literal source. Only remove their surrounding real
-    // component's indentation; example tags must never alter that component stack.
-    if (fence) {
-      push(line);
-      if (closesMarkdownFence(line, fence)) fence = undefined;
-      continue;
-    }
-    const opening = openingMarkdownFence(line);
-    if (opening) {
-      fence = opening;
-      push(line.replace(/^(\s*```[A-Za-z0-9_+-]+)\s+.+$/, '$1'));
-      continue;
-    }
 
     if (closingName && unwrappedComponents.has(closingName)) {
       const matchingIndex = componentIndents.findLastIndex((entry) => entry.name === closingName);
@@ -122,6 +113,11 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
     }
   }
 
+  const last = normalized.at(-1) ?? '';
+  const lastBlock = protectedCode.blocks.get(last);
+  if (lastBlock !== undefined && !/[\r\n]$/.test(content)) {
+    protectedCode.blocks.set(last, lastBlock.replace(/(?:\r\n|\r|\n)$/g, ''));
+  }
   const output = normalized.map((line, index) => line + (index < normalized.length - 1 ? endings[index] : '')).join('');
   return normalizeImportFidelity(protectedCode.restore(output), onUnmapped);
 };

@@ -4,7 +4,63 @@ import MarkdownIt from 'markdown-it';
 
 const markdown = new MarkdownIt({ html: true });
 const markdownWithoutHtml = new MarkdownIt({ html: false });
-const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/;
+type ImportContainer = { kind: 'quote' | 'list'; indent: number };
+const LIST_MARKER = /(?:[-*+]|\d{1,9}[.)])(?= )/y;
+
+/** Expand tabs only for parsing. In particular, `>\t` consumes one column of
+ * the tab as optional quote spacing; its remaining columns are indentation. */
+const expandedColumns = (line: string): string => {
+  let column = 0;
+  let output = '';
+  for (const char of line) {
+    const width = char === '\t' ? 4 - (column % 4) : 1;
+    output += char === '\t' ? ' '.repeat(width) : char;
+    column += width;
+  }
+  return output;
+};
+
+const importFenceLine = (line: string): { content: string; containers: ImportContainer[] } => {
+  const containers: ImportContainer[] = [];
+  let cursor = 0;
+  for (;;) {
+    const start = cursor;
+    while (line[cursor] === ' ') cursor++;
+    if (line[cursor] === '>') {
+      containers.push({ kind: 'quote', indent: cursor - start });
+      cursor++;
+      if (line[cursor] === ' ') cursor++;
+      continue;
+    }
+    LIST_MARKER.lastIndex = cursor;
+    const marker = LIST_MARKER.exec(line);
+    if (!marker) return { content: line.slice(start), containers };
+    cursor += marker[0].length;
+    const spacing = cursor;
+    while (line[cursor] === ' ') cursor++;
+    // CommonMark: more than four columns after a list marker uses one as
+    // padding, leaving the remainder as indentation in the item's content.
+    if (cursor - spacing > 4) cursor = spacing + 1;
+    containers.push({ kind: 'list', indent: cursor - start });
+  }
+};
+
+const importFenceBody = (line: string, containers: readonly ImportContainer[]): string | undefined => {
+  let cursor = 0;
+  for (const container of containers) {
+    const start = cursor;
+    if (container.kind === 'list') {
+      while (cursor - start < container.indent && line[cursor] === ' ') cursor++;
+      if (cursor - start !== container.indent) return undefined;
+    } else {
+      while (line[cursor] === ' ') cursor++;
+      if (cursor - start > container.indent + 3 || line[cursor] !== '>') return undefined;
+      cursor++;
+      if (line[cursor] === ' ') cursor++;
+    }
+  }
+  return line.slice(cursor);
+};
 
 /** Read each component opener once, including multiline attributes. The cap
  * also bounds malformed quotes/braces; continuation lines are not rescanned. */
@@ -61,21 +117,16 @@ export const importCodeLines = (source: string): boolean[] => {
   const componentOpeners = new Set<number>();
   let fence: MarkdownFence | undefined;
   let fenceEnd: number | undefined;
-  let containerPrefix = '';
+  let containers: ImportContainer[] = [];
   let maxIndent = 3;
   const lines = sourceLines.map((line, index) => {
     // Keep importer-only component indentation and false-closer handling out
     // of the published reader. Markdown-it supplies ordinary container ends,
     // including optional quote spacing and tab-based list indentation.
+    if (fenceEnd !== undefined && index >= fenceEnd) fence = undefined;
     if (fence) {
-      const content = containerPrefix.includes('>') ? line.trimStart() : line;
-      if (
-        index + 1 === fenceEnd ||
-        (line.length - content.length <= maxIndent &&
-          content.startsWith(containerPrefix) &&
-          closesMarkdownFence(content.slice(containerPrefix.length), fence, maxIndent))
-      )
-        fence = undefined;
+      const content = importFenceBody(expandedColumns(line), containers);
+      if (index + 1 === fenceEnd || (content !== undefined && closesMarkdownFence(content, fence, maxIndent))) fence = undefined;
       return true;
     }
     // Example tags inside code must never change the real component's depth.
@@ -104,15 +155,13 @@ export const importCodeLines = (source: string): boolean[] => {
     const allowed = componentDepth > 0 || ordinaryFences.has(index) || Boolean(openingMarkdownFence(line, 3));
     if (allowed) eligibleOpeners.add(index);
     if (!allowed) return false;
-    const prefix = CONTAINER_PREFIX.exec(line)?.[0] ?? '';
-    const content = line.slice(prefix.length);
+    const parsed = importFenceLine(expandedColumns(line));
+    const content = parsed.content;
     fence = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
     if (fence) {
       fenceEnd = ordinaryFenceEnds.get(index);
-      const list = /(?:[-*+]|\d{1,9}[.)]) {1,4}$/.exec(prefix);
-      containerPrefix = list ? prefix.slice(0, list.index) + ' '.repeat(list[0].length) : prefix.includes('>') ? prefix : '';
-      if (containerPrefix.includes('>')) containerPrefix = containerPrefix.trimStart();
-      const indent = content.length - content.trimStart().length + (containerPrefix ? 0 : prefix.length);
+      containers = parsed.containers;
+      const indent = content.length - content.trimStart().length;
       maxIndent = indent + 3;
     }
     return Boolean(fence);
@@ -134,7 +183,7 @@ export const protectImportCode = (source: string) => {
   const lines = source.match(/[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+$/g) ?? [];
   let prefix = `\uE000${randomUUID()}:`;
   while (source.includes(prefix)) prefix = `\uE000${randomUUID()}:`;
-  const literals: string[] = [];
+  const blocks = new Map<string, string>();
   const output: string[] = [];
   for (let line = 0; line < lines.length; line++) {
     if (!code[line]) {
@@ -144,12 +193,17 @@ export const protectImportCode = (source: string) => {
     const start = line;
     while (code[line + 1]) line++;
     const literal = lines.slice(start, line + 1).join('');
-    output.push(`${prefix}${literals.push(literal) - 1}\uE001`, /[\r\n]$/.test(literal) ? '\n' : '');
+    const key = `${prefix}${blocks.size}\uE001`;
+    blocks.set(key, literal);
+    output.push(key, /[\r\n]$/.test(literal) ? '\n' : '');
   }
   const inline = protectMarkdownCode(output.join(''), { fences: false });
   const placeholder = new RegExp(`${prefix}(\\d+)\uE001\\n?`, 'g');
   return {
     content: inline.content,
-    restore: (value: string) => inline.restore(value).replace(placeholder, (match, index: string) => literals[Number(index)] ?? match),
+    // Normalization may remove a component's structural indentation from a
+    // hidden block. Inline-code parsing must never see its fence markers.
+    blocks,
+    restore: (value: string) => inline.restore(value).replace(placeholder, (match, index: string) => blocks.get(`${prefix}${index}\uE001`) ?? match),
   };
 };

@@ -101,6 +101,36 @@ const internalReferenceKey = (reference: string, sourcePage: string): string | n
   return normalizedSourcePath(path.startsWith('/') ? path : posix.join(sourceDirectory === '.' ? '' : sourceDirectory, path));
 };
 
+const isAppPage = (reference: string, appOrigins: readonly string[]): boolean => {
+  if (!URL.canParse(reference)) return false;
+  const url = new URL(reference);
+  return appOrigins.includes(url.origin) && url.pathname.startsWith('/pages/');
+};
+
+/** Discovery needs the source key; rewriting needs its public destination.
+ * Both must prefer an exact destination before source keys and basename aliases. */
+const createAppPageLookup = () => {
+  type Page = { source: string; target: string };
+  const aliases = new Map<ReadonlyMap<string, string>, { exact: Map<string, Page>; basenames: Map<string, Page | null> }>();
+  return (map: ReadonlyMap<string, string>, key: string): Page | null | undefined => {
+    let bySlug = aliases.get(map);
+    if (!bySlug) {
+      bySlug = { exact: new Map(), basenames: new Map() };
+      for (const [source, target] of map) {
+        const path = splitSuffix(target).path;
+        const page = { source, target };
+        bySlug.exact.set(normalizedSourcePath(path), page);
+        const basename = posix.basename(path);
+        if (!bySlug.basenames.has(basename)) bySlug.basenames.set(basename, page);
+        else if (bySlug.basenames.get(basename)?.target !== target) bySlug.basenames.set(basename, null);
+      }
+      aliases.set(map, bySlug);
+    }
+    const sourceTarget = map.get(key);
+    return bySlug.exact.get(key) ?? (sourceTarget ? { source: key, target: sourceTarget } : bySlug.basenames.get(key));
+  };
+};
+
 /** Source-page paths referenced from Markdown or MDX anchors. Used by the
  * importer to include linked hidden pages that Mintlify permits outside nav. */
 export const mintlifyInternalLinkTargets = (
@@ -110,10 +140,12 @@ export const mintlifyInternalLinkTargets = (
   appOrigins: readonly string[] = ['https://nibleaf.com'],
   languageCode?: string,
   configuredLanguages: readonly string[] = [],
+  routes: ReadonlyMap<string, string> = new Map(),
 ): string[] => {
   const prose = protectImportCode(content).content;
   const languagePrefixes = new Set(configuredLanguages.map((code) => code.toLowerCase()));
   const targets = new Set<string>();
+  const appPageTarget = createAppPageLookup();
   const add = (reference: string) => {
     const href = importSiteHref(reference, sourceUrl, appOrigins);
     const key = internalReferenceKey(href, sourcePage);
@@ -125,7 +157,9 @@ export const mintlifyInternalLinkTargets = (
       if (languages.length > 1 || (languages.length === 1 && languages[0]?.toLowerCase() !== current)) return;
       if (languagePrefixes.has(prefix) && prefix !== current) return;
     }
-    targets.add(key);
+    const page = isAppPage(reference, appOrigins) ? appPageTarget(routes, key) : undefined;
+    if (page === null) return;
+    targets.add(page?.source ?? key);
   };
   for (const reference of markdownReferences(prose)) if (!reference.image) add(reference.value);
   prose.replace(HREF_ATTRIBUTE, (_match, _before: string, reference: string) => {
@@ -150,21 +184,7 @@ export const rewriteMintlifyInternalLinks = (
   } = {},
 ): string => {
   const protectedCode = protectImportCode(content);
-  const aliases = new Map<ReadonlyMap<string, string>, { exact: Map<string, string>; basenames: Map<string, string | null> }>();
-  const appPageTarget = (map: ReadonlyMap<string, string>, key: string): string | undefined => {
-    let bySlug = aliases.get(map);
-    if (!bySlug) {
-      bySlug = { exact: new Map(), basenames: new Map() };
-      for (const target of map.values()) {
-        const path = splitSuffix(target).path;
-        bySlug.exact.set(normalizedSourcePath(path), target);
-        const basename = posix.basename(path);
-        bySlug.basenames.set(basename, bySlug.basenames.has(basename) && bySlug.basenames.get(basename) !== target ? null : target);
-      }
-      aliases.set(map, bySlug);
-    }
-    return bySlug.exact.get(key) ?? map.get(key) ?? bySlug.basenames.get(key) ?? undefined;
-  };
+  const appPageTarget = createAppPageLookup();
   const rewrite = (original: string): string => {
     const appOrigins = options.appOrigins ?? ['https://nibleaf.com'];
     const reference = importSiteHref(original, options.sourceUrl, appOrigins, options.onUnresolved);
@@ -185,8 +205,7 @@ export const rewriteMintlifyInternalLinks = (
         : requested && options.languageCode && requested !== options.languageCode.toLowerCase()
           ? undefined
           : routes;
-    const appPage = URL.canParse(original) && appOrigins.includes(new URL(original).origin) && new URL(original).pathname.startsWith('/pages/');
-    const target = selected && (appPage ? appPageTarget(selected, key) : selected.get(key));
+    const target = selected && (isAppPage(original, appOrigins) ? appPageTarget(selected, key)?.target : selected.get(key));
     if (!target) {
       const path = splitSuffix(reference).path;
       if (!/\.[a-z0-9]{2,8}$/i.test(path) || /\.(?:mdx?|html)$/i.test(path)) options.onUnresolved?.(original);

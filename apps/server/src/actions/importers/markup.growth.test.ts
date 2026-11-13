@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { htmlToPlainText } from './ghost-mapping';
 import { normalizeImportFidelity } from './import-fidelity';
 import { rewriteMintlifyAssetReferences } from './mintlify-assets';
-import { rewriteMintlifyInternalLinks } from './mintlify-links';
+import { mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
 // Timing bounds, run on their own (pnpm test:growth). Imported files can be
@@ -35,6 +35,16 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
       (n: number) => '<Image\n  alt={{ label: "/> and >" }}\n/>\n\n    ```md\n\n[Tour](https://youtu.be/abcdefghijk)\n\n'.repeat(n),
     ],
     ['unclosed component attributes', normalizeImportFidelity, (n: number) => '<Image\n  alt="\n'.repeat(n)],
+    [
+      'tabbed component container fences',
+      normalizeImportFidelity,
+      (n: number) => '<CodeGroup>\n- >\t```md\n  >\t[Tour](https://youtu.be/abcdefghijk)\n  >\t`````\n</CodeGroup>\n\n'.repeat(n),
+    ],
+    [
+      'exact application destination discovery',
+      (text: string) => mintlifyInternalLinkTargets(text, 'intro', undefined, undefined, 'en', ['en'], new Map([['api/next', '/next']])),
+      (n: number) => '[Next](https://nibleaf.com/pages/next)\n'.repeat(n),
+    ],
     [
       'importer optional container fence spacing',
       normalizeImportFidelity,
