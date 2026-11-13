@@ -1,5 +1,13 @@
 import { readerSections } from '@nibleaf/shared/reader-headings';
 import { extractHeadings } from '@nibleaf/shared/site';
+import {
+  AFTER_FENCE,
+  CODERABBIT_REPROS,
+  CONTINUATION_FENCE_REPROS,
+  FENCE_CONTAINER_REPROS,
+  INDENTED_FENCE_AFTER_QUOTE,
+  LAZY_INLINE_HTML_REPROS,
+} from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { validateCitedAnswer } from './answer-validation';
 import { chunkSearchDocument, type SearchChunkSource } from './hybrid';
@@ -128,5 +136,38 @@ describe('citations of anchored chunks', () => {
       { id: 'S2', heading: 'Add your domain', anchor: 'add-your-domain' },
       { id: 'S1', heading: undefined, anchor: undefined },
     ]);
+  });
+});
+
+describe('sections after a fence in a quote or list item (#587)', () => {
+  it.each(FENCE_CONTAINER_REPROS)('index the section after %s under its heading and anchor', (_name, example) => {
+    const content = `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.`;
+    expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
+    // Without the reader's sections, the search package finds the heading itself.
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
+  });
+
+  it.each(LAZY_INLINE_HTML_REPROS)('index the code after %s as code, not as a section (#590 lazy inline HTML)', (_name, example) => {
+    const content = `${example}\n\nThe after section mentions zebras.`;
+    expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
+  });
+
+  it.each(CODERABBIT_REPROS)('index the section after %s under its heading and anchor (#590 CodeRabbit review)', (_name, example) => {
+    const content = `${example}\n\nThe after section mentions zebras.`;
+    expect(sections(page(content)).at(-1)).toEqual(['After', 'after']);
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toContain('After');
+  });
+
+  it.each(CONTINUATION_FENCE_REPROS)('index the section after %s under its heading and anchor (#590 CodeRabbit)', (_name, example) => {
+    const content = `${example}\n\nThe after section mentions zebras.`;
+    expect(sections(page(content)).at(-1)).toEqual(['After', 'after']);
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toContain('After');
+  });
+
+  it('index the section after indented code that looks like a fence, once a quote has ended (#590 council)', () => {
+    const content = `${INDENTED_FENCE_AFTER_QUOTE}\n\nThe after section mentions zebras.`;
+    expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
   });
 });

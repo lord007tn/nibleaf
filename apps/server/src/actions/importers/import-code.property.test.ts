@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import { expect, it } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
@@ -59,8 +58,8 @@ it('protects main code and exposes following prose across generated containers (
     const sentinel = `[Sentinel ${index}](/sentinel)`;
     const codeExample = [...opening, ...example].join('\n');
     const source = [...opening, ...example, ...closing, '', sentinel].join('\n');
-    // This shared scanner is byte-identical to main 93408093. Keep it as an
-    // independent oracle for every line of the generated code example.
+    // The shared reader scanner (`fencedMarkdownLines`) is an independent
+    // oracle for every line of the generated code example.
     const oracle = fencedMarkdownLines(codeExample.split('\n'));
     const protectedLines = importCodeLines(source);
     if (index % 5 === 0 && !protectedLines[opening.length + 2]) failures.push({ index, reason: 'indented code is exposed', source });
@@ -69,9 +68,10 @@ it('protects main code and exposes following prose across generated containers (
       oracleOverruns.push(index);
       overrunKinds.set(falseCloser, (overrunKinds.get(falseCloser) ?? 0) + 1);
     }
-    // Main can reopen at a real closer and incorrectly flag following prose.
-    // Report and pin that existing full-article limit instead of making it a
-    // requirement: (a) compares ALL oracle code-example lines, without filtering;
+    // Until #587 the shared scanner lost fences in quotes and lists, reopened at
+    // a real closer and flagged the following prose: it over-protected 606 of
+    // these articles. It now tracks containers and overruns none; the count is
+    // pinned at 0 below. (a) compares ALL oracle code-example lines, without filtering;
     // (b) independently checks prose on the complete, correctly closed article.
     if (oracle.some((code, line) => code && !protectedLines[line])) failures.push({ index, reason: 'main code is exposed', source });
     if (protectedLines.at(-1)) failures.push({ index, reason: 'sentinel is protected', source });
@@ -93,9 +93,7 @@ it('protects main code and exposes following prose across generated containers (
       overrunKinds: Object.fromEntries(overrunKinds),
     },
   });
-  expect(oracleOverruns).toHaveLength(606);
-  expect(createHash('sha256').update(oracleOverruns.join(',')).digest('hex')).toBe(
-    '6c8f4844c08ba09312743ce66e36ff5986603630ff723a66d5b87f78e3232422',
-  );
+  // The shared scanner over-protected 606 articles before #587 and none since.
+  expect(oracleOverruns).toHaveLength(0);
   expect(failures.slice(0, 12), `${failures.length} failures; seed=0x${SEED.toString(16)}`).toEqual([]);
 }, 20_000);

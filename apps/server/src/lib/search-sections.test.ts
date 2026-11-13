@@ -1,3 +1,11 @@
+import {
+  AFTER_FENCE,
+  CODERABBIT_REPROS,
+  CONTINUATION_FENCE_REPROS,
+  FENCE_CONTAINER_REPROS,
+  INDENTED_FENCE_AFTER_QUOTE,
+  LAZY_INLINE_HTML_REPROS,
+} from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { matchedSearchSection } from './search-sections';
 
@@ -108,5 +116,33 @@ ${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${fille
     expect(snippet.startsWith('…word')).toBe(true);
     expect(snippet.endsWith('tail…')).toBe(true);
     expect(snippet.length).toBeLessThanOrEqual(184);
+  });
+
+  it.each(FENCE_CONTAINER_REPROS)('finds the section after %s (#587)', (_name, example) => {
+    const page = { title: 'Guide', content: `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.` };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
+  });
+
+  it.each(CODERABBIT_REPROS)('finds the section after %s (#590 CodeRabbit review)', (_name, example) => {
+    const page = { title: 'Guide', content: `${example}\n\nThe after section mentions zebras.` };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
+  });
+
+  it.each(LAZY_INLINE_HTML_REPROS)('finds the section after %s, not the code after it (#590 lazy inline HTML)', (_name, example) => {
+    const page = { title: 'Guide', content: `${example}\n\nThe after section mentions zebras.` };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
+    // An `##` line in the fence must not become a section (search skips `#` headings).
+    const inCode = { title: 'Guide', content: example.replace('# literal', '## literal') };
+    expect(matchedSearchSection(inCode, 'literal')).toBeUndefined();
+  });
+
+  it.each(CONTINUATION_FENCE_REPROS)('finds the section after %s (#590 CodeRabbit)', (_name, example) => {
+    const page = { title: 'Guide', content: `${example}\n\nThe after section mentions zebras.` };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
+  });
+
+  it('finds the section after indented code that looks like a fence, once a quote has ended (#590 council)', () => {
+    const page = { title: 'Guide', content: `${INDENTED_FENCE_AFTER_QUOTE}\n\nThe after section mentions zebras.` };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
   });
 });

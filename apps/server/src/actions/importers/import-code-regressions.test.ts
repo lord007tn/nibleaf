@@ -51,7 +51,9 @@ describe.each([
   });
 });
 
-describe('main oracle overruns retained as reported compatibility limits', () => {
+// main's shared scanner overran on each of these until #587; it now closes them
+// all, and the importer still exposes the following prose.
+describe('former main oracle overruns, closed since #587', () => {
   it.each([
     ['new quote marker', '~~~~md\n[Literal](/literal)\n> ~~~~\n[Still literal](/literal)\n~~~~~'],
     ['new list marker', '~~~~md\n[Literal](/literal)\n- ~~~~\n[Still literal](/literal)\n~~~~~'],
@@ -61,9 +63,9 @@ describe('main oracle overruns retained as reported compatibility limits', () =>
       'nested containers with a short marker',
       '<CodeGroup>\n1. > - ~~~md\n   >   [Literal](/literal)\n   >   ~~\n   >   [Still literal](/literal)\n   >   ~~~~\n</CodeGroup>',
     ],
-  ])('%s reopens main at a real closer but must not hide following prose', (_name, example) => {
+  ])('%s no longer reopens the shared scanner and must not hide following prose', (_name, example) => {
     const source = `${example}\n\n[Sentinel](/sentinel)`;
-    expect(fencedMarkdownLines(source.split('\n')).at(-1)).toBe(true);
+    expect(fencedMarkdownLines(source.split('\n')).at(-1)).toBe(false);
     expect(importCodeLines(source).at(-1)).toBe(false);
   });
 });
