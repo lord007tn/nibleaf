@@ -1254,6 +1254,8 @@ export const MESSAGE_IDS = {
   'settings.theme.color.warning': 'settings_theme_color_warning',
   'settings.theme.color.danger': 'settings_theme_color_danger',
   'settings.theme.contrastTitle': 'settings_theme_contrasttitle',
+  'settings.theme.accentAdjustedTitle': 'settings_theme_accentadjustedtitle',
+  'settings.theme.accentAdjustedBody': 'settings_theme_accentadjustedbody',
   'settings.theme.contrastPass': 'settings_theme_contrastpass',
   'settings.theme.contrastBlocked': 'settings_theme_contrastblocked',
   'settings.theme.preview': 'settings_theme_preview',

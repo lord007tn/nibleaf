@@ -696,6 +696,8 @@
   "settings_theme_color_warning": "Peringatan",
   "settings_theme_color_danger": "Bahaya",
   "settings_theme_contrasttitle": "Kontras perlu diperhatikan",
+  "settings_theme_accentadjustedtitle": "Warna aksen disesuaikan agar teks mudah dibaca",
+  "settings_theme_accentadjustedbody": "Di situs yang dipublikasikan, tautan, halaman aktif, dan tombol memakai gradasi terdekat dari warna aksen Anda yang terbaca sebagai teks (WCAG AA, 4,5:1).",
   "settings_theme_contrastpass": "Teks terang dan gelap, fokus, aksen, dan pasangan kode melewati gerbang WCAG yang dikonfigurasi.",
   "settings_theme_contrastblocked": "Perbaiki pasangan kontras yang dilaporkan sebelum disimpan.",
   "settings_theme_preview": "Pratinjau langsung",

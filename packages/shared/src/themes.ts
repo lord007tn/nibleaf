@@ -389,7 +389,44 @@ export const readableOnBackground = (color: string, background: string, required
 
 const readableAccent = (accent: string, canvas: string): string => readableOnBackground(accent, canvas, 3);
 
-export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedTheme => {
+/** The accent is also text: body links, breadcrumb eyebrows, the active TOC
+ * item, and the active nav item on its 10% accent tint (`bg-primary/10`). */
+export const ACCENT_TEXT_CONTRAST = 4.5;
+const ACCENT_TINT = 0.1;
+const accentTextPasses = (color: string, canvas: string): boolean =>
+  contrastRatio(color, canvas) >= ACCENT_TEXT_CONTRAST && contrastRatio(color, mixHex(canvas, color, ACCENT_TINT)) >= ACCENT_TEXT_CONTRAST;
+
+/** The nearest shade of `accent` that reads as body text (WCAG AA, 4.5:1) on
+ * the canvas and on the accent's own tint: darker on a light canvas, lighter on
+ * a dark one, in small steps so the brand stays recognisable (PUB-006). An
+ * accent that already passes comes back unchanged. */
+export const readableAccentText = (accent: string, canvas: string): string => {
+  const color = normalizeHex(accent);
+  if (!/^#[0-9a-f]{6}$/i.test(color) || !/^#[0-9a-f]{6}$/i.test(normalizeHex(canvas))) return accent;
+  if (accentTextPasses(color, canvas)) return color;
+  const target = relativeLuminance(canvas) < 0.35 ? '#ffffff' : '#000000';
+  for (let step = 1; step <= 40; step++) {
+    const shade = mixHex(color, target, step / 40);
+    if (accentTextPasses(shade, canvas)) return shade;
+  }
+  return target;
+};
+
+/** Make a resolved palette's accent safe as text, keeping what follows it (the
+ * focus ring when it was the accent, the text drawn on the accent) in step. */
+const textSafeAccent = (colors: ThemeColorTokens): void => {
+  const accent = readableAccentText(colors.accent, colors.canvas);
+  if (accent === normalizeHex(colors.accent)) return;
+  if (normalizeHex(colors.focus) === normalizeHex(colors.accent)) colors.focus = accent;
+  if (normalizeHex(colors.info) === normalizeHex(colors.accent)) colors.info = accent;
+  colors.accent = accent;
+  if (contrastRatio(colors.accentForeground, accent) < ACCENT_TEXT_CONTRAST) colors.accentForeground = contrastingText(accent);
+};
+
+/** Resolve a site's theme. Accents come back safe as text (see
+ * readableAccentText); `{ authoredAccent: true }` skips that, to show the
+ * owner what was adjusted. */
+export const resolveTheme = (config?: ThemeOwnedProjectConfig | null, options: { authoredAccent?: boolean } = {}): ResolvedTheme => {
   const id = config?.theme?.preset && THEME_PRESET_IDS.includes(config.theme.preset) ? config.theme.preset : 'harbor';
   const preset = THEME_PRESETS[id];
   const accent = config?.styling?.primaryColor ? normalizeHex(config.styling.primaryColor) : undefined;
@@ -421,6 +458,10 @@ export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedT
       dark.focus = dark.accent;
     }
   }
+  if (!options.authoredAccent) {
+    textSafeAccent(light);
+    textSafeAccent(dark);
+  }
   return {
     id,
     metadata: { ...preset.metadata, ...config?.theme?.metadata },
@@ -428,6 +469,28 @@ export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedT
     layout: { ...preset.layout, ...config?.theme?.layout, ...(config?.styling?.radius ? { radius: config.styling.radius } : {}) },
     components: { ...preset.components, ...config?.theme?.components },
   };
+};
+
+export interface AccentTextAdjustment {
+  mode: 'light' | 'dark';
+  from: string;
+  fromRatio: number;
+  to: string;
+  toRatio: number;
+}
+
+/** Where the published site draws the accent darker or lighter than authored,
+ * so links and buttons pass AA: shown beside the theme's colours. */
+export const accentTextAdjustments = (config?: ThemeOwnedProjectConfig | null): AccentTextAdjustment[] => {
+  const authored = resolveTheme(config, { authoredAccent: true });
+  const applied = resolveTheme(config);
+  return (['light', 'dark'] as const).flatMap((mode) => {
+    const from = normalizeHex(authored.colors[mode].accent);
+    const to = applied.colors[mode].accent;
+    if (from === to) return [];
+    const canvas = applied.colors[mode].canvas;
+    return [{ mode, from, fromRatio: contrastRatio(from, canvas), to, toRatio: contrastRatio(to, canvas) }];
+  });
 };
 
 export interface ThemeContrastIssue {

@@ -756,6 +756,8 @@
   "settings_theme_color_warning": "Warning",
   "settings_theme_color_danger": "Danger",
   "settings_theme_contrasttitle": "Contrast needs attention",
+  "settings_theme_accentadjustedtitle": "Accent adjusted for readable text",
+  "settings_theme_accentadjustedbody": "On the published site, links, the active page and buttons use the nearest shade of your accent that reads as text (WCAG AA, 4.5:1).",
   "settings_theme_contrastpass": "Light and dark text, focus, accent, and code pairs pass the configured WCAG gates.",
   "settings_theme_contrastblocked": "Fix the reported contrast pairs before saving.",
   "settings_theme_preview": "Live preview",

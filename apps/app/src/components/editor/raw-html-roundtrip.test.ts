@@ -295,26 +295,17 @@ describe('code inside lists and blockquotes', () => {
 
   // Tabs: CommonMark counts a tab up to the next multiple of four columns, and a tab
   // a container only partly uses (the space after `>`, a list item's indent) leaves
-  // its other columns as spaces. A fence keeps its own lines as written while they
-  // read the same under the containers the editor writes (#578), so a tab in a
-  // fence's prefix is saved as a tab. The editor still writes a list item's own
-  // line (`\t- Inner`) with spaces; where that moves the item's content column, the
-  // fence's lines no longer read the same and are written in the space form too.
+  // its other columns as spaces. The editor writes container prefixes as spaces,
+  // as it always has, so each save gives the space form, with the code in its fence.
   const tabbed = (prefix: string, lines: string[]) => lines.map((line) => `${prefix}${line}`).join('\n');
   it.each([
-    ['a quote in a list item indented with a tab', `- Item\n\n${tabbed('\t> ', fence)}`, `- Item\n\n${tabbed('\t> ', fence)}`],
-    ['a list item in a quote, a tab after the quote marker', `> - Item\n>\n${tabbed('>\t', fence)}`, `> - Item\n>\n${tabbed('>\t', fence)}`],
+    ['a quote in a list item indented with a tab', `- Item\n\n${tabbed('\t> ', fence)}`, `- Item\n\n${tabbed('  > ', fence)}`],
+    ['a list item in a quote, a tab after the quote marker', `> - Item\n>\n${tabbed('>\t', fence)}`, `> - Item\n>\n${tabbed('>   ', fence)}`],
     ['a quote in a nested list item, tab-indented', `- Outer\n\n\t- Inner\n\n${tabbed('\t\t> ', fence)}`, mixed[0]?.[1](fence)],
     ['a list item in a quote in a list item, tabs and a partial tab', `- Outer\n\n\t> - Inner\n\t>\n${tabbed('\t>\t', fence)}`, mixed[1]?.[1](fence)],
-    ['a quote in a quote in a list item, tabs and a partial tab', `- Outer\n\n${tabbed('\t>\t> ', fence)}`, `- Outer\n\n${tabbed('\t>\t> ', fence)}`],
-    ['a quote in a list item in a quote, a partial tab', `> - Item\n>\n${tabbed('>\t> ', fence)}`, `> - Item\n>\n${tabbed('>\t> ', fence)}`],
-    // `\t- Two` is written `   - Two`. The fence's `\t  > ` still reads as the same
-    // quote under it (its `>` one column in, which a quote allows), so it is kept.
-    [
-      'a quote in a list item in an ordered list item, tabs and spaces',
-      `1. One\n\n\t- Two\n\n${tabbed('\t  > ', fence)}`,
-      `1. One\n\n   - Two\n\n${tabbed('\t  > ', fence)}`,
-    ],
+    ['a quote in a quote in a list item, tabs and a partial tab', `- Outer\n\n${tabbed('\t>\t> ', fence)}`, mixed[2]?.[1](fence)],
+    ['a quote in a list item in a quote, a partial tab', `> - Item\n>\n${tabbed('>\t> ', fence)}`, mixed[3]?.[1](fence)],
+    ['a quote in a list item in an ordered list item, tabs and spaces', `1. One\n\n\t- Two\n\n${tabbed('\t  > ', fence)}`, mixed[4]?.[1](fence)],
   ])('keeps a fence in %s in its fence over four saves', (_name, source, saved) => {
     let markdown = source;
     for (let cycle = 0; cycle < 4; cycle++) {

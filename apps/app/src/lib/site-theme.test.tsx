@@ -1,5 +1,5 @@
 import { translateFn } from '@nibleaf/i18n';
-import { contrastRatio } from '@nibleaf/shared/themes';
+import { contrastRatio, readableAccentText } from '@nibleaf/shared/themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ThemePreview } from '@/components/project-settings/theme-section';
@@ -105,7 +105,15 @@ describe('published theme projection', () => {
   it('keeps pre-v1 projects on their existing design-system palette', () => {
     const css = projectThemeCss({ styling: { primaryColor: '#c2410c' } });
     expect(css).toContain('--theme-canvas:var(--background)');
-    expect(css).toContain('--primary:#c2410c');
+    // The accent is drawn in the shade that reads as text on #fafafa and its tint (PUB-006).
+    const accent = readableAccentText('#c2410c', '#fafafa');
+    expect(contrastRatio(accent, '#fafafa')).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain(`--primary:${accent}`);
+    expect(css).toContain('--primary-foreground:#ffffff');
+    // Dark keeps the design system's on-primary text it always had.
+    expect(css).toMatch(/\.dark\{[^}]*--primary-foreground:#171717/);
+    // ...and mixes the brand itself towards white, unchanged from before.
+    expect(css).toContain('color-mix(in oklab,#c2410c 72%,white)');
     expect(css).not.toContain('--background:#f8fafc');
   });
 

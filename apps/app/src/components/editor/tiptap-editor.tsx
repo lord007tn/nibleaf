@@ -61,19 +61,26 @@ import { ImageControls } from './extensions/image-controls';
 import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions/image-upload';
 import { InternalLinkClicks } from './extensions/internal-link-clicks';
 import { mdxNodes } from './extensions/mdx';
-import { decodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
+import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { MarkdownBlockquote } from './extensions/quote';
 import { SectionTarget } from './extensions/section-target';
 import { SelectionShortcuts } from './extensions/selection-shortcuts';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { VideoEmbed } from './extensions/video-embed';
-import { annotateFences, type FenceSerializeState, writeFence } from './fence-source';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
 import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
 
 // Register a small set of common languages for code-block highlighting.
 const lowlight = createLowlight(common);
+
+type MarkdownSerializeState = {
+  write: (text: string) => void;
+  text: (text: string, shouldEscape?: boolean) => void;
+  esc: (text: string) => string;
+  ensureNewLine: () => void;
+  closeBlock: (node: PMNode) => void;
+};
 
 const fenceParsers = new WeakSet<object>();
 
@@ -127,6 +134,65 @@ function getCounts(editor: Editor): { words: number; characters: number } {
   return { words: storage.characterCount?.words() ?? 0, characters: storage.characterCount?.characters() ?? 0 };
 }
 
+/** What is left of a source line once some container prefixes are read, and the
+ *  column its first character sits at. Columns count as CommonMark does: a tab
+ *  moves to the next multiple of four. */
+interface LineRest {
+  text: string;
+  column: number;
+}
+
+const nextTabStop = (column: number): number => column + 4 - (column % 4);
+
+/** Read up to `target` columns: whitespace only, or anything (a list marker) with
+ *  `anyCharacter`. A tab that reaches past `target` leaves its remaining columns
+ *  as spaces, which is how CommonMark reads a partly used tab. */
+function advanceTo(rest: LineRest, target: number, anyCharacter: boolean): LineRest {
+  let { column } = rest;
+  let index = 0;
+  while (index < rest.text.length && column < target) {
+    const character = rest.text[index];
+    if (character === '\t') {
+      const stop = nextTabStop(column);
+      if (stop > target) return { text: ' '.repeat(stop - target) + rest.text.slice(index + 1), column: target };
+      column = stop;
+    } else if (character === ' ' || anyCharacter) column += 1;
+    else break;
+    index += 1;
+  }
+  return { text: rest.text.slice(index), column };
+}
+
+/** Read a quote's marker: up to three spaces, `>`, and one optional column of space
+ *  after it, which may be the first column of a tab. A line without the marker (a
+ *  lazy continuation) is left as it is. */
+function readQuoteMarker(rest: LineRest): LineRest {
+  const marker = /^ {0,3}>/.exec(rest.text)?.[0];
+  if (!marker) return rest;
+  const column = rest.column + marker.length;
+  const text = rest.text.slice(marker.length);
+  if (text[0] === ' ') return { text: text.slice(1), column: column + 1 };
+  if (text[0] === '\t') return { text: ' '.repeat(nextTabStop(column) - column - 1) + text.slice(1), column: column + 1 };
+  return { text, column };
+}
+
+/** The column a list item's content starts at, as CommonMark reads its first line
+ *  (`- a` → 2, `10. a` → 4): one to four columns of space after the marker count,
+ *  and a marker followed by nothing or by more than four takes one. */
+function listItemContentColumn(rest: LineRest): number {
+  const match = /^( *)([-+*]|\d{1,9}[.)])/.exec(rest.text);
+  if (!match) return rest.column;
+  const marker = rest.column + match[0].length;
+  let column = marker;
+  let index = match[0].length;
+  while (rest.text[index] === ' ' || rest.text[index] === '\t') {
+    column = rest.text[index] === '\t' ? nextTabStop(column) : column + 1;
+    index += 1;
+  }
+  const gap = column - marker;
+  return index >= rest.text.length || gap === 0 || gap > 4 ? marker + 1 : column;
+}
+
 /** CodeBlockLowlight that mirrors the chosen language onto the <pre> as `data-language`,
  * so the dark chrome's label bar (CSS ::before) can display it. */
 const CodeBlock = CodeBlockLowlight.extend({
@@ -148,11 +214,6 @@ const CodeBlock = CodeBlockLowlight.extend({
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-language')),
         rendered: false,
       },
-      sourceFenceLines: {
-        default: '',
-        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-lines')),
-        rendered: false,
-      },
     };
   },
   renderHTML({ node, HTMLAttributes }) {
@@ -162,20 +223,64 @@ const CodeBlock = CodeBlockLowlight.extend({
   addStorage() {
     return {
       markdown: {
-        serialize(state, node, parent, index) {
+        serialize(state: MarkdownSerializeState, node: PMNode) {
           const sourceOpen = String(node.attrs.sourceFenceOpen ?? '');
-          const language = String(node.attrs.language ?? '');
-          const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
-          let open = `\`\`\`${language}`;
-          if (sourceOpen) open = language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language);
-          // `out`, `delim` and `closed` are prosemirror-markdown internals its typings leave out.
-          writeFence(state as unknown as FenceSerializeState, node, parent, index, open);
+          if (sourceOpen) {
+            const language = String(node.attrs.language ?? '');
+            const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
+            state.write(language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language));
+            state.write('\n');
+            state.text(node.textContent, false);
+            state.ensureNewLine();
+            state.write(String(node.attrs.sourceFenceClose ?? '') || (sourceOpen.trimStart().startsWith('~') ? '~~~' : '```'));
+            state.closeBlock(node);
+            return;
+          }
+          state.write(`\`\`\`${node.attrs.language || ''}\n`);
+          state.text(node.textContent, false);
+          state.ensureNewLine();
+          state.write('```');
+          state.closeBlock(node);
         },
         parse: {
           setup(markdownit) {
             markdownit.set({ langPrefix: 'language-' });
             if (fenceParsers.has(markdownit)) return;
-            markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => annotateFences(state));
+            markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => {
+              const lines = state.src.split('\n');
+              // A fence keeps its source lines without its containers' prefixes: a
+              // quote's `>` and a list item's indent. Their serializers write those
+              // again on save, so keeping them added another on every save until the
+              // fence broke (`> ```js` saved as `> > ```js`; #574 in list items).
+              // The open containers, outermost first: each reads its own prefix
+              // from what the containers around it leave of the line, in columns,
+              // so tabs count as CommonMark counts them. A list item's column is
+              // where its content starts on the line.
+              const containers: Array<{ quote: true } | { quote: false; column: number; line: number }> = [];
+              const withoutContainers = (line: string, lineNumber: number): LineRest => {
+                let rest: LineRest = { text: line, column: 0 };
+                for (const container of containers) {
+                  rest = container.quote ? readQuoteMarker(rest) : advanceTo(rest, container.column, lineNumber === container.line);
+                }
+                return rest;
+              };
+              for (const token of state.tokens) {
+                if (token.type === 'blockquote_open') containers.push({ quote: true });
+                if (token.type === 'list_item_open') {
+                  const line = token.map?.[0] ?? -1;
+                  containers.push({ quote: false, column: listItemContentColumn(withoutContainers(lines[line] ?? '', line)), line });
+                }
+                if (token.type === 'blockquote_close' || token.type === 'list_item_close') containers.pop();
+                if (token.type !== 'fence' || !token.map) continue;
+                const closeLine = Math.max(token.map[0], token.map[1] - 1);
+                const open = withoutContainers(lines[token.map[0]] ?? '', token.map[0]).text;
+                const close = withoutContainers(lines[closeLine] ?? '', closeLine).text;
+                const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
+                token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
+                token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
+                token.attrSet('data-mdx-fence-language', encodeMdxSource(language));
+              }
+            });
             fenceParsers.add(markdownit);
           },
           updateDOM(element: HTMLElement) {

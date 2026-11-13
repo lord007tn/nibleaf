@@ -1,5 +1,7 @@
 import {
+  contrastingText,
   type ResolvedTheme,
+  readableAccentText,
   readableOnBackground,
   resolveTheme,
   safeThemeFontFamily,
@@ -101,6 +103,11 @@ const legacyTokenDeclarations = (accent: string): string =>
     '--theme-footer-muted:#707070',
   ].join(';');
 
+/** The design system's light canvas (packages/design-system globals.css), which pre-v1 sites draw on. */
+const LEGACY_LIGHT_CANVAS = '#fafafa';
+/** The design system's dark on-primary text, which dark pre-v1 sites have always used. */
+const LEGACY_DARK_ON_ACCENT = '#171717';
+
 const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
   radius === 'sharp' ? '0.125rem' : radius === 'pill' ? '1rem' : '0.625rem';
 
@@ -127,16 +134,22 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const dark = safeTokens(theme.colors.dark, preset.colors.dark);
   const headingFont = safeThemeFontFamily(config?.typography?.headingFont);
   const codeFont = safeThemeFontFamily(config?.typography?.codeFont);
-  const legacyAccent = safeThemeHex(config?.styling?.primaryColor, '#5546e8');
-  const legacyDarkAccent = `color-mix(in oklab,${legacyAccent} 72%,white)`;
+  // Pre-v1 sites draw on the design-system canvas (#fafafa in light). Their
+  // accent is text too (links, the active nav item), so it gets the same AA
+  // shade as a themed site's (PUB-006); the text on it is picked by contrast.
+  const legacyBrand = safeThemeHex(config?.styling?.primaryColor, '#5546e8');
+  const legacyAccent = readableAccentText(legacyBrand, LEGACY_LIGHT_CANVAS);
+  const legacyAccentForeground = contrastingText(legacyAccent);
+  // Dark mixes the brand itself towards white, as it always has (it passes there).
+  const legacyDarkAccent = `color-mix(in oklab,${legacyBrand} 72%,white)`;
   const colorRules = config?.theme
     ? [
         `:root,.nibleaf-site-chrome{${tokenDeclarations(light)};--radius:${radiusValue(theme.layout.radius)}}`,
         `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{${tokenDeclarations(dark)}}`,
       ]
     : [
-        `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent)};--primary:${legacyAccent};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
-        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--ring:${legacyDarkAccent};--theme-footer-muted:var(--muted-foreground)}`,
+        `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent)};--primary:${legacyAccent};--primary-foreground:${legacyAccentForeground};--theme-accent-foreground:${legacyAccentForeground};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
+        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--primary-foreground:${LEGACY_DARK_ON_ACCENT};--theme-accent-foreground:${LEGACY_DARK_ON_ACCENT};--ring:${legacyDarkAccent};--theme-footer-muted:var(--muted-foreground)}`,
       ];
   return [
     ...colorRules,

@@ -696,6 +696,8 @@
   "settings_theme_color_warning": "警告",
   "settings_theme_color_danger": "危险",
   "settings_theme_contrasttitle": "需要注意对比",
+  "settings_theme_accentadjustedtitle": "已调整强调色以确保文字可读",
+  "settings_theme_accentadjustedbody": "在已发布的网站上，链接、当前页面和按钮使用与您的强调色最接近且可作为文字阅读的色调（WCAG AA，4.5:1）。",
   "settings_theme_contrastpass": "浅色和深色文本、焦点、重音和代码对通过配置的 WCAG 门。",
   "settings_theme_contrastblocked": "在保存之前修复报告的对比度对。",
   "settings_theme_preview": "实时预览",

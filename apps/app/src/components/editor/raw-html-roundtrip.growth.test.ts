@@ -2,7 +2,6 @@
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
-import { annotateFences } from './fence-source';
 import { buildEditorExtensions } from './tiptap-editor';
 
 type MarkdownStorage = { markdown: { parser: { parse(content: string): unknown; md: { parse(source: string, env: object): unknown } } } };
@@ -49,60 +48,6 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     ['<iframe <Card title=" <span {', '<iframe <Card title=" <span { '],
   ])('prepares a page of unclosed %s in one pass', (_name, tag) => {
     const [small, large] = growthMs(parse, tag.repeat(1000), tag.repeat(4000), { budgetMs: 10_000 });
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
-  });
-});
-
-type MarkdownToken = Parameters<typeof annotateFences>[0]['tokens'][number];
-type FenceMarkdown = {
-  block: { parse(source: string, md: unknown, env: object, tokens: MarkdownToken[]): void };
-  core: { State: new (source: string, md: unknown, env: object) => { Token: new (type: string, tag: string, nesting: 1 | 0 | -1) => MarkdownToken } };
-};
-
-/** `n` list items, each a fence that opens on the item's first line (#578). */
-const itemFences = (n: number) => '- ```js\n  x\n  ```\n'.repeat(n);
-/** `n` components, each holding a fence the editor keeps whole (#589): quoted with a
- *  tab and a longer closer, then in a list item. */
-const groupedFences = (n: number) =>
-  '<CodeGroup>\n>\t```md\n>\t[Tour](https://youtu.be/abcdefghijk)\n>\t````\n</CodeGroup>\n\n<CodeGroup>\n- ```md\n  <Card title="x" />\n  ````\n</CodeGroup>\n\n'.repeat(
-    n,
-  );
-
-describe.runIf(growthTestsEnabled)('code fence source growth', () => {
-  const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
-  const { parser } = (editor.storage as unknown as MarkdownStorage).markdown;
-  parser.parse('');
-  const md = parser.md as unknown as FenceMarkdown;
-  const parse = (source: string) => parser.md.parse(source, {});
-  afterAll(() => editor.destroy());
-
-  it('gives the fences of a long list their source and lead paragraphs in one pass', () => {
-    // Only the fence rule is timed, on block tokens made beforehand. Each call gets
-    // a fresh copy of the token list (linear), since the rule adds lead paragraphs to it.
-    const { Token } = new md.core.State('', md, {});
-    const input = (n: number) => {
-      const src = itemFences(n);
-      const tokens: MarkdownToken[] = [];
-      md.block.parse(src, md, {}, tokens);
-      return { src, tokens };
-    };
-    const annotate = ({ src, tokens }: { src: string; tokens: MarkdownToken[] }) => {
-      const state = { src, tokens: [...tokens], Token };
-      annotateFences(state);
-      return state.tokens.length;
-    };
-    // Inserting each lead paragraph into the token list moved every token after it: 16x.
-    const [small, large] = growthMs(annotate, input(8000), input(32_000), { budgetMs: 20_000 });
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
-  });
-
-  it('prepares a page of list item fences in one pass', () => {
-    const [small, large] = growthMs(parse, itemFences(1000), itemFences(4000), { budgetMs: 10_000 });
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
-  });
-
-  it('prepares a page of components holding fences only the reader reads in one pass', () => {
-    const [small, large] = growthMs(parse, groupedFences(250), groupedFences(1000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 });

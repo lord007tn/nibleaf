@@ -696,6 +696,8 @@
   "settings_theme_color_warning": "সতর্কতা",
   "settings_theme_color_danger": "বিপদ",
   "settings_theme_contrasttitle": "কন্ট্রাস্ট মনোযোগ প্রয়োজন",
+  "settings_theme_accentadjustedtitle": "পাঠযোগ্য লেখার জন্য অ্যাকসেন্ট রং সমন্বয় করা হয়েছে",
+  "settings_theme_accentadjustedbody": "প্রকাশিত সাইটে লিংক, সক্রিয় পাতা ও বোতাম আপনার অ্যাকসেন্ট রঙের সবচেয়ে কাছের সেই শেড ব্যবহার করে যা লেখা হিসেবে পড়া যায় (WCAG AA, 4.5:1)।",
   "settings_theme_contrastpass": "হালকা এবং অন্ধকার পাঠ্য, ফোকাস, অ্যাকসেন্ট এবং কোড জোড়া কনফিগার করা WCAG গেটগুলিকে অতিক্রম করে।",
   "settings_theme_contrastblocked": "সংরক্ষণ করার আগে রিপোর্ট করা বৈসাদৃশ্য জোড়া ঠিক করুন।",
   "settings_theme_preview": "লাইভ প্রিভিউ",

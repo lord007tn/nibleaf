@@ -11,6 +11,7 @@
  *   preview-signal      theme preset "signal"
  *   preview-legacy      no `theme` config (legacy palette branch)
  *   preview-private     "harbor", private, read by a signed-in reader
+ *   preview-brand       no `theme` config, brand colour #B96A3D (fails AA as text as authored, PUB-006)
  *
  * Endpoints (mirroring apps/server/src/modules/public/sites/handlers.ts):
  *   GET  /api/public/sites/:id?lang=&version=            -> { data: SiteShell }
@@ -1052,6 +1053,7 @@ const PROJECTS = {
   'preview-legacy': { preset: null },
   // A private site whose reader is signed in; access can be revoked mid-session.
   'preview-private': { preset: 'harbor', visibility: 'private' },
+  'preview-brand': { preset: null, primaryColor: '#B96A3D' },
 };
 
 /** Mutable test state, set through POST /__mock/control. */
@@ -1219,6 +1221,9 @@ const findPage = (path) => {
 const projectPayload = (id, preset, language) => {
   const languageConfig = LANGUAGE_CONFIG[language.code];
   const config = projectConfig(preset, PROJECTS[id]?.visibility);
+  if (PROJECTS[id]?.primaryColor) {
+    config.styling.primaryColor = PROJECTS[id].primaryColor;
+  }
   return {
     id,
     name: SITE_NAME.en,

@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ACCENT_TEXT_CONTRAST,
+  accentTextAdjustments,
   applyThemeTemplateConfig,
   canonicalThemeTemplateJson,
   contrastRatio,
   inspectThemeTemplateInput,
   previewThemeConfigChanges,
+  readableAccentText,
   readableOnBackground,
   resolveTheme,
   safeThemeFontFamily,
   safeThemeHex,
+  THEME_PRESET_IDS,
   THEME_PRESETS,
   themeContrastIssues,
   themeOwnedConfig,
@@ -81,11 +85,47 @@ describe('documentation themes', () => {
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
   });
 
+  it('draws an accent that fails as text in the nearest shade that passes AA, and leaves passing accents alone (PUB-006)', () => {
+    // docs.nibleaf.com's brand colour: 3.94:1 on the light canvas as authored.
+    const config = { theme: { preset: 'harbor' as const, colors: { light: { accent: '#B96A3D' } } } };
+    const { light } = resolveTheme(config).colors;
+    expect(contrastRatio(light.accent, light.canvas)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    // Also on its 10% tint (bg-primary/10), where the active nav item sits.
+    const channels = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+    const tint = `#${channels(light.canvas)
+      .map((value, index) =>
+        Math.round(value * 0.9 + (channels(light.accent)[index] ?? 0) * 0.1)
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')}`;
+    expect(contrastRatio(light.accent, tint)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(light.accent).not.toBe('#b96a3d');
+    // The focus ring followed the accent, and the text on it reads.
+    expect(light.focus).toBe(light.accent);
+    expect(contrastRatio(light.accentForeground, light.accent)).toBeGreaterThanOrEqual(4.5);
+    // Still recognisably the brand: a darker shade, same hue family.
+    expect(light.accent).toMatch(/^#[89a][0-9a-f][4-6][0-9a-f][2-4][0-9a-f]$/);
+    expect(accentTextAdjustments(config)).toEqual([expect.objectContaining({ mode: 'light', from: '#b96a3d', to: light.accent })]);
+    // Presets already pass as authored and stay byte-identical.
+    for (const id of THEME_PRESET_IDS) {
+      expect(resolveTheme({ theme: { preset: id } }).colors).toEqual(THEME_PRESETS[id].colors);
+      expect(accentTextAdjustments({ theme: { preset: id } })).toEqual([]);
+    }
+  });
+
+  it('lightens a dark-mode accent that fails as text on the dark canvas', () => {
+    expect(readableAccentText('#2a2a6e', '#0b1120')).not.toBe('#2a2a6e');
+    expect(contrastRatio(readableAccentText('#2a2a6e', '#0b1120'), '#0b1120')).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(readableAccentText('#1f63c4', '#fbfcfd')).toBe('#1f63c4');
+    expect(readableAccentText('not-a-colour', '#ffffff')).toBe('not-a-colour');
+  });
+
   it('shares strict CSS interpolation sanitizers across renderers', () => {
     expect(safeThemeHex('#AABBCC', '#000000')).toBe('#aabbcc');
     expect(safeThemeHex('#AbC', '#000000')).toBe('#aabbcc');
     expect(safeThemeHex('red;}body{display:none', '#000000')).toBe('#000000');
-    expect(resolveTheme({ theme: { colors: { light: { accent: '#AbC' } } } }).colors.light).toMatchObject({
+    expect(resolveTheme({ theme: { colors: { light: { accent: '#AbC' } } } }, { authoredAccent: true }).colors.light).toMatchObject({
       accent: '#aabbcc',
       focus: '#aabbcc',
     });

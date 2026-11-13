@@ -6,6 +6,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
 import {
+  accentTextAdjustments,
   MAX_THEME_TEMPLATE_BYTES,
   type NibleafThemeConfig,
   resolveTheme,
@@ -305,8 +306,12 @@ export function ThemeSection({ project }: { project: Project }) {
     theme: draft.theme,
     styling: { ...(project.config?.styling ?? {}), theme: draft.appearance },
   } satisfies ProjectConfig;
+  // What ships (accent shaded to read as text) drives the preview; the colour
+  // inputs and the save check keep the owner's authored colours (PUB-006).
   const resolved = resolveTheme(config);
-  const contrastIssues = themeContrastIssues(resolved);
+  const authored = resolveTheme(config, { authoredAccent: true });
+  const contrastIssues = themeContrastIssues(authored);
+  const accentAdjustments = accentTextAdjustments(config);
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(saved);
 
   const importTheme = (template: unknown, apply: boolean) => {
@@ -561,10 +566,10 @@ export function ThemeSection({ project }: { project: Project }) {
                   className="size-7 cursor-pointer border-0 bg-transparent p-0"
                   onChange={(event) => setColor(key, event.target.value)}
                   type="color"
-                  value={resolved.colors[colorMode][key]}
+                  value={authored.colors[colorMode][key]}
                 />
                 <code className="text-xs" dir="ltr">
-                  {resolved.colors[colorMode][key]}
+                  {authored.colors[colorMode][key]}
                 </code>
               </span>
             </label>
@@ -584,6 +589,24 @@ export function ThemeSection({ project }: { project: Project }) {
         ) : (
           <p className="mt-3 text-success text-xs">{t('settings.theme.contrastPass')}</p>
         )}
+        {accentAdjustments.length > 0 ? (
+          <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3 text-xs" data-accent-adjustments="">
+            <strong>{t('settings.theme.accentAdjustedTitle')}</strong>
+            <p className="mt-1 text-muted-foreground">{t('settings.theme.accentAdjustedBody')}</p>
+            <ul className="mt-2 grid gap-1.5">
+              {accentAdjustments.map((adjustment) => (
+                <li className="flex flex-wrap items-center gap-2" dir="ltr" key={adjustment.mode}>
+                  <span className="w-9 text-muted-foreground">{adjustment.mode}</span>
+                  <span aria-hidden className="size-3.5 rounded-sm border border-border" style={{ background: adjustment.from }} />
+                  <code>{`${adjustment.from} ${adjustment.fromRatio.toFixed(2)}:1`}</code>
+                  <span aria-hidden>→</span>
+                  <span aria-hidden className="size-3.5 rounded-sm border border-border" style={{ background: adjustment.to }} />
+                  <code>{`${adjustment.to} ${adjustment.toRatio.toFixed(2)}:1`}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </Field>
 
       <Field hint={t('settings.theme.previewHint')} label={t('settings.theme.preview')}>

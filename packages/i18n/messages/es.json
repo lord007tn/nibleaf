@@ -706,6 +706,8 @@
   "settings_theme_color_warning": "Advertencia",
   "settings_theme_color_danger": "Peligro",
   "settings_theme_contrasttitle": "El contraste necesita atención",
+  "settings_theme_accentadjustedtitle": "Color de acento ajustado para texto legible",
+  "settings_theme_accentadjustedbody": "En el sitio publicado, los enlaces, la página activa y los botones usan el tono más cercano de tu color de acento que se lee como texto (WCAG AA, 4,5:1).",
   "settings_theme_contrastpass": "Los pares de texto claro y oscuro, enfoque, acento y código pasan las puertas WCAG configuradas.",
   "settings_theme_contrastblocked": "Corrija los pares de contraste informados antes de guardar.",
   "settings_theme_preview": "Vista previa en vivo",
