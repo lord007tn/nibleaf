@@ -95,6 +95,35 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
     expect(report.warnings).toEqual(['Replaced the existing draft navigation only after the complete Mintlify import succeeded.']);
   });
 
+  it('full review: keeps foreign-language discovery out of English and decodes HTML lang entities', async () => {
+    const { project, run } = await fixture();
+    source.files.set(
+      'docs.json',
+      JSON.stringify({
+        navigation: {
+          languages: [
+            { language: 'en', pages: ['intro'] },
+            { language: 'ar', pages: ['ar/intro'] },
+          ],
+        },
+      }),
+    );
+    const foreign = 'https://help.test/ar/hidden?lang=ar';
+    source.files.set(
+      'intro.mdx',
+      `[Arabic](${foreign})\n\n[English](https://help.test/en/hidden?lang=en)\n\n<a href="https://nibleaf.com/pages/intro?x=1&amp;lang=ar">Arabic introduction</a>`,
+    );
+    source.files.set('ar/intro.mdx', 'Arabic introduction.');
+    source.files.set('ar/hidden.mdx', 'Arabic hidden content.');
+    source.files.set('en/hidden.mdx', 'English hidden content.');
+    const report = await run('https://help.test');
+    const english = await db.prisma.page.findMany({ where: { projectId: project.id, language: { code: 'en' } } });
+    expect(english.some((page) => page.content === 'Arabic hidden content.')).toBe(false);
+    expect(english.some((page) => page.content === 'English hidden content.')).toBe(true);
+    expect(english.find((page) => page.slug === 'intro')?.content).toContain('<a href="/intro?x=1&amp;lang=ar">Arabic introduction</a>');
+    expect(report.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: foreign });
+  });
+
   it('council P2: promotes an explicit Arabic link to the Arabic route, without English fallback', async () => {
     const { project, run } = await fixture();
     source.files.set(

@@ -114,7 +114,7 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
       const end = nextLineEnd(lineStart);
       if (end < 0 || end >= embed.start) break;
       const line = prose.slice(lineStart, end).trim();
-      if (line.startsWith('<Frame')) caption = /\bcaption=(["'])(.*?)\1/.exec(line)?.[2]?.slice(0, 300) ?? '';
+      if (line.startsWith('<Frame')) caption = line.includes('\uE000') ? '' : (/\bcaption=(["'])(.*?)\1/.exec(line)?.[2]?.slice(0, 300) ?? '');
       else if (line.startsWith('</Frame>')) caption = '';
       if (line && !line.includes('\uE000') && !line.startsWith('<') && line !== '/') preceding = line.replace(/^#{1,6}\s+/, '').slice(0, 300);
       lineStart = end + 1;
@@ -163,7 +163,8 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
     const bare = line.startsWith('https://') || (line.startsWith('<https://') && line.endsWith('>')) ? line.replace(/^<|>$/g, '') : '';
     const url = link?.[2] ?? bare;
     if (url && isImportMediaUrl(url) && (parseVideoUrl(url) || /\.(?:mp4|webm|ogg)(?:[?#]|$)/i.test(url))) {
-      lines[index] = prefix + importEmbed(url, decodeImportEntities(link?.[1] || title || 'Video'), onUnmapped);
+      const label = link?.[1]?.includes('\uE000') ? '' : link?.[1];
+      lines[index] = prefix + importEmbed(url, decodeImportEntities(label || title || 'Video'), onUnmapped);
     } else if (line && !line.includes('\uE000') && !line.startsWith('<') && line !== '/') title = line.slice(0, 300);
   }
   // Only an otherwise empty paragraph immediately beside a retained embed is an artifact.

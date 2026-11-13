@@ -37,16 +37,25 @@ const componentHeading = (name: string, tag: string): string => {
 export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string) => void): string => {
   const componentIndents: Array<{ name: string; childIndent: number; keep?: boolean }> = [];
   const normalized: string[] = [];
+  const endings: string[] = [];
+  let ending = '\n';
+  const push = (line: string) => {
+    normalized.push(line);
+    endings.push(ending);
+  };
   let fence: MarkdownFence | undefined;
   const protectedCode = protectMarkdownCode(content, { fences: false, maxFenceIndent: Number.POSITIVE_INFINITY });
   const codeLines = importCodeLines(protectedCode.content);
 
-  for (const [lineIndex, rawLine] of protectedCode.content.split(/\r?\n/).entries()) {
+  const lines = protectedCode.content.split(/(\r\n|\r|\n)/);
+  for (let lineIndex = 0; lineIndex * 2 < lines.length; lineIndex++) {
+    const rawLine = lines[lineIndex * 2] ?? '';
     const trimmed = rawLine.trim();
     const closingName = trimmed.match(/^<\/([A-Z][A-Za-z0-9.]*)>\s*$/)?.[1];
     const currentIndent = componentIndents.at(-1)?.childIndent ?? 0;
+    ending = codeLines[lineIndex] ? (lines[lineIndex * 2 + 1] ?? '') : '\n';
     if (codeLines[lineIndex] && currentIndent === 0) {
-      normalized.push(rawLine);
+      push(rawLine);
       continue;
     }
     const removable = Math.min(leadingSpaces(rawLine), currentIndent);
@@ -55,20 +64,20 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
     // Code examples are literal source. Only remove their surrounding real
     // component's indentation; example tags must never alter that component stack.
     if (fence) {
-      normalized.push(line);
+      push(line);
       if (closesMarkdownFence(line, fence)) fence = undefined;
       continue;
     }
     const opening = openingMarkdownFence(line);
     if (opening) {
       fence = opening;
-      normalized.push(line.replace(/^(\s*```[A-Za-z0-9_+-]+)\s+.+$/, '$1'));
+      push(line.replace(/^(\s*```[A-Za-z0-9_+-]+)\s+.+$/, '$1'));
       continue;
     }
 
     if (closingName && unwrappedComponents.has(closingName)) {
       const matchingIndex = componentIndents.findLastIndex((entry) => entry.name === closingName);
-      if (componentIndents[matchingIndex]?.keep) normalized.push(line);
+      if (componentIndents[matchingIndex]?.keep) push(line);
       if (matchingIndex >= 0) componentIndents.splice(matchingIndex);
       continue;
     }
@@ -78,8 +87,8 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
     if (isComponentBoundary && unwrappedComponents.has(name)) {
       const keep = name === 'Frame' && Boolean(attribute(trimmed, 'caption'));
       const heading = componentHeading(name, trimmed);
-      if (keep) normalized.push(line);
-      else if (heading) normalized.push(heading);
+      if (keep) push(line);
+      else if (heading) push(heading);
       componentIndents.push({ name, childIndent: leadingSpaces(rawLine) + 2, keep });
       continue;
     }
@@ -91,7 +100,7 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
       const alt = attribute(imageTag, 'alt') ?? '';
       return `![${alt.replaceAll(']', '\\]')}](${src})`;
     });
-    normalized.push(line);
+    push(line);
 
     if (closingName) {
       const matchingIndex = componentIndents.findLastIndex((entry) => entry.name === closingName);
@@ -105,5 +114,6 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
     }
   }
 
-  return normalizeImportFidelity(protectedCode.restore(normalized.join('\n')), onUnmapped);
+  const output = normalized.map((line, index) => line + (index < normalized.length - 1 ? endings[index] : '')).join('');
+  return normalizeImportFidelity(protectedCode.restore(output), onUnmapped);
 };

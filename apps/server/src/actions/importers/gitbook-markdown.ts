@@ -217,14 +217,16 @@ const applyCodeAnnotations = (content: string): string => {
   let fence: MarkdownFence | undefined;
   let pendingTitle: string | undefined;
   const codeLines = importCodeLines(content);
-  for (const [lineIndex, line] of content.split('\n').entries()) {
+  for (const [lineIndex, rawLine] of (content.match(/[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+$/g) ?? []).entries()) {
+    const ending = /(?:\r\n|\r|\n)$/.exec(rawLine)?.[0] ?? '';
+    const line = rawLine.slice(0, rawLine.length - ending.length);
     if (fence) {
-      output.push(line);
+      output.push(rawLine);
       if (closesMarkdownFence(line, fence, Number.POSITIVE_INFINITY)) fence = undefined;
       continue;
     }
     if (codeLines[lineIndex] && !openingMarkdownFence(line, 3)) {
-      output.push(line);
+      output.push(rawLine);
       continue;
     }
     const tokens = liquidTokens(line);
@@ -241,16 +243,16 @@ const applyCodeAnnotations = (content: string): string => {
       if (pendingTitle && !/\btitle\s*=/.test(line)) {
         const [, indent = '', marker = '', info = ''] = line.match(/^(\s*)(`{3,}|~{3,})(.*)$/) ?? [];
         const language = info.trim().split(/\s+/)[0] ?? '';
-        output.push(`${indent}${marker}${language || 'text'} title="${pendingTitle.replace(/"/g, "'")}"`);
+        output.push(`${indent}${marker}${language || 'text'} title="${pendingTitle.replace(/"/g, "'")}"${ending}`);
       } else {
-        output.push(line);
+        output.push(rawLine);
       }
       pendingTitle = undefined;
       continue;
     }
-    output.push(line);
+    output.push(rawLine);
   }
-  return output.join('\n');
+  return output.join('');
 };
 
 const replaceHtmlBlocks = (
@@ -353,7 +355,8 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
   const warnings = new Set<string>();
   const issues: ImportFidelityIssue[] = [];
   const unmapped = (reference: string) => issues.push({ kind: 'embed', page: '', reference });
-  const protectedCode = protectImportCode(applyCodeAnnotations(source.replace(/\r\n/g, '\n')));
+  const protectedCode = protectImportCode(applyCodeAnnotations(source));
+  protectedCode.content = protectedCode.content.replace(/\r\n?/g, '\n');
   if (!protectedCode.content.includes('{%') && !protectedCode.content.includes('<')) {
     return { content: protectedCode.restore(normalizeImportFidelity(protectedCode.content, unmapped).trim()), warnings: [], issues };
   }

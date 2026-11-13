@@ -374,7 +374,7 @@ const discoverLinkedPages = async (
     const raw = await repo.loadText(filePath);
     if (raw === null) continue;
     const { body } = parseFrontmatter(raw);
-    for (const target of mintlifyInternalLinkTargets(body, sourcePath, repo.sourceUrl, repo.appOrigins)) {
+    for (const target of mintlifyInternalLinkTargets(body, sourcePath, repo.sourceUrl, repo.appOrigins, languageCode ?? repo.defaultLanguageCode)) {
       if (known.has(target)) continue;
       const targetFile = [`${baseDir}${target}.mdx`, `${baseDir}${target}.md`].find((candidate) => blobs.has(candidate));
       if (!targetFile) continue;

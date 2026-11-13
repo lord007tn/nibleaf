@@ -265,6 +265,23 @@ it('re-imports the current repository docs with identical language, routes, meta
 });
 
 describe('mintlify importNodes slug collisions', () => {
+  it.each(['?lang=ar', ''])('full-review 1: never imports foreign hidden content into English without frontmatter (%s)', async (suffix) => {
+    setNavigation({
+      languages: [
+        { language: 'en', pages: ['intro'] },
+        { language: 'ar', pages: ['ar/intro'] },
+      ],
+    });
+    const foreign = `https://help.test/ar/hidden${suffix}`;
+    mem.repoFiles.set('intro.mdx', `[Arabic](${foreign})\n\n[English](https://help.test/en/hidden?lang=en)`);
+    mem.repoFiles.set('ar/intro.mdx', 'Arabic introduction.');
+    mem.repoFiles.set('ar/hidden.mdx', 'Arabic hidden content.');
+    mem.repoFiles.set('en/hidden.mdx', 'English hidden content.');
+    const summary = await runImport({ sourceUrl: 'https://help.test' });
+    expect(mem.rows.filter((row) => row.languageId === 'lang-en').some((row) => row.content === 'Arabic hidden content.')).toBe(false);
+    expect(mem.rows.some((row) => row.languageId === 'lang-en' && row.content === 'English hidden content.')).toBe(true);
+    expect(summary.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: foreign });
+  });
   it('CodeRabbit: configured APP_URL discovers and rewrites a hidden page in the full import', async () => {
     vi.stubEnv('APP_URL', 'https://app.example.test');
     try {

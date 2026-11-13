@@ -25,15 +25,18 @@ const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/
  * or blockquote. Indentation is allowed because authors indent inside components.
  * Shared by the reader's MDX normalizer, heading extraction and search sections,
  * so all three agree on what is code.
+ * An optional opening predicate runs outside fences; closers always use the
+ * active fence's marker and length, independently of the opening predicate.
  */
-export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
+export const fencedMarkdownLines = (lines: readonly string[], canOpen?: (line: string, index: number) => boolean): boolean[] => {
   let fence: MarkdownFence | undefined;
-  return lines.map((line) => {
+  return lines.map((line, index) => {
     const content = line.replace(CONTAINER_PREFIX, '');
     if (fence) {
       if (closesMarkdownFence(content, fence, Number.POSITIVE_INFINITY)) fence = undefined;
       return true;
     }
+    if (canOpen && !canOpen(line, index)) return false;
     fence = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
     return Boolean(fence);
   });

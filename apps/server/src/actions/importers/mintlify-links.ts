@@ -1,13 +1,16 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
+import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
 import { importSiteHref } from '@nibleaf/shared/site-links';
 import { stableHash } from './content';
 import { safeDecodeUri as safeDecode } from './gitbook-markdown';
+import { decodeImportEntities } from './import-fidelity';
 import { protectImportCode } from './import-markdown-code';
 import { markdownReferences, replaceImportReferences } from './import-references';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
 
 const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
+const languagePrefixes = new Set(LANGUAGE_CATALOG.map(({ code }) => code.toLowerCase()));
 
 const trimSlashes = (value: string): string => {
   let end = value.length;
@@ -107,16 +110,26 @@ export const mintlifyInternalLinkTargets = (
   sourcePage: string,
   sourceUrl?: string,
   appOrigins: readonly string[] = ['https://nibleaf.com'],
+  languageCode?: string,
 ): string[] => {
   const prose = protectImportCode(content).content;
   const targets = new Set<string>();
   const add = (reference: string) => {
-    const key = internalReferenceKey(importSiteHref(reference, sourceUrl, appOrigins), sourcePage);
-    if (key) targets.add(key);
+    const href = importSiteHref(reference, sourceUrl, appOrigins);
+    const key = internalReferenceKey(href, sourcePage);
+    if (!key) return;
+    if (languageCode) {
+      const languages = new URL(href, 'https://import.invalid').searchParams.getAll('lang');
+      const prefix = key.split('/')[0]?.toLowerCase() ?? '';
+      const current = languageCode.toLowerCase();
+      if (languages.length > 1 || (languages.length === 1 && languages[0]?.toLowerCase() !== current)) return;
+      if (languagePrefixes.has(prefix) && prefix !== current) return;
+    }
+    targets.add(key);
   };
   for (const reference of markdownReferences(prose)) if (!reference.image) add(reference.value);
   prose.replace(HREF_ATTRIBUTE, (_match, _before: string, reference: string) => {
-    add(reference);
+    add(decodeImportEntities(reference));
     return _match;
   });
   return [...targets];
@@ -137,20 +150,20 @@ export const rewriteMintlifyInternalLinks = (
   } = {},
 ): string => {
   const protectedCode = protectImportCode(content);
-  const aliases = new Map<ReadonlyMap<string, string>, Map<string, string | null>>();
+  const aliases = new Map<ReadonlyMap<string, string>, { exact: Map<string, string>; basenames: Map<string, string | null> }>();
   const appPageTarget = (map: ReadonlyMap<string, string>, key: string): string | undefined => {
     let bySlug = aliases.get(map);
     if (!bySlug) {
-      bySlug = new Map();
+      bySlug = { exact: new Map(), basenames: new Map() };
       for (const target of map.values()) {
         const path = splitSuffix(target).path;
-        for (const alias of [path.slice(1), posix.basename(path)]) {
-          bySlug.set(alias, bySlug.has(alias) && bySlug.get(alias) !== target ? null : target);
-        }
+        bySlug.exact.set(normalizedSourcePath(path), target);
+        const basename = posix.basename(path);
+        bySlug.basenames.set(basename, bySlug.basenames.has(basename) && bySlug.basenames.get(basename) !== target ? null : target);
       }
       aliases.set(map, bySlug);
     }
-    return map.get(key) ?? bySlug.get(key) ?? undefined;
+    return bySlug.exact.get(key) ?? map.get(key) ?? bySlug.basenames.get(key) ?? undefined;
   };
   const rewrite = (original: string): string => {
     const appOrigins = options.appOrigins ?? ['https://nibleaf.com'];
@@ -192,6 +205,17 @@ export const rewriteMintlifyInternalLinks = (
     (reference) => rewrite(reference.value),
   );
   return protectedCode.restore(
-    markdown.replace(HREF_ATTRIBUTE, (_match, before: string, reference: string, after: string) => `${before}${rewrite(reference)}${after}`),
+    markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string) => {
+      const decoded = decodeImportEntities(reference);
+      const rewritten = rewrite(decoded);
+      if (rewritten === decoded) return match;
+      const escaped = rewritten
+        .replaceAll('&', '&amp;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+      return `${before}${escaped}${after}`;
+    }),
   );
 };
