@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "URL исходного сайта (необязательно)",
+  "settings_import_unmappedembed": "Страница {page}: встроенное содержимое не удалось преобразовать в видео. Источник сохранён: {reference}",
+  "settings_import_unresolvedlink": "Страница {page}: не удалось определить назначение ссылки. Ссылка сохранена: {reference}",
   "editor_pagesettings_onelanguage": "Добавьте ещё один язык сайта, чтобы переместить эту страницу.",
   "editor_pagesettings_invalidicon": "Выберите поддерживаемое имя значка, например rocket, book-open или code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",

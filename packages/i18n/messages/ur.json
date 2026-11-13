@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "ماخذ سائٹ کا URL (اختیاری)",
+  "settings_import_unmappedembed": "صفحہ {page}: شامل مواد کو ویڈیو میں تبدیل نہیں کیا جا سکا۔ ماخذ محفوظ رکھا گیا: {reference}",
+  "settings_import_unresolvedlink": "صفحہ {page}: اس صفحے کے لنک کی منزل نہیں ملی اور اسے محفوظ رکھا گیا: {reference}",
   "editor_pagesettings_onelanguage": "اس صفحے کو منتقل کرنے کے لیے سائٹ میں ایک اور زبان شامل کریں۔",
   "editor_pagesettings_invalidicon": "تعاون یافتہ آئیکن کا نام منتخب کریں، جیسے rocket، book-open یا code۔",
   "$schema": "https://inlang.com/schema/inlang-message-format",

@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "来源网站 URL（可选）",
+  "settings_import_unmappedembed": "页面 {page}：无法将嵌入内容映射为视频。已保留来源：{reference}",
+  "settings_import_unresolvedlink": "页面 {page}：无法解析此页面链接，已保留：{reference}",
   "editor_pagesettings_onelanguage": "添加另一种网站语言后即可移动此页面。",
   "editor_pagesettings_invalidicon": "请选择支持的图标名称，例如 rocket、book-open 或 code。",
   "$schema": "https://inlang.com/schema/inlang-message-format",

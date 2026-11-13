@@ -119,6 +119,7 @@ export const gitbookImporter: ImporterSource<GitbookImportBody> = {
     const replacementBranch = await createImportReplacementBranch(projectId, 'gitbook', input.replaceExisting !== true);
     try {
       const currentTarget = await defaultImportTarget(projectId);
+      const language = await prisma.language.findUniqueOrThrow({ where: { id: currentTarget.languageId }, select: { code: true } });
       const target = { ...currentTarget, branchId: replacementBranch.id };
       const removedPlaceholders = await removeImportPlaceholders(target);
       if (removedPlaceholders > 0) {
@@ -129,6 +130,8 @@ export const gitbookImporter: ImporterSource<GitbookImportBody> = {
         repo: { owner, name, branch, loadText },
         blobs,
         root: config.root,
+        sourceUrl: input.sourceUrl,
+        languageCode: language.code,
         routes,
         labelsFromSummary: rawSummary !== null,
         assets,
@@ -181,6 +184,8 @@ export const gitbookImporter: ImporterSource<GitbookImportBody> = {
 };
 
 interface ImportContext {
+  languageCode: string;
+  sourceUrl?: string;
   budget: GitBookImportBudget;
   repo: { owner: string; name: string; branch: string; loadText(filePath: string): Promise<string | null> };
   blobs: ReadonlySet<string>;
@@ -301,7 +306,19 @@ const importNodes = async (
       },
     });
     summary.warnings.push(...converted.warnings.map((warning) => `${path}: ${warning}`));
-    const linked = rewriteMintlifyInternalLinks(converted.content, path, context.routes);
+    if (converted.issues.length) {
+      summary.fidelityIssues ??= [];
+      summary.fidelityIssues.push(...converted.issues.map((issue) => ({ ...issue, page: path })));
+    }
+    const linked = rewriteMintlifyInternalLinks(converted.content, path, context.routes, {
+      languageCode: context.languageCode,
+      sourceUrl: context.sourceUrl,
+      appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
+      onUnresolved: (reference) => {
+        summary.fidelityIssues ??= [];
+        summary.fidelityIssues.push({ kind: 'link', page: path, reference });
+      },
+    });
     const spaceLinks = findGitBookSpaceLinks(linked);
     if (spaceLinks.length > 0) {
       summary.warnings.push(

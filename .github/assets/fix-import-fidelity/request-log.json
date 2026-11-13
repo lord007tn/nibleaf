@@ -1,0 +1,93 @@
+{
+  "outsideAttempts": 0,
+  "profiles": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "projectId": "cmweg2a8v00017gyoz2ffo5eq",
+      "editorAndReaderChecked": true,
+      "requests": 553,
+      "mockedProviderRequests": [],
+      "outsideAttempts": 0
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "projectId": "cmweg2d5900077gyoxm7xkt4p",
+      "editorAndReaderChecked": true,
+      "requests": 552,
+      "mockedProviderRequests": [],
+      "outsideAttempts": 0
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "projectId": "cmweg2g59000d7gyo6m74c64t",
+      "editorAndReaderChecked": true,
+      "requests": 557,
+      "mockedProviderRequests": [],
+      "outsideAttempts": 0
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "projectId": "cmweg2iof000j7gyo6tf6sdxi",
+      "editorAndReaderChecked": true,
+      "requests": 555,
+      "mockedProviderRequests": [],
+      "outsideAttempts": 0
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "projectId": "cmweg2ysj000p7gyokzo8s3r4",
+      "editorAndReaderChecked": true,
+      "requests": 561,
+      "mockedProviderRequests": [
+        "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+      ],
+      "outsideAttempts": 0
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "projectId": "cmweg32kv000v7gyouwvte294",
+      "editorAndReaderChecked": true,
+      "requests": 561,
+      "mockedProviderRequests": [
+        "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+      ],
+      "outsideAttempts": 0
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "projectId": "cmweg35mn00117gyofyqm5wmr",
+      "editorAndReaderChecked": true,
+      "requests": 565,
+      "mockedProviderRequests": [
+        "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+      ],
+      "outsideAttempts": 0
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "projectId": "cmweg390r00177gyoqlxt9vff",
+      "editorAndReaderChecked": true,
+      "requests": 564,
+      "mockedProviderRequests": [
+        "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+      ],
+      "outsideAttempts": 0
+    }
+  ]
+}

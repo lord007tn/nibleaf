@@ -10,7 +10,13 @@ import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './c
 import { RemoteAssetMigrator } from './ghost-assets';
 import { getGitHubDefaultBranch, getGitHubSnapshot, getGitHubTextFile, githubRawUrl } from './github';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
-import { buildMintlifyLanguageRouteMap, buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
+import {
+  buildMintlifyLanguageRouteMap,
+  buildMintlifyLanguageRouteMaps,
+  buildMintlifyRouteMap,
+  mintlifyInternalLinkTargets,
+  rewriteMintlifyInternalLinks,
+} from './mintlify-links';
 import {
   findMintlifyConfigPath,
   type MintlifyLanguageNavigation,
@@ -85,12 +91,22 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
       const summary = emptySummary();
       // Nav page paths are relative to the config file's directory.
       const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
-      const repository = { owner, name, branch, loadText };
       const currentTarget = await defaultImportTarget(projectId);
+      const defaultLanguage = await prisma.language.findUniqueOrThrow({ where: { id: currentTarget.languageId }, select: { code: true } });
+      const languageResult = parseMintlifyLanguages(config);
+      const repository = {
+        owner,
+        name,
+        branch,
+        loadText,
+        sourceUrl: input.sourceUrl,
+        defaultLanguageCode: defaultLanguage.code,
+        configuredLanguages: languageResult.languages.map(({ code }) => code),
+        appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
+      };
       const defaultTarget = { ...currentTarget, branchId: replacementBranch.id };
       const assets = new RemoteAssetMigrator(projectId, 'mintlify');
       const state = { pages: 0, versions: new Set<string>() };
-      const languageResult = parseMintlifyLanguages(config);
       summary.warnings.push(...languageResult.warnings);
       let chromeNodes: NavNode[];
 
@@ -233,6 +249,9 @@ const importNavigation = async (
         `Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}${languageCode ? ` from ${languageCode}` : ''}.`,
       );
     }
+    const currentRoutes = buildMintlifyRouteMap(partition.nodes);
+    const languageRoutes = buildMintlifyLanguageRouteMaps(languageNavigation, partition.versionName);
+    languageRoutes.set((languageCode ?? repository.defaultLanguageCode).toLowerCase(), currentRoutes);
     await importNodes(
       partition.nodes,
       null,
@@ -241,10 +260,11 @@ const importNavigation = async (
       blobs,
       partition.target,
       assets,
-      new Map([...buildMintlifyLanguageRouteMap(languageNavigation, languageCode, partition.versionName), ...buildMintlifyRouteMap(partition.nodes)]),
+      new Map([...buildMintlifyLanguageRouteMap(languageNavigation, languageCode, partition.versionName), ...currentRoutes]),
       summary,
       state,
       languageCode,
+      languageRoutes,
     );
   }
 };
@@ -287,6 +307,10 @@ const ensureLanguageTarget = async (
 };
 
 interface RepoRef {
+  configuredLanguages: readonly string[];
+  appOrigins: readonly string[];
+  defaultLanguageCode: string;
+  sourceUrl?: string;
   owner: string;
   name: string;
   branch: string;
@@ -343,6 +367,8 @@ const discoverLinkedPages = async (
   const known = navPagePaths(nodes);
   const queue = [...known];
   const additional: string[] = [];
+  const routes = buildMintlifyRouteMap(nodes);
+  const currentLanguage = languageCode ?? repo.defaultLanguageCode;
   for (let index = 0; index < queue.length && known.size < MAX_IMPORT_FILES; index++) {
     const sourcePath = queue[index];
     if (!sourcePath) continue;
@@ -352,17 +378,23 @@ const discoverLinkedPages = async (
     const raw = await repo.loadText(filePath);
     if (raw === null) continue;
     const { body } = parseFrontmatter(raw);
-    for (const target of mintlifyInternalLinkTargets(body, sourcePath)) {
+    for (const target of mintlifyInternalLinkTargets(
+      body,
+      sourcePath,
+      repo.sourceUrl,
+      repo.appOrigins,
+      currentLanguage,
+      repo.configuredLanguages,
+      routes,
+    )) {
       if (known.has(target)) continue;
       const targetFile = [`${baseDir}${target}.mdx`, `${baseDir}${target}.md`].find((candidate) => blobs.has(candidate));
       if (!targetFile) continue;
-      if (languageCode) {
-        const targetRaw = await repo.loadText(targetFile);
-        const targetLanguage = targetRaw === null ? undefined : parseFrontmatter(targetRaw).meta.lang;
-        // A translation link is not an instruction to copy that page into this
-        // language. Explicit navigation remains authoritative in importNodes.
-        if (targetLanguage && targetLanguage.toLowerCase() !== languageCode.toLowerCase()) continue;
-      }
+      const targetRaw = await repo.loadText(targetFile);
+      const targetLanguage = targetRaw === null ? undefined : parseFrontmatter(targetRaw).meta.lang;
+      // A translation link is not an instruction to copy that page into this
+      // language. Explicit navigation remains authoritative in importNodes.
+      if (targetLanguage && targetLanguage.toLowerCase() !== currentLanguage.toLowerCase()) continue;
       known.add(target);
       additional.push(target);
       queue.push(target);
@@ -384,6 +416,7 @@ const importNodes = async (
   summary: ImportSummary,
   state: { pages: number },
   languageCode?: string,
+  languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>,
 ): Promise<void> => {
   // Slug ledger (slug → nav path) for THIS parent's children; a fresh map per
   // invocation gives per-parent scoping through the recursion. Two sibling nav
@@ -416,7 +449,7 @@ const importNodes = async (
         ...(node.icon ? { icon: node.icon.slice(0, 64) } : {}),
         position,
       });
-      await importNodes(node.children, groupId, repo, baseDir, blobs, target, assets, routeMap, summary, state, languageCode);
+      await importNodes(node.children, groupId, repo, baseDir, blobs, target, assets, routeMap, summary, state, languageCode, languageRoutes);
       continue;
     }
 
@@ -445,7 +478,16 @@ const importNodes = async (
     if (languageCode && meta.lang && meta.lang.toLowerCase() !== languageCode.toLowerCase()) {
       summary.warnings.push(`Page "${node.path}" declares lang "${meta.lang}" but is navigated under "${languageCode}".`);
     }
-    const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap);
+    const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap, {
+      languageCode: languageCode ?? repo.defaultLanguageCode,
+      languageRoutes,
+      sourceUrl: repo.sourceUrl,
+      appOrigins: repo.appOrigins,
+      onUnresolved: (reference) => {
+        summary.fidelityIssues ??= [];
+        summary.fidelityIssues.push({ kind: 'link', page: node.path, reference });
+      },
+    });
     const assetReferences = rewriteMintlifyAssetReferences(
       linkedBody,
       filePath,
@@ -458,7 +500,10 @@ const importNodes = async (
         `Page "${node.path}" references ${assetReferences.missing.length} image${assetReferences.missing.length === 1 ? '' : 's'} not found in the repository: ${assetReferences.missing.slice(0, 3).join(', ')}.`,
       );
     }
-    const content = normalizeMintlifyMdx(await assets.rewrite(assetReferences.content));
+    const content = normalizeMintlifyMdx(await assets.rewrite(assetReferences.content), (reference) => {
+      summary.fidelityIssues ??= [];
+      summary.fidelityIssues.push({ kind: 'embed', page: node.path, reference });
+    });
     const fileBase = node.path.split('/').filter(Boolean).pop() ?? 'page';
     let slug = slugify(fileBase);
     if (!slug) {

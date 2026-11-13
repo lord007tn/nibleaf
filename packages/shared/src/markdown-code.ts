@@ -76,14 +76,16 @@ const contentAt = (line: string, at: LineCursor) => ' '.repeat(at.spare) + line.
 const blankFrom = (line: string, index: number) => index >= line.length || (index === line.length - 1 && line[index] === '\r');
 
 /** The quote and list containers a line opens, and the text after them. The
- * first marker may sit at any indentation: an earlier line may have opened a
- * list item, and authors indent inside components. */
+ * first marker may sit after any number of spaces: an earlier line may have
+ * opened a list item, and authors indent inside components. A tab before it
+ * (an indented code block to CommonMark, or the body of an HTML block) opens
+ * no container, as on main, so the line is not read as a fence. */
 const openingContainers = (line: string): { containers: FenceContainer[]; content: string } => {
   const containers: FenceContainer[] = [];
   let at: LineCursor = { index: 0, column: 0, spare: 0 };
   for (;;) {
     const space = whitespaceAhead(line, at);
-    if (containers.length > 0 && space.columns > 3) break;
+    if (containers.length > 0 ? space.columns > 3 : space.columns !== space.index) break;
     if (line[space.index] === '>') {
       containers.push({ kind: 'quote', indent: space.columns });
       at = afterQuoteMarker(line, space.index, space.column);

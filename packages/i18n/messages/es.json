@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "URL del sitio de origen (opcional)",
+  "settings_import_unmappedembed": "Página {page}: el contenido incrustado no se pudo convertir en vídeo. Se conservó su origen: {reference}",
+  "settings_import_unresolvedlink": "Página {page}: no se pudo resolver este enlace de página y se conservó: {reference}",
   "editor_pagesettings_onelanguage": "Añada otro idioma al sitio para mover esta página.",
   "editor_pagesettings_invalidicon": "Elija un nombre de icono compatible, como rocket, book-open o code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",

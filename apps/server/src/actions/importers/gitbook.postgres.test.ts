@@ -6,10 +6,15 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
   let db: typeof import('@nibleaf/database');
   let branches: typeof import('../branches');
   beforeAll(async () => {
+    if (process.env.NIBLEAF_IMPORT_LOCAL_ONLY === '1') expect(Reflect.get(globalThis, Symbol.for('nibleaf.import-network-attempts'))).toEqual([]);
     db = await import('@nibleaf/database');
     branches = await import('../branches');
   });
   afterAll(async () => {
+    if (process.env.NIBLEAF_IMPORT_LOCAL_ONLY === '1') {
+      expect(Reflect.get(globalThis, Symbol.for('nibleaf.import-network-attempts'))).toEqual([]);
+      console.info('GitBook worker: outside transport attempts 0; recorded GitHub responses only.');
+    }
     await db?.prisma.$disconnect();
   });
 
@@ -134,11 +139,12 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     const { project, org, main } = await fixture();
     const user = await db.prisma.user.create({ data: { name: 'Synthetic maintainer', email: `${project.id}@example.test`, emailVerified: true } });
     await db.prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
+    // Importing the route cold can exceed the session's one-minute lifetime.
+    const { default: app } = await import('../../routes');
     const token = `synthetic-${randomUUID()}`;
     await db.prisma.session.create({ data: { token, userId: user.id, activeOrganizationId: org.id, expiresAt: new Date(Date.now() + 60_000) } });
     const { keys } = await import('@nibleaf/auth/keys.server');
     const signature = createHmac('sha256', keys().BETTER_AUTH_SECRET).update(token).digest('base64');
-    const { default: app } = await import('../../routes');
     const response = await app.request(`http://localhost:4310/api/app/projects/${project.id}/settings/import/gitbook`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: `better-auth.session_token=${encodeURIComponent(`${token}.${signature}`)}` },
@@ -151,6 +157,7 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     expect(pages).toHaveLength(1);
     expect(pages[0]?.content).toContain('init.lua');
     expect(await db.prisma.branch.count({ where: { projectId: project.id, isDefault: false } })).toBe(0);
+    return { page: pages[0], result: result.data };
   };
 
   // CI never calls GitHub: unauthenticated API requests share a 60-an-hour limit
@@ -159,6 +166,7 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
   // commit, the recursive tree, raw files); the route, importer and database are real.
   it('imports a GitBook folder from GitHub through the authenticated app route', async () => {
     const githubRequests: Array<{ host: string; path: string }> = [];
+    const unexpectedHttpRequests: string[] = [];
     const realFetch = globalThis.fetch;
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
@@ -166,12 +174,22 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
         githubRequests.push({ host: url.hostname, path: url.pathname });
         return recordedGitHub(url);
       }
-      return realFetch(input, init);
+      if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return realFetch(input, init);
+      unexpectedHttpRequests.push(`${url.origin}${url.pathname}`);
+      throw new Error(`Unexpected HTTP request in recorded GitBook rehearsal: ${url.origin}${url.pathname}`);
     });
     try {
-      await importFolder();
+      const { page, result } = await importFolder();
+      expect(page?.content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Video tour:"></iframe>');
+      expect(page?.content).toContain('\n\n---\n\n');
+      expect(page?.content).not.toContain('\n/\n');
+      expect(page?.content).toContain('[Again](https://nibleaf.com/pages/readme?lang=ar#start)');
+      expect(result).toMatchObject({
+        fidelityIssues: expect.arrayContaining([{ kind: 'link', page: 'readme.md', reference: 'https://nibleaf.com/pages/readme?lang=ar#start' }]),
+      });
     } finally {
       fetchSpy.mockRestore();
+      expect(unexpectedHttpRequests).toEqual([]);
     }
     // The importer took the same path as against GitHub: a commit, its tree, then the page.
     const requested = githubRequests.map(({ host, path }) => `${host}${path}`);
@@ -186,8 +204,32 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     console.info('Authenticated app -> recorded GitHub commit snapshot -> 1 page -> PostgreSQL promotion; no network');
   }, 180_000);
 
+  it('CodeRabbit: shared route helper accepts page text without recorded-only media', async () => {
+    const realFetch = globalThis.fetch;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+      if (url.hostname === 'raw.githubusercontent.com' && url.pathname.endsWith('/readme.md'))
+        return new Response('# Neutral page\n\nThe entry is `init.lua`.');
+      if (url.hostname === 'api.github.com' || url.hostname === 'raw.githubusercontent.com') return recordedGitHub(url);
+      if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return realFetch(input, init);
+      throw new Error('Unrecorded external fetch in route helper regression');
+    });
+    try {
+      const outcome = await importFolder();
+      expect(outcome.page?.content).toBe('The entry is `init.lua`.');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  }, 180_000);
+
   // The same import against GitHub itself, for a manual check: GITBOOK_LIVE=1.
-  it.runIf(process.env.GITBOOK_LIVE === '1')('imports the same folder from live GitHub (manual)', importFolder, 180_000);
+  it.runIf(process.env.GITBOOK_LIVE === '1' && !process.env.CI)(
+    'imports the same folder from live GitHub (manual)',
+    async () => {
+      await importFolder();
+    },
+    180_000,
+  );
 });
 
 /** A public repository's folder, as GitHub answered for it at one commit. The
@@ -211,7 +253,7 @@ const RECORDED_TREE = [
 ];
 const RECORDED_FILES: Record<string, string> = {
   [`${GITHUB_REPO.folder}/readme.md`]:
-    '# Cyber Engine Tweaks\n\nA starting point for a script mod. The entry file is `tutorial_mod/init.lua`; copy the folder and rename it to begin.\n',
+    '# Cyber Engine Tweaks\n\nA starting point for a script mod. The entry file is `tutorial_mod/init.lua`; copy the folder and rename it to begin.\n\nVideo tour:\n\n{% embed url="https://youtu.be/abcdefghijk" %}\n\n/\n\n<p>---</p>\n\n[Again](https://nibleaf.com/pages/readme?lang=ar#start)\n',
   [`${GITHUB_REPO.folder}/tutorial_mod/init.lua`]: 'registerForEvent("onInit", function() print("ready") end)\n',
 };
 

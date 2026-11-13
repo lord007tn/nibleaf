@@ -183,6 +183,10 @@ const importCollection = async (
       summary.warnings.push(`"${item.title || item.slug}" has no Latin characters to build a slug from — imported as "${slug}".`);
     }
     const conversion = await ghostItemToMarkdown(item, ghostSourceUrl);
+    if (conversion.issues?.length) {
+      summary.fidelityIssues ??= [];
+      summary.fidelityIssues.push(...conversion.issues.map((issue) => ({ ...issue, page: item.slug })));
+    }
     if (conversion.usedFallback) {
       summary.warnings.push(`"${item.title}" could not be fully converted from HTML — imported as plain text.`);
     }

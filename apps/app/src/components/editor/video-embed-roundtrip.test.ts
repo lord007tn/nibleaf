@@ -20,7 +20,7 @@ const fixtures = resolve(import.meta.dirname, '../../../../../packages/shared/sr
 const pageBody = (file: string) =>
   readFileSync(resolve(fixtures, file), 'utf8')
     .replace(/\r\n/g, '\n')
-    .replace(/^---\n[\s\S]*?\n---\n\n/, '');
+    .replace(/^---\n[\s\S]*?\n---\n\n/g, '');
 
 const editors: Editor[] = [];
 const open = (markdown: string) => {
@@ -78,24 +78,26 @@ describe('Video and Embed block storage', () => {
     // Editing another block leaves it as written too.
     editor.commands.setTextSelection(3);
     editor.commands.insertContent('!');
-    expect(getMarkdown(editor)).toBe(page.replace('Wa', 'Wa!'));
+    expect(page.startsWith('Wa')).toBe(true);
+    expect(getMarkdown(editor)).toBe(`Wa!${page.slice(2)}`);
   });
 
   it('opens a page imported from Mintlify with every video as the block, and saves it unchanged', () => {
     const page = pageBody('mintlify-video-embeds.imported.mdx');
     const editor = open(page);
     expect(values(editor)).toEqual([
-      { kind: 'iframe', src: 'https://www.youtube.com/embed/dQw4w9WgXcQ?si=abc123', title: 'YouTube video player', caption: '' },
+      { kind: 'iframe', src: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', title: 'YouTube video player', caption: '' },
       { kind: 'iframe', src: `https://www.loom.com/embed/${LOOM}`, title: 'Loom walkthrough', caption: '' },
       // Mintlify's multi-line `<video …\n>` opener reads to Markdown as a paragraph and a
       // blockquote (its lone `>` line), so it isn't a block of its own: it stays #573's
       // opaque range, kept byte for byte.
+      { kind: 'video', src: 'https://cdn.example.com/demo.mp4', title: '', caption: '' },
       { kind: 'video', src: 'https://cdn.example.com/b.mp4', title: '', caption: '' },
       { kind: 'iframe', src: 'https://codepen.io/team/embed/abc', title: 'A pen', caption: '' },
     ]);
     // Every embed saves byte for byte. The rest of the page gets the editor's usual Markdown
     // spacing, as on main: a blank line after a heading, and no newline at the end.
-    expect(getMarkdown(editor)).toBe(page.replace('### Record a walkthrough\nShare', '### Record a walkthrough\n\nShare').trimEnd());
+    expect(getMarkdown(editor)).toBe(page.replaceAll('### Record a walkthrough\nShare', '### Record a walkthrough\n\nShare').trimEnd());
     expect(getMarkdown(open(getMarkdown(editor)))).toBe(getMarkdown(editor));
   });
 
@@ -159,7 +161,7 @@ describe('editing the block rewrites only what changed', () => {
     const form = `<Frame caption="Old" data-lightbox>\n  <iframe src="https://www.youtube-nocookie.com/embed/${YT}" title="Tour"></iframe>\n</Frame>`;
     const editor = open(form);
     setAttributes(editor, 0, { caption: '' });
-    expect(getMarkdown(editor)).toBe(form.replace('caption="Old" ', ''));
+    expect(getMarkdown(editor)).toBe(form.replaceAll('caption="Old" ', ''));
   });
 
   it('writes the canonical form when a video becomes another kind', () => {

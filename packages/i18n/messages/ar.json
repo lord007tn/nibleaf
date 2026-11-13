@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "رابط الموقع المصدر (اختياري)",
+  "settings_import_unmappedembed": "الصفحة {page}: تعذر تحويل المحتوى المضمن إلى فيديو. تم الاحتفاظ بالمصدر: {reference}",
+  "settings_import_unresolvedlink": "الصفحة {page}: تعذر العثور على وجهة رابط الصفحة وتم الاحتفاظ به: {reference}",
   "editor_pagesettings_onelanguage": "أضف لغة أخرى للموقع لنقل هذه الصفحة إليها.",
   "editor_pagesettings_invalidicon": "اختر اسم أيقونة مدعومًا، مثل rocket أو book-open أو code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",

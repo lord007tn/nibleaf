@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "URL situs sumber (opsional)",
+  "settings_import_unmappedembed": "Halaman {page}: konten sematan tidak dapat dipetakan ke video. Sumbernya dipertahankan: {reference}",
+  "settings_import_unresolvedlink": "Halaman {page}: tautan halaman ini tidak dapat ditemukan dan dipertahankan: {reference}",
   "editor_pagesettings_onelanguage": "Tambahkan bahasa situs lain untuk memindahkan halaman ini.",
   "editor_pagesettings_invalidicon": "Pilih nama ikon yang didukung, seperti rocket, book-open atau code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",

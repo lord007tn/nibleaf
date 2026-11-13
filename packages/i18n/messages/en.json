@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "Source site URL (optional)",
+  "settings_import_unmappedembed": "Page {page}: embedded content could not be mapped to a video. Its source was kept: {reference}",
+  "settings_import_unresolvedlink": "Page {page}: this page link could not be resolved and was kept: {reference}",
   "editor_pagesettings_onelanguage": "Add another site language to move this page.",
   "editor_pagesettings_invalidicon": "Choose a supported icon name, such as rocket, book-open or code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",

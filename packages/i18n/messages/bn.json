@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "উৎস সাইটের URL (ঐচ্ছিক)",
+  "settings_import_unmappedembed": "পৃষ্ঠা {page}: এম্বেড করা বিষয়বস্তু ভিডিওতে রূপান্তর করা যায়নি। উৎস রাখা হয়েছে: {reference}",
+  "settings_import_unresolvedlink": "পৃষ্ঠা {page}: এই পৃষ্ঠার লিংকের গন্তব্য পাওয়া যায়নি এবং এটি রাখা হয়েছে: {reference}",
   "editor_pagesettings_onelanguage": "এই পৃষ্ঠাটি সরাতে সাইটে আরেকটি ভাষা যোগ করুন।",
   "editor_pagesettings_invalidicon": "সমর্থিত আইকনের নাম বেছে নিন, যেমন rocket, book-open বা code।",
   "$schema": "https://inlang.com/schema/inlang-message-format",
