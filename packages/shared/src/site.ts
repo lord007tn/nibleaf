@@ -272,10 +272,17 @@ export interface ResolvedPageCategory {
 
 const LARGE_FLAT_COLLECTION = 24;
 
+/** The page fields navigation is built from: a published snapshot page, or a
+ *  draft page in the dashboard preview (which has no content or version). */
+export type NavSourcePage = Pick<
+  SnapshotPage,
+  'id' | 'parentId' | 'languageCode' | 'kind' | 'title' | 'slug' | 'path' | 'icon' | 'config' | 'position' | 'hidden'
+>;
+
 /** Resolve an explicit category, or infer a conservative workflow category for
  *  very large flat help-center imports. Explicit author metadata always wins;
  *  small hand-authored trees are never classified automatically. */
-export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number): ResolvedPageCategory | null => {
+export const resolvePageCategory = (page: NavSourcePage, siblingPageCount: number): ResolvedPageCategory | null => {
   const explicit = page.config?.category?.trim();
   if (explicit) {
     return {
@@ -367,10 +374,14 @@ export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number
 };
 
 /** Build a navigation tree from snapshot pages, hiding pages flagged `hidden`.
- *  When `languageCode` is given, only that language's pages are included. */
-export const buildNavTree = (pages: readonly SnapshotPage[], languageCode?: string): NavNode[] => {
+ *  When `languageCode` is given, only that language's pages are included.
+ *
+ *  Siblings keep the author's order (`position`), groups and pages alike: the
+ *  order the editor's page tree shows is the order readers get, and the site's
+ *  home is the first page in it. */
+export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], languageCode?: string): NavNode[] => {
   const visible = pages.filter((p) => !p.hidden && (!languageCode || p.languageCode === languageCode));
-  const byParent = new Map<string | null, SnapshotPage[]>();
+  const byParent = new Map<string | null, T[]>();
   for (const page of visible) {
     const list = byParent.get(page.parentId) ?? [];
     list.push(page);
@@ -379,7 +390,7 @@ export const buildNavTree = (pages: readonly SnapshotPage[], languageCode?: stri
   const build = (parentId: string | null): NavNode[] => {
     const siblings = (byParent.get(parentId) ?? []).sort((a, b) => a.position - b.position);
     const siblingPageCount = siblings.filter((page) => page.kind === 'PAGE').length;
-    const toNode = (page: SnapshotPage): NavNode => ({
+    const toNode = (page: T): NavNode => ({
       id: page.id,
       kind: page.kind,
       // Mintlify-style: a short sidebar label overrides the full page title in nav.
@@ -392,16 +403,18 @@ export const buildNavTree = (pages: readonly SnapshotPage[], languageCode?: stri
 
     // Categories are deliberately virtual: imported flat collections can gain
     // an ergonomic, collapsible sidebar without re-parenting pages or breaking
-    // any existing URL. Real groups remain first; uncategorized pages follow the
-    // explicitly ordered category sections.
-    const plain: NavNode[] = [];
-    const categories = new Map<string, { title: string; icon: string | null; order: number; firstPosition: number; pages: SnapshotPage[] }>();
+    // any existing URL. They sit together, ordered by `categoryOrder`, where
+    // the author's first categorized page sits; every other sibling keeps its
+    // own position.
+    const ordered: Array<NavNode | 'categories'> = [];
+    const categories = new Map<string, { title: string; icon: string | null; order: number; firstPosition: number; pages: T[] }>();
     for (const page of siblings) {
       const resolvedCategory = resolvePageCategory(page, siblingPageCount);
       if (!resolvedCategory) {
-        plain.push(toNode(page));
+        ordered.push(toNode(page));
         continue;
       }
+      if (categories.size === 0) ordered.push('categories');
       const { title } = resolvedCategory;
       const existing = categories.get(title);
       if (existing) {
@@ -428,11 +441,26 @@ export const buildNavTree = (pages: readonly SnapshotPage[], languageCode?: stri
         tag: null,
         children: category.pages.sort((a, b) => a.position - b.position).map(toNode),
       }));
-    const realGroups = plain.filter((node) => node.kind === 'GROUP');
-    const uncategorizedPages = plain.filter((node) => node.kind === 'PAGE');
-    return [...realGroups, ...grouped, ...uncategorizedPages];
+    return ordered.flatMap((entry) => (entry === 'categories' ? grouped : [entry]));
   };
   return build(null);
+};
+
+/** Whether a navigation group leads to at least one page (an empty group is not shown). */
+export const navGroupHasPage = (node: Pick<NavNode, 'kind' | 'children'>): boolean =>
+  node.children.some((child) => child.kind === 'PAGE' || navGroupHasPage(child));
+
+/** Whether a top-level page starts its own unlabelled block: it follows a shown
+ *  group, so without a gap it would read as that group's last page. */
+export const startsUngroupedBlock = (nodes: readonly NavNode[], index: number): boolean => {
+  if (nodes[index]?.kind !== 'PAGE') return false;
+  for (let previous = index - 1; previous >= 0; previous--) {
+    const node = nodes[previous];
+    if (!node) return false;
+    if (node.kind === 'PAGE') return false;
+    if (navGroupHasPage(node)) return true;
+  }
+  return false;
 };
 
 export interface Heading {

@@ -37,7 +37,12 @@ vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/lib/site-theme', () => ({ projectThemeStyle: () => ({}), projectThemeVariables: () => ({}), resolveProjectTheme: () => undefined }));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
   DocumentationThemeProvider: ({ children }: { children?: ReactNode }) => <div data-site-theme="">{children}</div>,
-  DocumentationProjectPreviewLayout: ({ content }: { content: ReactNode }) => <div>{content}</div>,
+  DocumentationProjectPreviewLayout: ({ content, navigation }: { content: ReactNode; navigation: ReactNode }) => (
+    <div>
+      {navigation}
+      {content}
+    </div>
+  ),
 }));
 
 import { Route } from './preview';
@@ -126,6 +131,29 @@ describe('preview content', () => {
     queries.page = { data: pageB, isPending: false, isError: false };
     await act(async () => root.render(<ProjectPreview />));
     expect(content.scrollTop).toBe(0);
+  });
+
+  // P1-DASH-003: the preview listed every page flat by position, mixing group
+  // children in with top-level pages.
+  it('lists pages in the reader’s structure and order, and opens on the first page', async () => {
+    const base = { icon: null, description: null, content: '', hidden: false, slug: '', path: '' };
+    const pages = [
+      { ...base, id: 'faq', kind: 'PAGE', title: 'FAQ', parentId: null, position: 2 },
+      { ...base, id: 'api', kind: 'GROUP', title: 'API reference', parentId: null, position: 1 },
+      { ...base, id: 'auth', kind: 'PAGE', title: 'Authentication', parentId: 'api', position: 0 },
+      { ...base, id: 'start', kind: 'PAGE', title: 'Getting started', parentId: null, position: 0 },
+      { ...base, id: 'draft', kind: 'PAGE', title: 'Hidden draft', parentId: null, position: 3, hidden: true },
+    ];
+    queries.pages = { data: pages, isPending: false, isError: false };
+    queries.page = { data: pages[3], isPending: false, isError: false };
+    await act(async () => root.render(<ProjectPreview />));
+    const nav = container.querySelector('[data-preview-nav]');
+    expect([...(nav?.querySelectorAll('button') ?? [])].map((button) => button.textContent)).toEqual(['Getting started', 'Authentication', 'FAQ']);
+    // The group is a section label, not a disabled button, and holds its pages.
+    const section = [...(nav?.querySelectorAll('p') ?? [])].find((label) => label.textContent === 'API reference');
+    expect(section?.closest('li')?.textContent).toContain('Authentication');
+    expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe('Getting started');
+    expect(nav?.querySelector('[data-nav-block-start]')?.textContent).toBe('FAQ');
   });
 
   it('keeps the authoring chrome outside the site theme', async () => {
