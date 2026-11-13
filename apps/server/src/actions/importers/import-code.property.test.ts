@@ -1,4 +1,5 @@
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
+import MarkdownIt from 'markdown-it';
 import { expect, it } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
 import { importCodeLines } from './import-markdown-code';
@@ -84,6 +85,7 @@ it('protects main code and exposes following prose across generated containers (
     }
   }
   const runtimeMs = Math.round(performance.now() - started);
+  console.info(`import-code property: ${CASES} cases, ${runtimeMs}ms, oracle overruns=${oracleOverruns.length}`);
   Object.assign(task.meta, {
     scannerProperty: {
       seed: `0x${SEED.toString(16)}`,
@@ -97,3 +99,85 @@ it('protects main code and exposes following prose across generated containers (
   expect(oracleOverruns).toHaveLength(0);
   expect(failures.slice(0, 12), `${failures.length} failures; seed=0x${SEED.toString(16)}`).toEqual([]);
 }, 20_000);
+
+it('ends generated unclosed container fences inside components (seed 0x58236b09)', ({ task }) => {
+  let state = SEED;
+  const started = performance.now();
+  const cases = 256;
+  const failures: number[] = [];
+  for (let index = 0; index < cases; index++) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    const [opening, continuation] = (
+      [
+        ['> ', '> '],
+        ['- ', '  '],
+        ['1. ', '   '],
+        ['- > ', '  > '],
+      ] as const
+    )[(state >>> 0) % 4] ?? ['> ', '> '];
+    const marker = ((state >>> 0) % 2 ? '`' : '~').repeat(3 + ((state >>> 0) % 3));
+    const source = `<CodeGroup>\n    ${opening}${marker}md\n    ${continuation}[Literal](/literal)\n</CodeGroup>\n\n[After](/next)`;
+    const oracle = fencedMarkdownLines(source.split('\n'));
+    const actual = importCodeLines(source);
+    if (oracle.some((code, line) => code !== Boolean(actual[line]))) failures.push(index);
+    for (const convert of [(value: string) => convertGitBookMarkdown(value, { resolveFile: () => undefined }).content, normalizeMintlifyMdx]) {
+      const content = rewriteMintlifyInternalLinks(convert(source), 'intro', new Map([['next', '/rewritten']]));
+      if (!content.includes('[After](/rewritten)') || !content.includes('[Literal](/literal)')) failures.push(index);
+    }
+  }
+  const runtimeMs = Math.round(performance.now() - started);
+  Object.assign(task.meta, { containerProperty: { seed: SEED, cases, runtimeMs } });
+  console.info(`unclosed container property: ${cases} cases, ${runtimeMs}ms`);
+  expect(failures).toEqual([]);
+});
+
+it('protects markdown-it code across blank quote lines in unclosed quoted lists (seed 0x58236b09)', ({ task }) => {
+  let state = SEED;
+  const cases = 256;
+  const started = performance.now();
+  const parser = new MarkdownIt({ html: true });
+  const failures: number[] = [];
+  for (let index = 0; index < cases; index++) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    const quotes = '> '.repeat(1 + ((state >>> 0) % 3));
+    const ordered = (state >>> 0) % 2 === 1;
+    const marker = ((state >>> 0) % 2 ? '`' : '~').repeat(3 + ((state >>> 0) % 3));
+    const continuation = quotes + (ordered ? '   ' : '  ');
+    const body = [
+      `${quotes}${ordered ? '1. ' : '- '}${marker}md`,
+      `${continuation}[Literal](/literal)`,
+      quotes.trimEnd(),
+      `${continuation}[Still literal](/literal)`,
+    ];
+    // markdown-it sees CommonMark after removing MDX's structural indentation.
+    // Blank delimiters keep the wrapper's HTML block separate from its body.
+    const oracleSource = ['<CodeGroup>', '', ...body, '</CodeGroup>', '', '[After](/next)'].join('\n');
+    const source = ['<CodeGroup>', '', ...body.map((line) => `    ${line}`), '</CodeGroup>', '', '[After](/next)'].join('\n');
+    const actual = importCodeLines(source);
+    const code = parser.parse(oracleSource, {}).filter((token) => token.type === 'fence' || token.type === 'code_block');
+    if (!code.length) failures.push(index);
+    for (const token of code) {
+      if (!token.map) continue;
+      for (let line = token.map[0]; line < token.map[1]; line++) if (!actual[line]) failures.push(index);
+    }
+    for (const convert of [(value: string) => convertGitBookMarkdown(value, { resolveFile: () => undefined }).content, normalizeMintlifyMdx]) {
+      const content = rewriteMintlifyInternalLinks(
+        convert(source),
+        'intro',
+        new Map([
+          ['literal', '/changed'],
+          ['next', '/rewritten'],
+        ]),
+      );
+      if (content.includes('/changed') || !content.includes('[After](/rewritten)')) failures.push(index);
+    }
+  }
+  const runtimeMs = Math.round(performance.now() - started);
+  Object.assign(task.meta, { quotedListProperty: { seed: SEED, cases, runtimeMs } });
+  console.info(`quoted list blank property: ${cases} cases, ${runtimeMs}ms`);
+  expect(failures).toEqual([]);
+});
