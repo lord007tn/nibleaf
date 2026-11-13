@@ -39,6 +39,8 @@ export type SupportedDefinition = {
   /** Boolean attributes (switches and presence flags): an empty authored
    *  value (`defaultOpen=""`) means present, as it does in HTML. */
   booleans?: string[];
+  /** Holds only certain components (`<Steps>` holds `<Step>`s), not any block. */
+  childrenOnly?: boolean;
 };
 
 const supportedDefinition = (component: DocumentationComponentDefinition, tag: string): SupportedDefinition => {
@@ -57,6 +59,7 @@ const supportedDefinition = (component: DocumentationComponentDefinition, tag: s
     ...(booleans.length > 0 ? { booleans } : {}),
     ...(component.kind === 'inline' ? { inline: true } : {}),
     ...(component.reader?.callout ? { calloutVariant: component.reader.callout } : {}),
+    ...(component.allowedChildren?.length ? { childrenOnly: true } : {}),
   };
 };
 
@@ -101,7 +104,22 @@ const EDITOR_HTML_CONTENT: ReadonlySet<string> = new Set(['br', 'hr', 's', 'del'
 const RAW_TEXT_HTML: ReadonlySet<string> = new Set(['script', 'style', 'textarea', 'title']);
 
 /** The block tokens of the editor's own Markdown parser (markdown-it). */
-type MarkdownBlockTokens = (source: string) => ReadonlyArray<{ type: string; map: [number, number] | null }>;
+type MarkdownBlockTokens = (source: string) => ReadonlyArray<{ type: string; map: [number, number] | null; content: string }>;
+
+/**
+ * Whether markdown-it read a closing line for a fence token. Its map takes in the
+ * opening line, the code and the closing line; for a fence with no closer, which
+ * CommonMark runs to the end of the page (or of its quote or list item), only the
+ * first two. Its content ends each line of code with `\n`, except a last line at
+ * the very end of a page with no line break after it.
+ */
+export const fenceClosed = (token: { map: [number, number] | null; content: string }): boolean => {
+  const [first, end] = token.map ?? [0, 0];
+  const { content } = token;
+  let lines = content !== '' && !content.endsWith('\n') ? 1 : 0;
+  for (let at = content.indexOf('\n'); at >= 0; at = content.indexOf('\n', at + 1)) lines++;
+  return end - first >= 2 && lines === end - first - 2;
+};
 
 interface Span {
   start: number;
@@ -122,6 +140,8 @@ interface MarkdownLayout {
    *  blankness is one subtraction rather than a scan of its line. */
   nonSpace: Int32Array;
   length: number;
+  /** Where a fence with no closing line that runs to the end of the page starts, or -1. */
+  unclosedFence: number;
 }
 
 function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undefined): MarkdownLayout {
@@ -137,6 +157,7 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
     lineStarts,
     nonSpace: new Int32Array(source.length + 1),
     length: source.length,
+    unclosedFence: -1,
   };
   for (let index = 0; index < source.length; index++) {
     const code = source.charCodeAt(index);
@@ -148,8 +169,10 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
   for (const token of blockTokens(source.replace(/\r\n?/g, '\n'))) {
     if (!token.map) continue;
     const [first, last] = token.map;
-    if (token.type === 'fence') layout.fenced.push({ start: at(first), end: at(last) });
-    else if (token.type === 'code_block') layout.indented.fill(1, at(first), at(last));
+    if (token.type === 'fence') {
+      layout.fenced.push({ start: at(first), end: at(last) });
+      if (at(last) === source.length && !fenceClosed(token)) layout.unclosedFence = at(first);
+    } else if (token.type === 'code_block') layout.indented.fill(1, at(first), at(last));
     else if (token.type === 'paragraph_open') {
       layout.paragraphOfLine.fill(layout.paragraphs.length, first, last);
       layout.paragraphs.push([first, last]);
@@ -179,15 +202,17 @@ function readerCodeMask(source: string): Uint8Array {
  * Code the reader reads as a fence that the editor's Markdown parser does not, one
  * span per run of lines. markdown-it reads a component tag followed straight away
  * by more lines as one HTML block, so a fence there (`<CodeGroup>`, then `>`, a tab
- * and ```` ```md ````) would load as text. Indented code is code to both, so it is
- * left out.
+ * and ```` ```md ````) would load as text. Inside a component the reader also reads
+ * a fence indented four columns or more, which markdown-it reads as indented code
+ * holding the fence's markers: saved as a code block, those markers were wrapped in
+ * another fence, which then grew on every save (#603).
  */
 function unreadFences(layout: MarkdownLayout, readerCode: Uint8Array): Array<Span & { inCode: true; name: string }> {
   const fenced = spanIndex(layout.fenced);
   const spans: Array<Span & { inCode: true; name: string }> = [];
   let previous = -2;
   for (const [line, start] of layout.lineStarts.entries()) {
-    if (readerCode[start] !== 1 || fenced(start, start) || layout.indented[start] === 1) continue;
+    if (readerCode[start] !== 1 || fenced(start, start)) continue;
     const end = lineStart(layout, line + 1);
     const last = spans[spans.length - 1];
     if (last && previous === line - 1) last.end = end;
@@ -364,8 +389,11 @@ function rawHtmlRange(
       code = false;
       continue;
     }
-    if (!code && (!isBlockRange(layout, current) || isolated(layout, current))) break;
     const component = containers[around];
+    // A component that holds only certain children (`<Steps>` holds `<Step>`s) has
+    // no room for an opaque block: the editor wrapped it in a new child (#603).
+    const room = !component || !SUPPORTED_MDX_COMPONENTS[component.name.toLowerCase()]?.childrenOnly;
+    if (!code && room && (!isBlockRange(layout, current) || isolated(layout, current))) break;
     if (!component) break;
     current = component;
     around = component.parent;
@@ -387,6 +415,8 @@ interface TagToken {
   editorMarkup?: boolean;
   /** Lowercase HTML the editor keeps opaque (see classifyHtml). */
   rawHtml?: boolean;
+  /** A raw-text element (`<script>`) with no closing tag: its text runs to the end of the page. */
+  runsToEnd?: boolean;
 }
 
 interface SourceRange {
@@ -666,8 +696,8 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
     let quote = '';
     let braces = 0;
     let escaped = false;
-    // HTML attribute values have no backslash escapes (`title="Old\"` ends at that
-    // quote); only JSX and the JavaScript inside `{…}` do.
+    // Quoted attribute values have no backslash escapes, in HTML or in MDX's JSX
+    // (`caption="Old\"` ends at that quote, #579); only the JavaScript inside `{…}` does.
     let escapes = true;
     const kind = isHtml ? 'html' : 'jsx';
     if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
@@ -691,7 +721,7 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
       }
       if (char === '"' || char === "'" || (char === '`' && (!isHtml || braces > 0))) {
         quote = char;
-        escapes = !isHtml || braces > 0;
+        escapes = braces > 0;
       } else if (char === '{') {
         const end = braceEnds.get(cursor);
         if (end === undefined) {
@@ -715,7 +745,8 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
     }
     const raw = source.slice(i, cursor + 1);
     const selfClosing = !closing && /\/\s*>$/.test(raw);
-    tokens.push({ start: i, end: cursor + 1, name, raw, closing, selfClosing, html: isHtml });
+    const token: TagToken = { start: i, end: cursor + 1, name, raw, closing, selfClosing, html: isHtml };
+    tokens.push(token);
     i = cursor;
     if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name)) {
       // A script's or style's content is text up to its closing tag.
@@ -727,6 +758,11 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
         closers.set(name, close);
       }
       if (close > i) i = close - 1;
+      else {
+        // With no closer, HTML reads the rest of the page as its text (#576).
+        token.runsToEnd = true;
+        i = source.length;
+      }
     }
   }
   return tokens;
@@ -760,8 +796,9 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
     if (token.html ? !token.rawHtml : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
     const closeIndex = token.closing ? undefined : pairs.get(i);
     const close = closeIndex == null ? undefined : tokens[closeIndex];
-    ranges.push(sourceRange(source, layout, { start: token.start, end: close?.end ?? token.end }, token.name));
-    if (!token.closing) coveredUntil = close?.end ?? token.end;
+    const end = close?.end ?? (token.runsToEnd ? source.length : token.end);
+    ranges.push(sourceRange(source, layout, { start: token.start, end }, token.name));
+    if (!token.closing) coveredUntil = end;
   }
   return ranges;
 }
@@ -821,6 +858,47 @@ function classifyHtml(tokens: TagToken[], pairs: Map<number, number>): void {
   }
 }
 
+/** A supported component's tag. The editor's own markup and its components'
+ *  lowercase names (`<note>`) hold their children as components do. */
+const isComponentTag = (token: TagToken): boolean =>
+  token.html
+    ? !token.rawHtml && Boolean(token.editorMarkup || COMPONENT_HTML.has(token.name))
+    : Boolean(SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()]) && !HTML_ELEMENT_ALIASES.has(token.name);
+
+/**
+ * Text that runs to the end of the page (an unterminated comment or raw-text
+ * element, a fence with no closing line) holds the closing tags of the components
+ * opened before it, or they were never written. The editor closed such a
+ * component after that text when saving, where the next load read the closing tag
+ * as part of the text again, so every save added one (#603, #576). The range from
+ * the first component still open there (no closing tag, or one inside the range)
+ * through the end of the page is kept whole, byte for byte. One backward pass.
+ */
+function openComponentsRange(
+  source: string,
+  layout: MarkdownLayout,
+  tokens: TagToken[],
+  pairs: Map<number, number>,
+  opaque: SourceRange[],
+  readerFences: Span[],
+): SourceRange | null {
+  let start = layout.unclosedFence;
+  for (const range of [...opaque, ...readerFences])
+    if (blank(layout, range.end, source.length) && (start < 0 || range.start < start)) start = range.start;
+  if (start < 0) return null;
+  const covered = spanIndex(opaque);
+  let opener: TagToken | undefined;
+  for (let index = tokens.length - 1; index >= 0; index--) {
+    const token = tokens[index];
+    if (!token || token.start >= start || token.closing || token.selfClosing || !isComponentTag(token) || covered(token.start, token.end)) continue;
+    const close = tokens[pairs.get(index) ?? -1];
+    if (close && close.start < start) continue;
+    start = token.start;
+    opener = token;
+  }
+  return opener ? sourceRange(source, layout, { start, end: source.length }, opener.name) : null;
+}
+
 /** Add raw HTML (comments, and HTML read as indented code inside a component) to
  *  the opaque ranges, widening any raw HTML range to what keeps it byte for byte
  *  (see rawHtmlRange). Ranges inside a wider one are dropped. */
@@ -837,13 +915,9 @@ function keepRawHtml(
     const open = tokens[openIndex];
     const close = tokens[closeIndex];
     if (!open || !close) continue;
-    // Structured HTML elements, and supported components. The editor's own markup and
-    // its components' lowercase names hold their children as components do.
+    // Structured HTML elements, and supported components.
     const html = open.html && !open.rawHtml && !open.editorMarkup && !COMPONENT_HTML.has(open.name);
-    const component = open.html
-      ? !open.rawHtml && !html
-      : Boolean(SUPPORTED_MDX_COMPONENTS[open.name.toLowerCase()]) && !HTML_ELEMENT_ALIASES.has(open.name);
-    if (html || component) list.push({ start: open.start, end: close.end, name: open.name, html });
+    if (html || isComponentTag(open)) list.push({ start: open.start, end: close.end, name: open.name, html });
   }
   const containers = containerTree(list);
   const covered = spanIndex(opaque);
@@ -881,8 +955,9 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     let value: string;
     const quote = raw[cursor];
     if (quote === '"' || quote === "'") {
+      // No backslash escapes in a quoted value, in HTML or MDX's JSX (#579).
       const valueStart = ++cursor;
-      while (cursor < limit && raw[cursor] !== quote) cursor += raw[cursor] === '\\' ? 2 : 1;
+      while (cursor < limit && raw[cursor] !== quote) cursor++;
       value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
@@ -1015,6 +1090,8 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
       .filter((token) => !STRUCTURED_HTML.has(token.name) && !TABLE_HTML.has(token.name) && !COMPONENT_HTML.has(token.name) && !isEditorMarkup(token))
       .map((token) => ({ start: token.start, end: token.end, inCode: true, name: token.name })),
   ]);
+  const openComponents = openComponentsRange(source, layout, tokens, pairs, opaque, readerFences);
+  if (openComponents) opaque = outermostRanges([...opaque, openComponents]);
 
   // MDX ESM and standalone expressions are also explicit opaque nodes. Braces
   // inside JSX tags were consumed by scanTags and are excluded here.

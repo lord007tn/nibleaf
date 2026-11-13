@@ -1,5 +1,5 @@
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
-import { encodeMdxSource } from './extensions/mdx-roundtrip';
+import { encodeMdxSource, fenceClosed } from './extensions/mdx-roundtrip';
 
 /*
  * A fenced code block keeps the source lines it was read from, so a save writes
@@ -177,17 +177,27 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
   state.tokens = tokens;
 }
 
-/** The fence's source: see `annotateFences`. */
+/**
+ * The fence's source: see `annotateFences`. A fence with no closing line, which
+ * CommonMark runs to the end of the page (or of its quote or list item), gets an
+ * empty closing line, and its lines end with its last line of code. Reading that
+ * last line as the closer wrote it again after the code on every save (#602).
+ */
 function annotateFence(token: MarkdownToken, lines: readonly string[], containers: readonly FenceContainer[]): void {
   const [first, end] = token.map ?? [0, 0];
-  const closeLine = Math.max(first, end - 1);
+  const closed = fenceClosed(token);
+  const last = closed ? end - 1 : end;
   const open = (withoutContainers(lines[first] ?? '', first, containers) as LineRest).text;
-  const close = (withoutContainers(lines[closeLine] ?? '', closeLine, containers) as LineRest).text;
+  const close = closed ? (withoutContainers(lines[last] ?? '', last, containers) as LineRest).text : '';
   const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
+  // An unclosed fence at the very end of the page keeps the page's last line
+  // break, as an empty line after its code: without it, every save dropped one
+  // trailing line of the code.
+  const pageBreak = !closed && end === lines.length - 1 && lines[end] === '' ? 1 : 0;
   token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
   token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
   token.attrSet('data-mdx-fence-language', encodeMdxSource(language));
-  token.attrSet('data-mdx-fence-lines', encodeMdxSource(lines.slice(first, closeLine + 1).join('\n')));
+  token.attrSet('data-mdx-fence-lines', encodeMdxSource(lines.slice(first, closed ? last + 1 : end + pageBreak).join('\n')));
 }
 
 /** An empty paragraph, as markdown-it's tokens, to go before `fence` in its list item. */
@@ -276,24 +286,58 @@ function codeLine(line: string, containers: readonly FenceContainer[], indent: n
  * needs a container's `>` or indent it lacks, or differs once the fence's own
  * indent is taken off, means the containers changed; then null.
  */
-function sourceLinesFor(node: PMNode, open: string, delim: string, first: string): string[] | null {
+function sourceLinesFor(node: PMNode, open: string, delim: string, first: string, end: UnclosedEnd): string[] | null {
   const lines = String(node.attrs.sourceFenceLines ?? '').split('\n');
   const code = node.textContent ? node.textContent.split('\n') : [];
   const close = String(node.attrs.sourceFenceClose ?? '');
   const containers = serializedContainers(delim, first);
   const indent = /^ */.exec(open)?.[0].length ?? 0;
-  if (!containers || lines.length !== code.length + 2 || open[indent] === '\t') return null;
+  // An unclosed fence (no closing line) keeps its source only where it still ends
+  // with its container; anything after it there would read as code. The page's last
+  // line break after it, kept as an empty last line (see `annotateFence`), is
+  // written again only while the fence still ends the page.
+  const closing = close === '' ? 0 : 1;
+  const pageBreak = !closing && lines.length === code.length + 2 && lines[lines.length - 1] === '';
+  if (pageBreak) lines.pop();
+  if (!containers || (!closing && end === 'none') || lines.length !== code.length + 1 + closing || open[indent] === '\t') return null;
   const read = (line: string, at: number) => withoutContainers(line, at, containers, true);
   const opening = read(lines[0] ?? '', first ? 0 : 1);
   if (opening?.text !== open || nonSpace(lines[0] ?? '') !== nonSpace(first || delim) + nonSpace(open)) return null;
-  if (read(lines[lines.length - 1] ?? '', 1)?.text !== close) return null;
+  if (closing && read(lines[lines.length - 1] ?? '', 1)?.text !== close) return null;
   for (const [index, text] of code.entries()) if (codeLine(lines[index + 1] ?? '', containers, indent) !== text) return null;
+  if (pageBreak && end === 'page') lines.push('');
   return lines;
+}
+
+const FENCE_MARKER = /^[ \t]*(`{3,}|~{3,})/;
+
+/** The nodes CommonMark ends a fence with: the page, a quote, a list item. */
+const FENCE_ENDING_CONTAINERS: ReadonlySet<string> = new Set(['doc', 'blockquote', 'listItem', 'taskItem']);
+
+/** Where an unclosed fence would end if written without a closing line: at the
+ *  page's end, at its quote's or list item's end, or (`none`) not before what
+ *  follows it. */
+type UnclosedEnd = 'page' | 'container' | 'none';
+
+/** Where an unclosed fence at `index` ends: see `UnclosedEnd`. It must be the last
+ *  block in a container whose end also ends a fence in it; empty paragraphs after
+ *  it write nothing (the editor adds one at the end of the page). `none` for a
+ *  closed fence, and on the clipboard, whose slice may be pasted anywhere. */
+function unclosedEnd(node: PMNode, parent: PMNode | Fragment | undefined, index: number): UnclosedEnd {
+  if (String(node.attrs.sourceFenceClose ?? '') !== '') return 'none';
+  if (!parent || !('type' in parent) || !FENCE_ENDING_CONTAINERS.has(parent.type.name)) return 'none';
+  for (let next = index + 1; next < parent.childCount; next++) {
+    const sibling = parent.child(next);
+    if (sibling.type.name !== 'paragraph' || sibling.content.size > 0) return 'none';
+  }
+  return parent.type.name === 'doc' ? 'page' : 'container';
 }
 
 /**
  * Write a fence read from source: its source lines when they still hold (see
- * `sourceLinesFor`), otherwise its opening and closing lines around the code.
+ * `sourceLinesFor`), otherwise its opening and closing lines around the code. An
+ * unclosed fence saves unclosed only as the last block of the page, a quote or a
+ * list item; anywhere else it gets a closing line.
  * A list item's empty lead paragraph before it (see `annotateFences`) is left
  * out, so the fence opens on the item's first line, as written.
  */
@@ -307,7 +351,7 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
   const atLineStart = state.out === '' || state.out.endsWith('\n');
   const first = state.closed || atLineStart ? '' : state.out.slice(state.out.lastIndexOf('\n') + 1);
   const unchanged = open !== '' && open === String(node.attrs.sourceFenceOpen ?? '');
-  const lines = unchanged ? sourceLinesFor(node, open, state.delim, first) : null;
+  const lines = unchanged ? sourceLinesFor(node, open, state.delim, first, unclosedEnd(node, parent, index)) : null;
   if (lines) {
     state.flushClose();
     // The source's first line has its own markers in place of the ones written.
@@ -320,6 +364,8 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
   state.write('\n');
   state.text(node.textContent, false);
   state.ensureNewLine();
-  state.write(String(node.attrs.sourceFenceClose ?? '') || (open.trimStart().startsWith('~') ? '~~~' : '```'));
+  // A fence read without a closing line gets one that closes it: the opener's own
+  // marker run, since a shorter one (``` after ````) is code, not a closer.
+  state.write(String(node.attrs.sourceFenceClose ?? '') || (FENCE_MARKER.exec(open)?.[1] ?? '```'));
   state.closeBlock(node);
 }
