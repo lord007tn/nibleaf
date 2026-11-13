@@ -643,6 +643,7 @@
   "settings_general_customdomain_hint": "क्या आप चाहते हैं कि पाठक आपका अपना डोमेन इस्तेमाल करें?",
   "settings_general_customdomain_link": "कस्टम डोमेन सेट करें",
   "settings_general_url_taken": "यह पता पहले से किसी दूसरी साइट का है। कोई दूसरा पता आज़माएँ।",
+  "settings_general_url_reserved": "यह पता सिस्टम के लिए आरक्षित है। कोई दूसरा चुनें।",
   "settings_branding_title": "ब्रांडिंग",
   "settings_branding_upload": "अपलोड करें",
   "settings_branding_uploaded": "अपलोड किया गया",
