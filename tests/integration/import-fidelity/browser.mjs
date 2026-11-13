@@ -19,8 +19,9 @@ import { acquireDevstackLock, hostKey, withLocalOnlyBrowser } from '../lib/captu
 const ROOT = resolve(import.meta.dirname, '../../..');
 const APP = 'http://localhost:4310';
 const API = 'http://localhost:4410';
-const COUNCIL = process.env.NIBLEAF_CAPTURE_COUNCIL === '1';
-const OUTPUT = resolve(ROOT, '.github/assets/fix-import-fidelity', ...(COUNCIL ? ['council-fix'] : []));
+const RECHECK = process.env.NIBLEAF_CAPTURE_RECHECK === '1';
+const COUNCIL = process.env.NIBLEAF_CAPTURE_COUNCIL === '1' || RECHECK;
+const OUTPUT = resolve(ROOT, '.github/assets/fix-import-fidelity', ...(RECHECK ? ['council-recheck'] : COUNCIL ? ['council-fix'] : []));
 const LOGS = resolve(ROOT, '.tmp/import-fidelity');
 const YT = 'M7lc1UVf-VE';
 
@@ -224,8 +225,14 @@ async function journey({ phase, locale, width, member, signed }) {
   const t = (key, variables = {}) => messages[MESSAGE_IDS[key]].replace(/\{(\w+)\}/g, (_, key) => String(variables[key]));
   const title = ar ? 'فيديو الشرح:' : 'Video tour:';
   const next = ar ? 'الخطوة التالية' : 'Next step';
+  const example = RECHECK
+    ? '    [Next](https://help.test/next)\n    [Missing](https://help.test/missing)'
+    : '    [Demo](https://youtu.be/abcdefghijk)\n    /\n    \\---';
+  const authoredVideo = RECHECK
+    ? '<video src="https://media.example.com/training.mp4" poster="/api/public/assets/import-fidelity-poster.svg" title="Original" width="640" controls></video>\n\n'
+    : '';
   const source = COUNCIL
-    ? `${ar ? 'مثال' : 'Example'}:\n\n    [Demo](https://youtu.be/abcdefghijk)\n    /\n    \\---\n\n- ${title}\n\n  [Demo](https://youtu.be/${YT})\n\n  ${next}.\n\n<p>---</p>\n\n[${next}](https://nibleaf.com/pages/next?lang=${locale}#start)`
+    ? `${ar ? 'مثال' : 'Example'}:\n\n${example}\n\n${authoredVideo}- ${title}\n\n  [Demo](https://youtu.be/${YT})\n\n  ${next}.\n\n<p>---</p>\n\n[${next}](https://nibleaf.com/pages/next?lang=${locale}#start)`
     : `${title}\n\n{% video src="https://youtu.be/${YT}" title="${title}" %}\n\n/\n\n<p>---</p>\n\n[${next}](https://nibleaf.com/pages/next?lang=${locale}#start)`;
   const converter = before
     ? (await import(pathToFileURL(resolve(process.env.NIBLEAF_BEFORE_ROOT, 'apps/server/src/actions/importers/gitbook-markdown.ts')).href))
@@ -235,7 +242,9 @@ async function journey({ phase, locale, width, member, signed }) {
     ? (await import(pathToFileURL(resolve(process.env.NIBLEAF_BEFORE_ROOT, 'apps/server/src/actions/importers/mintlify-links.ts')).href))
         .rewriteMintlifyInternalLinks
     : rewriteMintlifyInternalLinks;
-  const importedContent = linkConverter(converter(source, { resolveFile: () => undefined }).content, 'intro', new Map([['next', '/next']]));
+  const importedContent = linkConverter(converter(source, { resolveFile: () => undefined }).content, 'intro', new Map([['next', '/next']]), {
+    ...(RECHECK ? { sourceUrl: 'https://help.test' } : {}),
+  });
   const project = await db.project.create({
     data: {
       organizationId: member.organizationId,
@@ -280,6 +289,14 @@ async function journey({ phase, locale, width, member, signed }) {
     if (message.type() === 'error') console.log('Console error:', message.text());
   });
   context.on('request', (request) => requests.push(request.url()));
+  if (RECHECK)
+    await context.route(`${APP}/api/public/assets/import-fidelity-poster.svg`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#164e63"/><circle cx="320" cy="150" r="44" fill="#a5f3fc"/><path d="m310 125 35 25-35 25z" fill="#164e63"/><text x="320" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" fill="white">Synthetic training poster</text></svg>',
+      }),
+    );
   await context.route(isProvider, (route) =>
     route.fulfill({ status: 200, contentType: 'text/html', body: STUB(new URL(route.request().url()).hostname) }),
   );
@@ -309,11 +326,13 @@ async function journey({ phase, locale, width, member, signed }) {
   const prose = page.locator('.ProseMirror');
   await prose.waitFor();
   if (!before) {
-    await prose.locator('[data-video-embed]').waitFor();
+    await prose.locator('[data-video-embed]').first().waitFor();
     assert.equal(await prose.locator('hr').count(), 1, 'a real divider in the editor');
     assert.ok((await prose.locator('a').all()).length > 0);
     if (COUNCIL) {
-      assert.ok((await prose.locator('pre').innerText()).includes('[Demo](https://youtu.be/abcdefghijk)'));
+      assert.ok(
+        (await prose.locator('pre').innerText()).includes(RECHECK ? '[Next](https://help.test/next)' : '[Demo](https://youtu.be/abcdefghijk)'),
+      );
       assert.equal(await prose.locator('li [data-video-embed]').count(), 1);
     } else assert.ok(!(await prose.innerText()).split('\n').includes('/'));
   }
@@ -361,8 +380,13 @@ async function journey({ phase, locale, width, member, signed }) {
     await play.waitFor();
     assert.equal(await reader.locator('article hr').count(), 1);
     if (COUNCIL) {
-      assert.ok((await reader.locator('article pre').innerText()).includes('[Demo](https://youtu.be/abcdefghijk)'));
+      assert.ok(
+        (await reader.locator('article pre').innerText()).includes(
+          RECHECK ? '[Next](https://help.test/next)' : '[Demo](https://youtu.be/abcdefghijk)',
+        ),
+      );
       assert.equal(await reader.locator('article li [data-theme-component="video-embed"]').count(), 1);
+      if (RECHECK) assert.equal(await reader.locator('article video').getAttribute('poster'), '/api/public/assets/import-fidelity-poster.svg');
     }
     assert.equal(await reader.evaluate(() => document.documentElement.dir), ar ? 'rtl' : 'ltr');
     assert.ok((await reader.getByRole('link', { name: next, exact: true }).last().getAttribute('href')).includes(`/next?lang=${locale}#start`));

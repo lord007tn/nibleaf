@@ -531,7 +531,7 @@ const GITBOOK_SPACE_LINK = /https?:\/\/app\.gitbook\.com\/(?:o\/[^/\s"'()<>]+\/)
 /** Links into a GitBook space (`app.gitbook.com/s/<id>/…`), outside code. The
  * space id alone does not say which published site or page they mean. */
 export const findGitBookSpaceLinks = (content: string): string[] => {
-  const prose = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY }).content;
+  const prose = protectImportCode(content).content;
   return [...new Set(prose.match(GITBOOK_SPACE_LINK) ?? [])];
 };
 

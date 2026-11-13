@@ -47,6 +47,11 @@ For the council regressions, set `NIBLEAF_CAPTURE_COUNCIL=1` and use the PR's
 a video inside a list item. Its screenshots, recording, Markdown and request
 log go into `.github/assets/fix-import-fidelity/council-fix/`.
 
+For the second council re-check, use `NIBLEAF_CAPTURE_RECHECK=1` and baseline
+`4a3bb650`. The fixture includes literal page-link code and an authored video
+with a same-site poster fulfilled in-process. Output goes into the sibling
+`council-recheck/` directory.
+
 Run both PostgreSQL suites with `IMPORT_REHEARSAL=1`, `GITBOOK_REHEARSAL=1`,
 `GITBOOK_LIVE=0`, `CI=true` and `NIBLEAF_IMPORT_LOCAL_ONLY=1`. Set
 `NODE_OPTIONS=--import=<absolute file URL of local-only-node.mjs>` so the parent

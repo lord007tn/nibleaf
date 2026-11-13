@@ -139,16 +139,14 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
         output.push((embed.attributes.has('controls') ? opener : withEmbedAttribute(opener, 'controls', 'true')) ?? opener, children);
       }
     } else {
-      const mapped = importEmbed(
-        url,
-        embed.attributes.get('title')?.trim() || decodeImportEntities(caption || preceding || 'Video'),
-        onUnmapped,
-        embed.kind,
-      );
-      const children = prose.slice(embed.openEnd, embed.end).replace(/<\/video>$/i, '');
-      output.push(
-        embed.kind === 'video' && mapped.startsWith('<video') && children.trim() ? mapped.replace('</video>', `${children}</video>`) : mapped,
-      );
+      const title = embed.attributes.get('title')?.trim() || decodeImportEntities(caption || preceding || 'Video');
+      const mapped = importEmbed(url, title, onUnmapped, embed.kind);
+      if (embed.kind === 'video' && mapped.startsWith('<video')) {
+        let opener = prose.slice(embed.start, embed.openEnd);
+        if (!embed.attributes.has('controls')) opener = withEmbedAttribute(opener, 'controls', 'true') ?? opener;
+        if (!embed.attributes.get('title')?.trim()) opener = withEmbedAttribute(opener, 'title', title) ?? opener;
+        output.push(opener, prose.slice(embed.openEnd, embed.end));
+      } else output.push(mapped);
     }
     cursor = embed.end;
   }

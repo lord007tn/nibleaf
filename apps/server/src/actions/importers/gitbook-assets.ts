@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
-import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { safeDecodeUri } from './gitbook-markdown';
+import { protectImportCode } from './import-markdown-code';
 import { markdownReferences, replaceImportReferences } from './import-references';
 
 /** `![alt](<path with spaces>)`, `![alt](path "title")`, and one level of
@@ -47,7 +47,7 @@ export const rewriteGitBookImages = (
   rawUrl: (path: string) => string,
 ): GitBookAssetRewriteResult => {
   const missing = new Set<string>();
-  const protectedCode = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY });
+  const protectedCode = protectImportCode(content);
   const references = markdownReferences(protectedCode.content)
     .filter((reference) => reference.image)
     .map((reference) =>

@@ -28,7 +28,8 @@ describe('synthetic import fidelity', () => {
         ...(form === 'liquid' || form === 'video block' ? [] : [normalizeMintlifyMdx(`Tour\n\n${source}`)]),
       ]) {
         expect(content).toContain(`src="${canonical}"`);
-        expect(content).toContain(url.endsWith('.mp4') ? '<video controls' : 'title="Tour"');
+        if (url.endsWith('.mp4')) expect(content).toMatch(/<video\b[^>]*\bcontrols(?:[\s=>])/);
+        else expect(content).toContain('title="Tour"');
       }
     });
   }

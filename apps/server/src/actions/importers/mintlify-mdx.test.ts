@@ -11,12 +11,12 @@ describe('normalizeMintlifyMdx', () => {
     expect(imported).toBe(fixture('mintlify-video-embeds.imported.mdx'));
     expect(imported).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"');
     expect(imported).toContain('<iframe src="https://www.loom.com/embed/0123456789abcdef0123456789abcdef" title="Loom walkthrough"');
-    expect(imported).toContain('<video controls src="https://cdn.example.com/b.mp4"');
+    expect(imported).toContain('<video controls className="w-full aspect-video rounded-xl" src="https://cdn.example.com/b.mp4"');
     const reader = normalizeMdxBlocks(imported);
     expect(reader).toContain('<mdxembed provider="youtube" videoid="dQw4w9WgXcQ" title="YouTube video player"></mdxembed>');
     expect(reader).toContain('<mdxembed provider="loom" videoid="0123456789abcdef0123456789abcdef" title="Loom walkthrough"></mdxembed>');
     expect(reader).toContain('<mdxembed href="https://codepen.io/team/embed/abc" title="A pen"></mdxembed>');
-    expect(reader).toContain('<video controls src="https://cdn.example.com/demo.mp4"');
+    expect(reader).toMatch(/<video\b[^>]*\bsrc="https:\/\/cdn\.example\.com\/demo\.mp4"/);
     expect(reader).not.toContain('<iframe');
   });
 

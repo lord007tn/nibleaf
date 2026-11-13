@@ -1,8 +1,8 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
-import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { importSiteHref } from '@nibleaf/shared/site-links';
 import { stableHash } from './content';
+import { protectImportCode } from './import-markdown-code';
 import { markdownReferences, replaceImportReferences } from './import-references';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
 
@@ -97,7 +97,7 @@ const internalReferenceKey = (reference: string, sourcePage: string): string | n
 /** Source-page paths referenced from Markdown or MDX anchors. Used by the
  * importer to include linked hidden pages that Mintlify permits outside nav. */
 export const mintlifyInternalLinkTargets = (content: string, sourcePage: string, sourceUrl?: string): string[] => {
-  const prose = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY }).content;
+  const prose = protectImportCode(content).content;
   const targets = new Set<string>();
   const add = (reference: string) => {
     const key = internalReferenceKey(importSiteHref(reference, sourceUrl, ['https://nibleaf.com']), sourcePage);
@@ -125,7 +125,7 @@ export const rewriteMintlifyInternalLinks = (
     languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>;
   } = {},
 ): string => {
-  const protectedCode = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY });
+  const protectedCode = protectImportCode(content);
   const aliases = new Map<ReadonlyMap<string, string>, Map<string, string | null>>();
   const appPageTarget = (map: ReadonlyMap<string, string>, key: string): string | undefined => {
     let bySlug = aliases.get(map);

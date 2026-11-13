@@ -49,8 +49,12 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
     const project = await db.prisma.project.create({ data: { organizationId: org.id, name: 'Import rehearsal', slug: `import-${randomUUID()}` } });
     const main = await db.prisma.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
     const language = await db.prisma.language.create({ data: { projectId: project.id, code: 'en', label: 'English', isDefault: true } });
-    const run = () =>
-      mintlify.mintlifyImporter.run({ organizationId: org.id, projectId: project.id, input: { repo: 'synthetic/docs', replaceExisting: false } });
+    const run = (sourceUrl?: string) =>
+      mintlify.mintlifyImporter.run({
+        organizationId: org.id,
+        projectId: project.id,
+        input: { repo: 'synthetic/docs', replaceExisting: false, sourceUrl },
+      });
     return { org, project, main, language, run };
   };
 
@@ -75,6 +79,20 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
         { kind: 'link', page: 'intro', reference: 'https://nibleaf.com/pages/next?lang=ar#start' },
       ]),
     );
+  });
+
+  it('council re-check: promotes literal code and authored src video metadata without spurious reports', async () => {
+    const { project, run } = await fixture();
+    const literal = 'Example:\n\n    [Next](https://help.test/next)\n    [Missing](https://help.test/missing)\n    ![Missing](./missing.png)';
+    const video = '<video src="https://cdn.test/a.mp4" poster="/poster.jpg" title="Original" width="640" controls></video>';
+    source.files.set('intro.mdx', `${literal}\n\n${video}`);
+    source.files.set('next.mdx', 'Next page');
+    source.files.set('docs.json', JSON.stringify({ navigation: [{ group: 'Guides', pages: ['intro', 'next'] }] }));
+    const report = await run('https://help.test');
+    const page = await db.prisma.page.findFirstOrThrow({ where: { projectId: project.id, slug: 'intro' } });
+    expect(page.content).toBe(`${literal}\n\n${video}`);
+    expect(report.fidelityIssues ?? []).toEqual([]);
+    expect(report.warnings).toEqual(['Replaced the existing draft navigation only after the complete Mintlify import succeeded.']);
   });
 
   it('council P2: promotes an explicit Arabic link to the Arabic route, without English fallback', async () => {
