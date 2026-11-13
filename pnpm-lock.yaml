@@ -602,6 +602,9 @@ importers:
       jose:
         specifier: ^6.2.14
         version: 6.2.15
+      markdown-it:
+        specifier: 14.3.3
+        version: 14.3.3
       mdast-util-from-markdown:
         specifier: 2.0.3
         version: 2.0.3
@@ -633,6 +636,9 @@ importers:
       '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
+      '@types/markdown-it':
+        specifier: 14.1.2
+        version: 14.1.2
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6

@@ -49,6 +49,7 @@ vi.mock('@nibleaf/database', () => ({
     branch: { deleteMany: vi.fn(async () => ({ count: 1 })) },
     project: { update: vi.fn(async () => ({})) },
     language: {
+      findUniqueOrThrow: vi.fn(async () => ({ code: 'en' })),
       findFirst: vi.fn(async ({ where }: { where: { code: { equals: string } } }) =>
         [...mem.languages.values()].find((language) => language.code.toLowerCase() === where.code.equals.toLowerCase()),
       ),
@@ -264,6 +265,87 @@ it('re-imports the current repository docs with identical language, routes, meta
 });
 
 describe('mintlify importNodes slug collisions', () => {
+  it('discovers app destinations before source files without loading a stray page', async () => {
+    setNavigation({ languages: [{ language: 'en', pages: ['intro', 'api/next'] }] });
+    mem.repoFiles.set('intro.mdx', '[Next](https://nibleaf.com/pages/next)');
+    mem.repoFiles.set('api/next.mdx', '# Intended next page');
+    mem.repoFiles.set('next.mdx', '# Unrelated stray page');
+    const reads = vi.spyOn(mem.repoFiles, 'get');
+    try {
+      await runImport();
+      expect(mem.rows.filter((row) => row.kind === 'PAGE')).toHaveLength(2);
+      expect(mem.rows.find((row) => row.slug === 'intro')?.content).toBe('[Next](/next)');
+      expect(mem.rows.some((row) => row.content === '# Unrelated stray page')).toBe(false);
+      expect(reads).not.toHaveBeenCalledWith('next.mdx');
+    } finally {
+      reads.mockRestore();
+    }
+  });
+  it.each(['> ', '- ', '1. '])('re-review 3: stores literal %s fence markers without migrating the example image', async (prefix) => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    const hosted = 'https://storage.example.com/imported.png';
+    vi.mocked(findImportedAsset).mockResolvedValue({ url: hosted } as never);
+    mem.repoFiles.set(
+      'intro.mdx',
+      `<CodeGroup>\n  \`\`\`md\n  ${prefix}\`\`\`\n  ![Example](./example.png)\n  \`\`\`\n</CodeGroup>\n\n![Real](https://cdn.example.com/real.png)`,
+    );
+    mem.repoFiles.set('example.png', 'synthetic image');
+    const summary = await runImport();
+    const content = mem.rows.find((row) => row.slug === 'intro')?.content;
+    expect(content).toContain('![Example](./example.png)');
+    expect(content).toContain(`![Real](${hosted})`);
+    expect(findImportedAsset).toHaveBeenCalledTimes(1);
+    expect(summary.fidelityIssues ?? []).toEqual([]);
+  });
+  it('re-review 2: discovers an English id/generate folder using its frontmatter', async () => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    mem.repoFiles.set('intro.mdx', '[Generate](https://help.test/id/generate)');
+    mem.repoFiles.set('id/generate.mdx', '---\nlang: en\n---\nGenerated identifier guide.');
+    const summary = await runImport({ sourceUrl: 'https://help.test' });
+    expect(mem.rows.some((row) => row.languageId === 'lang-en' && row.content === 'Generated identifier guide.')).toBe(true);
+    expect(mem.rows.find((row) => row.slug === 'intro')?.content).toBe('[Generate](/additional-pages/generate)');
+    expect(summary.fidelityIssues ?? []).toEqual([]);
+  });
+  it.each(['?lang=ar', ''])('re-review 2: unconfigured folders respect query and frontmatter language (%s)', async (suffix) => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    const foreign = `https://help.test/custom/hidden${suffix}`;
+    mem.repoFiles.set('intro.mdx', `[Arabic](${foreign})`);
+    mem.repoFiles.set('custom/hidden.mdx', '---\nlang: ar\n---\nArabic hidden content.');
+    const summary = await runImport({ sourceUrl: 'https://help.test' });
+    expect(mem.rows.some((row) => row.languageId === 'lang-en' && row.content === 'Arabic hidden content.')).toBe(false);
+    expect(summary.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: foreign });
+  });
+  it.each(['?lang=ar', ''])('full-review 1: never imports foreign hidden content into English without frontmatter (%s)', async (suffix) => {
+    setNavigation({
+      languages: [
+        { language: 'en', pages: ['intro'] },
+        { language: 'ar', pages: ['ar/intro'] },
+      ],
+    });
+    const foreign = `https://help.test/ar/hidden${suffix}`;
+    mem.repoFiles.set('intro.mdx', `[Arabic](${foreign})\n\n[English](https://help.test/en/hidden?lang=en)`);
+    mem.repoFiles.set('ar/intro.mdx', 'Arabic introduction.');
+    mem.repoFiles.set('ar/hidden.mdx', 'Arabic hidden content.');
+    mem.repoFiles.set('en/hidden.mdx', 'English hidden content.');
+    const summary = await runImport({ sourceUrl: 'https://help.test' });
+    expect(mem.rows.filter((row) => row.languageId === 'lang-en').some((row) => row.content === 'Arabic hidden content.')).toBe(false);
+    expect(mem.rows.some((row) => row.languageId === 'lang-en' && row.content === 'English hidden content.')).toBe(true);
+    expect(summary.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: foreign });
+  });
+  it('CodeRabbit: configured APP_URL discovers and rewrites a hidden page in the full import', async () => {
+    vi.stubEnv('APP_URL', 'https://app.example.test');
+    try {
+      setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+      mem.repoFiles.set('intro.mdx', '[Hidden](https://app.example.test/pages/hidden#start)');
+      mem.repoFiles.set('hidden.mdx', '# Hidden page');
+      const summary = await runImport();
+      expect(mem.rows.find((row) => row.slug === 'hidden')?.content).toBe('# Hidden page');
+      expect(mem.rows.find((row) => row.slug === 'intro')?.content).toBe('[Hidden](/additional-pages/hidden#start)');
+      expect(summary.fidelityIssues ?? []).toEqual([]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it('preserves code images and links through the full import while migrating only prose images', async () => {
     setNavigation([{ group: 'Docs', pages: ['intro'] }]);
     const source = 'https://cdn.example.com/shared.png';
@@ -392,7 +474,7 @@ describe('mintlify language import', () => {
     mem.languages.set(storedCode, { id: 'lang-ar', code: storedCode });
     for (const file of ['docs.json', 'intro.mdx', 'ar/intro.mdx']) {
       const content = readFileSync(new URL(`./fixtures/multilingual-linked-pages/${file}`, import.meta.url), 'utf8');
-      mem.repoFiles.set(file, file === 'docs.json' ? content.replace('"language": "ar"', `"language": "${navigationCode}"`) : content);
+      mem.repoFiles.set(file, file === 'docs.json' ? content.replaceAll('"language": "ar"', `"language": "${navigationCode}"`) : content);
     }
     expect((await runImport()).imported).toBe(2);
     expect(mem.rows.find((row) => row.kind === 'PAGE' && row.languageId === 'lang-en')?.content).toContain(`?lang=${storedCode})`);

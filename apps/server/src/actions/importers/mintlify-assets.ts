@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
-import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { replaceMarkdownImageTargets, replaceTagAttributes } from '@nibleaf/shared/markup-scan';
+import { protectImportCode } from './import-markdown-code';
 
 // Read with linear scans (@nibleaf/shared/markup-scan), which give exactly what
 // these regexes give, in time linear in the file's length.
@@ -55,7 +55,7 @@ export const rewriteMintlifyAssetReferences = (
     resolved.add(path);
     return rawUrl(path);
   };
-  const protectedCode = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY });
+  const protectedCode = protectImportCode(content);
   // `(!\[[^\]]*\]\()([^\s)]+)((?:\s+["'][^)]*["'])?\))`: Markdown image targets.
   const markdown = replaceMarkdownImageTargets(protectedCode.content, (before, reference, after) => `${before}${resolve(reference)}${after}`);
   const rewritten = replaceTagAttributes(

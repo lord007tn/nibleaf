@@ -32,7 +32,9 @@ const mem = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@nibleaf/database', () => ({ prisma: { branch: { deleteMany: vi.fn(async () => ({ count: 1 })) } } }));
+vi.mock('@nibleaf/database', () => ({
+  prisma: { branch: { deleteMany: vi.fn(async () => ({ count: 1 })) }, language: { findUniqueOrThrow: vi.fn(async () => ({ code: 'en' })) } },
+}));
 vi.mock('../branches', () => ({
   captureImportDraft: vi.fn(async () => 'snapshot'),
   createImportReplacementBranch: vi.fn(async () => ({ id: 'import-branch' })),

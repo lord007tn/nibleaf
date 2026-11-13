@@ -58,6 +58,7 @@
     "image-size": "2.0.3",
     "ioredis": "^6.0.0",
     "jose": "^6.2.14",
+    "markdown-it": "14.3.3",
     "mdast-util-from-markdown": "2.0.3",
     "mdast-util-mdx": "3.0.0",
     "micromark-extension-mdxjs": "3.0.0",
@@ -70,6 +71,7 @@
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
+    "@types/markdown-it": "14.1.2",
     "@types/node": "^26.6.6",
     "@types/turndown": "^5.0.6",
     "dotenv-cli": "^11.1.0",

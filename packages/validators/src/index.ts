@@ -1339,6 +1339,15 @@ export type AdminSetRoleBody = z.infer<typeof adminSetRoleBody>;
 // Each importer source gets its own request schema here; the import summaries
 // they return are plain server responses (not validated request bodies).
 
+const importSourceUrl = z
+  .url()
+  .max(2048)
+  .refine((value) => {
+    if (!URL.canParse(value)) return false;
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password;
+  });
+
 /** Import a public Mintlify docs repo from GitHub (docs.json or legacy mint.json). */
 export const mintlifyImportBody = z
   .object({
@@ -1347,6 +1356,7 @@ export const mintlifyImportBody = z
       .max(120)
       .regex(/^[\w.-]+\/[\w.-]+$/, 'Use the form owner/repo.'),
     branch: z.string().max(120).optional(),
+    sourceUrl: importSourceUrl.optional(),
     replaceExisting: z.boolean().optional(),
   })
   .strict();
@@ -1361,6 +1371,7 @@ export const gitbookImportBody = z
       .max(120)
       .regex(/^[\w.-]+\/[\w.-]+$/, 'Use the form owner/repo.'),
     branch: z.string().max(120).optional(),
+    sourceUrl: importSourceUrl.optional(),
     path: z
       .string()
       .trim()

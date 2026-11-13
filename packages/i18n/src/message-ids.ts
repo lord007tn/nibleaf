@@ -1,5 +1,8 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'settings.import.sourceUrl': 'settings_import_sourceurl',
+  'settings.import.unmappedEmbed': 'settings_import_unmappedembed',
+  'settings.import.unresolvedLink': 'settings_import_unresolvedlink',
   'oauth.consent.can.aiConversations': 'oauth_consent_can_aiconversations',
   'settings.aiAssistants.watch.stalled': 'settings_aiassistants_watch_stalled',
   'settings.aiAssistants.watch.unexpected': 'settings_aiassistants_watch_unexpected',

@@ -1,4 +1,7 @@
 {
+  "settings_import_sourceurl": "URL der Quellwebsite (optional)",
+  "settings_import_unmappedembed": "Seite {page}: Eingebettete Inhalte konnten keinem Video zugeordnet werden. Die Quelle wurde beibehalten: {reference}",
+  "settings_import_unresolvedlink": "Seite {page}: Dieser Seitenlink konnte nicht aufgelöst werden und wurde beibehalten: {reference}",
   "editor_pagesettings_onelanguage": "Fügen Sie eine weitere Website-Sprache hinzu, um diese Seite zu verschieben.",
   "editor_pagesettings_invalidicon": "Wählen Sie einen unterstützten Symbolnamen wie rocket, book-open oder code.",
   "$schema": "https://inlang.com/schema/inlang-message-format",

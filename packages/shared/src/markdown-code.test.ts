@@ -40,7 +40,7 @@ describe('import Markdown code boundaries', () => {
     const input = `before\n${literal}`;
     const protectedCode = protectMarkdownCode(input);
     expect(protectedCode.content).not.toContain('literal');
-    expect(protectedCode.restore(protectedCode.content.replace('before', 'after'))).toBe(`after\n${literal}`);
+    expect(protectedCode.restore(protectedCode.content.replaceAll('before', 'after'))).toBe(`after\n${literal}`);
   });
 
   it('resumes prose after a matching close and preserves variable-length multiline inline code', () => {
@@ -48,7 +48,7 @@ describe('import Markdown code boundaries', () => {
     const input = `~~~\ncode\n~~~\n${literal}\n![Real](real)`;
     const protectedCode = protectMarkdownCode(input);
     expect(protectedCode.content).not.toContain('literal');
-    expect(protectedCode.restore(protectedCode.content.replace('(real)', '(hosted)'))).toBe(input.replace('(real)', '(hosted)'));
+    expect(protectedCode.restore(protectedCode.content.replaceAll('(real)', '(hosted)'))).toBe(input.replaceAll('(real)', '(hosted)'));
   });
 
   it('restores a large page with many fences in one pass', () => {

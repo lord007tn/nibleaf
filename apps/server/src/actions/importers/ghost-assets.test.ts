@@ -9,6 +9,22 @@ import { RemoteAssetMigrator, remoteImageSources } from './ghost-assets';
 beforeEach(() => vi.clearAllMocks());
 
 describe('remoteImageSources', () => {
+  it.each(['gitbook', 'mintlify'])('full-review 6: %s never migrates an image in an MDX component fence', async (namespace) => {
+    vi.mocked(findImportedAsset).mockResolvedValue({ url: 'https://storage.test/rewritten.png' } as never);
+    const source = '<CodeGroup>\n  ```md\n  ![Example](https://cdn.test/example.png)\n  ```\n</CodeGroup>';
+    const assets = new RemoteAssetMigrator('synthetic', namespace);
+    expect(await assets.rewrite(source)).toBe(source);
+    expect(findImportedAsset).not.toHaveBeenCalled();
+    expect(assets.failures.size).toBe(0);
+  });
+  it.each(['gitbook', 'mintlify'])('council P1: %s leaves indented image code out of remote migration', async (namespace) => {
+    vi.mocked(findImportedAsset).mockResolvedValue({ url: 'https://storage.test/rewritten.png' } as never);
+    const source = 'Example:\n\n    ![Example](https://cdn.test/example.png)';
+    const assets = new RemoteAssetMigrator('synthetic', namespace);
+    expect(await assets.rewrite(source)).toBe(source);
+    expect(findImportedAsset).not.toHaveBeenCalled();
+    expect(assets.failures.size).toBe(0);
+  });
   it('does no asset lookup or migration for a code-only document', async () => {
     const input = '~~~mdx\n<img src="https://cdn.example.com/code.png" />\n~~~';
     const assets = new RemoteAssetMigrator('synthetic');
