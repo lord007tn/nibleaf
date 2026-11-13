@@ -1,4 +1,4 @@
-import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence } from './markdown-code';
+import { markdownLineKinds } from './markdown-code';
 
 /**
  * One tokenizer for authored MDX, shared by every public projection (#341).
@@ -33,9 +33,6 @@ export type MdxNode =
 /** Inline formatting the projections keep as markup when its pairs nest correctly. */
 const FORMATTING_TAGS: ReadonlySet<string> = new Set(['sub', 'sup', 'u']);
 
-/** Blockquote markers and one list-item marker that may come before a fence. */
-const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/;
-
 const ACTIVE_OPEN = /^<(script|style|iframe|object|embed)\b/i;
 /** Where an `ACTIVE_TAG` match (`/<(\/?)(script|style|iframe|object|embed)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi`)
  *  can start; `nextActiveTag` reads the rest. */
@@ -50,12 +47,6 @@ const MAX_DEPTH = 32;
  *  text full of unclosed tags or braces stays linear, and once spent, what is left reads as text. */
 let scanBudget = 0;
 const scanLimit = (source: string, start: number, length: number): number => Math.min(source.length, start + length, start + Math.max(0, scanBudget));
-
-/** The fence a line opens, read after any blockquote or list prefix and at any indentation:
- *  authors indent code inside components. */
-const fenceOpening = (line: string): MarkdownFence | undefined => openingMarkdownFence(line.replace(CONTAINER_PREFIX, ''), Number.POSITIVE_INFINITY);
-const fenceCloses = (line: string, fence: MarkdownFence): boolean =>
-  closesMarkdownFence(line.replace(CONTAINER_PREFIX, ''), fence, Number.POSITIVE_INFINITY);
 
 /** Where a component tag starting at `start` ends (after its `>`), or -1. Quoted values may hold
  *  `>` and span lines; a quote opens a value only right after `=`, so `title=don't` stays text;
@@ -300,12 +291,14 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
   flush(source.length);
 };
 
-/** Read authored MDX into tokens. Fences (backtick or tilde, any length, inside containers too)
- *  are found first, line by line; an unclosed fence runs to the end, as in CommonMark. */
+/** Read authored MDX into tokens using the reader's fence boundaries. An unclosed
+ * fence runs to the end unless its container ends. HTML lines follow the existing
+ * prose tokenizer: their inline code, components and active HTML keep their rules. */
 export const tokenizeMdx = (source: string, components: ReadonlySet<string>): MdxToken[] => {
   scanBudget = 64 * source.length + 65_536;
   const tokens: MdxToken[] = [];
   const lines = source.split('\n');
+  const kinds = markdownLineKinds(lines);
   let prose: string[] = [];
   const flushProse = (beforeFence: boolean) => {
     if (prose.length > 0) tokenizeProse(`${prose.join('\n')}${beforeFence ? '\n' : ''}`, components, tokens);
@@ -313,17 +306,15 @@ export const tokenizeMdx = (source: string, components: ReadonlySet<string>): Md
   };
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] as string;
-    const fence = fenceOpening(line);
-    if (!fence) {
+    if (kinds[index] !== 'code') {
       prose.push(line);
       continue;
     }
     flushProse(true);
     let end = index + 1;
-    while (end < lines.length && !fenceCloses(lines[end] as string, fence)) end += 1;
-    const last = Math.min(end, lines.length - 1);
-    tokens.push({ kind: 'code', value: lines.slice(index, last + 1).join('\n'), block: true });
-    index = last;
+    while (end < lines.length && kinds[end] === 'code') end += 1;
+    tokens.push({ kind: 'code', value: lines.slice(index, end).join('\n'), block: true });
+    index = end - 1;
     // The line break after the fence belongs to the prose that follows.
     if (index < lines.length - 1) prose.push('');
   }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { tokenizeMdx } from './mdx-tokens';
 import { normalizePublicMarkdownContent as md, portablePublicMdxMarkdown as portable } from './public-markdown-content';
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growth';
 
@@ -8,6 +9,17 @@ import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growt
 // (a large call takes 3 to 10 ms) and samples last at least 20 ms, so each
 // spans several scheduler slices on a busy runner rather than one.
 describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () => {
+  it('groups reader-classified container code in linear time (n vs 4n, #591)', () => {
+    const components = new Set(['note']);
+    const example = '1. >~~~md\n   > [Literal](/literal)\n   > ~~~';
+    const page = (n: number) => `${example}\n\n<Note>After</Note>\n\n`.repeat(n);
+    const tokenize = (source: string) => tokenizeMdx(source, components);
+    expect(tokenize(page(1))[0]).toMatchObject({ kind: 'code', value: example, block: true });
+    const [small, large] = growthMs(tokenize, page(3000), page(12_000));
+    console.info(`MDX fence grouping growth: 3,000 vs 12,000 blocks, ${small.toFixed(1)} vs ${large.toFixed(1)} ms`);
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it.each([
     ['unmatched backticks', (n: number) => 'a ` b '.repeat(n), 2000],
     ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 100],

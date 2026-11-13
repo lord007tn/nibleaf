@@ -252,7 +252,8 @@ export type DifferentialCategory =
   | 'lazy ordered lines'
   | 'setext underlines'
   | 'HTML blocks'
-  | 'HTML after a paragraph';
+  | 'HTML after a paragraph'
+  | 'tab after a quote marker before a fence';
 export interface DifferentialCase {
   index: number;
   category: DifferentialCategory;
@@ -354,6 +355,13 @@ export const differentialCases = (seed = FENCE_CASE_SEED, perCategory = 512): Di
       const f = fence();
       const fenced = (line: string) => `${lazyFence ? '' : pad}${line}`;
       return [item, `${lazyHtml ? '' : pad}${html}`, ...(lazyText ? ['lazy text'] : []), fenced(`${f}md`), fenced('# literal'), fenced(f)];
+    },
+    'tab after a quote marker before a fence': () => {
+      const quote = choose(['>', '> ', '> > ', '>  ', '>   '] as const);
+      const pad = choose(['', ' ', '  ', '\t'] as const);
+      const f = fence();
+      // Include both fences (<4 columns after the quote) and indented lookalikes.
+      return [`${quote}\t${pad}${f}md`, `${quote}# literal`, `${quote}${f}`];
     },
   };
   const prefixes: ReadonlyArray<readonly [first: string, rest: string]> = [
