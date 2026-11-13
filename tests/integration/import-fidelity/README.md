@@ -20,6 +20,9 @@ with `taskkill /PID <root> /T /F` before the lock is released.
 Use a disposable PostgreSQL database whose name contains `import_fidelity`, an
 allocated Redis DB, a migrated schema and the demo seed. Load their local env
 outside Git. Set `NIBLEAF_CAPTURE_DATABASE` to the database name and set the
+allocated Redis DB in both `REDIS_DB` and `NIBLEAF_CAPTURE_REDIS_DB`; the harness
+rejects missing, invalid or mismatched Redis DBs before acquiring the lock or
+starting its worker. Set the
 machine-wide `NIBLEAF_DEVSTACK_LOCK` for the host. Use a non-default local
 capture auth secret because the built app runs in production mode.
 

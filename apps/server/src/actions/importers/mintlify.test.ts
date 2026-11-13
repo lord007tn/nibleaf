@@ -265,6 +265,20 @@ it('re-imports the current repository docs with identical language, routes, meta
 });
 
 describe('mintlify importNodes slug collisions', () => {
+  it('CodeRabbit: configured APP_URL discovers and rewrites a hidden page in the full import', async () => {
+    vi.stubEnv('APP_URL', 'https://app.example.test');
+    try {
+      setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+      mem.repoFiles.set('intro.mdx', '[Hidden](https://app.example.test/pages/hidden#start)');
+      mem.repoFiles.set('hidden.mdx', '# Hidden page');
+      const summary = await runImport();
+      expect(mem.rows.find((row) => row.slug === 'hidden')?.content).toBe('# Hidden page');
+      expect(mem.rows.find((row) => row.slug === 'intro')?.content).toBe('[Hidden](/additional-pages/hidden#start)');
+      expect(summary.fidelityIssues ?? []).toEqual([]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it('preserves code images and links through the full import while migrating only prose images', async () => {
     setNavigation([{ group: 'Docs', pages: ['intro'] }]);
     const source = 'https://cdn.example.com/shared.png';
@@ -393,7 +407,7 @@ describe('mintlify language import', () => {
     mem.languages.set(storedCode, { id: 'lang-ar', code: storedCode });
     for (const file of ['docs.json', 'intro.mdx', 'ar/intro.mdx']) {
       const content = readFileSync(new URL(`./fixtures/multilingual-linked-pages/${file}`, import.meta.url), 'utf8');
-      mem.repoFiles.set(file, file === 'docs.json' ? content.replace('"language": "ar"', `"language": "${navigationCode}"`) : content);
+      mem.repoFiles.set(file, file === 'docs.json' ? content.replaceAll('"language": "ar"', `"language": "${navigationCode}"`) : content);
     }
     expect((await runImport()).imported).toBe(2);
     expect(mem.rows.find((row) => row.kind === 'PAGE' && row.languageId === 'lang-en')?.content).toContain(`?lang=${storedCode})`);

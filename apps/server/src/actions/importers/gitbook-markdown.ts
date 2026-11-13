@@ -424,9 +424,14 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
           plainGitBookText(
             attributes.title || caption || (preceding.includes('\uE000') || preceding.startsWith('{%') || preceding.startsWith('<') ? '' : preceding),
           ) || 'Video';
-        const frame = importEmbed(url, title, (reference) => {
-          if (!isImportMediaUrl(reference)) unmapped(reference);
-        });
+        const frame = importEmbed(
+          url,
+          title,
+          (reference) => {
+            if (!isImportMediaUrl(reference)) unmapped(reference);
+          },
+          token.name === 'video' ? 'video' : undefined,
+        );
         output.push(block(caption ? `<Frame caption="${attr(plainGitBookText(caption))}">\n\n${frame}\n\n</Frame>` : frame));
       } else {
         const src = attributes.src ?? '';

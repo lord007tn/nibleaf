@@ -24,6 +24,11 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
     ],
     ['same-line embeds', normalizeImportFidelity, (n: number) => '<iframe src="https://youtu.be/abcdefghijk"></iframe>'.repeat(n)],
     [
+      'encoded source link resolution',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['guides/مرحبا', '/guide/next']]), { sourceUrl: 'https://help.test' }),
+      (n: number) => '[Next](https://help.test/guides/%D9%85%D8%B1%D8%AD%D8%A8%D8%A7#start)\n'.repeat(n),
+    ],
+    [
       'container code protection',
       normalizeImportFidelity,
       (n: number) => '- Example\n\n      [Demo](https://youtu.be/abcdefghijk)\n      /\n      \\---\n\n'.repeat(n),

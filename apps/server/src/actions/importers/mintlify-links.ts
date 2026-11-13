@@ -2,6 +2,7 @@ import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
 import { importSiteHref } from '@nibleaf/shared/site-links';
 import { stableHash } from './content';
+import { safeDecodeUri as safeDecode } from './gitbook-markdown';
 import { protectImportCode } from './import-markdown-code';
 import { markdownReferences, replaceImportReferences } from './import-references';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
@@ -15,7 +16,12 @@ const trimSlashes = (value: string): string => {
 };
 
 const normalizedSourcePath = (value: string): string =>
-  posix.normalize(trimSlashes(value.replace(/^\/+/, '').replace(/\.(?:md|mdx)$/i, ''))).replace(/^\.\//, '');
+  posix
+    .normalize(trimSlashes(value.replace(/^\/+/, '').replace(/\.(?:md|mdx)$/i, '')))
+    .replace(/^\.\//, '')
+    .split('/')
+    .map(safeDecode)
+    .join('/');
 
 /** Build the exact public route each Mintlify navigation page receives after
  * its groups become Nibleaf GROUP pages. The sibling slug ledger mirrors the
@@ -96,11 +102,16 @@ const internalReferenceKey = (reference: string, sourcePage: string): string | n
 
 /** Source-page paths referenced from Markdown or MDX anchors. Used by the
  * importer to include linked hidden pages that Mintlify permits outside nav. */
-export const mintlifyInternalLinkTargets = (content: string, sourcePage: string, sourceUrl?: string): string[] => {
+export const mintlifyInternalLinkTargets = (
+  content: string,
+  sourcePage: string,
+  sourceUrl?: string,
+  appOrigins: readonly string[] = ['https://nibleaf.com'],
+): string[] => {
   const prose = protectImportCode(content).content;
   const targets = new Set<string>();
   const add = (reference: string) => {
-    const key = internalReferenceKey(importSiteHref(reference, sourceUrl, ['https://nibleaf.com']), sourcePage);
+    const key = internalReferenceKey(importSiteHref(reference, sourceUrl, appOrigins), sourcePage);
     if (key) targets.add(key);
   };
   for (const reference of markdownReferences(prose)) if (!reference.image) add(reference.value);

@@ -57,7 +57,9 @@ describe.each(converters)('council re-check at 4a3bb650: %s', (_name, convert) =
     const opener = `<video src="https://cdn.test/a.mp4" poster="/poster.jpg" title="Original" width="640"${controls ? ' controls' : ''}>`;
     const children = '<track kind="captions" src="/captions.vtt" srclang="en"></video>';
     const issues: string[] = [];
-    expect(convert(opener + children, issues)).toBe((controls ? opener : opener.replace('>', ' controls="true">')) + children);
+    expect(opener.endsWith('>')).toBe(true);
+    const expectedOpener = controls ? opener : `${opener.slice(0, -1)} controls="true">`;
+    expect(convert(opener + children, issues)).toBe(expectedOpener + children);
     expect(issues).toEqual([]);
   });
 });

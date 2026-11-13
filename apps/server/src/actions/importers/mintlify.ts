@@ -93,7 +93,15 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
       const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
       const currentTarget = await defaultImportTarget(projectId);
       const defaultLanguage = await prisma.language.findUniqueOrThrow({ where: { id: currentTarget.languageId }, select: { code: true } });
-      const repository = { owner, name, branch, loadText, sourceUrl: input.sourceUrl, defaultLanguageCode: defaultLanguage.code };
+      const repository = {
+        owner,
+        name,
+        branch,
+        loadText,
+        sourceUrl: input.sourceUrl,
+        defaultLanguageCode: defaultLanguage.code,
+        appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
+      };
       const defaultTarget = { ...currentTarget, branchId: replacementBranch.id };
       const assets = new RemoteAssetMigrator(projectId, 'mintlify');
       const state = { pages: 0, versions: new Set<string>() };
@@ -298,6 +306,7 @@ const ensureLanguageTarget = async (
 };
 
 interface RepoRef {
+  appOrigins: readonly string[];
   defaultLanguageCode: string;
   sourceUrl?: string;
   owner: string;
@@ -365,7 +374,7 @@ const discoverLinkedPages = async (
     const raw = await repo.loadText(filePath);
     if (raw === null) continue;
     const { body } = parseFrontmatter(raw);
-    for (const target of mintlifyInternalLinkTargets(body, sourcePath, repo.sourceUrl)) {
+    for (const target of mintlifyInternalLinkTargets(body, sourcePath, repo.sourceUrl, repo.appOrigins)) {
       if (known.has(target)) continue;
       const targetFile = [`${baseDir}${target}.mdx`, `${baseDir}${target}.md`].find((candidate) => blobs.has(candidate));
       if (!targetFile) continue;
@@ -463,7 +472,7 @@ const importNodes = async (
       languageCode: languageCode ?? repo.defaultLanguageCode,
       languageRoutes,
       sourceUrl: repo.sourceUrl,
-      appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
+      appOrigins: repo.appOrigins,
       onUnresolved: (reference) => {
         summary.fidelityIssues ??= [];
         summary.fidelityIssues.push({ kind: 'link', page: node.path, reference });

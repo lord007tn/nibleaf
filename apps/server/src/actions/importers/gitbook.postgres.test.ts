@@ -156,14 +156,8 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     const pages = await db.prisma.page.findMany({ where: { projectId: project.id, branchId: main.id } });
     expect(pages).toHaveLength(1);
     expect(pages[0]?.content).toContain('init.lua');
-    expect(pages[0]?.content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Video tour:"></iframe>');
-    expect(pages[0]?.content).toContain('\n\n---\n\n');
-    expect(pages[0]?.content).not.toContain('\n/\n');
-    expect(pages[0]?.content).toContain('[Again](https://nibleaf.com/pages/readme?lang=ar#start)');
-    expect(result.data).toMatchObject({
-      fidelityIssues: expect.arrayContaining([{ kind: 'link', page: 'readme.md', reference: 'https://nibleaf.com/pages/readme?lang=ar#start' }]),
-    });
     expect(await db.prisma.branch.count({ where: { projectId: project.id, isDefault: false } })).toBe(0);
+    return { page: pages[0], result: result.data };
   };
 
   // CI never calls GitHub: unauthenticated API requests share a 60-an-hour limit
@@ -185,7 +179,14 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
       throw new Error(`Unexpected HTTP request in recorded GitBook rehearsal: ${url.origin}${url.pathname}`);
     });
     try {
-      await importFolder();
+      const { page, result } = await importFolder();
+      expect(page?.content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Video tour:"></iframe>');
+      expect(page?.content).toContain('\n\n---\n\n');
+      expect(page?.content).not.toContain('\n/\n');
+      expect(page?.content).toContain('[Again](https://nibleaf.com/pages/readme?lang=ar#start)');
+      expect(result).toMatchObject({
+        fidelityIssues: expect.arrayContaining([{ kind: 'link', page: 'readme.md', reference: 'https://nibleaf.com/pages/readme?lang=ar#start' }]),
+      });
     } finally {
       fetchSpy.mockRestore();
       expect(unexpectedHttpRequests).toEqual([]);
@@ -203,8 +204,32 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     console.info('Authenticated app -> recorded GitHub commit snapshot -> 1 page -> PostgreSQL promotion; no network');
   }, 180_000);
 
+  it('CodeRabbit: shared route helper accepts page text without recorded-only media', async () => {
+    const realFetch = globalThis.fetch;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+      if (url.hostname === 'raw.githubusercontent.com' && url.pathname.endsWith('/readme.md'))
+        return new Response('# Neutral page\n\nThe entry is `init.lua`.');
+      if (url.hostname === 'api.github.com' || url.hostname === 'raw.githubusercontent.com') return recordedGitHub(url);
+      if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return realFetch(input, init);
+      throw new Error('Unrecorded external fetch in route helper regression');
+    });
+    try {
+      const outcome = await importFolder();
+      expect(outcome.page?.content).toBe('The entry is `init.lua`.');
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  }, 180_000);
+
   // The same import against GitHub itself, for a manual check: GITBOOK_LIVE=1.
-  it.runIf(process.env.GITBOOK_LIVE === '1')('imports the same folder from live GitHub (manual)', importFolder, 180_000);
+  it.runIf(process.env.GITBOOK_LIVE === '1' && !process.env.CI)(
+    'imports the same folder from live GitHub (manual)',
+    async () => {
+      await importFolder();
+    },
+    180_000,
+  );
 });
 
 /** A public repository's folder, as GitHub answered for it at one commit. The

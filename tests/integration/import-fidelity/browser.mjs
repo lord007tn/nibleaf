@@ -28,6 +28,9 @@ const YT = 'M7lc1UVf-VE';
 assert.ok(process.env.NIBLEAF_DEVSTACK_LOCK, 'Set the shared machine-wide NIBLEAF_DEVSTACK_LOCK');
 assert.equal(new URL(process.env.POSTGRES_URL).pathname.slice(1), process.env.NIBLEAF_CAPTURE_DATABASE, 'explicit disposable database required');
 assert.ok(process.env.NIBLEAF_CAPTURE_DATABASE?.includes('import_fidelity'), 'the disposable database name must contain import_fidelity');
+assert.match(process.env.REDIS_DB ?? '', /^[1-9]\d*$/, 'Set REDIS_DB to the allocated capture Redis database');
+assert.ok(Number.isSafeInteger(Number(process.env.REDIS_DB)), 'REDIS_DB must be a safe integer for the allocated capture Redis database');
+assert.equal(process.env.REDIS_DB, process.env.NIBLEAF_CAPTURE_REDIS_DB, 'REDIS_DB must match the explicitly allocated NIBLEAF_CAPTURE_REDIS_DB');
 assert.equal(process.env.API_PORT, '4410', 'the API must listen on 4410');
 
 /** Every host a provider's player, thumbnails or media are served from. */
