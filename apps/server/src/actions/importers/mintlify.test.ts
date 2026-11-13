@@ -265,6 +265,40 @@ it('re-imports the current repository docs with identical language, routes, meta
 });
 
 describe('mintlify importNodes slug collisions', () => {
+  it.each(['> ', '- ', '1. '])('re-review 3: stores literal %s fence markers without migrating the example image', async (prefix) => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    const hosted = 'https://storage.example.com/imported.png';
+    vi.mocked(findImportedAsset).mockResolvedValue({ url: hosted } as never);
+    mem.repoFiles.set(
+      'intro.mdx',
+      `<CodeGroup>\n  \`\`\`md\n  ${prefix}\`\`\`\n  ![Example](./example.png)\n  \`\`\`\n</CodeGroup>\n\n![Real](https://cdn.example.com/real.png)`,
+    );
+    mem.repoFiles.set('example.png', 'synthetic image');
+    const summary = await runImport();
+    const content = mem.rows.find((row) => row.slug === 'intro')?.content;
+    expect(content).toContain('![Example](./example.png)');
+    expect(content).toContain(`![Real](${hosted})`);
+    expect(findImportedAsset).toHaveBeenCalledTimes(1);
+    expect(summary.fidelityIssues ?? []).toEqual([]);
+  });
+  it('re-review 2: discovers an English id/generate folder using its frontmatter', async () => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    mem.repoFiles.set('intro.mdx', '[Generate](https://help.test/id/generate)');
+    mem.repoFiles.set('id/generate.mdx', '---\nlang: en\n---\nGenerated identifier guide.');
+    const summary = await runImport({ sourceUrl: 'https://help.test' });
+    expect(mem.rows.some((row) => row.languageId === 'lang-en' && row.content === 'Generated identifier guide.')).toBe(true);
+    expect(mem.rows.find((row) => row.slug === 'intro')?.content).toBe('[Generate](/additional-pages/generate)');
+    expect(summary.fidelityIssues ?? []).toEqual([]);
+  });
+  it.each(['?lang=ar', ''])('re-review 2: unconfigured folders respect query and frontmatter language (%s)', async (suffix) => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    const foreign = `https://help.test/custom/hidden${suffix}`;
+    mem.repoFiles.set('intro.mdx', `[Arabic](${foreign})`);
+    mem.repoFiles.set('custom/hidden.mdx', '---\nlang: ar\n---\nArabic hidden content.');
+    const summary = await runImport({ sourceUrl: 'https://help.test' });
+    expect(mem.rows.some((row) => row.languageId === 'lang-en' && row.content === 'Arabic hidden content.')).toBe(false);
+    expect(summary.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: foreign });
+  });
   it.each(['?lang=ar', ''])('full-review 1: never imports foreign hidden content into English without frontmatter (%s)', async (suffix) => {
     setNavigation({
       languages: [

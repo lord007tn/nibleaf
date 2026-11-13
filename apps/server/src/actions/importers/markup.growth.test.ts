@@ -30,6 +30,17 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
     ],
     ['CR code protection', normalizeImportFidelity, (n: number) => 'Intro\r\r    ![Example](./next.png)\r\r'.repeat(n)],
     [
+      'multiline self-closing component protection',
+      normalizeImportFidelity,
+      (n: number) => '<Image\n  alt={{ label: "/> and >" }}\n/>\n\n    ```md\n\n[Tour](https://youtu.be/abcdefghijk)\n\n'.repeat(n),
+    ],
+    ['unclosed component attributes', normalizeImportFidelity, (n: number) => '<Image\n  alt="\n'.repeat(n)],
+    [
+      'component container fence closers',
+      normalizeImportFidelity,
+      (n: number) => '<CodeGroup>\n  ```md\n  > ```\n  - ```\n  1. ```\n  ![Example](./example.png)\n  ```\n</CodeGroup>\n\n'.repeat(n),
+    ],
+    [
       'encoded source link resolution',
       (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['guides/مرحبا', '/guide/next']]), { sourceUrl: 'https://help.test' }),
       (n: number) => '[Next](https://help.test/guides/%D9%85%D8%B1%D8%AD%D8%A8%D8%A7#start)\n'.repeat(n),

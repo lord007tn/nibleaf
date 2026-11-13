@@ -5,6 +5,26 @@ import MarkdownIt from 'markdown-it';
 const markdown = new MarkdownIt({ html: true });
 const markdownWithoutHtml = new MarkdownIt({ html: false });
 
+/** Read each component opener once, including multiline attributes. The cap
+ * also bounds malformed quotes/braces; continuation lines are not rescanned. */
+export const readImportComponentTag = (source: string, start: number): { end: number; complete: boolean; selfClosing: boolean } => {
+  const limit = Math.min(source.length, start + 4096);
+  let quote = '';
+  let braces = 0;
+  for (let index = start + 1; index < limit; index++) {
+    const char = source[index];
+    if (quote) {
+      if (char === '\\') index++;
+      else if (char === quote) quote = '';
+    } else if (char === '"' || char === "'" || (char === '`' && braces > 0)) quote = char;
+    else if (char === '{') braces++;
+    else if (char === '}') braces = Math.max(0, braces - 1);
+    else if (braces === 0 && char === '>') return { end: index + 1, complete: true, selfClosing: source[index - 1] === '/' };
+    else if (braces === 0 && char === '<') return { end: index, complete: false, selfClosing: false };
+  }
+  return { end: limit, complete: false, selfClosing: false };
+};
+
 /** The same block maps markdown-it gives the editor, including nested containers.
  * Only block parsing is needed: do not parse every prose link just to find code. */
 export const importCodeLines = (source: string): boolean[] => {
@@ -26,11 +46,19 @@ export const importCodeLines = (source: string): boolean[] => {
     }
   }
   let componentDepth = 0;
+  let componentTagEnd = 0;
+  let offset = 0;
+  const sourceLines = normalized.split('\n');
+  const lineOffsets = sourceLines.map((line) => {
+    const start = offset;
+    offset += line.length + 1;
+    return start;
+  });
   const eligibleOpeners = new Set<number>();
   const componentOpeners = new Set<number>();
   // The shared scanner skips this callback inside an open fence, so example
   // component tags cannot change the surrounding real component's depth.
-  const lines = fencedMarkdownLines(normalized.split('\n'), (line, index) => {
+  const lines = fencedMarkdownLines(sourceLines, (line, index) => {
     const ordinaryStart = ordinaryFenceAtLine.get(index);
     if (
       !componentDepth &&
@@ -41,9 +69,17 @@ export const importCodeLines = (source: string): boolean[] => {
     )
       return false;
     if (!componentDepth && indented[index]) return false;
+    const lineOffset = lineOffsets[index] ?? 0;
+    if (lineOffset < componentTagEnd) return false;
     const tag = /^[\t >]*(?:[-*+] |\d{1,9}[.)] )?<(\/?)([A-Z][\w.]*)\b/.exec(line);
-    if (tag?.[1]) componentDepth = Math.max(0, componentDepth - 1);
-    else if (tag && !line.trimEnd().endsWith('/>') && !line.includes(`</${tag[2]}>`)) componentDepth++;
+    if (tag) {
+      const opener = readImportComponentTag(normalized, lineOffset + line.indexOf('<'));
+      componentTagEnd = opener.end;
+      if (opener.complete) {
+        if (tag[1]) componentDepth = Math.max(0, componentDepth - 1);
+        else if (!opener.selfClosing && !line.includes(`</${tag[2]}>`)) componentDepth++;
+      }
+    }
     if (componentDepth > 0) componentOpeners.add(index);
     const allowed = componentDepth > 0 || ordinaryFences.has(index) || Boolean(openingMarkdownFence(line, 3));
     if (allowed) eligibleOpeners.add(index);

@@ -1,6 +1,5 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
-import { LANGUAGE_CATALOG } from '@nibleaf/shared/languages';
 import { importSiteHref } from '@nibleaf/shared/site-links';
 import { stableHash } from './content';
 import { safeDecodeUri as safeDecode } from './gitbook-markdown';
@@ -10,7 +9,6 @@ import { markdownReferences, replaceImportReferences } from './import-references
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
 
 const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
-const languagePrefixes = new Set(LANGUAGE_CATALOG.map(({ code }) => code.toLowerCase()));
 
 const trimSlashes = (value: string): string => {
   let end = value.length;
@@ -111,8 +109,10 @@ export const mintlifyInternalLinkTargets = (
   sourceUrl?: string,
   appOrigins: readonly string[] = ['https://nibleaf.com'],
   languageCode?: string,
+  configuredLanguages: readonly string[] = [],
 ): string[] => {
   const prose = protectImportCode(content).content;
+  const languagePrefixes = new Set(configuredLanguages.map((code) => code.toLowerCase()));
   const targets = new Set<string>();
   const add = (reference: string) => {
     const href = importSiteHref(reference, sourceUrl, appOrigins);

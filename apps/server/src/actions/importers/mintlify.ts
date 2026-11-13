@@ -93,6 +93,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
       const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
       const currentTarget = await defaultImportTarget(projectId);
       const defaultLanguage = await prisma.language.findUniqueOrThrow({ where: { id: currentTarget.languageId }, select: { code: true } });
+      const languageResult = parseMintlifyLanguages(config);
       const repository = {
         owner,
         name,
@@ -100,12 +101,12 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
         loadText,
         sourceUrl: input.sourceUrl,
         defaultLanguageCode: defaultLanguage.code,
+        configuredLanguages: languageResult.languages.map(({ code }) => code),
         appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
       };
       const defaultTarget = { ...currentTarget, branchId: replacementBranch.id };
       const assets = new RemoteAssetMigrator(projectId, 'mintlify');
       const state = { pages: 0, versions: new Set<string>() };
-      const languageResult = parseMintlifyLanguages(config);
       summary.warnings.push(...languageResult.warnings);
       let chromeNodes: NavNode[];
 
@@ -306,6 +307,7 @@ const ensureLanguageTarget = async (
 };
 
 interface RepoRef {
+  configuredLanguages: readonly string[];
   appOrigins: readonly string[];
   defaultLanguageCode: string;
   sourceUrl?: string;
@@ -365,6 +367,7 @@ const discoverLinkedPages = async (
   const known = navPagePaths(nodes);
   const queue = [...known];
   const additional: string[] = [];
+  const currentLanguage = languageCode ?? repo.defaultLanguageCode;
   for (let index = 0; index < queue.length && known.size < MAX_IMPORT_FILES; index++) {
     const sourcePath = queue[index];
     if (!sourcePath) continue;
@@ -374,17 +377,15 @@ const discoverLinkedPages = async (
     const raw = await repo.loadText(filePath);
     if (raw === null) continue;
     const { body } = parseFrontmatter(raw);
-    for (const target of mintlifyInternalLinkTargets(body, sourcePath, repo.sourceUrl, repo.appOrigins, languageCode ?? repo.defaultLanguageCode)) {
+    for (const target of mintlifyInternalLinkTargets(body, sourcePath, repo.sourceUrl, repo.appOrigins, currentLanguage, repo.configuredLanguages)) {
       if (known.has(target)) continue;
       const targetFile = [`${baseDir}${target}.mdx`, `${baseDir}${target}.md`].find((candidate) => blobs.has(candidate));
       if (!targetFile) continue;
-      if (languageCode) {
-        const targetRaw = await repo.loadText(targetFile);
-        const targetLanguage = targetRaw === null ? undefined : parseFrontmatter(targetRaw).meta.lang;
-        // A translation link is not an instruction to copy that page into this
-        // language. Explicit navigation remains authoritative in importNodes.
-        if (targetLanguage && targetLanguage.toLowerCase() !== languageCode.toLowerCase()) continue;
-      }
+      const targetRaw = await repo.loadText(targetFile);
+      const targetLanguage = targetRaw === null ? undefined : parseFrontmatter(targetRaw).meta.lang;
+      // A translation link is not an instruction to copy that page into this
+      // language. Explicit navigation remains authoritative in importNodes.
+      if (targetLanguage && targetLanguage.toLowerCase() !== currentLanguage.toLowerCase()) continue;
       known.add(target);
       additional.push(target);
       queue.push(target);

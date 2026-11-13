@@ -18,7 +18,7 @@ describe.each(converters)('full review at dbccca62: %s', (_name, convert) => {
     '1: excludes foreign-language discovery without frontmatter: %s',
     (url) => {
       const body = convert(`[Foreign](${url})\n\n[English](https://help.test/en/hidden?lang=en)`);
-      expect(mintlifyInternalLinkTargets(body, 'intro', 'https://help.test', origins, 'en')).toEqual(['en/hidden']);
+      expect(mintlifyInternalLinkTargets(body, 'intro', 'https://help.test', origins, 'en', ['en', 'ar'])).toEqual(['en/hidden']);
     },
   );
 

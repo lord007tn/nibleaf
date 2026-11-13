@@ -1,7 +1,7 @@
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { replaceTags } from '@nibleaf/shared/markup-scan';
 import { normalizeImportFidelity } from './import-fidelity';
-import { importCodeLines } from './import-markdown-code';
+import { importCodeLines, readImportComponentTag } from './import-markdown-code';
 
 const tagName = (line: string): string | null => {
   const match = line.trim().match(/^<\/?([A-Z][A-Za-z0-9.]*)\b/);
@@ -48,10 +48,15 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
   const codeLines = importCodeLines(protectedCode.content);
 
   const lines = protectedCode.content.split(/(\r\n|\r|\n)/);
+  let sourceOffset = 0;
+  let componentTagEnd = 0;
   for (let lineIndex = 0; lineIndex * 2 < lines.length; lineIndex++) {
     const rawLine = lines[lineIndex * 2] ?? '';
+    const lineOffset = sourceOffset;
+    sourceOffset += rawLine.length + (lines[lineIndex * 2 + 1]?.length ?? 0);
     const trimmed = rawLine.trim();
-    const closingName = trimmed.match(/^<\/([A-Z][A-Za-z0-9.]*)>\s*$/)?.[1];
+    const inComponentTag = lineOffset < componentTagEnd;
+    const closingName = inComponentTag ? undefined : trimmed.match(/^<\/([A-Z][A-Za-z0-9.]*)>\s*$/)?.[1];
     const currentIndent = componentIndents.at(-1)?.childIndent ?? 0;
     ending = codeLines[lineIndex] ? (lines[lineIndex * 2 + 1] ?? '') : '\n';
     if (codeLines[lineIndex] && currentIndent === 0) {
@@ -82,8 +87,11 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
       continue;
     }
 
-    const name = tagName(trimmed);
-    const isComponentBoundary = name !== null && trimmed.startsWith(`<${name}`) && !trimmed.endsWith('/>') && !trimmed.includes(`</${name}>`);
+    const name = inComponentTag ? null : tagName(trimmed);
+    const opener = name ? readImportComponentTag(protectedCode.content, lineOffset + rawLine.indexOf('<')) : undefined;
+    if (opener) componentTagEnd = opener.end;
+    const isComponentBoundary =
+      name !== null && opener?.complete && !opener.selfClosing && trimmed.startsWith(`<${name}`) && !trimmed.includes(`</${name}>`);
     if (isComponentBoundary && unwrappedComponents.has(name)) {
       const keep = name === 'Frame' && Boolean(attribute(trimmed, 'caption'));
       const heading = componentHeading(name, trimmed);
