@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectConfig } from '@/hooks/api/types';
-import { appendAnalyticsScript, SiteAnalyticsConsent } from './site-analytics-consent';
+import { appendAnalyticsScript, PrivacyChoicesLink, SiteAnalyticsConsent } from './site-analytics-consent';
 
 const consentConfig = {
   analytics: { ga4: 'G-TEST' },
@@ -39,6 +39,16 @@ describe('appendAnalyticsScript', () => {
   });
 });
 
+/** The banner and the reader footer's "Privacy choices", as the reader renders them. */
+const withFooter = (props: Parameters<typeof SiteAnalyticsConsent>[0]) =>
+  createElement(
+    'div',
+    null,
+    createElement('main', null, createElement('a', { href: '#top' }, 'Top')),
+    createElement('footer', null, createElement(PrivacyChoicesLink, { projectId: props.projectId, config: props.config, lang: props.lang })),
+    createElement(SiteAnalyticsConsent, props),
+  );
+
 describe('SiteAnalyticsConsent', () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -63,9 +73,9 @@ describe('SiteAnalyticsConsent', () => {
     { lang: 'en', declineLabel: 'Decline', acceptLabel: 'Accept analytics', manageLabel: 'Privacy choices' },
     { lang: 'ar', declineLabel: 'رفض', acceptLabel: 'قبول التحليلات', manageLabel: 'خيارات الخصوصية' },
   ])('renders equal-weight $lang choices and keeps both actions available', async ({ lang, declineLabel, acceptLabel, manageLabel }) => {
-    await act(async () => root.render(createElement(SiteAnalyticsConsent, { projectId: `project-${lang}`, config: consentConfig, lang })));
+    await act(async () => root.render(withFooter({ projectId: `project-${lang}`, config: consentConfig, lang })));
 
-    const choices = [...container.querySelectorAll('button')];
+    const choices = [...container.querySelectorAll<HTMLButtonElement>('section button')];
     const decline = choices.find((button) => button.textContent === declineLabel);
     const accept = choices.find((button) => button.textContent === acceptLabel);
     expect(choices.map((button) => button.textContent)).toEqual([declineLabel, acceptLabel]);
@@ -74,11 +84,34 @@ describe('SiteAnalyticsConsent', () => {
     await act(async () => decline?.click());
     expect(window.localStorage.getItem(`nibleaf.analytics.consent.project-${lang}`)).toBe('declined');
 
-    const manage = [...container.querySelectorAll('button')].find((button) => button.textContent === manageLabel);
+    // Nothing floats over the page after the choice; the footer reopens the banner.
+    expect(container.querySelector('section')).toBeNull();
+    expect(container.querySelectorAll('.fixed')).toHaveLength(0);
+    const manage = [...container.querySelectorAll<HTMLButtonElement>('footer button')].find((button) => button.textContent === manageLabel);
     await act(async () => manage?.click());
     const acceptAfterReopen = [...container.querySelectorAll('button')].find((button) => button.textContent === acceptLabel);
     await act(async () => acceptAfterReopen?.click());
     expect(window.localStorage.getItem(`nibleaf.analytics.consent.project-${lang}`)).toBe('accepted');
+  });
+
+  it('moves focus into the reopened banner and back to "Privacy choices" after the new choice', async () => {
+    window.localStorage.setItem('nibleaf.analytics.consent.focus', 'declined');
+    await act(async () => root.render(withFooter({ projectId: 'focus', config: consentConfig, lang: 'en' })));
+    const manage = container.querySelector<HTMLButtonElement>('footer button');
+    manage?.focus();
+    await act(async () => manage?.click());
+    const banner = container.querySelector('section');
+    expect(document.activeElement).toBe(banner);
+    const decline = [...container.querySelectorAll('section button')].find((button) => button.textContent === 'Decline') as HTMLButtonElement;
+    await act(async () => decline.click());
+    expect(container.querySelector('section')).toBeNull();
+    expect(document.activeElement).toBe(manage);
+  });
+
+  it('shows no footer control on sites that do not ask for consent', () => {
+    const html = renderToString(createElement(PrivacyChoicesLink, { projectId: 'none', config: {}, lang: 'en' }));
+    expect(html).toBe('');
+    expect(renderToString(createElement(PrivacyChoicesLink, { projectId: 'x', config: consentConfig, lang: 'ar' }))).toContain('خيارات الخصوصية');
   });
 
   it.each(['en', 'ar'])('renders the configured policy as an accessible %s link', async (lang) => {
@@ -105,12 +138,10 @@ describe('SiteAnalyticsConsent', () => {
     const reloadPage = vi.fn();
     window.localStorage.setItem('nibleaf.analytics.consent.project-withdraw', 'accepted');
 
-    await act(async () =>
-      root.render(createElement(SiteAnalyticsConsent, { projectId: 'project-withdraw', config: consentConfig, lang: 'en', reloadPage })),
-    );
+    await act(async () => root.render(withFooter({ projectId: 'project-withdraw', config: consentConfig, lang: 'en', reloadPage })));
     expect(document.head.querySelectorAll('script')).toHaveLength(2);
 
-    const manage = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Privacy choices');
+    const manage = [...container.querySelectorAll<HTMLButtonElement>('footer button')].find((button) => button.textContent === 'Privacy choices');
     await act(async () => manage?.click());
     const decline = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Decline');
     await act(async () => decline?.click());
@@ -125,7 +156,7 @@ describe('SiteAnalyticsConsent', () => {
         throw new DOMException('Storage access denied', 'SecurityError');
       });
     }
-    await act(async () => root.render(createElement(SiteAnalyticsConsent, { projectId: 'private-reader', config: consentConfig, lang: 'en' })));
+    await act(async () => root.render(withFooter({ projectId: 'private-reader', config: consentConfig, lang: 'en' })));
 
     expect(document.head.querySelectorAll('script')).toHaveLength(0);
     const decline = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Decline');

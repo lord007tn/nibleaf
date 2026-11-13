@@ -16,7 +16,7 @@ vi.mock('@/providers/site-analytics-provider', () => ({
   SiteAnalyticsProvider: ({ children }: { children: unknown }) => children,
   useSiteAnalytics: () => ({ track: vi.fn() }),
 }));
-vi.mock('@/components/site/site-analytics-consent', () => ({ SiteAnalyticsConsent: () => null }));
+vi.mock('@/components/site/site-analytics-consent', () => ({ SiteAnalyticsConsent: () => null, PrivacyChoicesLink: () => null }));
 // Plain buttons stand in for the dropdown, so a test can pick a language.
 vi.mock('@/components/site/language-switcher', () => ({
   LanguageSwitcher: ({ languages, onChange }: { languages: Array<{ code: string }>; onChange: (code: string) => void }) =>

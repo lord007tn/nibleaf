@@ -17,10 +17,10 @@ import type { ChatRequest, ChatRootOptions, OpenChat } from './provider';
 
 const Panel = lazy(() => import('./panel'));
 
-/** How far up from the bottom the launcher rests: above the consent "Manage"
- * button when the site asks for consent. Its 3rem height and the safe-area
+/** How far up from the bottom the launcher rests. Nothing else floats in its
+ * corner any more ("Privacy choices" lives in the footer). Its 3rem height and the safe-area
  * inset come on top; the page keeps that much room at its end. */
-const launcherOffset = (consentBanner: boolean) => (consentBanner ? '4.5rem' : '1rem');
+const LAUNCHER_OFFSET = '1rem';
 
 /** Opens the panel for each new request, follows the `?ask=` deep link, and
  * returns focus to where the reader was when the panel closes. */
@@ -55,11 +55,7 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
       {/* Room at the end of the page for the launcher: its offset, its 3rem and
           the safe-area inset, so it never covers the pager or the last line.
           Server-rendered with the launcher, so nothing shifts. */}
-      <div
-        aria-hidden
-        data-chat-launcher-space=""
-        style={{ height: `calc(${launcherOffset(requiresConsent)} + 3rem + env(safe-area-inset-bottom))` }}
-      />
+      <div aria-hidden data-chat-launcher-space="" style={{ height: `calc(${LAUNCHER_OFFSET} + 3rem + env(safe-area-inset-bottom))` }} />
       <Launcher ref={launcher} lang={options.lang} consentBanner={requiresConsent} onOpen={() => openChat({ source: 'launcher' })} />
       {request && (
         <Suspense fallback={null}>
@@ -232,7 +228,7 @@ function Launcher({
       ref={box}
       data-chat-launcher=""
       className="pointer-events-none fixed end-4 z-40 flex"
-      style={{ bottom: `calc(${launcherOffset(consentBanner)} + env(safe-area-inset-bottom))` }}
+      style={{ bottom: `calc(${LAUNCHER_OFFSET} + env(safe-area-inset-bottom))` }}
     >
       <Button
         ref={ref}
