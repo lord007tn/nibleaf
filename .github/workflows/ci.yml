@@ -18,7 +18,7 @@ jobs:
   verify:
     name: Typecheck, lint & test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       qdrant:
         image: qdrant/qdrant:v1.19.0
