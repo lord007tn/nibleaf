@@ -51,9 +51,7 @@ const importFenceBody = (line: string, containers: readonly ImportContainer[]): 
     const start = cursor;
     if (container.kind === 'list') {
       while (cursor - start < container.indent && line[cursor] === ' ') cursor++;
-      // A blank after the matched quote markers continues a list fence even
-      // when the line omits the list's indentation.
-      if (cursor - start !== container.indent) return line.slice(cursor).trim() ? undefined : '';
+      if (cursor - start !== container.indent) return undefined;
     } else {
       while (line[cursor] === ' ') cursor++;
       if (cursor - start > container.indent + 3 || line[cursor] !== '>') return undefined;
@@ -128,11 +126,8 @@ export const importCodeLines = (source: string): boolean[] => {
     if (fenceEnd !== undefined && index >= fenceEnd) fence = undefined;
     if (fence) {
       const content = importFenceBody(expandedColumns(line), containers);
-      if (fenceEnd === undefined && content === undefined && line.trim()) fence = undefined;
-      else {
-        if (index + 1 === fenceEnd || (content !== undefined && closesMarkdownFence(content, fence, maxIndent))) fence = undefined;
-        return true;
-      }
+      if (index + 1 === fenceEnd || (content !== undefined && closesMarkdownFence(content, fence, maxIndent))) fence = undefined;
+      return true;
     }
     // Example tags inside code must never change the real component's depth.
     const ordinaryStart = ordinaryFenceAtLine.get(index);

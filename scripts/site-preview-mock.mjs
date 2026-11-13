@@ -11,6 +11,7 @@
  *   preview-signal      theme preset "signal"
  *   preview-legacy      no `theme` config (legacy palette branch)
  *   preview-private     "harbor", private, read by a signed-in reader
+ *   preview-unset       "harbor" whose owner never picked light or dark (follows the reader's device)
  *
  * Endpoints (mirroring apps/server/src/modules/public/sites/handlers.ts):
  *   GET  /api/public/sites/:id?lang=&version=            -> { data: SiteShell }
@@ -1052,13 +1053,18 @@ const PROJECTS = {
   'preview-legacy': { preset: null },
   // A private site whose reader is signed in; access can be revoked mid-session.
   'preview-private': { preset: 'harbor', visibility: 'private' },
+  // No styling.theme: the reader follows the visitor's device (PUB-004).
+  'preview-unset': { preset: 'harbor', unsetAppearance: true },
 };
 
 /** Mutable test state, set through POST /__mock/control. */
 const control = { revoked: false };
 
-const projectConfig = (preset, visibility = 'public') => {
+const projectConfig = (preset, visibility = 'public', unsetAppearance = false) => {
   const config = { ...baseConfig(), visibility };
+  if (unsetAppearance) {
+    config.styling = {};
+  }
   if (preset) {
     config.theme = { version: 1, preset, metadata: THEME_META[preset] };
   } else {
@@ -1218,7 +1224,7 @@ const findPage = (path) => {
 
 const projectPayload = (id, preset, language) => {
   const languageConfig = LANGUAGE_CONFIG[language.code];
-  const config = projectConfig(preset, PROJECTS[id]?.visibility);
+  const config = projectConfig(preset, PROJECTS[id]?.visibility, PROJECTS[id]?.unsetAppearance);
   return {
     id,
     name: SITE_NAME.en,

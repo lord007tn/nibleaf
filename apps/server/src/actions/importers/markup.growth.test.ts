@@ -11,12 +11,6 @@ import { normalizeMintlifyMdx } from './mintlify-mdx';
 describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
   const rewrite = (content: string) => rewriteMintlifyAssetReferences(content, 'docs/page.mdx', new Set(), (path) => `https://raw.example/${path}`);
   it.each([
-    ['unclosed media openers', normalizeImportFidelity, (n: number) => '<video src="https://cdn.test/a.mp4">\n\nAfter.\n\n'.repeat(n)],
-    [
-      'unclosed component container fences',
-      normalizeImportFidelity,
-      (n: number) => '<CodeGroup>\n    - ```md\n      literal\n</CodeGroup>\n\nAfter.\n\n'.repeat(n),
-    ],
     [
       'embed normalization',
       normalizeImportFidelity,

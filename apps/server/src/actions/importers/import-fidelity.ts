@@ -21,9 +21,6 @@ export const decodeImportEntities = (value: string): string =>
 
 const attr = (value: string): string => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
 
-/** Container bytes shared by standalone media links and Liquid embeds. */
-export const importContainerPrefix = (line: string): string => /^[\t >]*/.exec(line)?.[0] ?? '';
-
 // Keep rejected bytes inert even when the shared URL parser would trim them.
 export const isImportMediaUrl = (url: string): boolean => {
   if (!isAllowedMediaUrl(url)) return false;
@@ -126,10 +123,7 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
     output.push(prose.slice(cursor, embed.start));
     if (!embed.closed) {
       onUnmapped(url);
-      if (embed.kind !== 'video') output.push(prose.slice(embed.start, embed.end));
-      else if (url.startsWith('https://') || url.startsWith('http://'))
-        output.push(`<a href="${attr(url)}">${attr(url).replaceAll('>', '&gt;')}</a>`);
-      else output.push(`<code>${attr(prose.slice(embed.start, embed.end)).replaceAll('>', '&gt;')}</code>`);
+      output.push(prose.slice(embed.start, embed.end));
     } else if (embed.kind === 'video' && !url) {
       // A source/track video is already canonical HTML; preserve its alternatives and captions.
       const children = prose.slice(embed.openEnd, embed.end);
@@ -161,7 +155,7 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
   let title = '';
   for (let index = 0; index < lines.length; index++) {
     const raw = lines[index] ?? '';
-    const prefix = importContainerPrefix(raw);
+    const prefix = /^[\t >]*/.exec(raw)?.[0] ?? '';
     const line = raw.slice(prefix.length).trimEnd();
     if (line === '<p>---</p>' || line === '\\---' || line === '\\-\\-\\-') lines[index] = `${prefix}\n${prefix}---\n${prefix}`;
     // A standalone provider link is how Markdown sources declare a video block.
