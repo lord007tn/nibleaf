@@ -1,4 +1,4 @@
-import { fencedMarkdownLines, markdownLineKinds } from '@nibleaf/shared/markdown-code';
+﻿import { fencedMarkdownLines, markdownLineKinds } from '@nibleaf/shared/markdown-code';
 import MarkdownIt from 'markdown-it';
 import { describe, expect, it } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
@@ -20,6 +20,64 @@ const mediaTokenCounts = (content: string) => {
   const children = parser.parse(content, {}).flatMap((token) => token.children ?? []);
   return { links: children.filter((token) => token.type === 'link_open').length, images: children.filter((token) => token.type === 'image').length };
 };
+
+const sameLineForms = [
+  ['link suffix', '', '[After](https://example.test/after)', { links: 1, images: 0 }],
+  ['image suffix', '', '![x](y)', { links: 0, images: 1 }],
+  ['plain leading text', 'Before', '', { links: 0, images: 0 }],
+  ['leading text', '[Before](https://example.test/before) ![before](before.png)', '', { links: 1, images: 1 }],
+  [
+    'both sides',
+    '[Before](https://example.test/before) ![before](before.png)',
+    '[After](https://example.test/after) ![x](y)',
+    { links: 2, images: 2 },
+  ],
+] as const;
+const liquidEmbed = '{% embed url="https://youtu.be/abcdefghijk" %}';
+
+it.each([
+  ['link suffix', `> ${liquidEmbed} [After](https://example.test/after)`, { links: 1, images: 0 }],
+  ['image suffix', `> ${liquidEmbed} ![x](y)`, { links: 0, images: 1 }],
+  ['leading text', `> Before ${liquidEmbed}`, { links: 0, images: 0 }],
+] as const)('separates the exact single-line quote repro with %s', (_form, source, expected) => {
+  const content = convertGitBook(source);
+  const tokens = parser.parse(content, {});
+  expect(tokens.find((token) => token.type === 'html_block')?.level).toBe(1);
+  expect(tokens.find((token) => token.type === 'inline')?.level).toBe(2);
+  expect(mediaTokenCounts(content)).toEqual(expected);
+  expect(convertGitBook(content)).toBe(content);
+});
+
+describe.each(adjacentContainers)('same-line GitBook media in %s', (_name, opening, prefix, depth) => {
+  it.each(sameLineForms)('separates %s into blocks in the same container', (_form, before, after) => {
+    const source = `${opening}\n${prefix}${before ? `${before} ` : ''}${liquidEmbed}${after ? ` ${after}` : ''}`;
+    const content = convertGitBook(source);
+    const tokens = parser.parse(content, {});
+    const frame = tokens.find((token) => token.type === 'html_block' && token.content.includes('<iframe'));
+    expect(frame?.level).toBe(depth);
+    for (const prose of [before, after].filter(Boolean)) {
+      expect(tokens.find((token) => token.type === 'inline' && token.content.trimEnd().endsWith(prose))?.level).toBe(depth + 1);
+    }
+    expect(frame?.content.trim().startsWith('<iframe ')).toBe(true);
+    expect(frame?.content.trim().endsWith('</iframe>')).toBe(true);
+    expect(frame?.content.split('\n').filter(Boolean)).toHaveLength(1);
+    const expected = mediaTokenCounts([before, after].join('\n\n'));
+    expect(mediaTokenCounts(content)).toEqual(expected);
+    expect(convertGitBook(content)).toBe(content);
+    const withoutSuffix = `${opening}\n${prefix}${before ? `${before} ` : ''}${liquidEmbed}`;
+    expect(convertGitBook(`${withoutSuffix}   \t`)).toBe(convertGitBook(withoutSuffix));
+  });
+});
+
+it('keeps prose around a list-marker-line embed inside the list item', () => {
+  const content = convertGitBook('- Step {% embed url="https://youtu.be/abcdefghijk" %} [After](https://example.test/after) ![x](y)');
+  const tokens = parser.parse(content, {});
+  expect(tokens.find((token) => token.type === 'html_block')?.level).toBe(2);
+  expect(tokens.find((token) => token.type === 'inline' && token.content === 'Step')?.level).toBe(3);
+  expect(tokens.find((token) => token.type === 'inline' && token.content.includes('[After]'))?.level).toBe(3);
+  expect(mediaTokenCounts(content)).toEqual({ links: 1, images: 1 });
+  expect(convertGitBook(content)).toBe(content);
+});
 
 it('separates a quote embed with no preceding prose or blank lines', () => {
   const content = convertGitBook('> {% embed url="https://youtu.be/abcdefghijk" %}\n> [After](/next)');
@@ -67,6 +125,14 @@ it('retains main link/image token counts across the container matrix', () => {
     const mainCount = name === 'nested list' ? 0 : 1;
     expect(actual.links, name).toBeGreaterThanOrEqual(mainCount);
     expect(actual.images, name).toBeGreaterThanOrEqual(mainCount);
+    for (const [form, before, after, mainCounts] of sameLineForms) {
+      const inlineSource = `${opening}\n${prefix}${before ? `${before} ` : ''}${liquidEmbed}${after ? ` ${after}` : ''}`;
+      const inlineCounts = mediaTokenCounts(convertGitBook(inlineSource));
+      // Measured with b50e2e38: these five same-line counts are identical in
+      // all six containers, including the nested list.
+      expect(inlineCounts.links, `${name}: ${form}`).toBeGreaterThanOrEqual(mainCounts.links);
+      expect(inlineCounts.images, `${name}: ${form}`).toBeGreaterThanOrEqual(mainCounts.images);
+    }
   }
 });
 
