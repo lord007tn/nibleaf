@@ -1,10 +1,18 @@
 import { posix } from 'node:path';
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import { forwardIndexOf } from '@nibleaf/shared/markup-scan';
 import { parse as parseYaml } from 'yaml';
 import { ImportError } from '../../errors';
 import { GitBookImportBudget } from './gitbook-budget';
 import { liquidPairs, liquidTokens, stripHeadingEnd } from './gitbook-tokens';
-import { decodeImportEntities, type ImportFidelityIssue, importEmbed, isImportMediaUrl, normalizeImportFidelity } from './import-fidelity';
+import {
+  decodeImportEntities,
+  type ImportFidelityIssue,
+  importContainerPrefix,
+  importEmbed,
+  isImportMediaUrl,
+  normalizeImportFidelity,
+} from './import-fidelity';
 import { importCodeLines, protectImportCode } from './import-markdown-code';
 import { markdownReferences, replaceImportReferences } from './import-references';
 
@@ -378,9 +386,18 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
   };
   const openapi = new Set(['swagger', 'openapi', 'openapi-operation', 'openapi-webhook', 'openapi-schemas']);
   let cursor = 0;
+  const nextLineEnd = forwardIndexOf(protectedCode.content, '\n');
+  let lineStart = 0;
+  let lineEnd = nextLineEnd(0);
+  let containerPrefix = importContainerPrefix(protectedCode.content.slice(0, lineEnd < 0 ? undefined : lineEnd));
   for (let index = 0; index < tokens.length; index++) {
     const token = tokens[index];
     if (!token || token.start < cursor) continue;
+    while (lineEnd >= 0 && lineEnd < token.start) {
+      lineStart = lineEnd + 1;
+      lineEnd = nextLineEnd(lineStart);
+      containerPrefix = importContainerPrefix(protectedCode.content.slice(lineStart, lineEnd < 0 ? undefined : lineEnd));
+    }
     output.push(protectedCode.content.slice(cursor, token.start));
     cursor = token.end;
     const attributes = tagAttributes(token.attributes);
@@ -435,7 +452,12 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
           },
           token.name === 'video' ? 'video' : undefined,
         );
-        output.push(block(caption ? `<Frame caption="${attr(plainGitBookText(caption))}">\n\n${frame}\n\n</Frame>` : frame));
+        const media = caption ? `<Frame caption="${attr(plainGitBookText(caption))}">\n\n${frame}\n\n</Frame>` : frame;
+        // The first prefix is already copied before the token. Prefix every
+        // additional line, including blank lines, without opening a root block.
+        output.push(
+          containerPrefix && token.start === lineStart + containerPrefix.length ? media.replaceAll('\n', `\n${containerPrefix}`) : block(media),
+        );
       } else {
         const src = attributes.src ?? '';
         if (src) {

@@ -84,6 +84,7 @@ it('protects main code and exposes following prose across generated containers (
     }
   }
   const runtimeMs = Math.round(performance.now() - started);
+  console.info(`import-code property: ${CASES} cases, ${runtimeMs}ms, oracle overruns=${oracleOverruns.length}`);
   Object.assign(task.meta, {
     scannerProperty: {
       seed: `0x${SEED.toString(16)}`,
@@ -97,3 +98,36 @@ it('protects main code and exposes following prose across generated containers (
   expect(oracleOverruns).toHaveLength(0);
   expect(failures.slice(0, 12), `${failures.length} failures; seed=0x${SEED.toString(16)}`).toEqual([]);
 }, 20_000);
+
+it('ends generated unclosed container fences inside components (seed 0x58236b09)', ({ task }) => {
+  let state = SEED;
+  const started = performance.now();
+  const cases = 256;
+  const failures: number[] = [];
+  for (let index = 0; index < cases; index++) {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    const [opening, continuation] = (
+      [
+        ['> ', '> '],
+        ['- ', '  '],
+        ['1. ', '   '],
+        ['- > ', '  > '],
+      ] as const
+    )[(state >>> 0) % 4] ?? ['> ', '> '];
+    const marker = ((state >>> 0) % 2 ? '`' : '~').repeat(3 + ((state >>> 0) % 3));
+    const source = `<CodeGroup>\n    ${opening}${marker}md\n    ${continuation}[Literal](/literal)\n</CodeGroup>\n\n[After](/next)`;
+    const oracle = fencedMarkdownLines(source.split('\n'));
+    const actual = importCodeLines(source);
+    if (oracle.some((code, line) => code !== Boolean(actual[line]))) failures.push(index);
+    for (const convert of [(value: string) => convertGitBookMarkdown(value, { resolveFile: () => undefined }).content, normalizeMintlifyMdx]) {
+      const content = rewriteMintlifyInternalLinks(convert(source), 'intro', new Map([['next', '/rewritten']]));
+      if (!content.includes('[After](/rewritten)') || !content.includes('[Literal](/literal)')) failures.push(index);
+    }
+  }
+  const runtimeMs = Math.round(performance.now() - started);
+  Object.assign(task.meta, { containerProperty: { seed: SEED, cases, runtimeMs } });
+  console.info(`unclosed container property: ${cases} cases, ${runtimeMs}ms`);
+  expect(failures).toEqual([]);
+});

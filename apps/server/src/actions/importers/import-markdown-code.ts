@@ -126,8 +126,11 @@ export const importCodeLines = (source: string): boolean[] => {
     if (fenceEnd !== undefined && index >= fenceEnd) fence = undefined;
     if (fence) {
       const content = importFenceBody(expandedColumns(line), containers);
-      if (index + 1 === fenceEnd || (content !== undefined && closesMarkdownFence(content, fence, maxIndent))) fence = undefined;
-      return true;
+      if (fenceEnd === undefined && content === undefined && line.trim()) fence = undefined;
+      else {
+        if (index + 1 === fenceEnd || (content !== undefined && closesMarkdownFence(content, fence, maxIndent))) fence = undefined;
+        return true;
+      }
     }
     // Example tags inside code must never change the real component's depth.
     const ordinaryStart = ordinaryFenceAtLine.get(index);
