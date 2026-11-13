@@ -23,6 +23,34 @@ describe('fencedMarkdownLines', () => {
   it('treats a backtick run with backticks after it as inline code, not a fence', () => {
     expect(fencedMarkdownLines(['``` `inline` ```', 'text'])).toEqual([false, false]);
   });
+
+  // Each expectation matches markdown-it's fence tokens for the same source.
+  const flags = (source: string) => fencedMarkdownLines(source.split('\n')).map(Number).join('');
+  it('ends a fence where its quote or list item ends, as CommonMark does', () => {
+    expect(flags('> ```\n> code\nnot code\n## H')).toBe('1100');
+    expect(flags('> ```\n> code\n\n## H')).toBe('1100');
+    expect(flags('> > ```md\n> > example\n> after\n# H')).toBe('1100');
+    expect(flags('- ```\n  a\nb\n## H')).toBe('1100');
+    // The line that ends the item is read afresh: here it opens a new fence.
+    expect(flags('- ```\n- b\n```\n# H')).toBe('1011');
+  });
+  it('keeps blank lines in a list item’s fence, and closes on any matching container prefix', () => {
+    expect(flags('- ```\n  a\n\n  b\n  ```\nafter')).toBe('111110');
+    expect(flags('> > ```md\n> > example\n>>```\nafter')).toBe('1110');
+    expect(flags('1. >~~~md\n   > x\n   > ~~~\n\n## After')).toBe('11100');
+  });
+  it('measures container prefixes in columns, with tabs to the next multiple of 4', () => {
+    expect(flags('>\t```md\n>\texample\n>\t```\nafter')).toBe('1110');
+    expect(flags('- ```md\n\texample\n  ```\nafter')).toBe('1110');
+  });
+  it('treats a quote or list marker that first appears in a fence body as code', () => {
+    expect(flags('> ```md\n> example\n> > ```\n> still code\n> ```\nafter')).toBe('111110');
+    expect(flags('- ```md\n  example\n  - ```\n  still code\n  ```\nafter')).toBe('111110');
+    expect(flags('```md\n> ```\nstill\n```\nafter')).toBe('11110');
+  });
+  it('still accepts any indentation for a fence in a component, as authors write it', () => {
+    expect(flags('<Tabs>\n    ```js\n    # not a heading\n    ```\n</Tabs>\n# Heading')).toBe('011100');
+  });
 });
 
 describe('import Markdown code boundaries', () => {

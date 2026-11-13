@@ -111,9 +111,10 @@ const withoutInlineCode = (line: string): string => {
 const withoutCode = (content: string): string => {
   if (typeof content !== 'string') return '';
   if (!content.includes('`') && !content.includes('~~~')) return content;
-  // A fence inside a blockquote or list ends where its container does, which a
-  // line scan can't see: blanking from there could hide math or HTML after it.
-  // When unsure, keep everything, so the check errs towards the rich renderer.
+  // A fence inside a blockquote or list ends where its container does. The
+  // shared scanner follows that, but this check stays conservative: blanking a
+  // misread range could hide math or HTML after it, so keep everything and err
+  // towards the rich renderer.
   if (CONTAINER_FENCE.test(content)) return content;
   const lines = content.split('\n');
   const fenced = fencedMarkdownLines(lines);

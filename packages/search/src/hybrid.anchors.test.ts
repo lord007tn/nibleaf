@@ -1,5 +1,6 @@
 import { readerSections } from '@nibleaf/shared/reader-headings';
 import { extractHeadings } from '@nibleaf/shared/site';
+import { AFTER_FENCE, FENCE_CONTAINER_REPROS } from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { validateCitedAnswer } from './answer-validation';
 import { chunkSearchDocument, type SearchChunkSource } from './hybrid';
@@ -128,5 +129,14 @@ describe('citations of anchored chunks', () => {
       { id: 'S2', heading: 'Add your domain', anchor: 'add-your-domain' },
       { id: 'S1', heading: undefined, anchor: undefined },
     ]);
+  });
+});
+
+describe('sections after a fence in a quote or list item (#587)', () => {
+  it.each(FENCE_CONTAINER_REPROS)('index the section after %s under its heading and anchor', (_name, example) => {
+    const content = `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.`;
+    expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
+    // Without the reader's sections, the search package finds the heading itself.
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
   });
 });

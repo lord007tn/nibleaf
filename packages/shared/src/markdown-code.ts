@@ -16,25 +16,140 @@ export const closesMarkdownFence = (line: string, fence: MarkdownFence, maxInden
   return Boolean(match && (match[1]?.length ?? 0) <= maxIndent && match[2]?.[0] === fence.marker && match[2].length >= fence.length);
 };
 
-/** Blockquote markers and one list-item marker that may come before a fence. */
-const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/;
+/** A blockquote or list item that is open on a fence's opening line. `indent`
+ * is in columns from the previous container's content: the spaces before `>`
+ * for a quote, the item's content column for a list item. */
+interface FenceContainer {
+  kind: 'quote' | 'list';
+  indent: number;
+}
+
+/** A position in a line, in CommonMark columns: a tab advances to the next
+ * multiple of 4 and may be used in part (`spare` columns of it are left). */
+interface LineCursor {
+  index: number;
+  column: number;
+  spare: number;
+}
+
+const LIST_MARKER = /[-*+]|\d{1,9}[.)]/y;
+const tabWidth = (column: number) => 4 - (column % 4);
+
+/** The whitespace ahead of the cursor: its width in columns, and where it ends. */
+const whitespaceAhead = (line: string, at: LineCursor) => {
+  let { index, column } = at;
+  let columns = at.spare;
+  for (; line[index] === ' ' || line[index] === '\t'; index++) {
+    const width = line[index] === '\t' ? tabWidth(column) : 1;
+    column += width;
+    columns += width;
+  }
+  return { columns, index, column };
+};
+
+/** Move past exactly `columns` columns of whitespace, splitting a tab when needed.
+ * The caller has checked that there is that much whitespace ahead. */
+const skipColumns = (line: string, at: LineCursor, columns: number): LineCursor => {
+  let { index, column, spare } = at;
+  let left = columns;
+  const used = Math.min(spare, left);
+  spare -= used;
+  left -= used;
+  while (left > 0) {
+    const width = line[index] === '\t' ? tabWidth(column) : 1;
+    index++;
+    column += width;
+    const taken = Math.min(width, left);
+    spare = width - taken;
+    left -= taken;
+  }
+  return { index, column, spare };
+};
+
+/** Past a `>` at `index`, with its optional following space (one column of a tab). */
+const afterQuoteMarker = (line: string, index: number, column: number): LineCursor => {
+  const next = { index: index + 1, column: column + 1, spare: 0 };
+  return line[next.index] === ' ' || line[next.index] === '\t' ? skipColumns(line, next, 1) : next;
+};
+
+const contentAt = (line: string, at: LineCursor) => ' '.repeat(at.spare) + line.slice(at.index);
+const blankFrom = (line: string, index: number) => index >= line.length || (index === line.length - 1 && line[index] === '\r');
+
+/** The quote and list containers a line opens, and the text after them. The
+ * first marker may sit at any indentation: an earlier line may have opened a
+ * list item, and authors indent inside components. */
+const openingContainers = (line: string): { containers: FenceContainer[]; content: string } => {
+  const containers: FenceContainer[] = [];
+  let at: LineCursor = { index: 0, column: 0, spare: 0 };
+  for (;;) {
+    const space = whitespaceAhead(line, at);
+    if (containers.length > 0 && space.columns > 3) break;
+    if (line[space.index] === '>') {
+      containers.push({ kind: 'quote', indent: space.columns });
+      at = afterQuoteMarker(line, space.index, space.column);
+      continue;
+    }
+    LIST_MARKER.lastIndex = space.index;
+    const marker = LIST_MARKER.exec(line)?.[0];
+    const markerEnd = space.index + (marker?.length ?? 0);
+    if (!marker || (line[markerEnd] !== ' ' && line[markerEnd] !== '\t')) break;
+    const item: LineCursor = { index: markerEnd, column: space.column + marker.length, spare: 0 };
+    const spacing = whitespaceAhead(line, item);
+    if (blankFrom(line, spacing.index)) break;
+    // More than four columns after the marker: one is the item's padding and the
+    // rest indents its first line (CommonMark list items).
+    const padding = spacing.columns > 4 ? 1 : spacing.columns;
+    containers.push({ kind: 'list', indent: space.columns + marker.length + padding });
+    at = skipColumns(line, item, padding);
+  }
+  return { containers, content: contentAt(line, at) };
+};
+
+/** A fence body line with its containers' prefixes removed, or undefined when the
+ * line ends one of those containers: no `>` for a quote, or too little
+ * indentation for a list item. A blank line continues a list item, not a quote. */
+const fenceBodyContent = (line: string, containers: readonly FenceContainer[]): string | undefined => {
+  let at: LineCursor = { index: 0, column: 0, spare: 0 };
+  for (const [position, container] of containers.entries()) {
+    const space = whitespaceAhead(line, at);
+    if (container.kind === 'quote') {
+      if (space.columns > container.indent + 3 || line[space.index] !== '>') return undefined;
+      at = afterQuoteMarker(line, space.index, space.column);
+    } else if (blankFrom(line, space.index)) {
+      return containers.slice(position).some(({ kind }) => kind === 'quote') ? undefined : '';
+    } else if (space.columns < container.indent) return undefined;
+    else at = skipColumns(line, at, container.indent);
+  }
+  return contentAt(line, at);
+};
 
 /**
  * Flags each line that belongs to fenced code, fence lines included: same marker,
- * closing at least as long (CommonMark), also when the fence sits in a list item
- * or blockquote. Indentation is allowed because authors indent inside components.
- * Shared by the reader's MDX normalizer, heading extraction and search sections,
- * so all three agree on what is code.
+ * closing at least as long (CommonMark), also when the fence sits in list items
+ * and blockquotes, in any nesting. The quotes and list items opened on the fence's
+ * first line must continue on each body line, measured in columns (tabs to the next
+ * multiple of 4, the optional space after `>`, list content columns). A line that
+ * ends one of them ends the fence too; a `>` or list marker that first appears in
+ * the body is code. Indentation is otherwise allowed because authors indent inside
+ * components. One pass; each line is read at most twice (again only when it ends
+ * a fence's container). Shared by the reader's MDX normalizer, heading extraction
+ * and search sections, so all three agree on what is code.
  */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
-  let fence: MarkdownFence | undefined;
+  let fence: (MarkdownFence & { containers: FenceContainer[] }) | undefined;
   return lines.map((line) => {
-    const content = line.replace(CONTAINER_PREFIX, '');
     if (fence) {
-      if (closesMarkdownFence(content, fence, Number.POSITIVE_INFINITY)) fence = undefined;
-      return true;
+      const content = fenceBodyContent(line, fence.containers);
+      if (content !== undefined) {
+        if (closesMarkdownFence(content, fence, Number.POSITIVE_INFINITY)) fence = undefined;
+        return true;
+      }
+      // The container ended, so the fence did; this line starts afresh.
+      fence = undefined;
     }
-    fence = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
+    const { containers, content } = openingContainers(line);
+    const opening = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
+    fence = opening && { ...opening, containers };
     return Boolean(fence);
   });
 };

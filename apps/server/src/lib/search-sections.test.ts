@@ -1,3 +1,4 @@
+import { AFTER_FENCE, FENCE_CONTAINER_REPROS } from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { matchedSearchSection } from './search-sections';
 
@@ -108,5 +109,10 @@ ${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${fille
     expect(snippet.startsWith('…word')).toBe(true);
     expect(snippet.endsWith('tail…')).toBe(true);
     expect(snippet.length).toBeLessThanOrEqual(184);
+  });
+
+  it.each(FENCE_CONTAINER_REPROS)('finds the section after %s (#587)', (_name, example) => {
+    const page = { title: 'Guide', content: `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.` };
+    expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
   });
 });
