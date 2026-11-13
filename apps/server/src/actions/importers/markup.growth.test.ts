@@ -23,6 +23,12 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
       (n: number) => '[Next](https://help.example.test/next?lang=ar#start)\n'.repeat(n),
     ],
     ['same-line embeds', normalizeImportFidelity, (n: number) => '<iframe src="https://youtu.be/abcdefghijk"></iframe>'.repeat(n)],
+    [
+      'container code protection',
+      normalizeImportFidelity,
+      (n: number) => '- Example\n\n      [Demo](https://youtu.be/abcdefghijk)\n      /\n      \\---\n\n'.repeat(n),
+    ],
+    ['quoted rejected media', normalizeImportFidelity, (n: number) => '<iframe src="data:text/html,<video></video>"></iframe>\n\n'.repeat(n)],
     ['case A', rewrite, (n: number) => '![a'.repeat(n)],
     ['case B', rewrite, (n: number) => '![](a "t'.repeat(n)],
     ['case C', rewrite, (n: number) => `${'<img a '.repeat(n)}>`],

@@ -49,16 +49,37 @@ export const buildMintlifyLanguageRouteMap = (
   versionName: string | undefined,
 ): ReadonlyMap<string, string> => {
   const routes = new Map<string, string>();
+  const languagesByVersion = buildMintlifyLanguageRouteMaps(languages, versionName);
   for (const language of languages) {
     if (language.code.toLowerCase() === currentLanguage?.toLowerCase()) continue;
-    const { unversioned, versions } = partitionMintlifyVersions(language.nodes);
-    const version = versions.find((candidate) => (versionName ? candidate.name === versionName : candidate.isDefault));
-    const nodes = versions.length === 0 ? unversioned : version ? [...(version.isDefault ? unversioned : []), ...version.nodes] : [];
-    for (const [source, destination] of buildMintlifyRouteMap(nodes)) {
+    for (const [source, destination] of languagesByVersion.get(language.code.toLowerCase()) ?? []) {
       routes.set(source, `${destination}?lang=${encodeURIComponent(language.code)}`);
     }
   }
   return routes;
+};
+
+/** Keep language identity until a link's explicit language and current version are known. */
+export const buildMintlifyLanguageRouteMaps = (
+  languages: readonly MintlifyLanguageNavigation[],
+  versionName?: string,
+): Map<string, ReadonlyMap<string, string>> => {
+  const maps = new Map<string, ReadonlyMap<string, string>>();
+  const partitions = languages.map((language) => ({ language, ...partitionMintlifyVersions(language.nodes) }));
+  const defaultVersion = partitions.flatMap(({ versions }) => versions).find((version) => version.isDefault)?.name;
+  for (const { language, unversioned, versions } of partitions) {
+    const version = versions.find((candidate) => (versionName ? candidate.name === versionName : candidate.isDefault));
+    const nodes =
+      versions.length === 0
+        ? !versionName || versionName === defaultVersion
+          ? unversioned
+          : []
+        : version
+          ? [...(version.isDefault ? unversioned : []), ...version.nodes]
+          : [];
+    maps.set(language.code.toLowerCase(), buildMintlifyRouteMap(nodes));
+  }
+  return maps;
 };
 
 const splitSuffix = (reference: string): { path: string; suffix: string } => {
@@ -96,16 +117,52 @@ export const rewriteMintlifyInternalLinks = (
   content: string,
   sourcePage: string,
   routes: ReadonlyMap<string, string>,
-  options: { sourceUrl?: string; appOrigins?: readonly string[]; onUnresolved?: (reference: string) => void } = {},
+  options: {
+    sourceUrl?: string;
+    appOrigins?: readonly string[];
+    onUnresolved?: (reference: string) => void;
+    languageCode?: string;
+    languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  } = {},
 ): string => {
   const protectedCode = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY });
+  const aliases = new Map<ReadonlyMap<string, string>, Map<string, string | null>>();
+  const appPageTarget = (map: ReadonlyMap<string, string>, key: string): string | undefined => {
+    let bySlug = aliases.get(map);
+    if (!bySlug) {
+      bySlug = new Map();
+      for (const target of map.values()) {
+        const path = splitSuffix(target).path;
+        for (const alias of [path.slice(1), posix.basename(path)]) {
+          bySlug.set(alias, bySlug.has(alias) && bySlug.get(alias) !== target ? null : target);
+        }
+      }
+      aliases.set(map, bySlug);
+    }
+    return map.get(key) ?? bySlug.get(key) ?? undefined;
+  };
   const rewrite = (original: string): string => {
-    const reference = importSiteHref(original, options.sourceUrl, options.appOrigins ?? ['https://nibleaf.com']);
+    const appOrigins = options.appOrigins ?? ['https://nibleaf.com'];
+    const reference = importSiteHref(original, options.sourceUrl, appOrigins, options.onUnresolved);
     if (!reference || /^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(reference)) return reference;
     const { suffix } = splitSuffix(reference);
     const key = internalReferenceKey(reference, sourcePage);
     if (!key) return reference;
-    const target = routes.get(key);
+    const languages = new URL(reference, 'https://import.invalid').searchParams.getAll('lang');
+    if (languages.length > 1 || (languages.length === 1 && !languages[0])) {
+      options.onUnresolved?.(original);
+      return original;
+    }
+    const requested = languages[0]?.toLowerCase();
+    const localized = requested && options.languageRoutes ? options.languageRoutes.get(requested) : undefined;
+    const selected =
+      requested && options.languageRoutes
+        ? localized
+        : requested && options.languageCode && requested !== options.languageCode.toLowerCase()
+          ? undefined
+          : routes;
+    const appPage = URL.canParse(original) && appOrigins.includes(new URL(original).origin) && new URL(original).pathname.startsWith('/pages/');
+    const target = selected && (appPage ? appPageTarget(selected, key) : selected.get(key));
     if (!target) {
       const path = splitSuffix(reference).path;
       if (!/\.[a-z0-9]{2,8}$/i.test(path) || /\.(?:mdx?|html)$/i.test(path)) options.onUnresolved?.(original);

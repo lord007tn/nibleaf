@@ -19,7 +19,8 @@ import { acquireDevstackLock, hostKey, withLocalOnlyBrowser } from '../lib/captu
 const ROOT = resolve(import.meta.dirname, '../../..');
 const APP = 'http://localhost:4310';
 const API = 'http://localhost:4410';
-const OUTPUT = resolve(ROOT, '.github/assets/fix-import-fidelity');
+const COUNCIL = process.env.NIBLEAF_CAPTURE_COUNCIL === '1';
+const OUTPUT = resolve(ROOT, '.github/assets/fix-import-fidelity', ...(COUNCIL ? ['council-fix'] : []));
 const LOGS = resolve(ROOT, '.tmp/import-fidelity');
 const YT = 'M7lc1UVf-VE';
 
@@ -223,7 +224,9 @@ async function journey({ phase, locale, width, member, signed }) {
   const t = (key, variables = {}) => messages[MESSAGE_IDS[key]].replace(/\{(\w+)\}/g, (_, key) => String(variables[key]));
   const title = ar ? 'فيديو الشرح:' : 'Video tour:';
   const next = ar ? 'الخطوة التالية' : 'Next step';
-  const source = `${title}\n\n{% video src="https://youtu.be/${YT}" title="${title}" %}\n\n/\n\n<p>---</p>\n\n[${next}](https://nibleaf.com/pages/next?lang=${locale}#start)`;
+  const source = COUNCIL
+    ? `${ar ? 'مثال' : 'Example'}:\n\n    [Demo](https://youtu.be/abcdefghijk)\n    /\n    \\---\n\n- ${title}\n\n  [Demo](https://youtu.be/${YT})\n\n  ${next}.\n\n<p>---</p>\n\n[${next}](https://nibleaf.com/pages/next?lang=${locale}#start)`
+    : `${title}\n\n{% video src="https://youtu.be/${YT}" title="${title}" %}\n\n/\n\n<p>---</p>\n\n[${next}](https://nibleaf.com/pages/next?lang=${locale}#start)`;
   const converter = before
     ? (await import(pathToFileURL(resolve(process.env.NIBLEAF_BEFORE_ROOT, 'apps/server/src/actions/importers/gitbook-markdown.ts')).href))
         .convertGitBookMarkdown
@@ -309,7 +312,10 @@ async function journey({ phase, locale, width, member, signed }) {
     await prose.locator('[data-video-embed]').waitFor();
     assert.equal(await prose.locator('hr').count(), 1, 'a real divider in the editor');
     assert.ok((await prose.locator('a').all()).length > 0);
-    assert.ok(!(await prose.innerText()).split('\n').includes('/'));
+    if (COUNCIL) {
+      assert.ok((await prose.locator('pre').innerText()).includes('[Demo](https://youtu.be/abcdefghijk)'));
+      assert.equal(await prose.locator('li [data-video-embed]').count(), 1);
+    } else assert.ok(!(await prose.innerText()).split('\n').includes('/'));
   }
   await shot('editor');
   assert.equal((await db.page.findUniqueOrThrow({ where: { id: imported.id } })).content, importedContent);
@@ -354,6 +360,10 @@ async function journey({ phase, locale, width, member, signed }) {
   if (!before) {
     await play.waitFor();
     assert.equal(await reader.locator('article hr').count(), 1);
+    if (COUNCIL) {
+      assert.ok((await reader.locator('article pre').innerText()).includes('[Demo](https://youtu.be/abcdefghijk)'));
+      assert.equal(await reader.locator('article li [data-theme-component="video-embed"]').count(), 1);
+    }
     assert.equal(await reader.evaluate(() => document.documentElement.dir), ar ? 'rtl' : 'ltr');
     assert.ok((await reader.getByRole('link', { name: next, exact: true }).last().getAttribute('href')).includes(`/next?lang=${locale}#start`));
   }

@@ -1,6 +1,7 @@
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { replaceTags } from '@nibleaf/shared/markup-scan';
 import { normalizeImportFidelity } from './import-fidelity';
+import { importCodeLines } from './import-markdown-code';
 
 const tagName = (line: string): string | null => {
   const match = line.trim().match(/^<\/?([A-Z][A-Za-z0-9.]*)\b/);
@@ -38,11 +39,16 @@ export const normalizeMintlifyMdx = (content: string, onUnmapped?: (url: string)
   const normalized: string[] = [];
   let fence: MarkdownFence | undefined;
   const protectedCode = protectMarkdownCode(content, { fences: false, maxFenceIndent: Number.POSITIVE_INFINITY });
+  const codeLines = importCodeLines(protectedCode.content);
 
-  for (const rawLine of protectedCode.content.split(/\r?\n/)) {
+  for (const [lineIndex, rawLine] of protectedCode.content.split(/\r?\n/).entries()) {
     const trimmed = rawLine.trim();
     const closingName = trimmed.match(/^<\/([A-Z][A-Za-z0-9.]*)>\s*$/)?.[1];
     const currentIndent = componentIndents.at(-1)?.childIndent ?? 0;
+    if (codeLines[lineIndex] && currentIndent === 0) {
+      normalized.push(rawLine);
+      continue;
+    }
     const removable = Math.min(leadingSpaces(rawLine), currentIndent);
     let line = rawLine.slice(removable);
 

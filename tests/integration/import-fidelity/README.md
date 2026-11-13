@@ -41,3 +41,15 @@ Screenshots, one short reader recording and the request log are written to
 `.github/assets/fix-import-fidelity/`. After all rehearsal/capture runs, verify
 ports 4310/4410 are free, drop the disposable database, flush only the allocated
 Redis DB, and verify no owned process remains.
+
+For the council regressions, set `NIBLEAF_CAPTURE_COUNCIL=1` and use the PR's
+`a164b695` revision as the before checkout. This fixture adds indented code and
+a video inside a list item. Its screenshots, recording, Markdown and request
+log go into `.github/assets/fix-import-fidelity/council-fix/`.
+
+Run both PostgreSQL suites with `IMPORT_REHEARSAL=1`, `GITBOOK_REHEARSAL=1`,
+`GITBOOK_LIVE=0`, `CI=true` and `NIBLEAF_IMPORT_LOCAL_ONLY=1`. Set
+`NODE_OPTIONS=--import=<absolute file URL of local-only-node.mjs>` so the parent
+and test workers reject non-loopback socket connections before DNS or transport.
+The GitBook fixture also rejects every fetch without a recorded response or a
+loopback destination. Each worker asserts and prints its outside attempt count.

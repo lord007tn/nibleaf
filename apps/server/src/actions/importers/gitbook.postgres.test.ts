@@ -6,10 +6,15 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
   let db: typeof import('@nibleaf/database');
   let branches: typeof import('../branches');
   beforeAll(async () => {
+    if (process.env.NIBLEAF_IMPORT_LOCAL_ONLY === '1') expect(Reflect.get(globalThis, Symbol.for('nibleaf.import-network-attempts'))).toEqual([]);
     db = await import('@nibleaf/database');
     branches = await import('../branches');
   });
   afterAll(async () => {
+    if (process.env.NIBLEAF_IMPORT_LOCAL_ONLY === '1') {
+      expect(Reflect.get(globalThis, Symbol.for('nibleaf.import-network-attempts'))).toEqual([]);
+      console.info('GitBook worker: outside transport attempts 0; recorded GitHub responses only.');
+    }
     await db?.prisma.$disconnect();
   });
 
@@ -154,7 +159,10 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     expect(pages[0]?.content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Video tour:"></iframe>');
     expect(pages[0]?.content).toContain('\n\n---\n\n');
     expect(pages[0]?.content).not.toContain('\n/\n');
-    expect(pages[0]?.content).toContain('[Again](/introduction?lang=ar#start)');
+    expect(pages[0]?.content).toContain('[Again](https://nibleaf.com/pages/readme?lang=ar#start)');
+    expect(result.data).toMatchObject({
+      fidelityIssues: expect.arrayContaining([{ kind: 'link', page: 'readme.md', reference: 'https://nibleaf.com/pages/readme?lang=ar#start' }]),
+    });
     expect(await db.prisma.branch.count({ where: { projectId: project.id, isDefault: false } })).toBe(0);
   };
 
@@ -164,6 +172,7 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
   // commit, the recursive tree, raw files); the route, importer and database are real.
   it('imports a GitBook folder from GitHub through the authenticated app route', async () => {
     const githubRequests: Array<{ host: string; path: string }> = [];
+    const unexpectedHttpRequests: string[] = [];
     const realFetch = globalThis.fetch;
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
@@ -171,12 +180,15 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
         githubRequests.push({ host: url.hostname, path: url.pathname });
         return recordedGitHub(url);
       }
-      return realFetch(input, init);
+      if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return realFetch(input, init);
+      unexpectedHttpRequests.push(`${url.origin}${url.pathname}`);
+      throw new Error(`Unexpected HTTP request in recorded GitBook rehearsal: ${url.origin}${url.pathname}`);
     });
     try {
       await importFolder();
     } finally {
       fetchSpy.mockRestore();
+      expect(unexpectedHttpRequests).toEqual([]);
     }
     // The importer took the same path as against GitHub: a commit, its tree, then the page.
     const requested = githubRequests.map(({ host, path }) => `${host}${path}`);

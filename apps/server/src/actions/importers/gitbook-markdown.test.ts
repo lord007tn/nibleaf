@@ -82,7 +82,7 @@ describe('convertGitBookMarkdown', () => {
         '{% endtabs %}',
       ].join('\n'),
     );
-    expect(content).toBe('<Tabs>\n\n<Tab title="Node">\n\n```javascript title="index.js"\nrun();\n```\n\n\n</Tab>\n\n</Tabs>');
+    expect(content).toBe('<Tabs>\n\n<Tab title="Node">\n\n```javascript title="index.js"\nrun();\n```\n\n</Tab>\n\n</Tabs>');
   });
 
   it('lifts step headings into Step titles', () => {

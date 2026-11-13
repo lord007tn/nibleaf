@@ -22,7 +22,7 @@ const FILE_EXTENSION = /\.[a-z0-9]{2,8}$/i;
 
 /** Turn a known import source's absolute page URL into a site reference.
  * Origins are compared whole; another site's /pages/ route is still external. */
-export const importSiteHref = (href: string, sourceUrl?: string, appOrigins: readonly string[] = []): string => {
+export const importSiteHref = (href: string, sourceUrl?: string, appOrigins: readonly string[] = [], onRejected?: (href: string) => void): string => {
   if (!/^https?:\/\//i.test(href)) return href;
   let url: URL;
   try {
@@ -32,10 +32,19 @@ export const importSiteHref = (href: string, sourceUrl?: string, appOrigins: rea
   }
   if (url.username || url.password) return href;
   const source = sourceUrl && URL.canParse(sourceUrl) ? new URL(sourceUrl) : undefined;
-  if (appOrigins.includes(url.origin) && url.pathname.startsWith('/pages/')) {
-    return `${url.pathname.slice('/pages'.length)}${url.search}${url.hash}`;
+  const pathname =
+    appOrigins.includes(url.origin) && url.pathname.startsWith('/pages/')
+      ? url.pathname.slice('/pages'.length)
+      : source?.origin === url.origin
+        ? url.pathname
+        : undefined;
+  if (pathname === undefined) return href;
+  const relative = `${pathname}${url.search}${url.hash}`;
+  if (pathname.startsWith('//') || pathname.startsWith('/\\') || new URL(relative, url.origin).origin !== url.origin) {
+    onRejected?.(href);
+    return href;
   }
-  return source?.origin === url.origin ? `${url.pathname}${url.search}${url.hash}` : href;
+  return relative;
 };
 
 const safeDecode = (value: string): string => {

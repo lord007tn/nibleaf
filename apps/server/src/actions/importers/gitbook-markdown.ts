@@ -4,7 +4,8 @@ import { parse as parseYaml } from 'yaml';
 import { ImportError } from '../../errors';
 import { GitBookImportBudget } from './gitbook-budget';
 import { liquidPairs, liquidTokens, stripHeadingEnd } from './gitbook-tokens';
-import { decodeImportEntities, type ImportFidelityIssue, importEmbed, normalizeImportFidelity } from './import-fidelity';
+import { decodeImportEntities, type ImportFidelityIssue, importEmbed, isImportMediaUrl, normalizeImportFidelity } from './import-fidelity';
+import { importCodeLines, protectImportCode } from './import-markdown-code';
 import { markdownReferences, replaceImportReferences } from './import-references';
 
 /**
@@ -215,10 +216,15 @@ const applyCodeAnnotations = (content: string): string => {
   const output: string[] = [];
   let fence: MarkdownFence | undefined;
   let pendingTitle: string | undefined;
-  for (const line of content.split('\n')) {
+  const codeLines = importCodeLines(content);
+  for (const [lineIndex, line] of content.split('\n').entries()) {
     if (fence) {
       output.push(line);
       if (closesMarkdownFence(line, fence, Number.POSITIVE_INFINITY)) fence = undefined;
+      continue;
+    }
+    if (codeLines[lineIndex] && !openingMarkdownFence(line, 3)) {
+      output.push(line);
       continue;
     }
     const tokens = liquidTokens(line);
@@ -347,11 +353,9 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
   const warnings = new Set<string>();
   const issues: ImportFidelityIssue[] = [];
   const unmapped = (reference: string) => issues.push({ kind: 'embed', page: '', reference });
-  const protectedCode = protectMarkdownCode(applyCodeAnnotations(source.replace(/\r\n/g, '\n')), {
-    maxFenceIndent: Number.POSITIVE_INFINITY,
-  });
+  const protectedCode = protectImportCode(applyCodeAnnotations(source.replace(/\r\n/g, '\n')));
   if (!protectedCode.content.includes('{%') && !protectedCode.content.includes('<')) {
-    return { content: normalizeImportFidelity(protectedCode.restore(protectedCode.content), unmapped).trim(), warnings: [], issues };
+    return { content: protectedCode.restore(normalizeImportFidelity(protectedCode.content, unmapped).trim()), warnings: [], issues };
   }
   const tokens = liquidTokens(protectedCode.content);
   const pairs = liquidPairs(tokens);
@@ -417,8 +421,12 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
         const before = protectedCode.content.slice(Math.max(0, token.start - 600), token.start).trimEnd();
         const preceding = before.slice(before.lastIndexOf('\n') + 1).slice(0, 300);
         const title =
-          plainGitBookText(attributes.title || caption || (preceding.startsWith('{%') || preceding.startsWith('<') ? '' : preceding)) || 'Video';
-        const frame = importEmbed(url, title, () => undefined);
+          plainGitBookText(
+            attributes.title || caption || (preceding.includes('\uE000') || preceding.startsWith('{%') || preceding.startsWith('<') ? '' : preceding),
+          ) || 'Video';
+        const frame = importEmbed(url, title, (reference) => {
+          if (!isImportMediaUrl(reference)) unmapped(reference);
+        });
         output.push(block(caption ? `<Frame caption="${attr(plainGitBookText(caption))}">\n\n${frame}\n\n</Frame>` : frame));
       } else {
         const src = attributes.src ?? '';
@@ -515,7 +523,7 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
     });
 
   content = content.replace(/\n{3,}/g, '\n\n');
-  return { content: normalizeImportFidelity(protectedCode.restore(content), unmapped).trim(), warnings: [...warnings], issues };
+  return { content: protectedCode.restore(normalizeImportFidelity(content, unmapped).trim()), warnings: [...warnings], issues };
 };
 
 const GITBOOK_SPACE_LINK = /https?:\/\/app\.gitbook\.com\/(?:o\/[^/\s"'()<>]+\/)?s\/[A-Za-z0-9]+[^\s"'()<>]*/g;

@@ -21,12 +21,17 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
   const ownedOrgs: string[] = [];
 
   beforeAll(async () => {
+    if (process.env.NIBLEAF_IMPORT_LOCAL_ONLY === '1') expect(Reflect.get(globalThis, Symbol.for('nibleaf.import-network-attempts'))).toEqual([]);
     db = await import('@nibleaf/database');
     branches = await import('../branches');
     mintlify = await import('./mintlify');
     ghost = await import('./ghost');
   }, 60_000);
   afterAll(async () => {
+    if (process.env.NIBLEAF_IMPORT_LOCAL_ONLY === '1') {
+      expect(Reflect.get(globalThis, Symbol.for('nibleaf.import-network-attempts'))).toEqual([]);
+      console.info('Import safety worker: outside transport attempts 0.');
+    }
     if (!db) return;
     await db.prisma.project.deleteMany({ where: { organizationId: { in: ownedOrgs } } });
     await db.prisma.organization.deleteMany({ where: { id: { in: ownedOrgs } } });
@@ -62,13 +67,38 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
     expect(page.content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Tour"></iframe>');
     expect(page.content).toContain('\n\n---\n\n');
     expect(page.content).not.toContain('\n/\n');
-    expect(page.content).toContain('[Next](/guides/next?lang=ar#start)');
+    expect(page.content).toContain('[Next](https://nibleaf.com/pages/next?lang=ar#start)');
     expect(report.fidelityIssues).toEqual(
       expect.arrayContaining([
         { kind: 'link', page: 'intro', reference: '/missing' },
         { kind: 'embed', page: 'intro', reference: 'https://frame.example.test/tour' },
+        { kind: 'link', page: 'intro', reference: 'https://nibleaf.com/pages/next?lang=ar#start' },
       ]),
     );
+  });
+
+  it('council P2: promotes an explicit Arabic link to the Arabic route, without English fallback', async () => {
+    const { project, run } = await fixture();
+    source.files.set(
+      'docs.json',
+      JSON.stringify({
+        navigation: {
+          languages: [
+            { language: 'en', groups: [{ group: 'English', pages: ['intro', 'en/next'] }] },
+            { language: 'ar', groups: [{ group: 'Arabic', pages: ['ar/next'] }] },
+          ],
+        },
+      }),
+    );
+    source.files.set('intro.mdx', '[Next](https://nibleaf.com/pages/next?lang=ar#start)\n\n[Missing](https://nibleaf.com/pages/missing?lang=ar)');
+    source.files.set('en/next.mdx', 'English destination.');
+    source.files.set('ar/next.mdx', 'Arabic destination.');
+    const report = await run();
+    const imported = await db.prisma.page.findFirstOrThrow({ where: { projectId: project.id, slug: 'intro' } });
+    expect(imported.content).toContain('[Next](/arabic/next?lang=ar#start)');
+    const arabic = await db.prisma.page.findFirstOrThrow({ where: { projectId: project.id, path: 'arabic/next' }, include: { language: true } });
+    expect(arabic.language.code).toBe('ar');
+    expect(report.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: 'https://nibleaf.com/pages/missing?lang=ar' });
   });
 
   it('keeps page IDs on preserving re-import after a version was promoted', async () => {

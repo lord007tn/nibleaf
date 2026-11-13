@@ -10,7 +10,13 @@ import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './c
 import { RemoteAssetMigrator } from './ghost-assets';
 import { getGitHubDefaultBranch, getGitHubSnapshot, getGitHubTextFile, githubRawUrl } from './github';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
-import { buildMintlifyLanguageRouteMap, buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
+import {
+  buildMintlifyLanguageRouteMap,
+  buildMintlifyLanguageRouteMaps,
+  buildMintlifyRouteMap,
+  mintlifyInternalLinkTargets,
+  rewriteMintlifyInternalLinks,
+} from './mintlify-links';
 import {
   findMintlifyConfigPath,
   type MintlifyLanguageNavigation,
@@ -85,8 +91,9 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
       const summary = emptySummary();
       // Nav page paths are relative to the config file's directory.
       const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
-      const repository = { owner, name, branch, loadText, sourceUrl: input.sourceUrl };
       const currentTarget = await defaultImportTarget(projectId);
+      const defaultLanguage = await prisma.language.findUniqueOrThrow({ where: { id: currentTarget.languageId }, select: { code: true } });
+      const repository = { owner, name, branch, loadText, sourceUrl: input.sourceUrl, defaultLanguageCode: defaultLanguage.code };
       const defaultTarget = { ...currentTarget, branchId: replacementBranch.id };
       const assets = new RemoteAssetMigrator(projectId, 'mintlify');
       const state = { pages: 0, versions: new Set<string>() };
@@ -233,6 +240,9 @@ const importNavigation = async (
         `Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}${languageCode ? ` from ${languageCode}` : ''}.`,
       );
     }
+    const currentRoutes = buildMintlifyRouteMap(partition.nodes);
+    const languageRoutes = buildMintlifyLanguageRouteMaps(languageNavigation, partition.versionName);
+    languageRoutes.set((languageCode ?? repository.defaultLanguageCode).toLowerCase(), currentRoutes);
     await importNodes(
       partition.nodes,
       null,
@@ -241,10 +251,11 @@ const importNavigation = async (
       blobs,
       partition.target,
       assets,
-      new Map([...buildMintlifyLanguageRouteMap(languageNavigation, languageCode, partition.versionName), ...buildMintlifyRouteMap(partition.nodes)]),
+      new Map([...buildMintlifyLanguageRouteMap(languageNavigation, languageCode, partition.versionName), ...currentRoutes]),
       summary,
       state,
       languageCode,
+      languageRoutes,
     );
   }
 };
@@ -287,6 +298,7 @@ const ensureLanguageTarget = async (
 };
 
 interface RepoRef {
+  defaultLanguageCode: string;
   sourceUrl?: string;
   owner: string;
   name: string;
@@ -385,6 +397,7 @@ const importNodes = async (
   summary: ImportSummary,
   state: { pages: number },
   languageCode?: string,
+  languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>,
 ): Promise<void> => {
   // Slug ledger (slug → nav path) for THIS parent's children; a fresh map per
   // invocation gives per-parent scoping through the recursion. Two sibling nav
@@ -417,7 +430,7 @@ const importNodes = async (
         ...(node.icon ? { icon: node.icon.slice(0, 64) } : {}),
         position,
       });
-      await importNodes(node.children, groupId, repo, baseDir, blobs, target, assets, routeMap, summary, state, languageCode);
+      await importNodes(node.children, groupId, repo, baseDir, blobs, target, assets, routeMap, summary, state, languageCode, languageRoutes);
       continue;
     }
 
@@ -447,6 +460,8 @@ const importNodes = async (
       summary.warnings.push(`Page "${node.path}" declares lang "${meta.lang}" but is navigated under "${languageCode}".`);
     }
     const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap, {
+      languageCode: languageCode ?? repo.defaultLanguageCode,
+      languageRoutes,
       sourceUrl: repo.sourceUrl,
       appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
       onUnresolved: (reference) => {

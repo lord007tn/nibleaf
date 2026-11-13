@@ -49,6 +49,7 @@ vi.mock('@nibleaf/database', () => ({
     branch: { deleteMany: vi.fn(async () => ({ count: 1 })) },
     project: { update: vi.fn(async () => ({})) },
     language: {
+      findUniqueOrThrow: vi.fn(async () => ({ code: 'en' })),
       findFirst: vi.fn(async ({ where }: { where: { code: { equals: string } } }) =>
         [...mem.languages.values()].find((language) => language.code.toLowerCase() === where.code.equals.toLowerCase()),
       ),
