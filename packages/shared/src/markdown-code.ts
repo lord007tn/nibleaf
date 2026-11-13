@@ -148,8 +148,9 @@ const continuation = (line: string, stack: ContainerStack): Continuation => {
   return { matched: stack.items.length, cursor: at, blank: blankFrom(line, rest.index) };
 };
 
-/** A line that starts a block of its own, so it cannot continue a paragraph lazily. */
-const STARTS_BLOCK = /^ {0,3}(?:>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|`{3,}|~{3,}|<|([-*_])(?:[ \t]*\1){2,}[ \t\r]*$)/;
+/** A line that starts a block of its own, so it cannot continue a paragraph
+ * lazily (an HTML or MDX tag is decided by `interruptsParagraph`). */
+const STARTS_BLOCK = /^ {0,3}(?:>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|`{3,}|~{3,}|([-*_])(?:[ \t]*\1){2,}[ \t\r]*$)/;
 /** Text that is not a paragraph line: a heading, an HTML or MDX tag, a thematic break. */
 const NOT_PARAGRAPH = /^(?:#{1,6}(?:[ \t]|$)|<|([-*_])(?:[ \t]*\1){2,}[ \t\r]*$)/;
 /** Under a paragraph, a setext heading underline ends it. */
@@ -231,13 +232,17 @@ const COMPONENT_CLOSER = /^<\/[A-Z]/;
 
 /** CommonMark HTML blocks (types 1 to 7) and the line that ends each, `blank`
  * for one that ends before a blank line. A tag whose name starts with a capital
- * letter is an MDX component, read as Markdown, not HTML. */
-const HTML_BLOCK_STARTS: ReadonlyArray<readonly [start: RegExp, end: RegExp | 'blank', interruptsParagraph: boolean]> = [
-  [/^<(?:script|pre|style|textarea)(?:[ \t>]|$)/i, /<\/(?:script|pre|style|textarea)>/i, true],
-  [/^<!--/, /-->/, true],
-  [/^<\?/, /\?>/, true],
-  [/^<![A-Za-z]/, />/, true],
-  [/^<!\[CDATA\[/, /\]\]>/, true],
+ * letter is an MDX component, read as Markdown, not HTML. Ends are plain
+ * substring checks, exactly CommonMark's (a comment ends at `-->`, not `--!>`). */
+type HtmlBlockEnd = ((line: string) => boolean) | 'blank';
+const contains = (marker: string) => (line: string) => line.includes(marker);
+const RAW_TEXT_ENDS = ['</script>', '</pre>', '</style>', '</textarea>'];
+const HTML_BLOCK_STARTS: ReadonlyArray<readonly [start: RegExp, end: HtmlBlockEnd, interruptsParagraph: boolean]> = [
+  [/^<(?:script|pre|style|textarea)(?:[ \t>]|$)/i, (line) => RAW_TEXT_ENDS.some((end) => line.toLowerCase().includes(end)), true],
+  [/^<!--/, contains('-->'), true],
+  [/^<\?/, contains('?>'), true],
+  [/^<![A-Za-z]/, contains('>'), true],
+  [/^<!\[CDATA\[/, contains(']]>'), true],
   [
     /^<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:[ \t]|\/?>|\r?$)/i,
     'blank',
@@ -249,6 +254,18 @@ const HTML_BLOCK_STARTS: ReadonlyArray<readonly [start: RegExp, end: RegExp | 'b
     false,
   ],
 ];
+
+/** Whether a line would end the paragraph before it: a block start, an MDX
+ * component tag, or an HTML block of types 1 to 6. Type 7 (`<span>`, any other
+ * tag alone on its line) never interrupts a paragraph; it continues it. */
+const interruptsParagraph = (content: string): boolean => {
+  if (STARTS_BLOCK.test(content)) return true;
+  const text = content.trimStart();
+  if (content.length - text.length > 3 || !text.startsWith('<')) return false;
+  return (
+    COMPONENT_OPENER.test(text) || COMPONENT_CLOSER.test(text) || HTML_BLOCK_STARTS.some(([start, , interrupts]) => interrupts && start.test(text))
+  );
+};
 
 /**
  * Flags each line that belongs to fenced code, fence lines included: same marker,
@@ -272,7 +289,7 @@ const HTML_BLOCK_STARTS: ReadonlyArray<readonly [start: RegExp, end: RegExp | 'b
  */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
   let fence: MarkdownFence | undefined;
-  let html: RegExp | 'blank' | undefined;
+  let html: HtmlBlockEnd | undefined;
   const stack: ContainerStack = { items: [], quotes: [] };
   let paragraph = false;
   let components = 0;
@@ -285,7 +302,7 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
     }
     if (continued.matched < stack.items.length) {
       // A paragraph line may continue lazily without its containers' prefixes.
-      if (paragraph && !STARTS_BLOCK.test(contentAt(line, continued.cursor))) return false;
+      if (paragraph && !interruptsParagraph(contentAt(line, continued.cursor))) return false;
       // Otherwise the paragraph closes with its container: what follows (a
       // sibling item, say) does not interrupt it.
       closeContainers(stack, continued.matched);
@@ -312,7 +329,7 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
       const block = HTML_BLOCK_STARTS.find(([start, , interruptsParagraph]) => (interruptsParagraph || !paragraph) && start.test(text));
       if (block) {
         const end = block[1];
-        html = end === 'blank' || !end.test(text) ? end : undefined;
+        html = end === 'blank' || !end(text) ? end : undefined;
         paragraph = false;
         return false;
       }
@@ -345,7 +362,7 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
     }
     if (html) {
       if (inside && !(continued.blank && html === 'blank')) {
-        if (html !== 'blank' && html.test(line)) html = undefined;
+        if (html !== 'blank' && html(line)) html = undefined;
         return false;
       }
       // A blank line, or a line that leaves a container, ends the HTML block.

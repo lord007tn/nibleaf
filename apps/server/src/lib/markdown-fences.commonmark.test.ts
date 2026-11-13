@@ -6,8 +6,11 @@ import {
   type DifferentialCategory,
   differentialCases,
   fenceCases,
+  HTML_COMMENT_WITH_BANG_CLOSER,
   indentedLookalikeCases,
+  LAZY_INLINE_HTML_REPROS,
   ORDERED_LINE_UNDER_BULLET,
+  TAB_BEFORE_QUOTE_IN_ITEM,
 } from '@nibleaf/shared/testing/fence-cases';
 import { mainFencedMarkdownLines } from '@nibleaf/shared/testing/markdown-code.main-reference';
 import MarkdownIt from 'markdown-it';
@@ -102,7 +105,19 @@ it('reads ordered siblings, thematic breaks, lazy lines, setext underlines and H
   Object.assign(task.meta, { differential: table });
   console.info('differential against markdown-it:', table);
   expect(failures.slice(0, 8), `${failures.length} disagreements`).toEqual([]);
-  for (const [name, source, code] of [...CODERABBIT_REPROS, ['an ordered line under a bullet item', ...ORDERED_LINE_UNDER_BULLET] as const]) {
+  // An HTML comment block ends at `-->`, not `--!>`: markdown-it keeps the fence-like line in it.
+  const commentLines = HTML_COMMENT_WITH_BANG_CLOSER.split('\n');
+  expect(commonMarkCode(commentLines).fence.map(Number).join('')).toBe('000000');
+  expect(fencedMarkdownLines(commentLines).map(Number).join('')).toBe('000000');
+  // #592: a tab before `>` inside a list item opens a quoted fence there.
+  const tabLines = TAB_BEFORE_QUOTE_IN_ITEM[0].split('\n');
+  expect(commonMarkCode(tabLines).fence.map(Number).join('')).toBe(TAB_BEFORE_QUOTE_IN_ITEM[1]);
+  expect(fencedMarkdownLines(tabLines).map(Number).join('')).toBe(TAB_BEFORE_QUOTE_IN_ITEM[1]);
+  for (const [name, source, code] of [
+    ...CODERABBIT_REPROS,
+    ...LAZY_INLINE_HTML_REPROS,
+    ['an ordered line under a bullet item', ...ORDERED_LINE_UNDER_BULLET] as const,
+  ]) {
     const lines = source.split('\n');
     expect(commonMarkCode(lines).fence.map(Number).join(''), name).toBe(code);
     expect(mainFencedMarkdownLines(lines).map(Number).join(''), `${name}: main`).toBe(code);

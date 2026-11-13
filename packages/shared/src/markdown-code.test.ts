@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { closesMarkdownFence, fencedMarkdownLines, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
-import { CODERABBIT_REPROS, ORDERED_LINE_UNDER_BULLET } from './testing/fence-cases';
+import {
+  CODERABBIT_REPROS,
+  HTML_COMMENT_WITH_BANG_CLOSER,
+  LAZY_INLINE_HTML_REPROS,
+  ORDERED_LINE_UNDER_BULLET,
+  TAB_BEFORE_QUOTE_IN_ITEM,
+} from './testing/fence-cases';
 import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
 
 describe('fencedMarkdownLines', () => {
@@ -85,6 +91,23 @@ describe('fencedMarkdownLines', () => {
     expect(flags('<!--\n```md\n-->\n## After')).toBe('0000');
     expect(flags('para\n<span>\n```md\n# x\n```\n## After')).toBe('001110');
     expect(flags('- item\n-\n  ```md\n  x\n## After')).toBe('00110');
+  });
+  it('lets a type 7 HTML line continue a container paragraph lazily, so the fence after it stays code', () => {
+    for (const [name, source, code] of LAZY_INLINE_HTML_REPROS) {
+      expect(flags(source), name).toBe(code);
+      expect(mainFencedMarkdownLines(source.split('\n')).map(Number).join(''), `${name}: main`).toBe(code);
+    }
+    // Inside the container, too; and types 1 to 6 still interrupt the paragraph.
+    expect(flags('- item\n  <span>\n  ```md\n  # literal\n  ```\n## After')).toBe('001110');
+    expect(flags('- item\n<div>\n```md\n# literal\n```\n## After')).toBe('000000');
+  });
+  it('opens a quoted fence after a tab inside a list item (#592)', () => {
+    const [source, code] = TAB_BEFORE_QUOTE_IN_ITEM;
+    expect(flags(source)).toBe(code);
+  });
+  it('ends an HTML comment block at `-->` only, not at `--!>` (CommonMark, as markdown-it reads it)', () => {
+    // Ending at `--!>` would open the fence on line 3 and hide `## After` (`001111`).
+    expect(flags(HTML_COMMENT_WITH_BANG_CLOSER)).toBe('000000');
   });
   it('closes a fence in deeply nested list items', () => {
     expect(flags('- - - ```\n      x\n      ```\n## After')).toBe('1110');

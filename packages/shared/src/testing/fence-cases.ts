@@ -246,7 +246,13 @@ export const CODERABBIT_REPROS: ReadonlyArray<readonly [name: string, source: st
 /** CodeRabbit's (C): CommonMark itself reads the rest as code here, so `## After` is not a heading. */
 export const ORDERED_LINE_UNDER_BULLET = ['- item\n2. lazy\n  ```md\n  code\n## After', '00111'] as const;
 
-export type DifferentialCategory = 'ordered siblings' | 'thematic breaks' | 'lazy ordered lines' | 'setext underlines' | 'HTML blocks';
+export type DifferentialCategory =
+  | 'ordered siblings'
+  | 'thematic breaks'
+  | 'lazy ordered lines'
+  | 'setext underlines'
+  | 'HTML blocks'
+  | 'HTML after a paragraph';
 export interface DifferentialCase {
   index: number;
   category: DifferentialCategory;
@@ -310,6 +316,42 @@ export const differentialCases = (seed = FENCE_CASE_SEED, perCategory = 512): Di
       const gap = choose(['', 'blank'] as const);
       return [...(before ? [before] : []), open, ...(gap ? [''] : []), `${f}md`, '# literal', ...(next() % 2 ? [f] : []), close];
     },
+    // Each HTML block type (1 to 7) right after a list item's or quote's
+    // paragraph, on a lazy line or inside the container: type 7 never interrupts it.
+    'HTML after a paragraph': () => {
+      const [item, pad] = choose<readonly [string, string]>([
+        ['- item', '  '],
+        ['* item', '  '],
+        ['> item', '> '],
+        ['1. item', '   '],
+        ['2. lazy', '   '],
+      ] as const);
+      const html = choose([
+        '<pre>',
+        '<script>',
+        '<style>',
+        '<textarea>',
+        '<!--',
+        '<!-- note -->',
+        '<?php',
+        '<!DOCTYPE html>',
+        '<![CDATA[',
+        '<div>',
+        '<details>',
+        '</p>',
+        '<table>',
+        '<span>',
+        '</span>',
+        '<img src="x" />',
+        '<custom-tag a="1">',
+        '<a href="x">',
+      ] as const);
+      const lazyHtml = next() % 2 === 0;
+      const lazyFence = next() % 2 === 0;
+      const f = fence();
+      const fenced = (line: string) => `${lazyFence ? '' : pad}${line}`;
+      return [item, `${lazyHtml ? '' : pad}${html}`, fenced(`${f}md`), fenced('# literal'), fenced(f)];
+    },
   };
   const prefixes: ReadonlyArray<readonly [first: string, rest: string]> = [
     ['> ', '> '],
@@ -331,3 +373,20 @@ export const differentialCases = (seed = FENCE_CASE_SEED, perCategory = 512): Di
   }
   return cases;
 };
+
+/** An HTML comment block (type 2) ends at a line containing `-->`; `--!>` does
+ * not end it (CommonMark, markdown-it), so the fence-like line stays HTML. */
+export const HTML_COMMENT_WITH_BANG_CLOSER = '<!--\n--!>\n```md\n# literal\n-->\n## After';
+
+/** Sol on afca0cbd: a type 7 HTML line (`<span>`) after a container's paragraph
+ * continues that paragraph lazily; it opens no HTML block, so the fence after it
+ * is still code. `code` is how markdown-it and main read each source. */
+export const LAZY_INLINE_HTML_REPROS: ReadonlyArray<readonly [name: string, source: string, code: string]> = [
+  ['`<span>` after a list item', '- item\n<span>\n```md\n# literal\n```\n## After', '001110'],
+  ['`<span>` after a quote', '> item\n<span>\n```md\n# literal\n```\n## After', '001110'],
+  ['`<span>` after an ordered item starting at 2', '2. lazy\n<span>\n```md\n# literal\n```\n## After', '001110'],
+];
+
+/** #592: a tab before `>` inside a list item continues the item and opens a
+ * quoted fence there (CommonMark; markdown-it reads `011100`, main `000000`). */
+export const TAB_BEFORE_QUOTE_IN_ITEM = ['- item\n\t> ```js\n\t> const x = 1;\n\t> ```\n\n## After', '011100'] as const;

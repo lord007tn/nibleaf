@@ -6,6 +6,7 @@ import {
   CONTINUATION_FENCE_REPROS,
   FENCE_CONTAINER_REPROS,
   INDENTED_FENCE_AFTER_QUOTE,
+  LAZY_INLINE_HTML_REPROS,
 } from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { validateCitedAnswer } from './answer-validation';
@@ -143,6 +144,12 @@ describe('sections after a fence in a quote or list item (#587)', () => {
     const content = `${example}${AFTER_FENCE}\n\nThe after section mentions zebras.`;
     expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
     // Without the reader's sections, the search package finds the heading itself.
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
+  });
+
+  it.each(LAZY_INLINE_HTML_REPROS)('index the code after %s as code, not as a section (#590 lazy inline HTML)', (_name, example) => {
+    const content = `${example}\n\nThe after section mentions zebras.`;
+    expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
     expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
   });
 
