@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { rewriteGitBookImages } from './gitbook-assets';
 import { convertGitBookMarkdown } from './gitbook-markdown';
+import { importCodeLines } from './import-markdown-code';
 import { rewriteMintlifyAssetReferences } from './mintlify-assets';
 import { mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
@@ -9,6 +10,16 @@ const converters = [
   ['GitBook', (source: string) => convertGitBookMarkdown(source, { resolveFile: () => undefined }).content],
   ['Mintlify', normalizeMintlifyMdx],
 ] as const;
+
+describe('import-only fence context', () => {
+  it.each(['> ```', '- ```', '1. ```'])('keeps a new container marker literal inside an importer fence: %s', (literal) => {
+    expect(importCodeLines(['  ```md', `  ${literal}`, '  image', '  ```', 'after'].join('\n'))).toEqual([true, true, true, true, false]);
+  });
+  it('uses the opening quote/list context and permits ordinary fence indentation in imports', () => {
+    expect(importCodeLines(['> - ```md', '>   > ```', '>   image', '>   ```', 'after'].join('\n'))).toEqual([true, true, true, true, false]);
+    expect(importCodeLines(['  ```md', 'code', '```', 'after'].join('\n'))).toEqual([true, true, true, false]);
+  });
+});
 
 describe.each(converters)('CodeRabbit re-review at e714fa49: %s', (_name, convert) => {
   it.each(['> ', '- ', '1. '])('3: a literal %s fence marker cannot close a component code example', (prefix) => {

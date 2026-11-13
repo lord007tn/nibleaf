@@ -36,6 +36,11 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
     ],
     ['unclosed component attributes', normalizeImportFidelity, (n: number) => '<Image\n  alt="\n'.repeat(n)],
     [
+      'importer optional container fence spacing',
+      normalizeImportFidelity,
+      (n: number) => '> ```md\n> example\n>```\n\n[Tour](https://youtu.be/abcdefghijk)\n\n'.repeat(n),
+    ],
+    [
       'component container fence closers',
       normalizeImportFidelity,
       (n: number) => '<CodeGroup>\n  ```md\n  > ```\n  - ```\n  1. ```\n  ![Example](./example.png)\n  ```\n</CodeGroup>\n\n'.repeat(n),

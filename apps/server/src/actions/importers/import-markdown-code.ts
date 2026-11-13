@@ -1,9 +1,10 @@
-import { fencedMarkdownLines, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { randomUUID } from '@nibleaf/shared/uuid';
 import MarkdownIt from 'markdown-it';
 
 const markdown = new MarkdownIt({ html: true });
 const markdownWithoutHtml = new MarkdownIt({ html: false });
+const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/;
 
 /** Read each component opener once, including multiline attributes. The cap
  * also bounds malformed quotes/braces; continuation lines are not rescanned. */
@@ -34,11 +35,13 @@ export const importCodeLines = (source: string): boolean[] => {
   const ordinary: ReturnType<MarkdownIt['parse']> = [];
   markdownWithoutHtml.block.parse(normalized, markdownWithoutHtml, {}, ordinary);
   const ordinaryFences = new Set<number>();
+  const ordinaryFenceEnds = new Map<number, number>();
   const ordinaryFenceAtLine = new Map<number, number>();
   const indented: boolean[] = [];
   for (const token of ordinary) {
     if (token.type === 'fence' && token.map) {
       ordinaryFences.add(token.map[0]);
+      ordinaryFenceEnds.set(token.map[0], token.map[1]);
       for (let line = token.map[0]; line < token.map[1]; line++) ordinaryFenceAtLine.set(line, token.map[0]);
     }
     if (token.type === 'code_block' && token.map) {
@@ -56,9 +59,26 @@ export const importCodeLines = (source: string): boolean[] => {
   });
   const eligibleOpeners = new Set<number>();
   const componentOpeners = new Set<number>();
-  // The shared scanner skips this callback inside an open fence, so example
-  // component tags cannot change the surrounding real component's depth.
-  const lines = fencedMarkdownLines(sourceLines, (line, index) => {
+  let fence: MarkdownFence | undefined;
+  let fenceEnd: number | undefined;
+  let containerPrefix = '';
+  let maxIndent = 3;
+  const lines = sourceLines.map((line, index) => {
+    // Keep importer-only component indentation and false-closer handling out
+    // of the published reader. Markdown-it supplies ordinary container ends,
+    // including optional quote spacing and tab-based list indentation.
+    if (fence) {
+      const content = containerPrefix.includes('>') ? line.trimStart() : line;
+      if (
+        index + 1 === fenceEnd ||
+        (line.length - content.length <= maxIndent &&
+          content.startsWith(containerPrefix) &&
+          closesMarkdownFence(content.slice(containerPrefix.length), fence, maxIndent))
+      )
+        fence = undefined;
+      return true;
+    }
+    // Example tags inside code must never change the real component's depth.
     const ordinaryStart = ordinaryFenceAtLine.get(index);
     if (
       !componentDepth &&
@@ -83,7 +103,19 @@ export const importCodeLines = (source: string): boolean[] => {
     if (componentDepth > 0) componentOpeners.add(index);
     const allowed = componentDepth > 0 || ordinaryFences.has(index) || Boolean(openingMarkdownFence(line, 3));
     if (allowed) eligibleOpeners.add(index);
-    return allowed;
+    if (!allowed) return false;
+    const prefix = CONTAINER_PREFIX.exec(line)?.[0] ?? '';
+    const content = line.slice(prefix.length);
+    fence = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
+    if (fence) {
+      fenceEnd = ordinaryFenceEnds.get(index);
+      const list = /(?:[-*+]|\d{1,9}[.)]) {1,4}$/.exec(prefix);
+      containerPrefix = list ? prefix.slice(0, list.index) + ' '.repeat(list[0].length) : prefix.includes('>') ? prefix : '';
+      if (containerPrefix.includes('>')) containerPrefix = containerPrefix.trimStart();
+      const indent = content.length - content.trimStart().length + (containerPrefix ? 0 : prefix.length);
+      maxIndent = indent + 3;
+    }
+    return Boolean(fence);
   });
   for (const token of tokens) {
     if ((token.type === 'fence' || token.type === 'code_block') && token.map) {

@@ -23,13 +23,6 @@ describe('fencedMarkdownLines', () => {
   it('treats a backtick run with backticks after it as inline code, not a fence', () => {
     expect(fencedMarkdownLines(['``` `inline` ```', 'text'])).toEqual([false, false]);
   });
-  it.each(['> ```', '- ```', '1. ```'])('keeps a new container marker literal inside a fence: %s', (literal) => {
-    expect(fencedMarkdownLines(['  ```md', `  ${literal}`, '  image', '  ```', 'after'])).toEqual([true, true, true, true, false]);
-  });
-  it('uses the opening quote/list context and permits ordinary fence indentation', () => {
-    expect(fencedMarkdownLines(['> - ```md', '>   > ```', '>   image', '>   ```', 'after'])).toEqual([true, true, true, true, false]);
-    expect(fencedMarkdownLines(['  ```md', 'code', '```', 'after'])).toEqual([true, true, true, false]);
-  });
 });
 
 describe('import Markdown code boundaries', () => {

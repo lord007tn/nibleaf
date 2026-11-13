@@ -25,37 +25,16 @@ const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/
  * or blockquote. Indentation is allowed because authors indent inside components.
  * Shared by the reader's MDX normalizer, heading extraction and search sections,
  * so all three agree on what is code.
- * An optional opening predicate runs outside fences; closers always use the
- * active fence's marker, length and container, independently of the opening
- * predicate. Markers first appearing inside code are literal content.
  */
-export const fencedMarkdownLines = (lines: readonly string[], canOpen?: (line: string, index: number) => boolean): boolean[] => {
+export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
   let fence: MarkdownFence | undefined;
-  let containerPrefix = '';
-  let maxIndent = 3;
-  return lines.map((line, index) => {
+  return lines.map((line) => {
+    const content = line.replace(CONTAINER_PREFIX, '');
     if (fence) {
-      const content = containerPrefix.includes('>') ? line.trimStart() : line;
-      if (
-        line.length - content.length <= maxIndent &&
-        content.startsWith(containerPrefix) &&
-        closesMarkdownFence(content.slice(containerPrefix.length), fence, maxIndent)
-      )
-        fence = undefined;
+      if (closesMarkdownFence(content, fence, Number.POSITIVE_INFINITY)) fence = undefined;
       return true;
     }
-    if (canOpen && !canOpen(line, index)) return false;
-    const prefix = CONTAINER_PREFIX.exec(line)?.[0] ?? '';
-    const content = line.slice(prefix.length);
     fence = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
-    if (fence) {
-      // A list marker becomes continuation indentation on subsequent lines.
-      const list = /(?:[-*+]|\d{1,9}[.)]) {1,4}$/.exec(prefix);
-      containerPrefix = list ? prefix.slice(0, list.index) + ' '.repeat(list[0].length) : prefix.includes('>') ? prefix : '';
-      if (containerPrefix.includes('>')) containerPrefix = containerPrefix.trimStart();
-      const indent = content.length - content.trimStart().length + (containerPrefix ? 0 : prefix.length);
-      maxIndent = indent + 3;
-    }
     return Boolean(fence);
   });
 };
