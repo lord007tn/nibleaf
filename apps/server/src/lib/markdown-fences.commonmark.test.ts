@@ -1,5 +1,5 @@
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
-import { fenceCases, indentedLookalikeCases } from '@nibleaf/shared/testing/fence-cases';
+import { CONTINUATION_FENCE_REPROS, continuationFenceCases, fenceCases, indentedLookalikeCases } from '@nibleaf/shared/testing/fence-cases';
 import MarkdownIt from 'markdown-it';
 import { expect, it } from 'vitest';
 
@@ -53,4 +53,15 @@ it('reads indented code that looks like a fence as CommonMark does: never a fenc
     return fencedMarkdownLines(lines).some((isCode, line) => isCode !== commonMarkCode(lines).fence[line]);
   });
   expect(differing.map(({ index, source }) => ({ index, source }))).toEqual([]);
+});
+
+it('reads fences opened on container continuation lines as CommonMark does (#590 CodeRabbit)', () => {
+  const differing = continuationFenceCases().filter(({ source }) => {
+    const lines = source.split('\n');
+    return fencedMarkdownLines(lines).some((isCode, line) => isCode !== commonMarkCode(lines).fence[line]);
+  });
+  expect(differing.map(({ index, source }) => ({ index, source }))).toEqual([]);
+  for (const [name, source, code] of CONTINUATION_FENCE_REPROS) {
+    expect(commonMarkCode(source.split('\n')).fence.map(Number).join(''), name).toBe(code);
+  }
 });

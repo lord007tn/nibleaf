@@ -59,6 +59,14 @@ describe('fencedMarkdownLines', () => {
     expect(flags('1. a\n   - b\n\n     ```js\n     # x\n     ```\nafter')).toBe('0001110');
     expect(flags('> 1. a\n>\n>    ```js\n>    # x\n>    ```\nafter')).toBe('001110');
   });
+  it('carries open list items and quotes across lines, so a fence on a continuation line ends with its item', () => {
+    expect(flags('- item\n  ```md\n  code\n## After')).toBe('0110');
+    expect(flags('- a\n  - b\n    ```md\n    code\n## After')).toBe('00110');
+    expect(flags('- item\nlazy text\n  ```md\n  code\n## After')).toBe('00110');
+    expect(flags('> - item\n>   ```md\n>   code\n> after\n## After')).toBe('01100');
+    // CommonMark: the unindented line ends the item, so its closer opens a new fence.
+    expect(flags('1. Install:\n   ```bash\nnpm i\n```\n## After')).toBe('01011');
+  });
   it('closes a fence in deeply nested list items', () => {
     expect(flags('- - - ```\n      x\n      ```\n## After')).toBe('1110');
   });

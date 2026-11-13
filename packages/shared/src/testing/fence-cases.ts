@@ -161,3 +161,71 @@ export const indentedLookalikeCases = (seed = FENCE_CASE_SEED, count = 1024): In
   }
   return cases;
 };
+
+/** CodeRabbit on #590: a fence opened on a list item's continuation line belongs
+ * to that item and ends where the item does. Each source ends with `## After`;
+ * `code` flags its lines (1 = fenced code), as markdown-it reads them. */
+export const CONTINUATION_FENCE_REPROS: ReadonlyArray<readonly [name: string, source: string, code: string]> = [
+  ['a fence on a bullet item continuation line', '- item\n  ```md\n  code\n## After', '0110'],
+  ['a fence on a nested item continuation line', '- a\n  - b\n    ```md\n    code\n## After', '00110'],
+  ['a fence after a blank line in an item', '- item\n\n  ```md\n  code\n## After', '00110'],
+  ['a fence on a continuation line of an item in a quote', '> - item\n>   ```md\n>   code\n## After', '0110'],
+  ['a fence on a continuation line of an item in a quote, left inside the quote', '> - item\n>   ```md\n>   code\n> after\n## After', '01100'],
+  ['a fence on a numbered item continuation line', '1. step\n   ```bash\n   npm i\n## After', '0110'],
+  ['a fence in a list, quote and numbered item, left at each level', '- a\n  > 1. b\n  >    ```md\n  >    code\n  > after\n## After', '001100'],
+  ['a fence after a lazy paragraph line in an item', '- item\nlazy text\n  ```md\n  code\n## After', '00110'],
+];
+
+/** What follows each continuation repro's `## After`: a video the reader must keep. */
+export const AFTER_CONTINUATION = '\n\n<iframe src="https://www.youtube.com/embed/M7lc1UVf-VE" title="Tour"></iframe>';
+
+export interface ContinuationFenceCase {
+  index: number;
+  source: string;
+  /** Lines of the fence (opener and body, and its closer when closed). */
+  fenced: number[];
+  /** Lines after the fence that must not be code. */
+  prose: number[];
+}
+
+/**
+ * Fences opened on the continuation line of a list item or quote: after the
+ * item's first line, a lazy paragraph line or a blank line, then closed, or
+ * ended by a line that leaves the page's containers or only the innermost one.
+ * Each is followed by sentinel prose.
+ */
+export const continuationFenceCases = (seed = FENCE_CASE_SEED, count = 1024): ContinuationFenceCase[] => {
+  let state = seed ^ 0x51_3a_c0_7d;
+  const next = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return state >>> 0;
+  };
+  const choose = <T>(values: readonly [T, ...T[]]): T => values[next() % values.length] ?? values[0];
+  const continuationOf = (part: string) => (part === '> ' ? '> ' : ' '.repeat(part.length));
+  const cases: ContinuationFenceCase[] = [];
+  for (let index = 0; index < count; index++) {
+    const parts = Array.from({ length: 1 + (next() % 3) }, () => choose(['> ', '- ', '* ', '1. ', '10. '] as const));
+    const continuation = parts.map(continuationOf).join('');
+    const fence = choose(['`', '~'] as const).repeat(3 + (next() % 3));
+    const before = choose(['none', 'lazy', 'blank'] as const);
+    const ending = choose(['closed', 'leave all', 'leave innermost'] as const);
+    const lines = [`${parts.join('')}item ${index}`];
+    if (before === 'lazy') lines.push('lazy text');
+    if (before === 'blank') lines.push(continuation.trimEnd());
+    const opener = lines.length;
+    lines.push(`${continuation}${fence}md`, `${continuation}code`);
+    const fenced = [opener, opener + 1];
+    if (ending === 'closed') {
+      fenced.push(lines.length);
+      lines.push(`${continuation}${fence}`);
+    } else if (ending === 'leave all' || parts.length === 1) lines.push('## After');
+    else lines.push(`${parts.slice(0, -1).map(continuationOf).join('')}after`);
+    const prose = ending === 'closed' ? [] : [lines.length - 1];
+    lines.push('', `[Sentinel ${index}](/sentinel)`);
+    prose.push(lines.length - 1);
+    cases.push({ index, source: lines.join('\n'), fenced, prose });
+  }
+  return cases;
+};

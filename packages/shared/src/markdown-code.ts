@@ -77,106 +77,115 @@ const afterQuoteMarker = (line: string, index: number, column: number): LineCurs
 const contentAt = (line: string, at: LineCursor) => ' '.repeat(at.spare) + line.slice(at.index);
 const blankFrom = (line: string, index: number) => index >= line.length || (index === line.length - 1 && line[index] === '\r');
 
-interface OpenedLine {
-  containers: FenceContainer[];
-  content: string;
-  /** Spaces before the line's first marker or text; -1 when a tab comes first. */
-  leading: number;
-  /** Absolute column of the first marker or text after the line's leading quotes. */
-  lead: number;
-  /** Absolute column where `content` starts, and of its first non-space character. */
-  contentColumn: number;
-  textColumn: number;
-  /** The list items this line opens: marker and content columns. */
-  items: Array<{ marker: number; content: number }>;
+/** CommonMark's open containers: the quotes and list items the current line
+ * sits in, outermost first, with the positions of its quotes (increasing). */
+interface ContainerStack {
+  items: FenceContainer[];
+  quotes: number[];
 }
 
-/** The quote and list containers a line opens, and the text after them. The
- * first marker may sit after any number of spaces: an earlier line may have
- * opened a list item, and authors indent inside components. A tab before it
- * (an indented code block to CommonMark, or the body of an HTML block) opens
- * no container, as on main, so the line is not read as a fence. */
-const openingContainers = (line: string): OpenedLine => {
-  const containers: FenceContainer[] = [];
-  const items: OpenedLine['items'] = [];
+const pushContainer = (stack: ContainerStack, container: FenceContainer) => {
+  if (container.kind === 'quote') stack.quotes.push(stack.items.length);
+  stack.items.push(container);
+};
+const closeContainers = (stack: ContainerStack, length: number) => {
+  stack.items.length = length;
+  while ((stack.quotes.at(-1) ?? -1) >= length) stack.quotes.pop();
+};
+/** The first quote at or after `position`, or -1. */
+const quoteFrom = (quotes: readonly number[], position: number): number => {
+  let low = 0;
+  let high = quotes.length - 1;
+  let found = -1;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const value = quotes[middle] ?? -1;
+    if (value >= position) {
+      found = value;
+      high = middle - 1;
+    } else low = middle + 1;
+  }
+  return found;
+};
+
+interface Continuation {
+  /** How many of the open containers the line continues. */
+  matched: number;
+  /** Where the line's text starts after them. */
+  cursor: LineCursor;
+  blank: boolean;
+}
+
+/**
+ * How far a line continues the open containers: a quote needs its `>` (after at
+ * most its marker's indentation plus 3 columns), a list item its content
+ * column of indentation. A blank line continues list items, not quotes. One
+ * cursor moves through the line and each container reads only the columns it
+ * consumes, so deep nesting stays linear.
+ */
+const continuation = (line: string, stack: ContainerStack): Continuation => {
   let at: LineCursor = { index: 0, column: 0, spare: 0 };
-  let leading = 0;
-  let lead = -1;
-  for (;;) {
-    const first = containers.length === 0;
-    const space = whitespaceAhead(line, at, first ? Number.POSITIVE_INFINITY : 3);
-    if (first) leading = space.columns === space.index ? space.columns : -1;
-    if (first ? leading < 0 : space.columns > 3) break;
-    if (line[space.index] === '>') {
-      containers.push({ kind: 'quote', indent: space.columns });
+  for (const [position, container] of stack.items.entries()) {
+    if (container.kind === 'quote') {
+      const limit = container.indent + 3;
+      const space = whitespaceAhead(line, at, limit);
+      if (space.columns > limit || line[space.index] !== '>') {
+        const blank = space.columns <= limit && blankFrom(line, space.index);
+        return { matched: position, cursor: at, blank };
+      }
       at = afterQuoteMarker(line, space.index, space.column);
       continue;
     }
-    if (lead < 0) lead = space.column;
+    const taken = takeColumns(line, at, container.indent);
+    if (!taken.full) {
+      if (!blankFrom(line, taken.cursor.index)) return { matched: position, cursor: at, blank: false };
+      const quote = quoteFrom(stack.quotes, position);
+      return { matched: quote < 0 ? stack.items.length : quote, cursor: taken.cursor, blank: true };
+    }
+    at = taken.cursor;
+  }
+  const rest = whitespaceAhead(line, at);
+  return { matched: stack.items.length, cursor: at, blank: blankFrom(line, rest.index) };
+};
+
+/** A line that starts a block of its own, so it cannot continue a paragraph lazily. */
+const STARTS_BLOCK = /^ {0,3}(?:>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|`{3,}|~{3,}|<|(?:[-*_][ \t]*){3,}$)/;
+/** Text that is not a paragraph line (a heading, an HTML or MDX tag, a thematic break or setext underline). */
+const NOT_PARAGRAPH = /^(?:#{1,6}(?:[ \t]|$)|<|(?:[-*_][ \t]*){3,}$|=+[ \t]*$)/;
+
+/**
+ * Opens the quotes and list items a line starts at `at`, pushing them on the
+ * stack. Outside an MDX component the first marker may be indented at most 3
+ * columns (4 or more is indented code); inside one, any number of spaces,
+ * because authors indent there. A tab at the very start opens nothing, as on
+ * main. An ordered item other than 1 does not interrupt a paragraph.
+ */
+const openContainers = (line: string, at: LineCursor, stack: ContainerStack, lenient: boolean, paragraph: boolean): LineCursor => {
+  let cursor = at;
+  for (let opened = 0; ; opened++) {
+    const space = whitespaceAhead(line, cursor, opened === 0 && lenient ? Number.POSITIVE_INFINITY : 3);
+    if (cursor.index === 0 && space.columns !== space.index) break;
+    if (space.columns > (opened === 0 && lenient ? Number.POSITIVE_INFINITY : 3)) break;
+    if (line[space.index] === '>') {
+      pushContainer(stack, { kind: 'quote', indent: space.columns });
+      cursor = afterQuoteMarker(line, space.index, space.column);
+      continue;
+    }
     LIST_MARKER.lastIndex = space.index;
     const marker = LIST_MARKER.exec(line)?.[0];
     const markerEnd = space.index + (marker?.length ?? 0);
     if (!marker || !isSpace(line[markerEnd])) break;
+    if (paragraph && opened === 0 && /^\d/.test(marker) && !/^0*1[.)]$/.test(marker)) break;
     const item: LineCursor = { index: markerEnd, column: space.column + marker.length, spare: 0 };
     // Five or more columns after the marker: one is the item's padding and the
     // rest indents its first line (CommonMark list items).
     const spacing = whitespaceAhead(line, item, 4);
     if (blankFrom(line, spacing.index)) break;
     const padding = spacing.columns > 4 ? 1 : spacing.columns;
-    containers.push({ kind: 'list', indent: space.columns + marker.length + padding });
-    at = takeColumns(line, item, padding).cursor;
-    items.push({ marker: space.column, content: at.column - at.spare });
+    pushContainer(stack, { kind: 'list', indent: space.columns + marker.length + padding });
+    cursor = takeColumns(line, item, padding).cursor;
   }
-  const content = contentAt(line, at);
-  const contentColumn = at.column - at.spare;
-  const textColumn = contentColumn + (content.length - content.trimStart().length);
-  return { containers, content, leading, lead: lead < 0 ? textColumn : lead, contentColumn, textColumn, items };
-};
-
-interface OpenFence extends MarkdownFence {
-  containers: FenceContainer[];
-  /** Whether a quote is among `containers[i..]`, which a blank line ends. */
-  quoteFrom: boolean[];
-}
-
-/** A fence body line with its containers' prefixes removed, or undefined when the
- * line ends one of those containers: no `>` for a quote, or too little
- * indentation for a list item. A blank line continues a list item, not a quote.
- * One cursor moves through the line: each container reads only the columns it
- * consumes (a quote, at most its marker's indentation plus 3), so deep nesting
- * stays linear. */
-const fenceBodyContent = (line: string, fence: OpenFence): string | undefined => {
-  let at: LineCursor = { index: 0, column: 0, spare: 0 };
-  for (const [position, container] of fence.containers.entries()) {
-    if (container.kind === 'quote') {
-      const limit = container.indent + 3;
-      const space = whitespaceAhead(line, at, limit);
-      if (space.columns > limit || line[space.index] !== '>') return undefined;
-      at = afterQuoteMarker(line, space.index, space.column);
-      continue;
-    }
-    const taken = takeColumns(line, at, container.indent);
-    if (!taken.full) return blankFrom(line, taken.cursor.index) && !fence.quoteFrom[position] ? '' : undefined;
-    at = taken.cursor;
-  }
-  return contentAt(line, at);
-};
-
-/** The innermost of the open list items (increasing content columns) whose
- * content column is at most `column`, or 0 when there is none. */
-const listBase = (columns: readonly number[], column: number): number => {
-  let low = 0;
-  let high = columns.length - 1;
-  let base = 0;
-  while (low <= high) {
-    const middle = (low + high) >> 1;
-    const value = columns[middle] ?? 0;
-    if (value <= column) {
-      base = value;
-      low = middle + 1;
-    } else high = middle - 1;
-  }
-  return base;
+  return cursor;
 };
 
 const COMPONENT_OPENER = /^<([A-Z][\w.]*)/;
@@ -185,55 +194,56 @@ const COMPONENT_CLOSER = /^<\/[A-Z]/;
 /**
  * Flags each line that belongs to fenced code, fence lines included: same marker,
  * closing at least as long (CommonMark), also when the fence sits in list items
- * and blockquotes, in any nesting. The quotes and list items opened on the fence's
- * first line must continue on each body line, measured in columns (tabs to the next
- * multiple of 4, the optional space after `>`, list content columns). A line that
- * ends one of them ends the fence too; a `>` or list marker that first appears in
- * the body is code.
+ * and blockquotes, in any nesting. Like CommonMark, it carries the open quotes and
+ * list items from line to line (lazy paragraph lines and blank lines in an item
+ * keep them open), so a fence opened on an item's continuation line belongs to
+ * that item. Each body line must continue all of the fence's containers, measured
+ * in columns (tabs to the next multiple of 4, the optional space after `>`, list
+ * content columns); a line that leaves one ends the fence. A `>` or list marker
+ * that first appears in the body is code.
  *
  * Inside an MDX component (`<Tabs>` … `</Tabs>`) a fence may sit at any
  * indentation, because authors indent there. Elsewhere a line indented 4 or more
- * columns past its containers, or past the list item it continues, is indented
- * code and never opens a fence.
+ * columns past its containers is indented code and never opens a fence.
  *
  * One pass; each line is read at most twice (again only when it ends a fence's
  * container). Shared by the reader's MDX normalizer, heading extraction and search
  * sections, so all three agree on what is code.
  */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
-  let fence: OpenFence | undefined;
-  // Open list items, by content column (increasing), and MDX component depth.
-  const lists: number[] = [];
+  let fence: MarkdownFence | undefined;
+  const stack: ContainerStack = { items: [], quotes: [] };
+  let paragraph = false;
   let components = 0;
   let pendingOpener = false;
-  let previousBlank = true;
-  const read = (line: string): boolean => {
-    const opened = openingContainers(line);
-    const text = opened.content.trim();
-    if (!text && opened.items.length === 0) {
-      previousBlank = true;
+  const read = (line: string, continued: Continuation): boolean => {
+    if (continued.blank) {
+      closeContainers(stack, continued.matched);
+      paragraph = false;
       return false;
     }
-    // After a blank line, a line that starts left of an item's content ends it.
-    if (previousBlank) while ((lists.at(-1) ?? 0) > opened.lead) lists.pop();
-    previousBlank = false;
-    const indentedCode =
-      components === 0 &&
-      (opened.leading >= 0 && opened.leading - listBase(lists, opened.leading) >= 4
-        ? true
-        : opened.containers.length > 0 && opened.textColumn - Math.max(opened.contentColumn, listBase(lists, opened.textColumn)) >= 4);
-    if (indentedCode) return false;
-    for (const item of opened.items) {
-      while ((lists.at(-1) ?? 0) > item.marker) lists.pop();
-      lists.push(item.content);
+    if (continued.matched < stack.items.length) {
+      // A paragraph line may continue lazily without its containers' prefixes.
+      if (paragraph && !STARTS_BLOCK.test(contentAt(line, continued.cursor))) return false;
+      closeContainers(stack, continued.matched);
     }
-    const opening = openingMarkdownFence(opened.content, Number.POSITIVE_INFINITY);
+    const cursor = openContainers(line, continued.cursor, stack, components > 0, paragraph);
+    const content = contentAt(line, cursor);
+    const text = content.trim();
+    if (!text) {
+      paragraph = false;
+      return false;
+    }
+    // Indented 4 or more columns past its containers: indented code, or a lazy
+    // paragraph line, but never a fence (except inside a component).
+    if (components === 0 && content.length - content.trimStart().length >= 4) return false;
+    const opening = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
     if (opening) {
-      const quoteFrom = opened.containers.map(({ kind }) => kind === 'quote');
-      for (let index = quoteFrom.length - 2; index >= 0; index--) quoteFrom[index] = quoteFrom[index] || Boolean(quoteFrom[index + 1]);
-      fence = { ...opening, containers: opened.containers, quoteFrom };
+      fence = opening;
+      paragraph = false;
       return true;
     }
+    paragraph = !NOT_PARAGRAPH.test(text);
     // MDX component depth: the indentation exception applies inside one.
     if (pendingOpener && text.includes('>')) {
       pendingOpener = false;
@@ -249,16 +259,16 @@ export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
     return false;
   };
   return lines.map((line) => {
+    const continued = continuation(line, stack);
     if (fence) {
-      const content = fenceBodyContent(line, fence);
-      if (content !== undefined) {
-        if (closesMarkdownFence(content, fence, Number.POSITIVE_INFINITY)) fence = undefined;
+      if (continued.matched === stack.items.length) {
+        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, Number.POSITIVE_INFINITY)) fence = undefined;
         return true;
       }
-      // The container ended, so the fence did; this line starts afresh.
+      // The line leaves a container, which ends the fence; it starts afresh.
       fence = undefined;
     }
-    return read(line);
+    return read(line, continued);
   });
 };
 

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { fencedMarkdownLines } from './markdown-code';
-import { FENCE_CASE_COUNT, FENCE_CASE_SEED, fenceCases, indentedLookalikeCases } from './testing/fence-cases';
+import { continuationFenceCases, FENCE_CASE_COUNT, FENCE_CASE_SEED, fenceCases, indentedLookalikeCases } from './testing/fence-cases';
 import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
 
 const overrunHash = (indices: readonly number[]) => createHash('sha256').update(indices.join(',')).digest('hex');
@@ -76,5 +76,21 @@ it('never opens a fence on indented code that looks like one, in quotes and list
     if (mainFencedMarkdownLines(lines).at(-1)) mainOverruns++;
   }
   Object.assign(task.meta, { indentedLookalikes: { cases: cases.length, mainOverruns } });
+  expect(failures.slice(0, 12), `${failures.length} failures`).toEqual([]);
+});
+
+it('ends a fence opened on a container continuation line where its containers end (#590 CodeRabbit)', ({ task }) => {
+  const cases = continuationFenceCases();
+  const failures: Array<{ index: number; reason: string; source: string }> = [];
+  let mainOverruns = 0;
+  for (const { index, source, fenced, prose } of cases) {
+    const lines = source.split('\n');
+    const code = fencedMarkdownLines(lines);
+    for (const line of fenced) if (!code[line]) failures.push({ index, reason: `fence line ${line} is exposed`, source });
+    for (const line of prose) if (code[line]) failures.push({ index, reason: `line ${line} after the fence is code`, source });
+    if (mainFencedMarkdownLines(lines).at(-1)) mainOverruns++;
+  }
+  Object.assign(task.meta, { continuationFences: { cases: cases.length, mainOverruns } });
+  console.info(`continuation fences: ${cases.length} cases, main overruns ${mainOverruns}`);
   expect(failures.slice(0, 12), `${failures.length} failures`).toEqual([]);
 });
