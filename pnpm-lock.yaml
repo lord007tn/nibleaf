@@ -23,7 +23,7 @@ overrides:
   engine.io@>=6.0.0 <6.6.10: 6.6.10
   fast-uri@>=3.0.0 <3.1.9: 3.1.9
   glob@>=13.0.0 <14.0.2: 14.0.2
-  hono@>=4.0.0 <4.13.11: 4.13.11
+  hono@>=4.0.0 <4.13.16: 4.13.18
   http-cache-semantics@>=4.0.0 <4.3.0: 4.3.0
   katex@<0.18.2: 0.18.5
   markdown-it@>=14.0.0 <14.3.3: 14.3.3
@@ -160,8 +160,8 @@ importers:
         specifier: 6.2.1
         version: 6.2.1(oxc-transform-react@0.157.0)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
       hono:
-        specifier: ^4.13.16
-        version: 4.13.16
+        specifier: ^4.13.18
+        version: 4.13.18
       nitro:
         specifier: 3.0.260903-beta
         version: 3.0.260903-beta
@@ -428,8 +428,8 @@ importers:
         specifier: 0.7.0
         version: 0.7.0
       hono:
-        specifier: ^4.13.16
-        version: 4.13.16
+        specifier: ^4.13.18
+        version: 4.13.18
       jsdom:
         specifier: ^31.0.0
         version: 31.0.0(@noble/hashes@2.4.0)
@@ -508,7 +508,7 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: ^2.1.6
-        version: 2.1.6(hono@4.13.16)
+        version: 2.1.6(hono@4.13.18)
       '@modelcontextprotocol/server':
         specifier: 2.4.0
         version: 2.4.0
@@ -556,7 +556,7 @@ importers:
         version: 2.6.2
       '@scalar/hono-api-reference':
         specifier: ^0.12.18
-        version: 0.12.18(hono@4.13.16)
+        version: 0.12.18(hono@4.13.18)
       '@scalar/json-magic':
         specifier: 0.18.0
         version: 0.18.0
@@ -588,11 +588,11 @@ importers:
         specifier: 16.2.0
         version: 16.2.0
       hono:
-        specifier: ^4.13.16
-        version: 4.13.16
+        specifier: ^4.13.18
+        version: 4.13.18
       hono-openapi:
         specifier: 1.5.0
-        version: 1.5.0(effect@3.21.0)(hono@4.13.16)(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
+        version: 1.5.0(effect@3.21.0)(hono@4.13.18)(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       image-size:
         specifier: 2.0.3
         version: 2.0.3
@@ -656,10 +656,10 @@ importers:
     dependencies:
       '@getworkbench/hono':
         specifier: ^0.9.1
-        version: 0.9.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(bullmq@6.7.1(ioredis@6.0.0)(pg@8.23.1))(hono@4.13.16)(immer@11.1.18)(ioredis@6.0.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 0.9.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(bullmq@6.7.1(ioredis@6.0.0)(pg@8.23.1))(hono@4.13.18)(immer@11.1.18)(ioredis@6.0.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@hono/node-server':
         specifier: ^2.1.6
-        version: 2.1.6(hono@4.13.16)
+        version: 2.1.6(hono@4.13.18)
       '@nibleaf/bullmq':
         specifier: workspace:*
         version: link:../../packages/bullmq
@@ -703,8 +703,8 @@ importers:
         specifier: 16.2.0
         version: 16.2.0
       hono:
-        specifier: ^4.13.16
-        version: 4.13.16
+        specifier: ^4.13.18
+        version: 4.13.18
       marked:
         specifier: ^18.1.3
         version: 18.1.3
@@ -1087,7 +1087,7 @@ importers:
         version: 0.13.11(typescript@7.0.2)(valibot@1.5.0(typescript@7.0.2))(zod@4.6.7)
       evlog:
         specifier: ^2.35.1
-        version: 2.35.1(@tanstack/start-client-core@1.170.39)(ai@7.0.142(zod@4.6.7))(hono@4.13.16)(next@16.4.3(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.3(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+        version: 2.35.1(@tanstack/start-client-core@1.170.39)(ai@7.0.142(zod@4.6.7))(hono@4.13.18)(next@16.4.3(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.3(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -2279,7 +2279,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       bullmq: '>=5.0.0'
-      hono: 4.13.11
+      hono: 4.13.18
 
   '@headlessui/tailwindcss@0.2.2':
     resolution: {integrity: sha512-xNe42KjdyA4kfUKLLPGzME9zkH7Q3rOZ5huFihWNWOQFxnItxPB3/67yBI8/qBfY8nwBRx5GHn4VprsoluVMGw==}
@@ -2297,13 +2297,13 @@ packages:
     resolution: {integrity: sha512-p/KH9MnfNcsm3sR6x4lNgm5j+QN4Et8srKredl9DZfXiyZ1UQ3aQ2YVpFLbqktYN5JI+DB+VZFKM2PqE5hLKjQ==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: 4.13.11
+      hono: 4.13.18
 
   '@hono/standard-validator@0.4.1':
     resolution: {integrity: sha512-Q0+1dgMKAXEvsmJ5FNoamwnfrf/I5JNnKn7WzfynH8nJlNe1lNOW1+vlKpEQZbrBLEgmxIeys6HjRotDvZzq+A==}
     peerDependencies:
       '@standard-schema/spec': ^1.0.0
-      hono: 4.13.11
+      hono: 4.13.18
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -4773,7 +4773,7 @@ packages:
     resolution: {integrity: sha512-ygpefqgohkgM3VzRM8ySFbiVUkUL2lX8fe4+nL/Nq0EcdL5WtVFNLObZ1us5aOVRiTg2gnRnoiM+DS6rLZd/vw==}
     engines: {node: '>=22'}
     peerDependencies:
-      hono: 4.13.11
+      hono: 4.13.18
 
   '@scalar/icons@0.7.8':
     resolution: {integrity: sha512-/Jee+6lk3I3GCkL4FW7IPjC1+WvAkAsZ4yGkq0tXHbZzJ1BWMzRud/BZuK1eCHQ+un5CDTy26UzJcM5tCMn63w==}
@@ -7519,7 +7519,7 @@ packages:
       express: '>=5.3.0'
       fastify: '>=5.12.7'
       h3: ^1.15.11
-      hono: '>=4.13.14'
+      hono: 4.13.18
       next: '>=16.4.3'
       nitro: '>=3.0.260311-beta <4.0.0-0 || >=3.0.261029-rc <4.0.0-0'
       nitropack: ^2.13.5
@@ -7894,14 +7894,10 @@ packages:
   hono-openapi@1.5.0:
     resolution: {integrity: sha512-7pRGQbFLBSy+SmCKHIZB3a8pzalnsYflvGRXyS1P7vucEGlkL23QitQ++wNCuMT25Q3TbGH2JUuTdYnWMY/GIw==}
     peerDependencies:
-      hono: 4.13.11
+      hono: 4.13.18
 
-  hono@4.13.11:
-    resolution: {integrity: sha512-/SMX/RQNJn7oNmFwH6DtwDqcrzZU2otm1FD6OJe2cWF6cfy/F8hq0XVBv7xW3FTJshRQwuBnXHDq2kNsdZnshg==}
-    engines: {node: '>=16.9.0'}
-
-  hono@4.13.16:
-    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
+  hono@4.13.18:
+    resolution: {integrity: sha512-H9q/E1XizaWstJxUW881dmLxEj+t/TrGGnyxINkm4+sK0qUwsMtFdo2BWI9Vs3cIS19MU6b6iCijoUoEf4f3DA==}
     engines: {node: '>=16.9.0'}
 
   hookable@6.1.1:
@@ -11551,7 +11547,7 @@ snapshots:
       bullmq: 6.7.1(ioredis@6.0.0)(pg@8.23.1)
       dagre: 0.8.5
       framer-motion: 12.40.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      hono: 4.13.11
+      hono: 4.13.18
       ioredis: 6.0.0
       lru-cache: 11.5.3
     transitivePeerDependencies:
@@ -11562,11 +11558,11 @@ snapshots:
       - react
       - react-dom
 
-  '@getworkbench/hono@0.9.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(bullmq@6.7.1(ioredis@6.0.0)(pg@8.23.1))(hono@4.13.16)(immer@11.1.18)(ioredis@6.0.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@getworkbench/hono@0.9.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(bullmq@6.7.1(ioredis@6.0.0)(pg@8.23.1))(hono@4.13.18)(immer@11.1.18)(ioredis@6.0.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@getworkbench/core': 0.8.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(bullmq@6.7.1(ioredis@6.0.0)(pg@8.23.1))(immer@11.1.18)(ioredis@6.0.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       bullmq: 6.7.1(ioredis@6.0.0)(pg@8.23.1)
-      hono: 4.13.16
+      hono: 4.13.18
     transitivePeerDependencies:
       - '@emotion/is-prop-valid'
       - '@types/react'
@@ -11585,14 +11581,14 @@ snapshots:
       '@tanstack/vue-virtual': 3.13.52(vue@3.5.45(typescript@7.0.2))
       vue: 3.5.45(typescript@7.0.2)
 
-  '@hono/node-server@2.1.6(hono@4.13.16)':
+  '@hono/node-server@2.1.6(hono@4.13.18)':
     dependencies:
-      hono: 4.13.16
+      hono: 4.13.18
 
-  '@hono/standard-validator@0.4.1(@standard-schema/spec@1.1.0)(hono@4.13.16)':
+  '@hono/standard-validator@0.4.1(@standard-schema/spec@1.1.0)(hono@4.13.18)':
     dependencies:
       '@standard-schema/spec': 1.1.0
-      hono: 4.13.16
+      hono: 4.13.18
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -13720,10 +13716,10 @@ snapshots:
     dependencies:
       '@types/hast': 3.0.5
 
-  '@scalar/hono-api-reference@0.12.18(hono@4.13.16)':
+  '@scalar/hono-api-reference@0.12.18(hono@4.13.18)':
     dependencies:
       '@scalar/client-side-rendering': 0.4.17
-      hono: 4.13.16
+      hono: 4.13.18
 
   '@scalar/icons@0.7.8(typescript@7.0.2)':
     dependencies:
@@ -16744,11 +16740,11 @@ snapshots:
 
   eventsource-parser@3.1.1: {}
 
-  evlog@2.35.1(@tanstack/start-client-core@1.170.39)(ai@7.0.142(zod@4.6.7))(hono@4.13.16)(next@16.4.3(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.3(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)):
+  evlog@2.35.1(@tanstack/start-client-core@1.170.39)(ai@7.0.142(zod@4.6.7))(hono@4.13.18)(next@16.4.3(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)(vite@8.3.3(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)):
     optionalDependencies:
       '@tanstack/start-client-core': 1.170.39
       ai: 7.0.142(zod@4.6.7)
-      hono: 4.13.16
+      hono: 4.13.18
       next: 16.4.3(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react: 19.3.1
       vite: 8.3.3(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
@@ -17205,14 +17201,14 @@ snapshots:
 
   highlight.js@11.12.0: {}
 
-  hono-openapi@1.5.0(effect@3.21.0)(hono@4.13.16)(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7):
+  hono-openapi@1.5.0(effect@3.21.0)(hono@4.13.18)(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7):
     dependencies:
-      '@hono/standard-validator': 0.4.1(@standard-schema/spec@1.1.0)(hono@4.13.16)
+      '@hono/standard-validator': 0.4.1(@standard-schema/spec@1.1.0)(hono@4.13.18)
       '@standard-community/standard-json': 0.3.7(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(effect@3.21.0)(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7)
       '@standard-community/standard-openapi': 0.2.11(@standard-community/standard-json@0.3.7(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(effect@3.21.0)(valibot@1.5.0(typescript@7.0.2))(zod-to-json-schema@3.25.2(zod@4.6.7))(zod@4.6.7))(@standard-schema/spec@1.1.0)(effect@3.21.0)(openapi-types@12.1.3)(valibot@1.5.0(typescript@7.0.2))(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
-      hono: 4.13.16
+      hono: 4.13.18
       openapi-types: 12.1.3
     transitivePeerDependencies:
       - '@valibot/to-json-schema'
@@ -17225,9 +17221,7 @@ snapshots:
       - zod-openapi
       - zod-to-json-schema
 
-  hono@4.13.11: {}
-
-  hono@4.13.16: {}
+  hono@4.13.18: {}
 
   hookable@6.1.1: {}
 
