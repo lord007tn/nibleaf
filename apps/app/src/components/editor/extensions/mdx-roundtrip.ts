@@ -1,5 +1,6 @@
 import { translateFn } from '@nibleaf/i18n';
 import { DOCUMENTATION_COMPONENTS, type DocumentationComponentDefinition } from '@nibleaf/shared/documentation-components';
+import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
@@ -155,6 +156,45 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
     }
   }
   return layout;
+}
+
+/** True for positions on the lines the reader reads as fenced code. Its scanner
+ *  (`fencedMarkdownLines`) reads MDX components as Markdown containers, and fences
+ *  in quotes and list items with CommonMark columns: a tab to the next multiple of
+ *  4, the optional space after `>` taken from part of a tab, and a closer of the
+ *  same marker at least as long as the opener. */
+function readerCodeMask(source: string): Uint8Array {
+  const mask = new Uint8Array(source.length);
+  const lines = source.split('\n');
+  let offset = 0;
+  for (const [index, code] of fencedMarkdownLines(lines).entries()) {
+    const length = (lines[index]?.length ?? 0) + 1;
+    if (code) mask.fill(1, offset, offset + length);
+    offset += length;
+  }
+  return mask;
+}
+
+/**
+ * Code the reader reads as a fence that the editor's Markdown parser does not, one
+ * span per run of lines. markdown-it reads a component tag followed straight away
+ * by more lines as one HTML block, so a fence there (`<CodeGroup>`, then `>`, a tab
+ * and ```` ```md ````) would load as text. Indented code is code to both, so it is
+ * left out.
+ */
+function unreadFences(layout: MarkdownLayout, readerCode: Uint8Array): Array<Span & { inCode: true; name: string }> {
+  const fenced = spanIndex(layout.fenced);
+  const spans: Array<Span & { inCode: true; name: string }> = [];
+  let previous = -2;
+  for (const [line, start] of layout.lineStarts.entries()) {
+    if (readerCode[start] !== 1 || fenced(start, start) || layout.indented[start] === 1) continue;
+    const end = lineStart(layout, line + 1);
+    const last = spans[spans.length - 1];
+    if (last && previous === line - 1) last.end = end;
+    else spans.push({ start, end, inCode: true, name: 'Code' });
+    previous = line;
+  }
+  return spans;
 }
 
 /** The line `offset` is on. */
@@ -469,8 +509,11 @@ function maskInlineCode(mask: Uint8Array, text: string, offset: number): void {
   }
 }
 
-/** True for positions in fenced or inline code, where JSX-looking text is literal. */
-function codeMask(source: string): Uint8Array {
+/** True for positions in fenced or inline code, where JSX-looking text is literal.
+ *  A line the reader reads as code is code here too, and never opens or closes a
+ *  fence of its own: a list item fence's longer closer (`  ````) is not a new
+ *  fence running to the end of the page. */
+function codeMask(source: string, readerCode = readerCodeMask(source)): Uint8Array {
   const mask = new Uint8Array(source.length);
   let offset = 0;
   let fence: { marker: string; length: number } | null = null;
@@ -485,7 +528,10 @@ function codeMask(source: string): Uint8Array {
     if (!lineWithBreak) continue;
     const line = lineWithBreak.endsWith('\n') ? lineWithBreak.slice(0, -1) : lineWithBreak;
     const candidate = lineIsFence(line);
-    if (fence || candidate) {
+    if (readerCode[offset] === 1) {
+      flush();
+      mask.fill(1, offset, offset + lineWithBreak.length);
+    } else if (fence || candidate) {
       flush();
       mask.fill(1, offset, offset + lineWithBreak.length);
       if (!fence && candidate) fence = candidate;
@@ -919,17 +965,35 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
   )}"${known}`;
 }
 
+const COMPONENT_TAG_LINE = /^[ \t]*<\/?[A-Z]/;
+
+/**
+ * Mask a fence the editor's Markdown parser reads, line by line, except a line
+ * the reader reads as a component tag rather than code. markdown-it can open a
+ * fence at a closer the reader reads inside a component (a blank line in the code
+ * ended the HTML block it read the component's start as), and that fence runs on
+ * past the component; hiding the component's closing tag would leave it unpaired.
+ */
+function maskFence(source: string, layout: MarkdownLayout, mask: Uint8Array, readerCode: Uint8Array, fence: Span): void {
+  for (let line = lineOf(layout.lineStarts, fence.start); lineStart(layout, line) < fence.end; line++) {
+    const start = lineStart(layout, line);
+    const end = Math.min(lineStart(layout, line + 1), fence.end);
+    if (readerCode[start] === 1 || !COMPONENT_TAG_LINE.test(source.slice(start, end))) mask.fill(1, start, end);
+  }
+}
+
 /**
  * Converts MDX-only syntax into HTML that markdown-it/DOMParser can safely feed
  * to ProseMirror. Serializers restore the source metadata before persistence.
  */
 function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens): string {
   if (!source || (!source.includes('<') && !source.includes('{') && !/^\s*(?:import|export)\s/m.test(source))) return source;
-  const mask = codeMask(source);
+  const readerCode = readerCodeMask(source);
+  const mask = codeMask(source, readerCode);
   // Nothing inside code is ever replaced: code is found the way the Markdown
   // parser reads it, inside blockquotes and list items too.
   const layout = markdownLayout(source, blockTokens);
-  for (const fence of layout.fenced) mask.fill(1, fence.start, fence.end);
+  for (const fence of layout.fenced) maskFence(source, layout, mask, readerCode, fence);
   const comments: Span[] = [];
   const scanned = scanTags(source, mask, comments);
   for (const comment of comments) mask.fill(1, comment.start, comment.end);
@@ -939,7 +1003,11 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
   const tokens = scanned.filter((token) => !(token.html && inIndentedCode(token.start)));
   const pairs = tagPairs(tokens);
   classifyHtml(tokens, pairs);
+  // A component holding a fence only the reader reads as one is kept whole, byte
+  // for byte: the editor can't hold its children's layout (#589).
+  const readerFences = blockTokens ? unreadFences(layout, readerCode) : [];
   let opaque = keepRawHtml(source, layout, tokens, pairs, unsupportedRanges(source, layout, tokens, pairs), [
+    ...readerFences,
     ...comments.map((comment) => ({ ...comment, inCode: inIndentedCode(comment.start), name: 'HTML comment' })),
     ...codeHtml
       .filter((token) => !STRUCTURED_HTML.has(token.name) && !TABLE_HTML.has(token.name) && !COMPONENT_HTML.has(token.name) && !isEditorMarkup(token))
