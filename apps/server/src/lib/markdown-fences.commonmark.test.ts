@@ -10,10 +10,12 @@ import {
   fenceCases,
   HTML_BLOCK_HEADING_REPROS,
   HTML_BLOCK_REPEATED_HEADING,
+  HTML_BLOCK_WITHOUT_BLANK,
   HTML_COMMENT_WITH_BANG_CLOSER,
   indentedLookalikeCases,
   LAZY_INLINE_HTML_REPROS,
   ORDERED_LINE_UNDER_BULLET,
+  QUOTED_DOCTYPE_BLOCK,
   TAB_BEFORE_QUOTE_IN_ITEM,
 } from '@nibleaf/shared/testing/fence-cases';
 import { mainFencedMarkdownLines } from '@nibleaf/shared/testing/markdown-code.main-reference';
@@ -137,7 +139,14 @@ const commonMarkHeadings = (source: string) => {
 };
 
 it('lists the headings markdown-it renders, none from inside an HTML block (#593)', () => {
-  for (const [name, source] of [...HTML_BLOCK_HEADING_REPROS, ['a repeated heading inside an HTML block', HTML_BLOCK_REPEATED_HEADING] as const]) {
+  for (const [name, source] of [
+    ...HTML_BLOCK_HEADING_REPROS,
+    ['a repeated heading inside an HTML block', HTML_BLOCK_REPEATED_HEADING] as const,
+    ['a heading with no blank line after an HTML block', HTML_BLOCK_WITHOUT_BLANK] as const,
+    ['a `<!DOCTYPE` block in a quote', QUOTED_DOCTYPE_BLOCK.source] as const,
+  ]) {
+    const lines = source.split('\n');
+    expect(fencedMarkdownLines(lines), `${name}: fences`).toEqual(commonMarkCode(lines).fence);
     const expected = commonMarkHeadings(source);
     expect(
       extractHeadings(source).map(({ text }) => text),

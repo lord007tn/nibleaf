@@ -367,7 +367,9 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
     }
     if (html) {
       if (inside && !(continued.blank && html === 'blank')) {
-        if (html !== 'blank' && html(line)) html = undefined;
+        // The end is looked for after the containers' prefixes: a quote's own `>`
+        // does not end a `<!DOCTYPE` block.
+        if (html !== 'blank' && html(contentAt(line, continued.cursor))) html = undefined;
         return 'html';
       }
       // A blank line, or a line that leaves a container, ends the HTML block.

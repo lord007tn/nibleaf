@@ -424,3 +424,9 @@ export const HTML_BLOCK_HEADING_REPROS: ReadonlyArray<readonly [name: string, so
 /** A heading line inside an HTML block that repeats a later real heading: the
  * section starts at the real one (line 4), as markdown-it reads it. */
 export const HTML_BLOCK_REPEATED_HEADING = '<div>\n## After\n</div>\n\n## After\n\nThe after section mentions zebras.';
+
+/** A `<!DOCTYPE` block (type 4) in a quote ends at a `>` in the content, not at
+ * the quote's own marker: the fence-like lines stay HTML (markdown-it). */
+export const QUOTED_DOCTYPE_BLOCK = { source: '> <!DOCTYPE\n> x\n> ```md\n> # literal\n> >\n\n## After', html: '1111100' } as const;
+/** Without a blank line, `## After` belongs to the `<div>` HTML block (CommonMark): no heading at all. */
+export const HTML_BLOCK_WITHOUT_BLANK = '- item\n<div>\n```md\n# literal\n```\n</div>\n## After';
