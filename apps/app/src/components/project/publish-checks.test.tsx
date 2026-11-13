@@ -50,7 +50,7 @@ describe('site structure checks in the publish dialog', () => {
     );
     // One row for the home page, with its Fix link.
     expect([...container.querySelectorAll('a[href*="editor"]')].map((link) => link.getAttribute('href'))).toEqual([
-      '/app/projects/project-1/editor?page=home',
+      '/app/projects/project-1/editor?page=home&fix=home-untranslated',
     ]);
   });
 
@@ -66,5 +66,33 @@ describe('site structure checks in the publish dialog', () => {
     );
     expect(container.textContent).toContain('Docs filed under “Blog”');
     expect(container.textContent).toContain('Rename the section to what its pages are');
+  });
+});
+
+describe('Fix buttons', () => {
+  // P1-ED-002: two problems on one page produced two identical "Fix Get started in the editor".
+  it('names each Fix after its page and its problem, so no two buttons share a name', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToStaticMarkup(
+      <PublishChecks
+        checks={[
+          check({ code: 'broken-internal-link', severity: 'error', detail: '/configuration' }),
+          check({ code: 'broken-internal-link', severity: 'error', detail: '/setup' }),
+          check({ code: 'untitled-page' }),
+          check({ code: 'empty-page' }),
+        ]}
+        loading={false}
+        onFix={() => undefined}
+        projectId="project-1"
+      />,
+    );
+    const names = [...container.querySelectorAll('a[href*="editor"]')].map((link) => link.getAttribute('aria-label'));
+    expect(names).toEqual([
+      'Fix “Get started”: Broken links · /configuration',
+      'Fix “Get started”: Broken links · /setup',
+      'Fix “Get started”: Empty pages',
+      'Fix “Get started”: Untitled pages',
+    ]);
+    expect(new Set(names).size).toBe(names.length);
   });
 });
