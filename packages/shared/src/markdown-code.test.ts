@@ -4,6 +4,7 @@ import {
   CODERABBIT_REPROS,
   HTML_COMMENT_WITH_BANG_CLOSER,
   LAZY_INLINE_HTML_REPROS,
+  LAZY_TEXT_AFTER_INLINE_HTML,
   ORDERED_LINE_UNDER_BULLET,
   TAB_BEFORE_QUOTE_IN_ITEM,
 } from './testing/fence-cases';
@@ -100,6 +101,12 @@ describe('fencedMarkdownLines', () => {
     // Inside the container, too; and types 1 to 6 still interrupt the paragraph.
     expect(flags('- item\n  <span>\n  ```md\n  # literal\n  ```\n## After')).toBe('001110');
     expect(flags('- item\n<div>\n```md\n# literal\n```\n## After')).toBe('000000');
+  });
+  it('keeps a list paragraph open across lazy text after inline HTML, so the fence ends with the item', () => {
+    const { source, code, mainCode } = LAZY_TEXT_AFTER_INLINE_HTML;
+    expect(flags(source)).toBe(code);
+    // Main lost the paragraph on the `<span>` line and hid `## After`.
+    expect(mainFencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(mainCode);
   });
   it('opens a quoted fence after a tab inside a list item (#592)', () => {
     const [source, code] = TAB_BEFORE_QUOTE_IN_ITEM;

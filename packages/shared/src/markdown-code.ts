@@ -335,7 +335,11 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
         return 'html';
       }
     }
-    paragraph = paragraph && SETEXT_UNDERLINE.test(text) ? false : !NOT_PARAGRAPH.test(text);
+    // An HTML-looking line that started no HTML block above (inline HTML such as
+    // `<span>` continuing a paragraph, or text like `<3`) is paragraph text, so a
+    // following lazy line still continues the paragraph. MDX component tags are not.
+    if (text.startsWith('<') && !COMPONENT_OPENER.test(text) && !COMPONENT_CLOSER.test(text)) paragraph = true;
+    else paragraph = paragraph && SETEXT_UNDERLINE.test(text) ? false : !NOT_PARAGRAPH.test(text);
     // MDX component depth: the indentation exception applies inside one.
     if (pendingOpener && text.includes('>')) {
       pendingOpener = false;

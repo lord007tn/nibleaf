@@ -7,6 +7,7 @@ import {
   HTML_BLOCK_REPEATED_HEADING,
   INDENTED_FENCE_AFTER_QUOTE,
   LAZY_INLINE_HTML_REPROS,
+  LAZY_TEXT_AFTER_INLINE_HTML,
 } from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { matchedSearchSection } from './search-sections';
@@ -147,6 +148,26 @@ The after section mentions zebras.`,
     const page = { title: 'Guide', content: HTML_BLOCK_REPEATED_HEADING };
     // One `After` heading, so its id has no duplicate suffix (`after-1`).
     expect(matchedSearchSection(page, 'zebras')).toEqual({ section: { id: 'after', title: 'After' }, snippet: 'The after section mentions zebras.' });
+  });
+
+  it('finds the section after lazy text after inline HTML in a list item, not the code after it', () => {
+    const { source } = LAZY_TEXT_AFTER_INLINE_HTML;
+    expect(
+      matchedSearchSection(
+        {
+          title: 'Guide',
+          content: `${source}
+
+The after section mentions zebras.`,
+        },
+        'zebras',
+      )?.section,
+    ).toEqual({
+      id: 'after',
+      title: 'After',
+    });
+    // An `##` line in the fence must not become a section (search skips `#` headings).
+    expect(matchedSearchSection({ title: 'Guide', content: source.replace('# literal', '## literal') }, 'literal')).toBeUndefined();
   });
 
   it.each(LAZY_INLINE_HTML_REPROS)('finds the section after %s, not the code after it (#590 lazy inline HTML)', (_name, example) => {

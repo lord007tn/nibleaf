@@ -348,9 +348,12 @@ export const differentialCases = (seed = FENCE_CASE_SEED, perCategory = 512): Di
       ] as const);
       const lazyHtml = next() % 2 === 0;
       const lazyFence = next() % 2 === 0;
+      // CodeRabbit (#590, markdown-code.ts:337): a lazy text line after inline HTML
+      // still continues the paragraph, so the item stays open for the fence.
+      const lazyText = next() % 3 === 0;
       const f = fence();
       const fenced = (line: string) => `${lazyFence ? '' : pad}${line}`;
-      return [item, `${lazyHtml ? '' : pad}${html}`, fenced(`${f}md`), fenced('# literal'), fenced(f)];
+      return [item, `${lazyHtml ? '' : pad}${html}`, ...(lazyText ? ['lazy text'] : []), fenced(`${f}md`), fenced('# literal'), fenced(f)];
     },
   };
   const prefixes: ReadonlyArray<readonly [first: string, rest: string]> = [
@@ -386,6 +389,16 @@ export const LAZY_INLINE_HTML_REPROS: ReadonlyArray<readonly [name: string, sour
   ['`<span>` after a quote', '> item\n<span>\n```md\n# literal\n```\n## After', '001110'],
   ['`<span>` after an ordered item starting at 2', '2. lazy\n<span>\n```md\n# literal\n```\n## After', '001110'],
 ];
+
+/** CodeRabbit on 53bb7142 (`markdown-code.ts:337`): lazy text after inline HTML
+ * still continues the list item's paragraph, so the fence belongs to the item and
+ * ends at the unindented heading. `code` is markdown-it's reading; main read
+ * `mainCode`, hiding `## After`. */
+export const LAZY_TEXT_AFTER_INLINE_HTML = {
+  source: '- item\n  <span>\nlazy text\n  ```md\n  # literal\n## After',
+  code: '000110',
+  mainCode: '000111',
+} as const;
 
 /** #592: a tab before `>` inside a list item continues the item and opens a
  * quoted fence there (CommonMark; markdown-it reads `011100`, main `000000`). */

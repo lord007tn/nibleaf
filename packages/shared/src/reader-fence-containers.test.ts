@@ -11,6 +11,7 @@ import {
   FENCE_CONTAINER_REPROS,
   INDENTED_FENCE_AFTER_QUOTE,
   LAZY_INLINE_HTML_REPROS,
+  LAZY_TEXT_AFTER_INLINE_HTML,
 } from './testing/fence-cases';
 
 describe('a fence in a quote or list item ends where CommonMark ends it (#587)', () => {
@@ -49,6 +50,14 @@ describe('a fence in a quote or list item ends where CommonMark ends it (#587)',
       expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
     },
   );
+
+  it('keeps the heading, section and embed after lazy text that follows inline HTML in a list item (#590 CodeRabbit)', () => {
+    const source = `${LAZY_TEXT_AFTER_INLINE_HTML.source}${AFTER_CONTINUATION}`;
+    expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(`${LAZY_TEXT_AFTER_INLINE_HTML.code}00`);
+    expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
+    expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
+    expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
+  });
 
   it('keeps the heading, section and embed after indented code that looks like a fence, once a quote has ended (#590 council)', () => {
     const source = INDENTED_FENCE_AFTER_QUOTE;

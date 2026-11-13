@@ -9,6 +9,7 @@ import {
   HTML_BLOCK_REPEATED_HEADING,
   INDENTED_FENCE_AFTER_QUOTE,
   LAZY_INLINE_HTML_REPROS,
+  LAZY_TEXT_AFTER_INLINE_HTML,
 } from '@nibleaf/shared/testing/fence-cases';
 import { describe, expect, it } from 'vitest';
 import { validateCitedAnswer } from './answer-validation';
@@ -161,6 +162,14 @@ describe('sections after a fence in a quote or list item (#587)', () => {
       ['', false, true],
       ['After', true, false],
     ]);
+  });
+
+  it('index the code after lazy text after inline HTML in a list item as code, not as a section', () => {
+    const content = `${LAZY_TEXT_AFTER_INLINE_HTML.source.replace('# literal', '## literal')}
+
+The after section mentions zebras.`;
+    expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
+    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
   });
 
   it.each(LAZY_INLINE_HTML_REPROS)('index the code after %s as code, not as a section (#590 lazy inline HTML)', (_name, example) => {
