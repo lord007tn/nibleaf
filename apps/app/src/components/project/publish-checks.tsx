@@ -169,6 +169,13 @@ function CheckGroupSection({
   const t = useT();
   const { count } = useFormatters();
   const [open, setOpen] = useState(defaultOpen);
+  // Follow the rule when it flips (the last error fixed, or a new one): a
+  // warning group never stays folded once nothing blocks publishing.
+  const [ruleOpen, setRuleOpen] = useState(defaultOpen);
+  if (ruleOpen !== defaultOpen) {
+    setRuleOpen(defaultOpen);
+    setOpen(defaultOpen);
+  }
   const locatable = isLocatablePublishCheck(group.code);
   const meta = CHECK_META[group.code];
   const rowsId = `${headingId}-rows`;
@@ -203,8 +210,11 @@ function CheckGroupSection({
         {group.rows.map((row) => {
           const title = row.title.trim() || t('editor.untitled');
           const evidence = row.details[0];
-          // Unique per button: two problems on one page never share a name.
-          const problem = locatable && evidence ? `${t(meta.title)} · ${evidence}` : t(meta.title);
+          // Unique per button: the problem, its evidence, and the page's address
+          // (and language), so neither two problems on one page nor two pages
+          // with the same title share a name.
+          const where = multiLang && row.languageCode ? `/${row.path} · ${row.languageCode}` : `/${row.path}`;
+          const problem = [t(meta.title), locatable ? evidence : undefined, where].filter(Boolean).join(' · ');
           return (
             <DataListItem
               badges={

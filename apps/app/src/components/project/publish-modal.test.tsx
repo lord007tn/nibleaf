@@ -312,6 +312,20 @@ describe('publish draft barrier', () => {
     expect([...warnings.querySelectorAll('[data-slot="data-list-item"]')].filter((row) => !row.closest('[hidden]'))).toHaveLength(2);
   });
 
+  // Sol review of #616: fixing the last error left the warnings folded.
+  it('opens the warning groups again once the last error is fixed', async () => {
+    preflight.checks = [check({ code: 'broken-internal-link', severity: 'error', detail: '/configuration' }), check({})];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const warningToggle = () =>
+      document.querySelector<HTMLElement>('[data-check-group="missing-alt"]')?.querySelector<HTMLButtonElement>('button[aria-expanded]');
+    expect(warningToggle()?.getAttribute('aria-expanded')).toBe('false');
+    // The re-check after the fix: only the warning is left.
+    preflight.checks = [check({})];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    expect(warningToggle()?.getAttribute('aria-expanded')).toBe('true');
+    expect(isUnavailable(publishButton())).toBe(false);
+  });
+
   it('keeps Publish and Cancel outside the one scroll region, with no scroller inside it', async () => {
     preflight.checks = [check({}), check({ code: 'untitled-page', detail: '' })];
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));

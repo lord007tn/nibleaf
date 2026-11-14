@@ -88,11 +88,29 @@ describe('Fix buttons', () => {
     );
     const names = [...container.querySelectorAll('a[href*="editor"]')].map((link) => link.getAttribute('aria-label'));
     expect(names).toEqual([
-      'Fix “Get started”: Broken links · /configuration',
-      'Fix “Get started”: Broken links · /setup',
-      'Fix “Get started”: Empty pages',
-      'Fix “Get started”: Untitled pages',
+      'Fix “Get started”: Broken links · /configuration · /get-started',
+      'Fix “Get started”: Broken links · /setup · /get-started',
+      'Fix “Get started”: Empty pages · /get-started',
+      'Fix “Get started”: Untitled pages · /get-started',
     ]);
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  // Sol review of #616: two pages with the same title shared one name.
+  it('tells apart two pages with the same title by their address', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToStaticMarkup(
+      <PublishChecks
+        checks={[
+          check({ code: 'duplicate-title', pageId: 'a', title: 'Guide', path: 'web/guide', detail: 'cli/guide' }),
+          check({ code: 'duplicate-title', pageId: 'b', title: 'Guide', path: 'cli/guide', detail: 'web/guide' }),
+        ]}
+        loading={false}
+        onFix={() => undefined}
+        projectId="project-1"
+      />,
+    );
+    const names = [...container.querySelectorAll('a[href*="editor"]')].map((link) => link.getAttribute('aria-label'));
+    expect(names).toEqual(['Fix “Guide”: Duplicate titles · /web/guide', 'Fix “Guide”: Duplicate titles · /cli/guide']);
   });
 });
