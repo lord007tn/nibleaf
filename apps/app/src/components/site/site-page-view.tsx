@@ -7,6 +7,7 @@ import { SiteChatPageAction } from '@/components/site/ai-chat/provider';
 import { type ContentLanguageAttributes, chromeLanguageAttributes, contentLanguageAttributes } from '@/components/site/content-language';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { LanguageFallbackNotice } from '@/components/site/language-fallback-notice';
+import { PageActions } from '@/components/site/page-actions';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { ArticleBodySkeleton } from '@/components/site/site-article-skeleton';
 import { useSiteReader } from '@/components/site/site-reader-context';
@@ -286,9 +287,16 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           </ol>
         </nav>
       ) : null}
-      <h1 tabIndex={-1} className="outline-none font-semibold text-3xl tracking-tight md:text-4xl" dir={blockDirection(page.title)}>
-        {page.title}
-      </h1>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <h1 tabIndex={-1} className="min-w-0 outline-none font-semibold text-3xl tracking-tight md:text-4xl" dir={blockDirection(page.title)}>
+          {page.title}
+        </h1>
+        <PageActions
+          pageHref={siteHref(projectId, page.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+          lang={readerLanguage}
+          className="md:mt-1.5"
+        />
+      </div>
       {page.description ? (
         <p className="mt-3 text-lg text-muted-foreground" dir={blockDirection(page.description)}>
           {page.description}
