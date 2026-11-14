@@ -112,7 +112,7 @@ describe('pricing and self-hosting heads', () => {
 describe('isolateLatin', () => {
   it('wraps Latin runs in Arabic text and leaves the sentence punctuation outside', () => {
     expect(renderToStaticMarkup(<p>{isolateLatin('بترخيص AGPL-3.0، وCoolify.', 'ar')}</p>)).toBe(
-      '<p>بترخيص <bdi>AGPL-3.0</bdi>، و<bdi>Coolify</bdi>.</p>',
+      '<p>بترخيص <bdi class="whitespace-nowrap">AGPL-3.0</bdi>، و<bdi>Coolify</bdi>.</p>',
     );
     expect(isolateLatin('Docker Compose', 'en')).toBe('Docker Compose');
     expect(isolateLatin('بلا بطاقة دفع', 'ar')).toBe('بلا بطاقة دفع');

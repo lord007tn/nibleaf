@@ -20,8 +20,17 @@ export function isolateLatin(text: string, lang: 'en' | 'ar'): ReactNode {
   for (const match of text.matchAll(LATIN_RUN)) {
     const start = match.index ?? 0;
     if (start > last) parts.push(text.slice(last, start));
-    parts.push(<bdi key={start}>{match[0]}</bdi>);
-    last = start + match[0].length;
+    // A short hyphenated token (JSON-LD, AGPL-3.0) stays on one line: broken at
+    // its hyphen inside a narrow RTL cell, its halves swap sides. Long ones
+    // (support@nibleaf.com) may still wrap, so they never overflow a cell.
+    const token = match[0];
+    const keepWhole = token.length <= 12 && /[-/]/.test(token) && !/\s/.test(token);
+    parts.push(
+      <bdi key={start} className={keepWhole ? 'whitespace-nowrap' : undefined}>
+        {token}
+      </bdi>,
+    );
+    last = start + token.length;
   }
   if (parts.length === 0) return text;
   if (last < text.length) parts.push(text.slice(last));
