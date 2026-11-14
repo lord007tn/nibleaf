@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { LanguageFn } from 'highlight.js';
-import { type ComponentProps, Suspense, useEffect, useMemo, useState } from 'react';
+import { type ComponentProps, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
@@ -206,9 +206,24 @@ export function useMathReady(content: string | undefined): boolean {
  *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting.
  *  Pass `site` on a published site so internal links resolve to the site base. */
 export function Markdown(props: MarkdownProps) {
+  // Mounted fresh on the client, not rendered on the server or hydrating its
+  // markup: the server snapshot answers during SSR and hydration, and the
+  // first render's answer is kept.
+  const hydrating = useSyncExternalStore(subscribeNever, notHydrating, isHydrating);
+  const [freshMount] = useState(() => !hydrating);
   const content = useShownContent(props.content);
+  const mathReady = useMathReady(content);
+  // A fresh client mount of a rich page with math (any view that mounts a page
+  // after loading it, or after showing nothing) waits for KaTeX, rather than
+  // the island's plain pending body, which would show raw TeX. Before the split
+  // the rich module carried KaTeX. Server rendering and hydration are unchanged.
+  if (freshMount && !mathReady) return <div aria-busy="true" className={props.className} data-markdown-pending="" />;
   return <MarkdownContent {...props} content={content} />;
 }
+
+const subscribeNever = () => () => undefined;
+const notHydrating = () => false;
+const isHydrating = () => true;
 
 function MarkdownContent(props: MarkdownProps) {
   // Read with the renderer's own Markdown semantics (nested fences, container

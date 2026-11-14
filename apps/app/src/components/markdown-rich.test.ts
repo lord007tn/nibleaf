@@ -175,4 +175,33 @@ describe('preview page switches', () => {
     expect(seen.at(-1)).toBe(true);
     act(() => root.unmount());
   });
+
+  it('waits for KaTeX on a fresh client mount of a math page, in any view (a git preview after an empty scope)', async () => {
+    vi.resetModules();
+    const { act } = await import('react');
+    const { createRoot } = await import('react-dom/client');
+    const { Markdown } = await import('./markdown');
+    const modules = await import('@/lib/reader-hydration-modules');
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    await modules.articleMarkdownModule.load();
+    await modules.richMarkdownModule.load();
+    expect(modules.mathMarkdownModule.status()).toBe('idle');
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    // A rich page, then nothing (an empty language/version scope), then a math page mounted fresh.
+    await act(async () => root.render(createElement(Markdown, { content: '<Note>English v1</Note>' })));
+    act(() => root.render(null));
+    act(() => root.render(createElement(Markdown, { content: '<Note>Arabic v2</Note>\n\nThe area is $x^2$.' })));
+    expect(host.textContent).not.toContain('$x^2$');
+    expect(host.querySelector('[aria-busy="true"]')).not.toBeNull();
+    await act(async () => {
+      await modules.mathMarkdownModule.load();
+    });
+    await act(async () => undefined);
+    expect(host.querySelector('.katex')).not.toBeNull();
+    expect(host.textContent).toContain('Arabic v2');
+    act(() => root.unmount());
+    host.remove();
+  });
 });
