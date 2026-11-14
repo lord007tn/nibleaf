@@ -1,0 +1,264 @@
+{
+  "terms": {
+    "site": {
+      "translation": "site",
+      "note": "Toujours « site », jamais « projet » ni « site web » dans l’interface."
+    },
+    "organization": {
+      "translation": "organisation",
+      "note": "Jamais « espace de travail »."
+    },
+    "page": {
+      "translation": "page"
+    },
+    "group": {
+      "translation": "groupe"
+    },
+    "page-tree": {
+      "translation": "arborescence"
+    },
+    "publish": {
+      "translation": "publier ; publication (nom)",
+      "short": "Publier"
+    },
+    "draft": {
+      "translation": "brouillon"
+    },
+    "unpublished-changes": {
+      "translation": "modifications non publiées"
+    },
+    "preview": {
+      "translation": "aperçu",
+      "short": "Aperçu"
+    },
+    "live-site": {
+      "translation": "site en ligne"
+    },
+    "reader": {
+      "translation": "lecteur",
+      "note": "Uniquement pour les personnes qui lisent le site publié. Pas pour le rôle « Observateur »."
+    },
+    "member": {
+      "translation": "membre"
+    },
+    "people": {
+      "translation": "Personnes"
+    },
+    "invitation": {
+      "translation": "invitation",
+      "short": "Inviter"
+    },
+    "join-link": {
+      "translation": "lien d’accès",
+      "note": "Distinct de l’invitation par e-mail."
+    },
+    "role": {
+      "translation": "rôle"
+    },
+    "role-owner": {
+      "translation": "Propriétaire"
+    },
+    "role-admin": {
+      "translation": "Administrateur",
+      "short": "Admin",
+      "note": "Rôle de site ou d’organisation ; l’exploitant du serveur est « administrateur du serveur »."
+    },
+    "role-editor": {
+      "translation": "Éditeur",
+      "note": "Nom du rôle ; l’écran est « l’éditeur »."
+    },
+    "role-viewer": {
+      "translation": "Observateur",
+      "note": "Jamais « Lecteur », réservé aux lecteurs du site."
+    },
+    "server-admin": {
+      "translation": "administrateur du serveur"
+    },
+    "account": {
+      "translation": "compte"
+    },
+    "sign-in": {
+      "translation": "se connecter, s’inscrire, se déconnecter",
+      "short": "Se connecter"
+    },
+    "settings": {
+      "translation": "paramètres",
+      "short": "Paramètres"
+    },
+    "general": {
+      "translation": "Général"
+    },
+    "appearance": {
+      "translation": "Apparence"
+    },
+    "theme": {
+      "translation": "thème",
+      "note": "Mode clair, mode sombre."
+    },
+    "custom-domain": {
+      "translation": "domaine personnalisé"
+    },
+    "domain": {
+      "translation": "domaine, adresse"
+    },
+    "redirect": {
+      "translation": "redirection"
+    },
+    "visibility": {
+      "translation": "visibilité ; accès"
+    },
+    "add-on": {
+      "translation": "module complémentaire",
+      "short": "module"
+    },
+    "integration": {
+      "translation": "intégration"
+    },
+    "webhook": {
+      "translation": "webhook"
+    },
+    "api-key": {
+      "translation": "clé API"
+    },
+    "token": {
+      "translation": "jeton"
+    },
+    "branch": {
+      "translation": "branche"
+    },
+    "sync": {
+      "translation": "synchronisation ; synchroniser",
+      "short": "Synchroniser"
+    },
+    "import": {
+      "translation": "importation ; importer"
+    },
+    "export": {
+      "translation": "exportation ; exporter"
+    },
+    "language": {
+      "translation": "langue",
+      "note": "Langue source."
+    },
+    "ask-ai": {
+      "translation": "Demander à l’IA",
+      "note": "Nom de la fonctionnalité, identique partout."
+    },
+    "ai-assistant": {
+      "translation": "assistant IA"
+    },
+    "smart-ai": {
+      "translation": "Smart AI",
+      "note": "Nom de fonctionnalité conservé tel quel."
+    },
+    "analytics": {
+      "translation": "Statistiques"
+    },
+    "page-views": {
+      "translation": "pages vues"
+    },
+    "visits": {
+      "translation": "visites"
+    },
+    "searches": {
+      "translation": "recherches"
+    },
+    "feedback": {
+      "translation": "avis",
+      "note": "Les réponses « Cette page vous a-t-elle été utile ? » et les commentaires."
+    },
+    "period": {
+      "translation": "période"
+    },
+    "compare": {
+      "translation": "comparer à la période précédente",
+      "short": "Comparer"
+    },
+    "web-vitals": {
+      "translation": "Web Vitals (Le contenu principal s’affiche, Réagit aux clics, La mise en page reste stable)"
+    },
+    "ai-crawlers": {
+      "translation": "robots d’IA ; visibilité dans l’IA"
+    },
+    "plan": {
+      "translation": "forfait"
+    },
+    "usage": {
+      "translation": "utilisation"
+    },
+    "billing": {
+      "translation": "facturation"
+    },
+    "notifications": {
+      "translation": "notifications"
+    },
+    "history": {
+      "translation": "historique"
+    },
+    "version": {
+      "translation": "version"
+    },
+    "restore": {
+      "translation": "restaurer",
+      "short": "Restaurer"
+    },
+    "promote": {
+      "translation": "intégrer à main",
+      "short": "Intégrer"
+    },
+    "rollback": {
+      "translation": "rétablir",
+      "short": "Rétablir",
+      "note": "Remettre en ligne une publication antérieure."
+    },
+    "checks": {
+      "translation": "vérifications avant publication",
+      "short": "Vérifications",
+      "note": "Bouton : « Corriger »."
+    },
+    "danger-zone": {
+      "translation": "Zone dangereuse"
+    },
+    "delete": {
+      "translation": "supprimer (placer dans la corbeille)",
+      "short": "Supprimer"
+    },
+    "trash": {
+      "translation": "Corbeille"
+    },
+    "delete-permanently": {
+      "translation": "supprimer définitivement"
+    },
+    "remove": {
+      "translation": "retirer"
+    },
+    "save": {
+      "translation": "enregistrer ; enregistré ; modifications non enregistrées",
+      "short": "Enregistrer"
+    },
+    "cancel": {
+      "translation": "annuler",
+      "short": "Annuler"
+    },
+    "copy": {
+      "translation": "copier ; copié",
+      "short": "Copier"
+    },
+    "self-hosted": {
+      "translation": "auto-hébergé"
+    },
+    "dashboard": {
+      "translation": "tableau de bord"
+    },
+    "editor-screen": {
+      "translation": "éditeur"
+    },
+    "component": {
+      "translation": "composant ; bloc"
+    },
+    "callout": {
+      "translation": "encadré"
+    }
+  },
+  "style": "Vouvoiement ; boutons à l’infinitif (« Enregistrer », « Créer un site »). Apostrophe typographique ’, guillemets « … » avec espaces insécables, espace insécable avant : ; ! ? et %. Unités : 10 MB, 30 jours (les noms d’unités de doNotTranslate restent tels quels). Majuscule au premier mot seulement. Erreurs : « Impossible de … Réessayez. »"
+}

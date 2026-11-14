@@ -12,7 +12,7 @@ import { HYDRATION_MODULE_ATTRIBUTE, type HydrationModule, hydrationModule, load
 
 /** Moved to @nibleaf/shared/reader-rich, so the parser that reads a page's headings
  * as the reader renders them picks the same renderer. */
-import { needsRichMarkdown } from '@nibleaf/shared/reader-rich';
+import { needsMathMarkdown, needsRichMarkdown } from '@nibleaf/shared/reader-rich';
 
 export { needsRichMarkdown };
 /** The article renderer (Markdown, GFM, code highlighting): pages with an
@@ -23,6 +23,10 @@ export const articleMarkdownModule = hydrationModule('markdown', () => import('@
  *  It loads through the article renderer, which it builds on: its preload list
  *  then stays in that chunk, out of every page's first load. */
 export const richMarkdownModule = hydrationModule('markdown-rich', () => import('@/components/markdown').then((module) => module.loadRichMarkdown()));
+
+/** KaTeX and the math syntax: only pages with math (PUB-017). It loads through
+ *  the article renderer too, for the same reason. */
+export const mathMarkdownModule = hydrationModule('markdown-math', () => import('@/components/markdown').then((module) => module.loadMathMarkdown()));
 
 const HIGHLIGHT_KEY_PREFIX = 'hljs-';
 const highlightModules = new Map<string, HydrationModule<Record<string, LanguageFn>>>();
@@ -40,6 +44,12 @@ export const highlightLanguageModule = (name: LazyHighlightLanguage): HydrationM
   return module;
 };
 
+/** The renderer modules beyond the article's own that a page needs: the rich
+ *  renderer for raw HTML/MDX or math, and KaTeX only with it (the plain
+ *  renderer has no math syntax, so a code-only page never fetches KaTeX). */
+export const articleRendererModules = (content: string) =>
+  needsRichMarkdown(content) ? [richMarkdownModule, ...(needsMathMarkdown(content) ? [mathMarkdownModule] : [])] : [];
+
 /** Loads the renderers an article needs before it renders, so navigating to it
  *  never shows a fallback first. Never rejects: a failed download is left to
  *  the article's island, which retries and says so inline (not the route's
@@ -48,8 +58,21 @@ export const loadArticleRenderer = async (content: string): Promise<void> => {
   const grammars = import('@/lib/highlight-languages')
     .then((languages) => Promise.all(languages.lazyHighlightLanguages(content).map((name) => highlightLanguageModule(name).load())))
     .catch(() => undefined);
+  // The line scan's guess starts at once; then, with the article module (which
+  // holds the parser) loaded, the renderer's own decision is awaited too, so
+  // the island never falls back to the plain renderer after navigating.
+  const decided = (async () => {
+    try {
+      await articleMarkdownModule.load();
+      const markdown = await import('@/components/markdown');
+      await Promise.all(markdown.rendererModulesFor(content).map((module) => module.load().catch(() => undefined)));
+    } catch {
+      // A failed download is the article island's to retry.
+    }
+  })();
   await Promise.all([
-    ...[articleMarkdownModule, ...(needsRichMarkdown(content) ? [richMarkdownModule] : [])].map((module) => module.load().catch(() => undefined)),
+    ...[articleMarkdownModule, ...articleRendererModules(content)].map((module) => module.load().catch(() => undefined)),
+    decided,
     grammars,
   ]);
 };
@@ -65,5 +88,5 @@ export const loadServerRenderedReaderModules = (root: ParentNode) => {
   }
   // Keys come from the server's own markup, and only name lazy languages.
   const grammars = [...languages].map((name) => highlightLanguageModule(name as LazyHighlightLanguage));
-  return loadServerRenderedModules(root, [articleMarkdownModule, richMarkdownModule, ...grammars]);
+  return loadServerRenderedModules(root, [articleMarkdownModule, richMarkdownModule, mathMarkdownModule, ...grammars]);
 };

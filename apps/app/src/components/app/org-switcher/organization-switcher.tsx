@@ -57,7 +57,8 @@ export function OrganizationSwitcher({
           <Skeleton aria-hidden className="h-4 w-20" />
         </>
       )}
-      <ChevronsUpDown aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      {/* Phones keep the avatar alone: it is still the switcher, by its name. */}
+      <ChevronsUpDown aria-hidden className={cn('size-3.5 shrink-0 text-muted-foreground', collapseName && 'hidden sm:block')} />
     </Button>
   );
   const panel = (

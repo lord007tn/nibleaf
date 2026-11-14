@@ -7,7 +7,7 @@ describe('markdownCodeUsage', () => {
       'go',
       'rust',
     ]);
-    expect(markdownCodeUsage('<pre><code class="language-swift">let x = 1</code></pre>')).toEqual({ languages: ['swift'], rich: true });
+    expect(markdownCodeUsage('<pre><code class="language-swift">let x = 1</code></pre>')).toEqual({ languages: ['swift'], rich: true, math: false });
   });
 
   it('needs the rich renderer for raw HTML or math in prose, not in code', () => {
