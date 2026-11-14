@@ -1,0 +1,209 @@
+{
+  "rule": "color-contrast",
+  "what": "Alert info, warning and success, with AlertTitle and AlertDescription, on the page background and on a card; #645 head (description at /90) vs the fix (opaque)",
+  "method": "Real design-system Alert and #645 globals.css, built with Vite + Tailwind, run in a local-only headless Chromium (withLocalOnlyBrowser); axe-core injected",
+  "outsideRequests": 0,
+  "results": [
+    {
+      "phase": "before",
+      "theme": "light",
+      "axeVersion": "4.14.0",
+      "colorContrastViolations": [
+        {
+          "target": "section[aria-label=\"background\"] > .border-info\\/30.bg-info\\/10.text-info > .text-balance.text-muted-foreground.md\\:text-pretty",
+          "summary": "Element has insufficient color contrast of 4.22 (foreground color: #3567dc, background color: #e4eaf7, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": "section[aria-label=\"background\"] > .border-warning\\/30.bg-warning\\/10.text-warning > .text-balance.text-muted-foreground.md\\:text-pretty",
+          "summary": "Element has insufficient color contrast of 4.26 (foreground color: #a95720, background color: #f1e8e2, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": "section[aria-label=\"background\"] > .border-success\\/30.bg-success\\/10.text-success > .text-balance.text-muted-foreground.md\\:text-pretty",
+          "summary": "Element has insufficient color contrast of 4.26 (foreground color: #2a7c4b, background color: #e3ece7, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".bg-card > .border-info\\/30.bg-info\\/10.text-info > .text-balance.text-muted-foreground.md\\:text-pretty",
+          "summary": "Element has insufficient color contrast of 4.38 (foreground color: #3567dc, background color: #e9eefb, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".bg-card > .border-warning\\/30.bg-warning\\/10.text-warning > .text-balance.text-muted-foreground.md\\:text-pretty",
+          "summary": "Element has insufficient color contrast of 4.4 (foreground color: #aa5820, background color: #f6ede7, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".bg-card > .border-success\\/30.bg-success\\/10.text-success > .text-balance.text-muted-foreground.md\\:text-pretty",
+          "summary": "Element has insufficient color contrast of 4.4 (foreground color: #2a7d4c, background color: #e8f1eb, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "descriptions": [
+        {
+          "variant": "info",
+          "surface": "background",
+          "color": "oklab(0.508755 -0.0237623 -0.204685 / 0.9)",
+          "alertBackground": "oklab(0.508755 -0.0237623 -0.204685 / 0.1)"
+        },
+        {
+          "variant": "warning",
+          "surface": "background",
+          "color": "oklab(0.507581 0.0922004 0.099242 / 0.9)",
+          "alertBackground": "oklab(0.507581 0.0922004 0.099242 / 0.1)"
+        },
+        {
+          "variant": "success",
+          "surface": "background",
+          "color": "oklab(0.480881 -0.104074 0.0560135 / 0.9)",
+          "alertBackground": "oklab(0.480881 -0.104074 0.0560135 / 0.1)"
+        },
+        {
+          "variant": "info",
+          "surface": "card",
+          "color": "oklab(0.508755 -0.0237623 -0.204685 / 0.9)",
+          "alertBackground": "oklab(0.508755 -0.0237623 -0.204685 / 0.1)"
+        },
+        {
+          "variant": "warning",
+          "surface": "card",
+          "color": "oklab(0.507581 0.0922004 0.099242 / 0.9)",
+          "alertBackground": "oklab(0.507581 0.0922004 0.099242 / 0.1)"
+        },
+        {
+          "variant": "success",
+          "surface": "card",
+          "color": "oklab(0.480881 -0.104074 0.0560135 / 0.9)",
+          "alertBackground": "oklab(0.480881 -0.104074 0.0560135 / 0.1)"
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "theme": "dark",
+      "axeVersion": "4.14.0",
+      "colorContrastViolations": [],
+      "descriptions": [
+        {
+          "variant": "info",
+          "surface": "background",
+          "color": "oklab(0.713726 -0.0379879 -0.138233 / 0.9)",
+          "alertBackground": "oklab(0.713726 -0.0379879 -0.138233 / 0.1)"
+        },
+        {
+          "variant": "warning",
+          "surface": "background",
+          "color": "oklab(0.836863 0.0160027 0.163654 / 0.9)",
+          "alertBackground": "oklab(0.836863 0.0160027 0.163654 / 0.1)"
+        },
+        {
+          "variant": "success",
+          "surface": "background",
+          "color": "oklab(0.800343 -0.160276 0.0862908 / 0.9)",
+          "alertBackground": "oklab(0.800343 -0.160276 0.0862908 / 0.1)"
+        },
+        {
+          "variant": "info",
+          "surface": "card",
+          "color": "oklab(0.713726 -0.0379879 -0.138233 / 0.9)",
+          "alertBackground": "oklab(0.713726 -0.0379879 -0.138233 / 0.1)"
+        },
+        {
+          "variant": "warning",
+          "surface": "card",
+          "color": "oklab(0.836863 0.0160027 0.163654 / 0.9)",
+          "alertBackground": "oklab(0.836863 0.0160027 0.163654 / 0.1)"
+        },
+        {
+          "variant": "success",
+          "surface": "card",
+          "color": "oklab(0.800343 -0.160276 0.0862908 / 0.9)",
+          "alertBackground": "oklab(0.800343 -0.160276 0.0862908 / 0.1)"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "theme": "light",
+      "axeVersion": "4.14.0",
+      "colorContrastViolations": [],
+      "descriptions": [
+        {
+          "variant": "info",
+          "surface": "background",
+          "color": "rgb(33, 88, 217)",
+          "alertBackground": "oklab(0.508755 -0.0237623 -0.204685 / 0.1)"
+        },
+        {
+          "variant": "warning",
+          "surface": "background",
+          "color": "rgb(161, 71, 10)",
+          "alertBackground": "oklab(0.507581 0.0922004 0.099242 / 0.1)"
+        },
+        {
+          "variant": "success",
+          "surface": "background",
+          "color": "rgb(21, 112, 58)",
+          "alertBackground": "oklab(0.480881 -0.104074 0.0560135 / 0.1)"
+        },
+        {
+          "variant": "info",
+          "surface": "card",
+          "color": "rgb(33, 88, 217)",
+          "alertBackground": "oklab(0.508755 -0.0237623 -0.204685 / 0.1)"
+        },
+        {
+          "variant": "warning",
+          "surface": "card",
+          "color": "rgb(161, 71, 10)",
+          "alertBackground": "oklab(0.507581 0.0922004 0.099242 / 0.1)"
+        },
+        {
+          "variant": "success",
+          "surface": "card",
+          "color": "rgb(21, 112, 58)",
+          "alertBackground": "oklab(0.480881 -0.104074 0.0560135 / 0.1)"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "theme": "dark",
+      "axeVersion": "4.14.0",
+      "colorContrastViolations": [],
+      "descriptions": [
+        {
+          "variant": "info",
+          "surface": "background",
+          "color": "rgb(96, 165, 250)",
+          "alertBackground": "oklab(0.713726 -0.0379879 -0.138233 / 0.1)"
+        },
+        {
+          "variant": "warning",
+          "surface": "background",
+          "color": "rgb(251, 191, 36)",
+          "alertBackground": "oklab(0.836863 0.0160027 0.163654 / 0.1)"
+        },
+        {
+          "variant": "success",
+          "surface": "background",
+          "color": "rgb(74, 222, 128)",
+          "alertBackground": "oklab(0.800343 -0.160276 0.0862908 / 0.1)"
+        },
+        {
+          "variant": "info",
+          "surface": "card",
+          "color": "rgb(96, 165, 250)",
+          "alertBackground": "oklab(0.713726 -0.0379879 -0.138233 / 0.1)"
+        },
+        {
+          "variant": "warning",
+          "surface": "card",
+          "color": "rgb(251, 191, 36)",
+          "alertBackground": "oklab(0.836863 0.0160027 0.163654 / 0.1)"
+        },
+        {
+          "variant": "success",
+          "surface": "card",
+          "color": "rgb(74, 222, 128)",
+          "alertBackground": "oklab(0.800343 -0.160276 0.0862908 / 0.1)"
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./locales": "./src/locales.ts",
     "./react": "./src/react.ts",
+    "./scoped": "./src/scoped.ts",
     "./standalone": "./src/standalone.ts",
     "./email": "./src/email.ts",
     "./site": "./src/site.ts",

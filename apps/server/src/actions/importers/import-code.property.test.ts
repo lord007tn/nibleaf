@@ -1,10 +1,16 @@
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import MarkdownIt from 'markdown-it';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
 import { importCodeLines } from './import-markdown-code';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
+
+// Some tests here work through large generated case sets or whole documentation
+// corpora. On a loaded CI runner such tests have taken ~28x as long as on a laptop
+// (5.5 s against 0.19 s), past Vitest's 5 s default, so the file gets an explicit
+// timeout. Their cost stays linear; the *.growth.test.ts files pin that.
+vi.setConfig({ testTimeout: 60_000 });
 
 const SEED = 0x58_23_6b_09;
 const CASES = 3072;
@@ -98,7 +104,7 @@ it('protects main code and exposes following prose across generated containers (
   // The shared scanner over-protected 606 articles before #587 and none since.
   expect(oracleOverruns).toHaveLength(0);
   expect(failures.slice(0, 12), `${failures.length} failures; seed=0x${SEED.toString(16)}`).toEqual([]);
-}, 20_000);
+}, 60_000);
 
 it('ends generated unclosed container fences inside components (seed 0x58236b09)', ({ task }) => {
   let state = SEED;

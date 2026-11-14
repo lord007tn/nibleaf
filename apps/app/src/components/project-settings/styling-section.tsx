@@ -79,7 +79,9 @@ export function StylingSection({ project }: { project: Project }) {
   const initial = styling.primaryColor || '#5546e8';
   const [hex, setHex] = useState(initial.toUpperCase());
   const [hsl, setHsl] = useState<Hsl>(() => hexToHsl(initial) ?? { h: 245, s: 78, l: 59 });
-  const theme = styling.theme ?? 'light';
+  // Saved as it is: a site whose owner never picked an appearance keeps
+  // following the reader's device (siteAppearance), not a 'light' written here.
+  const theme = styling.theme;
   const [radius, setRadius] = useState<'sharp' | 'rounded' | 'pill'>(styling.radius ?? 'rounded');
   const [saving, setSaving] = useState(false);
   const dirty = hex.toLowerCase() !== initial.toLowerCase() || radius !== (styling.radius ?? 'rounded');
@@ -108,7 +110,7 @@ export function StylingSection({ project }: { project: Project }) {
     }
     setSaving(true);
     updateConfig.mutate(
-      { config: { styling: { primaryColor: hex.toLowerCase(), theme, radius } } },
+      { config: { styling: { primaryColor: hex.toLowerCase(), radius, ...(theme ? { theme } : {}) } } },
       {
         onSuccess: () => toast.success(t('common.saved')),
         onError: () => toast.error(t('settings.saveError')),

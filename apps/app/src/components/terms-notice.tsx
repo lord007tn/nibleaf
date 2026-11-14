@@ -1,8 +1,8 @@
-import { useT } from '@nibleaf/i18n/react';
+import { useAuthT } from '@/lib/auth-messages';
 
 /** Shown at each action that can create an account. */
 export function TermsNotice() {
-  const t = useT();
+  const t = useAuthT();
   return (
     <p className="text-center text-muted-foreground text-xs leading-relaxed">
       {t('auth.legal.continuePrefix')}{' '}

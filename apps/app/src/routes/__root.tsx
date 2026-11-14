@@ -52,7 +52,7 @@ function RootComponent() {
 function RootDocument({ children }: { children: ReactNode }) {
   const nonce = useRouter().options.ssr?.nonce;
   const { lang, dir, pathname, siteProjectId, siteThemeDefault } = useRootDocument();
-  const siteThemeBootstrap = siteProjectId ? siteThemeNoFlashScript(siteProjectId, siteThemeDefault ?? 'light') : null;
+  const siteThemeBootstrap = siteProjectId ? siteThemeNoFlashScript(siteProjectId, siteThemeDefault) : null;
   // The interface locale of a product request's server render, unchanged for
   // the page's life: locale hooks hydrate against it, and the browser keeps it
   // until the visitor picks another language (@nibleaf/i18n runtime). Marketing
