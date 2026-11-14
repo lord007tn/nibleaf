@@ -75,6 +75,7 @@ import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
 import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
+import { type PublishFixArrival, PublishFixBar } from '@/components/editor/publish-fix-bar';
 import { NeverPublishedBanner, PagePublishStateBar, type SaveState, SaveStatus } from '@/components/editor/save-status';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree, shownRowName } from '@/components/editor/sortable-page-tree';
@@ -138,7 +139,7 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
       .object({
         firstPublish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
         page: z.string().min(1).optional().catch(undefined),
-        // A publish check's Fix (contract: @nibleaf/shared/publish-checks); the editor's arrival reads them.
+        // A publish check's Fix (contract: @nibleaf/shared/publish-check-codes): PublishFixBar lands on it, then they are dropped.
         fix: z.enum(PUBLISH_CHECK_CODES).optional().catch(undefined),
         fixTarget: z.string().min(1).optional().catch(undefined),
         publish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
@@ -172,7 +173,7 @@ const combineVersionPages = (results: UseQueryResult<PageNode[]>[]) => ({
 function EditorPage() {
   const t = useT();
   const { projectId } = Route.useParams();
-  const { firstPublish, page: pageParam, publish: publishParam } = Route.useSearch();
+  const { firstPublish, page: pageParam, publish: publishParam, fix: fixParam, fixTarget: fixTargetParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
   const {
     data: memberData,
@@ -393,6 +394,8 @@ function EditorPage() {
   // page, so opening a page's settings from the tree does NOT switch what you're
   // editing.
   const [settingsForId, setSettingsForId] = useState<string | null>(null);
+  // The field Page settings opens on, when a publish check's Fix asked for one.
+  const [settingsField, setSettingsField] = useState<'title' | 'slug' | undefined>(undefined);
   const [langSettings, setLangSettings] = useState<Language | null>(null);
   // What's currently in sync with the server for the open page: its id + the
   // exact title/content we last loaded (or saved) and its revision stamp. Drives
@@ -911,6 +914,62 @@ function EditorPage() {
     deepLinkedPageId.current = null;
     if (decision.kind === 'switch') setActiveBranchId(decision.branchId);
   }, [page, activeBranchId, branches]);
+  // ─── A publish check's Fix (P1-ED-002) ───────────────────────────────────────
+  // `?fix=<code>&fixTarget=<evidence>` arrives with `?page=`. It is kept here
+  // while the bar is up, and dropped from the address once arrival is done (a
+  // replace, so a reload or Back doesn't land again). The same Fix pressed
+  // again later (the publish sheet opens over this editor) lands again.
+  const [fixArrival, setFixArrival] = useState<(PublishFixArrival & { key: number }) | null>(null);
+  const handledFix = useRef<string | null>(null);
+  useEffect(() => {
+    if (!(fixParam && pageParam)) {
+      handledFix.current = null;
+      return;
+    }
+    const key = [pageParam, fixParam, fixTargetParam ?? ''].join('\u0000');
+    if (handledFix.current === key) return;
+    handledFix.current = key;
+    setFixArrival((current) => ({ code: fixParam, target: fixTargetParam ?? null, pageId: pageParam, key: (current?.key ?? 0) + 1 }));
+  }, [fixParam, fixTargetParam, pageParam]);
+  // Same page, same scroll: rewriting the address never moves the page (linked-page-history).
+  const rewriteSearch = useCallback(
+    (search: (previous: Record<string, unknown>) => Record<string, unknown>) =>
+      void navigate({
+        to: '/app/projects/$projectId/editor',
+        params: { projectId },
+        search,
+        hash: true,
+        replace: true,
+        ignoreBlocker: true,
+        state: (previous) => ({ ...previous, editorKeepScroll: true }),
+      }),
+    [navigate, projectId],
+  );
+  const dropFixParams = useCallback(() => rewriteSearch((previous) => ({ ...previous, fix: undefined, fixTarget: undefined })), [rewriteSearch]);
+  // The bar shows once the page (or group) it is about is on screen, and goes when the writer moves on.
+  // It waits for the writer's access: the editor remounts once that is known, which would drop the landing.
+  const fixOnScreen =
+    fixArrival !== null &&
+    !switching &&
+    !permissionsPending &&
+    (selectedGroup ? selectedGroup.id === fixArrival.pageId : page?.id === fixArrival.pageId && activeId === page.id);
+  // The arrival that has been on screen: only that one goes when the page changes, never a newer one still on its way.
+  const fixShownKey = useRef<number | null>(null);
+  useEffect(() => {
+    if (!fixArrival) return;
+    if (fixOnScreen) fixShownKey.current = fixArrival.key;
+    else if (fixShownKey.current === fixArrival.key) setFixArrival(null);
+  }, [fixArrival, fixOnScreen]);
+  // "Back to publish" sets `?publish=true`; while the editor is open that opens the sheet, and is dropped again.
+  const [publishRequest, setPublishRequest] = useState(0);
+  const handledPublishParam = useRef(publishParam);
+  useEffect(() => {
+    if (publishParam === handledPublishParam.current) return;
+    handledPublishParam.current = publishParam;
+    if (!publishParam) return;
+    setPublishRequest((count) => count + 1);
+    rewriteSearch((previous) => ({ ...previous, publish: undefined }));
+  }, [publishParam, rewriteSearch]);
   const renameNode = (id: string, nextTitle: string, field: 'title' | 'sidebarTitle' = 'title') => {
     const node = (allPages ?? []).find((p) => p.id === id);
     // A page with its own sidebar title shows that name in the list, so renaming
@@ -1319,6 +1378,7 @@ function EditorPage() {
                   : undefined
               }
               initialPublishOpen={publishParam}
+              openRequest={publishRequest}
               project={project}
             />
           ) : null}
@@ -1732,7 +1792,12 @@ function EditorPage() {
                     languages={orderedLanguages}
                     pages={allPages ?? []}
                     open
-                    onOpenChange={(o) => !o && setSettingsForId(null)}
+                    initialField={settingsField}
+                    onOpenChange={(o) => {
+                      if (o) return;
+                      setSettingsForId(null);
+                      setSettingsField(undefined);
+                    }}
                   />
                 ) : null;
               })()
@@ -1742,6 +1807,36 @@ function EditorPage() {
         {/* The one main landmark, for every canvas state (configuration, loading,
             group, page, empty): "Skip to main content" lands here. */}
         <main className="flex min-h-0 min-w-0 flex-col outline-none" id="main-content" tabIndex={-1}>
+          {view === 'content' && fixArrival && fixOnScreen ? (
+            <PublishFixBar
+              key={fixArrival.key}
+              arrival={fixArrival}
+              canvas={() => canvasRef.current}
+              group={Boolean(selectedGroup)}
+              markdown={() => draftRef.current.draft.content}
+              onEditSource={
+                canEditContent
+                  ? () => {
+                      if (commentMode) toggleCommentMode();
+                      setEditorMode('markdown');
+                    }
+                  : undefined
+              }
+              onBackToPublish={() => rewriteSearch((previous) => ({ ...previous, publish: true }))}
+              onDismiss={() => setFixArrival(null)}
+              onFocusTitle={() => {
+                const element = titleRef.current;
+                element?.focus();
+                element?.select();
+              }}
+              onHandled={dropFixParams}
+              onOpenSettings={(field) => {
+                if (!canEditContent) return;
+                setSettingsField(field);
+                setSettingsForId(fixArrival.pageId);
+              }}
+            />
+          ) : null}
           {/* Main area: site configuration */}
           {view === 'config' ? (
             <ConfigCanvas

@@ -33,7 +33,20 @@ const mem = vi.hoisted(() => ({
 }));
 
 vi.mock('@nibleaf/database', () => ({
-  prisma: { branch: { deleteMany: vi.fn(async () => ({ count: 1 })) }, language: { findUniqueOrThrow: vi.fn(async () => ({ code: 'en' })) } },
+  prisma: {
+    page: {
+      findMany: async ({ where }: { where: { id?: { in: string[] } } }) => {
+        const path = (id: string): string => {
+          const row = mem.rows.find((page) => page.id === id);
+          if (!row) throw new Error('Page missing from fixture');
+          return `${row.parentId ? `${path(row.parentId)}/` : ''}${row.slug}`;
+        };
+        return mem.rows.filter((row) => !where.id || where.id.in.includes(row.id)).map((row) => ({ id: row.id, path: path(row.id), kind: row.kind }));
+      },
+    },
+    branch: { deleteMany: vi.fn(async () => ({ count: 1 })) },
+    language: { findUniqueOrThrow: vi.fn(async () => ({ code: 'en' })) },
+  },
 }));
 vi.mock('../branches', () => ({
   captureImportDraft: vi.fn(async () => 'snapshot'),
@@ -53,6 +66,11 @@ vi.mock('./github', () => ({
     `https://raw.githubusercontent.com/acme/docs/main/${path.split('/').map(encodeURIComponent).join('/')}`,
 }));
 vi.mock('./persistence', () => ({
+  writeImportPageContent: async (_target: unknown, id: string, content: string) => {
+    const row = mem.rows.find((page) => page.id === id);
+    if (!row) throw new Error('Page missing from fixture');
+    row.content = content;
+  },
   defaultImportTarget: async (projectId: string) => ({ projectId, branchId: 'branch', languageId: 'lang-en' }),
   removeImportPlaceholders: async () => 0,
   ensureGroupPage: async (_target: unknown, group: { parentId: string | null; title: string; slug: string; position?: number }) => {
@@ -62,9 +80,9 @@ vi.mock('./persistence', () => ({
     mem.rows.push(row);
     return row.id;
   },
-  upsertPage: async (
+  reserveImportPage: async (
     _target: unknown,
-    page: { parentId: string | null; slug: string; title: string; content: string; config?: Record<string, unknown>; hidden?: boolean },
+    page: { parentId: string | null; slug: string; title: string; content?: string; config?: Record<string, unknown>; hidden?: boolean },
   ) => {
     const found = mem.rows.find((row) => row.kind === 'PAGE' && row.parentId === page.parentId && row.slug === page.slug);
     if (found) {

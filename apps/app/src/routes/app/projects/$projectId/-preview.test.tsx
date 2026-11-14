@@ -34,7 +34,7 @@ vi.mock('@/hooks/api/route-prefetch', () => ({
 }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/components/editor/docs-version', () => ({ publishedVersionSlugFor: () => undefined }));
-vi.mock('@/components/markdown', () => ({ Markdown: () => null }));
+vi.mock('@/components/markdown', () => ({ Markdown: () => null, useMathReady: () => true }));
 vi.mock('@/components/site/page-icon', () => ({ PageIcon: () => null }));
 vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/lib/site-theme', () => ({ projectThemeStyle: () => ({}), projectThemeVariables: () => ({}), resolveProjectTheme: () => undefined }));

@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { LanguageFn } from 'highlight.js';
-import { type ComponentProps, Suspense, useMemo } from 'react';
+import { type ComponentProps, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
@@ -26,7 +26,7 @@ import { CORE_HIGHLIGHT_GRAMMARS, rehypeReaderHighlight } from '@/components/sit
 import { ScrollTable, TableCell, TableHeaderCell } from '@/components/site/scroll-region';
 import { lazyHighlightLanguages, lazyHighlightLanguagesNamed } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
-import { highlightLanguageModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
+import { highlightLanguageModule, mathMarkdownModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -49,8 +49,22 @@ export interface MarkdownProps {
 
 /** The rich renderer's chunk (see richMarkdownModule). */
 export const loadRichMarkdown = () => import('./markdown-rich').then((module) => module.default);
+/** KaTeX for pages with math (see mathMarkdownModule). */
+export const loadMathMarkdown = () => import('./markdown-math').then((module) => module.mathPlugins);
 
 const RICH_MODULES = [richMarkdownModule];
+const RICH_MATH_MODULES = [richMarkdownModule, mathMarkdownModule];
+const RICH_MATH_MARKER = { [HYDRATION_MODULE_ATTRIBUTE]: RICH_MATH_MODULES.map((module) => module.key).join(' ') };
+
+/** The modules this page's article island waits on, by the renderer's own
+ *  decision (readerRenderMode). The reader's navigation loader awaits them, so
+ *  a navigation never shows the island's plain pending body, even where the
+ *  line-scan guess before it missed (math that only normalization reveals). */
+export const rendererModulesFor = (content: string) => {
+  const { rich, math } = readerRenderMode(content);
+  if (!rich) return [];
+  return math ? RICH_MATH_MODULES : RICH_MODULES;
+};
 
 /** Rewrite a root-relative internal doc link to the site base. External URLs,
  *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
@@ -123,33 +137,114 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
   mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
 
+/** The content to show. A client update to content that newly needs KaTeX
+ *  (switching pages in a preview, which has no navigation loader) keeps the
+ *  current content on screen until the math module is in, rather than the
+ *  island's plain pending body, which would show raw TeX. Before the split the
+ *  rich module carried KaTeX, so such a switch typeset at once. The first
+ *  render (server, hydration) always shows the content as given. */
+function useShownContent(content: string): string {
+  const [shown, setShown] = useState(content);
+  const waitsForMath =
+    content !== shown && mathMarkdownModule.status() !== 'loaded' && readerRenderMode(content).math && readerRenderMode(content).rich;
+  useEffect(() => {
+    if (content === shown) return;
+    if (!waitsForMath) {
+      setShown(content);
+      return;
+    }
+    let current = true;
+    // A failed download shows the content anyway: the island retries and says so.
+    mathMarkdownModule
+      .load()
+      .catch(() => undefined)
+      .finally(() => {
+        if (current) setShown(content);
+      });
+    return () => {
+      current = false;
+    };
+  }, [content, shown, waitsForMath]);
+  return waitsForMath ? shown : content;
+}
+
+/** Whether content can mount without waiting on KaTeX: false only while a
+ *  rich page with math waits for the math module on the client. A view that
+ *  mounts a freshly fetched page (the dashboard preview, between its loading
+ *  skeleton and the page) keeps its own loading state meanwhile, so the article
+ *  never appears with raw TeX. A failed download counts as settled: the
+ *  island then retries and says so, as everywhere else. */
+export function useMathReady(content: string | undefined): boolean {
+  const needsMath = useMemo(() => {
+    if (typeof content !== 'string') return false;
+    const { rich, math } = readerRenderMode(content);
+    return rich && math;
+  }, [content]);
+  const loaded = mathMarkdownModule.status() === 'loaded';
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!needsMath || loaded) return;
+    let current = true;
+    mathMarkdownModule
+      .load()
+      .catch(() => undefined)
+      .finally(() => {
+        if (current) setSettled(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [needsMath, loaded]);
+  return !needsMath || loaded || settled;
+}
+
 /** Render Markdown + MDX-style components (Cards, Tabs, Steps, Callouts…) with
  *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting.
  *  Pass `site` on a published site so internal links resolve to the site base. */
 export function Markdown(props: MarkdownProps) {
+  // Mounted fresh on the client, not rendered on the server or hydrating its
+  // markup: the server snapshot answers during SSR and hydration, and the
+  // first render's answer is kept.
+  const hydrating = useSyncExternalStore(subscribeNever, notHydrating, isHydrating);
+  const [freshMount] = useState(() => !hydrating);
+  const content = useShownContent(props.content);
+  const mathReady = useMathReady(content);
+  // A fresh client mount of a rich page with math (any view that mounts a page
+  // after loading it, or after showing nothing) waits for KaTeX, rather than
+  // the island's plain pending body, which would show raw TeX. Before the split
+  // the rich module carried KaTeX. Server rendering and hydration are unchanged.
+  if (freshMount && !mathReady) return <div aria-busy="true" className={props.className} data-markdown-pending="" />;
+  return <MarkdownContent {...props} content={content} />;
+}
+
+const subscribeNever = () => () => undefined;
+const notHydrating = () => false;
+const isHydrating = () => true;
+
+function MarkdownContent(props: MarkdownProps) {
   // Read with the renderer's own Markdown semantics (nested fences, container
   // ends, `r&#117;st`), the same on the server and in the browser, so the
   // modules the server marked are the ones hydration expects. Past the parser's
   // safety bounds, the line-based checks decide, erring towards loading.
-  const { rich, usage } = readerRenderMode(props.content);
+  const { rich, math, usage } = readerRenderMode(props.content);
   const languages = usage ? lazyHighlightLanguagesNamed(usage.languages, props.content) : lazyHighlightLanguages(props.content);
-  if (languages.length === 0) return <MarkdownBody {...props} rich={rich} />;
+  if (languages.length === 0) return <MarkdownBody {...props} rich={rich} math={math} />;
   // Code in a language outside the core grammars: its grammars load like the
   // rich renderer (before hydrating, and in the reader's loaders), and until
   // they have, the plain body keeps those blocks readable, unhighlighted.
   const modules = languages.map(highlightLanguageModule);
-  const plain = <MarkdownBody {...props} rich={rich} />;
+  const plain = <MarkdownBody {...props} rich={rich} math={math} />;
   const marker = { [HYDRATION_MODULE_ATTRIBUTE]: modules.map((module) => module.key).join(' ') };
   return (
     <Suspense fallback={plain}>
       <HydrationIsland className="contents" {...marker} modules={modules} pending={plain} failed={() => plain}>
-        {() => <MarkdownBody {...props} rich={rich} highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))} />}
+        {() => <MarkdownBody {...props} rich={rich} math={math} highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))} />}
       </HydrationIsland>
     </Suspense>
   );
 }
 
-function MarkdownBody({ content, className, site, highlightGrammars, rich }: MarkdownProps & { rich: boolean }) {
+function MarkdownBody({ content, className, site, highlightGrammars, rich, math }: MarkdownProps & { rich: boolean; math: boolean }) {
   if (rich) {
     // The router loads the rich chunk before hydrating markup it rendered, and
     // the reader's loaders before navigating. Until it loads, hydrating keeps
@@ -159,10 +254,24 @@ function MarkdownBody({ content, className, site, highlightGrammars, rich }: Mar
     const plain = <MarkdownRenderer content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
     return (
       <Suspense fallback={plain}>
-        <HydrationIsland className="contents" {...richMarkdownModule.marker} modules={RICH_MODULES} pending={plain} failed={() => plain}>
+        <HydrationIsland
+          className="contents"
+          {...(math ? RICH_MATH_MARKER : richMarkdownModule.marker)}
+          modules={math ? RICH_MATH_MODULES : RICH_MODULES}
+          pending={plain}
+          failed={() => plain}
+        >
           {() => {
             const Rich = richMarkdownModule.read();
-            return <Rich content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
+            return (
+              <Rich
+                content={content}
+                className={className}
+                site={site}
+                highlightGrammars={highlightGrammars}
+                math={math ? mathMarkdownModule.read() : undefined}
+              />
+            );
           }}
         </HydrationIsland>
       </Suspense>
