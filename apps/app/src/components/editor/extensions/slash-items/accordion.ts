@@ -1,4 +1,5 @@
 import { ListCollapse } from 'lucide-react';
+import { insertBlockAtFirstItem } from './insert-items';
 import { type SlashItem, scaffoldText } from './types';
 
 export const accordionSlashItems: SlashItem[] = [
@@ -9,25 +10,20 @@ export const accordionSlashItems: SlashItem[] = [
     glyph: '▾',
     keywords: ['accordion', 'collapse', 'expand', 'faq', 'toggle'],
     command: ({ editor, range, locale }) =>
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({
-          type: 'mdxAccordionGroup',
-          content: [
-            {
-              type: 'mdxAccordion',
-              attrs: { title: scaffoldText('editor.slash.default.firstSection', locale) },
-              content: [{ type: 'paragraph' }],
-            },
-            {
-              type: 'mdxAccordion',
-              attrs: { title: scaffoldText('editor.slash.default.secondSection', locale) },
-              content: [{ type: 'paragraph' }],
-            },
-          ],
-        })
-        .run(),
+      insertBlockAtFirstItem(editor, range, {
+        type: 'mdxAccordionGroup',
+        content: [
+          {
+            type: 'mdxAccordion',
+            attrs: { title: scaffoldText('editor.slash.default.firstSection', locale) },
+            content: [{ type: 'paragraph' }],
+          },
+          {
+            type: 'mdxAccordion',
+            attrs: { title: scaffoldText('editor.slash.default.secondSection', locale) },
+            content: [{ type: 'paragraph' }],
+          },
+        ],
+      }),
   },
 ];
