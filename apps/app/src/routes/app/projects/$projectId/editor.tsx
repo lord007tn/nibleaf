@@ -947,19 +947,18 @@ function EditorPage() {
   );
   const dropFixParams = useCallback(() => rewriteSearch((previous) => ({ ...previous, fix: undefined, fixTarget: undefined })), [rewriteSearch]);
   // The bar shows once the page (or group) it is about is on screen, and goes when the writer moves on.
+  // It waits for the writer's access: the editor remounts once that is known, which would drop the landing.
   const fixOnScreen =
     fixArrival !== null &&
     !switching &&
+    !permissionsPending &&
     (selectedGroup ? selectedGroup.id === fixArrival.pageId : page?.id === fixArrival.pageId && activeId === page.id);
-  const fixShown = useRef(false);
+  // The arrival that has been on screen: only that one goes when the page changes, never a newer one still on its way.
+  const fixShownKey = useRef<number | null>(null);
   useEffect(() => {
-    if (!fixArrival) {
-      fixShown.current = false;
-    } else if (fixOnScreen) {
-      fixShown.current = true;
-    } else if (fixShown.current) {
-      setFixArrival(null);
-    }
+    if (!fixArrival) return;
+    if (fixOnScreen) fixShownKey.current = fixArrival.key;
+    else if (fixShownKey.current === fixArrival.key) setFixArrival(null);
   }, [fixArrival, fixOnScreen]);
   // "Back to publish" sets `?publish=true`; while the editor is open that opens the sheet, and is dropped again.
   const [publishRequest, setPublishRequest] = useState(0);
