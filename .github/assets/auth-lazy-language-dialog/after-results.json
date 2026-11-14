@@ -1,0 +1,35 @@
+[
+  {
+    "locale": "en",
+    "width": 1440,
+    "key": "Enter",
+    "pickerAtLoad": 0,
+    "pickerAfterFocus": 3,
+    "focusInSearch": true,
+    "focusBack": true,
+    "dialogGone": true,
+    "lang": "en/ltr"
+  },
+  {
+    "locale": "ar",
+    "width": 1440,
+    "key": "Space",
+    "pickerAtLoad": 0,
+    "pickerAfterFocus": 3,
+    "focusInSearch": true,
+    "focusBack": true,
+    "dialogGone": true,
+    "lang": "ar/rtl"
+  },
+  {
+    "locale": "ar",
+    "width": 390,
+    "key": "Enter",
+    "pickerAtLoad": 0,
+    "pickerAfterFocus": 3,
+    "focusInSearch": true,
+    "focusBack": true,
+    "dialogGone": true,
+    "lang": "ar/rtl"
+  }
+]
