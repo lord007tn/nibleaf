@@ -3,6 +3,7 @@ import { siteT } from '@nibleaf/i18n/site';
 import { markdownAliasPath } from '@nibleaf/shared/markdown-discovery';
 import { Check, ChevronDown, Copy } from 'lucide-react';
 import { type ComponentProps, useState } from 'react';
+import type { ContentLanguageAttributes } from '@/components/site/content-language';
 import { headerMenusModule } from '@/components/site/header-menus-module';
 import { announce } from '@/components/site/reader-content-controls';
 import { useIntentModule } from '@/lib/intent-module';
@@ -38,12 +39,24 @@ export function pageActionsTriggerProps(lang?: string): ComponentProps<'button'>
   return {
     type: 'button',
     'aria-label': siteT(lang)('pageActions'),
-    className: cn(pageActionButtonClass, '-ms-px rounded-e-md px-2'),
+    // 44px wide as well as tall on touch screens (pointer-coarse:h-11 above).
+    className: cn(pageActionButtonClass, '-ms-px rounded-e-md px-2 pointer-coarse:min-w-11 pointer-coarse:justify-center'),
     children: <ChevronDown className="size-3.5" aria-hidden />,
   };
 }
 
-export function PageActions({ pageHref, lang, className }: { pageHref: string; lang?: string; className?: string }) {
+export function PageActions({
+  pageHref,
+  lang,
+  attributes,
+  className,
+}: {
+  pageHref: string;
+  lang?: string;
+  /** The reader's language and direction, for a fallback page whose article is in another language. */
+  attributes?: ContentLanguageAttributes;
+  className?: string;
+}) {
   const t = siteT(lang);
   const markdownHref = pageMarkdownHref(pageHref);
   const [copied, setCopied] = useState(false);
@@ -61,7 +74,7 @@ export function PageActions({ pageHref, lang, className }: { pageHref: string; l
     }
   };
   return (
-    <div className={cn('inline-flex shrink-0 print:hidden', className)} data-page-actions="">
+    <div className={cn('inline-flex shrink-0 print:hidden', className)} data-page-actions="" {...attributes}>
       <button type="button" onClick={copy} className={cn(pageActionButtonClass, 'rounded-s-md')} title={t('copyPageHint')}>
         {copied ? <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
         <span>{t('copyPage')}</span>

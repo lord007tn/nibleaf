@@ -49,6 +49,16 @@ describe('PageActions', () => {
     expect(menu?.getAttribute('aria-label')).toBe('إجراءات أخرى للصفحة');
     expect(menu?.getAttribute('aria-haspopup')).toBe('menu');
     expect(host.firstElementChild?.className).toContain('print:hidden');
+    // 44px wide on touch screens, like its height.
+    expect(menu?.className).toContain('pointer-coarse:min-w-11');
+  });
+
+  it('carries the reader language and direction it is given (a fallback page)', () => {
+    const html = renderToStaticMarkup(<PageActions pageHref="/guides/webhooks" lang="ar" attributes={{ lang: 'ar', dir: 'rtl' }} />);
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    expect(host.firstElementChild?.getAttribute('lang')).toBe('ar');
+    expect(host.firstElementChild?.getAttribute('dir')).toBe('rtl');
   });
 
   it('copies the Markdown twin and says so through the shared live region', async () => {

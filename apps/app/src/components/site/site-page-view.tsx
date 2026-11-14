@@ -1,5 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
+import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import { blockDirection } from '@nibleaf/shared/script-direction';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type ComponentProps, Suspense, startTransition, useEffect, useState } from 'react';
@@ -291,11 +292,21 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         <h1 tabIndex={-1} className="min-w-0 outline-none font-semibold text-3xl tracking-tight md:text-4xl" dir={blockDirection(page.title)}>
           {page.title}
         </h1>
-        <PageActions
-          pageHref={siteHref(projectId, page.path, { lang: readerNavigationLanguage, version: versionPrefix })}
-          lang={readerLanguage}
-          className="md:mt-1.5"
-        />
+        {/* Only on a page with a public Markdown twin (the rule the server's
+            `.md` endpoint and the discovery header use): never on a private
+            site, where Copy page would copy private text and the AI actions
+            would hand its URL to a third party. The twin is served in the
+            page's own language, so a fallback page links its English twin
+            (the reader's ?lang= answers 404), with the controls labelled in
+            the reader's language and direction. */}
+        {isPublicMarkdownPage(data) ? (
+          <PageActions
+            pageHref={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix })}
+            lang={readerLanguage}
+            attributes={chromeLanguage}
+            className="md:mt-1.5"
+          />
+        ) : null}
       </div>
       {page.description ? (
         <p className="mt-3 text-lg text-muted-foreground" dir={blockDirection(page.description)}>
