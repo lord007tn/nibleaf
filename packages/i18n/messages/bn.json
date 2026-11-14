@@ -3025,7 +3025,7 @@
   "settings_usage_unit_gib": "GiB",
   "settings_integrations_provider_github": "GitHub",
   "settings_integrations_provider_gitlab": "GitLab",
-  "settings_integrations_provider_publicgit": "পাবলিক Git",
+  "settings_integrations_provider_publicgit": "Public Git",
   "settings_integrations_provider_googleanalytics": "Google Analytics",
   "settings_integrations_provider_plausible": "Plausible",
   "settings_integrations_provider_slack": "Slack",

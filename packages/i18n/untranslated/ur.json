@@ -25,7 +25,8 @@
     "settings_integrations_placeholder_discord",
     "settings_integrations_placeholder_zapier",
     "settings_ai_source_managed",
-    "settings_joinlinks_domainplaceholder"
+    "settings_joinlinks_domainplaceholder",
+    "settings_integrations_provider_publicgit"
   ],
   "pending": []
 }
