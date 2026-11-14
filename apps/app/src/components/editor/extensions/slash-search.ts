@@ -34,12 +34,17 @@ const slashItemName = (item: SlashItem): string => item.titleKey.split('.')[2] ?
 
 // --- Text folding -----------------------------------------------------------
 
-const isFoldedMark = (code: number): boolean =>
-  (code >= 0x03_00 && code <= 0x03_6f) || // Latin combining accents, after NFD
+/** Latin combining accents, as NFD writes "é" (e + U+0301). */
+const isLatinAccent = (code: number): boolean => code >= 0x03_00 && code <= 0x03_6f;
+const isArabicMark = (code: number): boolean =>
   (code >= 0x06_10 && code <= 0x06_1a) || // Arabic honorific signs
   (code >= 0x06_4b && code <= 0x06_5f) || // Arabic harakat, shadda, sukun, hamza and madda marks
-  code === 0x06_70 || // Arabic superscript alef
-  code === 0x06_40; // Arabic tatweel
+  code === 0x06_70; // Arabic superscript alef
+const TATWEEL = 0x06_40;
+/** The characters folding may drop: accents, Arabic marks and tatweel. */
+const isFoldable = (code: number): boolean => isLatinAccent(code) || isArabicMark(code) || code === TATWEEL;
+const LETTER = /^\p{L}$/u;
+const ARABIC_LETTER = /^\p{Script=Arabic}$/u;
 
 /** Letters a writer commonly types for one another. */
 const LETTER_FOLDS: ReadonlyMap<string, string> = new Map([
@@ -49,14 +54,33 @@ const LETTER_FOLDS: ReadonlyMap<string, string> = new Map([
   ['ک', 'ك'],
 ]);
 
-/** Lower-case `text` and drop accents and Arabic diacritics: "Étapes" → "etapes", "مرقّمة" → "مرقمه". */
+/**
+ * Lower-case `text` and drop accents and Arabic diacritics where they sit on a
+ * letter: "Étapes" → "etapes", "مرقّمة" → "مرقمه", "ملاحظـــة" → "ملاحظه". A Latin
+ * accent is dropped after any letter; an Arabic mark or tatweel only after an
+ * Arabic letter. A mark with no such letter before it (at the start of a word,
+ * after a digit or punctuation, or a word made only of marks) is kept, so it
+ * matches nothing instead of vanishing.
+ */
 const foldSlashText = (text: string): string => {
   let folded = '';
+  // The kind of letter the next marks would sit on.
+  let base: 'arabic' | 'letter' | null = null;
   for (const char of text.normalize('NFD').toLowerCase()) {
-    if (isFoldedMark(char.codePointAt(0) ?? 0)) continue;
+    const code = char.codePointAt(0) ?? 0;
+    if (isLatinAccent(code) && base) continue;
+    if ((isArabicMark(code) || code === TATWEEL) && base === 'arabic') continue;
+    if (!isFoldable(code)) base = LETTER.test(char) ? (ARABIC_LETTER.test(char) ? 'arabic' : 'letter') : null;
     folded += LETTER_FOLDS.get(char) ?? char;
   }
   return folded;
+};
+
+/** A folded query word that can't be part of any block name: empty, holding whitespace other than a plain space, or a mark that sat on no letter. */
+const unmatchableWord = (folded: string): boolean => {
+  if (folded === '') return true;
+  for (const char of folded) if (char.trim() === '' || isFoldable(char.codePointAt(0) ?? 0)) return true;
+  return false;
 };
 
 // Letters, combining marks (Devanagari and Bengali vowel signs are part of a word) and digits.
@@ -132,11 +156,26 @@ interface PreparedQuery {
   /** Folded words joined by one space. */
   text: string;
   words: string[];
+  /** False when some word can't be part of any block name, so the query matches nothing. */
+  matchable: boolean;
 }
 
+/**
+ * Split at plain spaces only, then fold each word. Other whitespace (no-break
+ * and typographic spaces, tabs, the ideographic space) never separates words:
+ * main ended its query there, so here it makes the query match nothing. So does
+ * a word that is only marks or tatweel, which would otherwise fold away.
+ */
 const prepareSlashQuery = (query: string): PreparedQuery => {
-  const words = wordsOf(foldSlashText(query));
-  return { text: words.join(' '), words };
+  const words: string[] = [];
+  let matchable = true;
+  for (const raw of query.split(' ')) {
+    if (raw === '') continue;
+    const word = foldSlashText(raw);
+    if (unmatchableWord(word)) matchable = false;
+    words.push(word);
+  }
+  return { text: words.join(' '), words, matchable };
 };
 
 interface SearchEntry {
@@ -202,6 +241,7 @@ const matchTier = (entry: SearchEntry, query: PreparedQuery): SlashMatchTier | n
 export const searchSlashItems = (items: SlashItem[], query: string, locale: Locale = 'en'): SlashItem[] => {
   const prepared = prepareSlashQuery(query);
   if (prepared.words.length === 0) return items;
+  if (!prepared.matchable) return [];
   const scored: { item: SlashItem; tier: number; used: number; order: number }[] = [];
   items.forEach((item, order) => {
     const tier = matchTier(searchEntry(item, locale), prepared);
@@ -211,16 +251,20 @@ export const searchSlashItems = (items: SlashItem[], query: string, locale: Loca
 };
 
 /**
- * Whether every character of `query` can belong to a block name: a letter, a
- * combining mark, a digit, whitespace, or a punctuation character that occurs
- * in the title or keywords of one of `items` (in the languages searched). "/"
- * and "\" never do (paths). Anything else ("?", "!", "#", "(", "؟", "،") means
- * the text after the slash is not a slash command.
+ * Whether the text after the slash could be a slash command at all. Every word
+ * must be matchable (see prepareSlashQuery: no mark-only word, no whitespace
+ * but plain spaces), and every character a letter, a mark on a letter, a digit,
+ * or a punctuation character that occurs in the title or keywords of one of
+ * `items` (in the languages searched). "/" and "\" never are (paths). Anything
+ * else ("?", "!", "#", "(", "؟", "،", a zero-width space or joiner, a direction
+ * mark) means it is not a command.
  */
-export const slashQueryCharactersKnown = (query: string, items: SlashItem[], locale: Locale = 'en'): boolean => {
+export const slashQueryCouldMatch = (query: string, items: SlashItem[], locale: Locale = 'en'): boolean => {
+  const prepared = prepareSlashQuery(query);
+  if (!prepared.matchable) return false;
   let known: Set<string> | null = null;
-  for (const char of foldSlashText(query)) {
-    if (WORD_CHARACTER.test(char) || char.trim() === '') continue;
+  for (const char of prepared.words.join('')) {
+    if (WORD_CHARACTER.test(char)) continue;
     if (char === '/' || char === '\\') return false;
     if (!known) {
       known = new Set();

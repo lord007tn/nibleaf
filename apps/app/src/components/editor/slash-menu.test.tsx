@@ -334,4 +334,60 @@ describe('closing the menu', () => {
       expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
     },
   );
+
+  /** Type `text`, check no menu, press Enter, and check the text stayed exactly and only a paragraph was added. */
+  const keepsAsText = async (text: string) => {
+    const editor = await make(doc(paragraph()));
+    await caretIn(editor);
+    await typeText(editor, text);
+    expect(isSlashMenuOpen(editor.state)).toBe(false);
+    expect(menu()).toBeNull();
+    await press(editor, 'Enter');
+    expect(editor.state.doc.childCount).toBe(2);
+    expect(editor.state.doc.child(0).type.name).toBe('paragraph');
+    expect(editor.state.doc.child(0).textContent).toBe(text);
+    expect(editor.state.doc.child(1).type.name).toBe('paragraph');
+    expect(editor.state.doc.child(1).textContent).toBe('');
+    expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
+  };
+
+  // A mark that sits on no letter is kept, not folded away, so a word made only
+  // of marks (or tatweel) can't vanish and leave a blank or shorter query.
+  it.each([
+    ['a combining acute alone', '/́'],
+    ['a fatha alone', '/َ'],
+    ['a tatweel alone', '/ـ'],
+    ['two mark-only words', '/́ َ'],
+    ['"code" then an acute-only word', '/code ́'],
+    ['"code" then a fatha-only word', '/code َ'],
+    ['"code" then a tatweel-only word', '/code ـ'],
+    ['an acute before "code"', '/́code'],
+    ['a tatweel before "code"', '/ـcode'],
+  ])('keeps %s exactly as typed: no menu, nothing inserted, and Enter only starts a paragraph', async (_name, text) => {
+    await keepsAsText(text);
+  });
+
+  // Only a plain space separates words. Other whitespace ended main's query, so
+  // here it is not a command either: it neither splits words nor disappears.
+  it.each([
+    ['a no-break space', '/code block'],
+    ['an em space', '/code block'],
+    ['a hair space', '/code block'],
+    ['an ideographic space', '/code　block'],
+    ['a tab', '/code\tblock'],
+  ])('keeps "code", %s, "block" exactly as typed: no menu, nothing inserted', async (_name, text) => {
+    await keepsAsText(text);
+  });
+
+  // Zero-width and direction marks were already not commands at 19de7b53 (no
+  // block name holds them); kept here so they stay that way.
+  it.each([
+    ['a zero-width space', '/code​block'],
+    ['a zero-width non-joiner', '/code‌'],
+    ['a zero-width joiner', '/code‍'],
+    ['a left-to-right mark', '/‎code'],
+    ['a right-to-left mark', '/code‏'],
+  ])('keeps "code" with %s exactly as typed: no menu, nothing inserted', async (_name, text) => {
+    await keepsAsText(text);
+  });
 });

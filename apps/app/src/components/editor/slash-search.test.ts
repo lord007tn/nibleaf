@@ -44,10 +44,9 @@ describe('multi-word slash queries', () => {
     expect(titles('api example')).toEqual(expect.arrayContaining([key('requestExample'), key('responseExample')]));
   });
 
-  it('ignores letter case, extra spaces and the separators inside names', () => {
+  it('ignores letter case, extra plain spaces and the separators inside names', () => {
     expect(first('CODE BLOCK')).toBe(key('codeBlock'));
     expect(first('  code    block  ')).toBe(key('codeBlock'));
-    expect(first('code\tblock')).toBe(key('codeBlock'));
     expect(first('todo')).toBe(key('todo'));
     expect(first('to do')).toBe(key('todo'));
     expect(first('codeblock')).toBe(key('codeBlock'));
@@ -55,6 +54,13 @@ describe('multi-word slash queries', () => {
 
   it('returns nothing when any word matches no block', () => {
     expect(titles('zzz')).toEqual([]);
+    // Only a plain space separates words; a tab or no-break space ends a slash command, as on main.
+    expect(titles('code\tblock')).toEqual([]);
+    expect(titles('code block')).toEqual([]);
+    // A mark that sits on no letter is kept, so it matches nothing instead of vanishing.
+    expect(titles('́')).toEqual([]);
+    expect(titles('code ́')).toEqual([]);
+    expect(titles('ـcode')).toEqual([]);
     // Words match from their start: "ock" is inside "block" but starts no word.
     expect(titles('ock')).toEqual([]);
     expect(titles('code lock')).toEqual([]);
