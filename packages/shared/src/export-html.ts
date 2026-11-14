@@ -29,6 +29,123 @@ const readerAllowsUrl = (value: string, property: string): boolean => {
   return protocols.some((protocol) => value.slice(0, colon) === protocol);
 };
 
+// Only short, unambiguous ordinary labels bypass href-only protocols. Images,
+// references, escapes, code and long/nested ambiguity go through the parser.
+const isPlainLinkLabel = (source: string, end: number): boolean => {
+  let depth = 1;
+  for (let at = end - 1; at >= Math.max(0, end - 128); at--) {
+    const character = source[at];
+    if (character === '\\' || character === '`') return false;
+    if (character === ']') depth++;
+    if (character === '[') {
+      if (source[at - 1] === '\\') return false;
+      if (--depth === 0) return source[at - 1] !== '!';
+    }
+  }
+  return false;
+};
+
+/** Conservative linear preflight, not an HTML filter. A positive result is
+ * always checked by the real Markdown/HTML parsers below. Ordinary formatting
+ * tags and http(s)/relative links do not need that work. */
+export const mayHaveActiveExportHtml = (source: string): boolean => {
+  const outside = /[<&\]]|\bon/gi;
+  const inside = /[<>&:"'\]]|\bon/gi;
+  let cursor = 0;
+  let inTag = false;
+  let quote = '';
+  for (;;) {
+    const candidates = inTag ? inside : outside;
+    candidates.lastIndex = cursor;
+    const match = candidates.exec(source);
+    if (!match) break;
+    cursor = candidates.lastIndex;
+    const at = match.index;
+    const character = source[at];
+    if (character === '<') {
+      let end = at + 1;
+      while (source[end] === '/' || source[end] === ' ' || source[end] === '\t' || source[end] === '\n' || source[end] === '\r') end++;
+      const start = end;
+      while (end < source.length) {
+        const code = source.charCodeAt(end) | 32;
+        if (code < 97 || code > 122) break;
+        end++;
+      }
+      const name = source.slice(start, end).toLowerCase();
+      if (!inTag && name && (start === at + 1 || (start === at + 2 && source[at + 1] === '/'))) {
+        inTag = true;
+        quote = '';
+      }
+      if (ACTIVE_TAGS.has(name) || (source[end] === ':' && name !== 'http' && name !== 'https')) return true;
+      cursor = end;
+    } else if (character === '>') {
+      if (!quote) inTag = false;
+    } else if (character === '"' || character === "'") {
+      if (inTag && (!quote || quote === character)) quote = quote ? '' : character;
+    } else if (character === '&') {
+      // Numeric references can encode any part of a scheme. Named colon and
+      // whitespace references can hide its delimiter or split its letters.
+      const entity = source.slice(at + 1, at + 9).toLowerCase();
+      if (entity.startsWith('#') || entity.startsWith('colon;') || entity.startsWith('tab;') || entity.startsWith('newline;')) return true;
+    } else if (character === ']') {
+      if (source[at + 1] !== '(' && source[at + 1] !== ':') continue;
+      let start = at + 2;
+      while (source[start] === ' ' || source[start] === '\t' || source[start] === '\n' || source[start] === '\r') start++;
+      if (source[start] === '<') start++;
+      let end = start;
+      while (end < source.length && !'/?#()<>[] \t\n\r'.includes(source[end] ?? '') && source[end] !== ':') end++;
+      if (source[end] === ':') {
+        const scheme = source.slice(start, end).toLowerCase();
+        if (
+          scheme !== 'http' &&
+          scheme !== 'https' &&
+          !(source[at + 1] === '(' && readerAllowsUrl(`${scheme}:`, 'href') && isPlainLinkLabel(source, at))
+        )
+          return true;
+      }
+    } else if (character === ':') {
+      if (!inTag || source[at - 1] === ']') continue; // Destinations were checked at their opener.
+      let start = at;
+      while (start > 0) {
+        const code = source.charCodeAt(start - 1) | 32;
+        if (
+          (code >= 97 && code <= 122) ||
+          (code >= 48 && code <= 57) ||
+          source.charCodeAt(start - 1) <= 32 ||
+          source.charCodeAt(start - 1) === 127 ||
+          '+-.'.includes(source[start - 1] ?? '')
+        )
+          start--;
+        else break;
+      }
+      if (dangerousUrl(source.slice(start, at + 1))) return true;
+    } else {
+      // Only this branch handles the case-insensitive `on` candidate. Skip its
+      // remaining letters once, so repeated prefixes cannot cause rescanning.
+      const previous = source.charCodeAt(at - 1) | 32;
+      if (
+        (previous >= 97 && previous <= 122) ||
+        (previous >= 48 && previous <= 57) ||
+        source[at - 1] === '_' ||
+        source[at - 1] === '.' ||
+        source[at - 1] === '-'
+      )
+        continue;
+      if (inTag && !quote) return true;
+      let end = at + 2;
+      while (end < source.length) {
+        const code = source.charCodeAt(end) | 32;
+        if (code < 97 || code > 122) break;
+        end++;
+      }
+      cursor = end;
+      while (source[end] === ' ' || source[end] === '\t' || source[end] === '\r' || source[end] === '\n') end++;
+      if (source[end] === '=') return true;
+    }
+  }
+  return false;
+};
+
 interface Destination {
   source: string;
   from: number;
@@ -47,23 +164,134 @@ interface RenderSpan {
   positions: number[];
 }
 
+interface ParseContext {
+  wholeSource: boolean;
+  destinations: Map<string, Map<number, Destination>>;
+  latest?: Destination;
+}
+// The parser configuration and hooks are immutable between synchronous calls.
+// Per-document positions remain in the parse context and weak token maps.
+let parsing: ParseContext | undefined;
+const markdown = new MarkdownIt({ html: true });
+markdown.core.ruler.after('block', 'export_url_positions', () => {
+  if (parsing) parsing.wholeSource = false;
+});
+const boundaryTokens = new WeakSet<Token>();
+const BaseBlockState = markdown.block.State;
+markdown.block.State = class extends BaseBlockState {
+  override push(type: string, tag: string, nesting: Token['nesting']): Token {
+    const token = super.push(type, tag, nesting);
+    if (type !== 'html_block' || this.line >= this.lineMax || this.isEmpty(this.line)) return token;
+    // html_block has advanced line, but its container state is still in
+    // scope. Ask the paragraph rules whether the next block interrupts text.
+    const parent = this.parentType;
+    this.parentType = 'paragraph';
+    const indented = (this.sCount[this.line] ?? 0) - this.blkIndent > 3;
+    const terminates = !indented && this.md.block.ruler.getRules('paragraph').some((rule) => rule(this, this.line, this.lineMax, true));
+    this.parentType = parent;
+    const next = this.src.slice((this.bMarks[this.line] ?? 0) + (this.tShift[this.line] ?? 0), this.eMarks[this.line]).trim();
+    // A dash-only rule would become a setext underline after HTML is text.
+    const setext = next.length > 0 && Array.from(next).every((character) => character === '-');
+    if (!terminates || setext) boundaryTokens.add(token);
+    return token;
+  }
+};
+const locations = new WeakMap<Token, InlineLocation>();
+const BaseState = markdown.inline.State;
+markdown.inline.State = class extends BaseState {
+  override push(type: string, tag: string, nesting: Token['nesting']): Token {
+    const token = super.push(type, tag, nesting);
+    if (type === 'html_inline' || type === 'link_open' || type === 'image')
+      locations.set(token, { state: this, pos: this.pos, labelEnd: this.posMax });
+    return token;
+  }
+};
+const parseDestination = markdown.helpers.parseLinkDestination;
+markdown.helpers.parseLinkDestination = (text: string, from: number, max: number) => {
+  const result = parseDestination(text, from, max);
+  if (result.ok && parsing) {
+    parsing.latest = { source: text, from, to: result.pos, wholeSource: parsing.wholeSource };
+    let entries = parsing.destinations.get(text);
+    if (!entries) {
+      entries = new Map();
+      parsing.destinations.set(text, entries);
+    }
+    entries.set(from, parsing.latest);
+  }
+  return result;
+};
+
 /** One Markdown parse, using the guard's renderer. Only unsafe rendered spans
  * are edited; original prose, MDX policy and all code tokens stay untouched. */
 export const escapeDisallowedExportHtml = (source: string): string => {
-  const lower = source.toLowerCase();
-  // References also need inspection: their schemes can contain character references.
-  if (!source.includes('<') && !source.includes('](') && !source.includes(']:') && !lower.includes('data:') && !lower.includes('javascript:'))
-    return source;
+  if (!mayHaveActiveExportHtml(source)) return source;
+  const input = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD');
+  const urlDecisions = new Map<string, Map<string, boolean>>();
+  const allowsUrl = (value: string, property: string) => {
+    let decisions = urlDecisions.get(property);
+    if (!decisions) {
+      decisions = new Map();
+      urlDecisions.set(property, decisions);
+    }
+    let allowed = decisions.get(value);
+    if (allowed === undefined) {
+      allowed = readerAllowsUrl(value, property);
+      decisions.set(value, allowed);
+    }
+    return allowed;
+  };
+  const context: ParseContext = { wholeSource: true, destinations: new Map() };
+  const destinations = context.destinations;
+  const referenceDestinations = new Map<string, Destination>();
+  const references = new Proxy<Record<string, { href: string; title: string }>>(
+    {},
+    {
+      set(target, key, value: { href: string; title: string }) {
+        if (typeof key !== 'string') return false;
+        target[key] = value;
+        if (context.latest) referenceDestinations.set(key, context.latest);
+        return true;
+      },
+    },
+  );
+  const env = { references };
+  const previous = parsing;
+  parsing = context;
+  let tokens: Token[];
+  try {
+    tokens = markdown.parse(input, env);
+  } finally {
+    parsing = previous;
+  }
+  // Candidates in actual code tokens need no source maps or HTML render.
+  // This uses the same one Markdown parse as the safety pass below.
+  const inspect = [...tokens];
+  let needsHtml = false;
+  while (inspect.length) {
+    const token = inspect.pop();
+    if (!token) continue;
+    if ((token.type === 'html_block' || token.type === 'html_inline') && mayHaveActiveExportHtml(token.content)) {
+      needsHtml = true;
+      break;
+    }
+    if (token.type === 'link_open' || token.type === 'image') {
+      const property = token.type === 'image' ? 'src' : 'href';
+      if (!allowsUrl(token.attrGet(property) ?? '', property)) {
+        needsHtml = true;
+        break;
+      }
+    }
+    if (token.children) for (const child of token.children) inspect.push(child);
+  }
+  if (!needsHtml) return source;
   const offsets: number[] = [];
-  const normalized: string[] = [];
-  for (let at = 0; at < source.length; at++) {
+  for (let at = 0; input !== source && at < source.length; at++) {
     offsets.push(at);
     const character = source[at];
-    normalized.push(character === '\r' ? '\n' : character === '\0' ? '\uFFFD' : (character ?? ''));
     if (character === '\r' && source[at + 1] === '\n') at++;
   }
-  offsets.push(source.length);
-  const input = normalized.join('');
+  if (input !== source) offsets.push(source.length);
+  const originalOffset = (at: number) => (input === source ? Math.min(at, source.length) : (offsets[at] ?? source.length));
   const lines = input.split('\n');
   const lineStarts = [0];
   for (const line of lines) lineStarts.push((lineStarts.at(-1) ?? 0) + line.length + 1);
@@ -89,8 +317,7 @@ export const escapeDisallowedExportHtml = (source: string): string => {
         tableLines.set(lineAt, row);
       }
       const original = tableDepth && row ? row.text : raw;
-      const sourceAt = (at: number) =>
-        offsets[tableDepth && row ? (row.positions[at] ?? input.length) : (lineStarts[lineAt] ?? 0) + at] ?? source.length;
+      const sourceAt = (at: number) => originalOffset(tableDepth && row ? (row.positions[at] ?? input.length) : (lineStarts[lineAt] ?? 0) + at);
       let leading = 0;
       while (line[leading] === ' ' || line[leading] === '\t') leading++;
       let cursor = original.indexOf(line, lineCursors[lineAt] ?? 0);
@@ -126,85 +353,6 @@ export const escapeDisallowedExportHtml = (source: string): string => {
     return positions;
   };
 
-  const urlDecisions = new Map<string, Map<string, boolean>>();
-  const allowsUrl = (value: string, property: string) => {
-    let decisions = urlDecisions.get(property);
-    if (!decisions) {
-      decisions = new Map();
-      urlDecisions.set(property, decisions);
-    }
-    let allowed = decisions.get(value);
-    if (allowed === undefined) {
-      allowed = readerAllowsUrl(value, property);
-      decisions.set(value, allowed);
-    }
-    return allowed;
-  };
-  const markdown = new MarkdownIt({ html: true });
-  let wholeSource = true;
-  markdown.core.ruler.after('block', 'export_url_positions', () => {
-    wholeSource = false;
-  });
-  const boundaryTokens = new WeakSet<Token>();
-  const BaseBlockState = markdown.block.State;
-  markdown.block.State = class extends BaseBlockState {
-    override push(type: string, tag: string, nesting: Token['nesting']): Token {
-      const token = super.push(type, tag, nesting);
-      if (type !== 'html_block' || this.line >= this.lineMax || this.isEmpty(this.line)) return token;
-      // html_block has advanced line, but its container state is still in
-      // scope. Ask the paragraph rules whether the next block interrupts text.
-      const parent = this.parentType;
-      this.parentType = 'paragraph';
-      const indented = (this.sCount[this.line] ?? 0) - this.blkIndent > 3;
-      const terminates = !indented && this.md.block.ruler.getRules('paragraph').some((rule) => rule(this, this.line, this.lineMax, true));
-      this.parentType = parent;
-      const next = this.src.slice((this.bMarks[this.line] ?? 0) + (this.tShift[this.line] ?? 0), this.eMarks[this.line]).trim();
-      // A dash-only rule would become a setext underline after HTML is text.
-      const setext = next.length > 0 && Array.from(next).every((character) => character === '-');
-      if (!terminates || setext) boundaryTokens.add(token);
-      return token;
-    }
-  };
-  const locations = new WeakMap<Token, InlineLocation>();
-  const BaseState = markdown.inline.State;
-  markdown.inline.State = class extends BaseState {
-    override push(type: string, tag: string, nesting: Token['nesting']): Token {
-      const token = super.push(type, tag, nesting);
-      if (type === 'html_inline' || type === 'link_open' || type === 'image')
-        locations.set(token, { state: this, pos: this.pos, labelEnd: this.posMax });
-      return token;
-    }
-  };
-  const destinations = new Map<string, Map<number, Destination>>();
-  let latest: Destination | undefined;
-  const parseDestination = markdown.helpers.parseLinkDestination;
-  markdown.helpers.parseLinkDestination = (text: string, from: number, max: number) => {
-    const result = parseDestination(text, from, max);
-    if (result.ok) {
-      latest = { source: text, from, to: result.pos, wholeSource };
-      let entries = destinations.get(text);
-      if (!entries) {
-        entries = new Map();
-        destinations.set(text, entries);
-      }
-      entries.set(from, latest);
-    }
-    return result;
-  };
-  const referenceDestinations = new Map<string, Destination>();
-  const references = new Proxy<Record<string, { href: string; title: string }>>(
-    {},
-    {
-      set(target, key, value: { href: string; title: string }) {
-        if (typeof key !== 'string') return false;
-        target[key] = value;
-        if (latest) referenceDestinations.set(key, latest);
-        return true;
-      },
-    },
-  );
-  const env = { references };
-  const tokens = markdown.parse(input, env);
   const chunks: string[] = [];
   const spans: RenderSpan[] = [];
   let length = 0;
@@ -354,8 +502,8 @@ export const escapeDisallowedExportHtml = (source: string): string => {
       destination = referenceDestinations.get(markdown.utils.normalizeReference(label));
     }
     if (!destination) throw new Error('Missing parsed export link destination');
-    const from = destination.wholeSource ? offsets[destination.from] : positions[destination.from];
-    const last = destination.wholeSource ? offsets[destination.to - 1] : positions[destination.to - 1];
+    const from = destination.wholeSource ? originalOffset(destination.from) : positions[destination.from];
+    const last = destination.wholeSource ? originalOffset(destination.to - 1) : positions[destination.to - 1];
     if (from !== undefined && last !== undefined) replacements.set(from, last + 1);
   }
   const output: string[] = [];

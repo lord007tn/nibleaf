@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+import { mayHaveActiveExportHtml } from '../export-html';
 import { normalizeMdxBlocks } from '../reader-markdown';
 import { readerSanitizeSchema } from '../reader-sanitize';
 
@@ -33,25 +34,35 @@ const exportSourcesHash = (cases: readonly ExportGuardCase[]) => exportHash(case
 
 /** Literal code tokens in the same Markdown dialect as the activity oracle.
  * Blocks include their original prefixes/delimiters; spans keep their raw bytes. */
-export const exportCodeSamples = (source: string): string[] => {
-  const parser = new MarkdownIt({ html: true });
-  const spans = new WeakMap<Token, { source: string; start: number }>();
-  const Base = parser.inline.State;
-  parser.inline.State = class extends Base {
-    override push(type: string, tag: string, nesting: Token['nesting']): Token {
-      const token = super.push(type, tag, nesting);
-      if (type === 'code_inline') spans.set(token, { source: this.src, start: this.pos });
-      return token;
-    }
+const parser = new MarkdownIt({ html: true });
+const codeSpans = new WeakMap<Token, { source: string; start: number }>();
+const BaseInlineState = parser.inline.State;
+parser.inline.State = class extends BaseInlineState {
+  override push(type: string, tag: string, nesting: Token['nesting']): Token {
+    const token = super.push(type, tag, nesting);
+    if (type === 'code_inline') codeSpans.set(token, { source: this.src, start: this.pos });
+    return token;
+  }
+};
+for (const kind of ['link_open', 'image'] as const) {
+  const original = parser.renderer.rules[kind];
+  parser.renderer.rules[kind] = (tokens, at, options, env: { marker: string }, self) => {
+    tokens[at]?.attrSet(env.marker, '');
+    return original ? original(tokens, at, options, env, self) : self.renderToken(tokens, at, options);
   };
+}
+const analyzeExport = (source: string, render: boolean) => {
+  const env = { marker: `data-export-${randomUUID()}` };
+  while (source.includes(env.marker)) env.marker = `data-export-${randomUUID()}`;
+  const tokens = parser.parse(source, env);
   const lines = source.split('\n');
-  const samples: string[] = [];
-  const pending = [...parser.parse(source, {})].reverse();
+  const code: string[] = [];
+  const pending = [...tokens].reverse();
   while (pending.length) {
     const token = pending.pop();
     if (!token) continue;
-    if ((token.type === 'fence' || token.type === 'code_block') && token.map) samples.push(lines.slice(...token.map).join('\n'));
-    const span = spans.get(token);
+    if ((token.type === 'fence' || token.type === 'code_block') && token.map) code.push(lines.slice(...token.map).join('\n'));
+    const span = codeSpans.get(token);
     if (span) {
       let at = span.start + token.markup.length;
       for (;;) {
@@ -61,7 +72,7 @@ export const exportCodeSamples = (source: string): string[] => {
         while (span.source[at] === '`') at++;
         if (at - next === token.markup.length) break;
       }
-      samples.push(span.source.slice(span.start, at));
+      code.push(span.source.slice(span.start, at));
     }
     if (token.children)
       for (let at = token.children.length - 1; at >= 0; at--) {
@@ -69,8 +80,13 @@ export const exportCodeSamples = (source: string): string[] => {
         if (child) pending.push(child);
       }
   }
-  return samples;
+  return {
+    code,
+    active: render ? countElements(parseFragment(parser.renderer.render(tokens, parser.options, env)), env.marker) : 0,
+    literal: parser.utils.unescapeAll(source),
+  };
 };
+export const exportCodeSamples = (source: string): string[] => analyzeExport(source, false).code;
 
 const activeTags = ['script', 'style', 'iframe', 'object', 'embed'];
 const dangerousUrl = (value: string): boolean => {
@@ -116,21 +132,7 @@ const countElements = (root: DefaultTreeAdapterTypes.Node, marker: string): numb
 
 /** Render with raw HTML enabled, then count actual elements, handlers and URLs,
  * including entity-encoded attribute values. Code literals are inert. */
-export const renderedActiveHtml = (source: string): number => {
-  // Mark generated links/images only, so the reader-URL rule does not mistake
-  // literal Markdown inside an HTML raw-text element for a rendered URL.
-  let marker = `data-export-${randomUUID()}`;
-  while (source.includes(marker)) marker = `data-export-${randomUUID()}`;
-  const parser = new MarkdownIt({ html: true });
-  for (const kind of ['link_open', 'image'] as const) {
-    const original = parser.renderer.rules[kind];
-    parser.renderer.rules[kind] = (tokens, at, options, env, self) => {
-      tokens[at]?.attrSet(marker, '');
-      return original ? original(tokens, at, options, env, self) : self.renderToken(tokens, at, options);
-    };
-  }
-  return countElements(parseFragment(parser.render(source)), marker);
-};
+export const renderedActiveHtml = (source: string): number => analyzeExport(source, true).active;
 
 const reader = unified()
   .use(remarkParse)
@@ -197,7 +199,6 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
   if ([baseline.kept.length, baseline.active.length, baseline.outputs.length, baseline.code?.length].some((count) => count !== cases.length))
     metadata.push('missing baseline cases');
   for (const { index, source, markers } of cases) {
-    const readerActive = readerSanitizedActiveHtml(source);
     for (const target of [0, 1] as const) {
       const expected = baseline.kept[index]?.[target];
       const active = baseline.active[index]?.[target];
@@ -209,8 +210,16 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       const output = projectors[target](source);
       const tally = stats[target] as (typeof stats)[number];
       const code = baseline.code?.[index]?.[target] ?? [];
-      const outputCode = exportCodeSamples(output);
       tally.codeSamples += code.length;
+      const unchanged = exportHash(output) === hash;
+      if (active === 0) tally.inactiveChecks++;
+      // A matching committed inactive output already proves every preservation
+      // and activity assertion. No Markdown or reader parse is needed.
+      if (unchanged && active === 0) continue;
+      const mayBeActive = mayHaveActiveExportHtml(output);
+      const needsCode = code.some((sample) => !output.includes(sample));
+      const analysis = mayBeActive || needsCode ? analyzeExport(output, mayBeActive) : undefined;
+      const outputCode = analysis?.code ?? [];
       for (const sample of code) {
         if (output.includes(sample) || outputCode.some((candidate) => candidate.includes(sample))) continue;
         tally.changedCode++;
@@ -218,7 +227,7 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       }
       // Literalizing an unsafe HTML span may entity-escape punctuation in a
       // marker. Decode escapes only for prose preservation; code stays exact.
-      const literalOutput = new MarkdownIt().utils.unescapeAll(output);
+      const literalOutput = analysis?.literal ?? parser.utils.unescapeAll(output);
       let lost = 0;
       let previous = -1;
       let duplicated = false;
@@ -246,19 +255,22 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
         tally.reordered++;
         failures.push({ index, target, reason: 'reordered markers' });
       }
-      const outputActive = renderedActiveHtml(output);
+      // A matching hash also retains a known-active main count: never let a
+      // preflight decision override the committed activity evidence.
+      const outputActive = unchanged ? active : (analysis?.active ?? 0);
       tally.active += outputActive;
       if (outputActive !== 0) failures.push({ index, target, reason: 'active HTML remains' });
-      if (active === 0) tally.inactiveChecks++;
       if (outputActive > active) {
         tally.newlyActive++;
         failures.push({ index, target, reason: 'newly active HTML' });
       }
-      if (outputActive > readerActive) {
+      // Zero is no greater than any sanitized-reader count. Enforce that
+      // stronger target without reparsing every source through the reader.
+      if (outputActive > 0) {
         tally.exceedsReader++;
         failures.push({ index, target, reason: 'active HTML exceeds sanitized reader' });
       }
-      if (exportHash(output) !== hash) {
+      if (!unchanged) {
         tally.differences++;
         if (active === 0) {
           tally.inactiveChanged++;
