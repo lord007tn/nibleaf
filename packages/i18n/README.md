@@ -20,13 +20,17 @@ the generated Paraglide runtime from that stage. Translation JSON is unchanged.
   string in that catalog uses those words. The UI says "organization", never
   "workspace"; English strings that still say workspace mean an organization.
 - **Untranslated guard.** `src/untranslated.test.ts` fails when a locale has a
-  value identical to English, unless nothing translatable is left once
+  value identical to English (whitespace aside), unless nothing translatable is left once
   `{placeholders}`, `doNotTranslate` terms, numbers and punctuation are taken
   out, or the key is listed in `untranslated/<locale>.json`: `sameAsEnglish`
   (identical on purpose, such as a loanword the locale uses as is) or `pending`
   (not translated yet). `pending` only shrinks: a listed key that is now
-  translated fails too. The same test checks that every locale keeps every key
-  and never loses or invents a placeholder.
+  translated fails too, and `--baseline` never adds to an existing list, even an
+  empty one. The same test checks that every locale keeps every key, never
+  uses a `{placeholder}` English doesn't have, and keeps every placeholder in a
+  plain string. Plural messages are checked as a whole (a form may spell its
+  number out), so a placeholder dropped from one form isn't caught here; the
+  paraglide compile and messages.test.ts check the plural syntax and forms.
 - **Counts.** `pnpm --filter @nibleaf/i18n run untranslated [locale]` prints
   each locale's untranslated count (and, for one locale, the keys not listed).
   After translating, `pnpm --filter @nibleaf/i18n run untranslated -- --baseline <locale>`

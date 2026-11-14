@@ -88,9 +88,7 @@
     "Cmd",
     "Shift",
     "Alt",
-    "Enter",
-    "Esc",
-    "Tab"
+    "Esc"
   ],
   "terms": [
     {
@@ -175,7 +173,11 @@
       "en": "join link",
       "definition": "A shareable link that lets anyone with it join, with a set role."
     },
-    { "id": "role", "en": "role", "definition": "What a member may do." },
+    {
+      "id": "role",
+      "en": "role",
+      "definition": "What a member may do."
+    },
     {
       "id": "role-owner",
       "en": "Owner",
@@ -333,7 +335,11 @@
       "en": "page views",
       "definition": "How many times pages were loaded."
     },
-    { "id": "visits", "en": "visits", "definition": "Reading sessions." },
+    {
+      "id": "visits",
+      "en": "visits",
+      "definition": "Reading sessions."
+    },
     {
       "id": "searches",
       "en": "searches",
@@ -364,13 +370,21 @@
       "en": "AI crawlers, AI visibility",
       "definition": "Bots of AI services reading the site, and how the site appears in AI answers."
     },
-    { "id": "plan", "en": "plan", "definition": "The subscription tier." },
+    {
+      "id": "plan",
+      "en": "plan",
+      "definition": "The subscription tier."
+    },
     {
       "id": "usage",
       "en": "usage",
       "definition": "How much of a plan's limits is used."
     },
-    { "id": "billing", "en": "billing", "definition": "Payment settings." },
+    {
+      "id": "billing",
+      "en": "billing",
+      "definition": "Payment settings."
+    },
     {
       "id": "notifications",
       "en": "notifications",
@@ -378,8 +392,23 @@
     },
     {
       "id": "history",
-      "en": "history, version, restore",
-      "definition": "Earlier saved versions of a page or site, and bringing one back."
+      "en": "history",
+      "definition": "A page's earlier saved versions, and a site's list of publishes."
+    },
+    {
+      "id": "version",
+      "en": "version",
+      "definition": "One saved state of a page's content; also a docs version a site keeps side by side (v1, v2)."
+    },
+    {
+      "id": "restore",
+      "en": "restore",
+      "definition": "Bringing back an earlier version, or a page from Trash."
+    },
+    {
+      "id": "promote",
+      "en": "promote into main",
+      "definition": "Merging a branch's content into the main content. Not the same as publishing, which makes the draft live."
     },
     {
       "id": "rollback",
@@ -399,8 +428,24 @@
     },
     {
       "id": "delete",
-      "en": "delete, remove",
-      "definition": "Delete = destroy permanently; remove = take out of a list (a member, a domain)."
+      "en": "delete, move to Trash",
+      "definition": "Deleting a page or group moves it to Trash, where it stays restorable for 30 days.",
+      "note": "Not permanent: keep the word distinct from \"delete permanently\"."
+    },
+    {
+      "id": "trash",
+      "en": "Trash",
+      "definition": "Where deleted pages and groups wait for 30 days before they are removed for good."
+    },
+    {
+      "id": "delete-permanently",
+      "en": "delete permanently, delete forever",
+      "definition": "Destroying something with no way back (emptying Trash, deleting an organization or site)."
+    },
+    {
+      "id": "remove",
+      "en": "remove",
+      "definition": "Taking something out of a list without destroying it (a member, a domain, a redirect)."
     },
     {
       "id": "save",
@@ -412,7 +457,11 @@
       "en": "cancel",
       "definition": "Dismiss without changes."
     },
-    { "id": "copy", "en": "copy, copied", "definition": "Clipboard actions." },
+    {
+      "id": "copy",
+      "en": "copy, copied",
+      "definition": "Clipboard actions."
+    },
     {
       "id": "self-hosted",
       "en": "self-hosted",

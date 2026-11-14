@@ -28,11 +28,25 @@ export const keepTerms = () => readJson('glossary/terms.json').doNotTranslate;
 export const exceptions = (locale) => {
   try {
     const { sameAsEnglish = [], pending = [] } = readJson(`untranslated/${locale}.json`);
-    return { sameAsEnglish, pending };
+    return { sameAsEnglish, pending, exists: true };
   } catch {
-    return { sameAsEnglish: [], pending: [] };
+    return { sameAsEnglish: [], pending: [], exists: false };
   }
 };
+
+/**
+ * The next `pending` list from the catalog's leftovers. It may only shrink: a
+ * key that isn't pending yet means a string that was translated (or never
+ * existed) is now identical to English, which is a regression to fix, not to
+ * list. Only a locale without a baseline file yet starts one from scratch.
+ */
+export function nextPending({ leftovers, sameAsEnglish, pending, exists }) {
+  const next = leftovers.filter((key) => !sameAsEnglish.includes(key));
+  const grown = exists ? next.filter((key) => !pending.includes(key)) : [];
+  if (grown.length)
+    throw new Error(`refusing to add ${grown.length} keys to pending (${grown.slice(0, 5).join(', ')}${grown.length > 5 ? ', …' : ''})`);
+  return next;
+}
 
 /** Every piece of text in a message: the string, or each variant's text. */
 export function texts(value) {
@@ -52,12 +66,16 @@ export function onlyKeptTerms(text, keep) {
   return !/\p{L}/u.test(rest);
 }
 
-/** Keys whose value is exactly the English one and still has something to translate. */
+/** Text compared for sameness: whitespace runs collapse and the ends trim, so a stray space is no translation. */
+const comparable = (value) => texts(value).map((text) => text.replace(/\s+/g, ' ').trim());
+
+/** Keys whose value is the English one (up to whitespace) and still has something to translate. */
 export function untranslatedKeys(english, messages, keep) {
   return Object.keys(english).filter(
     (key) =>
       key in messages &&
-      JSON.stringify(messages[key]) === JSON.stringify(english[key]) &&
+      typeof messages[key] === typeof english[key] &&
+      JSON.stringify(comparable(messages[key])) === JSON.stringify(comparable(english[key])) &&
       !texts(english[key]).every((text) => onlyKeptTerms(text, keep)),
   );
 }
@@ -98,13 +116,16 @@ function main(argv) {
   const targets = chosen.length ? chosen : locales().filter((locale) => locale !== 'en');
   for (const locale of targets) {
     const leftovers = untranslatedKeys(english, catalog(locale), keep);
-    const { sameAsEnglish, pending } = exceptions(locale);
+    const { sameAsEnglish, pending, exists } = exceptions(locale);
     if (rewrite) {
-      const nextPending = leftovers.filter((key) => !sameAsEnglish.includes(key));
-      const grown = nextPending.filter((key) => !pending.includes(key));
-      if (pending.length && grown.length)
-        throw new Error(`${locale}: refusing to add ${grown.length} keys to pending (${grown.slice(0, 5).join(', ')}…)`);
-      writeFileSync(new URL(`untranslated/${locale}.json`, root), `${JSON.stringify({ sameAsEnglish, pending: nextPending }, null, 2)}\n`);
+      let nextPendingKeys;
+      try {
+        nextPendingKeys = nextPending({ leftovers, sameAsEnglish, pending, exists });
+      } catch (error) {
+        throw new Error(`${locale}: ${error.message}`);
+      }
+      const nextPendingList = nextPendingKeys;
+      writeFileSync(new URL(`untranslated/${locale}.json`, root), `${JSON.stringify({ sameAsEnglish, pending: nextPendingList }, null, 2)}\n`);
     }
     const unlisted = leftovers.filter((key) => !sameAsEnglish.includes(key) && !pending.includes(key));
     const untranslated = leftovers.filter((key) => !sameAsEnglish.includes(key)).length;

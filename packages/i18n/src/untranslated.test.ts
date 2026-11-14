@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import * as guard from '../scripts/untranslated.mjs';
 
 type Catalog = Record<string, unknown>;
-const { catalog, exceptions, keepTerms, locales, onlyKeptTerms, parityProblems, untranslatedKeys } = guard as {
+const { catalog, exceptions, keepTerms, locales, nextPending, onlyKeptTerms, parityProblems, untranslatedKeys } = guard as {
   catalog: (locale: string) => Catalog;
   exceptions: (locale: string) => { sameAsEnglish: string[]; pending: string[] };
   keepTerms: () => string[];
   locales: () => string[];
+  nextPending: (state: { leftovers: string[]; sameAsEnglish: string[]; pending: string[]; exists: boolean }) => string[];
   onlyKeptTerms: (text: string, keep: string[]) => boolean;
   parityProblems: (english: Catalog, messages: Catalog) => string[];
   untranslatedKeys: (english: Catalog, messages: Catalog, keep: string[]) => string[];
@@ -54,6 +55,20 @@ describe('the untranslated check', () => {
     expect(onlyKeptTerms('API key', keep)).toBe(false);
     // A kept term inside a longer word is not the term.
     expect(onlyKeptTerms('Gitter', keep)).toBe(false);
+  });
+
+  it('treats a copy that only differs in whitespace as untranslated', () => {
+    expect(untranslatedKeys({ a: 'Save changes' }, { a: ' Save  changes ' }, keep)).toEqual(['a']);
+  });
+
+  it('only ever shrinks pending once a locale has a baseline, even an empty one', () => {
+    const base = { sameAsEnglish: ['same'], exists: true };
+    expect(nextPending({ ...base, leftovers: ['a', 'same'], pending: ['a', 'b'] })).toEqual(['a']);
+    // A finished locale (empty pending) that regresses must not be re-listed.
+    expect(() => nextPending({ ...base, leftovers: ['a'], pending: [] })).toThrow(/refusing to add 1 keys/);
+    expect(() => nextPending({ ...base, leftovers: ['a', 'c'], pending: ['a'] })).toThrow(/refusing to add 1 keys to pending \(c\)/);
+    // Only a locale with no baseline file yet starts one.
+    expect(nextPending({ sameAsEnglish: [], pending: [], exists: false, leftovers: ['a', 'b'] })).toEqual(['a', 'b']);
   });
 
   it('flags identical values and leaves translated ones alone', () => {

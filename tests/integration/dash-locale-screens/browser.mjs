@@ -461,7 +461,6 @@ function inspect({ scope, base, english, local, doNotTranslate, fixtureTexts, sa
       (sameKeys.includes(key) ? texts : texts.filter((text) => !(english[key] ?? []).includes(text))).map(normal),
     ]),
   );
-  const ownTexts = new Set([...translated.values()].flat());
   const isOwn = (key, text) => (translated.get(key) ?? []).some((value) => value === text || (/\{[^{}]+\}/.test(value) && pattern(value).test(text)));
   const leftovers = [];
   const seen = new Set();
@@ -469,10 +468,19 @@ function inspect({ scope, base, english, local, doNotTranslate, fixtureTexts, sa
     if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'svg', 'TITLE'].includes(element.tagName) || !visible(element)) continue;
     const own = [...element.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent);
     const text = normal(own.join(''));
-    if (letters(text) < 3 || allowed.has(text) || ownTexts.has(text)) continue;
+    if (letters(text) < 3 || allowed.has(text)) continue;
+    // The English keys this text could be. It is the locale's own only through
+    // one of those keys; that another key happens to translate to the same
+    // text (German "Name" for "Name (or Host)") doesn't make it translated.
     const keys = [...(exact.get(text) ?? []), ...shaped.filter((entry) => entry.test.test(text)).map((entry) => entry.key)];
     if (keys.length === 0 || keys.some((key) => isOwn(key, text))) continue;
-    leftovers.push({ text, keys: keys.slice(0, 3), tag: element.tagName.toLowerCase() });
+    const alsoTranslationOf = [...translated].filter(([key]) => !keys.includes(key) && isOwn(key, text)).map(([key]) => key);
+    leftovers.push({
+      text,
+      keys: keys.slice(0, 3),
+      tag: element.tagName.toLowerCase(),
+      ...(alsoTranslationOf.length ? { ambiguous: `also this locale's text for ${alsoTranslationOf.slice(0, 3).join(', ')}` } : {}),
+    });
     seen.add(text);
   }
   return {
