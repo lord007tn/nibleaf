@@ -196,7 +196,7 @@
   "settings_notifications": "Notificações",
   "settings_exports": "Exportações",
   "settings_git": "Git",
-  "settings_openapi": "API Referência",
+  "settings_openapi": "Referência da API",
   "settings_openapi_title": "Referência OpenAPI",
   "settings_openapi_description": "Publique uma referência interativa Scalar API de um documento OpenAPI 3.x.",
   "settings_openapi_configured": "Referência de rascunho configurada",
