@@ -1,25 +1,12 @@
 {
   "environment": "Isolated actual-route fixture (dashboard shell, ProjectLayout + settings and analytics routes, OrganizationLayout + members route); intercepted fictional HTTP; no server, database or real site",
-  "locales": [
-    "ru",
-    "id"
-  ],
-  "screens": [
-    "settings",
-    "analytics",
-    "people",
-    "publish"
-  ],
-  "sizes": [
-    "1440×1000",
-    "390×844 touch"
-  ],
+  "locales": ["ru", "id"],
+  "screens": ["settings", "analytics", "people", "publish"],
+  "sizes": ["1440×1000", "390×844 touch"],
   "attempted": 0,
   "axe": {
     "version": "4.14.0",
-    "rules": [
-      "color-contrast"
-    ]
+    "rules": ["color-contrast"]
   },
   "leftoverRule": "Visible text (an element’s own text nodes, ≥3 letters) equal to an en catalog value ({placeholders} match anything) that is not one of the locale’s own translations (its text for a key where it differs from English). A key whose locale text copies the English one counts as untranslated. Glossary doNotTranslate values and the keys untranslated/<locale>.json lists as sameAsEnglish are excluded; en has none by definition.",
   "doNotTranslate": 88,
