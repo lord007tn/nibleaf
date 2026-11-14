@@ -376,9 +376,13 @@ describe('dashboard safety copy', () => {
 });
 
 it('keeps the settings arrow and replacement warnings clear in English, Arabic and fallback catalogs', () => {
-  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => !['ar', 'bn', 'ur'].includes(code))) {
+  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => !['ar', 'de', 'fr', 'es', 'pt-BR', 'bn', 'ur'].includes(code))) {
     expect(loadCatalog(code).preview_disabledaskadmin).toContain('Settings → Add-ons');
   }
+  expect(loadCatalog('de').preview_disabledaskadmin).toContain('Einstellungen → Add-ons');
+  expect(loadCatalog('fr').preview_disabledaskadmin).toContain('Paramètres → Modules complémentaires');
+  expect(loadCatalog('es').preview_disabledaskadmin).toContain('Configuración → Complementos');
+  expect(loadCatalog('pt-BR').preview_disabledaskadmin).toContain('Configurações → Complementos');
   expect(loadCatalog('bn').preview_disabledaskadmin).toContain('সেটিংস → অ্যাড-অন');
   expect(loadCatalog('ur').preview_disabledaskadmin).toContain('ترتیبات ← ایڈ آنز');
   expect(loadCatalog('en').settings_git_workflow_rotateconfirm_title).toBe('Replace the webhook secret?');
@@ -405,9 +409,13 @@ it('localizes the compact checklist permission failure in Arabic and uses Englis
   const english = loadCatalog('en').overview_nudge_permissionserror;
   expect(english).toBe("Couldn't check your permissions.");
   expect(loadCatalog('ar').overview_nudge_permissionserror).toBe('تعذّر التحقق من صلاحياتك.');
+  expect(loadCatalog('de').overview_nudge_permissionserror).toBe('Ihre Berechtigungen konnten nicht geprüft werden.');
+  expect(loadCatalog('fr').overview_nudge_permissionserror).toBe('Impossible de vérifier vos autorisations.');
+  expect(loadCatalog('es').overview_nudge_permissionserror).toBe('No se pudieron comprobar tus permisos.');
+  expect(loadCatalog('pt-BR').overview_nudge_permissionserror).toBe('Não foi possível verificar suas permissões.');
   expect(loadCatalog('bn').overview_nudge_permissionserror).toBe('আপনার অনুমতি যাচাই করা যায়নি।');
   expect(loadCatalog('ur').overview_nudge_permissionserror).toBe('آپ کی اجازتیں جانچی نہیں جا سکیں۔');
-  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => !['ar', 'bn', 'ur'].includes(code))) {
+  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => !['ar', 'de', 'fr', 'es', 'pt-BR', 'bn', 'ur'].includes(code))) {
     expect(loadCatalog(code).overview_nudge_permissionserror).toBe(english);
   }
 });
