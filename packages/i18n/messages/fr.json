@@ -3519,7 +3519,7 @@
   "analytics_resource_rss": "Flux RSS",
   "analytics_resource_other": "Autres fichiers",
   "analytics_perf_title": "La rapidité perçue de vos pages",
-  "analytics_perf_description": "Mesurée sur les appareils de vrais lecteurs. Nous affichons la valeur atteinte par 75 % des chargements de page.",
+  "analytics_perf_description": "Mesurée sur les appareils de vrais lecteurs. Nous affichons la valeur en dessous de laquelle se situent 75 % des chargements de page.",
   "analytics_perf_distribution": "Chargements de page par note globale",
   "analytics_perf_samples": "Chargements mesurés : {count}",
   "analytics_perf_secondary": "Premier contenu {fcp} · réponse du serveur {ttfb}",
