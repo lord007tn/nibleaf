@@ -271,7 +271,7 @@ describe('closing the menu', () => {
     expect(editor.state.doc.textContent).toBe('/code block');
   });
 
-  it('closes on a double space', async () => {
+  it('stays open across one space, and closes on a double space or a space right after the slash ("yes / no")', async () => {
     const editor = await make(doc(paragraph()));
     await caretIn(editor);
     await typeText(editor, '/code ');
@@ -279,6 +279,8 @@ describe('closing the menu', () => {
     await typeText(editor, ' ');
     expect(isSlashMenuOpen(editor.state)).toBe(false);
     expect(menu()).toBeNull();
+    await typeText(editor, 'yes / no');
+    expect(isSlashMenuOpen(editor.state)).toBe(false);
   });
 
   it('does not trap prose typed after a slash: a space after a word that matches nothing closes it', async () => {
@@ -292,12 +294,5 @@ describe('closing the menu', () => {
     // Enter is the editor's again: a new paragraph, nothing inserted.
     expect(editor.state.doc.childCount).toBe(2);
     expect(editor.state.doc.textContent).toBe('/xyz and more');
-  });
-
-  it('closes when a space follows the slash, as in "yes / no"', async () => {
-    const editor = await make(doc(paragraph()));
-    await caretIn(editor);
-    await typeText(editor, 'yes / no');
-    expect(isSlashMenuOpen(editor.state)).toBe(false);
   });
 });

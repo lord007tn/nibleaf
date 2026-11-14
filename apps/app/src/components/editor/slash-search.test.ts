@@ -30,8 +30,9 @@ describe('multi-word slash queries', () => {
     ['related content', 'relatedContent'],
     ['mermaid diagram', 'mermaid'],
     ['to-do list', 'todo'],
-  ])('"/%s" finds %s first', (query, name) => {
+  ])('"/%s" finds %s first, with its words in either order', (query, name) => {
     expect(first(query)).toBe(key(name));
+    expect(first(query.split(' ').reverse().join(' '))).toBe(key(name));
   });
 
   it('matches every word in any order, and drops blocks missing one of them', () => {
@@ -54,6 +55,9 @@ describe('multi-word slash queries', () => {
 
   it('returns nothing when any word matches no block', () => {
     expect(titles('zzz')).toEqual([]);
+    // Words match from their start: "ock" is inside "block" but starts no word.
+    expect(titles('ock')).toEqual([]);
+    expect(titles('code lock')).toEqual([]);
     expect(titles('code zzz')).toEqual([]);
     expect(titles('block group')).toEqual([]);
   });
