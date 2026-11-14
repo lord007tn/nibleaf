@@ -33,9 +33,9 @@ const httpsAddress = (value: string): URL | null => {
 /** The block a writer's address makes, or null when the block can't take it. */
 export const embedTargetFor = (input: string, intent: EmbedIntent): EmbedTarget | null => {
   const value = input.trim();
-  const url = httpsAddress(value);
+  const url = httpsAddress(input);
   if (!url) return null;
-  const video = parseVideoUrl(value);
+  const video = parseVideoUrl(input);
   if (video) return { kind: 'iframe', src: videoEmbedSrc(video) };
   if (VIDEO_FILE.test(url.pathname)) return { kind: 'video', src: value };
   return intent === 'embed' ? { kind: 'iframe', src: value } : null;
