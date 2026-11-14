@@ -32,7 +32,8 @@ import {
   type SnapshotProject,
   withOpenApiNav,
 } from '@nibleaf/shared/site';
-import { publishedSitePath } from '@nibleaf/shared/site-language';
+import { publishedSitePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
+import { sitePathLanguages } from '@nibleaf/shared/site-language-policy';
 import {
   activeLanguageCode,
   activeVersion,
@@ -486,6 +487,7 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   const accessMode = live.accessMode;
   const project: PublicSnapshotProject = {
     ...overlaid,
+    languages: sitePathLanguages({ ...frozen, project: overlaid }),
     // Keep the legacy config flag coherent for older clients and SEO helpers,
     // while the database enum remains the authorization source of truth.
     config: { ...(overlaid.config ?? {}), visibility: accessMode === 'PUBLIC' ? 'public' : 'private' },
@@ -647,7 +649,12 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       (p) => p.languageCode === l.code && p.kind === 'PAGE' && !p.hidden && p.config?.seo?.noindex !== true && isPageTranslation(page, p),
     );
     const languageIndexable = l.config?.seo?.allowIndex !== false;
-    return { code: l.code, isDefault: l.isDefault, path: currentPageIndexable && languageIndexable && sibling ? sibling.path : null };
+    return {
+      code: l.code,
+      isDefault: l.isDefault,
+      pathPrefix: l.pathPrefix,
+      path: currentPageIndexable && languageIndexable && sibling ? sibling.path : null,
+    };
   });
   return {
     // Same per-language chrome merge as getSite, applied for the language the
@@ -1069,6 +1076,7 @@ export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocume
   const defaultCode = defaultLanguage(snapshot.project).code;
   // Languages whose own SEO disallows indexing are excluded entirely.
   const blockedLangs = new Set(snapshot.project.languages.filter((l) => l.config?.seo?.allowIndex === false).map((l) => l.code));
+  const pathLanguages = sitePathLanguages(snapshot);
   const urls = snapshot.pages
     .filter(
       (page) =>
@@ -1084,7 +1092,7 @@ export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocume
       if (!pageVersion) {
         throw new Error(`Snapshot page ${page.id} references an unknown version.`);
       }
-      const loc = `${base}${publishedSitePath(page.path, page.languageCode === defaultCode ? undefined : page.languageCode, pageVersion.isDefault ? undefined : pageVersion.slug)}`;
+      const loc = `${base}${publishedSitePath(page.path, page.languageCode === defaultCode ? undefined : siteLanguagePrefix(page.languageCode, pathLanguages), pageVersion.isDefault ? undefined : pageVersion.slug)}`;
       const lastmod = isoTimestamp(page.updatedAt, 'page updatedAt');
       return `  <url><loc>${escapeXml(loc)}</loc><lastmod>${escapeXml(lastmod)}</lastmod></url>`;
     });

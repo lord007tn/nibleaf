@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SiteSnapshot, SnapshotPage } from './site';
+import { sitePathLanguages } from './site-language-policy';
+import { legacySiteLanguageTarget } from './site-language-redirect';
 import { MAX_SITE_PATH_LENGTH, resolveSitePage, resolveSiteRoute, sitePathWithinVersion, trimSlashes } from './site-route';
 
 const page = (path: string): SnapshotPage => ({
@@ -167,5 +169,100 @@ describe('the site root in another language (READER-20)', () => {
 
   it('serves the English home when Arabic has no pages at all', () => {
     expect(resolveSitePage(bilingual([englishHome]), '', 'ar')?.page.id).toBe('en-home');
+  });
+});
+
+describe('language migration preserves the main resolver for colliding paths', () => {
+  const languages = [
+    { code: 'en', label: 'English', direction: 'LTR' as const, isDefault: true, config: null },
+    { code: 'ar', label: 'Arabic', direction: 'RTL' as const, isDefault: false, config: null },
+  ];
+  const languagePage = (id: string, path: string, languageCode = 'en', versionId = 'v1') => ({ ...page(path), id, languageCode, versionId });
+  const cases = [
+    {
+      name: 'a default-language page ar/guide',
+      path: 'ar/guide',
+      expected: 'english-collision',
+      prefix: '~lang/ar',
+      snapshot: {
+        ...site,
+        project: { ...site.project, languages },
+        pages: [languagePage('english-collision', 'ar/guide'), languagePage('arabic-collision', 'ar/guide', 'ar')],
+      },
+    },
+    {
+      name: 'a version named ar',
+      path: 'ar/guide',
+      expected: 'english-version-ar',
+      prefix: '~lang/ar',
+      snapshot: {
+        ...site,
+        project: { ...site.project, languages, versions: [...site.project.versions, { id: 'version-ar', name: 'ar', slug: 'ar', isDefault: false }] },
+        pages: [languagePage('english-version-ar', 'guide', 'en', 'version-ar'), languagePage('arabic-version-ar', 'guide', 'ar', 'version-ar')],
+      },
+    },
+    {
+      name: 'an Arabic-only content segment ar/guide',
+      path: 'ar/guide',
+      expected: undefined,
+      prefix: 'ar',
+      snapshot: {
+        ...site,
+        project: { ...site.project, languages },
+        pages: [languagePage('english-guide', 'guide'), languagePage('arabic-nested', 'ar/guide', 'ar')],
+      },
+    },
+  ];
+  for (const fixture of cases) {
+    it(`keeps ${fixture.name} and its old ?lang=ar link`, () => {
+      // resolveSitePage is the unchanged main algorithm: first segment selects
+      // a version and the query selects a language, with no prefix consumption.
+      const oldBare = resolveSitePage(fixture.snapshot, fixture.path, undefined, 'ar');
+      expect(oldBare?.page.id).toBe(fixture.expected);
+      if (oldBare)
+        expect(resolveSiteRoute(fixture.snapshot, fixture.path)).toMatchObject({
+          kind: 'page',
+          page: { id: oldBare.page.id },
+          resolved: { docsVersion: oldBare.docsVersion },
+        });
+      const oldArabic = resolveSitePage(fixture.snapshot, fixture.path, 'ar', 'ar');
+      expect(oldArabic).not.toBeNull();
+      expect(resolveSiteRoute(fixture.snapshot, fixture.path, { lang: 'ar' })).toMatchObject({ kind: 'page', page: { id: oldArabic?.page.id } });
+      const target = legacySiteLanguageTarget({
+        path: fixture.path,
+        search: '?lang=ar',
+        languages: sitePathLanguages(fixture.snapshot),
+        basePath: '',
+      });
+      expect(target).toBe(`/${fixture.prefix}/ar/guide`);
+      expect(resolveSiteRoute(fixture.snapshot, target as string)).toMatchObject({
+        kind: 'page',
+        page: { id: oldArabic?.page.id },
+        resolved: { docsVersion: oldArabic?.docsVersion },
+      });
+    });
+  }
+  it('chooses an unused escape marker when ~lang is already a content path', () => {
+    const fixture = cases[0];
+    if (!fixture) throw new Error('Missing collision fixture');
+    const snapshot = { ...fixture.snapshot, pages: [...fixture.snapshot.pages, languagePage('marker', '~lang/example')] };
+    expect(sitePathLanguages(snapshot).find((item) => item.code === 'ar')?.pathPrefix).toBe('~lang~/ar');
+    expect(resolveSiteRoute(snapshot, '~lang/example')).toMatchObject({ kind: 'page', page: { id: 'marker' } });
+  });
+});
+
+it('retains main regional-language aliases only after existing default content misses', () => {
+  const snapshot: SiteSnapshot = {
+    ...site,
+    project: {
+      ...site.project,
+      languages: [...site.project.languages, { code: 'ar-SA', label: 'Arabic', direction: 'RTL', isDefault: false, config: null }],
+    },
+    pages: [page('ar/guide'), { ...page('guide'), id: 'regional-guide', languageCode: 'ar-SA' }],
+  };
+  expect(resolveSiteRoute(snapshot, 'ar/guide')).toMatchObject({ kind: 'page', page: { id: 'page-ar/guide' } });
+  expect(resolveSiteRoute({ ...snapshot, pages: snapshot.pages.slice(1) }, 'ar/guide')).toMatchObject({
+    kind: 'page',
+    page: { id: 'regional-guide' },
   });
 });

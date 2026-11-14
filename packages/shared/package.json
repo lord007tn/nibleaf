@@ -35,6 +35,8 @@
     "./email-providers": "./src/email-providers.ts",
     "./site": "./src/site.ts",
     "./site-language": "./src/site-language.ts",
+    "./site-language-policy": "./src/site-language-policy.ts",
+    "./site-language-redirect": "./src/site-language-redirect.ts",
     "./site-route": "./src/site-route.ts",
     "./site-links": "./src/site-links.ts",
     "./documentation-component-contract": "./src/documentation-component-contract.ts",

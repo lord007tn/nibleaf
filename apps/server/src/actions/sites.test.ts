@@ -43,7 +43,7 @@ vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ ki
 import og from '@/modules/public/sites/og';
 import { trackProjectEvents } from './analytics';
 import { resolveViewerAccess } from './reader-access';
-import { getSiteOgData, getSitePage, getSitePageMarkdown, getSiteSitemap, invalidatePublishedSiteConfig, searchSite } from './sites';
+import { getSite, getSiteOgData, getSitePage, getSitePageMarkdown, getSiteSitemap, invalidatePublishedSiteConfig, searchSite } from './sites';
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id' | 'path' | 'position'>): SnapshotPage => ({
   parentId: null,
@@ -130,6 +130,28 @@ describe('getSitePage lede vs excerpt', () => {
     expect(sitemap.body).toContain('/sites/project-1/ar/guide</loc>');
     expect(sitemap.body).toContain('/sites/project-1/ar/v2/guide</loc>');
     expect(sitemap.body).not.toContain('?lang=');
+  });
+
+  it('uses one collision policy in the shell, pages and sitemap without republishing', async () => {
+    const languages = [...snapshot.project.languages, { code: 'ar', label: 'Arabic', direction: 'RTL' as const, isDefault: false, config: null }];
+    mocks.deploymentFindUnique.mockResolvedValue({
+      snapshot: {
+        ...snapshot,
+        project: { ...snapshot.project, languages },
+        pages: [
+          ...snapshot.pages,
+          page({ id: 'default-collision', path: 'ar/guide', position: 2 }),
+          page({ id: 'arabic-collision', path: 'ar/guide', languageCode: 'ar', position: 2 }),
+        ],
+      },
+    });
+    const shell = await getSite('project-1');
+    expect(shell.languages.find((item) => item.code === 'ar')?.pathPrefix).toBe('~lang/ar');
+    const content = await getSitePage('project-1', 'ar/guide', 'ar');
+    expect(content.languages.find((item) => item.code === 'ar')?.pathPrefix).toBe('~lang/ar');
+    const sitemap = await getSiteSitemap('project-1');
+    expect(sitemap.body).toContain('/sites/project-1/ar/guide</loc>');
+    expect(sitemap.body).toContain('/sites/project-1/~lang/ar/ar/guide</loc>');
   });
 
   it('serves a real 1200×630 public PNG, revalidates it and changes ETag with the published title', async () => {

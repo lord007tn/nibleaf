@@ -879,3 +879,15 @@ describe('result-language filter', () => {
     expect(document.querySelector('[aria-label="searchFilterLanguage"]')).toBeNull();
   });
 });
+
+it('keeps a raw search result named v2 inside version v2', async () => {
+  window.history.replaceState(null, '', '/sites/docs/start');
+  mocks.search.mockReturnValue({ data: [{ ...hit, path: 'v2', language: 'ar' }], isFetching: false, error: null });
+  await render({ lang: 'ar', version: 'v2', onAskAi: undefined });
+  await typeQuery('Setup');
+  const result = document.querySelector<HTMLElement>('[role="option"]');
+  if (!result) throw new Error('Missing search result');
+  await act(async () => result.click());
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/ar/v2/v2' });
+  window.history.replaceState(null, '', '/');
+});

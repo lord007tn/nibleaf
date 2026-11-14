@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { legacySiteLanguageTarget, parseSiteLanguagePath, publishedSitePath } from './site-language';
+import { parseSiteLanguagePath, publishedSitePath } from './site-language';
+import { legacySiteLanguageTarget } from './site-language-redirect';
 
 const languages = [
   { code: 'en', isDefault: true },
@@ -23,4 +24,8 @@ describe('published document paths', () => {
     expect(legacySiteLanguageTarget({ path: '_index.md', languages, basePath: '', search: '?lang=ar' })).toBe('/ar.md');
     expect(legacySiteLanguageTarget({ path: 'guide.md', languages, basePath: '', search: '?lang=en' })).toBe('/guide.md');
   });
+});
+
+it('prepends the selected language to the entire legacy query path', () => {
+  expect(legacySiteLanguageTarget({ path: 'ar/guide', languages, basePath: '', search: '?lang=ar&tab=cli' })).toBe('/ar/ar/guide?tab=cli');
 });

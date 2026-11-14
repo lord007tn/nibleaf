@@ -66,6 +66,8 @@ export interface SnapshotPage {
 }
 
 export interface SnapshotLanguage {
+  /** Derived serving metadata; computed from all paths, never author configuration. */
+  pathPrefix?: string;
   code: string;
   label: string;
   direction: 'LTR' | 'RTL';

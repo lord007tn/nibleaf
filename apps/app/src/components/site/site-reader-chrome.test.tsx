@@ -93,7 +93,7 @@ async function renderReader(url: string) {
 }
 
 it('shows the configured emoji in the reader header when there is no uploaded logo', async () => {
-  mocks.getSite.mockResolvedValueOnce({ ...shell, project: { ...shell.project, icon: '📘' } });
+  mocks.getSite.mockResolvedValue({ ...shell, project: { ...shell.project, icon: '📘' } });
   await renderReader(MISSING);
   expect(document.querySelector('header')?.textContent).toContain('📘');
 });
@@ -137,7 +137,7 @@ describe('published reader chrome', () => {
     // Still inside the reader: the header and sidebar stay available.
     expect(container.querySelector('header')).not.toBeNull();
     const home = notFound?.querySelector<HTMLAnchorElement>('a[href]');
-    expect(home?.getAttribute('href')).toBe('/sites/docs?lang=ar');
+    expect(home?.getAttribute('href')).toBe('/sites/docs/ar');
     expect(home?.textContent).toBe('الذهاب إلى الصفحة الرئيسية للوثائق');
     expect(notFound?.querySelector('button')?.textContent).toBe('ابحث في الوثائق');
   });

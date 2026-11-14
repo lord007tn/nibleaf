@@ -438,3 +438,21 @@ describe('reader chat messages', () => {
     await unmount();
   });
 });
+
+it('keeps an AI citation page named v2 inside the answered version v2', async () => {
+  const { container, render, unmount } = mount();
+  const citation = { ...final.citations[0], path: 'v2', language: 'ar' } as (typeof final.citations)[number];
+  await render(
+    <ChatMessage
+      text=""
+      final={{ ...final, citations: [citation] }}
+      options={options}
+      busy={false}
+      consent="granted"
+      close={vi.fn()}
+      scope={{ lang: 'ar', version: 'v2' }}
+    />,
+  );
+  expect(container.querySelector('a[href*="v2"]')?.getAttribute('href')).toBe('/ar/v2/v2#install');
+  await unmount();
+});

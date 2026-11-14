@@ -417,7 +417,7 @@ export interface SiteShell {
   };
   nav: NavNode[];
   /** Only ENABLED languages — the server filters disabled ones out. */
-  languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; enabled?: boolean }>;
+  languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; enabled?: boolean; pathPrefix?: string }>;
   versions: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   activeLanguage: string;
   activeVersion: string;
@@ -471,7 +471,7 @@ export interface SitePage {
   languageConfig: PublishedLanguageConfig | null;
   /** hreflang alternates: `path` is the page's URL in that language, or null
    *  when that language has no corresponding page (then it's omitted). */
-  languages: Array<{ code: string; isDefault: boolean; path: string | null }>;
+  languages: Array<{ code: string; isDefault: boolean; path: string | null; pathPrefix?: string }>;
   /** Reader-facing date and language names, formatted once on the server (see lib/reader-text.ts). */
   readerText?: ReaderText;
   /** `section`: a group or category heading, shown as text rather than a link. */

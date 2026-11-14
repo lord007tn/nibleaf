@@ -156,3 +156,9 @@ describe('an untitled page in llms.txt', () => {
     expect(buildLlmsFullTxt(snap, BASE)).toContain('# Untitled');
   });
 });
+
+it('uses collision-safe language paths in llms and llms-full source URLs', () => {
+  const snap = snapshot([page({ id: 'english', path: 'ar/guide' }), page({ id: 'arabic', path: 'ar/guide', languageCode: 'ar' })]);
+  expect(buildLlmsTxt(snap, BASE)).toContain(`${BASE}/~lang/ar/ar/guide.md`);
+  expect(buildLlmsFullTxt(snap, BASE)).toContain(`Source: ${BASE}/~lang/ar/ar/guide.md`);
+});

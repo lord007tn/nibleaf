@@ -59,7 +59,7 @@ export const Route = createFileRoute('/sites/$projectId')({
       const rest = siteRoutePath(location.pathname).replace(/\/+$/, '');
       const segment = rest.split('/')[0];
       const candidate = segment && rest !== 'changelog' ? safeDecode(segment) : undefined;
-      let site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang ?? candidate, version: candidate } });
+      let site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
       const parsed = parseSiteLanguagePath(rest, site.languages);
       const target =
         deps.lang !== undefined || parsed.language?.isDefault
@@ -79,7 +79,7 @@ export const Route = createFileRoute('/sites/$projectId')({
       if (parsed.language && (site.activeLanguage !== language || site.activeVersion !== requestedVersion?.slug)) {
         site = await getSiteFn({ data: { projectId: params.projectId, language, version } });
       }
-      return { site, lang: language, siteOrigin: customDomainOrigin() };
+      return { site, siteOrigin: customDomainOrigin() };
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
       // The API names why the shell is hidden. A private site gets its own
@@ -535,6 +535,7 @@ function SiteChrome() {
               questionRetentionDays: site?.capabilities?.questionRetentionDays,
               lang: activeLanguage?.code,
               defaultLanguage,
+              languages,
               direction: isRtl ? 'rtl' : 'ltr',
               version: activeVersionPrefix,
               config,

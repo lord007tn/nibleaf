@@ -2,6 +2,7 @@ import { PassThrough } from 'node:stream';
 import type { ReactNode } from 'react';
 import { renderToPipeableStream, renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { resolveDocHref } from '@/components/markdown';
 import type { SitePage } from '@/hooks/api/types';
 import { DOCUMENTATION_THEME_TEMPLATES } from './documentation-theme-provider';
 import { SitePageView } from './site-page-view';
@@ -265,4 +266,27 @@ it('keeps Arabic on relative and absolute internal article links', async () => {
   const html = await renderCompleteHtml(<SitePageView projectId="project-1" data={fixture} lang="ar" />);
   expect(html).toContain('href="/sites/project-1/ar/guide/next#install"');
   expect(html).toContain('href="/sites/project-1/ar/other"');
+});
+
+it('keeps raw pager paths that equal the active version slug', async () => {
+  const fixture = data({
+    activeLanguage: 'ar',
+    activeVersion: 'v2',
+    versions: [...data().versions, { id: 'v2', name: 'v2', slug: 'v2', isDefault: false }],
+    next: { title: 'Version guide', path: 'v2' },
+  });
+  const html = await renderCompleteHtml(<SitePageView projectId="project-1" data={fixture} lang="ar" />);
+  expect(html).toContain('href="/sites/project-1/ar/v2/v2"');
+});
+it('leaves absolute links to another platform project untouched', async () => {
+  const href = 'http://localhost:4310/sites/other/guide?lang=ar#install';
+  const fixture = data({ page: { ...data().page, content: `[Other site](${href})` } });
+  const html = await renderCompleteHtml(<SitePageView projectId="project-1" data={fixture} />);
+  expect(html).toContain(`href="${href}"`);
+  expect(html).not.toContain('/sites/project-1/ar/sites/other');
+});
+
+it('does not rewrite another project on the matching app.nibleaf.com origin', () => {
+  const href = 'https://app.nibleaf.com/sites/other/guide?lang=ar#install';
+  expect(resolveDocHref(href, { projectId: 'p1', origin: 'https://app.nibleaf.com', lang: 'ar' })).toBe(href);
 });

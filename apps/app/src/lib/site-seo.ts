@@ -1,7 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
-import { publishedSitePath } from '@nibleaf/shared/site-language';
+import { publishedSitePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
 import { truncateText } from '@nibleaf/shared/utils';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
 import { hydratedCustomDomainProjectId } from '@/lib/custom-domain-rewrite';
@@ -192,13 +192,22 @@ export function siteChangelogHead(site: SiteShell, projectId: string, origin?: s
     site.project.description ||
     t('changelogSubtitle');
   const options = { primaryDomain: site.project.primaryDomain, slug: site.project.slug, requestOrigin: origin };
-  const url = sitePageUrl(projectId, 'changelog', site.languages.find((item) => item.code === language)?.isDefault ? undefined : language, options);
+  const url = sitePageUrl(
+    projectId,
+    'changelog',
+    site.languages.find((item) => item.code === language)?.isDefault ? undefined : siteLanguagePrefix(language, site.languages),
+    options,
+  );
   const links: Tag[] = [
     { rel: 'canonical', href: url },
     { rel: 'alternate', type: 'application/rss+xml', title: `${t('changelog')} — ${name}`, href: changelogFeedUrl(url) },
   ];
   for (const item of site.languages)
-    links.push({ rel: 'alternate', hrefLang: item.code, href: sitePageUrl(projectId, 'changelog', item.isDefault ? undefined : item.code, options) });
+    links.push({
+      rel: 'alternate',
+      hrefLang: item.code,
+      href: sitePageUrl(projectId, 'changelog', item.isDefault ? undefined : siteLanguagePrefix(item.code, site.languages), options),
+    });
   links.push({ rel: 'alternate', hrefLang: 'x-default', href: sitePageUrl(projectId, 'changelog', undefined, options) });
   return { meta: [{ title: `${t('changelog')} — ${name}` }, { name: 'description', content: description }], links };
 }
@@ -360,6 +369,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   const activeLang = data.activeLanguage;
   // Prefix only a known non-default language.
   const canonicalLang = activeLang && defaultCode && activeLang !== defaultCode ? activeLang : undefined;
+  const canonicalPrefix = siteLanguagePrefix(canonicalLang, languages);
   const activeVersion = data.activeVersion;
   const activeVersionMeta = data.versions.find((version) => version.slug === activeVersion);
   const versionPrefix = activeVersionMeta && !activeVersionMeta.isDefault ? activeVersionMeta.slug : undefined;
@@ -390,7 +400,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
       data.project.description ||
       '',
   );
-  const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalLang, urlOptions);
+  const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalPrefix, urlOptions);
 
   const meta: Tag[] = [{ title }];
   if (description) {
@@ -457,7 +467,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   const realAlternates = noindex || pageSeo?.canonicalUrl?.trim() ? [] : languages.filter((l) => l.path != null);
   if (realAlternates.length > 0) {
     for (const language of realAlternates) {
-      const altLang = language.isDefault ? undefined : language.code;
+      const altLang = language.isDefault ? undefined : siteLanguagePrefix(language.code, languages);
       links.push({
         rel: 'alternate',
         hrefLang: language.code,
@@ -469,7 +479,12 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
       links.push({
         rel: 'alternate',
         hrefLang: 'x-default',
-        href: sitePageUrl(projectId, versionedPath(fallback.path as string), fallback.isDefault ? undefined : fallback.code, urlOptions),
+        href: sitePageUrl(
+          projectId,
+          versionedPath(fallback.path as string),
+          fallback.isDefault ? undefined : siteLanguagePrefix(fallback.code, languages),
+          urlOptions,
+        ),
       });
     }
   }
@@ -508,7 +523,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
           '@type': 'ListItem',
           position: index + 1,
           name: crumb.title,
-          item: sitePageUrl(projectId, versionedPath(crumb.path), canonicalLang, urlOptions),
+          item: sitePageUrl(projectId, versionedPath(crumb.path), canonicalPrefix, urlOptions),
         })),
       }),
     });

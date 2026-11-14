@@ -11,7 +11,8 @@ import {
   markdownAlternateUrl,
   markdownDiscoveryLinkHeader,
 } from '@nibleaf/shared/markdown-discovery';
-import { legacySiteLanguageTarget, type PathLanguage, parseSiteLanguagePath } from '@nibleaf/shared/site-language';
+import { type PathLanguage, parseSiteLanguagePath } from '@nibleaf/shared/site-language';
+import { legacySiteLanguageTarget } from '@nibleaf/shared/site-language-redirect';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { createServerEntry } from '@tanstack/react-start/server-entry';
@@ -318,15 +319,18 @@ const SITE_META_TTL = 60_000;
 /** Fetch (and TTL-cache) the site shell's metadata. Returns null when the site
  *  is unknown/unpublished/private-to-anonymous — callers must then behave
  *  conservatively (no cache header, no redirect). */
-async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
+async function resolveSiteMeta(projectId: string, fresh = false): Promise<SiteMeta | null> {
   const requestHasCredentials = Boolean(publishedRequestAuth.getStore()?.cookie || publishedRequestAuth.getStore()?.authorization);
-  const hit = requestHasCredentials ? undefined : siteMetaCache.get(projectId);
+  const hit = requestHasCredentials || fresh ? undefined : siteMetaCache.get(projectId);
   if (hit && Date.now() - hit.at < SITE_META_TTL) {
     return hit.meta;
   }
   // A cold reader burst shares only anonymous metadata. Each credentialed
   // request still resolves its own viewer-dependent result.
-  if (requestHasCredentials) return loadSiteMeta(projectId, true);
+  if (requestHasCredentials || fresh) {
+    if (fresh) siteMetaCache.delete(projectId);
+    return loadSiteMeta(projectId, requestHasCredentials);
+  }
   const existing = siteMetaRequests.get(projectId);
   if (existing) return existing;
   const pending = loadSiteMeta(projectId, false);
@@ -353,7 +357,7 @@ async function loadSiteMeta(projectId: string, requestHasCredentials: boolean): 
         .object({
           data: z
             .object({
-              languages: z.array(z.object({ code: z.string(), isDefault: z.boolean() })).optional(),
+              languages: z.array(z.object({ code: z.string(), isDefault: z.boolean(), pathPrefix: z.string().optional() })).optional(),
               project: z
                 .object({
                   config: z.looseObject({ visibility: z.string().optional() }).nullable().optional(),
@@ -875,18 +879,33 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
       const match = /^\/sites\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
       const projectId = isCustomDomain && !isAppOwnedPath(url.pathname) ? await resolveHost(bare) : match?.[1];
       if (projectId && (isDocumentPath(url.pathname) || url.pathname.endsWith('/changelog/rss.xml'))) {
-        const meta = await resolveSiteMeta(projectId);
+        let meta = await resolveSiteMeta(projectId);
         const path = isCustomDomain ? url.pathname.slice(1) : (match?.[2] ?? '');
-        const target = legacySiteLanguageTarget({
+        let target = legacySiteLanguageTarget({
           path,
           languages: meta?.languages ?? [],
           basePath: isCustomDomain ? '' : `/sites/${projectId}`,
           search: url.search,
         });
+        // Never authorize a permanent redirect from shared/stale public metadata.
+        // A site may have become private since the anonymous metadata was cached.
+        if (target && !request.headers.has('cookie') && !request.headers.has('authorization')) {
+          meta = await resolveSiteMeta(projectId, true);
+          target = legacySiteLanguageTarget({
+            path,
+            languages: meta?.languages ?? [],
+            basePath: isCustomDomain ? '' : `/sites/${projectId}`,
+            search: url.search,
+          });
+        }
+        if (meta?.isPrivate && !request.headers.has('cookie') && !request.headers.has('authorization')) target = null;
         if (target) {
           const migrated = new URL(target, url.origin);
           const location = markdownAliasCanonical ? `${markdownAliasPath(migrated.pathname)}${migrated.search}` : target;
-          return new Response(null, { status: 308, headers: { location } });
+          return new Response(null, {
+            status: 308,
+            headers: { location },
+          });
         }
         const parsed = parseSiteLanguagePath(path, meta?.languages ?? []);
         if (parsed.language && parsed.path === 'changelog/rss.xml') {
@@ -1100,7 +1119,19 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
             request,
             // The page route's internal Markdown flag never leaves the server,
             // whichever path rendered the page (cloud origin, dotted paths, …).
-            Promise.resolve(handleRequestInner(renderRequest, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
+            Promise.resolve(handleRequestInner(renderRequest, ...rest)).then((response) => {
+              const stripped = withoutMarkdownAlternateFlag(response).response;
+              // Includes redirects produced by reader route loaders, not just
+              // the query migration above. Credentials must never share a 308.
+              if (stripped.status >= 300 && stripped.status < 400 && (request.headers.has('cookie') || request.headers.has('authorization'))) {
+                const isolated = new Response(stripped.body, stripped);
+                isolated.headers.set('Cache-Control', 'private, no-store');
+                appendVary(isolated.headers, 'Cookie');
+                appendVary(isolated.headers, 'Authorization');
+                return isolated;
+              }
+              return stripped;
+            }),
             crawlerProjectForRequest,
           ),
           nonce,

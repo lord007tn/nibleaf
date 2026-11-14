@@ -1,5 +1,5 @@
 import { siteT } from '@nibleaf/i18n/site';
-import { parseSiteLanguagePath } from '@nibleaf/shared/site-language';
+import { parseSiteLanguageAlias, parseSiteLanguagePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
 import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
@@ -91,6 +91,14 @@ export const Route = createFileRoute('/sites/$projectId/$')({
         siteLanguageParam(lang, site?.languages.find((item) => item.isDefault)?.code),
         params._splat,
       );
+      const alias = parseSiteLanguageAlias(path, site?.languages ?? []);
+      if (alias.language) {
+        const href = siteHref(params.projectId, `${alias.path}${location.searchStr}${location.hash ? `#${location.hash.replace(/^#/, '')}` : ''}`, {
+          lang: siteLanguageParam(alias.language.code, site?.languages.find((item) => item.isDefault)?.code),
+          languages: site?.languages,
+        });
+        throw redirect({ href, statusCode: 308 });
+      }
       // The router's not-found sentinel sets the final streamed response status.
       // The earlier response-context mutation was proven to return HTTP 200 in
       // production even though the page rendered a noindex not-found shell.
@@ -142,7 +150,8 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       const noindex = loaderData.site.project.config?.visibility === 'private';
       const site = loaderData.site;
       const options = { primaryDomain: site.project.primaryDomain, slug: site.project.slug, requestOrigin: loaderData.siteOrigin };
-      const resourceUrl = (language?: string) => sitePageUrl(params.projectId, loaderData.openapi.path, language, options);
+      const resourceUrl = (language?: string) =>
+        sitePageUrl(params.projectId, loaderData.openapi.path, siteLanguagePrefix(language, site.languages), options);
       const defaultCode = site.languages.find((item) => item.isDefault)?.code;
 
       return {

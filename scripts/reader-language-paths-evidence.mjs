@@ -7,7 +7,7 @@ import { hostKey, withLocalOnlyBrowser } from '../tests/integration/lib/capture-
 const phase = process.argv[2] ?? 'after';
 assert.ok(['before', 'after'].includes(phase));
 const base = 'http://localhost:4310';
-const out = path.resolve('docs/assets/reader-language-paths');
+const out = path.resolve('.github/assets/feat-reader-language-paths');
 await mkdir(out, { recursive: true });
 const escapeHtml = (text) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
 const records = [];
@@ -17,16 +17,24 @@ await withLocalOnlyBrowser(
     launch: process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {},
   },
   async ({ browser, attempted }) => {
-    const context = await browser.newContext({
+    let context = await browser.newContext({
       viewport: { width: 1440, height: 900 },
       colorScheme: 'light',
-      ...(phase === 'after' ? { recordVideo: { dir: out, size: { width: 1440, height: 900 } } } : {}),
     });
-    const page = await context.newPage();
+    let page = await context.newPage();
     page.setDefaultTimeout(120_000);
-    for (const language of ['en', 'ar']) {
-      const suffix = language === 'ar' ? (phase === 'after' ? '/ar' : '') : '';
-      const url = `${base}/sites/preview-harbor${suffix}/getting-started/introduction${language === 'ar' && phase === 'before' ? '?lang=ar' : ''}`;
+    const cases = ['en', 'ar'].map((language) => ({
+      language,
+      label: language,
+      url: `${base}/sites/preview-harbor${language === 'ar' && phase === 'after' ? '/ar' : ''}/getting-started/introduction${language === 'ar' && phase === 'before' ? '?lang=ar' : ''}`,
+    }));
+    if (phase === 'after')
+      cases.push(
+        { language: 'en', label: 'collision-en', url: `${base}/sites/preview-language-collision/ar/guide` },
+        { language: 'ar', label: 'collision-ar', url: `${base}/sites/preview-language-collision/~lang/ar/ar/guide` },
+        { language: 'ar', label: 'unknown-query-ar', url: `${base}/sites/preview-harbor/ar/getting-started/introduction?lang=unknown` },
+      );
+    for (const { language, label, url } of cases) {
       const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 120_000 });
       assert.equal(response.status(), 200);
       await page.waitForFunction(() =>
@@ -36,20 +44,35 @@ await withLocalOnlyBrowser(
       const tags = [html.match(/<html\b[^>]*>/i)?.[0], ...html.matchAll(/<link\b[^>]*(?:canonical|hreflang)[^>]*>/gi)]
         .map((tag) => (typeof tag === 'string' ? tag : tag?.[0]))
         .filter(Boolean);
-      const record = { language, requestedUrl: url, browserUrl: page.url(), status: response.status(), tags };
+      assert.ok(tags[0].includes(`lang="${language}" dir="${language === 'ar' ? 'rtl' : 'ltr'}"`));
+      const record = { language, label, requestedUrl: url, browserUrl: page.url(), status: response.status(), tags };
       records.push(record);
-      await writeFile(path.join(out, `${phase}-${language}-ssr.txt`), `<!-- Unmodified SSR tag excerpts from ${url} -->\n${tags.join('\n')}\n`);
+      await writeFile(path.join(out, `${phase}-${label}-ssr.txt`), `<!-- Unmodified SSR tag excerpts from ${url} -->\n${tags.join('\n')}\n`);
       const screenshot = await page.screenshot();
       // A labeled evidence sheet: observed Playwright URL and unmodified page capture.
       // Playwright viewport screenshots do not contain Chrome's native omnibox.
       const sheet = await context.newPage();
       await sheet.setContent(
-        `<html><body style="margin:0;font:16px monospace;background:#f8fafc;color:#0f172a"><header style="padding:18px;border-bottom:1px solid #cbd5e1"><b>${phase.toUpperCase()} / ${language.toUpperCase()} - fixture browser evidence</b><p>Observed browser URL: ${escapeHtml(page.url())}</p><pre style="white-space:pre-wrap;font-size:12px">${escapeHtml(tags.join('\n'))}</pre></header><img style="width:1440px;display:block" src="data:image/png;base64,${screenshot.toString('base64')}"></body></html>`,
+        `<html><body style="margin:0;font:16px monospace;background:#f8fafc;color:#0f172a"><header style="padding:18px;border-bottom:1px solid #cbd5e1"><b>${phase.toUpperCase()} / ${label.toUpperCase()} - fixture browser evidence</b><p>Observed browser URL: ${escapeHtml(page.url())}</p><pre style="white-space:pre-wrap;font-size:12px">${escapeHtml(tags.join('\n'))}</pre></header><img style="width:1440px;display:block" src="data:image/png;base64,${screenshot.toString('base64')}"></body></html>`,
       );
-      await sheet.screenshot({ path: path.join(out, `${phase}-${language}.png`), fullPage: true });
+      await sheet.screenshot({ path: path.join(out, `${phase}-${label}.png`), fullPage: true });
       await sheet.close();
     }
     if (phase === 'after') {
+      await page.goto(`${base}/sites/preview-language-collision/ar/guide?lang=ar&tab=cli#what-you-can-build`, {
+        waitUntil: 'networkidle',
+        timeout: 120_000,
+      });
+      assert.equal(page.url(), `${base}/sites/preview-language-collision/~lang/ar/ar/guide?tab=cli#what-you-can-build`);
+      records.push({ check: 'legacy collision path keeps the complete content path', browserUrl: page.url() });
+      await context.close();
+      context = await browser.newContext({
+        viewport: { width: 1440, height: 900 },
+        colorScheme: 'light',
+        recordVideo: { dir: path.resolve('output/playwright/language-videos'), size: { width: 1440, height: 900 } },
+      });
+      page = await context.newPage();
+      page.setDefaultTimeout(120_000);
       await page.goto(`${base}/sites/preview-harbor/getting-started/introduction?lang=ar&tab=cli#what-you-can-build`, {
         waitUntil: 'networkidle',
         timeout: 120_000,

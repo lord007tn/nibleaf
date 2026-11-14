@@ -1107,6 +1107,7 @@ const THEME_META = {
 
 const PROJECTS = {
   'preview-harbor': { preset: 'harbor' },
+  'preview-language-collision': { preset: 'harbor', languageCollision: true },
   'preview-manuscript': { preset: 'manuscript' },
   'preview-signal': { preset: 'signal' },
   'preview-legacy': { preset: null },
@@ -1301,7 +1302,7 @@ const siteShell = (id, preset, query) => {
   return {
     project: projectPayload(id, preset, language),
     nav: buildNav(language.code),
-    languages: LANGUAGES,
+    languages: LANGUAGES.map((item) => ({ ...item, pathPrefix: PROJECTS[id]?.languageCollision && item.code === 'ar' ? '~lang/ar' : item.code })),
     versions: VERSIONS,
     activeLanguage: language.code,
     activeVersion: version.slug,
@@ -1317,7 +1318,8 @@ const siteShell = (id, preset, query) => {
 const sitePage = (id, preset, query) => {
   const language = resolveLanguage(query.get('lang'));
   const version = resolveVersion(query.get('version'));
-  const page = findPage(cleanPath(query.get('path')));
+  const collision = PROJECTS[id]?.languageCollision && cleanPath(query.get('path')) === 'ar/guide';
+  const page = collision ? PAGES[0] : findPage(cleanPath(query.get('path')));
   if (!page) return null;
   const lang = language.code;
   const index = PAGES.indexOf(page);
@@ -1334,7 +1336,7 @@ const sitePage = (id, preset, query) => {
       title: localized.title,
       description: localized.description,
       icon: page.icon ?? null,
-      path: pagePath(page),
+      path: collision ? 'ar/guide' : pagePath(page),
       content: localized.content,
       headings: extractHeadings(localized.content),
       config: page.tag ? { tag: page.tag } : null,
@@ -1343,7 +1345,12 @@ const sitePage = (id, preset, query) => {
     activeVersion: version.slug,
     versions: VERSIONS,
     languageConfig: LANGUAGE_CONFIG[lang],
-    languages: LANGUAGES.map((item) => ({ code: item.code, isDefault: item.isDefault, path: pagePath(page) })),
+    languages: LANGUAGES.map((item) => ({
+      code: item.code,
+      isDefault: item.isDefault,
+      path: collision ? 'ar/guide' : pagePath(page),
+      pathPrefix: PROJECTS[id]?.languageCollision && item.code === 'ar' ? '~lang/ar' : item.code,
+    })),
     breadcrumbs: [
       { title: group.title[lang], path: group.slug },
       { title: localized.title, path: pagePath(page) },

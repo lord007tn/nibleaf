@@ -598,3 +598,102 @@ describe('published language path migration (HTTP edge)', () => {
     expect(response.headers.get('link')).toContain('https://docs-language-paths.example/ar/v2/guide.md');
   });
 });
+
+describe('language redirects isolate private and credential-dependent requests', () => {
+  const languages = [
+    { code: 'en', isDefault: true },
+    { code: 'ar', isDefault: false, pathPrefix: '~lang/ar' },
+  ];
+  const privateShell = { data: { project: { config: { visibility: 'private' }, primaryDomain: null }, languages } };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.startHandler.mockImplementation(async () => new Response('Private site', { status: 404 }));
+    mocks.got.mockImplementation(async (target: string, options?: { headers?: Record<string, string> }) => {
+      if (target.includes('/domains/resolve?')) return upstream({ data: { projectId: 'private-language-014' } });
+      const headers = options?.headers ?? {};
+      if (headers.cookie || headers.authorization) return upstream(privateShell);
+      return upstream({ error: { reason: 'private' } }, 404);
+    });
+  });
+  for (const base of ['http://localhost:4310/sites/private-language-014', 'https://private-language-014.example']) {
+    it.each<Record<string, string>>([{ cookie: 'site_session=fictional' }, { authorization: 'Bearer fictional-reader' }])(
+      `isolates an authenticated 308 on ${base}`,
+      async (headers) => {
+        const response = await server.fetch(new Request(`${base}/ar/guide?lang=ar&tab=cli`, { headers }));
+        expect(response.status).toBe(308);
+        expect(response.headers.get('location')).toBe(`${base.includes('/sites/') ? '/sites/private-language-014' : ''}/~lang/ar/ar/guide?tab=cli`);
+        expect(response.headers.get('cache-control')).toBe('private, no-store');
+        expect(response.headers.get('vary')?.toLowerCase()).toContain('cookie');
+        expect(response.headers.get('vary')?.toLowerCase()).toContain('authorization');
+        const anonymous = await server.fetch(new Request(`${base}/ar/guide?lang=ar`));
+        expect(anonymous.status).toBe(404);
+        expect(anonymous.headers.get('location')).toBeNull();
+      },
+    );
+  }
+  it.each(['http://localhost:4310/sites/markdown-collision-014', 'https://markdown-collision-014.example'])(
+    'keeps collision Markdown twins on %s',
+    async (base) => {
+      mocks.got.mockImplementation(async (target: string) => {
+        if (target.includes('/domains/resolve?')) return upstream({ data: { projectId: 'markdown-collision-014' } });
+        if (target.includes('/markdown?')) return upstream('# Collision guide');
+        return upstream({ data: { ...privateShell.data, project: { config: { visibility: 'public' }, primaryDomain: null } } });
+      });
+      const response = await server.fetch(new Request(`${base}/ar/guide.md?lang=ar&ref=source`));
+      expect(response.status).toBe(308);
+      const target = `${base.includes('/sites/') ? '/sites/markdown-collision-014' : ''}/~lang/ar/ar/guide.md?ref=source`;
+      expect(response.headers.get('location')).toBe(target);
+      const rendered = await server.fetch(new Request(new URL(target, base)));
+      expect(rendered.status).toBe(200);
+      expect(rendered.headers.get('location')).toBeNull();
+      expect(rendered.headers.get('content-type')).toContain('text/markdown');
+      const call = mocks.got.mock.calls.find(([url]) => String(url).includes('/markdown?'));
+      expect(new URL(String(call?.[0])).searchParams.get('path')).toBe('ar/guide');
+      expect(new URL(String(call?.[0])).searchParams.get('lang')).toBe('ar');
+    },
+  );
+  it('does not redirect anonymous private metadata even if an upstream returns a shell', async () => {
+    mocks.got.mockResolvedValue(upstream(privateShell));
+    const response = await server.fetch(new Request('http://localhost:4310/sites/anonymous-private-shell-014/guide?lang=ar'));
+    expect(response.status).toBe(404);
+    expect(response.headers.get('location')).toBeNull();
+  });
+  it('isolates redirects on public sites when the request carries credentials', async () => {
+    mocks.got.mockResolvedValue(upstream({ data: { ...privateShell.data, project: { config: { visibility: 'public' }, primaryDomain: null } } }));
+    const response = await server.fetch(
+      new Request('http://localhost:4310/sites/credentialed-public-014/guide?lang=ar', { headers: { cookie: 'site_session=fictional' } }),
+    );
+    expect(response.status).toBe(308);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('vary')?.toLowerCase()).toContain('cookie');
+  });
+  it('rechecks privacy before redirecting from previously cached public metadata', async () => {
+    let isPrivate = false;
+    mocks.startHandler.mockImplementation(async () => new Response('fixture', { status: isPrivate ? 404 : 200 }));
+    mocks.got.mockImplementation(async () =>
+      isPrivate ? upstream({}, 404) : upstream({ data: { project: { config: { visibility: 'public' }, primaryDomain: null }, languages } }),
+    );
+    const url = 'http://localhost:4310/sites/visibility-change-014/guide?lang=ar';
+    expect((await server.fetch(new Request(url))).status).toBe(308);
+    isPrivate = true;
+    const response = await server.fetch(new Request(url));
+    expect(response.status).toBe(404);
+    expect(response.headers.get('location')).toBeNull();
+  });
+});
+
+it('isolates credential-dependent redirects emitted by reader route loaders', async () => {
+  vi.clearAllMocks();
+  mocks.got.mockResolvedValue(
+    upstream({ data: { project: { config: { visibility: 'private' }, primaryDomain: null }, languages: [{ code: 'en', isDefault: true }] } }),
+  );
+  mocks.startHandler.mockResolvedValue(new Response(null, { status: 308, headers: { location: '/sites/private-alias-014/guide', vary: 'Accept' } }));
+  const response = await server.fetch(
+    new Request('http://localhost:4310/sites/private-alias-014/alias', { headers: { authorization: 'Bearer fictional-reader' } }),
+  );
+  expect(response.status).toBe(308);
+  expect(response.headers.get('cache-control')).toBe('private, no-store');
+  expect(response.headers.get('vary')).toContain('Accept');
+  expect(response.headers.get('vary')).toContain('Cookie');
+  expect(response.headers.get('vary')).toContain('Authorization');
+});

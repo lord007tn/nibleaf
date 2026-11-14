@@ -1,4 +1,5 @@
-import { legacySiteLanguageTarget, type PathLanguage } from '@nibleaf/shared/site-language';
+import type { PathLanguage } from '@nibleaf/shared/site-language';
+import { legacySiteLanguageTarget } from '@nibleaf/shared/site-language-redirect';
 import { siteBasePath } from '@/lib/site-paths';
 
 export interface LanguagePathRedirectInput {

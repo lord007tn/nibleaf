@@ -11,6 +11,7 @@
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
 import { parseSiteLanguagePath } from './site-language';
+import { sitePathLanguages } from './site-language-policy';
 import { resolveSiteRoute } from './site-route';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
@@ -153,21 +154,24 @@ export const createLinkTargetResolver = (snapshot: SiteSnapshot) => {
     if (!pathname) return null;
     const absolute = pathname.startsWith('/');
     const version = versionById.get(page.versionId);
-    const parsed = parseSiteLanguagePath(pathname, publicLanguages(snapshot.project.languages));
+    const params = new URLSearchParams(query);
+    const legacyLanguage = snapshot.project.languages.some((item) => item.code === params.get('lang'));
+    const parsed =
+      siteAbsolute && !legacyLanguage
+        ? parseSiteLanguagePath(pathname, sitePathLanguages(snapshot))
+        : { path: pathname.replace(/^\/+/, ''), language: undefined };
     const documentPath = absolute ? parsed.path : pathname;
-    const alreadyVersioned = absolute && version && (documentPath === version.slug || documentPath.startsWith(`${version.slug}/`));
-    const versionPrefix = !siteAbsolute && !alreadyVersioned && version && !version.isDefault ? [version.slug] : [];
+    const versionPrefix = !siteAbsolute && version && !version.isDefault ? [version.slug] : [];
     const base = absolute ? versionPrefix : [...versionPrefix, ...page.path.split('/').filter(Boolean).slice(0, -1)];
     const segments = resolveSegments(documentPath, base);
     const last = segments.at(-1) ?? '';
     if (PAGE_EXTENSION.test(last)) segments[segments.length - 1] = last.replace(PAGE_EXTENSION, '');
     else if (FILE_EXTENSION.test(last)) return null;
 
-    const params = new URLSearchParams(query);
     const lang =
       parsed.language?.code ??
       (params.has('lang') ? searchLanguage(params) : !siteAbsolute && page.languageCode !== defaultCode ? page.languageCode : undefined);
-    const path = [parsed.language?.code, ...segments].filter(Boolean).join('/');
+    const path = segments.join('/');
     const key = JSON.stringify([path, lang]);
     const cached = destinations.get(key);
     if (cached !== undefined) return withFragment(cached);

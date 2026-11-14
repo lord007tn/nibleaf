@@ -324,3 +324,9 @@ describe('SiteNav long titles', () => {
     }
   });
 });
+
+it('keeps a raw navigation page named v2 inside version v2', () => {
+  window.history.replaceState(null, '', '/sites/docs/ar/v2/start');
+  const html = renderToString(<SiteNav nodes={[page('v2')]} projectId="docs" currentPath="start" lang="ar" version="v2" toggleLabel="Toggle" />);
+  expect(html).toContain('href="/sites/docs/ar/v2/v2"');
+});

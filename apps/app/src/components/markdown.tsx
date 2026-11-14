@@ -64,10 +64,13 @@ export function resolveDocHref(href: string | undefined, site: SiteLinkContext |
   }
   if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('//')) return href;
   let internal = href;
-  if (/^[a-z][\w+.-]*:/i.test(href)) {
+  const authored = /^[a-z][\w+.-]*:/i.test(href);
+  if (authored) {
     try {
       const url = new URL(href);
       if (url.origin !== site.origin && (typeof window === 'undefined' || url.origin !== window.location.origin)) return href;
+      const project = /^\/sites\/([^/]+)(?:\/|$)/.exec(url.pathname)?.[1];
+      if (project && project !== site.projectId) return href;
       internal = `${url.pathname}${url.search}${url.hash}`;
     } catch {
       return href;
@@ -82,6 +85,7 @@ export function resolveDocHref(href: string | undefined, site: SiteLinkContext |
     version: site.version,
     defaultLanguage: site.defaultLanguage,
     languages: site.languages,
+    authored,
   });
 }
 

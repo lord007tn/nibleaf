@@ -4,6 +4,7 @@ import { startsUngroupedBlock } from '@nibleaf/shared/site';
 import { ChevronRight } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';
+import { useSiteReader } from '@/components/site/site-reader-context';
 import type { NavNode } from '@/hooks/api';
 import { siteHref } from '@/lib/site-paths';
 
@@ -72,6 +73,7 @@ function NavLink({
   rail,
   blockStart,
 }: NavItemProps & { node: NavNode; rail?: boolean; blockStart?: boolean }) {
+  const languages = useSiteReader()?.languages;
   const active = currentPath === node.path;
   const hasChildren = node.children.length > 0;
   const [open, setOpen] = useState(() => containsPath(node, currentPath));
@@ -92,7 +94,7 @@ function NavLink({
           id={linkId}
           onFocus={showClampedTitle}
           onPointerEnter={showClampedTitle}
-          href={siteHref(projectId, node.path, { lang, version: isVersionIndependentNavNode(node) ? undefined : version })}
+          href={siteHref(projectId, node.path, { lang, version: isVersionIndependentNavNode(node) ? undefined : version, languages })}
           aria-current={active ? 'page' : undefined}
           className={cn(
             // Touch screens get 44px rows; mouse and trackpad keep the dense list.

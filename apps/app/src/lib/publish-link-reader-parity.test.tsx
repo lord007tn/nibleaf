@@ -1,14 +1,14 @@
 /** @vitest-environment jsdom */
 import { findBrokenInternalLinks } from '@nibleaf/shared/publish-checks';
-import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
-import { parseSiteLanguagePath } from '@nibleaf/shared/site-language';
+import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
+import { parseSiteLanguageAlias, parseSiteLanguagePath } from '@nibleaf/shared/site-language';
+import { sitePathLanguages } from '@nibleaf/shared/site-language-policy';
 import { resolveSitePage } from '@nibleaf/shared/site-route';
 import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators/redirects';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import RichMarkdown from '@/components/markdown-rich';
-import { resolveLanguagePathRedirect } from '@/lib/site-language-path';
 import { buildSiteRedirectHref } from '@/lib/site-redirect-href';
 
 /**
@@ -88,7 +88,10 @@ const readerLang = (url: URL): string | undefined => {
 const readerServes = (snapshot: SiteSnapshot, start: URL): 'page' | 'openapi' | 'external' | 'not-found' => {
   let url = start;
   for (let hop = 0; hop <= 10; hop++) {
-    const parsed = parseSiteLanguagePath(decodeURIComponent(url.pathname), publicLanguages(snapshot.project.languages));
+    const parsed = parseSiteLanguagePath(
+      decodeURIComponent(url.pathname),
+      readerLang(url) && snapshot.project.languages.some((item) => item.code === readerLang(url)) ? [] : sitePathLanguages(snapshot),
+    );
     const splat = parsed.path;
     const lang = parsed.language?.code ?? readerLang(url);
     // 1. The page API (getSitePage): the first segment is passed as the version.
@@ -105,16 +108,10 @@ const readerServes = (snapshot: SiteSnapshot, start: URL): 'page' | 'openapi' | 
       url = new URL(buildSiteRedirectHref({ projectId: snapshot.project.id, target: to, lang, customDomain: true }), ORIGIN);
       continue;
     }
-    // 4. A language prefix in the first segment.
-    const languageTarget = resolveLanguagePathRedirect({
-      splat,
-      languages: publicLanguages(snapshot.project.languages),
-      projectId: snapshot.project.id,
-      isCustomDomain: true,
-      search: url.search,
-    });
-    if (languageTarget) {
-      url = new URL(languageTarget, ORIGIN);
+    const alias = parseSiteLanguageAlias(splat, snapshot.project.languages);
+    if (alias.language) {
+      const prefix = sitePathLanguages(snapshot).find((item) => item.code === alias.language?.code)?.pathPrefix;
+      url = new URL(`/${alias.language.isDefault ? '' : `${prefix}/`}${alias.path}`, ORIGIN);
       continue;
     }
     return 'not-found';
@@ -139,7 +136,7 @@ const renderedLinks = (snapshot: SiteSnapshot, linking: SnapshotPage): URL[] => 
         defaultLanguage: 'en',
         version: versionPrefix,
         path: linking.path,
-        languages: snapshot.project.languages,
+        languages: sitePathLanguages(snapshot),
       },
     }),
   );

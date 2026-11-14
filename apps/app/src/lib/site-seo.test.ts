@@ -589,3 +589,23 @@ it.each(['', 'not-absolute'])('keeps SSR head rendering with an invalid APP_URL:
     vi.unstubAllGlobals();
   }
 });
+
+it('uses the escaped language prefix for canonical, hreflang, Markdown and breadcrumbs', () => {
+  const fixture = base({
+    activeLanguage: 'ar',
+    languages: [
+      { code: 'en', isDefault: true, path: 'ar/guide' },
+      { code: 'ar', isDefault: false, path: 'ar/guide', pathPrefix: '~lang/ar' },
+    ],
+    page: { ...base().page, path: 'ar/guide' },
+    breadcrumbs: [{ title: 'Guide', path: 'ar/guide' }],
+  });
+  const head = pageHead(fixture, 'p1', 'ar');
+  expect(canonical(head)).toBe('http://localhost:4310/sites/p1/~lang/ar/ar/guide');
+  expect(hreflangs(head)).toEqual({
+    en: 'http://localhost:4310/sites/p1/ar/guide',
+    ar: 'http://localhost:4310/sites/p1/~lang/ar/ar/guide',
+    'x-default': 'http://localhost:4310/sites/p1/ar/guide',
+  });
+  expect(head.links).toContainEqual({ rel: 'alternate', type: 'text/markdown', href: 'http://localhost:4310/sites/p1/~lang/ar/ar/guide.md' });
+});

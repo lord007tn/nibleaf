@@ -109,6 +109,7 @@ it('omits an authored default-language query when the site default is known', ()
 it('keeps explicit language and version prefixes from being added twice', () => {
   expect(
     siteHref('p1', 'ar/v2/guide', {
+      authored: true,
       lang: 'ar',
       version: 'v2',
       defaultLanguage: 'en',
@@ -118,4 +119,11 @@ it('keeps explicit language and version prefixes from being added twice', () => 
       ],
     }),
   ).toBe('/sites/p1/ar/v2/guide');
+});
+
+it('never deduplicates a raw page named after its version', () => {
+  expect(siteHref('p1', 'v2', { version: 'v2', lang: 'ar' })).toBe('/sites/p1/ar/v2/v2');
+});
+it('uses the escaped language prefix supplied by the published snapshot', () => {
+  expect(siteHref('p1', 'ar/guide', { lang: 'ar', languages: [{ code: 'ar', pathPrefix: '~lang/ar' }] })).toBe('/sites/p1/~lang/ar/ar/guide');
 });

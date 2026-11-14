@@ -1,4 +1,4 @@
-import { type PathLanguage, parseSiteLanguagePath, publishedSitePath } from '@nibleaf/shared/site-language';
+import { type PathLanguage, parseSiteLanguagePath, publishedSitePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
 import { customDomainOrigin } from '@/lib/site-origin';
 
 const cleanPath = (path = ''): string => path.replace(/^\/+|\/+$/g, '');
@@ -62,18 +62,27 @@ export function siteLanguageParam(code?: string, defaultCode?: string): string |
 export function siteHref(
   projectId: string,
   path = '',
-  options?: { lang?: string; version?: string; defaultLanguage?: string; languages?: readonly PathLanguage[] },
+  options?: { lang?: string; version?: string; defaultLanguage?: string; languages?: readonly PathLanguage[]; authored?: boolean },
 ): string {
   const { pathname, query, fragment } = splitPath(path);
   const params = new URLSearchParams(query);
   const queryLanguage = params.get('lang');
   const unknownLanguage = queryLanguage && options?.languages && !options.languages.some((item) => item.code === queryLanguage);
-  const parsed = parseSiteLanguagePath(cleanPath(pathname), options?.languages ?? []);
+  const parsed = parseSiteLanguagePath(
+    cleanPath(pathname),
+    options?.authored && (!queryLanguage || unknownLanguage) ? (options.languages ?? []) : [],
+  );
   const language = parsed.language?.code ?? (unknownLanguage ? undefined : (queryLanguage ?? options?.lang));
   if (!unknownLanguage) params.delete('lang');
   const version =
-    options?.version && (parsed.path === options.version || parsed.path.startsWith(`${options.version}/`)) ? undefined : options?.version;
-  const fullPath = publishedSitePath(parsed.path, siteLanguageParam(language || undefined, options?.defaultLanguage), version);
+    options?.authored && options.version && (parsed.path === options.version || parsed.path.startsWith(`${options.version}/`))
+      ? undefined
+      : options?.version;
+  const fullPath = publishedSitePath(
+    parsed.path,
+    siteLanguagePrefix(siteLanguageParam(language || undefined, options?.defaultLanguage), options?.languages),
+    version,
+  );
   const prefix = siteBasePath(projectId, isCustomDomainSite(projectId));
   const search = params.toString();
   return `${prefix}${fullPath || (prefix ? '' : '/')}${search ? `?${search}` : ''}${fragment}`;

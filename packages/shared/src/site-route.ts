@@ -19,7 +19,8 @@ import {
   type SnapshotPage,
   type SnapshotVersion,
 } from './site';
-import { type PathLanguage, parseSiteLanguagePath, publishedSitePath } from './site-language';
+import { type PathLanguage, parseSiteLanguageAlias, parseSiteLanguagePath, publishedSitePath, siteLanguagePrefix } from './site-language';
+import { sitePathLanguages } from './site-language-policy';
 
 const SLASH = 47;
 
@@ -257,10 +258,12 @@ export function buildSiteRedirectHref(input: {
 }): string {
   const targetUrl = new URL(input.target, 'https://redirect.nibleaf.invalid');
   const target = normalizeRedirectPath(targetUrl.pathname);
-  const parsed = parseSiteLanguagePath(target, input.languages ?? []);
-  const language = parsed.language?.code ?? targetUrl.searchParams.get('lang') ?? input.lang;
+  const language = targetUrl.searchParams.get('lang') ?? input.lang;
   targetUrl.searchParams.delete('lang');
-  const pathname = publishedSitePath(parsed.path, language && language !== input.defaultLanguage ? language : undefined);
+  const pathname = publishedSitePath(
+    target,
+    language && language !== input.defaultLanguage ? siteLanguagePrefix(language, input.languages) : undefined,
+  );
   const suffix = `${targetUrl.search}${targetUrl.hash}`;
   return `${input.customDomain ? '' : `/sites/${input.projectId}`}${pathname || (input.customDomain ? '/' : '')}${suffix}`;
 }
@@ -286,7 +289,8 @@ export function resolveSiteRoute(snapshot: SiteSnapshot, path: string, options: 
   if (sitePathTooLong(path)) {
     return { kind: 'not-found', reason: 'path-too-long' };
   }
-  const parsed = parseSiteLanguagePath(path, publicLanguages(snapshot.project.languages));
+  const legacyLanguage = publicLanguages(snapshot.project.languages).some((language) => language.code === options.lang);
+  const parsed = legacyLanguage ? { path: trimSlashes(path), language: undefined } : parseSiteLanguagePath(path, sitePathLanguages(snapshot));
   const splat = trimSlashes(parsed.path);
   const lang = parsed.language?.code ?? options.lang;
   // The page route passes the first segment as the version; the lookup only
@@ -322,12 +326,16 @@ export function resolveSiteRoute(snapshot: SiteSnapshot, path: string, options: 
         lang: lang === defaultLanguage(snapshot.project).code ? undefined : lang,
         customDomain: true,
         defaultLanguage: defaultLanguage(snapshot.project).code,
-        languages: snapshot.project.languages,
+        languages: sitePathLanguages(snapshot),
       });
       return { kind: 'redirect', to, reason: 'configured' };
     } catch {
       // The page route ignores a target it can't build and falls through.
     }
   }
+  // Main also accepted guessed language prefixes after every real resource
+  // missed. Keep those aliases, without letting them steal an existing path.
+  const alias = parseSiteLanguageAlias(splat, snapshot.project.languages);
+  if (alias.language) return resolveSiteRoute(snapshot, alias.path, { lang: alias.language.code });
   return { kind: 'not-found' };
 }

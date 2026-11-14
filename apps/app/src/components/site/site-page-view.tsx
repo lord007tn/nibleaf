@@ -250,7 +250,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         <LanguageFallbackNotice
           requested={chromeLanguage.lang}
           shown={language}
-          href={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix })}
+          href={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix, languages: data.languages })}
           attributes={chromeLanguage}
           languages={reader?.languages}
           text={readerText}
@@ -275,7 +275,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
                   </span>
                 ) : (
                   <a
-                    href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+                    href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
                     className="transition-opacity hover:opacity-80"
                     dir={blockDirection(crumb.title)}
                     lang={contentLanguage.lang}
@@ -382,7 +382,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         >
           {prev ? (
             <a
-              href={siteHref(projectId, prev.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+              href={siteHref(projectId, prev.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
               rel="prev"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
@@ -399,7 +399,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
           {next ? (
             <a
-              href={siteHref(projectId, next.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+              href={siteHref(projectId, next.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
               rel="next"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >
