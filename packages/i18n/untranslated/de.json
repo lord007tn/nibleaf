@@ -141,8 +141,7 @@
     "pagestatus_live",
     "settings_git_productionbranch",
     "settings_import_mintlify_branch",
-    "settings_import_summary_branch",
-    "settings_integrations_field_domain"
+    "settings_import_summary_branch"
   ],
   "pending": []
 }

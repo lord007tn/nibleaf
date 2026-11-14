@@ -3172,7 +3172,7 @@
   "settings_integrations_field_repository": "Speicherort",
   "settings_integrations_field_branch": "Zweigstelle",
   "settings_integrations_field_measurementid": "Messung ID",
-  "settings_integrations_field_domain": "Domain",
+  "settings_integrations_field_domain": "Domainname",
   "settings_integrations_field_label": "Etikett",
   "settings_integrations_field_draftmodel": "Draft Modell",
   "settings_integrations_field_answermodel": "Antwortmodell",
