@@ -278,8 +278,8 @@ type MarkdownSerializerLike = {
 /** tiptap-markdown, saving with `LinearMarkdownSerializerState`. Its serializer
  *  builds its own state class; this one is the same with the output kept as pieces. */
 export const LinearMarkdown = Markdown.extend({
-  onBeforeCreate() {
-    this.parent?.();
+  onBeforeCreate(event) {
+    this.parent?.(event);
     const storage = this.editor.storage as unknown as { markdown: { serializer: MarkdownSerializerLike } };
     const { serializer } = storage.markdown;
     const scanDelims = scanDelimsOf(this.editor);
