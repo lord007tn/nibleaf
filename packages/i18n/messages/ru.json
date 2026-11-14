@@ -711,6 +711,8 @@
   "settings_theme_color_warning": "Предупреждение",
   "settings_theme_color_danger": "Опасность",
   "settings_theme_contrasttitle": "Контраст требует внимания",
+  "settings_theme_accentadjustedtitle": "Акцентный цвет скорректирован для читаемости",
+  "settings_theme_accentadjustedbody": "На опубликованном сайте ссылки, активная страница и кнопки используют ближайший оттенок вашего акцентного цвета, который читается как текст (WCAG AA, 4,5:1).",
   "settings_theme_contrastpass": "Светлый и темный текст, фокус, акцент и пары кодов проходят через настроенные ворота WCAG.",
   "settings_theme_contrastblocked": "Перед сохранением исправьте указанные пары контрастов.",
   "settings_theme_preview": "Предварительный просмотр в реальном времени",
