@@ -3,11 +3,15 @@ import { DataList, DataListEmpty, DataListItem, DataListSkeleton, RowActions, Ro
 import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { PageContainer } from '@nibleaf/design-system/components/ui/page-container';
 import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
+import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useParams } from '@tanstack/react-router';
 import { Rocket, RotateCcw } from 'lucide-react';
 import { QueryErrorState } from '@/components/query-error-state';
+import { ReviewAndPublishButton, usePendingLabel, useSitePendingState } from '@/features/publish/components/pending-changes';
+import { hasUnpublishedChanges } from '@/features/publish/model/pending';
 import { type PublishHistoryItem, usePublishHistory } from '@/hooks/api/publish-history';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { useFormatters } from '@/lib/format';
 import { canRestoreState, PublishStatusBadge, publishState, useLiveVersionId } from './publish-status';
 import { useRestoreReason, useRestoreVersion } from './restore-version';
@@ -21,6 +25,7 @@ export default function PublishesPage() {
   const liveId = useLiveVersionId(projectId, history.data?.pages[0]?.live);
   const restoreReason = useRestoreReason(projectId);
   const restore = useRestoreVersion(projectId);
+  const viewOnly = useProjectAdminStatus(projectId).edit === 'viewOnly';
 
   return (
     <PageContainer width="wide">
@@ -36,6 +41,7 @@ export default function PublishesPage() {
       ) : (
         <div className="flex flex-col gap-4">
           <DataList aria-label={t('publishes.title')} bordered data-testid="publish-history">
+            <PendingDraftRow projectId={projectId} viewOnly={viewOnly} />
             {items.map((item) => (
               <PublishRow
                 item={item}
@@ -56,6 +62,28 @@ export default function PublishesPage() {
       )}
       {restore.elements}
     </PageContainer>
+  );
+}
+
+/** The draft readers don't see yet, above the version they do (P1-DASH-005):
+ *  what changed and Review and publish. Absent while the site is up to date. */
+function PendingDraftRow({ projectId, viewOnly }: { projectId: string; viewOnly: boolean }) {
+  const t = useT();
+  const state = useSitePendingState(projectId);
+  const label = usePendingLabel(state);
+  if (!hasUnpublishedChanges(state) || !label) return null;
+  return (
+    <DataListItem
+      badges={
+        <StatusBadge size="sm" tone="info">
+          {t('pending.draft')}
+        </StatusBadge>
+      }
+      data-testid="pending-draft-row"
+      description={state.liveVersion != null ? t('pending.readersStillSee', { version: `v${state.liveVersion}` }) : undefined}
+      title={label}
+      trailing={<ReviewAndPublishButton projectId={projectId} viewOnly={viewOnly} />}
+    />
   );
 }
 

@@ -69,6 +69,22 @@ describe('PublishControl while the role is loading, failed or a Viewer', () => {
     expect(publish()?.disabled).toBe(false);
   });
 
+  // Sol review of #619: a dismissed sheet reopened when the top bar remounted.
+  it('opens for a launcher request made while mounted, and never replays one after a remount', async () => {
+    state.edit = 'edit';
+    const show = (openRequest: number) => act(async () => root.render(<PublishControl openRequest={openRequest} project={project} />));
+    await show(0);
+    expect(dialogOpen()).toBe(false);
+    await show(1);
+    expect(dialogOpen()).toBe(true);
+    // Another page (the draft preview) has no top-bar Publish; coming back remounts it.
+    await act(async () => root.render(null));
+    await show(1);
+    expect(dialogOpen()).toBe(false);
+    await show(2);
+    expect(dialogOpen()).toBe(true);
+  });
+
   it('drops a Viewer’s ?publish=true request, so a later promotion never pops the dialog open', async () => {
     state.edit = 'pending';
     await render(true);

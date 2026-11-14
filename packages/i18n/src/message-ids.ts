@@ -4894,6 +4894,15 @@ export const MESSAGE_IDS = {
   'publishes.noSnapshot': 'publishes_nosnapshot',
   'settings.appearance.summary': 'settings_appearance_summary',
   'settings.appearance.sections': 'settings_appearance_sections',
+  'pending.count': 'pending_count',
+  'pending.siteOnly': 'pending_siteonly',
+  'pending.readersStillSee': 'pending_readersstillsee',
+  'pending.review': 'pending_review',
+  'pending.draft': 'pending_draft',
+  'overview.col.status': 'overview_col_status',
+  'pageStatus.draft': 'pagestatus_draft',
+  'pageStatus.changed': 'pagestatus_changed',
+  'pageStatus.live': 'pagestatus_live',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;
