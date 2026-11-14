@@ -1205,6 +1205,9 @@ importers:
       github-slugger:
         specifier: ^2.0.0
         version: 2.0.0
+      markdown-it:
+        specifier: 14.3.3
+        version: 14.3.3
       mdast-util-from-markdown:
         specifier: ^2.0.3
         version: 2.0.3
@@ -1266,9 +1269,6 @@ importers:
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
-      markdown-it:
-        specifier: 14.3.3
-        version: 14.3.3
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

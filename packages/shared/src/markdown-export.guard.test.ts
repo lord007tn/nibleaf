@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs';
-import { performance } from 'node:perf_hooks';
 import { expect, it } from 'vitest';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
-import { checkExportBaseline, type ExportGuardBaseline, renderedActiveHtml } from './testing/export-guard';
+import {
+  checkExportBaseline,
+  EXPORT_BASELINE_REVISION,
+  type ExportGuardBaseline,
+  recordExportBaseline,
+  renderedActiveHtml,
+} from './testing/export-guard';
 import { EXPORT_GUARD_SEED, htmlExportBoundaryCases, PORTABLE_REGRESSION_IDS, seededExportCases } from './testing/export-guard-cases';
 
 const projectors = [normalizePublicMarkdownContent, portablePublicMdxMarkdown] as const;
@@ -16,14 +21,13 @@ const readBaseline = (count: number): ExportGuardBaseline =>
   ) as ExportGuardBaseline;
 
 it.each(matrices)(
-  'keeps main author text and adds no active HTML in both exports: $label',
+  'keeps element-inactive main output byte-identical, preserves main code and emits zero active elements: $label',
   (matrix) => {
-    const start = performance.now();
     const baseline = readBaseline(matrix.count);
     const report = checkExportBaseline(matrix.cases, baseline, projectors);
     if (matrix.cases.length !== matrix.count) report.metadata.push('wrong case count');
     if (baseline.seed !== matrix.seed) report.metadata.push('wrong seed');
-    console.info(`Export guard ${matrix.count}: ${(performance.now() - start).toFixed(1)} ms`, {
+    console.info(`Export guard ${matrix.count} correctness`, {
       public: report.stats[0],
       portable: report.stats[1],
     });
@@ -37,7 +41,7 @@ it.each(matrices)(
   60_000,
 );
 
-it('adds zero active HTML in the 13 portable outputs caught by the round-4 review', () => {
+it('adds zero active elements in the 13 portable outputs caught by the round-4 review', () => {
   const matrix = matrices[1];
   const baseline = readBaseline(matrix.count);
   const failures: number[] = [];
@@ -48,3 +52,67 @@ it('adds zero active HTML in the 13 portable outputs caught by the round-4 revie
   }
   expect(failures).toEqual([]);
 }, 60_000);
+
+it('rejects preserved fence bytes hidden inside an HTML comment', () => {
+  const source = '<script>ACTIVE</script>\n\n~~~html\nSAMPLE\n~~~';
+  const cases = [{ index: 0, source, markers: ['SAMPLE'] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const corrupt = () => '&lt;script>ACTIVE&lt;/script>\n\n<!--\n~~~html\nSAMPLE\n~~~\n-->';
+  const report = checkExportBaseline(cases, baseline, [corrupt, corrupt]);
+  expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it.each([
+  { name: 'order', code: '~~~\nONE\n~~~\n\n~~~\nTWO\n~~~\n', changed: '~~~\nTWO\n~~~\n\n~~~\nONE\n~~~\n' },
+  { name: 'occurrences', code: '~~~\nSAME\n~~~\n\n~~~\nSAME\n~~~\n', changed: '~~~\nSAME\n~~~\n' },
+  { name: 'role', code: '`SAMPLE`', changed: '~~~\n`SAMPLE`\n~~~' },
+])('rejects changed code $name even when every sample occurs in the source', ({ code, changed }) => {
+  const source = `<script>ACTIVE</script>\n\n${code}`;
+  const cases = [{ index: 0, source, markers: [] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const corrupt = () => `&lt;script>ACTIVE&lt;/script>\n\n${changed}`;
+  const report = checkExportBaseline(cases, baseline, [corrupt, corrupt]);
+  expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it('rejects code introduced into a changed output whose main output had none', () => {
+  const source = '<script>ACTIVE</script>\n\nTEXT';
+  const cases = [{ index: 0, source, markers: ['TEXT'] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const corrupt = () => '&lt;script>ACTIVE&lt;/script>\n\nTEXT\n\n~~~\nNEW\n~~~';
+  const report = checkExportBaseline(cases, baseline, [corrupt, corrupt]);
+  expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it('accepts source code revealed by neutralizing an unclosed active element, in source order only', () => {
+  const source = '> <style>\n> ~~~\n> KEPT\n> ~~~\n\nTEXT';
+  const cases = [{ index: 0, source, markers: ['TEXT'] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const revealed = () => '> &lt;style>\n> ~~~\n> KEPT\n> ~~~\n\nTEXT';
+  const reordered = () => '> &lt;style>\n> ~~~\n> TEXT\n> ~~~\n\nKEPT';
+  expect(checkExportBaseline(cases, baseline, [revealed, revealed]).stats.map((stats) => stats.changedCode)).toEqual([0, 0]);
+  expect(checkExportBaseline(cases, baseline, [reordered, reordered]).stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it.each([
+  { source: '<style>\n~~~\n> KEPT\n~~~\n</style>', output: '&lt;style>\n~~~\nKEPT\n~~~\n&lt;/style>' },
+  { source: '<style>\n~~~\nONE\nSKIPPED\nTWO\n~~~\n</style>', output: '&lt;style>\n~~~\nONE\nTWO\n~~~\nSKIPPED\n&lt;/style>' },
+])('rejects corruption of revealed source spans: $source', ({ source, output }) => {
+  const cases = [{ index: 0, source, markers: [] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const report = checkExportBaseline(cases, baseline, [() => output, () => output]);
+  expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it('retains CRLF and literal quote characters when removing one uniform revealed-code prefix', () => {
+  const source = '<style>\r\n~~~\r\n\r\n> KEPT\r\n~~~\r\n</style>';
+  const quoted = source
+    .split('\n')
+    .map((line) => (line === '\r' ? '>\r' : `> ${line}`))
+    .join('\n');
+  const cases = [{ index: 0, source, markers: ['KEPT'] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [() => quoted, () => quoted]) };
+  const output = quoted.replaceAll('<style>', '&lt;style>').replaceAll('</style>', '&lt;/style>');
+  const report = checkExportBaseline(cases, baseline, [() => output, () => output]);
+  expect(report.failures).toEqual([]);
+});

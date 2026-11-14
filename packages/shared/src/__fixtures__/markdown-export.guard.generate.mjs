@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { EXPORT_BASELINE_REVISION, recordExportBaseline } from '../testing/export-guard.ts';
-import { EXPORT_GUARD_SEED, htmlExportBoundaryCases, seededExportCases } from '../testing/export-guard-cases.ts';
+import { EXPORT_GUARD_SEED, exportFollowingBlockCases, htmlExportBoundaryCases, seededExportCases } from '../testing/export-guard-cases.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const shared = resolve(here, '../..');
@@ -22,6 +22,10 @@ try {
     pathToFileURL(join(baseline, 'public-markdown-content.ts')).href
   );
   const projectors = [normalizePublicMarkdownContent, portablePublicMdxMarkdown];
+  const following = exportFollowingBlockCases().map((entry) => ({ ...entry, outputs: projectors.map((project) => project(entry.source)) }));
+  const followingTarget = join(here, 'markdown-export.following.main.json');
+  writeFileSync(followingTarget, `${JSON.stringify({ revision, cases: following })}\n`);
+  execFileSync(process.execPath, [join(root, 'node_modules/@biomejs/biome/bin/biome'), 'format', '--write', followingTarget], { cwd: root });
   for (const { name, cases, seed } of [
     { name: '2640', cases: htmlExportBoundaryCases() },
     { name: '4096', cases: seededExportCases(), seed: EXPORT_GUARD_SEED },
@@ -29,7 +33,9 @@ try {
     const fixture = { revision, ...(seed === undefined ? {} : { seed }), ...recordExportBaseline(cases, projectors) };
     const target = join(here, `markdown-export.guard.main-${revision.slice(0, 8)}.${name}.json`);
     writeFileSync(target, `${JSON.stringify(fixture)}\n`);
-    execFileSync(process.execPath, [join(root, 'node_modules/@biomejs/biome/bin/biome'), 'format', '--write', target], { cwd: root });
+    execFileSync(process.execPath, [join(root, 'node_modules/@biomejs/biome/bin/biome'), 'format', '--write', '--files-max-size=8388608', target], {
+      cwd: root,
+    });
     console.info(`Recorded ${cases.length} export shapes from main ${revision}.`);
   }
 } finally {

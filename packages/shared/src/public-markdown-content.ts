@@ -1,3 +1,4 @@
+import { escapeDisallowedExportHtml } from './export-html';
 import { markdownCodeSpans } from './markup-scan';
 import { buildMdxTree, type MdxNode, tokenizeMdx } from './mdx-tokens';
 
@@ -303,9 +304,11 @@ const projectMdx = (source: string, target: Target): Segment[] => renderNodes(bu
 /** Convert supported authored MDX to inert Markdown for the HTML and PDF exports, with the same
  *  tokenizer and projection as `.md`. Code is never rewritten; `marked` escapes raw HTML. */
 export const portablePublicMdxMarkdown = (source: string): string =>
-  projectMdx(source, 'export')
-    .map((segment) => segment.value)
-    .join('');
+  escapeDisallowedExportHtml(
+    projectMdx(source, 'export')
+      .map((segment) => segment.value)
+      .join(''),
+  );
 
 /** Authored MDX as public Markdown (`.md`, llms files): projected, with active markup, MDX
  *  expressions and ESM removed and prose escaped once. Code stays exactly as written. */
@@ -338,5 +341,5 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
         .join('\n'),
     );
   }
-  return parts.join('').trim();
+  return escapeDisallowedExportHtml(parts.join('').trim());
 };
