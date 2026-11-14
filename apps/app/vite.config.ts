@@ -35,10 +35,12 @@ const SECURITY_HEADERS = {
 };
 
 /** Message files only the published reader's lazily loaded search dialog, article
- * renderer and AI chat panel import, read from those translators' own imports so the
- * list can't drift (packages/i18n/src/site-search.ts, site-content.ts and site-chat.ts). */
+ * renderer, AI chat panel, private-site screen and page actions import, read from those
+ * translators' own imports so the list can't drift (packages/i18n/src/site-search.ts,
+ * site-content.ts, site-chat.ts, site-access.ts and site-page-actions.ts). Outside the
+ * shared public-site-i18n group they load with their own chunks, not every route's. */
 const LAZY_SITE_MESSAGES = new RegExp(
-  `/paraglide/messages/site_(?:${['site-search.ts', 'site-content.ts', 'site-chat.ts', 'site-access.ts']
+  `/paraglide/messages/site_(?:${['site-search.ts', 'site-content.ts', 'site-chat.ts', 'site-access.ts', 'site-page-actions.ts']
     .flatMap((file) =>
       [...readFileSync(new URL(`../../packages/i18n/src/${file}`, import.meta.url), 'utf8').matchAll(/paraglide\/messages\/site_(\w+)\.js/g)].map(
         (match) => match[1],

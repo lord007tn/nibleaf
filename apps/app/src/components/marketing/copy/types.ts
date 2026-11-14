@@ -149,7 +149,11 @@ export interface LandingCopy {
   };
   paths: { eyebrow: string; title: string; body: string; cloud: PathCard; selfHost: PathCard; detailsLink: Cta };
   compare: { eyebrow: string; title: string; body: string; links: (Cta & { description: string })[] };
-  faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
+  /**
+   * The landing page shows only the `featured` questions (P2-MKT-005); `moreLinks` point to where the
+   * rest are answered.
+   */
+  faq: { eyebrow: string; title: string; items: { q: string; a: string; featured?: true }[]; moreLinks: Cta[] };
   blog: { eyebrow: string; title: string; allLink: Cta; readingTime: (minutes: number) => string };
   finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
 }
@@ -203,4 +207,45 @@ export interface UseCasesTeaserCopy {
   eyebrow: string;
   title: string;
   body: string;
+}
+
+/** A pricing-table cell: `true` renders a check, a string renders as explanatory text. */
+export type PricingCell = true | string;
+
+/** `/pricing` and `/ar/pricing`. Prices and other facts come from `pricing-facts.ts`. */
+export interface PricingCopy {
+  meta: MarketingPageMeta;
+  header: { eyebrow: string; title: string; body: string };
+  cloud: { name: string; badge: string; priceNote: string; points: string[]; cta: Cta; footnote: string };
+  selfHosted: { name: string; priceNote: string; points: string[]; cta: Cta };
+  included: {
+    eyebrow: string;
+    title: string;
+    lead: string;
+    notes: string[];
+    /** The accessible name of a check mark in the table. */
+    includedLabel: string;
+    groups: { title: string; rows: { label: string; cloud: PricingCell; self: PricingCell }[] }[];
+  };
+  /** Three items, shown with the free, fair-use and no-paid-plan icons in that order. */
+  finePrint: { eyebrow: string; title: string; items: { title: string; body: string }[] };
+  faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
+  finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
+}
+
+/** `/self-hosting` and `/ar/self-hosting`. */
+export interface SelfHostingCopy {
+  meta: MarketingPageMeta;
+  header: { eyebrow: string; title: string; body: string; checksTitle: string; checks: string[]; guide: Cta };
+  /** Four items, shown with the application, data, storage and ingress icons in that order. */
+  architecture: { title: string; body: string; items: { title: string; body: string }[] };
+  verify: { title: string; paragraphs: string[] };
+}
+
+/** Title, description and breadcrumb names of a page that exists in both marketing languages. */
+export interface MarketingPageMeta {
+  title: string;
+  description: string;
+  /** Breadcrumb names: the home page, then this page. */
+  breadcrumb: [home: string, page: string];
 }

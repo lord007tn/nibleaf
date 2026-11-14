@@ -89,6 +89,7 @@ import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 import type { SiteAccessMessageKey } from './site-access';
 import type { SiteChatMessageKey, SiteChatPluralKey } from './site-chat';
 import type { SiteContentMessageKey } from './site-content';
+import type { SitePageActionsMessageKey } from './site-page-actions';
 import type { SiteSearchMessageKey } from './site-search';
 
 /** Messages with {variables} keep Paraglide's generated input types, so a caller
@@ -195,11 +196,18 @@ type SiteContractKey = Extract<MessageKey, `site.${string}`>;
  * (apps/app/src/lib/arabic-marketing-copy.ts) so it stays out of every reader's first load. */
 type SiteMarketingHeadKey = `arabic${'Landing' | 'Platforms'}${string}`;
 /** Reader keys `siteT` covers: all but those of the lazily loaded search dialog
- * (./site-search), article renderer (./site-content), AI chat panel (./site-chat)
+ * (./site-search), article renderer (./site-content), page actions
+ * (./site-page-actions), AI chat panel (./site-chat)
  * and private-site screen (./site-access). */
 export type SiteMessageKey = Exclude<
   SiteContractKey extends `site.${infer Key}` ? Key : never,
-  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey | SiteChatPluralKey | SiteAccessMessageKey | SiteMarketingHeadKey
+  | SiteSearchMessageKey
+  | SiteContentMessageKey
+  | SitePageActionsMessageKey
+  | SiteChatMessageKey
+  | SiteChatPluralKey
+  | SiteAccessMessageKey
+  | SiteMarketingHeadKey
 >;
 type SiteVariableKey = keyof typeof siteVariableMessages;
 type SitePluralKey = keyof typeof sitePluralMessages;

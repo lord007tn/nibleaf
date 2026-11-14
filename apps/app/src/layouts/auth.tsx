@@ -7,7 +7,8 @@ import { useAuthT } from '@/lib/auth-messages';
 /**
  * Auth chrome — a premium split: a dark, brand-led panel (plain-language value
  * props, localized, hidden below lg) beside a focused form card. The form's h1
- * is the localized `subtitle` each page passes, so pages must not add another.
+ * is the localized `subtitle` each page passes, so pages must not add another;
+ * `notice` (the terms on sign-in and sign-up) sits right under it.
  *
  * The logo and "Back to Nibleaf" lead to the marketing home. Every install
  * serves it from this app at `/` (cloud and self-hosted alike), so the link is
@@ -21,7 +22,7 @@ const BRAND_POINTS: { icon: ComponentType<SVGProps<SVGSVGElement>>; key: 'auth.b
     { icon: Languages, key: 'auth.brand.multilingual' },
   ];
 
-export function AuthLayout({ children, subtitle }: { children: ReactNode; subtitle?: string }) {
+export function AuthLayout({ children, subtitle, notice }: { children: ReactNode; subtitle?: string; notice?: ReactNode }) {
   const t = useAuthT();
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
@@ -88,7 +89,10 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
               <span className="font-semibold text-2xl tracking-tight">Nibleaf</span>
             </a>
           </div>
-          {subtitle ? <h1 className="mb-6 text-center font-semibold text-2xl tracking-tight lg:text-start">{subtitle}</h1> : null}
+          {subtitle ? (
+            <h1 className={`${notice ? 'mb-2' : 'mb-6'} text-center font-semibold text-2xl tracking-tight lg:text-start`}>{subtitle}</h1>
+          ) : null}
+          {notice ? <div className="mb-6">{notice}</div> : null}
           {children}
         </div>
       </div>

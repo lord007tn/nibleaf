@@ -1,0 +1,22 @@
+{
+  "sameAsEnglish": [
+    "settings_footer_linkedin_label",
+    "settings_banner_linkurl_placeholder",
+    "settings_addons_editurl_placeholder",
+    "settings_addons_issueurl_placeholder",
+    "settings_integrations_provider_publicgit",
+    "settings_integrations_provider_plausible",
+    "settings_integrations_provider_qdrant",
+    "settings_integrations_provider_postmark",
+    "settings_integrations_provider_maxio",
+    "settings_integrations_provider_minio",
+    "settings_integrations_provider_amazons3",
+    "settings_integrations_provider_cloudflarer2",
+    "settings_integrations_provider_backblazeb2",
+    "settings_integrations_placeholder_slack",
+    "settings_integrations_placeholder_discord",
+    "settings_integrations_placeholder_zapier",
+    "settings_joinlinks_domainplaceholder"
+  ],
+  "pending": []
+}
