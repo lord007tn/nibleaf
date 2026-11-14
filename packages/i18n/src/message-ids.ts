@@ -4894,6 +4894,15 @@ export const MESSAGE_IDS = {
   'publishes.noSnapshot': 'publishes_nosnapshot',
   'newSite.reason.name': 'newsite_reason_name',
   'nav.main': 'nav_main',
+  'pending.count': 'pending_count',
+  'pending.siteOnly': 'pending_siteonly',
+  'pending.readersStillSee': 'pending_readersstillsee',
+  'pending.review': 'pending_review',
+  'pending.draft': 'pending_draft',
+  'overview.col.status': 'overview_col_status',
+  'pageStatus.draft': 'pagestatus_draft',
+  'pageStatus.changed': 'pagestatus_changed',
+  'pageStatus.live': 'pagestatus_live',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;
