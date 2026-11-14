@@ -4843,7 +4843,9 @@ export const MESSAGE_IDS = {
   'publish.checks.allClear': 'publish_checks_allclear',
   'publish.checks.allClearHint': 'publish_checks_allclearhint',
   'publish.checks.fix': 'publish_checks_fix',
-  'publish.checks.fixLabel': 'publish_checks_fixlabel',
+  'publish.checks.fixProblem': 'publish_checks_fixproblem',
+  'publish.checks.show': 'publish_checks_show',
+  'publish.checks.hide': 'publish_checks_hide',
   'publish.checks.blockedReason': 'publish_checks_blockedreason',
   'publish.checks.error': 'publish_checks_error',
   'publish.checks.warning': 'publish_checks_warning',
@@ -4892,6 +4894,17 @@ export const MESSAGE_IDS = {
   'overview.activity.viewAll': 'overview_activity_viewall',
   'publishes.tooLarge': 'publishes_toolarge',
   'publishes.noSnapshot': 'publishes_nosnapshot',
+  'settings.appearance.summary': 'settings_appearance_summary',
+  'settings.appearance.sections': 'settings_appearance_sections',
+  'pending.count': 'pending_count',
+  'pending.siteOnly': 'pending_siteonly',
+  'pending.readersStillSee': 'pending_readersstillsee',
+  'pending.review': 'pending_review',
+  'pending.draft': 'pending_draft',
+  'overview.col.status': 'overview_col_status',
+  'pageStatus.draft': 'pagestatus_draft',
+  'pageStatus.changed': 'pagestatus_changed',
+  'pageStatus.live': 'pagestatus_live',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

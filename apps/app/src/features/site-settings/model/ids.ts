@@ -51,7 +51,7 @@ const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', varia
 const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { analytics: 'integrations', smartAi: 'ai' };
 
 const includes = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
-const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
+export const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
 export const isMovedSectionId = (value: unknown): value is MovedSectionId => includes(MOVED_SECTION_IDS, value);
 const isAppearanceSectionId = (value: unknown): value is AppearanceSectionId => includes(APPEARANCE_SECTION_IDS, value);
 

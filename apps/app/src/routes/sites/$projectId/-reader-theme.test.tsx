@@ -32,10 +32,11 @@ import { Route as SiteRoute } from './route';
 
 const PATH = 'blog/add-new-reservation-2';
 
-// The audited site: light by configuration (no `styling.theme`), English by
-// default, and this post has no Arabic translation.
-/** The site's configured theme (`styling.theme`); null is the audited light default. */
+// The audited site: English by default, and this post has no Arabic
+// translation. Each test sets the configured theme it needs.
+/** The site's configured theme (`styling.theme`). */
 let siteConfig: SiteShell['project']['config'] = null;
+const LIGHT_SITE = { styling: { theme: 'light' } } as SiteShell['project']['config'];
 
 const shell = (activeLanguage: string): SiteShell => ({
   project: { id: 'docs', name: 'Jood Booking', slug: 'docs', description: null, config: siteConfig, primaryDomain: null },
@@ -112,14 +113,14 @@ beforeEach(() => {
       disconnect = vi.fn();
     },
   );
-  // The reader's OS prefers dark, and nothing is stored: the site's configured
-  // light theme is the only right answer.
+  // The reader's OS prefers dark, and nothing is stored: a site configured
+  // light stays light; one that never chose follows the OS.
   vi.stubGlobal(
     'matchMedia',
     vi.fn((query: string) => ({ matches: query.includes('dark'), addEventListener: vi.fn(), removeEventListener: vi.fn() })),
   );
   localStorage.clear();
-  siteConfig = null;
+  siteConfig = LIGHT_SITE;
   document.documentElement.className = '';
   mocks.getSite.mockImplementation(async ({ data }: { data: { language?: string } }) => shell(data.language ?? 'en'));
   mocks.getSitePage.mockResolvedValue(englishPage);
@@ -236,6 +237,25 @@ async function switchToArabicHeld(container: HTMLElement) {
 const themeToggle = (container: HTMLElement) => container.querySelector<HTMLButtonElement>('button[aria-pressed]');
 
 describe('reader theme sources across a language switch', () => {
+  it('follows the OS when the owner never chose a theme (PUB-004)', async () => {
+    siteConfig = { styling: {} } as SiteShell['project']['config'];
+    const setOs = stubOsTheme('dark');
+    const container = await renderReader(`/sites/docs/${PATH}`);
+    expect(documentTheme()).toBe('dark');
+    const release = await switchToArabicHeld(container);
+    expect(documentTheme()).toBe('dark');
+    await setOs('light');
+    await release();
+    expect(documentTheme()).toBe('light');
+  }, 30_000);
+
+  it('follows the OS for a site with no config at all', async () => {
+    siteConfig = null;
+    stubOsTheme('dark');
+    await renderReader(`/sites/docs/${PATH}`);
+    expect(documentTheme()).toBe('dark');
+  }, 30_000);
+
   it.each(['light', 'dark'] as const)(
     'keeps a stored %s choice over the configured theme and the OS',
     async (stored) => {

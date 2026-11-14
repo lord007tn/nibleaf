@@ -838,6 +838,8 @@
   "settings_unsaved_description": "Ihre Änderungen wurden nicht gespeichert.",
   "settings_unsaved_keep": "Weiter bearbeiten",
   "settings_appearance_location": "Auch unter Website-Einstellungen → Erscheinungsbild und im Einstellungsbereich des Editors verfügbar.",
+  "settings_appearance_summary": "Wie Ihre veröffentlichte Website aussieht: Marke, Theme, Schrift, Kopfzeile, Fußzeile und Banner.",
+  "settings_appearance_sections": "Bereiche der Darstellung",
   "settings_domain_guide_step1": "Öffnen Sie die DNS-Einstellungen Ihres Domainanbieters.",
   "settings_domain_guide_step2": "Tragen Sie Typ, Name/Host und Wert/Ziel für jeden Eintrag ein. CNAME verweist auf diese Website; TXT bestätigt Ihr Eigentum. Meist wird der kurze Name benötigt; verwenden Sie den vollständigen Namen darunter nur auf Anfrage.",
   "settings_domain_guide_step3": "Speichern Sie und prüfen Sie erneut.",
@@ -4900,7 +4902,9 @@
   "publish_checks_allclear": "Alle Prüfungen bestanden",
   "publish_checks_allclearhint": "Keine defekten Links, Bilder ohne Alternativtext, Seiten ohne Titel oder übrig gebliebenen Zeichen.",
   "publish_checks_fix": "Beheben",
-  "publish_checks_fixlabel": "{title} im Editor beheben",
+  "publish_checks_fixproblem": "„{title}“ korrigieren: {problem}",
+  "publish_checks_show": "Anzeigen ({count})",
+  "publish_checks_hide": "Ausblenden",
   "publish_checks_blockedreason": "Beheben Sie die Fehler unter „Prüfungen“, bevor Sie veröffentlichen.",
   "publish_checks_error": "Fehler",
   "publish_checks_warning": "Warnung",
@@ -5046,5 +5050,23 @@
   "settings_aiassistants_watch_again": "Erneut warten",
   "settings_aiassistants_keysloaderror": "Persönliche Schlüssel konnten nicht geladen werden. Angemeldete Apps werden weiterhin angezeigt.",
   "settings_aiassistants_appsloaderror": "Angemeldete Apps konnten nicht geladen werden. Persönliche Schlüssel werden weiterhin angezeigt.",
-  "oauth_consent_can_aiconversations": "Gespeicherte „Ask AI“-Fragen und -Antworten lesen. E-Mail-Adressen, Telefonnummern und Schlüssel werden entfernt, Namen, Adressen und andere persönliche Angaben können aber enthalten bleiben."
+  "oauth_consent_can_aiconversations": "Gespeicherte „Ask AI“-Fragen und -Antworten lesen. E-Mail-Adressen, Telefonnummern und Schlüssel werden entfernt, Namen, Adressen und andere persönliche Angaben können aber enthalten bleiben.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} unveröffentlichte Änderung",
+        "form=*": "{count} unveröffentlichte Änderungen"
+      }
+    }
+  ],
+  "pending_siteonly": "Unveröffentlichte Änderungen an Navigation oder Einstellungen",
+  "pending_readersstillsee": "Leser sehen noch Version {version}.",
+  "pending_review": "Prüfen und veröffentlichen",
+  "pending_draft": "Noch nicht live",
+  "overview_col_status": "Status",
+  "pagestatus_draft": "Nicht veröffentlicht",
+  "pagestatus_changed": "Geändert",
+  "pagestatus_live": "Live"
 }

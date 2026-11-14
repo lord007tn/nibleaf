@@ -1,7 +1,7 @@
 import { translateFn } from '@nibleaf/i18n';
 import { contrastRatio } from '@nibleaf/shared/themes';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ThemePreview } from '@/components/project-settings/theme-section';
 import {
   DOCUMENTATION_THEME_TEMPLATES,
@@ -11,7 +11,7 @@ import {
   DocumentationStudioPreviewLayout,
   DocumentationThemeProvider,
 } from '@/components/site/documentation-theme-provider';
-import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteThemeNoFlashScript } from './site-theme';
+import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteAppearance, siteThemeNoFlashScript } from './site-theme';
 
 describe('footer small print contrast', () => {
   const footerColors = (css: string) => [...css.matchAll(/--theme-footer-muted:([^;}]+)/g)].map((match) => match[1]);
@@ -90,6 +90,49 @@ describe('published theme projection', () => {
     expect(script).not.toContain('\u2028');
     expect(script).toContain('\\u2028');
     expect(script).not.toContain(`+"${projectId}"`);
+  });
+
+  describe('appearance before the reader picks one (PUB-004)', () => {
+    /** Run the before-paint script with the OS preference and stored choice given. */
+    const paint = (configured: Parameters<typeof siteThemeNoFlashScript>[1], osDark: boolean, stored?: 'light' | 'dark') => {
+      const classes = new Set<string>();
+      const storage = new Map(stored ? [['nibleaf.site.theme.site-1', stored]] : []);
+      vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null });
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-color-scheme: dark)' && osDark }));
+      vi.stubGlobal('document', {
+        documentElement: {
+          classList: {
+            add: (name: string) => classes.add(name),
+            remove: (...names: string[]) => {
+              for (const name of names) classes.delete(name);
+            },
+          },
+          style: {},
+        },
+      });
+      // Runs the exact inline script the server emits.
+      new Function(configured === undefined ? siteThemeNoFlashScript('site-1') : siteThemeNoFlashScript('site-1', configured))();
+      vi.unstubAllGlobals();
+      return [...classes].join(' ');
+    };
+
+    it('follows the device when the owner never chose', () => {
+      expect(siteAppearance({})).toBe('system');
+      expect(siteAppearance(null)).toBe('system');
+      expect(siteAppearance({ styling: {} })).toBe('system');
+      expect(paint(siteAppearance({}), true)).toBe('dark');
+      expect(paint(siteAppearance({}), false)).toBe('light');
+      // The script's own default agrees.
+      expect(paint(undefined, true)).toBe('dark');
+    });
+
+    it('keeps an explicit owner choice and a reader choice over the device', () => {
+      expect(siteAppearance({ styling: { theme: 'light' } })).toBe('light');
+      expect(paint('light', true)).toBe('light');
+      expect(paint('dark', false)).toBe('dark');
+      expect(paint('system', true, 'light')).toBe('light');
+      expect(paint('system', false, 'dark')).toBe('dark');
+    });
   });
 
   it('accepts bounded Unicode family names and keeps Arabic fallbacks', () => {
