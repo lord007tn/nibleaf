@@ -1,0 +1,744 @@
+{
+  "head": "bdef17b2",
+  "attempted": 0,
+  "results": [
+    {
+      "name": "after-r2-broken-link-landing-en-1440-light.png",
+      "state": "broken-link-landing",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "vw": 1440,
+      "vh": 900,
+      "dir": "ltr",
+      "barText": "Broken link /configuration · 1 of 2",
+      "bar": {
+        "left": 260,
+        "top": 56,
+        "right": 1425,
+        "bottom": 105,
+        "height": 49
+      },
+      "barHeight": 49,
+      "statusRow": {
+        "left": 304,
+        "top": 69,
+        "right": 1097,
+        "bottom": 91,
+        "height": 21
+      },
+      "actionsRow": {
+        "left": 1109,
+        "top": 64,
+        "right": 1409,
+        "bottom": 96,
+        "height": 32
+      },
+      "actionsBelowStatus": false,
+      "evidence": {
+        "text": "/configuration",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 382,
+          "top": 69,
+          "right": 495,
+          "bottom": 91,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "span",
+        "text": "configuration guide",
+        "rect": {
+          "left": 701,
+          "top": 221,
+          "right": 841,
+          "bottom": 242,
+          "height": 21
+        },
+        "lines": 1
+      },
+      "linkField": {
+        "left": 604,
+        "top": 250,
+        "right": 938,
+        "bottom": 328,
+        "height": 78
+      },
+      "focused": "input[Search pages or paste a link]=/configuration",
+      "selection": "/configuration",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 116,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": true
+    },
+    {
+      "name": "after-r2-opaque-block-en-1440-light.png",
+      "state": "opaque-block",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "vw": 1440,
+      "vh": 900,
+      "dir": "ltr",
+      "barText": "Broken link /legacy-keys · 1 of 1 · This one is inside a block the visual editor keeps as written. Edit the page as Markdown to fix it.",
+      "bar": {
+        "left": 260,
+        "top": 56,
+        "right": 1425,
+        "bottom": 113,
+        "height": 57
+      },
+      "barHeight": 57,
+      "statusRow": {
+        "left": 304,
+        "top": 64,
+        "right": 880,
+        "bottom": 104,
+        "height": 40
+      },
+      "actionsRow": {
+        "left": 892,
+        "top": 68,
+        "right": 1409,
+        "bottom": 100,
+        "height": 32
+      },
+      "actionsBelowStatus": false,
+      "evidence": {
+        "text": "/legacy-keys",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 382,
+          "top": 64,
+          "right": 480,
+          "bottom": 85,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "div",
+        "text": "<LegacyNotice>\n\nOlder keys still work. See the [legacy key n",
+        "rect": {
+          "left": 483,
+          "top": 355,
+          "right": 1203,
+          "bottom": 441,
+          "height": 86
+        },
+        "lines": 1
+      },
+      "linkField": null,
+      "focused": "button \"Edit as Markdown (advanced)\"",
+      "selection": "",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 241,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": false
+    },
+    {
+      "name": "after-r2-broken-link-landing-en-1440-dark.png",
+      "state": "broken-link-landing",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "vw": 1440,
+      "vh": 900,
+      "dir": "ltr",
+      "barText": "Broken link /configuration · 1 of 2",
+      "bar": {
+        "left": 260,
+        "top": 56,
+        "right": 1425,
+        "bottom": 105,
+        "height": 49
+      },
+      "barHeight": 49,
+      "statusRow": {
+        "left": 304,
+        "top": 69,
+        "right": 1097,
+        "bottom": 91,
+        "height": 21
+      },
+      "actionsRow": {
+        "left": 1109,
+        "top": 64,
+        "right": 1409,
+        "bottom": 96,
+        "height": 32
+      },
+      "actionsBelowStatus": false,
+      "evidence": {
+        "text": "/configuration",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 382,
+          "top": 69,
+          "right": 495,
+          "bottom": 91,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "span",
+        "text": "configuration guide",
+        "rect": {
+          "left": 701,
+          "top": 221,
+          "right": 841,
+          "bottom": 242,
+          "height": 21
+        },
+        "lines": 1
+      },
+      "linkField": {
+        "left": 604,
+        "top": 250,
+        "right": 938,
+        "bottom": 328,
+        "height": 78
+      },
+      "focused": "input[Search pages or paste a link]=/configuration",
+      "selection": "/configuration",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 116,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": true
+    },
+    {
+      "name": "after-r2-broken-link-landing-en-390-light.png",
+      "state": "broken-link-landing",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "vw": 390,
+      "vh": 844,
+      "dir": "ltr",
+      "barText": "Broken link /configuration · 1 of 2",
+      "bar": {
+        "left": 0,
+        "top": 85,
+        "right": 390,
+        "bottom": 173,
+        "height": 88
+      },
+      "barHeight": 88,
+      "statusRow": {
+        "left": 44,
+        "top": 93,
+        "right": 374,
+        "bottom": 114,
+        "height": 21
+      },
+      "actionsRow": {
+        "left": 62,
+        "top": 120,
+        "right": 374,
+        "bottom": 164,
+        "height": 44
+      },
+      "actionsBelowStatus": true,
+      "evidence": {
+        "text": "/configuration",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 122,
+          "top": 93,
+          "right": 235,
+          "bottom": 114,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "span",
+        "text": "configuration guide",
+        "rect": {
+          "left": 16,
+          "top": 276,
+          "right": 334,
+          "bottom": 324,
+          "height": 48
+        },
+        "lines": 2
+      },
+      "linkField": {
+        "left": 0,
+        "top": 332,
+        "right": 368,
+        "bottom": 474,
+        "height": 142
+      },
+      "focused": "input[Search pages or paste a link]=/configuration",
+      "selection": "/configuration",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 102,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": true
+    },
+    {
+      "name": "after-r2-opaque-block-en-390-light.png",
+      "state": "opaque-block",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "vw": 390,
+      "vh": 844,
+      "dir": "ltr",
+      "barText": "Broken link /legacy-keys · 1 of 1 · This one is inside a block the visual editor keeps as written. Edit the page as Markdown to fix it.",
+      "bar": {
+        "left": 0,
+        "top": 85,
+        "right": 390,
+        "bottom": 256,
+        "height": 171
+      },
+      "barHeight": 171,
+      "statusRow": {
+        "left": 44,
+        "top": 93,
+        "right": 374,
+        "bottom": 153,
+        "height": 60
+      },
+      "actionsRow": {
+        "left": 16,
+        "top": 159,
+        "right": 374,
+        "bottom": 247,
+        "height": 88
+      },
+      "actionsBelowStatus": true,
+      "evidence": {
+        "text": "/legacy-keys",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 122,
+          "top": 93,
+          "right": 220,
+          "bottom": 114,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "div",
+        "text": "<LegacyNotice>\n\nOlder keys still work. See the [legacy key n",
+        "rect": {
+          "left": 16,
+          "top": 494,
+          "right": 374,
+          "bottom": 598,
+          "height": 104
+        },
+        "lines": 1
+      },
+      "linkField": null,
+      "focused": "button \"Edit as Markdown (advanced)\"",
+      "selection": "",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 239,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": false
+    },
+    {
+      "name": "after-r2-broken-link-landing-en-390-dark.png",
+      "state": "broken-link-landing",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "vw": 390,
+      "vh": 844,
+      "dir": "ltr",
+      "barText": "Broken link /configuration · 1 of 2",
+      "bar": {
+        "left": 0,
+        "top": 85,
+        "right": 390,
+        "bottom": 173,
+        "height": 88
+      },
+      "barHeight": 88,
+      "statusRow": {
+        "left": 44,
+        "top": 93,
+        "right": 374,
+        "bottom": 114,
+        "height": 21
+      },
+      "actionsRow": {
+        "left": 62,
+        "top": 120,
+        "right": 374,
+        "bottom": 164,
+        "height": 44
+      },
+      "actionsBelowStatus": true,
+      "evidence": {
+        "text": "/configuration",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 122,
+          "top": 93,
+          "right": 235,
+          "bottom": 114,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "span",
+        "text": "configuration guide",
+        "rect": {
+          "left": 16,
+          "top": 276,
+          "right": 334,
+          "bottom": 324,
+          "height": 48
+        },
+        "lines": 2
+      },
+      "linkField": {
+        "left": 0,
+        "top": 332,
+        "right": 368,
+        "bottom": 474,
+        "height": 142
+      },
+      "focused": "input[Search pages or paste a link]=/configuration",
+      "selection": "/configuration",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 102,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": true
+    },
+    {
+      "name": "after-r2-broken-link-landing-ar-1440-light.png",
+      "state": "broken-link-landing",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "vw": 1440,
+      "vh": 900,
+      "dir": "rtl",
+      "barText": "رابط معطّل /configuration · 1 من 2",
+      "bar": {
+        "left": 0,
+        "top": 56,
+        "right": 1165,
+        "bottom": 105,
+        "height": 49
+      },
+      "barHeight": 49,
+      "statusRow": {
+        "left": 299,
+        "top": 69,
+        "right": 1121,
+        "bottom": 91,
+        "height": 21
+      },
+      "actionsRow": {
+        "left": 16,
+        "top": 64,
+        "right": 287,
+        "bottom": 96,
+        "height": 32
+      },
+      "actionsBelowStatus": false,
+      "evidence": {
+        "text": "/configuration",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 941,
+          "top": 69,
+          "right": 1054,
+          "bottom": 91,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "span",
+        "text": "configuration guide",
+        "rect": {
+          "left": 450,
+          "top": 214,
+          "right": 598,
+          "bottom": 248,
+          "height": 34
+        },
+        "lines": 1
+      },
+      "linkField": {
+        "left": 357,
+        "top": 256,
+        "right": 691,
+        "bottom": 334,
+        "height": 78
+      },
+      "focused": "input[ابحث في الصفحات أو الصق رابطًا]=/configuration",
+      "selection": "/configuration",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 109,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": true
+    },
+    {
+      "name": "after-r2-broken-link-landing-ar-1440-dark.png",
+      "state": "broken-link-landing",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "vw": 1440,
+      "vh": 900,
+      "dir": "rtl",
+      "barText": "رابط معطّل /configuration · 1 من 2",
+      "bar": {
+        "left": 0,
+        "top": 56,
+        "right": 1165,
+        "bottom": 105,
+        "height": 49
+      },
+      "barHeight": 49,
+      "statusRow": {
+        "left": 299,
+        "top": 69,
+        "right": 1121,
+        "bottom": 91,
+        "height": 21
+      },
+      "actionsRow": {
+        "left": 16,
+        "top": 64,
+        "right": 287,
+        "bottom": 96,
+        "height": 32
+      },
+      "actionsBelowStatus": false,
+      "evidence": {
+        "text": "/configuration",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 941,
+          "top": 69,
+          "right": 1054,
+          "bottom": 91,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "span",
+        "text": "configuration guide",
+        "rect": {
+          "left": 450,
+          "top": 214,
+          "right": 598,
+          "bottom": 248,
+          "height": 34
+        },
+        "lines": 1
+      },
+      "linkField": {
+        "left": 357,
+        "top": 256,
+        "right": 691,
+        "bottom": 334,
+        "height": 78
+      },
+      "focused": "input[ابحث في الصفحات أو الصق رابطًا]=/configuration",
+      "selection": "/configuration",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 109,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": true
+    },
+    {
+      "name": "after-r2-broken-link-landing-ar-390-light.png",
+      "state": "broken-link-landing",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "vw": 390,
+      "vh": 844,
+      "dir": "rtl",
+      "barText": "رابط معطّل /configuration · 1 من 2",
+      "bar": {
+        "left": 0,
+        "top": 85,
+        "right": 390,
+        "bottom": 173,
+        "height": 88
+      },
+      "barHeight": 88,
+      "statusRow": {
+        "left": 16,
+        "top": 93,
+        "right": 346,
+        "bottom": 114,
+        "height": 21
+      },
+      "actionsRow": {
+        "left": 16,
+        "top": 120,
+        "right": 299,
+        "bottom": 164,
+        "height": 44
+      },
+      "actionsBelowStatus": true,
+      "evidence": {
+        "text": "/configuration",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 166,
+          "top": 93,
+          "right": 279,
+          "bottom": 114,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "span",
+        "text": "configuration guide",
+        "rect": {
+          "left": 16,
+          "top": 268,
+          "right": 349,
+          "bottom": 329,
+          "height": 61
+        },
+        "lines": 2
+      },
+      "linkField": {
+        "left": 0,
+        "top": 337,
+        "right": 368,
+        "bottom": 479,
+        "height": 142
+      },
+      "focused": "input[ابحث في الصفحات أو الصق رابطًا]=/configuration",
+      "selection": "/configuration",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 95,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": true
+    },
+    {
+      "name": "after-r2-broken-link-landing-ar-390-dark.png",
+      "state": "broken-link-landing",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "vw": 390,
+      "vh": 844,
+      "dir": "rtl",
+      "barText": "رابط معطّل /configuration · 1 من 2",
+      "bar": {
+        "left": 0,
+        "top": 85,
+        "right": 390,
+        "bottom": 173,
+        "height": 88
+      },
+      "barHeight": 88,
+      "statusRow": {
+        "left": 16,
+        "top": 93,
+        "right": 346,
+        "bottom": 114,
+        "height": 21
+      },
+      "actionsRow": {
+        "left": 16,
+        "top": 120,
+        "right": 299,
+        "bottom": 164,
+        "height": 44
+      },
+      "actionsBelowStatus": true,
+      "evidence": {
+        "text": "/configuration",
+        "dir": "ltr",
+        "lines": 1,
+        "rect": {
+          "left": 166,
+          "top": 93,
+          "right": 279,
+          "bottom": 114,
+          "height": 21
+        },
+        "whiteSpace": "nowrap",
+        "textOverflow": "ellipsis",
+        "truncated": false
+      },
+      "current": {
+        "tag": "span",
+        "text": "configuration guide",
+        "rect": {
+          "left": 16,
+          "top": 268,
+          "right": 349,
+          "bottom": 329,
+          "height": 61
+        },
+        "lines": 2
+      },
+      "linkField": {
+        "left": 0,
+        "top": 337,
+        "right": 368,
+        "bottom": 479,
+        "height": 142
+      },
+      "focused": "input[ابحث في الصفحات أو الصق رابطًا]=/configuration",
+      "selection": "/configuration",
+      "currentBelowBar": true,
+      "gapBarToCurrent": 95,
+      "currentInViewport": true,
+      "currentClearOfField": true,
+      "fieldBelowCurrent": true
+    }
+  ]
+}
