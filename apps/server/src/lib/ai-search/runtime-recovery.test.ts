@@ -166,6 +166,45 @@ describe('hybrid index recovery', () => {
     ).rejects.toBe(error);
   });
 
+  it.each([
+    ['still running', () => new Promise<never>(() => undefined)],
+    ['failing', () => Promise.reject(new Error('keyword index unavailable'))],
+  ] as const)('answers with fast hybrid hits while the keyword lane is %s', async (_state, keywordLane) => {
+    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      doubles.queryHybrid.mockResolvedValue([
+        {
+          id: 'title',
+          score: 0.9,
+          payload: {
+            project_id: scope.projectId,
+            deployment_id: scope.deploymentId,
+            version_slug: scope.versionSlug,
+            language: 'en',
+            visibility: 'public',
+            visible: true,
+            ordinal: 0,
+            content_hash: 'hash',
+            direction: 'ltr',
+            page_id: 'title',
+            title: 'Custom domain',
+            path: 'domain',
+            content: 'Set up DNS records.',
+          },
+        },
+      ]);
+      const response = await runPublishedSearch({ ...scope, language: 'en' }, `custom domain ${_state}`, 12, keywordLane);
+      expect(response).toMatchObject({ runtime: 'hybrid', hits: [{ id: 'title' }] });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
   it('keeps fast hybrid title ranking and lexical filtering instead of substituting keyword results', async () => {
     vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
     const payload = {

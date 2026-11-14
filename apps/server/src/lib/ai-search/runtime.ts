@@ -267,6 +267,9 @@ export const runPublishedSearch = async (
     timer = setTimeout(() => controller.abort(), READER_HYBRID_BUDGET_MS);
   });
   const keyword = Promise.resolve().then(legacy);
+  // A hybrid answer never waits on, or fails with, the keyword lane: its result
+  // (or its error) only matters when it becomes the answer below.
+  keyword.catch(() => undefined);
   const hybrid = (async () => {
     // Check after each uncancellable lookup so a late readiness/configuration
     // response cannot start an embedding request after the reader has moved on.
@@ -296,9 +299,12 @@ export const runPublishedSearch = async (
     return null;
   });
   try {
-    const [keywordHits, hybridHits] = await Promise.all([keyword, Promise.race([hybrid, timeout])]);
+    const hybridHits = await Promise.race([hybrid, timeout]);
     signal?.throwIfAborted();
-    return hybridHits === null ? { hits: keywordHits, runtime: 'legacy-fallback' } : { hits: hybridHits, runtime: 'hybrid' };
+    if (hybridHits !== null) return { hits: hybridHits, runtime: 'hybrid' };
+    const keywordHits = await keyword;
+    signal?.throwIfAborted();
+    return { hits: keywordHits, runtime: 'legacy-fallback' };
   } finally {
     clearTimeout(timer);
     controller.abort();
