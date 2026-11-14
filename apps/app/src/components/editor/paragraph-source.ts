@@ -78,7 +78,7 @@ const TASK_ITEM = /^\[[ xX]\][ \t]/;
  * tight (`data-tight`, read before looking for a `<p>`): it still saves without
  * blank lines between its items, and lists around it keep their spacing too.
  */
-export function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
+function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const { tokens } = state;
   /** Open lists, innermost last: whether they hold a paragraph shown in the source,
    *  and one shown here. A list hands both to the list around it when it closes. */
@@ -122,7 +122,7 @@ export function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreS
  * A line break after plain text is left alone: it already reads as a space on
  * load, and pasted plain text keeps it as a line break.
  */
-export function softBreaksAsSpaces<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
+function softBreaksAsSpaces<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   for (const token of state.tokens) {
     if (token.type !== 'inline' || !token.children) continue;
     let previous: MarkdownToken | undefined;
@@ -151,7 +151,7 @@ interface ParagraphSerializeState {
  * Write a paragraph: its source lines when the paragraph still reads the same as
  * they do (see the note at the top), otherwise the serializer's single line.
  */
-export function writeParagraph(state: ParagraphSerializeState, node: PMNode): void {
+function writeParagraph(state: ParagraphSerializeState, node: PMNode): void {
   const source = String(node.attrs.sourceParagraph ?? '');
   const joined = source ? joinedSourceLines(source) : null;
   if (joined === null) {

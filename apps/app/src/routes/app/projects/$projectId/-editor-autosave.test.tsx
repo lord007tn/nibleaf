@@ -18,6 +18,7 @@ import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from '@/components/editor/__fixtures__/hard-wrapped-pages';
+import { getMarkdown } from '@/components/editor/tiptap-editor';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -26,6 +27,11 @@ const mocks = vi.hoisted(() => ({
   pages: [] as Array<Record<string, unknown>>,
   languages: [] as Array<Record<string, unknown>>,
   blocker: null as null | { shouldBlockFn: () => Promise<boolean> },
+  /** What the page query's refetch returns (the conflict review asks for it). */
+  refetched: undefined as Record<string, unknown> | undefined,
+  ai: null as null | { onContentChange: (content: string) => void },
+  conflictDialog: null as null | { onResolve: (merged: { title: string; content: string }) => void },
+  history: null as null | { onRestored: (page: Record<string, unknown>) => void },
 }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string) => key,
@@ -64,7 +70,7 @@ vi.mock('@/hooks/api', async () => ({
   useOpenApiConfiguration: () => ({}),
   useLanguages: () => ({ data: mocks.languages }),
   usePages: () => ({ data: mocks.pages, isPending: false }),
-  usePage: () => ({ data: mocks.page }),
+  usePage: () => ({ data: mocks.page, refetch: async () => ({ data: mocks.refetched ?? mocks.page }) }),
   usePendingChanges: () => ({}),
   useComments: () => ({}),
   useCreatePage: () => ({ mutate: vi.fn(), isPending: false }),
@@ -90,7 +96,33 @@ vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/components/editor/use-media-query', () => ({ useMediaQuery: () => true }));
 vi.mock('@/components/editor/use-delete-page', () => ({ useDeletePageFlow: () => vi.fn() }));
 vi.mock('@/components/editor/page-trash-button', () => ({ PageTrashButton: () => null }));
-vi.mock('@/components/editor/use-ai-assist-session', () => ({ useAiAssistSession: () => ({}), aiAssistPageId: () => null }));
+// The re-seed paths (#630): AI assist hands the route new content, the conflict
+// dialog a merge, and History a restored page. Each is captured to drive by hand.
+vi.mock('@/components/editor/use-ai-assist-session', () => ({
+  useAiAssistSession: (options: { onContentChange: (content: string) => void }) => {
+    mocks.ai = options;
+    return {};
+  },
+  aiAssistPageId: () => null,
+}));
+vi.mock('@/components/editor/editor-conflict-dialog', () => ({
+  EditorConflictDialog: (props: { onResolve: (merged: { title: string; content: string }) => void }) => {
+    mocks.conflictDialog = props;
+    return null;
+  },
+}));
+vi.mock('@/components/editor/page-history-panel', () => ({
+  default: (props: { onRestored: (page: Record<string, unknown>) => void }) => {
+    mocks.history = props;
+    return null;
+  },
+}));
+// Menus are open, so a test can press "History" (their items render in a portal).
+vi.mock('@nibleaf/design-system/components/ui/dropdown-menu', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@nibleaf/design-system/components/ui/dropdown-menu')>();
+  const Open = (props: React.ComponentProps<typeof real.DropdownMenu>) => <real.DropdownMenu {...props} open />;
+  return { ...real, DropdownMenu: Open };
+});
 vi.mock('@/components/editor/site-config-panel', () => ({ ConfigSectionList: () => null, ConfigSection: () => null }));
 vi.mock('@/components/project-settings/shared', () => ({ ConfigDirtyProvider: ({ children }: { children: ReactNode }) => children }));
 vi.mock('@/components/editor/add-language-dialog', () => ({ AddLanguageDialog: () => null }));
@@ -230,6 +262,10 @@ beforeEach(() => {
   Object.defineProperty(Element.prototype, 'getAnimations', { configurable: true, writable: true, value: () => [] });
   conflict = false;
   mocks.blocker = null;
+  mocks.refetched = undefined;
+  mocks.ai = null;
+  mocks.conflictDialog = null;
+  mocks.history = null;
   mocks.update.mockReset();
   mocks.update.mockImplementation(async ({ body }: { body: { content: string; expectedUpdatedAt?: string; title: string } }) => {
     server.patches.push({ content: body.content, expectedUpdatedAt: body.expectedUpdatedAt });
@@ -248,8 +284,8 @@ afterEach(async () => {
 });
 
 describe('opening a page never saves it (P1-ED-001)', () => {
-  it.each([
-    ...STARTER_PAGE_CONTENTS.map(({ title, content }) => [`starter page "${title}"`, content, ENGLISH] as const),
+  it.each<[string, string, typeof ENGLISH]>([
+    ...STARTER_PAGE_CONTENTS.map(({ title, content }): [string, string, typeof ENGLISH] => [`starter page "${title}"`, content, ENGLISH]),
     ['a hard-wrapped page', HARD_WRAPPED_EN, ENGLISH],
     ['a hard-wrapped Arabic page', HARD_WRAPPED_AR, ARABIC],
     ['the imported Introduction page', IMPORTED_INTRODUCTION, ENGLISH],
@@ -405,5 +441,123 @@ describe('save pacing while typing (P2-JRN-001)', () => {
     expect(server.patches).toHaveLength(1);
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('editor.conflict.body');
     expect(server.updatedAt).toBe(OPENED_AT);
+  });
+});
+
+describe('undo never goes back past a re-seed (#630)', () => {
+  const LATER = '2026-11-14T08:00:00.000Z';
+  /** The page with its first paragraph changed, so each copy is recognisable. */
+  const copy = (marker: string) => HARD_WRAPPED_EN.replaceAll('Opening it must not change a byte.', `Opening it must not change a byte. ${marker}`);
+  const press = async (label: string) => {
+    const button = [...document.querySelectorAll<HTMLElement>('button, [role="menuitem"]')].find((item) => item.textContent?.includes(label));
+    if (!button) throw new Error(`No ${label} button`);
+    await act(async () => button.click());
+    await advance(50);
+  };
+
+  /** Re-seed paths: each replaces the open page's content and returns the new content. */
+  const paths: Array<[string, () => Promise<string>]> = [
+    ['mount', async () => HARD_WRAPPED_EN],
+    [
+      'hydration refresh (a fresher server copy)',
+      async () => {
+        const fresh = copy('Fresh from the server.');
+        mocks.page = { ...mocks.page, content: fresh, updatedAt: LATER };
+        mocks.pages = [mocks.page];
+        server = { ...server, content: fresh, updatedAt: LATER };
+        await act(async () => root.render(<EditorRoute />));
+        await advance(50);
+        return fresh;
+      },
+    ],
+    [
+      'conflict merge ("Saving paused", then Review and merge)',
+      async () => {
+        conflict = true;
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        act(() => typeAfter(FIRST_WORDS, 'q'));
+        await advance(1000);
+        expect(container.querySelector('[role="alert"]')?.textContent).toContain('editor.conflict.body');
+        const theirs = copy('Edited by someone else.');
+        mocks.refetched = { ...mocks.page, content: theirs, updatedAt: LATER };
+        server = { ...server, content: theirs, updatedAt: LATER };
+        await press('editor.conflict.review');
+        const merged = copy('Edited by someone else. Merged with my edit.');
+        conflict = false;
+        await act(async () => mocks.conflictDialog?.onResolve({ title: 'Page', content: merged }));
+        await advance(50);
+        return merged;
+      },
+    ],
+    [
+      'restore from History',
+      async () => {
+        await press('editor.history.title');
+        const restored = copy('Restored from history.');
+        server = { ...server, content: restored, updatedAt: LATER };
+        await act(async () => mocks.history?.onRestored({ ...mocks.page, content: restored, updatedAt: LATER }));
+        await advance(50);
+        return restored;
+      },
+    ],
+    [
+      'AI assist apply',
+      async () => {
+        const rewritten = copy('Rewritten by AI assist.');
+        await act(async () => mocks.ai?.onContentChange(rewritten));
+        await advance(50);
+        return rewritten;
+      },
+    ],
+  ];
+
+  it.each(paths)('%s: type, undo ×10, and the page stays at the re-seeded content', async (_name, reseed) => {
+    await open(HARD_WRAPPED_EN);
+    // Some history from before the re-seed, as a writer who typed first would have.
+    act(() => typeAfter(FIRST_WORDS, 'a'));
+    await advance(100);
+    act(() => editor()?.commands.undo());
+    await advance(100);
+    const reseeded = await reseed();
+    const since = server.patches.length;
+    // Saves the re-seed itself makes (an AI change or a merge is the writer's).
+    await advance(5000);
+    expect(getMarkdown(editor() as TiptapCore)).toBe(reseeded.trimEnd());
+    act(() => typeAfter(FIRST_WORDS, 'y'));
+    await advance(5000);
+    const typed = server.content;
+    for (let index = 0; index < 10; index += 1) {
+      act(() => editor()?.commands.undo());
+      await advance(100);
+    }
+    await advance(15_000);
+    expect(getMarkdown(editor() as TiptapCore)).toBe(reseeded.trimEnd());
+    // Only the re-seeded content and the writer's own edit since: never an older copy.
+    for (const patch of server.patches.slice(since)) expect([reseeded, typed]).toContain(patch.content);
+    expect(server.content).toBe(reseeded);
+  });
+
+  it('page switch: undo ×10 on the next page never reaches the previous one', async () => {
+    await open(HARD_WRAPPED_EN);
+    act(() => typeAfter(FIRST_WORDS, 'a'));
+    await advance(5000);
+    const next = { ...mocks.page, id: 'page-2', slug: 'next', path: '/next', title: 'Next', content: copy('The next page.'), updatedAt: LATER };
+    mocks.page = next;
+    mocks.pages = [next];
+    server = { ...server, content: next.content, updatedAt: LATER };
+    await act(async () => root.render(<EditorRoute />));
+    await advance(50);
+    const since = server.patches.length;
+    expect(getMarkdown(editor() as TiptapCore)).toBe(next.content.trimEnd());
+    act(() => typeAfter(FIRST_WORDS, 'y'));
+    await advance(5000);
+    const typed = server.content;
+    for (let index = 0; index < 10; index += 1) {
+      act(() => editor()?.commands.undo());
+      await advance(100);
+    }
+    await advance(15_000);
+    expect(getMarkdown(editor() as TiptapCore)).toBe(next.content.trimEnd());
+    for (const patch of server.patches.slice(since)) expect([next.content, typed]).toContain(patch.content);
   });
 });
