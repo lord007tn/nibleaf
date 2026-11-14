@@ -4,6 +4,7 @@
     "settings_banner_linkurl_placeholder",
     "settings_addons_editurl_placeholder",
     "settings_addons_issueurl_placeholder",
+    "settings_integrations_provider_publicgit",
     "settings_integrations_provider_plausible",
     "settings_integrations_provider_qdrant",
     "settings_integrations_provider_postmark",

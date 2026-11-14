@@ -34,6 +34,7 @@
     "admin_sites_filter",
     "admin_users_filter",
     "admin_user_email",
+    "settings_integrations_provider_publicgit",
     "settings_integrations_provider_plausible",
     "settings_integrations_provider_qdrant",
     "settings_integrations_provider_postmark",
