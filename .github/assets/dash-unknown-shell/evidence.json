@@ -1,11 +1,12 @@
 {
-  "baseline": "1069732c95fd8c3eb0cde5379c5da012d7c6b708",
-  "head": "e0761c322d36e4e1845f47fcfdfe7dadd275c185",
+  "baseline": "f8e1f166530e906110aa6debd958d04615ca4643",
+  "head": "2956e0b43ed8995ce2f7a5264f91c7b25a4968f0",
   "environment": "Isolated actual-route fixture; intercepted fictional HTTP; no server, database or real site",
   "swappedForBefore": [
     "apps/app/src/components/project/project-access-boundary.tsx",
     "apps/app/src/layouts/account.tsx",
     "apps/app/src/routes/app/o/$orgSlug/route.tsx",
+    "paraglide message analytics_status_readsdisabled_title (en, ar)",
     "paraglide message analytics_status_readsdisabled_body (en, ar)"
   ],
   "attempted": 0,
@@ -2549,31 +2550,14 @@
         "GET /api/auth/get-session"
       ],
       "unexpectedRequests": [],
-      "notice": "Reports aren't switched on for this server yet. Visits are already being collected, so nothing is lost: whoever runs this server can turn reports on with the setup guide.",
+      "notice": "Whoever runs this server can turn them on with the setup guide.",
       "mentionsAnalyticsMode": false,
       "axe": [
         {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 6,
-          "targets": [
-            "#base-ui-_r_g_ > span",
-            ".bg-primary\\/10",
-            "kbd",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(1)"
-          ],
-          "summary": "Element has insufficient color contrast of 4.31 (foreground color: #c2410c, background color: #f4e8e2, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
-        },
-        {
           "rule": "region",
           "impact": "moderate",
-          "nodes": 7,
-          "targets": [
-            "#base-ui-_r_8_ > .font-semibold",
-            "#base-ui-_r_a_ > span",
-            "#base-ui-_r_c_ > span",
-            "#base-ui-_r_e_ > span"
-          ],
+          "nodes": 1,
+          "targets": ["#base-ui-_r_8_ > .font-semibold"],
           "summary": "Some page content is not contained by landmarks"
         }
       ]
@@ -2609,19 +2593,14 @@
         "GET /api/auth/get-session"
       ],
       "unexpectedRequests": [],
-      "notice": "Reports aren't switched on for this server yet. Visits are already being collected, so nothing is lost: whoever runs this server can turn reports on with the setup guide.",
+      "notice": "Whoever runs this server can turn them on with the setup guide.",
       "mentionsAnalyticsMode": false,
       "axe": [
         {
           "rule": "region",
           "impact": "moderate",
-          "nodes": 7,
-          "targets": [
-            "#base-ui-_r_8_ > .font-semibold",
-            "#base-ui-_r_a_ > span",
-            "#base-ui-_r_c_ > span",
-            "#base-ui-_r_e_ > span"
-          ],
+          "nodes": 1,
+          "targets": ["#base-ui-_r_8_ > .font-semibold"],
           "summary": "Some page content is not contained by landmarks"
         }
       ]
@@ -2657,22 +2636,9 @@
         "GET /api/auth/get-session"
       ],
       "unexpectedRequests": [],
-      "notice": "Reports aren't switched on for this server yet. Visits are already being collected, so nothing is lost: whoever runs this server can turn reports on with the setup guide.",
+      "notice": "Whoever runs this server can turn them on with the setup guide.",
       "mentionsAnalyticsMode": false,
-      "axe": [
-        {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 4,
-          "targets": [
-            ".bg-primary\\/10",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(1)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(2)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(4)"
-          ],
-          "summary": "Element has insufficient color contrast of 4.28 (foreground color: #c2410c, background color: #f4e7e2, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
-        }
-      ]
+      "axe": []
     },
     {
       "phase": "after",
@@ -2705,7 +2671,7 @@
         "GET /api/auth/get-session"
       ],
       "unexpectedRequests": [],
-      "notice": "Reports aren't switched on for this server yet. Visits are already being collected, so nothing is lost: whoever runs this server can turn reports on with the setup guide.",
+      "notice": "Whoever runs this server can turn them on with the setup guide.",
       "mentionsAnalyticsMode": false,
       "axe": []
     },
@@ -2740,31 +2706,14 @@
         "GET /api/auth/get-session"
       ],
       "unexpectedRequests": [],
-      "notice": "لم تُفعَّل التقارير على هذا الخادم بعد. يجري جمع الزيارات بالفعل، فلا يضيع شيء: يستطيع من يدير هذا الخادم تفعيل التقارير باتباع دليل الإعداد.",
+      "notice": "يستطيع من يدير هذا الخادم تفعيلها باتباع دليل الإعداد.",
       "mentionsAnalyticsMode": false,
       "axe": [
         {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 5,
-          "targets": [
-            "#base-ui-_r_g_ > span",
-            "kbd",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(1)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(2)"
-          ],
-          "summary": "Element has insufficient color contrast of 4.31 (foreground color: #c2410c, background color: #f4e8e2, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
-        },
-        {
           "rule": "region",
           "impact": "moderate",
-          "nodes": 7,
-          "targets": [
-            "#base-ui-_r_8_ > .font-semibold",
-            "#base-ui-_r_a_ > span",
-            "#base-ui-_r_c_ > span",
-            "#base-ui-_r_e_ > span"
-          ],
+          "nodes": 1,
+          "targets": ["#base-ui-_r_8_ > .font-semibold"],
           "summary": "Some page content is not contained by landmarks"
         }
       ]
@@ -2800,19 +2749,14 @@
         "GET /api/auth/get-session"
       ],
       "unexpectedRequests": [],
-      "notice": "لم تُفعَّل التقارير على هذا الخادم بعد. يجري جمع الزيارات بالفعل، فلا يضيع شيء: يستطيع من يدير هذا الخادم تفعيل التقارير باتباع دليل الإعداد.",
+      "notice": "يستطيع من يدير هذا الخادم تفعيلها باتباع دليل الإعداد.",
       "mentionsAnalyticsMode": false,
       "axe": [
         {
           "rule": "region",
           "impact": "moderate",
-          "nodes": 7,
-          "targets": [
-            "#base-ui-_r_8_ > .font-semibold",
-            "#base-ui-_r_a_ > span",
-            "#base-ui-_r_c_ > span",
-            "#base-ui-_r_e_ > span"
-          ],
+          "nodes": 1,
+          "targets": ["#base-ui-_r_8_ > .font-semibold"],
           "summary": "Some page content is not contained by landmarks"
         }
       ]
@@ -2848,21 +2792,9 @@
         "GET /api/auth/get-session"
       ],
       "unexpectedRequests": [],
-      "notice": "لم تُفعَّل التقارير على هذا الخادم بعد. يجري جمع الزيارات بالفعل، فلا يضيع شيء: يستطيع من يدير هذا الخادم تفعيل التقارير باتباع دليل الإعداد.",
+      "notice": "يستطيع من يدير هذا الخادم تفعيلها باتباع دليل الإعداد.",
       "mentionsAnalyticsMode": false,
-      "axe": [
-        {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 3,
-          "targets": [
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(1)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(2)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(4)"
-          ],
-          "summary": "Element has insufficient color contrast of 4.34 (foreground color: #737373, background color: #f5f5f5, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1"
-        }
-      ]
+      "axe": []
     },
     {
       "phase": "after",
@@ -2895,7 +2827,7 @@
         "GET /api/auth/get-session"
       ],
       "unexpectedRequests": [],
-      "notice": "لم تُفعَّل التقارير على هذا الخادم بعد. يجري جمع الزيارات بالفعل، فلا يضيع شيء: يستطيع من يدير هذا الخادم تفعيل التقارير باتباع دليل الإعداد.",
+      "notice": "يستطيع من يدير هذا الخادم تفعيلها باتباع دليل الإعداد.",
       "mentionsAnalyticsMode": false,
       "axe": []
     },
@@ -2987,25 +2919,17 @@
         {
           "rule": "color-contrast",
           "impact": "serious",
-          "nodes": 19,
+          "nodes": 1,
           "targets": [
-            "#base-ui-_r_g_ > span",
-            ".bg-primary\\/10",
-            "kbd",
             ".col-start-1.row-start-1.gap-\\[inherit\\] > .sm\\:inline.hidden"
           ],
-          "summary": "Element has insufficient color contrast of 4.31 (foreground color: #c2410c, background color: #f4e8e2, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+          "summary": "Element has insufficient color contrast of 3.46 (foreground color: #f1e2db, background color: #c25a2f, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
         },
         {
           "rule": "region",
           "impact": "moderate",
-          "nodes": 7,
-          "targets": [
-            ".font-semibold.text-sm",
-            "#base-ui-_r_a_ > span",
-            "#base-ui-_r_c_ > span",
-            "#base-ui-_r_e_ > span"
-          ],
+          "nodes": 1,
+          "targets": [".font-semibold.text-sm"],
           "summary": "Some page content is not contained by landmarks"
         }
       ]
@@ -3096,22 +3020,10 @@
       },
       "axe": [
         {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 1,
-          "targets": [".border-destructive\\/30"],
-          "summary": "Element has insufficient color contrast of 4.31 (foreground color: #ef4444, background color: #2d1c1c, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
-        },
-        {
           "rule": "region",
           "impact": "moderate",
-          "nodes": 7,
-          "targets": [
-            ".font-semibold.text-sm",
-            "#base-ui-_r_a_ > span",
-            "#base-ui-_r_c_ > span",
-            "#base-ui-_r_e_ > span"
-          ],
+          "nodes": 1,
+          "targets": [".font-semibold.text-sm"],
           "summary": "Some page content is not contained by landmarks"
         }
       ]
@@ -3200,20 +3112,7 @@
         "allFiguresNamed": true,
         "vitalsBarHiddenWithDl": true
       },
-      "axe": [
-        {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 11,
-          "targets": [
-            ".place-items-center",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(1)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(2)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(4)"
-          ],
-          "summary": "Element has insufficient color contrast of 4.28 (foreground color: #c2410c, background color: #f4e7e2, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
-        }
-      ]
+      "axe": []
     },
     {
       "phase": "after",
@@ -3299,15 +3198,7 @@
         "allFiguresNamed": true,
         "vitalsBarHiddenWithDl": true
       },
-      "axe": [
-        {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 1,
-          "targets": [".border-destructive\\/30"],
-          "summary": "Element has insufficient color contrast of 4.31 (foreground color: #ef4444, background color: #2d1c1c, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
-        }
-      ]
+      "axe": []
     },
     {
       "phase": "after",
@@ -3395,27 +3286,10 @@
       },
       "axe": [
         {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 18,
-          "targets": [
-            "#base-ui-_r_g_ > span",
-            "kbd",
-            ".col-start-1.row-start-1.gap-\\[inherit\\] > .sm\\:inline.hidden",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(1)"
-          ],
-          "summary": "Element has insufficient color contrast of 4.31 (foreground color: #c2410c, background color: #f4e8e2, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
-        },
-        {
           "rule": "region",
           "impact": "moderate",
-          "nodes": 7,
-          "targets": [
-            ".font-semibold.text-sm",
-            "#base-ui-_r_a_ > span",
-            "#base-ui-_r_c_ > span",
-            "#base-ui-_r_e_ > span"
-          ],
+          "nodes": 1,
+          "targets": [".font-semibold.text-sm"],
           "summary": "Some page content is not contained by landmarks"
         }
       ]
@@ -3506,25 +3380,10 @@
       },
       "axe": [
         {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 2,
-          "targets": [
-            ".col-start-1.row-start-1.gap-\\[inherit\\] > .sm\\:inline.hidden",
-            ".border-destructive\\/30"
-          ],
-          "summary": "Element has insufficient color contrast of 4.02 (foreground color: #342317, background color: #d56314, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
-        },
-        {
           "rule": "region",
           "impact": "moderate",
-          "nodes": 7,
-          "targets": [
-            ".font-semibold.text-sm",
-            "#base-ui-_r_a_ > span",
-            "#base-ui-_r_c_ > span",
-            "#base-ui-_r_e_ > span"
-          ],
+          "nodes": 1,
+          "targets": [".font-semibold.text-sm"],
           "summary": "Some page content is not contained by landmarks"
         }
       ]
@@ -3613,19 +3472,7 @@
         "allFiguresNamed": true,
         "vitalsBarHiddenWithDl": true
       },
-      "axe": [
-        {
-          "rule": "color-contrast",
-          "impact": "serious",
-          "nodes": 3,
-          "targets": [
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(1)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(2)",
-            ".min-h-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].min-w-\\[calc\\(var\\(--segmented-height\\)-2\\*var\\(--control-group-inset\\)\\)\\].flex-auto:nth-child(4)"
-          ],
-          "summary": "Element has insufficient color contrast of 4.34 (foreground color: #737373, background color: #f5f5f5, font size: 9.8pt (13px), font weight: normal). Expected contrast ratio of 4.5:1"
-        }
-      ]
+      "axe": []
     },
     {
       "phase": "after",
