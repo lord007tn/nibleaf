@@ -1,7 +1,7 @@
 import {
-  contrastingText,
   type ResolvedTheme,
   readableAccentText,
+  readableOnAccent,
   readableOnBackground,
   resolveTheme,
   safeThemeFontFamily,
@@ -139,7 +139,7 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
   // shade as a themed site's (PUB-006); the text on it is picked by contrast.
   const legacyBrand = safeThemeHex(config?.styling?.primaryColor, '#5546e8');
   const legacyAccent = readableAccentText(legacyBrand, LEGACY_LIGHT_CANVAS);
-  const legacyAccentForeground = contrastingText(legacyAccent);
+  const legacyAccentForeground = readableOnAccent(legacyAccent);
   // Dark mixes the brand itself towards white, as it always has (it passes there).
   const legacyDarkAccent = `color-mix(in oklab,${legacyBrand} 72%,white)`;
   const colorRules = config?.theme

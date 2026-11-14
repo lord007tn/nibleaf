@@ -8,6 +8,7 @@ import {
   inspectThemeTemplateInput,
   previewThemeConfigChanges,
   readableAccentText,
+  readableOnAccent,
   readableOnBackground,
   resolveTheme,
   safeThemeFontFamily,
@@ -136,6 +137,25 @@ describe('documentation themes', () => {
         expect(contrastRatio(result, canvas), `${accent} on ${canvas} -> ${result}`).toBeGreaterThanOrEqual(floor - 1e-9);
       }
     }
+  });
+
+  it('keeps the text on a shaded accent at AA, across a grid of palettes', () => {
+    // #606060 on black is shaded to read as text; its button label must still pass.
+    const { dark } = resolveTheme({ theme: { preset: 'harbor', colors: { dark: { canvas: '#000000', accent: '#606060' } } } }).colors;
+    expect(contrastRatio(dark.accentForeground, dark.accent)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    const levels = ['00', '33', '66', '99', 'cc', 'ff'];
+    const colours = levels.flatMap((r) => levels.flatMap((g) => levels.map((b) => `#${r}${g}${b}`)));
+    for (const canvas of ['#ffffff', '#fbfcfd', '#999999', '#777777', '#000000', '#0b1120']) {
+      for (const accent of colours) {
+        const { light } = resolveTheme({ theme: { preset: 'harbor', colors: { light: { canvas, accent } } } }).colors;
+        if (light.accent === accent) continue;
+        expect(contrastRatio(light.accentForeground, light.accent), `${accent} on ${canvas} -> ${light.accent}`).toBeGreaterThanOrEqual(
+          ACCENT_TEXT_CONTRAST,
+        );
+      }
+    }
+    expect(readableOnAccent('#1f63c4')).toBe('#ffffff');
+    expect(readableOnAccent('#7c7c7c')).toBe('#000000');
   });
 
   it('lightens a dark-mode accent that fails as text on the dark canvas', () => {

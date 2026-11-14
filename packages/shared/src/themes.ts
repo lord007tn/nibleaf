@@ -431,6 +431,17 @@ export const readableAccentText = (accent: string, canvas: string): string => {
   return [color, target, alternate].reduce((best, candidate) => (contrastRatio(candidate, canvas) > contrastRatio(best, canvas) ? candidate : best));
 };
 
+/** Text drawn on the accent (a button's label) that reaches AA: the palette's
+ * usual near-black or white when it does, otherwise pure black or white,
+ * whichever reads better. One of the two always reaches about 4.58:1, so the
+ * result never falls short where main's choice passed (#606060 shaded to
+ * #7c7c7c takes black at 5.03:1, not #111318 at 4.45:1). */
+export const readableOnAccent = (accent: string): string => {
+  const preferred = contrastingText(accent);
+  if (contrastRatio(preferred, accent) >= ACCENT_TEXT_CONTRAST) return preferred;
+  return contrastRatio('#ffffff', accent) >= contrastRatio('#000000', accent) ? '#ffffff' : '#000000';
+};
+
 /** Make a resolved palette's accent safe as text, keeping what follows it (the
  * focus ring when it was the accent, the text drawn on the accent) in step. */
 const textSafeAccent = (colors: ThemeColorTokens): void => {
@@ -439,7 +450,7 @@ const textSafeAccent = (colors: ThemeColorTokens): void => {
   if (normalizeHex(colors.focus) === normalizeHex(colors.accent)) colors.focus = accent;
   if (normalizeHex(colors.info) === normalizeHex(colors.accent)) colors.info = accent;
   colors.accent = accent;
-  if (contrastRatio(colors.accentForeground, accent) < ACCENT_TEXT_CONTRAST) colors.accentForeground = contrastingText(accent);
+  if (contrastRatio(colors.accentForeground, accent) < ACCENT_TEXT_CONTRAST) colors.accentForeground = readableOnAccent(accent);
 };
 
 /** Resolve a site's theme. Accents come back safe as text (see
