@@ -3695,7 +3695,7 @@
   "settings_mcpactivity_didntfinish": "पूरा नहीं हुआ",
   "settings_mcpactivity_replayed": "दोहराया गया अनुरोध — कुछ नहीं बदला",
   "settings_smartai": "Smart AI",
-  "settings_ai": "AI से पूछें",
+  "settings_ai": "Ask AI",
   "settings_ai_description": "Let readers ask questions about your published docs and get answers with links to the pages they came from.",
   "settings_ai_switch_label": "Let readers ask AI",
   "settings_ai_switch_on": "Readers see “Ask AI” next to search on your published site.",

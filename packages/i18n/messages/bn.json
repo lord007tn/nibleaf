@@ -3694,7 +3694,7 @@
   "settings_mcpactivity_didntfinish": "শেষ হয়নি",
   "settings_mcpactivity_replayed": "পুনরাবৃত্ত অনুরোধ — কিছুই বদলায়নি",
   "settings_smartai": "Smart AI",
-  "settings_ai": "AI-কে জিজ্ঞাসা",
+  "settings_ai": "Ask AI",
   "settings_ai_description": "Let readers ask questions about your published docs and get answers with links to the pages they came from.",
   "settings_ai_switch_label": "Let readers ask AI",
   "settings_ai_switch_on": "Readers see “Ask AI” next to search on your published site.",

@@ -3760,7 +3760,7 @@
   "settings_mcpactivity_didntfinish": "Non terminé",
   "settings_mcpactivity_replayed": "Requête répétée — rien n'a changé",
   "settings_smartai": "Smart AI",
-  "settings_ai": "Demander à l’IA",
+  "settings_ai": "Ask AI",
   "settings_ai_description": "Let readers ask questions about your published docs and get answers with links to the pages they came from.",
   "settings_ai_switch_label": "Let readers ask AI",
   "settings_ai_switch_on": "Readers see “Ask AI” next to search on your published site.",
