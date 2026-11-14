@@ -1,10 +1,16 @@
 import { extractHeadings } from '@nibleaf/shared';
 import { readerSections } from '@nibleaf/shared/reader-headings';
 import { normalizeMdxBlocks } from '@nibleaf/shared/reader-markdown';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
+
+// Some tests here work through large generated case sets or whole documentation
+// corpora. On a loaded CI runner such tests have taken ~28x as long as on a laptop
+// (5.5 s against 0.19 s), past Vitest's 5 s default, so the file gets an explicit
+// timeout. Their cost stays linear; the *.growth.test.ts files pin that.
+vi.setConfig({ testTimeout: 60_000 });
 
 describe.each([
   ['GitBook', (source: string) => convertGitBookMarkdown(source, { resolveFile: () => undefined }).content],

@@ -13,6 +13,14 @@ describe.runIf(growthTestsEnabled)('protectMarkdownCode growth', () => {
 });
 
 describe.runIf(growthTestsEnabled)('fencedMarkdownLines growth', () => {
+  it('measures whitespace after a quote marker once, including tabs (#595)', () => {
+    expect(fencedMarkdownLines(['> \t~~~md', '> literal', '> ~~~', '## After'])).toEqual([true, true, true, false]);
+    const page = (n: number) => [`> \t${' '.repeat(n)}~~~md`, '> literal', '> ~~~', '## After'];
+    const [small, large] = growthMs(fencedMarkdownLines, page(40_000), page(160_000));
+    console.info(`Quote indentation growth: 40,000 vs 160,000 spaces, ${small.toFixed(1)} vs ${large.toFixed(1)} ms`);
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it('reads fences in nested quotes and list items in one pass, also where a container ends them', () => {
     // A fence in a list item, quote and list item, with markers in its body that are
     // code, then a quoted fence that a line outside the quote ends (read again).

@@ -7,6 +7,10 @@ export interface PageDraft {
   expectedUpdatedAt?: string;
 }
 
+/** The same draft of the same page, against the same revision. */
+export const samePageDraft = (a: PageDraft, b: PageDraft): boolean =>
+  a.id === b.id && a.title === b.title && a.content === b.content && a.expectedUpdatedAt === b.expectedUpdatedAt;
+
 /** Serialize writes so an older request can never overwrite a newer draft. */
 export function createEditorSaveQueue<T>(save: (draft: PageDraft) => Promise<T>, revisionOf?: (saved: T) => string | undefined) {
   let tail: Promise<unknown> = Promise.resolve();
@@ -17,15 +21,7 @@ export function createEditorSaveQueue<T>(save: (draft: PageDraft) => Promise<T>,
 
   return {
     save(draft: PageDraft): Promise<T> {
-      if (
-        latest &&
-        latest.draft.id === draft.id &&
-        latest.draft.title === draft.title &&
-        latest.draft.content === draft.content &&
-        latest.draft.expectedUpdatedAt === draft.expectedUpdatedAt
-      ) {
-        return latest.result;
-      }
+      if (latest && samePageDraft(latest.draft, draft)) return latest.result;
       const result = tail
         .catch(() => undefined)
         .then(async () => {

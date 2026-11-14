@@ -8,7 +8,7 @@ import RichMarkdown from '../markdown-rich';
 import { Step, Steps } from './mdx/steps';
 import { Tooltip } from './mdx/tooltip';
 import { hasIcon, PageIcon } from './page-icon';
-import { ContentImage } from './reader-content-controls';
+import { ContentImage, lightboxWidth } from './reader-content-controls';
 
 describe('reader content ergonomics', () => {
   let container: HTMLDivElement;
@@ -163,8 +163,34 @@ describe('reader content ergonomics', () => {
     expect(dialog.querySelector('img')).toBeNull();
     expect(document.activeElement).toBe(button);
     act(() => button.click());
-    act(() => dialog.querySelector('button')?.click());
+    // An icon close button, named; the alt text is the caption (PUB-012).
+    const close = dialog.querySelector<HTMLButtonElement>('button.reader-image-close');
+    expect(close?.getAttribute('aria-label')).toBe('Close image');
+    expect(close?.textContent).toBe('');
+    expect(dialog.querySelector('figure figcaption')?.textContent).toBe('Diagram');
+    act(() => close?.click());
     expect(dialog.open).toBe(false);
+    // The picture itself opens it too, for a pointer.
+    expect(image.className).toContain('cursor-zoom-in');
+    act(() => image.click());
+    expect(dialog.open).toBe(true);
+  });
+
+  it('offers zoom only when the full-size view would show the image meaningfully larger', async () => {
+    // jsdom's window is 1024x768: the view fits images into 90% of it.
+    // Never past its natural size...
+    expect(lightboxWidth({ width: 800, height: 600 }, { width: 1024, height: 768 })).toBe(800);
+    // ...and scaled to fit the viewport's height when that is tighter.
+    expect(lightboxWidth({ width: 1200, height: 1200 }, { width: 1024, height: 768 })).toBeCloseTo(768 * 0.9);
+    expect(lightboxWidth({ width: 3000, height: 1000 }, { width: 1024, height: 768 })).toBeCloseTo(1024 * 0.9);
+    await act(async () => root.render(<ContentImage src="/small.png" alt="Screenshot" language="en" />));
+    const image = container.querySelector('img');
+    if (!image) throw new Error('Missing image');
+    // A 436px screenshot already shown at 436px: the lightbox would add nothing.
+    Object.defineProperties(image, { naturalWidth: { value: 436 }, naturalHeight: { value: 300 }, width: { value: 436 }, height: { value: 300 } });
+    act(() => image.dispatchEvent(new Event('load')));
+    expect(container.querySelector('button[aria-label^="View full size"]')).toBeNull();
+    expect(image.className).not.toContain('cursor-zoom-in');
   });
   it('keeps authored image classes, such as light/dark image pairs, over the default frame', async () => {
     await act(async () =>

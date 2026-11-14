@@ -838,6 +838,8 @@
   "settings_unsaved_description": "آپ کی تبدیلیاں محفوظ نہیں ہوئیں۔",
   "settings_unsaved_keep": "ترمیم جاری رکھیں",
   "settings_appearance_location": "سائٹ کی ترتیبات ← ظاہری شکل اور ایڈیٹر کے ترتیبات پینل میں بھی دستیاب ہے۔",
+  "settings_appearance_summary": "آپ کی شائع شدہ سائٹ کیسی دکھتی ہے: اس کا برانڈ، تھیم، ٹائپوگرافی، ہیڈر، فوٹر اور بینر۔",
+  "settings_appearance_sections": "ظاہری شکل کے حصے",
   "settings_domain_guide_step1": "ڈومین فراہم کنندہ کی DNS ترتیبات کھولیں۔",
   "settings_domain_guide_step2": "ہر ریکارڈ کی قسم، نام/ہوسٹ اور قدر/ہدف درج کریں۔ CNAME پتے کو سائٹ سے جوڑتا ہے؛ TXT ملکیت ثابت کرتا ہے۔ عموماً مختصر نام دیں؛ نیچے مکمل نام صرف مانگے جانے پر دیں۔",
   "settings_domain_guide_step3": "محفوظ کریں اور دوبارہ جانچیں۔",
@@ -2349,6 +2351,10 @@
   "site_copysectionlink": "اس حصے کا لنک کاپی کریں",
   "site_viewfullsize": "پورے سائز میں دیکھیں",
   "site_closeimage": "تصویر بند کریں",
+  "site_table": "جدول",
+  "site_tableof": "جدول: {name}",
+  "site_code": "کوڈ",
+  "site_codeof": "کوڈ: {name}",
   "site_viewmarkdown": "Markdown دیکھیں",
   "site_copymarkdown": "Markdown کاپی کریں",
   "site_copypage": "صفحہ کاپی کریں",
@@ -4900,7 +4906,9 @@
   "publish_checks_allclear": "تمام جانچ کامیاب رہی",
   "publish_checks_allclearhint": "کوئی ٹوٹا ہوا لنک، متبادل متن کے بغیر تصویر، بغیر عنوان کا صفحہ یا فالتو حروف نہیں ہیں۔",
   "publish_checks_fix": "ٹھیک کریں",
-  "publish_checks_fixlabel": "ایڈیٹر میں {title} ٹھیک کریں",
+  "publish_checks_fixproblem": "“{title}” درست کریں: {problem}",
+  "publish_checks_show": "دکھائیں ({count})",
+  "publish_checks_hide": "چھپائیں",
   "publish_checks_blockedreason": "شائع کرنے سے پہلے جانچ میں دی گئی خرابیاں ٹھیک کریں۔",
   "publish_checks_error": "خرابی",
   "publish_checks_warning": "انتباہ",
@@ -5046,5 +5054,23 @@
   "settings_aiassistants_watch_again": "دوبارہ انتظار کریں",
   "settings_aiassistants_keysloaderror": "ذاتی کلیدیں لوڈ نہیں ہو سکیں۔ سائن اِن کی ہوئی ایپس اب بھی دکھائی جا رہی ہیں۔",
   "settings_aiassistants_appsloaderror": "سائن اِن کی ہوئی ایپس لوڈ نہیں ہو سکیں۔ ذاتی کلیدیں اب بھی دکھائی جا رہی ہیں۔",
-  "oauth_consent_can_aiconversations": "محفوظ کیے گئے Ask AI سوالات اور جوابات پڑھنا۔ ای میل پتے، فون نمبر اور کلیدیں ہٹا دی جاتی ہیں، لیکن نام، پتے اور دیگر ذاتی معلومات باقی رہ سکتی ہیں۔"
+  "oauth_consent_can_aiconversations": "محفوظ کیے گئے Ask AI سوالات اور جوابات پڑھنا۔ ای میل پتے، فون نمبر اور کلیدیں ہٹا دی جاتی ہیں، لیکن نام، پتے اور دیگر ذاتی معلومات باقی رہ سکتی ہیں۔",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} غیر شائع شدہ تبدیلی",
+        "form=*": "{count} غیر شائع شدہ تبدیلیاں"
+      }
+    }
+  ],
+  "pending_siteonly": "نیویگیشن یا ترتیبات میں غیر شائع شدہ تبدیلیاں",
+  "pending_readersstillsee": "قارئین ابھی بھی ورژن {version} دیکھ رہے ہیں۔",
+  "pending_review": "جائزہ لیں اور شائع کریں",
+  "pending_draft": "ابھی لائیو نہیں",
+  "overview_col_status": "حیثیت",
+  "pagestatus_draft": "غیر شائع شدہ",
+  "pagestatus_changed": "تبدیل شدہ",
+  "pagestatus_live": "لائیو"
 }
