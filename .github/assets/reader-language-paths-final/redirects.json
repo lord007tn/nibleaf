@@ -1,0 +1,104 @@
+[
+  {
+    "request": "/sites/preview-harbor/getting-started/checklist?lang=ar",
+    "hops": [
+      {
+        "url": "/sites/preview-harbor/getting-started/checklist?lang=ar",
+        "status": 308,
+        "location": "/sites/preview-harbor/ar/getting-started/checklist",
+        "vary": "sec-fetch-dest, accept"
+      },
+      {
+        "url": "/sites/preview-harbor/ar/getting-started/checklist",
+        "status": 200,
+        "location": null,
+        "vary": "Accept"
+      }
+    ]
+  },
+  {
+    "request": "/sites/preview-harbor?lang=ar",
+    "hops": [
+      {
+        "url": "/sites/preview-harbor?lang=ar",
+        "status": 308,
+        "location": "/sites/preview-harbor/ar",
+        "vary": "sec-fetch-dest, accept"
+      },
+      {
+        "url": "/sites/preview-harbor/ar",
+        "status": 200,
+        "location": null,
+        "vary": "Accept"
+      }
+    ]
+  },
+  {
+    "request": "/sites/preview-harbor/getting-started/checklist?lang=en",
+    "hops": [
+      {
+        "url": "/sites/preview-harbor/getting-started/checklist?lang=en",
+        "status": 308,
+        "location": "/sites/preview-harbor/getting-started/checklist",
+        "vary": "sec-fetch-dest, accept"
+      },
+      {
+        "url": "/sites/preview-harbor/getting-started/checklist",
+        "status": 200,
+        "location": null,
+        "vary": "Accept"
+      }
+    ]
+  },
+  {
+    "request": "/sites/preview-harbor/getting-started/checklist?lang=ar#tasks",
+    "hops": [
+      {
+        "url": "/sites/preview-harbor/getting-started/checklist?lang=ar#tasks",
+        "status": 308,
+        "location": "/sites/preview-harbor/ar/getting-started/checklist",
+        "vary": "sec-fetch-dest, accept"
+      },
+      {
+        "url": "/sites/preview-harbor/ar/getting-started/checklist",
+        "status": 200,
+        "location": null,
+        "vary": "Accept"
+      }
+    ]
+  },
+  {
+    "request": "/sites/preview-language-collision?lang=ar",
+    "hops": [
+      {
+        "url": "/sites/preview-language-collision?lang=ar",
+        "status": 308,
+        "location": "/sites/preview-language-collision/~lang/ar",
+        "vary": "sec-fetch-dest, accept"
+      },
+      {
+        "url": "/sites/preview-language-collision/~lang/ar",
+        "status": 200,
+        "location": null,
+        "vary": "Accept"
+      }
+    ]
+  },
+  {
+    "request": "/sites/preview-language-collision/ar",
+    "hops": [
+      {
+        "url": "/sites/preview-language-collision/ar",
+        "status": 308,
+        "location": "/sites/preview-language-collision/~lang/ar",
+        "vary": "sec-fetch-dest, accept"
+      },
+      {
+        "url": "/sites/preview-language-collision/~lang/ar",
+        "status": 200,
+        "location": null,
+        "vary": "Accept"
+      }
+    ]
+  }
+]
