@@ -73,7 +73,7 @@ const HarborTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="harbor-reference"
         data-theme-region="content-shell"
       >
-        <aside
+        <div
           className="sticky top-(--site-header-h) hidden h-[calc(100dvh-var(--site-header-h))] self-start border-(--theme-border) border-e lg:block"
           data-theme-region="sidebar"
         >
@@ -82,7 +82,7 @@ const HarborTemplate: DocumentationThemeTemplate = {
               {slots.navigation}
             </div>
           </div>
-        </aside>
+        </div>
         {slots.content}
       </div>,
     ),
@@ -94,9 +94,9 @@ const HarborTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="harbor-reference-preview"
         data-theme-region="preview-shell"
       >
-        <aside className="hidden min-h-0 flex-col border-border border-e bg-card/40 md:flex" data-theme-region="sidebar">
+        <div className="hidden min-h-0 flex-col border-border border-e bg-card/40 md:flex" data-theme-region="sidebar">
           {navigation}
-        </aside>
+        </div>
         {content}
       </div>
     </>
@@ -124,9 +124,9 @@ const HarborTemplate: DocumentationThemeTemplate = {
     >
       {article}
       {tableOfContents ? (
-        <aside className="hidden xl:block" data-theme-region="toc">
+        <div className="hidden xl:block" data-theme-region="toc">
           {tableOfContents}
-        </aside>
+        </div>
       ) : null}
     </div>
   ),
@@ -175,7 +175,7 @@ function ManuscriptNavigationIndex({ labels, children }: { labels?: ReaderSlots[
   }, []);
   const collapsible = Boolean(labels) && (overflows || expanded);
   return (
-    <aside className="documentation-manuscript-reader-navigation hidden lg:block" data-theme-region="sidebar">
+    <div className="documentation-manuscript-reader-navigation hidden lg:block" data-theme-region="sidebar">
       {/* Without JavaScript there's no button: the server's collapsed index opens in full. */}
       <noscript>
         <style>{NO_SCRIPT_INDEX}</style>
@@ -202,7 +202,7 @@ function ManuscriptNavigationIndex({ labels, children }: { labels?: ReaderSlots[
           {expanded ? labels.showLess : labels.showAll}
         </button>
       ) : null}
-    </aside>
+    </div>
   );
 }
 
@@ -243,12 +243,12 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="manuscript-editorial-preview"
         data-theme-region="preview-shell"
       >
-        <aside
+        <div
           className="documentation-manuscript-preview-navigation hidden max-h-40 flex-col border-border border-y bg-(--theme-canvas) md:flex"
           data-theme-region="sidebar"
         >
           {navigation}
-        </aside>
+        </div>
         <div className="mx-auto min-h-0 w-full max-w-[60rem] flex-1 overflow-y-auto border border-border bg-(--theme-surface) shadow-lg">
           {content}
         </div>
@@ -276,9 +276,9 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
       data-theme-region="page-shell"
     >
       {tableOfContents ? (
-        <aside className="hidden xl:block" data-theme-region="toc">
+        <div className="hidden xl:block" data-theme-region="toc">
           {tableOfContents}
-        </aside>
+        </div>
       ) : reserveTocColumn ? (
         // The outline column stays, empty, so the article starts where it does on pages with one.
         <div aria-hidden className="hidden xl:block" />
@@ -304,7 +304,7 @@ const SignalTemplate: DocumentationThemeTemplate = {
           className="mx-auto grid w-full max-w-[100rem] flex-1 grid-cols-1 bg-(--theme-canvas) lg:grid-cols-[15rem_minmax(0,1fr)] lg:overflow-hidden lg:border lg:border-(--theme-border) lg:border-t-0"
           data-theme-region="content-shell"
         >
-          <aside
+          <div
             className="documentation-signal-rail hidden min-h-0 border-(--theme-border) border-e bg-(--theme-code) text-(--theme-code-foreground) lg:block"
             data-theme-region="sidebar"
           >
@@ -313,7 +313,7 @@ const SignalTemplate: DocumentationThemeTemplate = {
                 {slots.navigation}
               </div>
             </div>
-          </aside>
+          </div>
           <div className="min-w-0">{slots.content}</div>
         </div>
       </section>
@@ -331,12 +331,12 @@ const SignalTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="signal-console-preview"
         data-theme-region="preview-shell"
       >
-        <aside
+        <div
           className="documentation-signal-rail hidden min-h-0 flex-col border border-border bg-(--theme-code) text-(--theme-code-foreground) md:flex"
           data-theme-region="sidebar"
         >
           {navigation}
-        </aside>
+        </div>
         <div className="min-h-0 overflow-y-auto border border-border bg-(--theme-canvas)">{content}</div>
       </div>
     </>
@@ -362,12 +362,12 @@ const SignalTemplate: DocumentationThemeTemplate = {
       data-theme-region="page-shell"
     >
       {tableOfContents ? (
-        <aside
+        <div
           className="documentation-signal-command-index hidden border border-(--theme-border) bg-(--theme-surface) px-4 py-2.5 xl:block"
           data-theme-region="toc"
         >
           {tableOfContents}
-        </aside>
+        </div>
       ) : null}
       <div className="documentation-signal-article min-w-0 lg:border lg:border-(--theme-border) lg:bg-(--theme-surface) lg:px-10 lg:py-9">
         {article}

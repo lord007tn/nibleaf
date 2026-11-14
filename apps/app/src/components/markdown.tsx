@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { LanguageFn } from 'highlight.js';
-import { type ComponentProps, Suspense, useMemo } from 'react';
+import { Children, type ComponentProps, cloneElement, isValidElement, Suspense, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
@@ -88,10 +88,38 @@ const htmlComponents: Components = {
     </div>
   ),
   pre: Pre,
+  li: TaskListItem,
   // Authored classes (light/dark image pairs) add to the default frame, and an
   // image without alt text is marked decorative instead of losing the attribute.
   img: ({ node: _node, ...props }) => <img {...props} alt={props.alt ?? ''} className={cn('rounded-xl border border-border', props.className)} />,
 };
+
+/** Text of a hast node, without nested lists (a sub-task names its own box). */
+function itemText(node: { type: string; value?: string; tagName?: string; children?: unknown[] } | undefined): string {
+  if (!node) return '';
+  if (node.type === 'text') return node.value ?? '';
+  if (node.tagName === 'ul' || node.tagName === 'ol' || node.tagName === 'input') return '';
+  return ((node.children ?? []) as (typeof node)[]).map(itemText).join('');
+}
+
+/** GFM task items: the read-only checkbox is named by the item's text, so a
+ *  screen reader says "Sandbox shipment booked, checkbox, checked" rather than
+ *  an unnamed checkbox (P3-PUB-025; axe `label`). Other items pass through. */
+function TaskListItem({ node, children, ...props }: ComponentProps<'li'> & { node?: { children?: unknown[] } }) {
+  if (!props.className?.split(/\s+/).includes('task-list-item')) return <li {...props}>{children}</li>;
+  const label = itemText(node as Parameters<typeof itemText>[0])
+    .replace(/\s+/g, ' ')
+    .trim();
+  return (
+    <li {...props}>
+      {Children.map(children, (child) =>
+        isValidElement<ComponentProps<'input'>>(child) && child.props.type === 'checkbox'
+          ? cloneElement(child, { 'aria-label': label || undefined })
+          : child,
+      )}
+    </li>
+  );
+}
 
 /** Anchor renderer, built per site-context. Heading self-links (added by
  *  rehype-autolink-headings with the `heading-anchor` class) keep the heading's

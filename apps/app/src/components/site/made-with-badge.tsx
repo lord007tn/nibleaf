@@ -20,7 +20,7 @@ export function MadeWithBadge({ lang }: { lang?: string }) {
         rel="noreferrer"
         // Spell the name out: some screen readers join inline spans and read "Made withNibleaf".
         aria-label={`${t('madeWith')} Nibleaf`}
-        className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+        className="inline-flex min-h-6 items-center gap-1.5 transition-colors hover:text-foreground"
       >
         <NibleafMark className="size-3.5" aria-hidden />
         <span>
@@ -29,7 +29,7 @@ export function MadeWithBadge({ lang }: { lang?: string }) {
         </span>
       </a>
       <span aria-hidden>·</span>
-      <a href="mailto:abuse@nibleaf.com" className="transition-colors hover:text-foreground">
+      <a href="mailto:abuse@nibleaf.com" className="inline-flex min-h-6 items-center transition-colors hover:text-foreground">
         {t('reportAbuse')}
       </a>
     </div>

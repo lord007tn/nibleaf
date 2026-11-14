@@ -940,3 +940,18 @@
     display: none !important;
   }
 }
+
+/* One focus indicator across the published reader's chrome (PUB-020): header
+ * links, the language pill, the theme toggle, footer links. The design-system
+ * fallback is a 1px half-opacity outline; this matches the article's controls.
+ * Design-system components (data-slot) draw their own ring, and scroll regions
+ * draw theirs inside the box. Unlayered, so it wins over the base layer. */
+.nibleaf-site-chrome
+:is(a, button, summary, [tabindex]):not(
+  [data-slot],
+  [data-scroll-region],
+  [tabindex="-1"]
+):focus-visible {
+  outline: 2px solid var(--ring, currentColor);
+  outline-offset: 2px;
+}

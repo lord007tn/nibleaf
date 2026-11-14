@@ -3,6 +3,7 @@ import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
 import { isRtl as isRtlLocale, resolveLocale } from '@nibleaf/i18n/locales';
 import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -357,6 +358,7 @@ function SiteChrome() {
   const themeCss = projectThemeCss(config);
   // The active language may localize the site name (brand + footer copyright).
   const siteName = site?.languageConfig?.name || site?.project.name;
+  const footerCopyright = footer?.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim();
   const brandInner = (
     <>
       {logo ? (
@@ -608,7 +610,7 @@ function SiteChrome() {
                           rel={link.external ? 'noreferrer' : undefined}
                           aria-current={link.active ? 'page' : undefined}
                           className={cn(
-                            'inline-flex items-center gap-1 transition-colors',
+                            'inline-flex min-h-6 items-center gap-1 transition-colors',
                             link.active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground',
                           )}
                         >
@@ -728,7 +730,8 @@ function SiteChrome() {
                       className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row"
                       data-theme-region="footer"
                     >
-                      <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim()}</span>
+                      {/* Isolated and laid out by its own script, like the rest of the chrome (PUB-015). */}
+                      <span dir={blockDirection(footerCopyright)}>{footerCopyright}</span>
                       <div className="flex items-center gap-1">
                         {footer.github ? (
                           <a

@@ -1,0 +1,64 @@
+/** @vitest-environment jsdom */
+/**
+ * Reader chrome semantics from the phase 1 audit: the language menu announces
+ * the current language (PUB-014), task checkboxes are named (P3-PUB-025), and
+ * the layout adds no anonymous landmarks around its navigation (P3-PUB-026).
+ */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MarkdownRenderer } from '@/components/markdown';
+import { LanguageMenu } from '@/components/site/header-menus';
+
+const languages = [
+  { code: 'en', label: 'English', direction: 'LTR' as const, isDefault: true },
+  { code: 'ar', label: 'العربية', direction: 'RTL' as const, isDefault: false },
+];
+
+describe('language menu', () => {
+  beforeEach(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  });
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it('is a radio menu: the current language is checked, and picking one reports it', async () => {
+    const onChange = vi.fn();
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () =>
+      root.render(<LanguageMenu languages={languages} activeCode="ar" onChange={onChange} start={{ defaultOpen: true, focusTrigger: false }} />),
+    );
+    const items = Array.from(document.querySelectorAll('[role="menuitemradio"]'));
+    expect(items.map((item) => [item.textContent, item.getAttribute('aria-checked')])).toEqual([
+      ['English', 'false'],
+      ['العربية', 'true'],
+    ]);
+    await act(async () => (items[0] as HTMLElement).click());
+    expect(onChange).toHaveBeenCalledWith('en');
+    act(() => root.unmount());
+  });
+});
+
+describe('task lists', () => {
+  it('names each read-only checkbox after its item, without its sub-items', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(
+      <MarkdownRenderer content={['- [x] Sandbox **shipment** booked', '- [ ] Live key rotated', '  - [ ] Vault updated'].join('\n')} />,
+    );
+    const boxes = Array.from(host.querySelectorAll('input[type="checkbox"]'));
+    expect(boxes.map((box) => box.getAttribute('aria-label'))).toEqual(['Sandbox shipment booked', 'Live key rotated', 'Vault updated']);
+  });
+});
+
+describe('layout landmarks', () => {
+  it('wraps the sidebar and the outline in plain boxes: their navigation is the named landmark', () => {
+    const source = readFileSync(resolve(import.meta.dirname, 'documentation-theme-provider.tsx'), 'utf8');
+    expect(source).not.toMatch(/<aside\b/);
+  });
+});
