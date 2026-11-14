@@ -4383,7 +4383,7 @@
   "command_organizationsettings": "Configuración de la organización",
   "command_group_switchorganization": "Cambiar de organización…",
   "nav_websites": "Sitios",
-  "nav_members": "Miembros",
+  "nav_members": "Equipo",
   "nav_billing": "Uso y facturación",
   "nav_organizationsidebardescription": "Navega por esta organización.",
   "newsite_descinorganization": "El sitio se crea en {org}.",
