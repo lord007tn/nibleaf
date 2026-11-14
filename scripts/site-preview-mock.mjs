@@ -10,6 +10,7 @@
  *   preview-manuscript  theme preset "manuscript"
  *   preview-signal      theme preset "signal"
  *   preview-legacy      no `theme` config (legacy palette branch)
+ *   preview-answers     "harbor" with Ask AI available (the panel opens; no answer is requested)
  *   preview-private     "harbor", private, read by a signed-in reader
  *   preview-unset       "harbor" whose owner never picked light or dark (follows the reader's device)
  *
@@ -1051,6 +1052,7 @@ const PROJECTS = {
   'preview-manuscript': { preset: 'manuscript' },
   'preview-signal': { preset: 'signal' },
   'preview-legacy': { preset: null },
+  'preview-answers': { preset: 'harbor', answers: true },
   // A private site whose reader is signed in; access can be revoked mid-session.
   'preview-private': { preset: 'harbor', visibility: 'private' },
   // No styling.theme: the reader follows the visitor's device (PUB-004).
@@ -1250,6 +1252,7 @@ const siteShell = (id, preset, query) => {
     generatedAt: GENERATED_AT,
     openapi: null,
     ...(PROJECTS[id]?.visibility === 'private' ? { signedIn: true } : {}),
+    ...(PROJECTS[id]?.answers ? { capabilities: { answer: true } } : {}),
   };
 };
 
