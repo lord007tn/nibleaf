@@ -59,6 +59,16 @@ describe('math detection', () => {
     expect(needsMathMarkdown('Costs \\$5 and \\$10.')).toBe(false);
   });
 
+  it.each([
+    ['a blockquote', '> ```math\n> x^2\n> ```'],
+    ['a list item', '- ```math\n  x^2\n  ```'],
+  ])('past the parser bounds, still loads KaTeX for a math fence in %s on a rich page', (_name, fence) => {
+    const content = `<Note>Hi</Note>\n\n${fence}\n\n${'word '.repeat(80_001)}`;
+    expect(content.length).toBeGreaterThan(400_000);
+    expect(markdownCodeUsage(content)).toBeNull();
+    expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
+  });
+
   it('a math fence alone keeps a page on the plain renderer, as before', () => {
     expect(readerRenderMode('```math\n\\sqrt{2}\n```').rich).toBe(false);
   });
