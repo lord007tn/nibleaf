@@ -3059,7 +3059,7 @@
   "settings_integrations_cloudflare_description": "SaaS के लिए Cloudflare के माध्यम से प्रबंधित कस्टम डोमेन प्रावधान।",
   "settings_integrations_category_sourcecontrol": "स्रोत नियंत्रण",
   "settings_integrations_category_deployment": "तैनाती",
-  "settings_integrations_category_ai": "AI",
+  "settings_integrations_category_ai": "AI सेवाएँ",
   "settings_integrations_category_email": "ईमेल",
   "settings_integrations_category_analytics": "विश्लेषण",
   "settings_integrations_category_storage": "भंडारण",
