@@ -149,7 +149,11 @@ export interface LandingCopy {
   };
   paths: { eyebrow: string; title: string; body: string; cloud: PathCard; selfHost: PathCard; detailsLink: Cta };
   compare: { eyebrow: string; title: string; body: string; links: (Cta & { description: string })[] };
-  faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
+  /**
+   * The landing page shows only the `featured` questions (P2-MKT-005); `moreLinks` point to where the
+   * rest are answered.
+   */
+  faq: { eyebrow: string; title: string; items: { q: string; a: string; featured?: true }[]; moreLinks: Cta[] };
   blog: { eyebrow: string; title: string; allLink: Cta; readingTime: (minutes: number) => string };
   finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
 }

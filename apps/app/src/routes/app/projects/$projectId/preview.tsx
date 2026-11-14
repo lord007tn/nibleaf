@@ -10,12 +10,13 @@ import { ArrowLeft, ChevronDown, Eye } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { publishedVersionSlugFor } from '@/components/editor/docs-version';
-import { Markdown } from '@/components/markdown';
+import { Markdown, useMathReady } from '@/components/markdown';
 import { QueryErrorState } from '@/components/query-error-state';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { PageIcon } from '@/components/site/page-icon';
 import { PreviewNav } from '@/features/site-preview/components/preview-nav';
 import { previewHomeId, previewNavTree } from '@/features/site-preview/model/preview-nav';
+import { previewsDraft } from '@/features/site-preview/model/preview-target';
 import { useBranches, useLanguages, usePage, usePages, useProject, useProjectMembers } from '@/hooks/api';
 import { pageQueryOptions } from '@/hooks/api/query-options';
 import { defaultScopeId, prefetchScopedPages } from '@/hooks/api/route-prefetch';
@@ -69,7 +70,7 @@ function ProjectPreview() {
   // The preview shows what readers will see: an untitled page reads "Untitled" in its language.
   const shownTitle = (node: { title: string }) => displayTitle({ title: node.title, languageCode: activeLanguage?.code });
   const activeBranchId = search.branchId ?? defaultScopeId(branches);
-  const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
+  const previewEnabled = previewsDraft(project);
   const pagesQuery = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
   const { data: pages, isPending: pagesPending } = pagesQuery;
   // The same tree readers get once this is published, so the order matches the editor's.
@@ -87,7 +88,10 @@ function ProjectPreview() {
   }, [selectedId]);
   const pageQuery = usePage(previewEnabled ? projectId : undefined, selected?.id);
   const { data: page, isPending: pagePending } = pageQuery;
-  const contentPending = pagesPending || (Boolean(selected) && pagePending);
+  // A page with math waits for KaTeX behind the skeleton too, so it never
+  // appears with raw TeX (it mounts fresh after each uncached fetch).
+  const mathReady = useMathReady(page?.content);
+  const contentPending = pagesPending || (Boolean(selected) && (pagePending || !mathReady));
   // A failed request must not read as "no draft pages": offer a retry of whichever one failed.
   const failedQuery = pagesQuery.isError && !pages ? pagesQuery : selected && pageQuery.isError && !page ? pageQuery : undefined;
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);

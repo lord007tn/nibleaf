@@ -65,6 +65,63 @@ export const containsMath = (text: string): boolean => {
   return false;
 };
 
+/** A fenced code block in the `math` language: display math for remark-math.
+ *  Read conservatively, anywhere on a line, so a fence inside a blockquote or a
+ *  list item (`> \`\`\`math`, `- \`\`\`math`) counts too: past the parser's bounds
+ *  this scan alone decides, and a miss would leave raw TeX on a rich page. */
+// Each backtick or tilde run starts at most one match (the lookbehinds), so a
+// long run that never says `math` is scanned once, not once per character.
+const MATH_FENCE = /(?:(?<!`)`{3,}|(?<!~)~{3,})[ \t]*math\b/i;
+
+/** The classes rehype-katex typesets in raw HTML (`language-math` as display math). */
+export const MATH_CLASS = /\b(?:math-(?:inline|display)|language-math)\b/;
+
+/** Numeric character references decoded (`&#45;`, `&#x2d;`, `&#0000045;`,
+ *  with or without the semicolon), as the HTML parser reads an attribute before
+ *  rehype-katex sees its class: every digit is consumed, leading zeroes
+ *  included, and a value outside Unicode becomes U+FFFD. Named references don't
+ *  matter here: no ASCII letter or `-` has one. */
+export const decodeNumericReferences = (text: string): string =>
+  text.includes('&#')
+    ? text.replace(/&#(?:[xX]([0-9a-fA-F]+)|(\d+));?/g, (_reference, hex: string | undefined, decimal: string | undefined) => {
+        const code = hex ? Number.parseInt(hex, 16) : Number.parseInt(decimal ?? '', 10);
+        const valid = code > 0 && code <= 0x10_ff_ff && !(code >= 0xd8_00 && code <= 0xdf_ff);
+        return valid ? String.fromCodePoint(code) : '\uFFFD';
+      })
+    : text;
+
+/** Whether a backslash escapes the character at `index`: an odd run of
+ *  backslashes before it (`\\$` is an escaped backslash, then a live `$`). */
+const escapedAt = (text: string, index: number): boolean => {
+  let run = 0;
+  while (index - run - 1 >= 0 && text.charCodeAt(index - run - 1) === BACKSLASH) run += 1;
+  return run % 2 === 1;
+};
+
+/** `containsMath`, reading backslash runs as Markdown does. */
+const containsUnescapedMath = (text: string): boolean => {
+  for (let index = text.indexOf('$'); index >= 0; index = text.indexOf('$', index + 1)) {
+    if (!escapedAt(text, index)) return text.indexOf('$', index + 1) >= 0;
+  }
+  return false;
+};
+
+/** Whether a page may hold math, by the line scan (the fallback past the
+ * parser's bounds, and the navigation preloader). It errs towards loading,
+ * reading the whole text, code included: a miss would leave raw TeX on a rich
+ * page, while a false positive only fetches KaTeX. So dollars count anywhere
+ * (remark-math can read a delimiter where plain Markdown sees a code span,
+ * `$\`x$\``), and fence languages and class names are read after decoding
+ * character references (`~~~m&#97;th`, `math&#45;inline`), with no code
+ * stripping that could cut through an HTML attribute. It only matters on a
+ * rich page: the plain renderer has no math syntax, and the preloader fetches
+ * KaTeX only with the rich renderer, so a code-only page still never does. */
+export const needsMathMarkdown = (content: string): boolean => {
+  if (containsUnescapedMath(content)) return true;
+  const decoded = decodeNumericReferences(content);
+  return MATH_FENCE.test(decoded) || MATH_CLASS.test(decoded);
+};
+
 /** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
  * detection conservative—false positives only load the richer renderer, while
  * false negatives could change output. Code (fenced blocks and inline spans)

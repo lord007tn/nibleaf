@@ -9,47 +9,16 @@ on:
 permissions:
   contents: read
 
-# Cancel in-progress runs for the same ref to save CI minutes.
+# Cancel superseded PR runs; keep every main revision available to the release gate.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
-    name: Typecheck, lint & test
+  static:
+    name: Static checks
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    services:
-      qdrant:
-        image: qdrant/qdrant:v1.19.0
-        ports:
-          - 6333:6333
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: nibleaf
-          POSTGRES_PASSWORD: nibleaf
-          POSTGRES_USER: nibleaf
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U nibleaf -d nibleaf"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-      clickhouse:
-        image: clickhouse/clickhouse-server:25.8-alpine
-        env:
-          CLICKHOUSE_DB: nibleaf_analytics
-          CLICKHOUSE_PASSWORD: nibleaf
-          CLICKHOUSE_USER: nibleaf
-        ports:
-          - 8123:8123
-        options: >-
-          --health-cmd "wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -105,6 +74,14 @@ jobs:
 
       # Rolling deploys run the previous release against the new schema, so new
       # migrations must be expand-only (operations/runbook-rolling-deploys.md §4).
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Compile interface messages
+        run: pnpm --filter @nibleaf/i18n run setup
+
+      # Rolling deploys run the previous release against the new schema, so new
+      # migrations must be expand-only (operations/runbook-rolling-deploys.md ?4).
       - name: Check migrations are expand-only and the image role selector
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -114,13 +91,105 @@ jobs:
             node scripts/migration-safety.mjs --base "${BASE_SHA}"
           fi
 
-      - name: Generate Prisma client
-        run: pnpm db:generate
+      - name: Check documentation
+        run: pnpm docs:check
 
-      - name: Compile interface messages
-        # Server code imports the generated @nibleaf/i18n/messages modules, and the
-        # PostgreSQL suites below run before typecheck would generate them.
-        run: pnpm --filter @nibleaf/i18n run setup
+      - name: Check self-host release integrity
+        run: |
+          pnpm self-host:check
+          artifact_dir="$(mktemp -d)"
+          node scripts/self-host-release.mjs --output "$artifact_dir"
+          (cd "$artifact_dir" && sha256sum --check SHA256SUMS)
+          printf '\n# CI tamper proof\n' >> "$artifact_dir/docker-compose.yml"
+          if (cd "$artifact_dir" && sha256sum --check SHA256SUMS); then
+            echo "::error::Tampered self-host assets passed checksum verification"
+            exit 1
+          fi
+
+      - name: Check deployment release contract
+        run: pnpm release:check
+
+      - name: Check for unused source files
+        run: pnpm check:dead-code
+
+      - name: Dashboard type scale (no new arbitrary font sizes)
+        run: pnpm --filter @nibleaf/app run check:type-scale
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test repository scripts
+        run: pnpm test:scripts
+
+  unit:
+    name: Unit ${{ matrix.package }} ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: app
+            shard: 1/4
+          - package: app
+            shard: 2/4
+          - package: app
+            shard: 3/4
+          - package: app
+            shard: 4/4
+          - package: server
+            shard: 1/2
+          - package: server
+            shard: 2/2
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-ci
+
+      - name: Build test dependencies
+        run: pnpm exec turbo run build --filter="@nibleaf/${{ matrix.package }}^..."
+
+      - name: Test shard
+        run: pnpm --filter @nibleaf/${{ matrix.package }} test --shard=${{ matrix.shard }} --maxWorkers=2
+
+  unit-packages:
+    name: Unit remaining workspaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-ci
+
+      - name: Test remaining workspaces
+        # Cap nested parallelism on a shared 2-core runner. App/server run above.
+        run: pnpm exec turbo run test --filter='!@nibleaf/app' --filter='!@nibleaf/server' --concurrency=2 -- --maxWorkers=1
+
+  postgres-core:
+    name: PostgreSQL core
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: nibleaf
+          POSTGRES_PASSWORD: nibleaf
+          POSTGRES_USER: nibleaf
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nibleaf -d nibleaf"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-ci
 
       - name: Exercise Prisma migrations and runtime database access
         env:
@@ -135,6 +204,9 @@ jobs:
           pnpm --filter @nibleaf/database smoke:integrations-migration
           pnpm --filter @nibleaf/database smoke:mcp-migration
           pnpm --filter @nibleaf/database exec vitest run src/tenant-fence.postgres.test.ts
+
+      - name: Build integration dependencies
+        run: pnpm exec turbo run build --filter="@nibleaf/server^..." --filter="@nibleaf/worker^..."
 
       - name: Verify concurrent manual-publish receipts
         env:
@@ -152,10 +224,7 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           ORG_ACCESS_INTEGRATION: "1"
-        # The org guard test loads the server env, which imports built workspace packages.
-        run: |
-          pnpm exec turbo run build --filter="@nibleaf/server^..."
-          pnpm --filter @nibleaf/server exec vitest run src/lib/access.postgres.test.ts
+        run: pnpm --filter @nibleaf/server exec vitest run src/lib/access.postgres.test.ts
 
       - name: Verify concurrent custom-domain transitions
         env:
@@ -197,10 +266,7 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           VIEWER_ROLE_INTEGRATION: "1"
-        # The actions load the server env, which imports built workspace packages.
-        run: |
-          pnpm exec turbo run build --filter="@nibleaf/server^..."
-          pnpm --filter @nibleaf/server exec vitest run src/actions/viewer-role.postgres.test.ts
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/viewer-role.postgres.test.ts
 
       - name: Verify organization merge and offline restore
         env:
@@ -286,6 +352,59 @@ jobs:
           ASSET_DELETE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/asset-delete.postgres.test.ts
 
+  postgres-content:
+    name: PostgreSQL content & analytics
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: nibleaf
+          POSTGRES_PASSWORD: nibleaf
+          POSTGRES_USER: nibleaf
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nibleaf -d nibleaf"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8-alpine
+        env:
+          CLICKHOUSE_DB: nibleaf_analytics
+          CLICKHOUSE_PASSWORD: nibleaf
+          CLICKHOUSE_USER: nibleaf
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-ci
+
+      - name: Exercise Prisma migrations and runtime database access
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          TENANT_FENCE_INTEGRATION: "1"
+        run: |
+          pnpm --filter @nibleaf/database exec prisma migrate deploy
+          pnpm --filter @nibleaf/database exec prisma migrate status
+          pnpm --filter @nibleaf/database smoke
+          # Preserve migration ownership: add-ons -> integrations (ApiKey.expiresAt) -> MCP.
+          pnpm --filter @nibleaf/database smoke:addons-migration
+          pnpm --filter @nibleaf/database smoke:integrations-migration
+          pnpm --filter @nibleaf/database smoke:mcp-migration
+          pnpm --filter @nibleaf/database exec vitest run src/tenant-fence.postgres.test.ts
+
+      - name: Build integration dependencies
+        run: pnpm exec turbo run build --filter="@nibleaf/server^..." --filter="@nibleaf/worker^..."
+
       - name: Verify private sites hide every published surface from visitors without access
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
@@ -346,54 +465,32 @@ jobs:
           CLICKHOUSE_READER_PASSWORD: nibleaf
         run: pnpm --filter @nibleaf/server exec vitest run src/lib/relational-analytics.postgres.test.ts src/actions/admin.postgres.test.ts src/actions/deployments.reviewed.postgres.test.ts
 
-      - name: Check documentation
-        run: pnpm docs:check
+  # Give timing comparisons an otherwise idle runner; keep files and packages serial.
+  growth:
+    name: Growth & importer timings (serial)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
 
-      - name: Check self-host release integrity
-        run: |
-          pnpm self-host:check
-          artifact_dir="$(mktemp -d)"
-          node scripts/self-host-release.mjs --output "$artifact_dir"
-          (cd "$artifact_dir" && sha256sum --check SHA256SUMS)
-          printf '\n# CI tamper proof\n' >> "$artifact_dir/docker-compose.yml"
-          if (cd "$artifact_dir" && sha256sum --check SHA256SUMS); then
-            echo "::error::Tampered self-host assets passed checksum verification"
-            exit 1
-          fi
+      - uses: ./.github/actions/setup-ci
 
-      - name: Check deployment release contract
-        run: pnpm release:check
-
-      - name: Check for unused source files
-        run: pnpm check:dead-code
-
-      - name: Dashboard type scale (no new arbitrary font sizes)
-        run: pnpm --filter @nibleaf/app run check:type-scale
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Test
-        run: pnpm test
-
-      # Timing bounds (n against 4n, testing/growth) measure two sides of the same
-      # work; other files in parallel workers on this 2-core runner slow one side.
-      # They run here instead, one package and one file at a time.
       - name: Growth tests, serial
         run: pnpm test:growth
-
-      - name: Verify indexed multilingual search and chat fixtures
-        env:
-          QDRANT_INTEGRATION_URL: http://127.0.0.1:6333
-        run: pnpm --filter @nibleaf/server exec vitest run src/lib/ai-search/retrieval.integration.test.ts
 
       - name: Verify importer timings
         env:
           GITBOOK_PERFORMANCE: "1"
-        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/gitbook-performance.test.ts --reporter=verbose
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/gitbook-performance.test.ts --reporter=verbose --no-file-parallelism --maxWorkers=1
+
+  builds:
+    name: Production builds & budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-ci
 
       - name: Build production app
         env:
@@ -573,6 +670,11 @@ jobs:
         run: pnpm --filter @nibleaf/worker exec vitest run src/analytics/pipeline.integration.test.ts --maxWorkers=1
       - name: Wait for Qdrant readiness
         run: curl --fail --retry 30 --retry-delay 2 --retry-all-errors http://127.0.0.1:6333/readyz
+      - name: Verify indexed multilingual search and chat fixtures
+        env:
+          QDRANT_INTEGRATION_URL: http://127.0.0.1:6333
+        run: pnpm --filter @nibleaf/server exec vitest run src/lib/ai-search/retrieval.integration.test.ts
+
       - name: Verify Qdrant tenant isolation
         env:
           QDRANT_INTEGRATION_URL: http://127.0.0.1:6333
@@ -624,3 +726,30 @@ jobs:
     needs: rollback-floor-changes
     if: needs.rollback-floor-changes.outputs.required == 'true'
     uses: ./.github/workflows/rollback-floor.yml
+
+  verify:
+    name: Typecheck, lint & test
+    if: ${{ always() }}
+    needs: [static, unit, unit-packages, postgres-core, postgres-content, growth, builds, integration, rollback-floor-changes, rollback-floor]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every check to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+          ROLLBACK_REQUIRED: ${{ needs.rollback-floor-changes.outputs.required }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          # Only rollback-floor is conditional. A skipped suite is valid only
+          # after a successful detector explicitly reported no relevant changes.
+          echo "$RESULTS" | jq -e '
+            .["rollback-floor-changes"].result == "success" and
+            (.["rollback-floor-changes"].outputs.required == "true" or
+             .["rollback-floor-changes"].outputs.required == "false") and
+            all(to_entries[];
+              if .key == "rollback-floor" then
+                .value.result == "success" or
+                (.value.result == "skipped" and
+                 $required == "false")
+              else .value.result == "success" end)
+          ' --arg required "$ROLLBACK_REQUIRED"
