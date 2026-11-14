@@ -256,7 +256,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               })}
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ms-auto flex shrink-0 items-center gap-2">
+          <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <ShellSearchButton />
             <NotificationsPopover />
             {/* Phones give the site name the room: Preview moves into the sidebar there. */}

@@ -1,6 +1,6 @@
 {
   "baseline": "4e80721353e7ba3119c8cd4694c80a825fa7fdb8",
-  "head": "85279b4c7dd1e9e7595ced3afda956e5a3cf3a10",
+  "head": "1a6ebe34069e30d5df0cb72fb13b5ec98465be34",
   "environment": "Isolated actual-route fixture (ProjectLayout + analytics routes); intercepted fictional HTTP; no server, database or real site",
   "swappedForBefore": [
     "apps/app/src/components/analytics/insights/vitals.tsx",
@@ -30,9 +30,9 @@
         "locale": "en",
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 40,
+        "clientWidth": 47,
         "fits": false,
-        "cutPx": 64,
+        "cutPx": 57,
         "previewInHeader": true
       },
       {
@@ -40,9 +40,9 @@
         "locale": "en",
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 74,
+        "clientWidth": 90,
         "fits": false,
-        "cutPx": 30,
+        "cutPx": 14,
         "previewInHeader": false
       },
       {
@@ -50,9 +50,9 @@
         "locale": "ar",
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 33,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 33,
+        "cutPx": 26,
         "previewInHeader": true
       },
       {
@@ -60,9 +60,9 @@
         "locale": "ar",
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 63,
-        "fits": false,
-        "cutPx": 3,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0,
         "previewInHeader": false
       }
     ],
@@ -92,9 +92,9 @@
         "phase": "after",
         "locale": "en",
         "currentTab": "Performance",
-        "insideRow": false,
-        "visibleFraction": 0.89,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "insideRow": true,
+        "visibleFraction": 1,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) 100%)",
         "scrollbarHeight": 0,
         "afterTabNavigation": {
           "currentTab": {
@@ -136,7 +136,7 @@
         "currentTab": "الأداء",
         "insideRow": true,
         "visibleFraction": 1,
-        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "scrollbarHeight": 0,
         "afterTabNavigation": {
           "currentTab": {
@@ -369,13 +369,13 @@
   },
   "gif": {
     "file": "after-tabs-scroll-ar-390-light.gif",
-    "bytes": 41841,
+    "bytes": 37282,
     "frames": [
       {
         "step": "rest",
         "scrollLeft": 1,
         "maxScroll": 322,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) 100%)",
         "fadesLeft": true,
         "fadesRight": false
       },
@@ -383,7 +383,7 @@
         "step": "middle",
         "scrollLeft": -161,
         "maxScroll": 322,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "fadesLeft": true,
         "fadesRight": true
       },
@@ -391,7 +391,7 @@
         "step": "end",
         "scrollLeft": -321,
         "maxScroll": 322,
-        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "fadesLeft": false,
         "fadesRight": true
       }
@@ -436,9 +436,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 40,
+        "clientWidth": 47,
         "fits": false,
-        "cutPx": 64
+        "cutPx": 57
       },
       "previewInHeader": true,
       "tabs": {
@@ -499,9 +499,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 40,
+        "clientWidth": 47,
         "fits": false,
-        "cutPx": 64
+        "cutPx": 57
       },
       "previewInHeader": true,
       "tabs": {
@@ -562,9 +562,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 33,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 33
+        "cutPx": 26
       },
       "previewInHeader": true,
       "tabs": {
@@ -625,9 +625,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 33,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 33
+        "cutPx": 26
       },
       "previewInHeader": true,
       "tabs": {
@@ -688,9 +688,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 40,
+        "clientWidth": 47,
         "fits": false,
-        "cutPx": 64
+        "cutPx": 57
       },
       "previewInHeader": true,
       "tabs": {
@@ -787,9 +787,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 40,
+        "clientWidth": 47,
         "fits": false,
-        "cutPx": 64
+        "cutPx": 57
       },
       "previewInHeader": true,
       "tabs": {
@@ -1058,9 +1058,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 33,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 33
+        "cutPx": 26
       },
       "previewInHeader": true,
       "tabs": {
@@ -1157,9 +1157,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 33,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 33
+        "cutPx": 26
       },
       "previewInHeader": true,
       "tabs": {
@@ -1680,9 +1680,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 74,
+        "clientWidth": 90,
         "fits": false,
-        "cutPx": 30
+        "cutPx": 14
       },
       "previewInHeader": false,
       "tabs": {
@@ -1691,7 +1691,7 @@
         "scrollWidth": 671,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "dataOverflowLeft": false,
         "dataOverflowRight": true,
         "row": {
@@ -1744,9 +1744,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 74,
+        "clientWidth": 90,
         "fits": false,
-        "cutPx": 30
+        "cutPx": 14
       },
       "previewInHeader": false,
       "tabs": {
@@ -1755,7 +1755,7 @@
         "scrollWidth": 671,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "dataOverflowLeft": false,
         "dataOverflowRight": true,
         "row": {
@@ -1808,9 +1808,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 63,
-        "fits": false,
-        "cutPx": 3
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
       },
       "previewInHeader": false,
       "tabs": {
@@ -1819,7 +1819,7 @@
         "scrollWidth": 688,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) 100%)",
         "dataOverflowLeft": true,
         "dataOverflowRight": false,
         "row": {
@@ -1872,9 +1872,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 63,
-        "fits": false,
-        "cutPx": 3
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
       },
       "previewInHeader": false,
       "tabs": {
@@ -1883,7 +1883,7 @@
         "scrollWidth": 688,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) 100%)",
         "dataOverflowLeft": true,
         "dataOverflowRight": false,
         "row": {
@@ -1936,20 +1936,20 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 74,
+        "clientWidth": 90,
         "fits": false,
-        "cutPx": 30
+        "cutPx": 14
       },
       "previewInHeader": false,
       "tabs": {
         "scroller": "nav > div",
-        "scrollLeft": 287,
+        "scrollLeft": 305,
         "scrollWidth": 671,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) 100%)",
         "dataOverflowLeft": true,
-        "dataOverflowRight": true,
+        "dataOverflowRight": false,
         "row": {
           "left": 12,
           "right": 378,
@@ -1957,12 +1957,12 @@
         },
         "currentTab": {
           "text": "Performance",
-          "left": 262.3,
-          "right": 392.1,
+          "left": 244.3,
+          "right": 374.1,
           "width": 129.8
         },
-        "currentTabInsideRow": false,
-        "currentTabVisibleFraction": 0.89
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
       },
       "vitals": [
         {
@@ -2054,20 +2054,20 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 74,
+        "clientWidth": 90,
         "fits": false,
-        "cutPx": 30
+        "cutPx": 14
       },
       "previewInHeader": false,
       "tabs": {
         "scroller": "nav > div",
-        "scrollLeft": 287,
+        "scrollLeft": 305,
         "scrollWidth": 671,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) 100%)",
         "dataOverflowLeft": true,
-        "dataOverflowRight": true,
+        "dataOverflowRight": false,
         "row": {
           "left": 12,
           "right": 378,
@@ -2075,12 +2075,12 @@
         },
         "currentTab": {
           "text": "Performance",
-          "left": 262.3,
-          "right": 392.1,
+          "left": 244.3,
+          "right": 374.1,
           "width": 129.8
         },
-        "currentTabInsideRow": false,
-        "currentTabVisibleFraction": 0.89
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
       },
       "vitals": [
         {
@@ -2402,9 +2402,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 63,
-        "fits": false,
-        "cutPx": 3
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
       },
       "previewInHeader": false,
       "tabs": {
@@ -2413,7 +2413,7 @@
         "scrollWidth": 688,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "dataOverflowLeft": false,
         "dataOverflowRight": true,
         "row": {
@@ -2520,9 +2520,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 63,
-        "fits": false,
-        "cutPx": 3
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
       },
       "previewInHeader": false,
       "tabs": {
@@ -2531,7 +2531,7 @@
         "scrollWidth": 688,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "dataOverflowLeft": false,
         "dataOverflowRight": true,
         "row": {
@@ -3196,9 +3196,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 74,
+        "clientWidth": 90,
         "fits": false,
-        "cutPx": 30
+        "cutPx": 14
       },
       "previewInHeader": false,
       "tabs": {
@@ -3207,7 +3207,7 @@
         "scrollWidth": 671,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "dataOverflowLeft": false,
         "dataOverflowRight": true,
         "row": {
@@ -3280,9 +3280,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 74,
+        "clientWidth": 90,
         "fits": false,
-        "cutPx": 30
+        "cutPx": 14
       },
       "previewInHeader": false,
       "tabs": {
@@ -3291,7 +3291,7 @@
         "scrollWidth": 671,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 40px), rgba(0, 0, 0, 0) 100%)",
         "dataOverflowLeft": false,
         "dataOverflowRight": true,
         "row": {
@@ -3325,9 +3325,12 @@
         "GET /api/app/projects/handbook/domains",
         "GET /api/app/projects/handbook/members",
         "GET /api/app/projects/handbook/deployments/changes",
-        "GET /api/auth/get-session"
+        "GET /api/auth/get-session",
+        "PUT /api/app/me/last-organization"
       ],
-      "unexpectedRequests": []
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ]
     },
     {
       "phase": "after",
@@ -3364,9 +3367,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 63,
-        "fits": false,
-        "cutPx": 3
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
       },
       "previewInHeader": false,
       "tabs": {
@@ -3375,7 +3378,7 @@
         "scrollWidth": 688,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) 100%)",
         "dataOverflowLeft": true,
         "dataOverflowRight": false,
         "row": {
@@ -3448,9 +3451,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 63,
-        "fits": false,
-        "cutPx": 3
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
       },
       "previewInHeader": false,
       "tabs": {
@@ -3459,7 +3462,7 @@
         "scrollWidth": 688,
         "clientWidth": 366,
         "scrollbarHeight": 0,
-        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 40px, rgb(0, 0, 0) 100%)",
         "dataOverflowLeft": true,
         "dataOverflowRight": false,
         "row": {
@@ -3493,12 +3496,9 @@
         "GET /api/app/projects/handbook/domains",
         "GET /api/app/projects/handbook/members",
         "GET /api/app/projects/handbook/deployments/changes",
-        "GET /api/auth/get-session",
-        "PUT /api/app/me/last-organization"
+        "GET /api/auth/get-session"
       ],
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ]
+      "unexpectedRequests": []
     }
   ]
 }

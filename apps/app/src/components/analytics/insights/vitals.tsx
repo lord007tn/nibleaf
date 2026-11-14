@@ -84,7 +84,12 @@ export function VitalsCards({ summary, loading, unknown }: { summary: WebVitalsS
             <CardHeader>
               <CardDescription className="flex flex-wrap items-baseline gap-x-2">
                 {t(vital.label)}
-                <abbr className="font-mono text-[11px] no-underline" dir="ltr" lang="en" title={vital.name}>
+                <abbr
+                  className="cursor-help font-mono text-[11px] underline decoration-dotted underline-offset-2"
+                  dir="ltr"
+                  lang="en"
+                  title={vital.name}
+                >
                   {vital.abbreviation}
                 </abbr>
               </CardDescription>
