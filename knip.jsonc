@@ -52,7 +52,9 @@
         "scripts/editor-paste-and-title.fixture.tsx",
         "scripts/overview-first-publish.fixture.tsx",
         "scripts/site-owner-addresses.fixture.tsx",
-        "scripts/theme-contrast.fixture.tsx"
+        "scripts/theme-contrast.fixture.tsx",
+        // Run by hand to record main's serializer output for the differential (#612).
+        "src/components/editor/__fixtures__/serializer-differential.generate.mjs"
       ]
     },
     "packages/database": {

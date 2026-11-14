@@ -31,6 +31,29 @@ describe.runIf(growthTestsEnabled)('paragraph source lines growth', () => {
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
+  // #612's sizes. Main: 8.2 → 261 ms per call for 500 → 2,000 paragraphs, since each
+  // paragraph checked and cut back the whole output written before it.
+  it('saves a page of 2,000 wrapped paragraphs in one pass, against 500', () => {
+    const at = (n: number) => {
+      const page = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+      seedMarkdown(page, wrapped(n));
+      return page;
+    };
+    const small = at(500);
+    const large = at(2000);
+    try {
+      const [smallMs, largeMs] = growthMs(getMarkdown, small, large, { budgetMs: 60_000 });
+      console.info(
+        `#612 save growth, wrapped paragraphs 500 → 2,000: ${smallMs.toFixed(1)} → ${largeMs.toFixed(1)} ms (limit ${linearGrowthLimit(smallMs).toFixed(1)})`,
+      );
+      expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+    } finally {
+      small.destroy();
+      large.destroy();
+    }
+    // Loading the two pages takes seconds on a loaded runner, before any timing.
+  }, 120_000);
+
   it('writes a page of untouched wrapped paragraphs back in one pass', () => {
     const at = (n: number) => {
       const page = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });

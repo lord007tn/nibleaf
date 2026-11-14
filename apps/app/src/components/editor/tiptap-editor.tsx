@@ -47,7 +47,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { type ComponentType, type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
+import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { type CommentAnchor, EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { isUserDocChange, type LoadedMarkdown, markdownToEmit, redrawTransaction } from './editor-change-origin';
@@ -70,6 +70,7 @@ import { SelectionShortcuts } from './extensions/selection-shortcuts';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { VideoEmbed } from './extensions/video-embed';
 import { annotateFences, type FenceSerializeState, writeFence } from './fence-source';
+import { LinearMarkdown } from './markdown-output';
 import { SourceParagraph } from './paragraph-source';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
@@ -176,7 +177,7 @@ const CodeBlock = CodeBlockLowlight.extend({
           const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
           let open = `\`\`\`${language}`;
           if (sourceOpen) open = language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language);
-          // `out`, `delim` and `closed` are prosemirror-markdown internals its typings leave out.
+          // `output`, `delim` and `closed`: see LinearMarkdownSerializerState (markdown-output.ts).
           writeFence(state as unknown as FenceSerializeState, node, parent, index, open);
         },
         parse: {
@@ -351,7 +352,7 @@ export function buildEditorExtensions({
     CleanPaste.configure({ getUpload: getUpload ?? (() => onUpload), dir }),
     // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
     // Markdown round-trip and our custom nodes can rebuild them on parse.
-    Markdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
+    LinearMarkdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
     Placeholder.configure({
       placeholder: ({ node }) =>
         translateFn(node.type.name === 'heading' ? 'editor.placeholder.heading' : 'editor.placeholder.body', undefined, locale),
