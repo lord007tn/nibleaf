@@ -86,7 +86,6 @@
     "admin_sites_filter",
     "admin_users_filter",
     "admin_site_details",
-    "admin_site_id",
     "admin_site_version",
     "admin_user_details",
     "settings_integrations_provider_publicgit",
@@ -135,7 +134,11 @@
     "switcher_websitesin",
     "switcher_status_live",
     "people_orgrole_admin",
-    "people_members_col_websites"
+    "people_members_col_websites",
+    "people_site_title",
+    "editor_history_version",
+    "overview_col_status",
+    "pagestatus_live"
   ],
   "pending": [
     "brand_oss",

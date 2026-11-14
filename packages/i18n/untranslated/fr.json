@@ -76,7 +76,6 @@
     "admin_label",
     "admin_meta_title",
     "admin_sites_description",
-    "admin_site_id",
     "admin_site_version",
     "settings_integrations_provider_publicgit",
     "settings_integrations_provider_plausible",
@@ -119,7 +118,10 @@
     "account_signin_active",
     "organization_create_nameplaceholder",
     "organization_settings_invitations",
-    "people_members_col_actions"
+    "people_members_col_actions",
+    "people_admission_invitationtitle",
+    "newsite_starter_guides_title",
+    "editor_history_version"
   ],
   "pending": [
     "brand_oss",
