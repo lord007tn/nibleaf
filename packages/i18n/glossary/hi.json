@@ -20,7 +20,7 @@
     "unpublished-changes": { "translation": "अप्रकाशित बदलाव" },
     "preview": { "translation": "प्रीव्यू" },
     "live-site": { "translation": "लाइव साइट" },
-    "reader": { "translation": "पाठक" },
+    "reader": { "translation": "पाठक", "note": "Never दर्शक, which is the Viewer role. Reader audiences: ऑडियंस." },
     "member": { "translation": "सदस्य" },
     "people": { "translation": "लोग" },
     "invitation": { "translation": "आमंत्रण", "short": "आमंत्रित करें" },
@@ -67,7 +67,7 @@
       "note": "Source language: स्रोत भाषा."
     },
     "ask-ai": { "translation": "AI से पूछें" },
-    "ai-assistant": { "translation": "AI सहायक" },
+    "ai-assistant": { "translation": "AI सहायक", "note": "External assistants in analytics (ChatGPT, Claude…): AI असिस्टेंट." },
     "smart-ai": { "translation": "स्मार्ट AI" },
     "analytics": { "translation": "एनालिटिक्स" },
     "page-views": { "translation": "पेज व्यू" },
