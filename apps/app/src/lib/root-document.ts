@@ -5,6 +5,7 @@ import { isRtl, type Locale } from '@nibleaf/i18n/locales';
 import { type RouterState, useRouterState } from '@tanstack/react-router';
 import { useState, useSyncExternalStore } from 'react';
 import type { SiteShell } from '@/hooks/api/types';
+import { type SiteAppearance, siteAppearance } from '@/lib/site-theme';
 
 declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {
@@ -23,7 +24,7 @@ export interface RootDocumentState {
   pathname: string;
   /** Set while a published site owns the document, its theme included. */
   siteProjectId?: string;
-  siteThemeDefault?: 'light' | 'dark' | 'system';
+  siteThemeDefault?: SiteAppearance;
 }
 
 type Selected = RootDocumentState & {
@@ -58,7 +59,7 @@ const selectRootDocument = (state: RouterState): Selected => {
     dir: active?.direction === 'RTL' ? 'rtl' : 'ltr',
     pathname,
     siteProjectId: (match?.params as { projectId?: string } | undefined)?.projectId,
-    siteThemeDefault: site.project.config?.styling?.theme ?? 'light',
+    siteThemeDefault: siteAppearance(site.project.config),
   };
 };
 
