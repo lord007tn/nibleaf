@@ -652,6 +652,7 @@
   "settings_general_customdomain_hint": "Quer que os leitores usem seu próprio domínio?",
   "settings_general_customdomain_link": "Configurar um domínio personalizado",
   "settings_general_url_taken": "Outro site já usa este endereço. Tente outro.",
+  "settings_general_url_reserved": "Este endereço é reservado ao sistema. Escolha outro.",
   "settings_branding_title": "Marca",
   "settings_branding_upload": "Carregar",
   "settings_branding_uploaded": "Enviado",
@@ -4900,7 +4901,9 @@
   "publish_checks_allclear": "Todas as verificações passaram",
   "publish_checks_allclearhint": "Nenhum link quebrado, imagem sem texto alternativo, página sem título ou caractere solto.",
   "publish_checks_fix": "Corrigir",
-  "publish_checks_fixlabel": "Corrigir {title} no editor",
+  "publish_checks_fixproblem": "Corrigir “{title}”: {problem}",
+  "publish_checks_show": "Mostrar ({count})",
+  "publish_checks_hide": "Ocultar",
   "publish_checks_blockedreason": "Corrija os erros em Verificações antes de publicar.",
   "publish_checks_error": "Erro",
   "publish_checks_warning": "Aviso",
@@ -5046,5 +5049,23 @@
   "settings_aiassistants_watch_again": "Aguardar de novo",
   "settings_aiassistants_keysloaderror": "Não foi possível carregar as chaves pessoais. Os apps conectados por login continuam listados.",
   "settings_aiassistants_appsloaderror": "Não foi possível carregar os apps conectados por login. As chaves pessoais continuam listadas.",
-  "oauth_consent_can_aiconversations": "Ler perguntas e respostas salvas do Ask AI. E-mails, números de telefone e chaves são removidos, mas nomes, endereços e outros dados pessoais podem permanecer."
+  "oauth_consent_can_aiconversations": "Ler perguntas e respostas salvas do Ask AI. E-mails, números de telefone e chaves são removidos, mas nomes, endereços e outros dados pessoais podem permanecer.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} alteração não publicada",
+        "form=*": "{count} alterações não publicadas"
+      }
+    }
+  ],
+  "pending_siteonly": "Alterações não publicadas na navegação ou nas configurações",
+  "pending_readersstillsee": "Os leitores ainda veem a versão {version}.",
+  "pending_review": "Revisar e publicar",
+  "pending_draft": "Ainda não publicado",
+  "overview_col_status": "Status",
+  "pagestatus_draft": "Não publicada",
+  "pagestatus_changed": "Alterada",
+  "pagestatus_live": "No ar"
 }

@@ -1,16 +1,7 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@nibleaf/design-system/components/ui/dialog';
 import { Input } from '@nibleaf/design-system/components/ui/input';
-import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { TooltipButton } from '@nibleaf/design-system/components/ui/tooltip-button';
@@ -98,7 +89,7 @@ function ChangeLines({ change }: { change: PendingChange }) {
   const t = useT();
   const hasTextChanges = change.lines.some((line) => line.type !== 'unchanged');
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-background text-[13px] leading-6">
+    <div className="overflow-hidden rounded-lg border border-border bg-background text-sm leading-6">
       {hasTextChanges ? (
         reviewRows(change.lines).map((row) => {
           if (row.kind === 'gap') {
@@ -120,7 +111,7 @@ function ChangeLines({ change }: { change: PendingChange }) {
               )}
               key={`${line.type}-${line.oldLine ?? 'x'}-${line.newLine ?? 'x'}`}
             >
-              <span aria-hidden className="select-none pe-2 text-end font-mono text-[11.5px] text-muted-foreground/70 tabular-nums">
+              <span aria-hidden className="select-none pe-2 text-end font-mono text-muted-foreground/70 text-xs tabular-nums">
                 {line.newLine ?? line.oldLine ?? ''}
               </span>
               <span className={cn('select-none text-center font-mono', meta?.mark)}>
@@ -145,8 +136,9 @@ function ChangeLines({ change }: { change: PendingChange }) {
   );
 }
 
-/** Confirmation dialog before publishing — shows a Mintlify-style diff of which
- *  pages will change since the last deploy, plus an optional release message. */
+/** The publish sheet: the checks first, then which pages will change since the
+ *  last deploy (with a line-by-line review), then an optional note. A side
+ *  sheet, full height, so the checks have room and Publish never scrolls away. */
 export function PublishModal({ project, open, onOpenChange, onPublished, beforePublish }: PublishModalProps) {
   const t = useT();
   const publish = usePublish(project.id);
@@ -339,23 +331,30 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
     }
   }, [sorted, selectedKey, changeKey]);
 
+  // One scroll region between a fixed header and footer: Publish and Cancel stay
+  // on screen, and the checks are never a scroller inside a scroller.
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        className={cn('max-h-[90dvh] gap-0 overflow-y-auto p-0', reviewing ? 'sm:max-w-[940px]' : 'sm:max-w-[480px]')}
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent
+        className={cn(
+          'gap-0 p-0 data-[side=right]:w-full',
+          reviewing ? 'data-[side=right]:sm:max-w-[min(64rem,100vw)]' : 'data-[side=right]:sm:max-w-[37.5rem]',
+        )}
+        data-testid="publish-sheet"
         initialFocus={() => {
           const action = primaryAction.current;
           return action && !action.disabled ? action : popup.current;
         }}
         ref={popup}
         showCloseButton={false}
+        side="right"
       >
-        <DialogHeader className="gap-1 border-border border-b px-6 pt-5 pb-4">
+        <SheetHeader className="shrink-0 gap-1 border-border border-b px-5 py-4 sm:px-6">
           {reviewing ? (
             <div className="flex items-center justify-between gap-3">
-              <DialogTitle className="sr-only">{t('publish.reviewTitle')}</DialogTitle>
-              <DialogDescription className="sr-only">{t('publish.reviewSubtitle')}</DialogDescription>
-              <Button variant="ghost" size="sm" className="-ms-2 h-8" onClick={() => setReviewing(false)}>
+              <SheetTitle className="sr-only">{t('publish.reviewTitle')}</SheetTitle>
+              <SheetDescription className="sr-only">{t('publish.reviewSubtitle')}</SheetDescription>
+              <Button variant="ghost" size="sm" className="-ms-2" onClick={() => setReviewing(false)}>
                 <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('publish.backToSummary')}
               </Button>
               <TooltipButton
@@ -372,60 +371,59 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
             </div>
           ) : (
             <>
-              <DialogTitle className="font-semibold text-[17px] tracking-tight">{t('publish.title')}</DialogTitle>
-              <DialogDescription className="text-[13.5px]">{t(neverPublished ? 'publish.firstPublishHint' : 'publish.subtitle')}</DialogDescription>
+              <SheetTitle className="font-semibold text-base tracking-tight">{t('publish.title')}</SheetTitle>
+              <SheetDescription>{t(neverPublished ? 'publish.firstPublishHint' : 'publish.subtitle')}</SheetDescription>
             </>
           )}
-        </DialogHeader>
+        </SheetHeader>
 
         {reviewing && selectedChange ? (
-          <div className="grid min-h-0 grid-cols-1 sm:min-h-[520px] sm:grid-cols-[260px_1fr]">
-            <aside className="border-border border-e">
-              <div className="border-border border-b px-4 py-3">
+          <div className="flex min-h-0 flex-1 flex-col sm:grid sm:grid-cols-[16rem_minmax(0,1fr)]">
+            <aside className="flex max-h-[35dvh] min-h-0 flex-col border-border border-b sm:max-h-none sm:border-e sm:border-b-0">
+              <div className="shrink-0 border-border border-b px-4 py-3">
                 <div className="font-semibold text-sm">{t('publish.reviewTitle')}</div>
                 <div className="text-muted-foreground text-xs">{t('publish.reviewSubtitle')}</div>
               </div>
-              <ScrollArea className="h-36 sm:h-[470px]">
-                <ul className="p-2">
-                  {sorted.map((change) => {
-                    const meta = STATUS_META[change.status];
-                    const Icon = meta.icon;
-                    const active = changeKey(change) === changeKey(selectedChange);
-                    return (
-                      <li key={changeKey(change)}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedKey(changeKey(change))}
-                          className={cn(
-                            'flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-start text-sm',
-                            active ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                          )}
-                        >
-                          <span className={cn('grid size-5 shrink-0 place-items-center rounded-full text-white', meta.dot)}>
-                            <Icon className="size-3" strokeWidth={2.5} />
+              <ul className="min-h-0 flex-1 overflow-y-auto p-2">
+                {sorted.map((change) => {
+                  const meta = STATUS_META[change.status];
+                  const Icon = meta.icon;
+                  const active = changeKey(change) === changeKey(selectedChange);
+                  return (
+                    <li key={changeKey(change)}>
+                      <button
+                        aria-current={active ? 'true' : undefined}
+                        type="button"
+                        onClick={() => setSelectedKey(changeKey(change))}
+                        className={cn(
+                          'flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-start text-sm pointer-coarse:min-h-11',
+                          active ? 'bg-primary/10 text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        )}
+                      >
+                        <span className={cn('grid size-5 shrink-0 place-items-center rounded-full text-white', meta.dot)}>
+                          <Icon className="size-3" strokeWidth={2.5} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">
+                            <bdi>{change.title || change.path}</bdi>
                           </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium">
-                              <bdi>{change.title || change.path}</bdi>
-                            </span>
-                            <span className="block truncate text-start font-mono text-[11px]" dir="ltr">
-                              /{change.path}
-                            </span>
+                          <span className="block truncate text-start font-mono text-xs" dir="ltr">
+                            /{change.path}
                           </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </ScrollArea>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </aside>
-            <section className="flex min-w-0 flex-col bg-muted/30 text-foreground">
-              <div className="border-border border-b px-6 py-5">
-                <p className={cn('text-sm font-medium', STATUS_META[selectedChange.status].chip)}>{t(STATUS_META[selectedChange.status].labelKey)}</p>
-                <h2 className="mt-2 break-words text-2xl font-semibold" dir="auto">
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/30 text-foreground">
+              <div className="shrink-0 border-border border-b px-5 py-4 sm:px-6">
+                <p className={cn('font-medium text-sm', STATUS_META[selectedChange.status].chip)}>{t(STATUS_META[selectedChange.status].labelKey)}</p>
+                <h2 className="mt-1.5 break-words font-semibold text-xl" dir="auto">
                   {selectedChange.title || selectedChange.path}
                 </h2>
-                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-sm">
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-sm">
                   <span className="break-all" dir="ltr">
                     /{selectedChange.path}
                   </span>
@@ -437,140 +435,145 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                   ) : null}
                 </p>
               </div>
-              <ScrollArea className="h-[40dvh] sm:h-[400px]">
-                <div className="p-4 sm:p-6">
-                  <ChangeLines change={selectedChange} />
-                </div>
-              </ScrollArea>
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+                <ChangeLines change={selectedChange} />
+              </div>
             </section>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 px-6 py-5">
-            <div className="flex items-center gap-3 rounded-xl border border-border px-4 py-3">
-              <NibleafMark className="size-9 shrink-0" />
-              <div className="min-w-0 leading-tight">
-                <div className="truncate font-semibold text-[13.5px]">{project.name}</div>
-                {/* A web address reads left to right in every language (otherwise Arabic
-                    shows "…/docs.example.com" with the scheme clipped). */}
-                <div className="truncate text-start font-mono text-[12.5px] text-muted-foreground" dir="ltr">
-                  {canonicalSiteBase(project.id, {
-                    slug: project.slug,
-                    // Only a domain readers can open (ownership, DNS and HTTPS).
-                    primaryDomain: domains.data ? pickLiveDomain(domains.data)?.domain : undefined,
-                  })}
-                </div>
-              </div>
-              {neverPublished ? (
-                <StatusBadge className="ms-auto shrink-0" size="sm">
-                  {t('overview.live.unavailable')}
-                </StatusBadge>
-              ) : null}
-            </div>
-
-            {redirectIssues.length > 0 ? (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
-                <div className="flex items-center gap-2 font-semibold text-destructive text-sm">
-                  <TriangleAlert className="size-4" /> {t('publish.redirectsBlocked')}
-                </div>
-                <p className="mt-1 text-muted-foreground text-xs">{t('publish.redirectsBlockedHint')}</p>
-                <ul className="mt-3 space-y-1.5 text-xs">
-                  {redirectIssues.map((issue) => (
-                    <RedirectIssue issue={issue} key={`${issue.code}-${issue.rowIndexes.join('-')}-${issue.sequence.join('-')}`} />
-                  ))}
-                </ul>
-                {redirectRole.isError ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-sm" role="status">
-                    <p>{t('publish.redirectRoleError')}</p>
-                    <Button
-                      className="min-h-11"
-                      loading={redirectRole.retrying}
-                      onClick={() => void redirectRole.retry()}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      {t('common.retry')}
-                    </Button>
+          <div className="min-h-0 flex-1 overflow-y-auto" data-testid="publish-body">
+            <div className="flex flex-col gap-6 px-5 py-5 sm:px-6">
+              <div className="flex items-center gap-3 rounded-xl border border-border px-4 py-3">
+                <NibleafMark className="size-8 shrink-0" />
+                <div className="min-w-0 leading-tight">
+                  <div className="truncate font-semibold text-sm">{project.name}</div>
+                  {/* A web address reads left to right in every language (otherwise Arabic
+                      shows "…/docs.example.com" with the scheme clipped). */}
+                  <div className="truncate text-start font-mono text-muted-foreground text-xs" dir="ltr">
+                    {canonicalSiteBase(project.id, {
+                      slug: project.slug,
+                      // Only a domain readers can open (ownership, DNS and HTTPS).
+                      primaryDomain: domains.data ? pickLiveDomain(domains.data)?.domain : undefined,
+                    })}
                   </div>
-                ) : redirectRole.status === 'admin' ? (
-                  <Link
-                    className="mt-2 inline-flex min-h-11 items-center text-primary text-sm underline"
-                    to="/app/projects/$projectId/settings"
-                    params={{ projectId: project.id }}
-                    search={{ section: 'redirects' }}
-                    onClick={() => onOpenChange(false)}
-                  >
-                    {t('publish.editRedirects')}
-                  </Link>
-                ) : redirectRole.status === 'notAdmin' ? (
-                  <p className="mt-3 text-sm">{t('publish.redirectsAskAdmin')}</p>
-                ) : (
-                  <p className="mt-3 text-muted-foreground text-sm" role="status">
-                    {t('publish.redirectRolePending')}
-                  </p>
-                )}
-              </div>
-            ) : null}
-
-            {preflightFailed ? (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
-                <div className="flex items-center gap-2 font-semibold text-destructive text-sm">
-                  <TriangleAlert className="size-4" /> {t('publish.preflightFailed')}
                 </div>
-                <p className="mt-1 text-muted-foreground text-xs">{t('publish.preflightFailedHint')}</p>
-              </div>
-            ) : null}
-
-            {/* Changes diff — what this publish will push live. */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{t('publish.changes')}</span>
-                {refreshingChanges && !loadingChanges ? (
-                  // Re-checking a diff that is already on screen: a quiet note, not a skeleton.
-                  <span className="text-muted-foreground text-xs" role="status">
-                    {t('publish.checking')}
-                  </span>
-                ) : !checkingChanges && !nothingToPublish && count > 0 ? (
-                  <span className="text-muted-foreground text-xs">
-                    {hasBaseline
-                      ? pending?.lastVersion != null
-                        ? t('publish.sinceVersion', { version: pending.lastVersion })
-                        : null
-                      : t('publish.firstPublish')}
-                  </span>
+                {neverPublished ? (
+                  <StatusBadge className="ms-auto shrink-0" size="sm">
+                    {t('overview.live.unavailable')}
+                  </StatusBadge>
                 ) : null}
               </div>
 
-              {loadingChanges ? (
-                <div aria-busy="true" className="rounded-xl border border-border px-3">
-                  <p className="sr-only" role="status">
-                    {t('publish.checking')}
-                  </p>
-                  {['a', 'b', 'c'].map((row) => (
-                    <SkeletonListRow className="min-h-11" key={row} />
-                  ))}
-                </div>
-              ) : count === 0 || (neverPublished && !hasPages) ? (
-                <div className="rounded-xl border border-border border-dashed px-4 py-5 text-center" data-testid="publish-empty">
-                  {neverPublished ? (
-                    // Never published, and no page to put online yet.
-                    <p className="font-medium text-sm">{t('publish.addPageFirst')}</p>
-                  ) : pending?.upToDate ? (
-                    <>
-                      <p className="font-medium text-sm">{t('publish.none')}</p>
-                      <p className="mt-0.5 text-muted-foreground text-xs">{t('publish.upToDate')}</p>
-                    </>
+              {redirectIssues.length > 0 ? (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
+                  <div className="flex items-center gap-2 font-semibold text-destructive text-sm">
+                    <TriangleAlert className="size-4" /> {t('publish.redirectsBlocked')}
+                  </div>
+                  <p className="mt-1 text-muted-foreground text-xs">{t('publish.redirectsBlockedHint')}</p>
+                  <ul className="mt-3 space-y-1.5 text-xs">
+                    {redirectIssues.map((issue) => (
+                      <RedirectIssue issue={issue} key={`${issue.code}-${issue.rowIndexes.join('-')}-${issue.sequence.join('-')}`} />
+                    ))}
+                  </ul>
+                  {redirectRole.isError ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm" role="status">
+                      <p>{t('publish.redirectRoleError')}</p>
+                      <Button
+                        className="min-h-11"
+                        loading={redirectRole.retrying}
+                        onClick={() => void redirectRole.retry()}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        {t('common.retry')}
+                      </Button>
+                    </div>
+                  ) : redirectRole.status === 'admin' ? (
+                    <Link
+                      className="mt-2 inline-flex min-h-11 items-center text-primary text-sm underline"
+                      to="/app/projects/$projectId/settings"
+                      params={{ projectId: project.id }}
+                      search={{ section: 'redirects' }}
+                      onClick={() => onOpenChange(false)}
+                    >
+                      {t('publish.editRedirects')}
+                    </Link>
+                  ) : redirectRole.status === 'notAdmin' ? (
+                    <p className="mt-3 text-sm">{t('publish.redirectsAskAdmin')}</p>
                   ) : (
-                    // No page changed, but something that ships with a publish did (redirects, settings).
-                    <p className="text-muted-foreground text-xs">{t('publish.noneHint')}</p>
+                    <p className="mt-3 text-muted-foreground text-sm" role="status">
+                      {t('publish.redirectRolePending')}
+                    </p>
                   )}
                 </div>
-              ) : (
-                <ScrollArea
-                  aria-busy={refreshingChanges || undefined}
-                  className={cn('max-h-52 rounded-xl border border-border transition-opacity', refreshingChanges && 'opacity-60')}
-                >
-                  <ul className="divide-y divide-border">
+              ) : null}
+
+              {preflightFailed ? (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
+                  <div className="flex items-center gap-2 font-semibold text-destructive text-sm">
+                    <TriangleAlert className="size-4" /> {t('publish.preflightFailed')}
+                  </div>
+                  <p className="mt-1 text-muted-foreground text-xs">{t('publish.preflightFailedHint')}</p>
+                </div>
+              ) : null}
+
+              {/* The safety net comes first: what would break, then what will change. */}
+              {preflightFailed ? null : (
+                <PublishChecks checks={checks} loading={loadingChanges} onFix={() => handleOpenChange(false)} projectId={project.id} />
+              )}
+
+              {/* Changes diff — what this publish will push live. */}
+              <section aria-labelledby="publish-changes-heading" className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-medium text-sm" id="publish-changes-heading">
+                    {t('publish.changes')}
+                  </h3>
+                  {refreshingChanges && !loadingChanges ? (
+                    // Re-checking a diff that is already on screen: a quiet note, not a skeleton.
+                    <span className="text-muted-foreground text-xs" role="status">
+                      {t('publish.checking')}
+                    </span>
+                  ) : !checkingChanges && !nothingToPublish && count > 0 ? (
+                    <span className="text-muted-foreground text-xs">
+                      {hasBaseline
+                        ? pending?.lastVersion != null
+                          ? t('publish.sinceVersion', { version: pending.lastVersion })
+                          : null
+                        : t('publish.firstPublish')}
+                    </span>
+                  ) : null}
+                </div>
+
+                {loadingChanges ? (
+                  <div aria-busy="true" className="rounded-xl border border-border px-3">
+                    <p className="sr-only" role="status">
+                      {t('publish.checking')}
+                    </p>
+                    {['a', 'b', 'c'].map((row) => (
+                      <SkeletonListRow className="min-h-11" key={row} />
+                    ))}
+                  </div>
+                ) : count === 0 || (neverPublished && !hasPages) ? (
+                  <div className="rounded-xl border border-border border-dashed px-4 py-5 text-center" data-testid="publish-empty">
+                    {neverPublished ? (
+                      // Never published, and no page to put online yet.
+                      <p className="font-medium text-sm">{t('publish.addPageFirst')}</p>
+                    ) : pending?.upToDate ? (
+                      <>
+                        <p className="font-medium text-sm">{t('publish.none')}</p>
+                        <p className="mt-0.5 text-muted-foreground text-xs">{t('publish.upToDate')}</p>
+                      </>
+                    ) : (
+                      // No page changed, but something that ships with a publish did (redirects, settings).
+                      <p className="text-muted-foreground text-xs">{t('publish.noneHint')}</p>
+                    )}
+                  </div>
+                ) : (
+                  <ul
+                    aria-busy={refreshingChanges || undefined}
+                    className={cn('divide-y divide-border rounded-xl border border-border transition-opacity', refreshingChanges && 'opacity-60')}
+                  >
                     {sorted.map((change) => {
                       const meta = STATUS_META[change.status];
                       const Icon = meta.icon;
@@ -582,73 +585,70 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                           <span className="min-w-0 flex-1">
                             <span
                               className={cn(
-                                'block truncate font-medium text-[13px]',
+                                'block truncate font-medium text-sm',
                                 change.status === 'removed' && 'text-muted-foreground line-through',
                               )}
                             >
-                              {change.title || change.path}
+                              <bdi>{change.title || change.path}</bdi>
                             </span>
-                            <span className="block truncate text-start font-mono text-[11px] text-muted-foreground" dir="ltr">
+                            <span className="block truncate text-start font-mono text-muted-foreground text-xs" dir="ltr">
                               /{change.path}
                             </span>
                           </span>
                           {multiLang && change.languageCode ? (
-                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground uppercase">
+                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-muted-foreground text-xs uppercase">
                               {change.languageCode}
                             </span>
                           ) : null}
-                          <span className={cn('shrink-0 text-[11px] font-medium', meta.chip)}>{t(meta.labelKey)}</span>
+                          <span className={cn('shrink-0 font-medium text-xs', meta.chip)}>{t(meta.labelKey)}</span>
                         </li>
                       );
                     })}
                   </ul>
-                </ScrollArea>
-              )}
-              {!checkingChanges && !nothingToPublish && count > 0 ? (
-                <Button type="button" variant="outline" className="h-9 justify-center" onClick={() => setReviewing(true)}>
-                  <FileText className="size-4" /> {t('publish.reviewDiff')}
-                </Button>
-              ) : null}
-            </div>
+                )}
+                {!checkingChanges && !nothingToPublish && count > 0 ? (
+                  <Button type="button" variant="outline" className="justify-center" onClick={() => setReviewing(true)}>
+                    <FileText className="size-4" /> {t('publish.reviewDiff')}
+                  </Button>
+                ) : null}
+              </section>
 
-            {preflightFailed ? null : (
-              <PublishChecks checks={checks} loading={loadingChanges} onFix={() => handleOpenChange(false)} projectId={project.id} />
-            )}
-
-            <div className="flex flex-col gap-2">
-              <label className="font-medium text-sm" htmlFor="publish-message">
-                {t('publish.whatChanged')}
-              </label>
-              <Input
-                id="publish-message"
-                placeholder={t('publish.messagePlaceholder')}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !publish.isPending) doPublish();
-                }}
-              />
+              <div className="flex flex-col gap-2">
+                <label className="font-medium text-sm" htmlFor="publish-message">
+                  {t('publish.whatChanged')}
+                </label>
+                <Input
+                  id="publish-message"
+                  placeholder={t('publish.messagePlaceholder')}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !publish.isPending) doPublish();
+                  }}
+                />
+              </div>
             </div>
           </div>
         )}
 
         {!reviewing ? (
-          <DialogFooter className="gap-2.5 px-6 pt-0 pb-5 sm:justify-stretch">
-            <DialogClose render={<Button variant="outline" className="h-[42px] flex-none px-4" />}>{t('common.cancel')}</DialogClose>
+          <SheetFooter className="mt-0 shrink-0 flex-row gap-2.5 border-border border-t px-5 py-4 sm:px-6">
+            <SheetClose render={<Button variant="outline" className="flex-none px-4" size="lg" />}>{t('common.cancel')}</SheetClose>
             <TooltipButton
-              className="h-[42px] flex-1"
+              className="flex-1"
               disabled={publishBlocked}
               disabledReason={publishBlockedReason}
               loading={publishing}
               onClick={doPublish}
               ref={primaryAction}
+              size="lg"
             >
               <Rocket className="size-4" />
               {t('publish.now')}
             </TooltipButton>
-          </DialogFooter>
+          </SheetFooter>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -642,6 +642,7 @@
   "settings_general_customdomain_hint": "Ingin pembaca memakai domain Anda sendiri?",
   "settings_general_customdomain_link": "Siapkan domain kustom",
   "settings_general_url_taken": "Situs lain sudah memakai alamat ini. Coba alamat lain.",
+  "settings_general_url_reserved": "Alamat ini dicadangkan untuk sistem. Pilih alamat lain.",
   "settings_branding_title": "merek",
   "settings_branding_upload": "Unggah",
   "settings_branding_uploaded": "Diunggah",
@@ -4831,7 +4832,9 @@
   "publish_checks_allclear": "Semua pemeriksaan lolos",
   "publish_checks_allclearhint": "Tidak ada tautan rusak, gambar tanpa teks alternatif, halaman tanpa judul, atau karakter sisa.",
   "publish_checks_fix": "Perbaiki",
-  "publish_checks_fixlabel": "Perbaiki {title} di editor",
+  "publish_checks_fixproblem": "Perbaiki “{title}”: {problem}",
+  "publish_checks_show": "Tampilkan ({count})",
+  "publish_checks_hide": "Sembunyikan",
   "publish_checks_blockedreason": "Perbaiki kesalahan di Pemeriksaan sebelum menerbitkan.",
   "publish_checks_error": "Kesalahan",
   "publish_checks_warning": "Peringatan",
@@ -4977,5 +4980,22 @@
   "settings_aiassistants_watch_again": "Tunggu lagi",
   "settings_aiassistants_keysloaderror": "Tidak dapat memuat kunci pribadi. Aplikasi yang masuk akun tetap ditampilkan.",
   "settings_aiassistants_appsloaderror": "Tidak dapat memuat aplikasi yang masuk akun. Kunci pribadi tetap ditampilkan.",
-  "oauth_consent_can_aiconversations": "Membaca pertanyaan dan jawaban Ask AI yang tersimpan. Alamat email, nomor telepon, dan kunci dihapus, tetapi nama, alamat, dan data pribadi lain mungkin tetap ada."
+  "oauth_consent_can_aiconversations": "Membaca pertanyaan dan jawaban Ask AI yang tersimpan. Alamat email, nomor telepon, dan kunci dihapus, tetapi nama, alamat, dan data pribadi lain mungkin tetap ada.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} perubahan belum diterbitkan"
+      }
+    }
+  ],
+  "pending_siteonly": "Perubahan navigasi atau pengaturan yang belum diterbitkan",
+  "pending_readersstillsee": "Pembaca masih melihat versi {version}.",
+  "pending_review": "Tinjau dan terbitkan",
+  "pending_draft": "Belum tayang",
+  "overview_col_status": "Status",
+  "pagestatus_draft": "Belum diterbitkan",
+  "pagestatus_changed": "Diubah",
+  "pagestatus_live": "Tayang"
 }
