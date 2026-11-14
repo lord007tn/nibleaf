@@ -24,7 +24,7 @@ additional document requests. The old URL's `tab=cli` query and
 
 [headers.txt](headers.txt) contains actual `curl.exe -sSI` output for the 16
 platform/custom-domain, English/Arabic, default/v2 version, HTML/Markdown
-combinations. The custom fixture host is `docs.localhost`, supplied as a Host
+combinations (trailing line whitespace normalized). The custom fixture host is `docs.localhost`, supplied as a Host
 header to the local app. [custom-ar-ssr.txt](custom-ar-ssr.txt) records its
 Arabic SSR metadata. Production DNS, CDN caching and deployed behavior were not
 tested.
