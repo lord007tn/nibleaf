@@ -181,12 +181,22 @@ interface PreparedQuery {
 }
 
 /**
+ * No block name is this long; a longer "query" is ordinary text after a slash.
+ * Checked on the raw text before any folding: NFD normalization of a long run
+ * of alternating combining marks (canonical reordering) grows faster than
+ * linearly, and a query this long is rejected anyway.
+ */
+const MAX_SLASH_QUERY = 64;
+
+/**
  * Split at plain spaces only, then fold each word. Other whitespace (no-break
  * and typographic spaces, tabs, the ideographic space) never separates words:
  * main ended its query there, so here it makes the query match nothing. So does
  * a word that is only marks or tatweel, which would otherwise fold away.
  */
 const prepareSlashQuery = (query: string): PreparedQuery => {
+  // Longer than any block name: matches nothing, and is never folded or normalized.
+  if (query.length > MAX_SLASH_QUERY) return { text: '', words: [], matchable: false };
   const words: string[] = [];
   let matchable = true;
   for (const raw of query.split(' ')) {
@@ -260,8 +270,8 @@ const matchTier = (entry: SearchEntry, query: PreparedQuery): SlashMatchTier | n
 /** The items matching `query`, best first. A blank query returns `items` unchanged. */
 export const searchSlashItems = (items: SlashItem[], query: string, locale: Locale = 'en'): SlashItem[] => {
   const prepared = prepareSlashQuery(query);
-  if (prepared.words.length === 0) return items;
   if (!prepared.matchable) return [];
+  if (prepared.words.length === 0) return items;
   const scored: { item: SlashItem; tier: number; used: number; order: number }[] = [];
   items.forEach((item, order) => {
     const tier = matchTier(searchEntry(item, locale), prepared);
@@ -380,7 +390,8 @@ const SUGGESTED_COUNT = 6;
  *   the best match overall and Enter inserts it.
  */
 export const groupSlashItems = (ranked: SlashItem[], query: string): SlashMenuGroup[] => {
-  const searching = prepareSlashQuery(query).words.length > 0;
+  const prepared = prepareSlashQuery(query);
+  const searching = !prepared.matchable || prepared.words.length > 0;
   const groups: SlashMenuGroup[] = [];
   let rest = ranked;
   if (!searching) {
@@ -407,8 +418,6 @@ export const groupSlashItems = (ranked: SlashItem[], query: string): SlashMenuGr
 
 // --- Keeping the menu open ----------------------------------------------------
 
-/** No block name is this long; a longer "query" is ordinary text after a slash. */
-const MAX_SLASH_QUERY = 64;
 /** A second slash or a backslash: a path or URL, never a block name. */
 const PATH_SEPARATORS = ['/', '\\'];
 const isSpace = (char: string | undefined): boolean => char !== undefined && char.trim() === '';

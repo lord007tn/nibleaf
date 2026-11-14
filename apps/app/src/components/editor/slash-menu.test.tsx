@@ -412,4 +412,19 @@ describe('closing the menu', () => {
   ])('keeps %s exactly as typed: no menu, nothing inserted, and Enter only starts a paragraph', async (_name, text) => {
     await keepsAsText(text);
   });
+
+  it('keeps a pasted slash command followed by 32,000 pairs of combining marks exactly, with no menu', async () => {
+    const pasted = `/code${String.fromCodePoint(0x03_00, 0x03_15).repeat(32_000)}`;
+    const editor = await make(doc(paragraph()));
+    await caretIn(editor);
+    await act(async () => {
+      // jsdom has no ClipboardEvent; ProseMirror only needs an event to hand to paste handlers.
+      editor.view.pasteText(pasted, new Event('paste') as ClipboardEvent);
+    });
+    expect(isSlashMenuOpen(editor.state)).toBe(false);
+    expect(menu()).toBeNull();
+    expect(editor.state.doc.childCount).toBe(1);
+    expect(editor.state.doc.child(0).textContent).toBe(pasted);
+    expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
+  });
 });

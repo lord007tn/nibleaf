@@ -239,9 +239,10 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
     allowSpaces: true,
     allow: ({ state, range }) => {
       const query = state.doc.textBetween(range.from + 1, range.to);
+      // Cheap checks first (length, slashes, spaces), so a long paste is rejected before any folding.
       // Text with a character no block name has ("/?", "/code\block", "/(code)") is not a command.
       return (
-        slashQueryCouldMatch(query, items, locale) && slashQueryKeepsMenuOpen(query, (finished) => rankSlashItems(items, finished, locale).length > 0)
+        slashQueryKeepsMenuOpen(query, (finished) => rankSlashItems(items, finished, locale).length > 0) && slashQueryCouldMatch(query, items, locale)
       );
     },
     initialItems: items,
