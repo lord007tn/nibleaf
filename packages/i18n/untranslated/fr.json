@@ -110,7 +110,16 @@
     "site_ai_sources",
     "site_ai_source",
     "site_ai_incorrect",
-    "dashboard_ai_engagement"
+    "dashboard_ai_engagement",
+    "settings_joinlinks_domainplaceholder",
+    "people_site",
+    "gitpreview_openpages",
+    "gitpreview_version",
+    "nav_sidebartitle",
+    "account_signin_active",
+    "organization_create_nameplaceholder",
+    "organization_settings_invitations",
+    "people_members_col_actions"
   ],
   "pending": [
     "brand_oss",
