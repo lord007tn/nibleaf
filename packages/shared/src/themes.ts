@@ -416,11 +416,19 @@ export const readableAccentText = (accent: string, canvas: string): string => {
     }
   }
   // No shade reaches 4.5:1 on both the canvas and the tint (a canvas this mid
-  // can't hold AA text at all). Never trade a passing-on-canvas authored accent
-  // for something worse: keep whichever of the accent and the two endpoints
-  // reads best against the weaker of the two backgrounds.
-  const worst = (candidate: string) => Math.min(contrastRatio(candidate, canvas), contrastRatio(candidate, mixHex(canvas, candidate, ACCENT_TINT)));
-  return [color, target, alternate].reduce((best, candidate) => (worst(candidate) > worst(best) ? candidate : best));
+  // can't hold AA text on its tint at all). The canvas is where text mostly
+  // sits, so it decides, and its contrast never drops below what was authored:
+  // an accent that already reads on the canvas stays as authored; otherwise the
+  // nearest shade that reads on the canvas alone; otherwise whichever of the
+  // accent and the two endpoints reads best on it.
+  if (contrastRatio(color, canvas) >= ACCENT_TEXT_CONTRAST) return color;
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(color, endpoint, step / 40);
+      if (contrastRatio(shade, canvas) >= ACCENT_TEXT_CONTRAST) return shade;
+    }
+  }
+  return [color, target, alternate].reduce((best, candidate) => (contrastRatio(candidate, canvas) > contrastRatio(best, canvas) ? candidate : best));
 };
 
 /** Make a resolved palette's accent safe as text, keeping what follows it (the

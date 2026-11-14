@@ -120,13 +120,21 @@ describe('documentation themes', () => {
     const shade = readableAccentText('#303030', '#999999');
     expect(contrastRatio(shade, '#999999')).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
     expect(contrastRatio(shade, '#999999')).toBeGreaterThanOrEqual(contrastRatio('#303030', '#999999'));
-    // A canvas no colour can reach AA on keeps the best-reading candidate, never a worse one.
-    for (const [accent, canvas] of [
-      ['#7a7a7a', '#777777'],
-      ['#336699', '#5a5a5a'],
-    ] as const) {
-      const result = readableAccentText(accent, canvas);
-      expect(contrastRatio(result, canvas)).toBeGreaterThanOrEqual(Math.min(contrastRatio(accent, canvas), 4.5) - 0.01);
+    // Where nothing passes on canvas and tint, the canvas decides and never gets
+    // worse: black on #e61186 reads 4.79:1 as authored and stays as authored.
+    expect(readableAccentText('#000000', '#e61186')).toBe('#000000');
+  });
+
+  it('never lowers the canvas contrast below the authored accent or AA, across a grid of palettes', () => {
+    const levels = ['00', '33', '66', '99', 'cc', 'ff'];
+    const colours = levels.flatMap((r) => levels.flatMap((g) => levels.map((b) => `#${r}${g}${b}`)));
+    const canvases = ['#ffffff', '#fafafa', '#999999', '#777777', '#e61186', '#1f63c4', '#0b1120', '#000000'];
+    for (const canvas of canvases) {
+      for (const accent of colours) {
+        const result = readableAccentText(accent, canvas);
+        const floor = Math.min(contrastRatio(accent, canvas), ACCENT_TEXT_CONTRAST);
+        expect(contrastRatio(result, canvas), `${accent} on ${canvas} -> ${result}`).toBeGreaterThanOrEqual(floor - 1e-9);
+      }
     }
   });
 
