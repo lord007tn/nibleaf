@@ -1,5 +1,5 @@
 import type { SearchScope } from '@nibleaf/search';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const doubles = vi.hoisted(() => ({
   queryHybrid: vi.fn(),
@@ -76,6 +76,7 @@ const readyRun = {
 };
 
 describe('hybrid index recovery', () => {
+  afterEach(() => vi.useRealTimers());
   beforeEach(() => {
     vi.clearAllMocks();
     doubles.runtime = 'hybrid';
@@ -107,6 +108,140 @@ describe('hybrid index recovery', () => {
     await expect(runPublishedSearch(scope, 'حجز', 12, legacy)).resolves.toEqual({ hits: [result], runtime: 'shadow' });
     expect(doubles.embed).not.toHaveBeenCalled();
     resolve(null);
+  });
+
+  it.each(['readiness', 'configuration', 'embedding', 'retrieval'] as const)(
+    'returns keywords at the deadline while %s is pending, then cancels optional work',
+    async (stage) => {
+      vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+      let release!: (value: never) => void;
+      const pending = new Promise<never>((resolve) => {
+        release = resolve;
+      });
+      if (stage === 'readiness') doubles.servedCollection.mockReturnValueOnce(pending);
+      if (stage === 'configuration') doubles.resolveWorkspaceAi.mockReturnValueOnce(pending);
+      if (stage === 'embedding') doubles.embed.mockReturnValueOnce(pending);
+      if (stage === 'retrieval') doubles.queryHybrid.mockReturnValueOnce(pending);
+      const legacy = vi.fn().mockResolvedValue([result]);
+      const response = runPublishedSearch(scope, `slow-${stage}`, 12, legacy);
+      let settled = false;
+      void response.then(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(79);
+      expect(legacy).toHaveBeenCalledOnce();
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(response).resolves.toEqual({ hits: [result], runtime: 'legacy-fallback' });
+      const signal = stage === 'embedding' ? doubles.embed.mock.calls[0]?.[1] : doubles.queryHybrid.mock.calls[0]?.[1];
+      if (signal) expect(signal.aborted).toBe(true);
+      const embeds = doubles.embed.mock.calls.length;
+      release((stage === 'readiness' ? 'search_active_v1_2' : stage === 'configuration' ? { revision: 'late' } : { vectors: [[1, 0]] }) as never);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(doubles.embed).toHaveBeenCalledTimes(embeds);
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
+  it('cancels a pending optional lookup promptly when the reader types past it', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+    doubles.resolveWorkspaceAi.mockReturnValueOnce(new Promise(() => undefined));
+    const controller = new AbortController();
+    const response = runPublishedSearch(scope, 'cancelled-keyword', 12, async () => [result], controller.signal);
+    const rejected = expect(response).rejects.toMatchObject({ name: 'AbortError' });
+    await vi.advanceTimersByTimeAsync(1);
+    controller.abort();
+    await rejected;
+    expect(doubles.embed).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('rejects promptly when the reader aborts while the keyword fallback is still running', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+    doubles.resolveWorkspaceAi.mockReturnValueOnce(new Promise(() => undefined));
+    const controller = new AbortController();
+    // The keyword lane never settles: only the reader's abort can end this search.
+    const response = runPublishedSearch(scope, 'abort-during-fallback', 12, () => new Promise<never>(() => undefined), controller.signal);
+    const rejected = expect(response).rejects.toMatchObject({ name: 'AbortError' });
+    // Past the 80 ms deadline the fallback is chosen and its await begins.
+    await vi.advanceTimersByTimeAsync(81);
+    controller.abort();
+    await rejected;
+    expect(doubles.embed).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('propagates keyword failures and clears the optional lane deadline', async () => {
+    doubles.resolveWorkspaceAi.mockReturnValueOnce(new Promise(() => undefined));
+    const error = new Error('keyword index unavailable');
+    await expect(
+      runPublishedSearch(scope, 'keyword-error', 12, async () => {
+        throw error;
+      }),
+    ).rejects.toBe(error);
+  });
+
+  it.each([
+    ['still running', () => new Promise<never>(() => undefined)],
+    ['failing', () => Promise.reject(new Error('keyword index unavailable'))],
+  ] as const)('answers with fast hybrid hits while the keyword lane is %s', async (_state, keywordLane) => {
+    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      doubles.queryHybrid.mockResolvedValue([
+        {
+          id: 'title',
+          score: 0.9,
+          payload: {
+            project_id: scope.projectId,
+            deployment_id: scope.deploymentId,
+            version_slug: scope.versionSlug,
+            language: 'en',
+            visibility: 'public',
+            visible: true,
+            ordinal: 0,
+            content_hash: 'hash',
+            direction: 'ltr',
+            page_id: 'title',
+            title: 'Custom domain',
+            path: 'domain',
+            content: 'Set up DNS records.',
+          },
+        },
+      ]);
+      const response = await runPublishedSearch({ ...scope, language: 'en' }, `custom domain ${_state}`, 12, keywordLane);
+      expect(response).toMatchObject({ runtime: 'hybrid', hits: [{ id: 'title' }] });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  it('keeps fast hybrid title ranking and lexical filtering instead of substituting keyword results', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+    const payload = {
+      project_id: scope.projectId,
+      deployment_id: scope.deploymentId,
+      version_slug: scope.versionSlug,
+      language: 'en',
+      visibility: 'public',
+      visible: true,
+      ordinal: 0,
+      content_hash: 'hash',
+      direction: 'ltr',
+    };
+    doubles.queryHybrid.mockResolvedValue([
+      { id: 'body', score: 1, payload: { ...payload, page_id: 'body', title: 'Setup', path: 'setup', content: 'Connect a custom domain.' } },
+      { id: 'title', score: 0.6, payload: { ...payload, page_id: 'title', title: 'Custom domain', path: 'domain', content: 'Set up DNS records.' } },
+      { id: 'noise', score: 1, payload: { ...payload, page_id: 'noise', title: 'Billing', path: 'billing', content: 'Manage invoices.' } },
+    ]);
+    const response = await runPublishedSearch({ ...scope, language: 'en' }, 'custom domain', 12, async () => [result]);
+    expect(response.runtime).toBe('hybrid');
+    expect(response.hits.map((hit) => hit.id)).toEqual(['title', 'body']);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('keeps cold AI capability hints off the response path and isolates deployments', async () => {
@@ -214,7 +349,7 @@ describe('hybrid index recovery', () => {
     expect(legacy).toHaveBeenCalledOnce();
     expect(doubles.queryHybrid).toHaveBeenCalledWith(
       expect.objectContaining({ denseScoreThreshold: 0.35, limit: 48, candidateLimit: 48 }),
-      undefined,
+      expect.any(AbortSignal),
     );
   });
 

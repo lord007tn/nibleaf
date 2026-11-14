@@ -16,6 +16,7 @@ import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@
 import { PageIcon } from '@/components/site/page-icon';
 import { PreviewNav } from '@/features/site-preview/components/preview-nav';
 import { previewHomeId, previewNavTree } from '@/features/site-preview/model/preview-nav';
+import { previewsDraft } from '@/features/site-preview/model/preview-target';
 import { useBranches, useLanguages, usePage, usePages, useProject, useProjectMembers } from '@/hooks/api';
 import { pageQueryOptions } from '@/hooks/api/query-options';
 import { defaultScopeId, prefetchScopedPages } from '@/hooks/api/route-prefetch';
@@ -69,7 +70,7 @@ function ProjectPreview() {
   // The preview shows what readers will see: an untitled page reads "Untitled" in its language.
   const shownTitle = (node: { title: string }) => displayTitle({ title: node.title, languageCode: activeLanguage?.code });
   const activeBranchId = search.branchId ?? defaultScopeId(branches);
-  const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
+  const previewEnabled = previewsDraft(project);
   const pagesQuery = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
   const { data: pages, isPending: pagesPending } = pagesQuery;
   // The same tree readers get once this is published, so the order matches the editor's.
