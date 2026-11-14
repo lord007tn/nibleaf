@@ -1,0 +1,550 @@
+{
+  "environment": "Isolated actual-route fixture (dashboard shell, ProjectLayout + settings and analytics routes, OrganizationLayout + members route); intercepted fictional HTTP; no server, database or real site",
+  "locales": [
+    "es",
+    "pt-BR"
+  ],
+  "screens": [
+    "settings",
+    "analytics",
+    "people",
+    "publish"
+  ],
+  "sizes": [
+    "1440×1000",
+    "390×844 touch"
+  ],
+  "attempted": 0,
+  "axe": {
+    "version": "4.14.0",
+    "rules": [
+      "color-contrast"
+    ]
+  },
+  "leftoverRule": "Visible text (an element’s own text nodes, ≥3 letters) equal to an en catalog value ({placeholders} match anything) that is not one of the locale’s own translations (its text for a key where it differs from English). A key whose locale text copies the English one counts as untranslated. Glossary doNotTranslate values and the keys untranslated/<locale>.json lists as sameAsEnglish are excluded; en has none by definition.",
+  "doNotTranslate": 88,
+  "summary": {
+    "es": {
+      "leftovers": 0,
+      "clipped": 4,
+      "pageErrors": 0,
+      "horizontalOverflow": [],
+      "axeColorContrastNodes": 3
+    },
+    "pt-BR": {
+      "leftovers": 0,
+      "clipped": 4,
+      "pageErrors": 0,
+      "horizontalOverflow": [],
+      "axeColorContrastNodes": 3
+    }
+  },
+  "captures": [
+    {
+      "screen": "settings",
+      "locale": "es",
+      "width": 1440,
+      "file": "settings-es-1440.png",
+      "htmlLang": "es",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "settings",
+      "locale": "es",
+      "width": 390,
+      "file": "settings-es-390.png",
+      "htmlLang": "es",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [
+        {
+          "text": "ADAcme Docs",
+          "tag": "button",
+          "role": null,
+          "truncated": null,
+          "overflowsParent": {
+            "px": 32,
+            "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
+          }
+        },
+        {
+          "text": "Team handbook",
+          "tag": "button",
+          "role": null,
+          "truncated": {
+            "scrollWidth": 104,
+            "clientWidth": 26
+          },
+          "overflowsParent": null
+        }
+      ],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "analytics",
+      "locale": "es",
+      "width": 1440,
+      "file": "analytics-es-1440.png",
+      "htmlLang": "es",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "analytics",
+      "locale": "es",
+      "width": 390,
+      "file": "analytics-es-390.png",
+      "htmlLang": "es",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [
+        {
+          "text": "ADAcme Docs",
+          "tag": "button",
+          "role": null,
+          "truncated": null,
+          "overflowsParent": {
+            "px": 32,
+            "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
+          }
+        },
+        {
+          "text": "Team handbook",
+          "tag": "button",
+          "role": null,
+          "truncated": {
+            "scrollWidth": 104,
+            "clientWidth": 26
+          },
+          "overflowsParent": null
+        }
+      ],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "people",
+      "locale": "es",
+      "width": 1440,
+      "file": "people-es-1440.png",
+      "htmlLang": "es",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "people",
+      "locale": "es",
+      "width": 390,
+      "file": "people-es-390.png",
+      "htmlLang": "es",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "publish",
+      "locale": "es",
+      "width": 1440,
+      "file": "publish-es-1440.png",
+      "htmlLang": "es",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ],
+      "axeColorContrast": [
+        {
+          "target": ".text-emerald-600",
+          "summary": "Element has insufficient color contrast of 3.65 (foreground color: #009966, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".gap-2\\.5.py-2.px-3:nth-child(2) > .text-amber-600.dark\\:text-amber-400.text-xs",
+          "summary": "Element has insufficient color contrast of 3.19 (foreground color: #e17100, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".gap-2\\.5.py-2.px-3:nth-child(3) > .text-amber-600.dark\\:text-amber-400.text-xs",
+          "summary": "Element has insufficient color contrast of 3.19 (foreground color: #e17100, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "axeColorContrastNodes": 3
+    },
+    {
+      "screen": "publish",
+      "locale": "es",
+      "width": 390,
+      "file": "publish-es-390.png",
+      "htmlLang": "es",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "settings",
+      "locale": "pt-BR",
+      "width": 1440,
+      "file": "settings-pt-BR-1440.png",
+      "htmlLang": "pt-BR",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "settings",
+      "locale": "pt-BR",
+      "width": 390,
+      "file": "settings-pt-BR-390.png",
+      "htmlLang": "pt-BR",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [
+        {
+          "text": "ADAcme Docs",
+          "tag": "button",
+          "role": null,
+          "truncated": null,
+          "overflowsParent": {
+            "px": 32,
+            "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
+          }
+        },
+        {
+          "text": "Team handbook",
+          "tag": "button",
+          "role": null,
+          "truncated": {
+            "scrollWidth": 104,
+            "clientWidth": 26
+          },
+          "overflowsParent": null
+        }
+      ],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "analytics",
+      "locale": "pt-BR",
+      "width": 1440,
+      "file": "analytics-pt-BR-1440.png",
+      "htmlLang": "pt-BR",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "analytics",
+      "locale": "pt-BR",
+      "width": 390,
+      "file": "analytics-pt-BR-390.png",
+      "htmlLang": "pt-BR",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [
+        {
+          "text": "ADAcme Docs",
+          "tag": "button",
+          "role": null,
+          "truncated": null,
+          "overflowsParent": {
+            "px": 32,
+            "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
+          }
+        },
+        {
+          "text": "Team handbook",
+          "tag": "button",
+          "role": null,
+          "truncated": {
+            "scrollWidth": 104,
+            "clientWidth": 26
+          },
+          "overflowsParent": null
+        }
+      ],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "people",
+      "locale": "pt-BR",
+      "width": 1440,
+      "file": "people-pt-BR-1440.png",
+      "htmlLang": "pt-BR",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "people",
+      "locale": "pt-BR",
+      "width": 390,
+      "file": "people-pt-BR-390.png",
+      "htmlLang": "pt-BR",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "publish",
+      "locale": "pt-BR",
+      "width": 1440,
+      "file": "publish-pt-BR-1440.png",
+      "htmlLang": "pt-BR",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [
+        {
+          "target": ".text-emerald-600",
+          "summary": "Element has insufficient color contrast of 3.65 (foreground color: #009966, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".gap-2\\.5.py-2.px-3:nth-child(2) > .text-amber-600.dark\\:text-amber-400.text-xs",
+          "summary": "Element has insufficient color contrast of 3.19 (foreground color: #e17100, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".gap-2\\.5.py-2.px-3:nth-child(3) > .text-amber-600.dark\\:text-amber-400.text-xs",
+          "summary": "Element has insufficient color contrast of 3.19 (foreground color: #e17100, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "axeColorContrastNodes": 3
+    },
+    {
+      "screen": "publish",
+      "locale": "pt-BR",
+      "width": 390,
+      "file": "publish-pt-BR-390.png",
+      "htmlLang": "pt-BR",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    }
+  ]
+}
