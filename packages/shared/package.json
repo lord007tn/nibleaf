@@ -27,6 +27,7 @@
     "./markdown-code": "./src/markdown-code.ts",
     "./public-markdown": "./src/public-markdown.ts",
     "./public-markdown-content": "./src/public-markdown-content.ts",
+    "./publish-check-codes": "./src/publish-check-codes.ts",
     "./publish-checks": "./src/publish-checks.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
@@ -93,9 +94,11 @@
     "remark-math": "6.0.0"
   },
   "devDependencies": {
+    "@types/markdown-it": "14.1.2",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "markdown-it": "14.3.3"
   }
 }
