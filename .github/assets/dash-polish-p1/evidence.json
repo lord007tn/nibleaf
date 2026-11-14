@@ -1,0 +1,3504 @@
+{
+  "baseline": "4e80721353e7ba3119c8cd4694c80a825fa7fdb8",
+  "head": "85279b4c7dd1e9e7595ced3afda956e5a3cf3a10",
+  "environment": "Isolated actual-route fixture (ProjectLayout + analytics routes); intercepted fictional HTTP; no server, database or real site",
+  "swappedForBefore": [
+    "apps/app/src/components/analytics/insights/vitals.tsx",
+    "apps/app/src/components/app/project-sidebar.tsx",
+    "apps/app/src/components/ui/section-tabs.tsx",
+    "apps/app/src/layouts/project.tsx",
+    "apps/app/src/routes/app/projects/$projectId/preview.tsx",
+    "paraglide message analytics_vitals_lcp_hint (en, ar)",
+    "paraglide message analytics_vitals_inp_hint (en, ar)",
+    "paraglide message analytics_vitals_cls_hint (en, ar)"
+  ],
+  "attempted": 0,
+  "axe": {
+    "version": "4.14.0",
+    "rules": [
+      "color-contrast",
+      "button-name",
+      "link-name",
+      "landmark-one-main",
+      "region"
+    ]
+  },
+  "summary": {
+    "websiteNameAt390": [
+      {
+        "phase": "before",
+        "locale": "en",
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 40,
+        "fits": false,
+        "cutPx": 64,
+        "previewInHeader": true
+      },
+      {
+        "phase": "after",
+        "locale": "en",
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 74,
+        "fits": false,
+        "cutPx": 30,
+        "previewInHeader": false
+      },
+      {
+        "phase": "before",
+        "locale": "ar",
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 33,
+        "fits": false,
+        "cutPx": 33,
+        "previewInHeader": true
+      },
+      {
+        "phase": "after",
+        "locale": "ar",
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 63,
+        "fits": false,
+        "cutPx": 3,
+        "previewInHeader": false
+      }
+    ],
+    "performanceTabAt390": [
+      {
+        "phase": "before",
+        "locale": "en",
+        "currentTab": "Performance",
+        "insideRow": false,
+        "visibleFraction": 0,
+        "maskImage": "none",
+        "scrollbarHeight": 1,
+        "afterTabNavigation": {
+          "currentTab": {
+            "text": "Performance",
+            "left": 244.3,
+            "right": 374.1,
+            "width": 129.8
+          },
+          "currentTabInsideRow": true,
+          "currentTabVisibleFraction": 1,
+          "scrollLeft": 305,
+          "maxScroll": 305
+        }
+      },
+      {
+        "phase": "after",
+        "locale": "en",
+        "currentTab": "Performance",
+        "insideRow": false,
+        "visibleFraction": 0.89,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "scrollbarHeight": 0,
+        "afterTabNavigation": {
+          "currentTab": {
+            "text": "Performance",
+            "left": 244.3,
+            "right": 374.1,
+            "width": 129.8
+          },
+          "currentTabInsideRow": true,
+          "currentTabVisibleFraction": 1,
+          "scrollLeft": 305,
+          "maxScroll": 305
+        }
+      },
+      {
+        "phase": "before",
+        "locale": "ar",
+        "currentTab": "الأداء",
+        "insideRow": false,
+        "visibleFraction": 0,
+        "maskImage": "none",
+        "scrollbarHeight": 1,
+        "afterTabNavigation": {
+          "currentTab": {
+            "text": "الأداء",
+            "left": 15.5,
+            "right": 89.6,
+            "width": 74.1
+          },
+          "currentTabInsideRow": true,
+          "currentTabVisibleFraction": 1,
+          "scrollLeft": -321,
+          "maxScroll": 322
+        }
+      },
+      {
+        "phase": "after",
+        "locale": "ar",
+        "currentTab": "الأداء",
+        "insideRow": true,
+        "visibleFraction": 1,
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "scrollbarHeight": 0,
+        "afterTabNavigation": {
+          "currentTab": {
+            "text": "الأداء",
+            "left": 15.5,
+            "right": 89.6,
+            "width": 74.1
+          },
+          "currentTabInsideRow": true,
+          "currentTabVisibleFraction": 1,
+          "scrollLeft": -321,
+          "maxScroll": 322
+        }
+      }
+    ],
+    "vitalsHints": [
+      {
+        "phase": "before",
+        "locale": "en",
+        "cards": [
+          {
+            "abbr": null,
+            "hint": "Largest Contentful Paint: how long until the main text or image is visible. Good is under 2.5 s.",
+            "englishPrefix": true
+          },
+          {
+            "abbr": null,
+            "hint": "Interaction to Next Paint: how quickly the page reacts to a click or key press. Good is under 200 ms.",
+            "englishPrefix": true
+          },
+          {
+            "abbr": null,
+            "hint": "Cumulative Layout Shift: how much content jumps around while loading. Good is under 0.1.",
+            "englishPrefix": true
+          }
+        ]
+      },
+      {
+        "phase": "after",
+        "locale": "en",
+        "cards": [
+          {
+            "abbr": {
+              "text": "LCP",
+              "title": "Largest Contentful Paint",
+              "dir": "ltr",
+              "lang": "en"
+            },
+            "hint": "How long until the main text or image is visible. Good is under 2.5 s.",
+            "englishPrefix": false
+          },
+          {
+            "abbr": {
+              "text": "INP",
+              "title": "Interaction to Next Paint",
+              "dir": "ltr",
+              "lang": "en"
+            },
+            "hint": "How quickly the page reacts to a click or key press. Good is under 200 ms.",
+            "englishPrefix": false
+          },
+          {
+            "abbr": {
+              "text": "CLS",
+              "title": "Cumulative Layout Shift",
+              "dir": "ltr",
+              "lang": "en"
+            },
+            "hint": "How much content jumps around while loading. Good is under 0.1.",
+            "englishPrefix": false
+          }
+        ]
+      },
+      {
+        "phase": "before",
+        "locale": "ar",
+        "cards": [
+          {
+            "abbr": null,
+            "hint": "Largest Contentful Paint: المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+            "englishPrefix": true
+          },
+          {
+            "abbr": null,
+            "hint": "Interaction to Next Paint: سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+            "englishPrefix": true
+          },
+          {
+            "abbr": null,
+            "hint": "Cumulative Layout Shift: مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+            "englishPrefix": true
+          }
+        ]
+      },
+      {
+        "phase": "after",
+        "locale": "ar",
+        "cards": [
+          {
+            "abbr": {
+              "text": "LCP",
+              "title": "Largest Contentful Paint",
+              "dir": "ltr",
+              "lang": "en"
+            },
+            "hint": "المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+            "englishPrefix": false
+          },
+          {
+            "abbr": {
+              "text": "INP",
+              "title": "Interaction to Next Paint",
+              "dir": "ltr",
+              "lang": "en"
+            },
+            "hint": "سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+            "englishPrefix": false
+          },
+          {
+            "abbr": {
+              "text": "CLS",
+              "title": "Cumulative Layout Shift",
+              "dir": "ltr",
+              "lang": "en"
+            },
+            "hint": "مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+            "englishPrefix": false
+          }
+        ]
+      }
+    ],
+    "axe": [
+      {
+        "file": "after-overview-en-390-light.png",
+        "violations": []
+      },
+      {
+        "file": "after-overview-en-390-dark.png",
+        "violations": []
+      },
+      {
+        "file": "after-overview-ar-390-light.png",
+        "violations": []
+      },
+      {
+        "file": "after-overview-ar-390-dark.png",
+        "violations": []
+      },
+      {
+        "file": "after-performance-en-390-light.png",
+        "violations": []
+      },
+      {
+        "file": "after-performance-en-390-dark.png",
+        "violations": []
+      },
+      {
+        "file": "after-performance-en-1440-light.png",
+        "violations": [
+          "region (moderate) ×7"
+        ]
+      },
+      {
+        "file": "after-performance-en-1440-dark.png",
+        "violations": [
+          "region (moderate) ×7"
+        ]
+      },
+      {
+        "file": "after-performance-ar-390-light.png",
+        "violations": []
+      },
+      {
+        "file": "after-performance-ar-390-dark.png",
+        "violations": []
+      },
+      {
+        "file": "after-performance-ar-1440-light.png",
+        "violations": [
+          "region (moderate) ×7"
+        ]
+      },
+      {
+        "file": "after-performance-ar-1440-dark.png",
+        "violations": [
+          "region (moderate) ×7"
+        ]
+      },
+      {
+        "file": "after-header-en-1440-light.png",
+        "violations": [
+          "region (moderate) ×7"
+        ]
+      },
+      {
+        "file": "after-header-en-1440-dark.png",
+        "violations": [
+          "region (moderate) ×7"
+        ]
+      },
+      {
+        "file": "after-header-ar-1440-light.png",
+        "violations": [
+          "region (moderate) ×7"
+        ]
+      },
+      {
+        "file": "after-header-ar-1440-dark.png",
+        "violations": [
+          "region (moderate) ×7"
+        ]
+      },
+      {
+        "file": "after-sidebar-en-390-light.png",
+        "violations": []
+      },
+      {
+        "file": "after-sidebar-en-390-dark.png",
+        "violations": []
+      },
+      {
+        "file": "after-sidebar-ar-390-light.png",
+        "violations": []
+      },
+      {
+        "file": "after-sidebar-ar-390-dark.png",
+        "violations": []
+      }
+    ]
+  },
+  "gif": {
+    "file": "after-tabs-scroll-ar-390-light.gif",
+    "bytes": 41841,
+    "frames": [
+      {
+        "step": "rest",
+        "scrollLeft": 1,
+        "maxScroll": 322,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "fadesLeft": true,
+        "fadesRight": false
+      },
+      {
+        "step": "middle",
+        "scrollLeft": -161,
+        "maxScroll": 322,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "fadesLeft": true,
+        "fadesRight": true
+      },
+      {
+        "step": "end",
+        "scrollLeft": -321,
+        "maxScroll": 322,
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "fadesLeft": false,
+        "fadesRight": true
+      }
+    ],
+    "noHorizontalOverflow": true,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "requests": [
+      "GET /api/auth/get-session",
+      "GET /api/app/projects/handbook",
+      "GET /api/app/projects/handbook/languages",
+      "GET /api/app/projects/handbook/branches",
+      "GET /api/app/projects/handbook/pages",
+      "GET /api/app/projects/handbook/deployments",
+      "GET /api/app/projects/handbook/analytics/insights/overview",
+      "GET /api/app/me/switcher",
+      "GET /api/app/projects",
+      "GET /api/app/notifications/unread-count",
+      "GET /api/app/projects/handbook/domains",
+      "GET /api/app/projects/handbook/members",
+      "GET /api/app/projects/handbook/deployments/changes",
+      "GET /api/auth/get-session",
+      "PUT /api/app/me/last-organization"
+    ],
+    "unexpectedRequests": [
+      "PUT /api/app/me/last-organization"
+    ]
+  },
+  "captures": [
+    {
+      "phase": "before",
+      "screen": "overview",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "before-overview-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 40,
+        "fits": false,
+        "cutPx": 64
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 16,
+          "right": 123.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "overview",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-overview-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 40,
+        "fits": false,
+        "cutPx": 64
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 16,
+          "right": 123.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "overview",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "before-overview-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 33,
+        "fits": false,
+        "cutPx": 33
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 273,
+          "right": 374,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "overview",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-overview-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 33,
+        "fits": false,
+        "cutPx": 33
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 273,
+          "right": 374,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "performance",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "before-performance-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 40,
+        "fits": false,
+        "cutPx": 64
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Performance",
+          "left": 549.3,
+          "right": 679.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": false,
+        "currentTabVisibleFraction": 0
+      },
+      "vitals": [
+        {
+          "label": "Main content shows up",
+          "description": "Main content shows up",
+          "abbr": null,
+          "hint": "Largest Contentful Paint: how long until the main text or image is visible. Good is under 2.5 s.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "Responds to clicks",
+          "description": "Responds to clicks",
+          "abbr": null,
+          "hint": "Interaction to Next Paint: how quickly the page reacts to a click or key press. Good is under 200 ms.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "Layout stays still",
+          "description": "Layout stays still",
+          "abbr": null,
+          "hint": "Cumulative Layout Shift: how much content jumps around while loading. Good is under 0.1.",
+          "hintStartsWithEnglishName": true
+        }
+      ],
+      "afterTabNavigation": {
+        "currentTab": {
+          "text": "Performance",
+          "left": 244.3,
+          "right": 374.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1,
+        "scrollLeft": 305,
+        "maxScroll": 305
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook/analytics/insights/overview"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "performance",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-performance-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 40,
+        "fits": false,
+        "cutPx": 64
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Performance",
+          "left": 549.3,
+          "right": 679.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": false,
+        "currentTabVisibleFraction": 0
+      },
+      "vitals": [
+        {
+          "label": "Main content shows up",
+          "description": "Main content shows up",
+          "abbr": null,
+          "hint": "Largest Contentful Paint: how long until the main text or image is visible. Good is under 2.5 s.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "Responds to clicks",
+          "description": "Responds to clicks",
+          "abbr": null,
+          "hint": "Interaction to Next Paint: how quickly the page reacts to a click or key press. Good is under 200 ms.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "Layout stays still",
+          "description": "Layout stays still",
+          "abbr": null,
+          "hint": "Cumulative Layout Shift: how much content jumps around while loading. Good is under 0.1.",
+          "hintStartsWithEnglishName": true
+        }
+      ],
+      "afterTabNavigation": {
+        "currentTab": {
+          "text": "Performance",
+          "left": 244.3,
+          "right": 374.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1,
+        "scrollLeft": 305,
+        "maxScroll": 305
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook/analytics/insights/overview"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "performance",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-performance-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 104,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 324,
+          "right": 1396,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "Performance",
+          "left": 861.3,
+          "right": 991.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "Main content shows up",
+          "description": "Main content shows up",
+          "abbr": null,
+          "hint": "Largest Contentful Paint: how long until the main text or image is visible. Good is under 2.5 s.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "Responds to clicks",
+          "description": "Responds to clicks",
+          "abbr": null,
+          "hint": "Interaction to Next Paint: how quickly the page reacts to a click or key press. Good is under 200 ms.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "Layout stays still",
+          "description": "Layout stays still",
+          "abbr": null,
+          "hint": "Cumulative Layout Shift: how much content jumps around while loading. Good is under 0.1.",
+          "hintStartsWithEnglishName": true
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "performance",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-performance-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 104,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 324,
+          "right": 1396,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "Performance",
+          "left": 861.3,
+          "right": 991.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "Main content shows up",
+          "description": "Main content shows up",
+          "abbr": null,
+          "hint": "Largest Contentful Paint: how long until the main text or image is visible. Good is under 2.5 s.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "Responds to clicks",
+          "description": "Responds to clicks",
+          "abbr": null,
+          "hint": "Interaction to Next Paint: how quickly the page reacts to a click or key press. Good is under 200 ms.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "Layout stays still",
+          "description": "Layout stays still",
+          "abbr": null,
+          "hint": "Cumulative Layout Shift: how much content jumps around while loading. Good is under 0.1.",
+          "hintStartsWithEnglishName": true
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "performance",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "before-performance-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 33,
+        "fits": false,
+        "cutPx": 33
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "الأداء",
+          "left": -305.5,
+          "right": -231.4,
+          "width": 74.1
+        },
+        "currentTabInsideRow": false,
+        "currentTabVisibleFraction": 0
+      },
+      "vitals": [
+        {
+          "label": "ظهور المحتوى الرئيسي",
+          "description": "ظهور المحتوى الرئيسي",
+          "abbr": null,
+          "hint": "Largest Contentful Paint: المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "الاستجابة للنقر",
+          "description": "الاستجابة للنقر",
+          "abbr": null,
+          "hint": "Interaction to Next Paint: سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "ثبات التخطيط",
+          "description": "ثبات التخطيط",
+          "abbr": null,
+          "hint": "Cumulative Layout Shift: مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+          "hintStartsWithEnglishName": true
+        }
+      ],
+      "afterTabNavigation": {
+        "currentTab": {
+          "text": "الأداء",
+          "left": 15.5,
+          "right": 89.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1,
+        "scrollLeft": -321,
+        "maxScroll": 322
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook/analytics/insights/overview"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "performance",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-performance-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 33,
+        "fits": false,
+        "cutPx": 33
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "الأداء",
+          "left": -305.5,
+          "right": -231.4,
+          "width": 74.1
+        },
+        "currentTabInsideRow": false,
+        "currentTabVisibleFraction": 0
+      },
+      "vitals": [
+        {
+          "label": "ظهور المحتوى الرئيسي",
+          "description": "ظهور المحتوى الرئيسي",
+          "abbr": null,
+          "hint": "Largest Contentful Paint: المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "الاستجابة للنقر",
+          "description": "الاستجابة للنقر",
+          "abbr": null,
+          "hint": "Interaction to Next Paint: سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "ثبات التخطيط",
+          "description": "ثبات التخطيط",
+          "abbr": null,
+          "hint": "Cumulative Layout Shift: مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+          "hintStartsWithEnglishName": true
+        }
+      ],
+      "afterTabNavigation": {
+        "currentTab": {
+          "text": "الأداء",
+          "left": 15.5,
+          "right": 89.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1,
+        "scrollLeft": -321,
+        "maxScroll": 322
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook/analytics/insights/overview"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "performance",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-performance-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 44,
+          "right": 1116,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "الأداء",
+          "left": 432.5,
+          "right": 506.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "ظهور المحتوى الرئيسي",
+          "description": "ظهور المحتوى الرئيسي",
+          "abbr": null,
+          "hint": "Largest Contentful Paint: المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "الاستجابة للنقر",
+          "description": "الاستجابة للنقر",
+          "abbr": null,
+          "hint": "Interaction to Next Paint: سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "ثبات التخطيط",
+          "description": "ثبات التخطيط",
+          "abbr": null,
+          "hint": "Cumulative Layout Shift: مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+          "hintStartsWithEnglishName": true
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "performance",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-performance-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 44,
+          "right": 1116,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "الأداء",
+          "left": 432.5,
+          "right": 506.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "ظهور المحتوى الرئيسي",
+          "description": "ظهور المحتوى الرئيسي",
+          "abbr": null,
+          "hint": "Largest Contentful Paint: المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "الاستجابة للنقر",
+          "description": "الاستجابة للنقر",
+          "abbr": null,
+          "hint": "Interaction to Next Paint: سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+          "hintStartsWithEnglishName": true
+        },
+        {
+          "label": "ثبات التخطيط",
+          "description": "ثبات التخطيط",
+          "abbr": null,
+          "hint": "Cumulative Layout Shift: مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+          "hintStartsWithEnglishName": true
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "header",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-header-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 104,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 324,
+          "right": 1396,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 328,
+          "right": 435.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "header",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-header-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 104,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 324,
+          "right": 1396,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 328,
+          "right": 435.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "header",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-header-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 44,
+          "right": 1116,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 1011,
+          "right": 1112,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "header",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-header-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 1,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 44,
+          "right": 1116,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 1011,
+          "right": 1112,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "overview",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "after-overview-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 74,
+        "fits": false,
+        "cutPx": 30
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": true,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 16,
+          "right": 123.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "overview",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-overview-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 74,
+        "fits": false,
+        "cutPx": 30
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": true,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 16,
+          "right": 123.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "overview",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "after-overview-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 63,
+        "fits": false,
+        "cutPx": 3
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 1,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "dataOverflowLeft": true,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 272,
+          "right": 373,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "overview",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-overview-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 63,
+        "fits": false,
+        "cutPx": 3
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 1,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "dataOverflowLeft": true,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 272,
+          "right": 373,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "performance",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "after-performance-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 74,
+        "fits": false,
+        "cutPx": 30
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 287,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "dataOverflowLeft": true,
+        "dataOverflowRight": true,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Performance",
+          "left": 262.3,
+          "right": 392.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": false,
+        "currentTabVisibleFraction": 0.89
+      },
+      "vitals": [
+        {
+          "label": "Main content shows up",
+          "description": "Main content shows upLCP",
+          "abbr": {
+            "text": "LCP",
+            "title": "Largest Contentful Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How long until the main text or image is visible. Good is under 2.5 s.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "Responds to clicks",
+          "description": "Responds to clicksINP",
+          "abbr": {
+            "text": "INP",
+            "title": "Interaction to Next Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How quickly the page reacts to a click or key press. Good is under 200 ms.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "Layout stays still",
+          "description": "Layout stays stillCLS",
+          "abbr": {
+            "text": "CLS",
+            "title": "Cumulative Layout Shift",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How much content jumps around while loading. Good is under 0.1.",
+          "hintStartsWithEnglishName": false
+        }
+      ],
+      "axe": [],
+      "afterTabNavigation": {
+        "currentTab": {
+          "text": "Performance",
+          "left": 244.3,
+          "right": 374.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1,
+        "scrollLeft": 305,
+        "maxScroll": 305
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "PUT /api/app/me/last-organization"
+      ],
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "performance",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-performance-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 74,
+        "fits": false,
+        "cutPx": 30
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 287,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "dataOverflowLeft": true,
+        "dataOverflowRight": true,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Performance",
+          "left": 262.3,
+          "right": 392.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": false,
+        "currentTabVisibleFraction": 0.89
+      },
+      "vitals": [
+        {
+          "label": "Main content shows up",
+          "description": "Main content shows upLCP",
+          "abbr": {
+            "text": "LCP",
+            "title": "Largest Contentful Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How long until the main text or image is visible. Good is under 2.5 s.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "Responds to clicks",
+          "description": "Responds to clicksINP",
+          "abbr": {
+            "text": "INP",
+            "title": "Interaction to Next Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How quickly the page reacts to a click or key press. Good is under 200 ms.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "Layout stays still",
+          "description": "Layout stays stillCLS",
+          "abbr": {
+            "text": "CLS",
+            "title": "Cumulative Layout Shift",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How much content jumps around while loading. Good is under 0.1.",
+          "hintStartsWithEnglishName": false
+        }
+      ],
+      "axe": [],
+      "afterTabNavigation": {
+        "currentTab": {
+          "text": "Performance",
+          "left": 244.3,
+          "right": 374.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1,
+        "scrollLeft": 305,
+        "maxScroll": 305
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "PUT /api/app/me/last-organization"
+      ],
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "performance",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-performance-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 104,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 0,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 324,
+          "right": 1396,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "Performance",
+          "left": 861.3,
+          "right": 991.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "Main content shows up",
+          "description": "Main content shows upLCP",
+          "abbr": {
+            "text": "LCP",
+            "title": "Largest Contentful Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How long until the main text or image is visible. Good is under 2.5 s.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "Responds to clicks",
+          "description": "Responds to clicksINP",
+          "abbr": {
+            "text": "INP",
+            "title": "Interaction to Next Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How quickly the page reacts to a click or key press. Good is under 200 ms.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "Layout stays still",
+          "description": "Layout stays stillCLS",
+          "abbr": {
+            "text": "CLS",
+            "title": "Cumulative Layout Shift",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How much content jumps around while loading. Good is under 0.1.",
+          "hintStartsWithEnglishName": false
+        }
+      ],
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 7,
+          "targets": [
+            ".font-semibold.text-sm",
+            "#base-ui-_r_a_ > span",
+            "#base-ui-_r_c_ > span",
+            "#base-ui-_r_e_ > span"
+          ],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "performance",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-performance-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 104,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 0,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 324,
+          "right": 1396,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "Performance",
+          "left": 861.3,
+          "right": 991.1,
+          "width": 129.8
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "Main content shows up",
+          "description": "Main content shows upLCP",
+          "abbr": {
+            "text": "LCP",
+            "title": "Largest Contentful Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How long until the main text or image is visible. Good is under 2.5 s.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "Responds to clicks",
+          "description": "Responds to clicksINP",
+          "abbr": {
+            "text": "INP",
+            "title": "Interaction to Next Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How quickly the page reacts to a click or key press. Good is under 200 ms.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "Layout stays still",
+          "description": "Layout stays stillCLS",
+          "abbr": {
+            "text": "CLS",
+            "title": "Cumulative Layout Shift",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "How much content jumps around while loading. Good is under 0.1.",
+          "hintStartsWithEnglishName": false
+        }
+      ],
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 7,
+          "targets": [
+            ".font-semibold.text-sm",
+            "#base-ui-_r_a_ > span",
+            "#base-ui-_r_c_ > span",
+            "#base-ui-_r_e_ > span"
+          ],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "performance",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "after-performance-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 63,
+        "fits": false,
+        "cutPx": 3
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": -321,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": true,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "الأداء",
+          "left": 15.5,
+          "right": 89.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "ظهور المحتوى الرئيسي",
+          "description": "ظهور المحتوى الرئيسيLCP",
+          "abbr": {
+            "text": "LCP",
+            "title": "Largest Contentful Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "الاستجابة للنقر",
+          "description": "الاستجابة للنقرINP",
+          "abbr": {
+            "text": "INP",
+            "title": "Interaction to Next Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "ثبات التخطيط",
+          "description": "ثبات التخطيطCLS",
+          "abbr": {
+            "text": "CLS",
+            "title": "Cumulative Layout Shift",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+          "hintStartsWithEnglishName": false
+        }
+      ],
+      "axe": [],
+      "afterTabNavigation": {
+        "currentTab": {
+          "text": "الأداء",
+          "left": 15.5,
+          "right": 89.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1,
+        "scrollLeft": -321,
+        "maxScroll": 322
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "PUT /api/app/me/last-organization"
+      ],
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "performance",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-performance-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 63,
+        "fits": false,
+        "cutPx": 3
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": -321,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": true,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "الأداء",
+          "left": 15.5,
+          "right": 89.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "ظهور المحتوى الرئيسي",
+          "description": "ظهور المحتوى الرئيسيLCP",
+          "abbr": {
+            "text": "LCP",
+            "title": "Largest Contentful Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "الاستجابة للنقر",
+          "description": "الاستجابة للنقرINP",
+          "abbr": {
+            "text": "INP",
+            "title": "Interaction to Next Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "ثبات التخطيط",
+          "description": "ثبات التخطيطCLS",
+          "abbr": {
+            "text": "CLS",
+            "title": "Cumulative Layout Shift",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+          "hintStartsWithEnglishName": false
+        }
+      ],
+      "axe": [],
+      "afterTabNavigation": {
+        "currentTab": {
+          "text": "الأداء",
+          "left": 15.5,
+          "right": 89.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1,
+        "scrollLeft": -321,
+        "maxScroll": 322
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "PUT /api/app/me/last-organization"
+      ],
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "performance",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-performance-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 0,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 44,
+          "right": 1116,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "الأداء",
+          "left": 432.5,
+          "right": 506.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "ظهور المحتوى الرئيسي",
+          "description": "ظهور المحتوى الرئيسيLCP",
+          "abbr": {
+            "text": "LCP",
+            "title": "Largest Contentful Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "الاستجابة للنقر",
+          "description": "الاستجابة للنقرINP",
+          "abbr": {
+            "text": "INP",
+            "title": "Interaction to Next Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "ثبات التخطيط",
+          "description": "ثبات التخطيطCLS",
+          "abbr": {
+            "text": "CLS",
+            "title": "Cumulative Layout Shift",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+          "hintStartsWithEnglishName": false
+        }
+      ],
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 7,
+          "targets": [
+            ".font-semibold.text-sm",
+            "#base-ui-_r_a_ > span",
+            "#base-ui-_r_c_ > span",
+            "#base-ui-_r_e_ > span"
+          ],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "performance",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-performance-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 0,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 44,
+          "right": 1116,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "الأداء",
+          "left": 432.5,
+          "right": 506.6,
+          "width": 74.1
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "vitals": [
+        {
+          "label": "ظهور المحتوى الرئيسي",
+          "description": "ظهور المحتوى الرئيسيLCP",
+          "abbr": {
+            "text": "LCP",
+            "title": "Largest Contentful Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "المدة حتى يظهر النص أو الصورة الرئيسية. الجيد أقل من 2.5 ثانية.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "الاستجابة للنقر",
+          "description": "الاستجابة للنقرINP",
+          "abbr": {
+            "text": "INP",
+            "title": "Interaction to Next Paint",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "سرعة تفاعل الصفحة مع نقرة أو ضغطة مفتاح. الجيد أقل من 200 ملّي ثانية.",
+          "hintStartsWithEnglishName": false
+        },
+        {
+          "label": "ثبات التخطيط",
+          "description": "ثبات التخطيطCLS",
+          "abbr": {
+            "text": "CLS",
+            "title": "Cumulative Layout Shift",
+            "dir": "ltr",
+            "lang": "en"
+          },
+          "hint": "مقدار تحرّك المحتوى أثناء التحميل. الجيد أقل من 0.1.",
+          "hintStartsWithEnglishName": false
+        }
+      ],
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 7,
+          "targets": [
+            ".font-semibold.text-sm",
+            "#base-ui-_r_a_ > span",
+            "#base-ui-_r_c_ > span",
+            "#base-ui-_r_e_ > span"
+          ],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "header",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-header-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 104,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 0,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 324,
+          "right": 1396,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 328,
+          "right": 435.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 7,
+          "targets": [
+            ".font-semibold.text-sm",
+            "#base-ui-_r_a_ > span",
+            "#base-ui-_r_c_ > span",
+            "#base-ui-_r_e_ > span"
+          ],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "header",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-header-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 104,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 0,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 324,
+          "right": 1396,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 328,
+          "right": 435.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 7,
+          "targets": [
+            ".font-semibold.text-sm",
+            "#base-ui-_r_a_ > span",
+            "#base-ui-_r_c_ > span",
+            "#base-ui-_r_e_ > span"
+          ],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "header",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-header-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 0,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 44,
+          "right": 1116,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 1011,
+          "right": 1112,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 7,
+          "targets": [
+            ".font-semibold.text-sm",
+            "#base-ui-_r_a_ > span",
+            "#base-ui-_r_c_ > span",
+            "#base-ui-_r_e_ > span"
+          ],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "header",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-header-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 66,
+        "fits": true,
+        "cutPx": 0
+      },
+      "previewInHeader": true,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 1072,
+        "clientWidth": 1072,
+        "scrollbarHeight": 0,
+        "maskImage": "none",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 44,
+          "right": 1116,
+          "width": 1072
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 1011,
+          "right": 1112,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 7,
+          "targets": [
+            ".font-semibold.text-sm",
+            "#base-ui-_r_a_ > span",
+            "#base-ui-_r_c_ > span",
+            "#base-ui-_r_e_ > span"
+          ],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "sidebar",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "after-sidebar-en-390-light.png",
+      "sheet": {
+        "previewItem": {
+          "text": "Preview",
+          "ariaLabel": "Preview draft website",
+          "href": "/app/projects/handbook/preview",
+          "visible": true,
+          "itemIndex": 7
+        },
+        "items": [
+          "Nibleaf",
+          "Overview",
+          "Editor",
+          "Publishes",
+          "Analytics",
+          "AI assistant",
+          "Settings",
+          "Preview",
+          "SOSite ownerowner@example.test"
+        ]
+      },
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 74,
+        "fits": false,
+        "cutPx": 30
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": true,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 16,
+          "right": 123.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "sidebar",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-sidebar-en-390-dark.png",
+      "sheet": {
+        "previewItem": {
+          "text": "Preview",
+          "ariaLabel": "Preview draft website",
+          "href": "/app/projects/handbook/preview",
+          "visible": true,
+          "itemIndex": 7
+        },
+        "items": [
+          "Nibleaf",
+          "Overview",
+          "Editor",
+          "Publishes",
+          "Analytics",
+          "AI assistant",
+          "Settings",
+          "Preview",
+          "SOSite ownerowner@example.test"
+        ]
+      },
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "Team handbook",
+        "scrollWidth": 104,
+        "clientWidth": 74,
+        "fits": false,
+        "cutPx": 30
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 0,
+        "scrollWidth": 671,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgb(0, 0, 0) 0px, rgb(0, 0, 0) calc(100% - 24px), rgba(0, 0, 0, 0) 100%)",
+        "dataOverflowLeft": false,
+        "dataOverflowRight": true,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "Overview",
+          "left": 16,
+          "right": 123.3,
+          "width": 107.3
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "sidebar",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "after-sidebar-ar-390-light.png",
+      "sheet": {
+        "previewItem": {
+          "text": "معاينة",
+          "ariaLabel": "معاينة مسودة الموقع",
+          "href": "/app/projects/handbook/preview",
+          "visible": true,
+          "itemIndex": 7
+        },
+        "items": [
+          "Nibleaf",
+          "نظرة عامة",
+          "المحرر",
+          "سجل النشر",
+          "التحليلات",
+          "مساعد الذكاء الاصطناعي",
+          "الإعدادات",
+          "معاينة",
+          "مامالكة الموقعowner@example.test"
+        ]
+      },
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 63,
+        "fits": false,
+        "cutPx": 3
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 1,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "dataOverflowLeft": true,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 272,
+          "right": 373,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "after",
+      "screen": "sidebar",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-sidebar-ar-390-dark.png",
+      "sheet": {
+        "previewItem": {
+          "text": "معاينة",
+          "ariaLabel": "معاينة مسودة الموقع",
+          "href": "/app/projects/handbook/preview",
+          "visible": true,
+          "itemIndex": 7
+        },
+        "items": [
+          "Nibleaf",
+          "نظرة عامة",
+          "المحرر",
+          "سجل النشر",
+          "التحليلات",
+          "مساعد الذكاء الاصطناعي",
+          "الإعدادات",
+          "معاينة",
+          "مامالكة الموقعowner@example.test"
+        ]
+      },
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "websiteName": {
+        "text": "دليل الفريق",
+        "scrollWidth": 66,
+        "clientWidth": 63,
+        "fits": false,
+        "cutPx": 3
+      },
+      "previewInHeader": false,
+      "tabs": {
+        "scroller": "nav > div",
+        "scrollLeft": 1,
+        "scrollWidth": 688,
+        "clientWidth": 366,
+        "scrollbarHeight": 0,
+        "maskImage": "linear-gradient(to right, rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 24px, rgb(0, 0, 0) 100%)",
+        "dataOverflowLeft": true,
+        "dataOverflowRight": false,
+        "row": {
+          "left": 12,
+          "right": 378,
+          "width": 366
+        },
+        "currentTab": {
+          "text": "نظرة عامة",
+          "left": 272,
+          "right": 373,
+          "width": 101
+        },
+        "currentTabInsideRow": true,
+        "currentTabVisibleFraction": 1
+      },
+      "axe": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "PUT /api/app/me/last-organization"
+      ],
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ]
+    }
+  ]
+}
