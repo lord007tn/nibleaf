@@ -1,7 +1,8 @@
-import { readerEmbedSource, scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
-import { parseVideoUrl, type VideoEmbed } from '@nibleaf/shared/video-embeds';
+import { pageContentFacts } from '@nibleaf/shared/publish-checks';
+import { readerEmbedSource, rewriteReaderEmbeds, scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
+import { parseVideoUrl, type VideoEmbed, videoEmbedSrc } from '@nibleaf/shared/video-embeds';
 import { expect, it } from 'vitest';
-import { importEmbed } from '../../../../../server/src/actions/importers/import-fidelity';
+import { importEmbed, normalizeImportFidelity } from '../../../../../server/src/actions/importers/import-fidelity';
 import { embedTargetFor, providerVideoOf } from './video-embed-url';
 
 const YT = 'M7lc1UVf-VE';
@@ -46,13 +47,71 @@ const importerVideo = (url: string): VideoEmbed | null => {
   return frame ? readerVideo(frame.attributes.get('src') ?? '') : null;
 };
 
+const longVideoUrl = (length: number): string => `https://www.youtube.com/watch?v=${YT}&t=90&x=`.padEnd(length, 'a');
+
+it('preserves main answers at 2,048, 2,049 and 8,192 characters across every embed path', () => {
+  const video: VideoEmbed = { provider: 'youtube', id: YT, start: 90 };
+  const player = `<iframe src="${videoEmbedSrc(video)}" title="Video"></iframe>`;
+  const rewritten = `<mdxembed provider="youtube" videoid="${YT}" start="90" title="Video"></mdxembed>`;
+  const answers = [2048, 2049, 8192].map((length) => {
+    const url = longVideoUrl(length);
+    const frame = `<iframe src="${url.replaceAll('&', '&amp;')}" title="Video"></iframe>`;
+    const code = `<code>Video: ${url.replaceAll('&', '&amp;')}</code>`;
+    return {
+      length,
+      parser: parseVideoUrl(url),
+      reader: readerVideo(url),
+      preview: providerVideoOf(url),
+      // The existing authored-tag scanner stops after 4,096 characters.
+      rewriteMatchesMain: rewriteReaderEmbeds(frame) === (length < 4096 ? rewritten : frame),
+      embedsAsLinks: pageContentFacts(frame, false).embedsAsLinks,
+      importEmbedMatchesMain: importEmbed(url, 'Video', () => undefined) === (length === 2048 ? player : code),
+      importStandaloneMatchesMain: normalizeImportFidelity(url) === (length === 2048 ? player : url),
+      importAuthoredMatchesMain: normalizeImportFidelity(frame) === (length === 2048 ? player : length < 4096 ? code : frame),
+    };
+  });
+  expect(answers).toEqual(
+    [2048, 2049, 8192].map((length) => ({
+      length,
+      parser: length === 2048 ? video : null,
+      reader: video,
+      preview: video,
+      rewriteMatchesMain: true,
+      embedsAsLinks: [],
+      importEmbedMatchesMain: true,
+      importStandaloneMatchesMain: true,
+      importAuthoredMatchesMain: true,
+    })),
+  );
+});
+
+it('validates hostile bytes beyond the clip while retaining long valid videos', () => {
+  const valid = longVideoUrl(3500);
+  for (const character of ['\n', '\t', '\r', ' ', '\\', '\u0000', '\u007f', '\u00a0']) {
+    const url = valid.slice(0, 3000) + character + valid.slice(3000);
+    const frame = `<iframe src="${url.replaceAll('&', '&amp;')}" title="Video"></iframe>`;
+    expect(parseVideoUrl(url)).toBeNull();
+    expect(readerVideo(url)).toBeNull();
+    expect(providerVideoOf(url)).toBeNull();
+    expect(rewriteReaderEmbeds(frame)).not.toContain('provider="youtube"');
+    expect(pageContentFacts(frame, false).embedsAsLinks).toHaveLength(1);
+    expect(importerVideo(url)).toBeNull();
+    expect(normalizeImportFidelity(url)).not.toContain('youtube-nocookie.com/embed/');
+    expect(normalizeImportFidelity(frame)).not.toContain('youtube-nocookie.com/embed/');
+  }
+  expect(readerVideo(valid)).toEqual({ provider: 'youtube', id: YT, start: 90 });
+  expect(providerVideoOf(valid)).toEqual({ provider: 'youtube', id: YT, start: 90 });
+});
+
 // Intentional existing valid-input policies, outside the HTTPS differential:
 // | Input                 | Shared parser | Reader | Editor | Importer |
 // | http provider URL     | accepts       | accepts| rejects| rejects  |
 // | //provider URL        | accepts       | accepts| rejects| rejects  |
 // | space-padded HTTPS   | accepts       | accepts| accepts| rejects  |
+// | HTTPS over 2,048     | rejects       | accepts| rejects| rejects  |
+// Editor previews follow the reader's length policy; editor input does not.
 // Contract unification is a separate follow-up; preserve these policies here.
-it('agrees on provider/id and rejects hostile inputs across 2,048 seeded variants', () => {
+it('agrees on provider/id across seeded variants and the long-URL policy corpus', () => {
   const video = { provider: 'youtube', id: YT };
   for (const [url, expected] of [
     [`http://www.youtube.com/watch?v=${YT}`, [video, video, null, null]],
@@ -66,7 +125,7 @@ it('agrees on provider/id and rejects hostile inputs across 2,048 seeded variant
     seed = (Math.imul(seed, 1_664_525) + 1_013_904_223) >>> 0;
     return seed % limit;
   };
-  const cases: { url: string; expected: VideoEmbed | null }[] = [];
+  const cases: { url: string; expected: VideoEmbed | null; readerExpected?: VideoEmbed }[] = [];
   for (const base of bases) {
     const parsed = new URL(base.url);
     for (let index = 0; index < 128; index++) {
@@ -104,12 +163,23 @@ it('agrees on provider/id and rejects hostile inputs across 2,048 seeded variant
       cases.push({ url: variants[variant] ?? base.url, expected: variant < 2 ? base.video : null });
     }
   }
-  expect(cases).toHaveLength(2048);
-  expect(new Set(cases.map(({ url }) => url)).size).toBe(1988);
+  // Keep the seeded corpus, then include boundary lengths with main's caller policies.
+  for (const length of [2048, 2049, 8192]) {
+    const expected: VideoEmbed = { provider: 'youtube', id: YT, start: 90 };
+    cases.push({ url: longVideoUrl(length), expected: length === 2048 ? expected : null, readerExpected: expected });
+  }
+  const long = longVideoUrl(3500);
+  for (const character of ['\n', '\t', '\r', ' ', '\\', '\u0000', '\u007f', '\u00a0']) {
+    cases.push({ url: long.slice(0, 3000) + character + long.slice(3000), expected: null });
+  }
+  expect(cases).toHaveLength(2059);
+  expect(new Set(cases.map(({ url }) => url)).size).toBe(1999);
   const failures: string[] = [];
-  for (const [index, { url, expected }] of cases.entries()) {
+  for (const [index, { url, expected, readerExpected = expected }] of cases.entries()) {
     const answers = [parseVideoUrl(url), readerVideo(url), providerVideoOf(url), editorVideo(url), importerVideo(url)];
-    if (answers.some((answer) => JSON.stringify(answer) !== JSON.stringify(expected))) failures.push(`${index}: ${JSON.stringify(url)}`);
+    const expectedAnswers = [expected, readerExpected, readerExpected, expected, expected];
+    if (answers.some((answer, caller) => JSON.stringify(answer) !== JSON.stringify(expectedAnswers[caller])))
+      failures.push(`${index}: ${JSON.stringify(url)}`);
   }
   expect(failures.length, failures.slice(0, 10).join('\n')).toBe(0);
 });

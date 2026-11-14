@@ -19,7 +19,7 @@
  * regular expressions run on one attribute value or one tag's text, with no
  * nested or overlapping quantifiers.
  */
-import { parseVideoUrl, parseWebUrl, type VideoEmbed } from './video-embeds';
+import { hasUnsafeMediaUrlCharacters, parseVideoUrl, parseWebUrl, type VideoEmbed } from './video-embeds';
 
 /** The reader element the rewrite emits. */
 export const READER_EMBED_TAG = 'mdxembed';
@@ -211,8 +211,8 @@ export type ReaderEmbedSource = { kind: 'video'; video: VideoEmbed } | { kind: '
 
 export const readerEmbedSource = (value: string | undefined): ReaderEmbedSource | null => {
   const src = clip(value, MAX_TEXT_LENGTH);
-  // Validate the original address: clipping must not hide controls or a long suffix.
-  const video = parseVideoUrl(value ?? '');
+  // Check all characters, while preserving the reader's existing clipped URL policy.
+  const video = hasUnsafeMediaUrlCharacters(value ?? '') ? null : parseVideoUrl(src);
   if (video) return { kind: 'video', video };
   if (!src) return null;
   const url = parseWebUrl(src);

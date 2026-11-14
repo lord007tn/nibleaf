@@ -57,15 +57,20 @@ const START = /^(?:([0-9]{1,2})h)?(?:([0-9]{1,4})m)?(?:([0-9]{1,6})s?)?$/;
 /** Longer input is not a video link. */
 const MAX_URL_LENGTH = 2048;
 
+/** Check the complete input independently of callers' URL length limits or clipping. */
+export const hasUnsafeMediaUrlCharacters = (input: string): boolean => {
+  for (let index = 0; index < input.length; index++) {
+    const code = input.charCodeAt(index);
+    if (code < 0x20 || code === 0x7f || code === 0x5c || (code > 0x7f && /\s/u.test(input.charAt(index)))) return true;
+  }
+  // Ordinary padding stays valid; whitespace inside the address does not.
+  return input.trim().includes(' ');
+};
+
 /** Preserve surrounding ordinary spaces, but never let URL/trim erase unsafe bytes. */
 const mediaUrlValue = (input: string): string | null => {
   const value = input.trim();
-  if (!value || value.length > MAX_URL_LENGTH) return null;
-  for (let index = 0; index < input.length; index++) {
-    const code = input.charCodeAt(index);
-    if (code < 0x20 || code === 0x7f || code === 0x5c || (code > 0x7f && /\s/u.test(input.charAt(index)))) return null;
-  }
-  return value.includes(' ') ? null : value;
+  return !value || value.length > MAX_URL_LENGTH || hasUnsafeMediaUrlCharacters(input) ? null : value;
 };
 
 const isProvider = (value: string): value is VideoProvider => Object.hasOwn(VIDEO_IDS, value);
