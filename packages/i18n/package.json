@@ -15,6 +15,7 @@
     "./site-chat": "./src/site-chat.ts",
     "./site-access": "./src/site-access.ts",
     "./site-content": "./src/site-content.ts",
+    "./site-page-actions": "./src/site-page-actions.ts",
     "./site-search": "./src/site-search.ts",
     "./marketing": "./src/marketing.ts",
     "./locale-state": "./src/runtime.ts",
