@@ -36,3 +36,15 @@ it('hands over from one titled page to the next without a stale title', async ()
   await act(async () => root?.render(<Titled key="welcome" title="Create your organization · Nibleaf" />));
   expect(document.title).toBe('Create your organization · Nibleaf');
 });
+
+// Sol review of #643: leaving the dashboard for a reader page restored the
+// dashboard's fallback over the article title the reader's head had just set.
+it('leaves a title that another page set in the meantime', async () => {
+  document.title = 'Nibleaf Cloud — documentation workspace';
+  root = createRoot(document.body.appendChild(document.createElement('div')));
+  await act(async () => root?.render(<Titled title="Overview · Documentation · Nibleaf" />));
+  // The reader's head sets its article title during the same commit.
+  document.title = 'Getting started — Documentation';
+  await act(async () => root?.render(null));
+  expect(document.title).toBe('Getting started — Documentation');
+});
