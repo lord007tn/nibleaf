@@ -630,23 +630,62 @@
   color: var(--popover-foreground);
   border: 1px solid var(--border);
 }
+/* The full-size view (PUB-012): the whole viewport, a dark scrim, the image
+ * fitted to 90% of it either way with its alt text as the caption, and an icon
+ * close button in the top end corner. A click on the scrim closes it. */
 .reader-image-dialog {
-  margin: auto;
-  max-inline-size: 95vw;
-  max-block-size: 95vh;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  background: var(--popover);
-  color: var(--popover-foreground);
-  overflow: auto;
+  inline-size: 100vw;
+  block-size: 100dvh;
+  max-inline-size: none;
+  max-block-size: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+}
+.reader-image-dialog[open] {
+  display: grid;
+  place-items: center;
 }
 .reader-image-dialog::backdrop {
-  background: rgb(0 0 0 / 0.75);
+  background: rgb(0 0 0 / 0.92);
 }
-.reader-image-dialog img {
+.reader-image-figure {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  margin: 0;
+}
+.reader-image-figure img {
   display: block;
-  max-inline-size: none;
-  margin-block-start: 1rem;
+  max-inline-size: 90vw;
+  max-block-size: 90vh;
+  inline-size: auto;
+  block-size: auto;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+.reader-image-figure figcaption {
+  max-inline-size: min(90vw, 48rem);
+  font-size: 0.875rem;
+  text-align: center;
+  color: rgb(255 255 255 / 0.85);
+}
+.reader-image-close {
+  position: fixed;
+  inset-inline-end: max(1rem, env(safe-area-inset-right));
+  inset-block-start: max(1rem, env(safe-area-inset-top));
+  display: grid;
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+}
+.reader-image-close:hover {
+  background: rgb(255 255 255 / 0.22);
 }
 .reader-steps {
   counter-reset: reader-step;
