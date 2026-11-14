@@ -487,6 +487,9 @@ Requests: ${requests.join(', ')}`);
                   summary: violation.nodes[0]?.any?.[0]?.message ?? violation.help,
                 }));
               }
+              // Errors logged during the chart navigations and the axe scan arrive after the
+              // first normalization: resolve them again so the evidence keeps their text.
+              entry.consoleErrors = await Promise.all(consoleErrors);
               evidence.push(entry);
               await context.close();
               console.log(`${name}: captured${entry.axe?.length ? ` (axe: ${entry.axe.map((v) => `${v.rule}×${v.nodes}`).join(', ')})` : ''}`);
