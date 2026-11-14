@@ -1,0 +1,538 @@
+{
+  "environment": "Isolated actual-route fixture (dashboard shell, ProjectLayout + settings and analytics routes, OrganizationLayout + members route); intercepted fictional HTTP; no server, database or real site",
+  "locales": [
+    "de",
+    "fr"
+  ],
+  "screens": [
+    "settings",
+    "analytics",
+    "people",
+    "publish"
+  ],
+  "sizes": [
+    "1440×1000",
+    "390×844 touch"
+  ],
+  "attempted": 0,
+  "axe": {
+    "version": "4.14.0",
+    "rules": [
+      "color-contrast"
+    ]
+  },
+  "leftoverRule": "Visible text (an element’s own text nodes, ≥3 letters) equal to an en catalog value ({placeholders} match anything) that is not one of the locale’s own translations (its text for a key where it differs from English). A key whose locale text copies the English one counts as untranslated. Glossary doNotTranslate values and the keys untranslated/<locale>.json lists as sameAsEnglish are excluded; en has none by definition.",
+  "doNotTranslate": 88,
+  "summary": {
+    "de": {
+      "leftovers": 0,
+      "clipped": 4,
+      "pageErrors": 0,
+      "horizontalOverflow": [],
+      "axeColorContrastNodes": 3
+    },
+    "fr": {
+      "leftovers": 0,
+      "clipped": 4,
+      "pageErrors": 0,
+      "horizontalOverflow": [],
+      "axeColorContrastNodes": 3
+    }
+  },
+  "captures": [
+    {
+      "screen": "settings",
+      "locale": "de",
+      "width": 1440,
+      "file": "settings-de-1440.png",
+      "htmlLang": "de",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "settings",
+      "locale": "de",
+      "width": 390,
+      "file": "settings-de-390.png",
+      "htmlLang": "de",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [
+        {
+          "text": "ADAcme Docs",
+          "tag": "button",
+          "role": null,
+          "truncated": null,
+          "overflowsParent": {
+            "px": 32,
+            "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
+          }
+        },
+        {
+          "text": "Team handbook",
+          "tag": "button",
+          "role": null,
+          "truncated": {
+            "scrollWidth": 104,
+            "clientWidth": 26
+          },
+          "overflowsParent": null
+        }
+      ],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "analytics",
+      "locale": "de",
+      "width": 1440,
+      "file": "analytics-de-1440.png",
+      "htmlLang": "de",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "analytics",
+      "locale": "de",
+      "width": 390,
+      "file": "analytics-de-390.png",
+      "htmlLang": "de",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [
+        {
+          "text": "ADAcme Docs",
+          "tag": "button",
+          "role": null,
+          "truncated": null,
+          "overflowsParent": {
+            "px": 32,
+            "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
+          }
+        },
+        {
+          "text": "Team handbook",
+          "tag": "button",
+          "role": null,
+          "truncated": {
+            "scrollWidth": 104,
+            "clientWidth": 26
+          },
+          "overflowsParent": null
+        }
+      ],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "people",
+      "locale": "de",
+      "width": 1440,
+      "file": "people-de-1440.png",
+      "htmlLang": "de",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "people",
+      "locale": "de",
+      "width": 390,
+      "file": "people-de-390.png",
+      "htmlLang": "de",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "publish",
+      "locale": "de",
+      "width": 1440,
+      "file": "publish-de-1440.png",
+      "htmlLang": "de",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [
+        {
+          "target": ".text-emerald-600",
+          "summary": "Element has insufficient color contrast of 3.65 (foreground color: #009966, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".gap-2\\.5.py-2.px-3:nth-child(2) > .text-amber-600.dark\\:text-amber-400.text-xs",
+          "summary": "Element has insufficient color contrast of 3.19 (foreground color: #e17100, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".gap-2\\.5.py-2.px-3:nth-child(3) > .text-amber-600.dark\\:text-amber-400.text-xs",
+          "summary": "Element has insufficient color contrast of 3.19 (foreground color: #e17100, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "axeColorContrastNodes": 3
+    },
+    {
+      "screen": "publish",
+      "locale": "de",
+      "width": 390,
+      "file": "publish-de-390.png",
+      "htmlLang": "de",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "settings",
+      "locale": "fr",
+      "width": 1440,
+      "file": "settings-fr-1440.png",
+      "htmlLang": "fr",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "settings",
+      "locale": "fr",
+      "width": 390,
+      "file": "settings-fr-390.png",
+      "htmlLang": "fr",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [
+        {
+          "text": "ADAcme Docs",
+          "tag": "button",
+          "role": null,
+          "truncated": null,
+          "overflowsParent": {
+            "px": 32,
+            "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
+          }
+        },
+        {
+          "text": "Team handbook",
+          "tag": "button",
+          "role": null,
+          "truncated": {
+            "scrollWidth": 104,
+            "clientWidth": 26
+          },
+          "overflowsParent": null
+        }
+      ],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "analytics",
+      "locale": "fr",
+      "width": 1440,
+      "file": "analytics-fr-1440.png",
+      "htmlLang": "fr",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "analytics",
+      "locale": "fr",
+      "width": 390,
+      "file": "analytics-fr-390.png",
+      "htmlLang": "fr",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [
+        {
+          "text": "ADAcme Docs",
+          "tag": "button",
+          "role": null,
+          "truncated": null,
+          "overflowsParent": {
+            "px": 32,
+            "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
+          }
+        },
+        {
+          "text": "Team handbook",
+          "tag": "button",
+          "role": null,
+          "truncated": {
+            "scrollWidth": 104,
+            "clientWidth": 26
+          },
+          "overflowsParent": null
+        }
+      ],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "people",
+      "locale": "fr",
+      "width": 1440,
+      "file": "people-fr-1440.png",
+      "htmlLang": "fr",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "people",
+      "locale": "fr",
+      "width": 390,
+      "file": "people-fr-390.png",
+      "htmlLang": "fr",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    },
+    {
+      "screen": "publish",
+      "locale": "fr",
+      "width": 1440,
+      "file": "publish-fr-1440.png",
+      "htmlLang": "fr",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [
+        {
+          "target": ".text-emerald-600",
+          "summary": "Element has insufficient color contrast of 3.65 (foreground color: #009966, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".gap-2\\.5.py-2.px-3:nth-child(2) > .text-amber-600.dark\\:text-amber-400.text-xs",
+          "summary": "Element has insufficient color contrast of 3.19 (foreground color: #e17100, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "target": ".gap-2\\.5.py-2.px-3:nth-child(3) > .text-amber-600.dark\\:text-amber-400.text-xs",
+          "summary": "Element has insufficient color contrast of 3.19 (foreground color: #e17100, background color: #ffffff, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+        }
+      ],
+      "axeColorContrastNodes": 3
+    },
+    {
+      "screen": "publish",
+      "locale": "fr",
+      "width": 390,
+      "file": "publish-fr-390.png",
+      "htmlLang": "fr",
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "consoleErrors": [],
+      "horizontalOverflow": false,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "clipped": [],
+      "leftovers": {
+        "count": 0,
+        "unique": 0,
+        "first": []
+      },
+      "unexpectedRequests": [],
+      "axeColorContrast": [],
+      "axeColorContrastNodes": 0
+    }
+  ]
+}
