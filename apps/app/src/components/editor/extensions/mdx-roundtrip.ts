@@ -131,7 +131,7 @@ export const fenceContentLines = (content: string): number => {
 
 /** A line with nothing but quote markers and whitespace (`> `, `>`, `> > `, a list
  *  item's indent), its line break included. */
-export const blankInContainers = (line: string): boolean => {
+const blankInContainers = (line: string): boolean => {
   for (const character of line)
     if (character !== '>' && character !== ' ' && character !== '\t' && character !== '\n' && character !== '\r') return false;
   return true;
