@@ -1813,6 +1813,7 @@ function EditorPage() {
               arrival={fixArrival}
               canvas={() => canvasRef.current}
               group={Boolean(selectedGroup)}
+              markdown={() => draftRef.current.draft.content}
               onBackToPublish={() => rewriteSearch((previous) => ({ ...previous, publish: true }))}
               onDismiss={() => setFixArrival(null)}
               onFocusTitle={() => {

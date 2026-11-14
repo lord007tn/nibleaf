@@ -5096,5 +5096,6 @@
   "editor_fix_explain_unreadableslug": "Verwenden Sie eine kurze Adresse aus Wörtern. Ändern Sie sie in den Seiteneinstellungen.",
   "editor_fix_explain_homeuntranslated": "Leser in einer anderen Sprache landen auf einer anderen Seite. Geben Sie dieser Seite und ihrer Übersetzung in den Seiteneinstellungen denselben Übersetzungsschlüssel.",
   "editor_fix_explain_blogrootgroup": "Leser sehen diesen Namen oben in der Seitenleiste. Benennen Sie den Bereich nach dem Inhalt seiner Seiten um, zum Beispiel Anleitungen.",
-  "editor_link_pagenotfound": "Seite nicht gefunden: {href}"
+  "editor_link_pagenotfound": "Seite nicht gefunden: {href}",
+  "editor_fix_placed": "{placed} von {total} hervorgehoben"
 }

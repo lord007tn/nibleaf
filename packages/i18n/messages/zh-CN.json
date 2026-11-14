@@ -5027,5 +5027,6 @@
   "editor_fix_explain_unreadableslug": "使用由单词组成的简短地址。请在页面设置中修改。",
   "editor_fix_explain_homeuntranslated": "其他语言的读者会进入另一个页面。请在页面设置中为此页面及其译文设置相同的翻译键。",
   "editor_fix_explain_blogrootgroup": "读者会在侧边栏顶部看到这个名称。请按其页面内容重命名该栏目，例如“指南”。",
-  "editor_link_pagenotfound": "未找到页面：{href}"
+  "editor_link_pagenotfound": "未找到页面：{href}",
+  "editor_fix_placed": "已高亮 {total} 个中的 {placed} 个"
 }

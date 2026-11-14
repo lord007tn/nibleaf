@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { editorIn, prefersReducedMotion } from './editor-sections';
 import { setFixHighlight } from './extensions/fix-highlight';
 import { requestLinkField } from './extensions/selection-shortcuts';
-import { FIX_EXPLANATIONS, FIX_LABELS, type FixMatch, findFixMatches, pageLevelFixTarget } from './publish-fix';
+import { FIX_EXPLANATIONS, FIX_LABELS, type FixMatch, findFixMatches, loadFixCounter, pageLevelFixTarget } from './publish-fix';
 
 /** A publish check's Fix the editor arrived with (`?fix=<code>&fixTarget=<evidence>`). */
 export interface PublishFixArrival {
@@ -25,8 +25,10 @@ const ARRIVAL_WAIT_FRAMES = 120;
 type BarState =
   /** Looking for the page's content: nothing is announced yet. */
   | { phase: 'pending' }
-  /** On match `index` of `total`. */
-  | { phase: 'found'; index: number; total: number }
+  /** On place `index` of the `placed` ones the editor found, of the check's `total`. */
+  | { phase: 'found'; index: number; total: number; placed: number }
+  /** The check finds `total`, none of which the editor can show. */
+  | { phase: 'unplaced'; total: number }
   /** The evidence isn't on the page (any more): most likely already fixed. */
   | { phase: 'notFound' }
   /** A page-level check, or one whose evidence couldn't be sent: the bar explains. */
@@ -64,6 +66,18 @@ const clearHighlight = (editor: Editor | null) => {
 };
 
 /**
+ * The check's count for the page as it is now, and where the editor places
+ * those findings (never more places than the check counts). Without the check's
+ * reading (it failed to load), the places found are the count.
+ */
+async function locate(editor: Editor, code: PublishCheckCode, target: string, markdown: string): Promise<{ total: number; matches: FixMatch[] }> {
+  const counter = await loadFixCounter(code, target);
+  const placed = findFixMatches(editor.state.doc, code, target, counter ?? undefined);
+  const total = counter ? counter(markdown) : placed.length;
+  return { total, matches: placed.slice(0, total) };
+}
+
+/**
  * The bar above the canvas after a publish check's Fix (P1-ED-002): it names
  * the problem and its evidence, counts the places it was found ("1 of 3"),
  * moves between them (Next), and leads back to the publish sheet.
@@ -82,6 +96,7 @@ export function PublishFixBar({
   arrival,
   group,
   canvas,
+  markdown,
   onFocusTitle,
   onOpenSettings,
   onHandled,
@@ -93,6 +108,8 @@ export function PublishFixBar({
   group: boolean;
   /** The element holding the page's editor. */
   canvas: () => HTMLElement | null;
+  /** The page's current Markdown (what is saved and published), for the check's count. */
+  markdown: () => string;
   onFocusTitle: () => void;
   /** Open Page settings with `field` focused. */
   onOpenSettings: (field: 'title' | 'slug') => void;
@@ -106,10 +123,29 @@ export function PublishFixBar({
   const barRef = useRef<HTMLElement>(null);
   const indexRef = useRef(0);
   // The latest callbacks, so arrival runs once per bar, whatever the route re-renders.
-  const callbacks = useRef({ canvas, onFocusTitle, onOpenSettings, onHandled, onDismiss });
+  const callbacks = useRef({ canvas, markdown, onFocusTitle, onOpenSettings, onHandled, onDismiss });
   useEffect(() => {
-    callbacks.current = { canvas, onFocusTitle, onOpenSettings, onHandled, onDismiss };
+    callbacks.current = { canvas, markdown, onFocusTitle, onOpenSettings, onHandled, onDismiss };
   });
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  /** Show place `index` of `matches`, of the check's `total`; or say none is on the page, or none can be shown. */
+  const show = useCallback((editor: Editor, total: number, matches: FixMatch[], index: number, openLink: boolean) => {
+    if (total === 0 || matches.length === 0) {
+      clearHighlight(editor);
+      setState(total === 0 ? { phase: 'notFound' } : { phase: 'unplaced', total });
+      return;
+    }
+    indexRef.current = index;
+    goToMatch(editor, matches, index, openLink);
+    setState({ phase: 'found', index, total, placed: matches.length });
+  }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: arrival runs once, when the bar mounts for its page.
   useEffect(() => {
@@ -124,17 +160,24 @@ export function PublishFixBar({
       };
       look();
     };
+    let cancelled = false;
     if (isLocatablePublishCheck(code) && target) {
       whenEditor((editor) => {
-        const matches = editor ? findFixMatches(editor.state.doc, code, target) : [];
-        if (editor && matches.length > 0) {
-          indexRef.current = 0;
-          goToMatch(editor, matches, 0, code === 'broken-internal-link');
-          setState({ phase: 'found', index: 0, total: matches.length });
-        } else setState({ phase: 'notFound' });
-        handled();
+        if (!editor) {
+          setState({ phase: 'notFound' });
+          handled();
+          return;
+        }
+        void locate(editor, code, target, callbacks.current.markdown()).then(({ total, matches }) => {
+          if (cancelled || editor.isDestroyed) return;
+          show(editor, total, matches, 0, code === 'broken-internal-link');
+          handled();
+        });
       });
-      return () => cancelAnimationFrame(frame);
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(frame);
+      };
     }
     setState({ phase: 'page' });
     const field = pageLevelFixTarget(code);
@@ -153,20 +196,15 @@ export function PublishFixBar({
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // Next reads the page again: a place the writer has fixed drops out, and the count follows the check.
   const next = useCallback(() => {
-    if (!target) return;
-    const editor = editorIn(canvas());
-    const matches = editor ? findFixMatches(editor.state.doc, code, target) : [];
-    if (!editor || matches.length === 0) {
-      clearHighlight(editor);
-      setState({ phase: 'notFound' });
-      return;
-    }
-    const index = (indexRef.current + 1) % matches.length;
-    indexRef.current = index;
-    goToMatch(editor, matches, index, false);
-    setState({ phase: 'found', index, total: matches.length });
-  }, [canvas, code, target]);
+    const editor = editorIn(callbacks.current.canvas());
+    if (!(target && editor)) return;
+    void locate(editor, code, target, callbacks.current.markdown()).then(({ total, matches }) => {
+      if (!mounted.current || editor.isDestroyed) return;
+      show(editor, total, matches, matches.length ? (indexRef.current + 1) % matches.length : 0, false);
+    });
+  }, [code, target, show]);
 
   const dismiss = useCallback(() => {
     const editor = editorIn(callbacks.current.canvas());
@@ -212,6 +250,12 @@ export function PublishFixBar({
               </>
             ) : null}
             {state.phase === 'found' ? <span> · {t('editor.fix.count', { current: state.index + 1, total: state.total })}</span> : null}
+            {(state.phase === 'found' && state.placed < state.total) || state.phase === 'unplaced' ? (
+              <span className="text-muted-foreground">
+                {' '}
+                · {t('editor.fix.placed', { placed: state.phase === 'found' ? state.placed : 0, total: state.total })}
+              </span>
+            ) : null}
             {state.phase === 'notFound' ? <span className="text-muted-foreground"> · {t('editor.fix.notFound')}</span> : null}
             {state.phase === 'page' ? (
               <span className="text-muted-foreground"> · {explanation ? t(explanation) : t('editor.fix.findOnPage')}</span>

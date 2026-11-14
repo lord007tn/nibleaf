@@ -1,24 +1,27 @@
 import type { MessageKey } from '@nibleaf/i18n';
-import { isLocatablePublishCheck, type PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
+import type { PageContentFacts } from '@nibleaf/shared/page-content-facts';
+import { isLocatablePublishCheck, type LOCATABLE_PUBLISH_CHECK_CODES, type PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
 import { readerEmbedSource } from '@nibleaf/shared/reader-embeds';
-import { isAllowedMediaUrl, isSiteMediaPath, videoPageUrl } from '@nibleaf/shared/video-embeds';
+import { videoPageUrl } from '@nibleaf/shared/video-embeds';
 import type { Node as PMNode } from '@tiptap/pm/model';
 
 /*
  * A publish check's Fix, on the editor's side (P1-ED-002). The publish sheet
  * opens `editor?page=<id>&fix=<code>&fixTarget=<evidence>`
- * (`@nibleaf/shared/publish-check-codes`). The evidence is what the server's
- * checks read in the page's Markdown, so it is found here in the document the
- * editor shows: by the link mark, the node or the text that carries it. There
- * is no line number to go by, and every occurrence counts (a link written
- * twice is two places to fix).
+ * (`@nibleaf/shared/publish-check-codes`). The evidence is what the check read
+ * in the page's Markdown.
  *
- * Each code is matched only where its check looks (`collectFacts` and
- * `collectEmbed` in `@nibleaf/shared/publish-checks`): never in code (a code
- * block, inline code, a fence or a code span kept in an opaque block), in an
- * HTML comment, an MDX expression or module, or inside the elements the reader
- * never renders links in (`<script>`, `<iframe>`, …). The count in the bar is
- * the number of places the check's rule finds on the page.
+ * Two questions, answered separately so they can never disagree with the check:
+ * - HOW MANY places have the problem: the check's own reading of the page
+ *   (`collectPageContentFacts`, the code the publish checks run), on the page's
+ *   current Markdown (`loadFixCounter`). The editor never re-implements the check.
+ * - WHERE each one is, in document order (`findFixMatches`): the exact
+ *   characters or node that make up the finding, and nothing around them, so
+ *   replacing or deleting the selection removes only the finding. A finding
+ *   inside a block the editor keeps whole (an MDX module, an unsupported
+ *   component, raw HTML) selects that whole block. Code is never a place.
+ * A finding that can't be placed is still counted: the bar says how many were
+ * highlighted, never a smaller total.
  */
 
 /** One place in the document that carries the evidence: a text range (a link,
@@ -72,88 +75,87 @@ export const FIX_EXPLANATIONS: Partial<Record<PublishCheckCode, MessageKey>> = {
   'blog-root-group': 'editor.fix.explain.blogRootGroup',
 };
 
-/** One thing on the page a check reads: a link, an image, an iframe, a video or a video source. */
-interface Element {
-  tag: 'a' | 'img' | 'iframe' | 'video' | 'source';
-  attrs: ReadonlyMap<string, string>;
-  /** An iframe followed by its closer (the reader shows only those). */
-  closed: boolean;
-  /** Where it starts and ends in the text it was read from (for an iframe left as text). */
-  start: number;
-  end: number;
-}
+type LocatableCode = (typeof LOCATABLE_PUBLISH_CHECK_CODES)[number];
 
-/** An attribute written as an expression (`alt={caption}`): set, with no text to read. */
-const EXPRESSION = '\u0000expression';
-
-/** Raw HTML or MDX the reader never renders as content: code, comments, and the inside of
- *  `<script>`, `<style>`, `<iframe>` and the other contexts the checks skip. Blanked, so offsets stay. */
-const NOT_CONTENT = [/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\1[ \t]*$|(?![\s\S]))/gm, /(`+)[^`]+?\1/g, /<!--[\s\S]*?(?:-->|(?![\s\S]))/g];
-/** An element whose inside the reader never renders as content; its opening tag stays (an iframe's `src`). */
-const SKIPPED_INSIDE = /(<(script|style|textarea|template|noscript|title|iframe)\b(?:[^>"']|"[^"]*"|'[^']*')*>)([\s\S]*?)(?=<\/\2\s*>)/gi;
-const blank = (text: string): string => text.replace(/[^\n]/g, ' ');
-const contentOf = (source: string): string =>
-  NOT_CONTENT.reduce((text, pattern) => text.replace(pattern, blank), source).replace(
-    SKIPPED_INSIDE,
-    (_match, opener: string, _name: string, inside: string) => opener + blank(inside),
-  );
-
-const TAG = /<([A-Za-z][\w:.-]*)((?:[^>"'{]|"[^"]*"|'[^']*'|\{[^}]*\})*)\/?>/g;
-const ATTRIBUTE = /([^\s=/>"'{]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|(\{[^}]*\})))?/g;
-const DESTINATION = /(!?)\[([^\]]*)\]\(\s*<?([^\s)>]+)/g;
-
-const decodeEntities = (value: string): string =>
-  value.replace(/&(amp|quot|#39|apos|lt|gt);/g, (_entity, name: string) =>
-    name === 'amp' ? '&' : name === 'quot' ? '"' : name === 'lt' ? '<' : name === 'gt' ? '>' : "'",
-  );
-
-const readAttributes = (text: string): Map<string, string> => {
-  const attrs = new Map<string, string>();
-  for (const [, name, double, single, expression] of text.matchAll(ATTRIBUTE)) {
-    if (!name) continue;
-    const value = expression ? EXPRESSION : decodeEntities(double ?? single ?? '');
-    attrs.set(name.toLowerCase(), value);
-  }
-  return attrs;
+/** Where each locatable check's evidence comes from in the check's reading of a page. */
+const FACT_FIELDS: Record<LocatableCode, keyof PageContentFacts> = {
+  'broken-internal-link': 'links',
+  'missing-alt': 'imagesWithoutAlt',
+  'video-poster-hidden': 'hiddenPosters',
+  'video-not-https': 'insecureVideos',
+  'embed-as-link': 'embedsAsLinks',
+  'embed-untitled': 'untitledEmbeds',
+  'embed-unclosed': 'unclosedEmbeds',
+  'stray-characters': 'strayText',
 };
 
-const ELEMENT_TAGS = new Set(['a', 'img', 'iframe', 'video', 'source']);
+type FactsModule = typeof import('@nibleaf/shared/page-content-facts');
+let factsModule: Promise<FactsModule> | undefined;
+/** The check's page reading (its Markdown and HTML parsers), loaded the first time a Fix arrives. */
+const loadFacts = () => {
+  factsModule ??= import('@nibleaf/shared/page-content-facts');
+  return factsModule;
+};
+/** How many findings of one check, with one evidence, a piece of Markdown holds, by the check's own reading. */
+export type FixCounter = (markdown: string) => number;
 
-/** The links, images, iframes and videos written in raw HTML/MDX (an opaque block, an embed's source). */
-function sourceElements(source: string): Element[] {
-  const content = contentOf(source);
-  const found: Element[] = [];
-  let videoOpen = false;
-  for (const match of content.matchAll(TAG)) {
-    const start = match.index ?? 0;
-    const end = start + match[0].length;
-    const name = (match[1] ?? '').toLowerCase();
-    const attrs = readAttributes(match[2] ?? '');
-    if (name === 'video') videoOpen = true;
-    // Components whose reader contract declares an `href` render a link too (a Card).
-    const tag = ELEMENT_TAGS.has(name) ? (name as Element['tag']) : attrs.has('href') ? 'a' : null;
-    if (!tag || (tag === 'source' && !videoOpen)) continue;
-    found.push({ tag, attrs, closed: tag !== 'iframe' || /<\/iframe\s*>/i.test(content.slice(end)), start, end });
+/** The texts read last (the whole page, and the blocks kept as source): Next asks again for the same ones. */
+const FACTS_MEMO_LIMIT = 64;
+const factsMemo = new Map<string, PageContentFacts>();
+
+/**
+ * The publish check's own count of `target` for `code`, for any Markdown: the
+ * whole page (the bar's total) or one block the editor keeps as source. Null
+ * when the check's reading can't be loaded.
+ */
+export async function loadFixCounter(code: PublishCheckCode, target: string): Promise<FixCounter | null> {
+  if (!isLocatablePublishCheck(code)) return null;
+  try {
+    const { collectPageContentFacts } = await loadFacts();
+    const field = FACT_FIELDS[code as LocatableCode];
+    return (markdown) => {
+      let facts = factsMemo.get(markdown);
+      if (!facts) {
+        facts = collectPageContentFacts(markdown);
+        if (factsMemo.size >= FACTS_MEMO_LIMIT) factsMemo.delete(factsMemo.keys().next().value ?? '');
+        factsMemo.set(markdown, facts);
+      }
+      return facts[field].filter((detail) => detail === target).length;
+    };
+  } catch {
+    return null;
   }
-  for (const match of content.matchAll(DESTINATION)) {
-    const start = match.index ?? 0;
-    const attrs = new Map(
-      match[1]
-        ? [
-            ['src', match[3] ?? ''],
-            ['alt', match[2] ?? ''],
-          ]
-        : [['href', match[3] ?? '']],
-    );
-    found.push({ tag: match[1] ? 'img' : 'a', attrs, closed: true, start, end: start + match[0].length });
-  }
-  return found;
 }
 
-const attr = (element: Element, name: string): string => {
-  const value = element.attrs.get(name) ?? '';
-  return value === EXPRESSION ? value : value.trim();
-};
+/** Blocks the editor keeps whole whose text the check never reads as content. */
+const UNREAD_OPAQUE = new Set(['Code', 'HTML comment']);
+const OPAQUE = new Set(['mdxOpaqueBlock', 'mdxOpaqueInline']);
+const IMAGES = new Set(['image', 'legacyImage']);
+const STRAY = /^(?:\/|-{3,})$/;
+const HTML_STRAY_PARAGRAPH = /<p>[ \t\n]*(\/|-{3,})[ \t\n]*<\/p>/gi;
+/** What may stand right before and after an address written in raw HTML or Markdown. */
+const OPENS_ADDRESS = new Set(['"', "'", '(', '<', '=', ' ', '\t', '\n']);
+const CLOSES_ADDRESS = new Set(['"', "'", ')', '>', ' ', '\t', '\n']);
+const WORD = /[A-Za-z0-9_-]/;
+
+/**
+ * How many times `needle` is written in `source` as a whole address (or, for a
+ * video id, a whole word). One forward pass with `indexOf`: linear in the
+ * source whatever it holds (no pattern rescans an unfinished tag).
+ */
+function countIn(source: string, needle: string, word: boolean): number {
+  if (!needle) return 0;
+  let count = 0;
+  for (let at = source.indexOf(needle); at >= 0; at = source.indexOf(needle, at + needle.length)) {
+    const before = source.charAt(at - 1);
+    const after = source.charAt(at + needle.length);
+    const ok = word
+      ? !WORD.test(before) && !WORD.test(after)
+      : (at === 0 || OPENS_ADDRESS.has(before)) && (after === '' || CLOSES_ADDRESS.has(after));
+    if (ok) count += 1;
+  }
+  return count;
+}
 
 /** The address as the checks report an iframe shown as a link: its parsed URL, or the text the reader shows. */
 const embedLinkAddress = (src: string): string | null => {
@@ -161,147 +163,156 @@ const embedLinkAddress = (src: string): string | null => {
   return source?.kind === 'link' ? source.url.href : source?.kind === 'text' ? source.text : null;
 };
 
-/** The address as the checks report a provider video: the provider's own page. */
-const videoPageAddress = (src: string): string | null => {
+/** The provider video an address plays, or null. */
+const providerVideo = (src: string) => {
   const source = readerEmbedSource(src);
-  return source?.kind === 'video' ? videoPageUrl(source.video) : null;
+  return source?.kind === 'video' ? source.video : null;
 };
 
-/** Whether `element` is a problem of check `code` with evidence `target`, by the check's own rule. */
-function elementMatches(code: PublishCheckCode, element: Element, target: string): boolean {
+/**
+ * How many findings of `code` a block the editor keeps as source holds. With
+ * the check's reading, the check counts that block (only when the block holds
+ * the evidence's text at all: a linear test first, so a long malformed block
+ * costs one scan). Without it, the written text is searched in one pass.
+ */
+function opaqueCount(code: LocatableCode, source: string, target: string, counter: FixCounter | undefined): number {
+  const needle =
+    code === 'embed-untitled' ? (providerVideo(target)?.id ?? '') : code === 'stray-characters' ? '<p' : target === '<iframe>' ? '<iframe' : target;
+  if (!(needle && source.includes(needle))) return 0;
+  if (counter) return counter(source);
+  return writtenCount(code, source, target);
+}
+
+/** The findings of `code` in raw text, without the check's reading: one forward pass. */
+function writtenCount(code: LocatableCode, source: string, target: string): number {
   switch (code) {
-    case 'broken-internal-link': {
-      const href = attr(element, 'href');
-      return element.tag === 'a' && href !== EXPRESSION && href === target;
+    case 'stray-characters':
+      return [...source.matchAll(HTML_STRAY_PARAGRAPH)].filter(([, text]) => (text?.startsWith('-') ? '---' : '/') === target).length;
+    case 'embed-untitled': {
+      // The check reports the provider's page; the page holds the player address. Both carry the video id.
+      const id = providerVideo(target)?.id ?? '';
+      return countIn(source, id, true);
     }
-    case 'missing-alt':
-      return element.tag === 'img' && !attr(element, 'alt') && attr(element, 'src') === target;
-    case 'video-poster-hidden': {
-      const poster = attr(element, 'poster');
-      return element.tag === 'video' && poster === target && !isSiteMediaPath(poster);
-    }
-    case 'video-not-https': {
-      const src = attr(element, 'src');
-      return (element.tag === 'video' || element.tag === 'source') && src === target && !isAllowedMediaUrl(src);
-    }
-    case 'embed-as-link':
-      return element.tag === 'iframe' && element.closed && embedLinkAddress(attr(element, 'src')) === target;
-    case 'embed-untitled':
-      return element.tag === 'iframe' && element.closed && !attr(element, 'title') && videoPageAddress(attr(element, 'src')) === target;
     case 'embed-unclosed':
-      return element.tag === 'iframe' && !element.closed && (attr(element, 'src') || '<iframe>') === target;
+      return target === '<iframe>' ? countIn(source, '<iframe', true) : countIn(source, target, false);
     default:
-      return false;
+      return countIn(source, target, false);
   }
 }
 
-/** Opaque ranges the checks never read: code, comments, MDX expressions and modules. */
-const SILENT_OPAQUE = new Set(['Code', 'HTML comment', 'Expression', 'MDX module']);
-const OPAQUE = new Set(['mdxOpaqueBlock', 'mdxOpaqueInline']);
-const IMAGES = new Set(['image', 'legacyImage']);
-const STRAY = /^(?:\/|-{3,})$/;
-const HTML_STRAY_PARAGRAPH = /<p>\s*(\/|-{3,})\s*<\/p>/gi;
+/** Whether a node the editor shows as one block (an image, the Video/Embed block, a Card) is a finding of `code`. */
+function nodeIsFinding(code: LocatableCode, node: PMNode, target: string): boolean {
+  const text = (name: string) => (typeof node.attrs[name] === 'string' ? (node.attrs[name] as string).trim() : '');
+  if (IMAGES.has(node.type.name)) return code === 'missing-alt' && text('src') === target && !text('alt');
+  if (node.type.name === 'videoEmbed') {
+    const src = text('src');
+    const iframe = text('kind') !== 'video';
+    switch (code) {
+      case 'video-poster-hidden':
+      case 'video-not-https':
+        return !iframe && (src === target || countIn(text('source'), target, false) > 0);
+      case 'embed-as-link':
+        return iframe && !providerVideo(src) && embedLinkAddress(src) === target;
+      case 'embed-untitled': {
+        const video = providerVideo(src);
+        return iframe && !text('title') && video !== null && videoPageUrl(video) === target;
+      }
+      default:
+        return false;
+    }
+  }
+  // A component that renders a link (a Card's `href`).
+  return code === 'broken-internal-link' && text('href') === target;
+}
 
 const isCode = (node: PMNode): boolean => node.marks.some((mark) => mark.type.name === 'code');
-const linkHref = (node: PMNode): string | null => {
-  const link = node.marks.find((mark) => mark.type.name === 'link');
-  return typeof link?.attrs.href === 'string' ? link.attrs.href : null;
-};
-const strayEvidence = (text: string): string => (text.startsWith('-') ? '---' : '/');
 
-/** A paragraph's text as the check reads it: its text, without inline code or anything opaque. */
-const paragraphText = (paragraph: PMNode): string => {
+/** The stray characters of a paragraph, as positions: only them, never the inline code or text beside them. */
+function strayRange(paragraph: PMNode, pos: number, target: string): FixMatch | null {
   let text = '';
-  paragraph.descendants((child) => {
+  paragraph.forEach((child) => {
     if (child.isText && !isCode(child)) text += child.text ?? '';
-    return !OPAQUE.has(child.type.name);
   });
-  return text;
-};
-
-/** The elements a node carries: an image, the Video/Embed block, a component's `href`, an opaque block's source. */
-function nodeElements(node: PMNode): Element[] {
-  const attrs = node.attrs as Record<string, unknown>;
-  const text = (name: string) => (typeof attrs[name] === 'string' ? (attrs[name] as string) : '');
-  const at = { closed: true, start: 0, end: 0 };
-  if (IMAGES.has(node.type.name))
-    return [
-      {
-        tag: 'img',
-        attrs: new Map([
-          ['src', text('src')],
-          ['alt', text('alt')],
-        ]),
-        ...at,
-      },
-    ];
-  if (node.type.name === 'videoEmbed') {
-    // The block's own values (the writer may have changed them), and what else its source holds (a poster, sources).
-    const kind = text('kind') === 'video' ? 'video' : 'iframe';
-    const authored = sourceElements(text('source'));
-    const media = authored.find((element) => element.tag === kind);
-    const values = new Map(media?.attrs ?? []);
-    values.set('src', text('src'));
-    if (kind === 'iframe') values.set('title', text('title'));
-    return [{ tag: kind, attrs: values, ...at }, ...authored.filter((element) => element.tag === 'source')];
-  }
-  if (OPAQUE.has(node.type.name)) return SILENT_OPAQUE.has(text('name')) ? [] : sourceElements(text('source'));
-  const href = text('href');
-  return href ? [{ tag: 'a', attrs: new Map([['href', href]]), ...at }] : [];
+  const stray = text.trim();
+  if (!STRAY.test(stray) || (stray.startsWith('-') ? '---' : '/') !== target) return null;
+  let found = null as FixMatch | null;
+  paragraph.forEach((child, offset) => {
+    if (found || !child.isText || isCode(child)) return;
+    const value = child.text ?? '';
+    const start = value.search(/[^\s]/);
+    if (start < 0) return;
+    let end = start + 1;
+    while (stray.startsWith('-') && value.charAt(end) === '-') end += 1;
+    const from = pos + 1 + offset + start;
+    found = { from, to: from + end - start, node: false };
+  });
+  return found;
 }
 
 /**
- * Every place in `doc` that carries `target`, the evidence of check `code`, in
- * document order. One walk over the document (linear in its size): it runs
- * once on arrival and again on Next, never per keystroke.
+ * Where each finding of `code` with evidence `target` is in `doc`, in document
+ * order: the exact range of each (a link's text, the stray characters, an
+ * unclosed iframe's opening tag) or its node (an image, an embed, a component,
+ * a block kept as source, once per finding the check counts in it). One walk
+ * over the document, linear in its size; `counter` (the check's own count) is
+ * asked only about blocks that hold the evidence's text.
  */
-export function findFixMatches(doc: PMNode, code: PublishCheckCode, rawTarget: string): FixMatch[] {
+export function findFixMatches(doc: PMNode, code: PublishCheckCode, rawTarget: string, counter?: FixCounter): FixMatch[] {
   const target = rawTarget.trim();
   if (!target || !isLocatablePublishCheck(code)) return [];
+  const locatable = code as LocatableCode;
   const matches: FixMatch[] = [];
-  // A link written with formatting inside spans several text nodes: one range.
-  const addText = (from: number, to: number) => {
-    const last = matches.at(-1);
-    if (last && !last.node && last.to === from) last.to = to;
-    else matches.push({ from, to, node: false });
-  };
   doc.descendants((node, pos) => {
-    // A code block is code: nothing in it renders as a link, an image, an embed or stray text.
+    // Code is never a place: nothing in it renders as a link, an image, an embed or stray text.
     if (node.type.name === 'codeBlock') return false;
     if (node.isText) {
       if (isCode(node)) return false;
-      const href = linkHref(node);
-      if (code === 'broken-internal-link' && href !== null && href.trim() === target) addText(pos, pos + node.nodeSize);
-      // An iframe without its closer can reach the editor as text.
-      if (code === 'embed-unclosed' && node.text?.includes('<iframe')) {
-        for (const element of sourceElements(node.text)) {
-          if (elementMatches(code, element, target)) addText(pos + element.start, pos + element.end);
+      const link = node.marks.find((mark) => mark.type.name === 'link');
+      if (locatable === 'broken-internal-link' && typeof link?.attrs.href === 'string' && link.attrs.href.trim() === target) {
+        // One link written with formatting inside spans several text nodes with the same link mark.
+        const last = matches.at(-1);
+        if (last && !last.node && last.to === pos) last.to = pos + node.nodeSize;
+        else matches.push({ from: pos, to: pos + node.nodeSize, node: false });
+      }
+      // An iframe without its closer can reach the editor as text: its opening tag.
+      if (locatable === 'embed-unclosed') {
+        const value = node.text ?? '';
+        // Each opening tag ends at its `>` or where the next one starts: every character is read once.
+        let close = value.indexOf('>');
+        for (let at = value.indexOf('<iframe'); at >= 0; ) {
+          const next = value.indexOf('<iframe', at + 1);
+          // The first `>` after this tag's start; it only ever moves forward.
+          while (close >= 0 && close < at) close = value.indexOf('>', close + 1);
+          const end = close >= 0 && (next < 0 || close < next) ? close + 1 : next < 0 ? value.length : next;
+          const tag = value.slice(at, end);
+          if (target === '<iframe>' ? !/\ssrc\s*=/.test(tag) : countIn(tag, target, false) > 0) {
+            matches.push({ from: pos + at, to: pos + end, node: false });
+          }
+          at = next;
         }
       }
       return false;
     }
-    if (code === 'stray-characters') {
-      // Without GFM (as the check parses) a table is one paragraph of pipes, never a stray character.
-      if (node.type.name === 'table') return false;
-      if (node.type.name === 'paragraph') {
-        const text = paragraphText(node).trim();
-        if (STRAY.test(text) && strayEvidence(text) === target) matches.push({ from: pos + 1, to: pos + node.nodeSize - 1, node: false });
-        return false;
+    if (OPAQUE.has(node.type.name)) {
+      if (!UNREAD_OPAQUE.has(String(node.attrs.name ?? ''))) {
+        const count = opaqueCount(locatable, String(node.attrs.source ?? ''), target, counter);
+        for (let index = 0; index < count; index += 1) matches.push({ from: pos, to: pos + node.nodeSize, node: true });
       }
-      if (OPAQUE.has(node.type.name) && !SILENT_OPAQUE.has(String(node.attrs.name ?? ''))) {
-        const html = contentOf(String(node.attrs.source ?? ''));
-        if ([...html.matchAll(HTML_STRAY_PARAGRAPH)].some(([, text]) => strayEvidence(text ?? '') === target)) {
-          matches.push({ from: pos, to: pos + node.nodeSize, node: true });
-        }
-        return false;
-      }
-      return true;
+      return false;
     }
-    if (nodeElements(node).some((element) => elementMatches(code, element, target))) {
+    if (locatable === 'stray-characters') {
+      // Without GFM (as the check parses) a table is never a paragraph of stray characters.
+      if (node.type.name === 'table') return false;
+      if (node.type.name !== 'paragraph') return true;
+      const stray = strayRange(node, pos, target);
+      if (stray) matches.push(stray);
+      return false;
+    }
+    if (nodeIsFinding(locatable, node, target)) {
       matches.push({ from: pos, to: pos + node.nodeSize, node: true });
       return false;
     }
-    return !OPAQUE.has(node.type.name);
+    return true;
   });
   return matches;
 }

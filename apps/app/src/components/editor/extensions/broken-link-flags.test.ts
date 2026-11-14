@@ -82,6 +82,30 @@ describe('broken-link flags follow the link', () => {
     expect(flags()).toEqual(['/elsewhere']);
   });
 
+  it('an edit across many paragraphs (read again in one pass) keeps every flag right', () => {
+    const paragraphs = Array.from({ length: 30 }, (_, index) =>
+      index % 2 ? `<p><a href="/missing-${index}">gone ${index}</a></p>` : `<p><a href="/guide">guide ${index}</a></p>`,
+    ).join('');
+    const { editor, flags } = open(paragraphs);
+    const broken = Array.from({ length: 15 }, (_, index) => `/missing-${index * 2 + 1}`);
+    expect(flags()).toEqual(broken);
+    const { bold, link } = editor.schema.marks;
+    if (!(bold && link)) throw new Error('No marks');
+    // One bold toggle over the page: every flag stays.
+    editor.view.dispatch(editor.state.tr.addMark(0, editor.state.doc.content.size, bold.create()));
+    expect(flags()).toEqual(broken);
+    // One transaction pointing every broken link at a page that exists: every flag goes.
+    const tr = editor.state.tr;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.marks.some((mark) => String(mark.attrs.href).startsWith('/missing')))
+        tr.addMark(pos, pos + node.nodeSize, link.create({ href: '/guide' }));
+    });
+    editor.view.dispatch(tr);
+    expect(flags()).toEqual([]);
+    editor.commands.undo();
+    expect(flags()).toEqual(broken);
+  });
+
   it('a link changed in a paragraph far from the edit’s other steps is still looked at', () => {
     const paragraphs = Array.from({ length: 30 }, (_, index) => `<p>Paragraph ${index}.</p>`).join('');
     const { editor, flags, select } = open(`<p><a href="/configuration">first</a></p>${paragraphs}<p><a href="/guide">last</a></p>`);

@@ -4933,6 +4933,7 @@ export const MESSAGE_IDS = {
   'editor.fix.explain.homeUntranslated': 'editor_fix_explain_homeuntranslated',
   'editor.fix.explain.blogRootGroup': 'editor_fix_explain_blogrootgroup',
   'editor.link.pageNotFound': 'editor_link_pagenotfound',
+  'editor.fix.placed': 'editor_fix_placed',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

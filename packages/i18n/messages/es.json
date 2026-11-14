@@ -5096,5 +5096,6 @@
   "editor_fix_explain_unreadableslug": "Usa una dirección corta formada por palabras. Cámbiala en Ajustes de la página.",
   "editor_fix_explain_homeuntranslated": "Los lectores de otro idioma llegan a una página distinta. Da a esta página y a su traducción la misma clave de traducción en Ajustes de la página.",
   "editor_fix_explain_blogrootgroup": "Los lectores ven este nombre en la parte superior de la barra lateral. Cambia el nombre de la sección por lo que contienen sus páginas, como Guías.",
-  "editor_link_pagenotfound": "Página no encontrada: {href}"
+  "editor_link_pagenotfound": "Página no encontrada: {href}",
+  "editor_fix_placed": "Resaltados {placed} de {total}"
 }

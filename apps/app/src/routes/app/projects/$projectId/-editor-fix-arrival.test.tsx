@@ -13,9 +13,9 @@
  *   decorations only (never in the saved Markdown).
  */
 
+// The publish checks' own reading of a page: the oracle for every count (and loaded here, so the bar's lazy import is ready).
+import { collectPageContentFacts, type PageContentFacts } from '@nibleaf/shared/page-content-facts';
 import type { PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
-// The publish checks' own reading of a page (server-side; here only as the oracle for the count).
-import { type PageContentFacts, pageContentFacts } from '@nibleaf/shared/publish-checks';
 import type { Editor as TiptapCore } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { act, type ComponentType, type ReactNode } from 'react';
@@ -340,7 +340,7 @@ const FACTS: Record<string, keyof PageContentFacts> = {
 };
 /** How many places the publish check itself finds `target` on a page with `content`. */
 const checkCount = (code: PublishCheckCode, content: string, target: string): number =>
-  pageContentFacts(content, false)[FACTS[code] as keyof PageContentFacts].filter((detail) => detail === target).length;
+  collectPageContentFacts(content)[FACTS[code] as keyof PageContentFacts].filter((detail) => detail === target).length;
 
 /**
  * The evidence where the check doesn't look (a code block, inline code), then
@@ -399,6 +399,108 @@ const IN_CODE_AND_PROSE: Array<{ code: PublishCheckCode; content: string; target
     content: '```\n/\n```\n\n`/`\n\n## /\n\nIntro.\n\n/\n\nThe end.',
     target: '/',
     first: '/',
+  },
+];
+
+const KEEP_AROUND = (block: string) => `Before \`KEEP\`.\n\n${block}\n\nAfter \`KEEP\`.`;
+const WITHOUT_BLOCK = 'Before `KEEP`.\n\nAfter `KEEP`.';
+
+/** Each check's finding beside inline code, and the page once the selection is deleted: only the finding is gone. */
+const DELETE_ONLY_THE_FINDING: Array<{ name: string; code: PublishCheckCode; content: string; target: string; after: string }> = [
+  {
+    name: 'broken-internal-link (a link between inline code)',
+    code: 'broken-internal-link',
+    content: 'Start `KEEP` [the configuration](/configuration) `KEEP` end.',
+    target: '/configuration',
+    after: 'Start `KEEP`  `KEEP` end.',
+  },
+  {
+    name: 'stray-characters (a slash after inline code)',
+    code: 'stray-characters',
+    content: 'Before.\n\n`KEEP` /\n\nAfter.',
+    target: '/',
+    after: 'Before.\n\n`KEEP` \n\nAfter.',
+  },
+  {
+    name: 'missing-alt',
+    code: 'missing-alt',
+    content: KEEP_AROUND('![](/images/diagram.png)'),
+    target: '/images/diagram.png',
+    after: WITHOUT_BLOCK,
+  },
+  {
+    name: 'video-poster-hidden',
+    code: 'video-poster-hidden',
+    content: KEEP_AROUND('<video controls src="/demo.mp4" poster="https://cdn.example.com/poster.png"></video>'),
+    target: 'https://cdn.example.com/poster.png',
+    after: WITHOUT_BLOCK,
+  },
+  {
+    name: 'video-not-https',
+    code: 'video-not-https',
+    content: KEEP_AROUND('<video controls src="http://cdn.example.com/demo.mp4"></video>'),
+    target: 'http://cdn.example.com/demo.mp4',
+    after: WITHOUT_BLOCK,
+  },
+  {
+    name: 'embed-as-link',
+    code: 'embed-as-link',
+    content: KEEP_AROUND('<iframe src="https://maps.example.com/embed?q=1" title="Map"></iframe>'),
+    target: 'https://maps.example.com/embed?q=1',
+    after: WITHOUT_BLOCK,
+  },
+  {
+    name: 'embed-untitled',
+    code: 'embed-untitled',
+    content: KEEP_AROUND(`<iframe src="${VIDEO}"></iframe>`),
+    target: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    after: WITHOUT_BLOCK,
+  },
+  {
+    name: 'embed-unclosed',
+    code: 'embed-unclosed',
+    content: KEEP_AROUND('<iframe src="https://maps.example.com/embed?q=2">'),
+    target: 'https://maps.example.com/embed?q=2',
+    after: WITHOUT_BLOCK,
+  },
+  {
+    name: 'broken-internal-link in an MDX module (the block is the finding)',
+    code: 'broken-internal-link',
+    content: KEEP_AROUND('export const example = "[broken](/configuration)";'),
+    target: '/configuration',
+    after: WITHOUT_BLOCK,
+  },
+];
+
+/** Findings in blocks the editor keeps as source, alone and mixed with prose: the check's count, and the places Next visits. */
+const COUNTED_BY_THE_CHECK: Array<{ name: string; code: PublishCheckCode; content: string; target: string; places: string[] }> = [
+  {
+    name: 'a link in an MDX module, then in prose',
+    code: 'broken-internal-link',
+    content: 'export const example = "[broken](/configuration)";\n\n[broken](/configuration)',
+    target: '/configuration',
+    places: ['node:mdxOpaqueBlock', 'broken'],
+  },
+  {
+    name: 'two images in one unsupported component',
+    code: 'missing-alt',
+    content: 'Intro.\n\n<Unknown>\n\n![](/images/a.png)\n\n![](/images/a.png)\n\n</Unknown>',
+    target: '/images/a.png',
+    places: ['node:mdxOpaqueBlock', 'node:mdxOpaqueBlock'],
+  },
+  {
+    name: 'prose, a component whose href is not a link, prose',
+    code: 'broken-internal-link',
+    content: 'Read [first](/configuration).\n\n<Unknown href="/configuration">Not a link</Unknown>\n\nThen [second](/configuration).',
+    target: '/configuration',
+    places: ['first', 'second'],
+  },
+  {
+    name: 'prose, then a link the editor shows as code alone',
+    code: 'broken-internal-link',
+    content: 'Read [first](/configuration).\n\nRun [`setup`](/configuration) first.',
+    target: '/configuration',
+    places: ['first'],
   },
 ];
 
@@ -462,6 +564,57 @@ describe('P1-ED-002: a publish check’s Fix lands on the problem', () => {
     },
     ROUTE_TEST_TIMEOUT,
   );
+
+  it.each(DELETE_ONLY_THE_FINDING)(
+    '$name: deleting the selection removes the finding and nothing else',
+    async ({ code, content, target, after }) => {
+      expect(checkCount(code, content, target)).toBe(1);
+      await open(content, { fix: code, fixTarget: target });
+      expect(status()).toContain(count(1, 1));
+      const current = editor();
+      if (!current) throw new Error('No editor');
+      await act(async () => {
+        current.commands.deleteSelection();
+      });
+      // Every other byte of the page is as it was.
+      expect(getMarkdown(current)).toBe(after);
+    },
+    ROUTE_TEST_TIMEOUT,
+  );
+
+  it.each(COUNTED_BY_THE_CHECK)(
+    '$name: the bar counts what the check counts, and Next visits every place it can show',
+    async ({ code, content, target, places }) => {
+      const total = checkCount(code, content, target);
+      await open(content, { fix: code, fixTarget: target });
+      expect(status()).toContain(count(1, total));
+      const visited = [selected()];
+      for (let index = 1; index < places.length; index += 1) {
+        const next = button('editor.fix.next');
+        await act(async () => next?.click());
+        await advance(0);
+        expect(status()).toContain(count(index + 1, total));
+        visited.push(selected());
+      }
+      expect(visited).toEqual(places);
+      if (places.length < total) expect(status()).toContain(`editor.fix.placed ${JSON.stringify({ placed: places.length, total })}`);
+      else expect(status()).not.toContain('editor.fix.placed');
+      await advance(20_000);
+      expect(mocks.update).not.toHaveBeenCalled();
+    },
+    ROUTE_TEST_TIMEOUT,
+  );
+
+  it('a finding the editor cannot show is still counted, and the bar says so', async () => {
+    // The editor shows a link whose label is inline code as code alone (a known round-trip loss on main): the check still finds the link.
+    const content = 'Run [`setup`](/configuration) first.';
+    expect(checkCount('broken-internal-link', content, '/configuration')).toBe(1);
+    await open(content, { fix: 'broken-internal-link', fixTarget: '/configuration' });
+    expect(status()).toContain(`editor.fix.placed ${JSON.stringify({ placed: 0, total: 1 })}`);
+    expect(status()).not.toContain('editor.fix.notFound');
+    expect(container.querySelector('.pl-fix-match')).toBeNull();
+    expect(droppedFix()?.replace).toBe(true);
+  });
 
   it('a broken link on a Card focuses the Card’s own address field', async () => {
     const content = 'Intro.\n\n<CardGroup>\n  <Card title="Configure" href="/configuration">\n    Set it up.\n  </Card>\n</CardGroup>';

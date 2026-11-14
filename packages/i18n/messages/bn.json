@@ -5030,5 +5030,6 @@
   "editor_fix_explain_unreadableslug": "শব্দ দিয়ে তৈরি একটি ছোট ঠিকানা ব্যবহার করুন। পৃষ্ঠার সেটিংসে এটি বদলান।",
   "editor_fix_explain_homeuntranslated": "অন্য ভাষার পাঠকেরা একটি ভিন্ন পৃষ্ঠায় পৌঁছান। পৃষ্ঠার সেটিংসে এই পৃষ্ঠা ও এর অনুবাদকে একই অনুবাদ কী দিন।",
   "editor_fix_explain_blogrootgroup": "পাঠকেরা সাইডবারের একেবারে ওপরে এই নামটি দেখেন। বিভাগটির নাম এর পৃষ্ঠাগুলোর বিষয় অনুযায়ী রাখুন, যেমন গাইড।",
-  "editor_link_pagenotfound": "পৃষ্ঠা পাওয়া যায়নি: {href}"
+  "editor_link_pagenotfound": "পৃষ্ঠা পাওয়া যায়নি: {href}",
+  "editor_fix_placed": "{total}টির মধ্যে {placed}টি চিহ্নিত"
 }

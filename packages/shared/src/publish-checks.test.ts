@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { documentationComponentContractEntries } from './documentation-component-contract';
+import { offsetInRanges } from './page-content-facts';
 import {
   buildInboundPageLinkMap,
   buildInboundPageLinkMapAsync,
   findBrokenInternalLinks,
   findInboundPageLinks,
-  offsetInRanges,
   pageContentFacts,
   snapshotContentFacts,
 } from './publish-checks';

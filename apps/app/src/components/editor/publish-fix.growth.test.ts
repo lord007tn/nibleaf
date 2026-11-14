@@ -4,8 +4,8 @@ import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { EditorLinks, EditorLinkTarget } from './editor-links';
 import { brokenLinkDecorations, updateBrokenLinks } from './extensions/broken-link-flags';
-import { findFixMatches } from './publish-fix';
-import { buildEditorExtensions } from './tiptap-editor';
+import { findFixMatches, loadFixCounter } from './publish-fix';
+import { buildEditorExtensions, seedMarkdown } from './tiptap-editor';
 
 /** `n` paragraphs with a link to a page that exists; every paragraph, or only the first two, also links to a missing page. */
 const page = (n: number, brokenEverywhere: boolean) =>
@@ -52,6 +52,42 @@ describe.runIf(growthTestsEnabled)('Publish check Fix and broken-link flag growt
 
   it('a keystroke on a page full of broken links stays linear in the flags it moves', () => {
     const [smallMs, largeMs] = growthMs(update, keystroke(open(page(300, true))), keystroke(open(page(1200, true))), { budgetMs: 10_000 });
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+  });
+
+  it('one bold toggle across a page of broken links stays linear (a mark step per link moves nothing)', () => {
+    const bold = (state: Editor['state']) => {
+      const mark = state.schema.marks.bold;
+      if (!mark) throw new Error('No bold mark');
+      return { previous: brokenLinkDecorations(state.doc, resolve, 'en'), tr: state.tr.addMark(0, state.doc.content.size, mark.create()) };
+    };
+    const [smallMs, largeMs] = growthMs(update, bold(open(page(300, true))), bold(open(page(1200, true))), { budgetMs: 10_000 });
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+  });
+
+  it('a long malformed block kept as source is read once, with the check’s own count', async () => {
+    const counter = await loadFixCounter('broken-internal-link', '/configuration');
+    if (!counter) throw new Error('The check could not be loaded');
+    /** A broken link, then an unsupported component full of unfinished iframe tags. */
+    const malformed = (n: number) => {
+      const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions({ getLinks: () => links }) });
+      editors.push(editor);
+      seedMarkdown(
+        editor,
+        `Read [the configuration](/configuration).
+
+<Unknown>${'<iframe {'.repeat(n)}</Unknown>`,
+      );
+      return editor.state;
+    };
+    const [smallMs, largeMs] = growthMs(
+      (state) => findFixMatches(state.doc, 'broken-internal-link', '/configuration', counter),
+      malformed(500),
+      malformed(2000),
+      {
+        budgetMs: 10_000,
+      },
+    );
     expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
   });
 });

@@ -5031,5 +5031,6 @@
   "editor_fix_explain_unreadableslug": "शब्दों से बना छोटा पता इस्तेमाल करें। इसे पेज सेटिंग्स में बदलें।",
   "editor_fix_explain_homeuntranslated": "दूसरी भाषा के पाठक किसी अलग पेज पर पहुँचते हैं। पेज सेटिंग्स में इस पेज और इसके अनुवाद को एक ही अनुवाद कुंजी दें।",
   "editor_fix_explain_blogrootgroup": "पाठक साइडबार के सबसे ऊपर यह नाम देखते हैं। अनुभाग का नाम उसके पेजों के अनुसार रखें, जैसे गाइड।",
-  "editor_link_pagenotfound": "पेज नहीं मिला: {href}"
+  "editor_link_pagenotfound": "पेज नहीं मिला: {href}",
+  "editor_fix_placed": "{total} में से {placed} हाइलाइट किए गए"
 }

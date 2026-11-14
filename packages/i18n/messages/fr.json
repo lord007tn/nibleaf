@@ -5096,5 +5096,6 @@
   "editor_fix_explain_unreadableslug": "Utilisez une adresse courte faite de mots. Modifiez-la dans les Paramètres de la page.",
   "editor_fix_explain_homeuntranslated": "Les lecteurs d’une autre langue arrivent sur une autre page. Donnez à cette page et à sa traduction la même clé de traduction dans les Paramètres de la page.",
   "editor_fix_explain_blogrootgroup": "Les lecteurs voient ce nom en haut de la barre latérale. Renommez la section d’après le contenu de ses pages, par exemple Guides.",
-  "editor_link_pagenotfound": "Page introuvable : {href}"
+  "editor_link_pagenotfound": "Page introuvable : {href}",
+  "editor_fix_placed": "{placed} sur {total} mis en évidence"
 }
