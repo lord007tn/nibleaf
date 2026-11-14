@@ -4,8 +4,6 @@
  * activity line, the Publishes page's draft row, and Recent pages' status.
  * Pure logic; tested in `pending.test.ts`.
  */
-import { pageNeverPublished, pagePublishState } from '@/hooks/api/deployment-cache';
-
 interface PendingLike {
   hasBaseline: boolean;
   lastVersion: number | null;
@@ -38,9 +36,16 @@ export const hasUnpublishedChanges = (state: PendingState): state is Extract<Pen
 
 export type PageLiveStatus = 'draft' | 'changed' | 'live';
 
-/** A page's status against the live site: never published, changed since, or live as drafted. Unknown: undefined. */
+/**
+ * A page's status against the live site: never published (the site was never
+ * published, or the check lists the page as new), changed since the live
+ * version, or live as drafted. Unknown: undefined. The same rules as the
+ * editor's `pagePublishState` / `pageNeverPublished` (hooks/api/deployment-cache).
+ */
 export function pageLiveStatus(pageId: string, pending: PendingLike | undefined): PageLiveStatus | undefined {
   if (!pending) return undefined;
-  if (pageNeverPublished(pageId, pending)) return 'draft';
-  return pagePublishState(pageId, pending) === 'unpublished' ? 'changed' : 'live';
+  if (!pending.hasBaseline) return 'draft';
+  const change = pending.changes.find((candidate) => candidate.id === pageId);
+  if (!change) return 'live';
+  return change.status === 'added' ? 'draft' : 'changed';
 }

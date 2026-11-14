@@ -12,7 +12,7 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';
-import { type CSSProperties, Fragment, type ReactNode, useEffect, useId, useMemo, useState } from 'react';
+import { type CSSProperties, Fragment, type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { OrganizationSwitcher } from '@/components/app/org-switcher/organization-switcher';
@@ -48,8 +48,13 @@ export function PublishControl({
   compact?: boolean;
 }) {
   const [publishOpen, setPublishOpen] = useState(initialPublishOpen);
+  // Only a request made while this control is mounted opens the sheet: one
+  // made before it remounted (a page visited in between) is not replayed.
+  const handledRequest = useRef(openRequest);
   useEffect(() => {
-    if (openRequest > 0) setPublishOpen(true);
+    if (openRequest <= handledRequest.current) return;
+    handledRequest.current = openRequest;
+    setPublishOpen(true);
   }, [openRequest]);
   const [deployOpen, setDeployOpen] = useState(false);
   const [publishedAttribution, setPublishedAttribution] = useState<FirstPublishAttribution | null>(null);
