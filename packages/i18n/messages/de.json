@@ -838,6 +838,8 @@
   "settings_unsaved_description": "Ihre Änderungen wurden nicht gespeichert.",
   "settings_unsaved_keep": "Weiter bearbeiten",
   "settings_appearance_location": "Auch unter Website-Einstellungen → Erscheinungsbild und im Einstellungsbereich des Editors verfügbar.",
+  "settings_appearance_summary": "Wie Ihre veröffentlichte Website aussieht: Marke, Theme, Schrift, Kopfzeile, Fußzeile und Banner.",
+  "settings_appearance_sections": "Bereiche der Darstellung",
   "settings_domain_guide_step1": "Öffnen Sie die DNS-Einstellungen Ihres Domainanbieters.",
   "settings_domain_guide_step2": "Tragen Sie Typ, Name/Host und Wert/Ziel für jeden Eintrag ein. CNAME verweist auf diese Website; TXT bestätigt Ihr Eigentum. Meist wird der kurze Name benötigt; verwenden Sie den vollständigen Namen darunter nur auf Anfrage.",
   "settings_domain_guide_step3": "Speichern Sie und prüfen Sie erneut.",

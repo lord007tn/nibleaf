@@ -10,6 +10,7 @@
  *   preview-manuscript  theme preset "manuscript"
  *   preview-signal      theme preset "signal"
  *   preview-legacy      no `theme` config (legacy palette branch)
+ *   preview-answers     "harbor" with Ask AI available (the panel opens; no answer is requested)
  *   preview-private     "harbor", private, read by a signed-in reader
  *
  * Endpoints (mirroring apps/server/src/modules/public/sites/handlers.ts):
@@ -1108,6 +1109,7 @@ const PROJECTS = {
   'preview-manuscript': { preset: 'manuscript' },
   'preview-signal': { preset: 'signal' },
   'preview-legacy': { preset: null },
+  'preview-answers': { preset: 'harbor', answers: true },
   // A private site whose reader is signed in; access can be revoked mid-session.
   'preview-private': { preset: 'harbor', visibility: 'private' },
 };
@@ -1302,6 +1304,7 @@ const siteShell = (id, preset, query) => {
     generatedAt: GENERATED_AT,
     openapi: null,
     ...(PROJECTS[id]?.visibility === 'private' ? { signedIn: true } : {}),
+    ...(PROJECTS[id]?.answers ? { capabilities: { answer: true } } : {}),
   };
 };
 

@@ -41,16 +41,19 @@ function SheetContent({
   side = "right",
   showCloseButton = true,
   closeLabel,
+  overlay = true,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
   closeLabel?: string
+  /** The dimmed backdrop. Off for a non-modal sheet that sits beside the page. */
+  overlay?: boolean
 }) {
   const resolvedCloseLabel = useDialogCloseLabel(closeLabel)
   return (
     <SheetPortal>
-      <SheetOverlay />
+      {overlay ? <SheetOverlay /> : null}
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side={side}
