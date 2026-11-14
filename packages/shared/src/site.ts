@@ -392,7 +392,8 @@ export const resolvePageCategory = (page: NavSourcePage, siblingPageCount: numbe
  *  in the editor tree; they sit together where their first page sits, ordered
  *  among themselves by `categoryOrder`, so a categorized page can move ahead of
  *  later siblings. The site's home is resolved separately (`resolveSitePage`):
- *  a page with an empty path wins, otherwise the first page in this order. */
+ *  a page with an empty path wins; a translated root serves the translation
+ *  of the default language's home; otherwise the first page in this order. */
 export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], languageCode?: string): NavNode[] => {
   const visible = pages.filter((p) => !p.hidden && (!languageCode || p.languageCode === languageCode));
   const byParent = new Map<string | null, T[]>();

@@ -12,7 +12,8 @@ manifest remains the authority for the latest published artifact.
   every group ahead of the pages beside it, so a site's sidebar and its home
   page could differ from the editor's page tree. Groups and pages now keep the
   order set in the editor at every level, and a site without a page at the
-  empty address opens on the first page in that order. Virtual categories from
+  empty address opens on the first page in that order (a translated site root
+  still opens on the translation of the default language's home page). Virtual categories from
   imports, which the editor tree does not show, still sit together, ordered by
   their category order. This changes the sidebar order, the home page and prev/next
   links of existing live sites whose groups were not already first, as soon as
