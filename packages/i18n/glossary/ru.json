@@ -1,0 +1,123 @@
+{
+  "style": "Formal address with lowercase «вы» (Сохраните, Выберите), as in the existing reader and marketing strings. Buttons and tabs: an infinitive (Сохранить, Опубликовать, Удалить) or a noun, no final period. Quote marks «…», nested „…“. Use ё (её, всё, ещё). An em dash with spaces ( — ). A space between a number and its unit (30 дней, 5 MB); unit abbreviations from doNotTranslate stay in Latin. Decimal comma (1,5). Counts in plain sentences use «Страниц: {count}» when no plural form is available. Role names are capitalised only as labels (Владелец), lowercase in running text.",
+  "terms": {
+    "site": {
+      "translation": "сайт",
+      "note": "Never «веб-сайт» in new strings, never «проект»."
+    },
+    "organization": {
+      "translation": "организация",
+      "note": "Never «рабочая область» or «рабочее пространство»."
+    },
+    "page": { "translation": "страница" },
+    "group": { "translation": "группа" },
+    "page-tree": { "translation": "дерево страниц" },
+    "publish": {
+      "translation": "опубликовать; публикация",
+      "short": "Опубликовать",
+      "note": "Noun «публикация» for one entry in the publish history."
+    },
+    "draft": { "translation": "черновик" },
+    "unpublished-changes": { "translation": "неопубликованные изменения" },
+    "preview": { "translation": "предпросмотр", "short": "Просмотр" },
+    "live-site": { "translation": "опубликованный сайт", "short": "Сайт" },
+    "reader": { "translation": "читатель" },
+    "member": { "translation": "участник" },
+    "people": { "translation": "Люди" },
+    "invitation": { "translation": "приглашение", "short": "Пригласить" },
+    "join-link": { "translation": "ссылка-приглашение" },
+    "role": { "translation": "роль" },
+    "role-owner": { "translation": "Владелец" },
+    "role-admin": { "translation": "Администратор", "short": "Админ" },
+    "role-editor": {
+      "translation": "Редактор",
+      "note": "The editing screen is «редактор» too; context separates them."
+    },
+    "role-viewer": {
+      "translation": "Наблюдатель",
+      "note": "Not «Читатель», which is a reader of the published site."
+    },
+    "server-admin": { "translation": "администратор сервера" },
+    "account": { "translation": "аккаунт" },
+    "sign-in": {
+      "translation": "войти; зарегистрироваться; выйти",
+      "note": "Nouns: вход, регистрация, выход."
+    },
+    "settings": { "translation": "настройки" },
+    "general": { "translation": "Общие" },
+    "appearance": { "translation": "Оформление" },
+    "theme": { "translation": "тема" },
+    "custom-domain": { "translation": "собственный домен" },
+    "domain": { "translation": "домен; адрес" },
+    "redirect": { "translation": "перенаправление" },
+    "visibility": {
+      "translation": "доступ",
+      "note": "«Кто может читать сайт»."
+    },
+    "add-on": { "translation": "дополнение" },
+    "integration": { "translation": "интеграция" },
+    "webhook": { "translation": "вебхук" },
+    "api-key": { "translation": "API-ключ" },
+    "token": { "translation": "токен" },
+    "branch": { "translation": "ветка", "note": "Never «филиал»." },
+    "sync": { "translation": "синхронизация; синхронизировать" },
+    "import": { "translation": "импорт; импортировать" },
+    "export": { "translation": "экспорт; экспортировать" },
+    "language": {
+      "translation": "язык",
+      "note": "Source language: исходный язык."
+    },
+    "ask-ai": { "translation": "Спросить ИИ" },
+    "ai-assistant": { "translation": "ИИ-ассистент" },
+    "smart-ai": {
+      "translation": "Ответы ИИ",
+      "note": "The English UI names this section AI answers."
+    },
+    "analytics": { "translation": "Аналитика" },
+    "page-views": { "translation": "просмотры страниц", "short": "Просмотры" },
+    "visits": { "translation": "посещения" },
+    "searches": { "translation": "поисковые запросы", "short": "Запросы" },
+    "feedback": { "translation": "отзывы" },
+    "period": { "translation": "период" },
+    "compare": {
+      "translation": "сравнить с предыдущим периодом",
+      "short": "Сравнить"
+    },
+    "web-vitals": {
+      "translation": "Web Vitals (Основной контент появляется, Отклик на клики, Макет не сдвигается)"
+    },
+    "ai-crawlers": { "translation": "ИИ-краулеры; видимость в ИИ" },
+    "plan": { "translation": "тариф" },
+    "usage": { "translation": "использование" },
+    "billing": { "translation": "оплата" },
+    "notifications": { "translation": "уведомления" },
+    "history": { "translation": "история" },
+    "version": { "translation": "версия" },
+    "restore": { "translation": "восстановить" },
+    "promote": {
+      "translation": "перенести в main",
+      "note": "main stays as written: it is the branch name."
+    },
+    "rollback": { "translation": "откатить; откат" },
+    "checks": {
+      "translation": "проверки перед публикацией",
+      "note": "Fix button: «Исправить»."
+    },
+    "danger-zone": { "translation": "Опасная зона" },
+    "delete": { "translation": "удалить; переместить в корзину" },
+    "trash": { "translation": "Корзина" },
+    "delete-permanently": { "translation": "удалить навсегда" },
+    "remove": {
+      "translation": "убрать; удалить из списка",
+      "note": "For members: «удалить из организации»."
+    },
+    "save": { "translation": "сохранить; сохранено; несохранённые изменения" },
+    "cancel": { "translation": "Отмена" },
+    "copy": { "translation": "копировать; скопировано" },
+    "self-hosted": { "translation": "на собственном сервере" },
+    "dashboard": { "translation": "панель управления" },
+    "editor-screen": { "translation": "редактор" },
+    "component": { "translation": "компонент; блок" },
+    "callout": { "translation": "выноска" }
+  }
+}
