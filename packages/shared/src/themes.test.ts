@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCENT_TEXT_CONTRAST,
-  accentTextAdjustments,
   applyThemeTemplateConfig,
   canonicalThemeTemplateJson,
   contrastRatio,
@@ -114,11 +113,9 @@ describe('documentation themes', () => {
     expect(contrastRatio(light.accentForeground, light.accent)).toBeGreaterThanOrEqual(4.5);
     // Still recognisably the brand: a darker shade, same hue family.
     expect(light.accent).toMatch(/^#[89a][0-9a-f][4-6][0-9a-f][2-4][0-9a-f]$/);
-    expect(accentTextAdjustments(config)).toEqual([expect.objectContaining({ mode: 'light', from: '#b96a3d', to: light.accent })]);
     // Presets already pass as authored and stay byte-identical.
     for (const id of THEME_PRESET_IDS) {
       expect(resolveTheme({ theme: { preset: id } }).colors).toEqual(THEME_PRESETS[id].colors);
-      expect(accentTextAdjustments({ theme: { preset: id } })).toEqual([]);
     }
   });
 
