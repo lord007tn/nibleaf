@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 import { findBrokenInternalLinks } from '@nibleaf/shared/publish-checks';
 import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
-import { parseSiteLanguageAlias, parseSiteLanguagePath } from '@nibleaf/shared/site-language';
 import { sitePathLanguages } from '@nibleaf/shared/site-language-policy';
+import { parseSiteLanguageAlias, parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
 import { resolveSitePage } from '@nibleaf/shared/site-route';
 import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators/redirects';
 import { createElement } from 'react';

@@ -23,3 +23,20 @@ describe('buildSiteRedirectHref', () => {
     expect(buildSiteRedirectHref({ projectId: 'project-1', target: '/', customDomain: false })).toBe('/sites/project-1');
   });
 });
+
+it('keeps an unknown language as a query instead of inventing a prefix', () => {
+  const languages = [{ code: 'en', isDefault: true }, { code: 'ar' }];
+  expect(
+    buildSiteRedirectHref({
+      projectId: 'p1',
+      target: '/guide?tab=cli#install',
+      lang: 'unknown',
+      languages,
+      defaultLanguage: 'en',
+      customDomain: false,
+    }),
+  ).toBe('/sites/p1/guide?tab=cli&lang=unknown#install');
+  expect(
+    buildSiteRedirectHref({ projectId: 'p1', target: '/guide?lang=unknown', lang: 'ar', languages, defaultLanguage: 'en', customDomain: true }),
+  ).toBe('/guide?lang=unknown');
+});

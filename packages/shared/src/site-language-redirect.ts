@@ -1,4 +1,5 @@
-import { decodeSiteSegment, type PathLanguage, parseSiteLanguagePath, publishedSitePath, siteLanguagePrefix } from './site-language';
+import { decodeSiteSegment, type PathLanguage, publishedSitePath, siteLanguagePrefix } from './site-language';
+import { parseSiteLanguagePath } from './site-language-prefix';
 
 /** Same-host, root-relative migration target. No fragment means HTTP clients
  * inherit the old fragment; client-router redirects must append their hash. */

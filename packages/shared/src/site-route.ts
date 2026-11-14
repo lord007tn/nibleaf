@@ -19,8 +19,10 @@ import {
   type SnapshotPage,
   type SnapshotVersion,
 } from './site';
-import { type PathLanguage, parseSiteLanguageAlias, parseSiteLanguagePath, publishedSitePath, siteLanguagePrefix } from './site-language';
+import type { PathLanguage } from './site-language';
 import { sitePathLanguages } from './site-language-policy';
+import { parseSiteLanguageAlias, parseSiteLanguagePath } from './site-language-prefix';
+import { buildSiteRedirectHref } from './site-redirect-paths';
 
 const SLASH = 47;
 
@@ -244,29 +246,6 @@ export const resolveSitePage = (snapshot: SiteSnapshot, path: string, lang?: str
   const match = findIn(activeLanguage) ?? (activeLanguage === defaultCode ? undefined : findIn(defaultCode));
   return match ? { ...match, docsVersion, normalized } : null;
 };
-
-/** Build the browser-visible Location for one validated internal redirect.
- * Configured query/fragment values are retained. The current locale is carried
- * only when the destination did not deliberately choose another locale. */
-export function buildSiteRedirectHref(input: {
-  projectId: string;
-  target: string;
-  lang?: string;
-  customDomain: boolean;
-  defaultLanguage?: string;
-  languages?: readonly PathLanguage[];
-}): string {
-  const targetUrl = new URL(input.target, 'https://redirect.nibleaf.invalid');
-  const target = normalizeRedirectPath(targetUrl.pathname);
-  const language = targetUrl.searchParams.get('lang') ?? input.lang;
-  targetUrl.searchParams.delete('lang');
-  const pathname = publishedSitePath(
-    target,
-    language && language !== input.defaultLanguage ? siteLanguagePrefix(language, input.languages) : undefined,
-  );
-  const suffix = `${targetUrl.search}${targetUrl.hash}`;
-  return `${input.customDomain ? '' : `/sites/${input.projectId}`}${pathname || (input.customDomain ? '/' : '')}${suffix}`;
-}
 
 /** What the reader serves for a site path. A redirect's `to` is a site path
  *  (with its query) or an absolute external URL. */

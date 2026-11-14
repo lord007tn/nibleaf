@@ -10,8 +10,9 @@
  */
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
-import { type PathLanguage, parseSiteLanguagePath } from './site-language';
+import type { PathLanguage } from './site-language';
 import { sitePathLanguages } from './site-language-policy';
+import { parseSiteLanguagePath } from './site-language-prefix';
 import { resolveSiteRoute } from './site-route';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;

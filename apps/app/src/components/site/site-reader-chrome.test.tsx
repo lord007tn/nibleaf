@@ -179,6 +179,23 @@ describe('published page loader', () => {
       }) => Promise<{ page: SitePage }>
     )({ params: { projectId: 'docs', _splat: 'start' }, deps: { lang: 'ar' }, location: { searchStr: '' }, context: { queryClient } });
 
+  it.each(['ar', '~lang/ar', ''])('keeps the resolved language while canonicalizing %s with an unknown query', async (prefix) => {
+    window.history.replaceState(null, '', '/sites/docs');
+    const languages = shell.languages.map((item) => ({ ...item, pathPrefix: item.code === 'ar' ? prefix || 'ar' : item.code, path: 'start' }));
+    const site = { ...shell, activeLanguage: prefix ? 'ar' : 'en', languages };
+    mocks.getSitePage.mockResolvedValue({ ...page, activeLanguage: site.activeLanguage, languages });
+    const loader = SplatRoute.options.loader as unknown as (input: Record<string, unknown>) => Promise<unknown>;
+    await expect(
+      loader({
+        params: { projectId: 'docs', _splat: `${prefix ? `${prefix}/` : ''}section` },
+        deps: { lang: 'unknown' },
+        location: { searchStr: '?lang=unknown&tab=cli', hash: 'install' },
+        parentMatchPromise: Promise.resolve({ status: 'success', loaderData: { site } }),
+        context: { queryClient: createQueryClient() },
+      }),
+    ).rejects.toMatchObject({ options: { statusCode: 302, href: `/sites/docs/${prefix ? `${prefix}/` : ''}start?lang=unknown&tab=cli#install` } });
+  });
+
   it('reads pages through the shared query cache, so a preloaded or recent page opens without another request', async () => {
     // Freshness is the query client's 30 s stale time, not how long this machine
     // takes to run the first load (it imports the article renderer cold): the

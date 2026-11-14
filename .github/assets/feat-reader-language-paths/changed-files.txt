@@ -38,11 +38,13 @@ apps/app/src/components/site/site-search.test.tsx
 apps/app/src/hooks/api/types.ts
 apps/app/src/lib/publish-link-reader-parity.test.tsx
 apps/app/src/lib/root-document.ts
+apps/app/src/lib/site-authored-paths.ts
 apps/app/src/lib/site-language-path.test.ts
 apps/app/src/lib/site-language-path.ts
 apps/app/src/lib/site-paths.test.ts
 apps/app/src/lib/site-paths.ts
 apps/app/src/lib/site-redirect-href.test.ts
+apps/app/src/lib/site-redirect-href.ts
 apps/app/src/lib/site-redirects.ts
 apps/app/src/lib/site-seo.client.test.ts
 apps/app/src/lib/site-seo.test.ts
@@ -66,11 +68,13 @@ apps/server/src/lib/llms-txt.ts
 package.json
 packages/shared/package.json
 packages/shared/src/site-language-policy.ts
+packages/shared/src/site-language-prefix.ts
 packages/shared/src/site-language-redirect.ts
 packages/shared/src/site-language.test.ts
 packages/shared/src/site-language.ts
 packages/shared/src/site-links.test.ts
 packages/shared/src/site-links.ts
+packages/shared/src/site-redirect-paths.ts
 packages/shared/src/site-route.property.test.ts
 packages/shared/src/site-route.test.ts
 packages/shared/src/site-route.ts

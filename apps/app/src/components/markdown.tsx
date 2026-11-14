@@ -28,7 +28,8 @@ import { ScrollTable, TableCell, TableHeaderCell } from '@/components/site/scrol
 import { lazyHighlightLanguages, lazyHighlightLanguagesNamed } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
 import { highlightLanguageModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
-import { siteHref, siteLanguageParam } from '@/lib/site-paths';
+import { authoredSiteHref } from '@/lib/site-authored-paths';
+import { isCustomDomainSite, siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
  *  root-relative doc links (`/guide`) to the site's base path so they don't
@@ -69,23 +70,22 @@ export function resolveDocHref(href: string | undefined, site: SiteLinkContext |
     try {
       const url = new URL(href);
       if (url.origin !== site.origin && (typeof window === 'undefined' || url.origin !== window.location.origin)) return href;
+      const platform = !isCustomDomainSite(site.projectId);
       const project = /^\/sites\/([^/]+)(?:\/|$)/.exec(url.pathname)?.[1];
-      if (project && project !== site.projectId) return href;
-      internal = `${url.pathname}${url.search}${url.hash}`;
+      if (platform && project !== site.projectId) return href;
+      const pathname = platform ? url.pathname.slice(`/sites/${site.projectId}`.length) || '/' : url.pathname;
+      internal = `${pathname}${url.search}${url.hash}`;
     } catch {
       return href;
     }
   }
-  const platformBase = `/sites/${site.projectId}`;
-  if (internal === platformBase || internal.startsWith(`${platformBase}/`)) internal = internal.slice(platformBase.length) || '/';
   const basePath = site.path ?? '';
   const url = new URL(internal, `https://site.invalid/${basePath}`);
-  return siteHref(site.projectId, `${url.pathname}${url.search}${url.hash}`, {
+  return (authored ? authoredSiteHref : siteHref)(site.projectId, `${url.pathname}${url.search}${url.hash}`, {
     lang: siteLanguageParam(site.lang, site.defaultLanguage),
     version: site.version,
     defaultLanguage: site.defaultLanguage,
     languages: site.languages,
-    authored,
   });
 }
 

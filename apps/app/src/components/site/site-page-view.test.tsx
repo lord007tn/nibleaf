@@ -290,3 +290,22 @@ it('does not rewrite another project on the matching app.nibleaf.com origin', ()
   const href = 'https://app.nibleaf.com/sites/other/guide?lang=ar#install';
   expect(resolveDocHref(href, { projectId: 'p1', origin: 'https://app.nibleaf.com', lang: 'ar' })).toBe(href);
 });
+
+it.each(['/app', '/sign-in', '/sites/'])('leaves platform URLs outside this project untouched: %s', (path) => {
+  const href = `https://app.nibleaf.com${path}?lang=ar#install`;
+  expect(resolveDocHref(href, { projectId: 'p1', origin: 'https://app.nibleaf.com', lang: 'ar' })).toBe(href);
+});
+it('keeps raw article paths that look like a platform base', () => {
+  expect(resolveDocHref('/sites/p1/guide', { projectId: 'p1', lang: 'ar', defaultLanguage: 'en' })).toBe('/sites/p1/ar/sites/p1/guide');
+});
+it('rewrites an absolute project-home URL without reusing the current page path', () => {
+  expect(
+    resolveDocHref('https://app.nibleaf.com/sites/p1?lang=ar#install', {
+      projectId: 'p1',
+      origin: 'https://app.nibleaf.com',
+      path: 'guides/current',
+      defaultLanguage: 'en',
+      languages: [{ code: 'en', isDefault: true }, { code: 'ar' }],
+    }),
+  ).toBe('/sites/p1/ar#install');
+});

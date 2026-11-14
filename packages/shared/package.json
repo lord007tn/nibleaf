@@ -35,6 +35,8 @@
     "./email-providers": "./src/email-providers.ts",
     "./site": "./src/site.ts",
     "./site-language": "./src/site-language.ts",
+    "./site-language-prefix": "./src/site-language-prefix.ts",
+    "./site-redirect-paths": "./src/site-redirect-paths.ts",
     "./site-language-policy": "./src/site-language-policy.ts",
     "./site-language-redirect": "./src/site-language-redirect.ts",
     "./site-route": "./src/site-route.ts",

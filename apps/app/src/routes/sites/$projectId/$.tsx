@@ -1,5 +1,5 @@
 import { siteT } from '@nibleaf/i18n/site';
-import { parseSiteLanguageAlias, parseSiteLanguagePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
+import { siteLanguagePrefix } from '@nibleaf/shared/site-language';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
 import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
@@ -52,9 +52,11 @@ export const Route = createFileRoute('/sites/$projectId/$')({
     const parent = await parentMatchPromise;
     if (parent?.status === 'error') throw parent.error;
     const site = parent?.loaderData?.site;
+    const { parseSiteLanguagePath, parseSiteLanguageAlias } = await import('@nibleaf/shared/site-language-prefix');
     const parsed = parseSiteLanguagePath(params._splat ?? '', site?.languages ?? []);
     const lang = parsed.language?.code ?? deps.lang;
     const path = parsed.path;
+    const tail = `${location.searchStr}${location.hash ? `#${location.hash.replace(/^#/, '')}` : ''}`;
     if (path === 'changelog' && site) {
       const entries = await listSiteChangelogFn({ data: { projectId: params.projectId } });
       return { kind: 'changelog' as const, entries, site, lang, siteOrigin: customDomainOrigin() };
@@ -93,10 +95,11 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       );
       const alias = parseSiteLanguageAlias(path, site?.languages ?? []);
       if (alias.language) {
-        const href = siteHref(params.projectId, `${alias.path}${location.searchStr}${location.hash ? `#${location.hash.replace(/^#/, '')}` : ''}`, {
-          lang: siteLanguageParam(alias.language.code, site?.languages.find((item) => item.isDefault)?.code),
-          languages: site?.languages,
-        });
+        const href =
+          siteHref(params.projectId, alias.path, {
+            lang: siteLanguageParam(alias.language.code, site?.languages.find((item) => item.isDefault)?.code),
+            languages: site?.languages,
+          }) + tail;
         throw redirect({ href, statusCode: 308 });
       }
       // The router's not-found sentinel sets the final streamed response status.
@@ -122,10 +125,13 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       }
     };
     if (requestedContent && safeDecode(requestedContent) !== page.page.path) {
-      const href = siteHref(params.projectId, `${page.page.path}${location.searchStr}${location.hash ? `#${location.hash.replace(/^#/, '')}` : ''}`, {
-        lang: siteLanguageParam(lang, page.languages.find((item) => item.isDefault)?.code),
-        version: prefix,
-      });
+      const language = page.languages.some((item) => item.code === lang) ? lang : page.activeLanguage;
+      const href =
+        siteHref(params.projectId, page.page.path, {
+          lang: siteLanguageParam(language, page.languages.find((item) => item.isDefault)?.code),
+          version: prefix,
+          languages: page.languages,
+        }) + tail;
       throw redirect({ href, statusCode: 302 });
     }
     // The article renders in one pass, never a fallback first. Imported here,

@@ -19,8 +19,8 @@ import {
 } from '@nibleaf/i18n/messages';
 import { useLocale } from '@nibleaf/i18n/react';
 import type { SiteSnapshot } from '@nibleaf/shared/site';
-import { parseSiteLanguagePath } from '@nibleaf/shared/site-language';
 import { sitePathLanguages } from '@nibleaf/shared/site-language-policy';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { Eye, FileText, GitPullRequest, Lock, Menu } from 'lucide-react';
 import { type MouseEvent, useEffect, useMemo, useState, useSyncExternalStore } from 'react';

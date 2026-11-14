@@ -11,7 +11,8 @@ import {
   markdownAlternateUrl,
   markdownDiscoveryLinkHeader,
 } from '@nibleaf/shared/markdown-discovery';
-import { type PathLanguage, parseSiteLanguagePath } from '@nibleaf/shared/site-language';
+import type { PathLanguage } from '@nibleaf/shared/site-language';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
 import { legacySiteLanguageTarget } from '@nibleaf/shared/site-language-redirect';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';

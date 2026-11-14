@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseSiteLanguagePath, publishedSitePath } from './site-language';
+import { publishedSitePath } from './site-language';
+import { parseSiteLanguagePath } from './site-language-prefix';
 import { legacySiteLanguageTarget } from './site-language-redirect';
 
 const languages = [

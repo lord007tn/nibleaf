@@ -3,7 +3,7 @@ import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
 import { isRtl as isRtlLocale, resolveLocale } from '@nibleaf/i18n/locales';
 import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
-import { parseSiteLanguagePath } from '@nibleaf/shared/site-language';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
 import { createFileRoute, Outlet, redirect, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -60,7 +60,8 @@ export const Route = createFileRoute('/sites/$projectId')({
       const segment = rest.split('/')[0];
       const candidate = segment && rest !== 'changelog' ? safeDecode(segment) : undefined;
       let site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
-      const parsed = parseSiteLanguagePath(rest, site.languages);
+      const { parseSiteLanguagePath: parsePath } = await import('@nibleaf/shared/site-language-prefix');
+      const parsed = parsePath(rest, site.languages);
       const target =
         deps.lang !== undefined || parsed.language?.isDefault
           ? (await import('@/lib/site-language-path')).resolveLanguagePathRedirect({
