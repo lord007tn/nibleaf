@@ -49,8 +49,10 @@ export function WebsiteSwitcher({
             variant="ghost"
           >
             {project ? (
-              <span className="min-w-0 truncate">
-                <bdi>{project.name}</bdi>
+              // The name's own direction, so a Latin name in an Arabic dashboard
+              // truncates at its end ("Docum…"), not its start ("…ation").
+              <span className="min-w-0 truncate" dir="auto">
+                {project.name}
               </span>
             ) : (
               <Skeleton aria-hidden className="h-4 w-20" />
