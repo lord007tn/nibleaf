@@ -111,6 +111,36 @@ describeVariants('an unclosed code fence (#602)', [
   { name: 'in a `<Steps>`, holding its closing tags', block: () => `<Steps>\n<Step title="One">\n\n${T}js\na\n\n</Step>\n</Steps>` },
 ]);
 
+// A last line blank inside the fence's containers, at the end of the page: markdown-it
+// gives it no content, which read as a closing line and was replaced by one (#622 re-check).
+describeVariants('an unclosed fence ending in a line blank inside its containers (#602)', [
+  { name: 'the re-check’s repro, `> ` at the end', block: () => '> ~~~~~js\n> </Step>\n> ' },
+  { name: '`>` with no space at the end', block: () => '> ~~~~~js\n> </Step>\n>' },
+  { name: 'a backtick fence', block: () => `> ${T}js\n> a\n> ` },
+  { name: 'two blank quoted lines', block: () => '> ~~~js\n> a\n>\n> ' },
+  { name: 'only an opening line and a blank quoted line', block: () => '> ~~~js\n> ' },
+  { name: 'a quote in a quote', block: () => '> > ~~~js\n> > a\n> > ' },
+  { name: 'a list item in a quote', block: () => `> - ${T}js\n>   a\n>   ` },
+  { name: 'an empty quoted line after an opener with no code', block: () => `> ${T}md\n> \n> ` },
+  { name: 'only blank lines of code', block: () => '~~~~\n\n\n' },
+]);
+
+describe('a list item’s indented blank line at the very end of the page', () => {
+  // markdown-it reads that last line outside the list item, so it belongs to no
+  // block: like any whitespace at the end of a page, the first save drops it, and
+  // the page is stable from then on. No closer is ever added.
+  const pages = LOCALES.flatMap((locale) => [
+    [`${locale.name}, a continuation line`, `${locale.before}\n\n- ${locale.item}\n\n  ${T}js\n  a\n  `],
+    [`${locale.name}, the item’s first line`, `${locale.before}\n\n- ~~~js\n  a\n  `],
+  ]);
+  it.each(pages)('%s', (_name, source) => {
+    load(source);
+    const saved = getMarkdown(editor);
+    expect(saved).toBe(source.slice(0, source.lastIndexOf('\n')));
+    expectStableAcrossReloads(saved);
+  });
+});
+
 const INDENTED = `    ${T}js\n    const a = 1;\n    ${T}`;
 
 describeVariants('a fence indented four columns in a `<Step>` (#603)', [
@@ -287,5 +317,57 @@ describe('a component whose opening tag JSX reads with text left over (#622 revi
     const frame = `${String.raw`<Frame caption="a \"b\" c">`}\n  ${IFRAME}\n</Frame>`;
     expectStableAcrossReloads(`Intro.\n\n${frame}`);
     expect(structure().opaque).toEqual([frame]);
+  });
+});
+
+describe('valid JSX straight after a quoted value (#622 re-check)', () => {
+  // What JSX reads after a quoted value: whitespace, `/`, `>`, a spread or
+  // expression attribute's `{`, or the next attribute's name (with `-` or `:`, of
+  // any length) followed by `=` (whitespace around it allowed) or an end. Every
+  // such opener stays an editable component and saves back byte for byte.
+  const components = [
+    ['Card', 'title', 'mdxCard'],
+    ['Step', 'title', 'mdxStep'],
+    ['Accordion', 'title', 'mdxAccordion'],
+    ['Frame', 'caption', 'mdxFrame'],
+  ] as const;
+  const followers = [
+    'id="x"',
+    'id = "x"',
+    'id ="x"',
+    "id= 'x'",
+    'id=\n"x"',
+    '{...props}',
+    ' {...props}',
+    'data-x="1"',
+    'xml:lang="en"',
+    '$x="1"',
+    `${'a'.repeat(300)}="x"`,
+    'id={1}',
+    ' disabled',
+    'disabled',
+  ];
+  const openers = components.flatMap(([tag, key, node]) =>
+    ['"', "'"].flatMap((quote) =>
+      followers.map((follower) => ({ node, source: `<${tag} ${key}=${quote}A${quote}${follower}>\n\nBody\n\n</${tag}>` })),
+    ),
+  );
+
+  it(`keeps ${openers.length} valid openers editable and as written`, () => {
+    expect(openers.length).toBeGreaterThanOrEqual(96);
+    const failures: Array<{ source: string; saved: string; nodes: string[] }> = [];
+    for (const { node, source } of openers) {
+      const page = `Intro.\n\n${source}`;
+      load(page);
+      const nodes: string[] = [];
+      editor.state.doc.descendants((child) => {
+        nodes.push(child.type.name);
+      });
+      const saved = getMarkdown(editor);
+      load(saved);
+      const again = getMarkdown(editor);
+      if (!nodes.includes(node) || structure().opaque.length > 0 || saved !== page || again !== page) failures.push({ source, saved, nodes });
+    }
+    expect(failures.slice(0, 3)).toEqual([]);
   });
 });

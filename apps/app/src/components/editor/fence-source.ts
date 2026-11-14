@@ -1,5 +1,5 @@
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
-import { encodeMdxSource, fenceClosed } from './extensions/mdx-roundtrip';
+import { encodeMdxSource, fenceClosed, fenceContentLines } from './extensions/mdx-roundtrip';
 
 /*
  * A fenced code block keeps the source lines it was read from, so a save writes
@@ -185,7 +185,11 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
  */
 function annotateFence(token: MarkdownToken, lines: readonly string[], containers: readonly FenceContainer[]): void {
   const [first, end] = token.map ?? [0, 0];
-  const closed = fenceClosed(token);
+  const closed = fenceClosed(token, lines[end - 1]);
+  // A last line of code blank inside its containers (`> ` at the end of the page)
+  // adds nothing to markdown-it's content; the code gets it back as an empty last
+  // line, so its source line is kept and written again, not replaced by a closer.
+  if (!closed && end - first >= 2 && fenceContentLines(token.content) === end - first - 2) token.content += '\n';
   const last = closed ? end - 1 : end;
   const open = (withoutContainers(lines[first] ?? '', first, containers) as LineRest).text;
   const close = closed ? (withoutContainers(lines[last] ?? '', last, containers) as LineRest).text : '';
@@ -288,8 +292,14 @@ function codeLine(line: string, containers: readonly FenceContainer[], indent: n
  */
 function sourceLinesFor(node: PMNode, open: string, delim: string, first: string, end: UnclosedEnd): string[] | null {
   const lines = String(node.attrs.sourceFenceLines ?? '').split('\n');
-  const code = node.textContent ? node.textContent.split('\n') : [];
   const close = String(node.attrs.sourceFenceClose ?? '');
+  // Code of blank lines only loads as no text at all, so empty code is as many empty
+  // lines as the source has (none, or `> ` after an unclosed opener), short of the
+  // page's last line break; each must still read as empty below.
+  const unclosedPageBreak = close === '' && lines.length > 1 && lines[lines.length - 1] === '' ? 1 : 0;
+  const code = node.textContent
+    ? node.textContent.split('\n')
+    : lines.slice(1, lines.length - (close === '' ? 0 : 1) - unclosedPageBreak).map(() => '');
   const containers = serializedContainers(delim, first);
   const indent = /^ */.exec(open)?.[0].length ?? 0;
   // An unclosed fence (no closing line) keeps its source only where it still ends

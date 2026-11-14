@@ -111,14 +111,30 @@ type MarkdownBlockTokens = (source: string) => ReadonlyArray<{ type: string; map
  * opening line, the code and the closing line; for a fence with no closer, which
  * CommonMark runs to the end of the page (or of its quote or list item), only the
  * first two. Its content ends each line of code with `\n`, except a last line at
- * the very end of a page with no line break after it.
+ * the very end of a page with no line break after it. A last line that is blank
+ * once its quote's `>` or list item's indent is read (`> ` at the end of the page)
+ * adds nothing to the content, so the count alone reads that fence as closed; a
+ * closing line is never blank, so `lastLine` settles it.
  */
-export const fenceClosed = (token: { map: [number, number] | null; content: string }): boolean => {
+export const fenceClosed = (token: { map: [number, number] | null; content: string }, lastLine?: string): boolean => {
   const [first, end] = token.map ?? [0, 0];
-  const { content } = token;
+  if (end - first < 2 || fenceContentLines(token.content) !== end - first - 2) return false;
+  return lastLine === undefined || !blankInContainers(lastLine);
+};
+
+/** How many lines of code markdown-it's fence content holds: see `fenceClosed`. */
+export const fenceContentLines = (content: string): number => {
   let lines = content !== '' && !content.endsWith('\n') ? 1 : 0;
   for (let at = content.indexOf('\n'); at >= 0; at = content.indexOf('\n', at + 1)) lines++;
-  return end - first >= 2 && lines === end - first - 2;
+  return lines;
+};
+
+/** A line with nothing but quote markers and whitespace (`> `, `>`, `> > `, a list
+ *  item's indent), its line break included. */
+export const blankInContainers = (line: string): boolean => {
+  for (const character of line)
+    if (character !== '>' && character !== ' ' && character !== '\t' && character !== '\n' && character !== '\r') return false;
+  return true;
 };
 
 interface Span {
@@ -171,7 +187,7 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
     const [first, last] = token.map;
     if (token.type === 'fence') {
       layout.fenced.push({ start: at(first), end: at(last) });
-      if (at(last) === source.length && !fenceClosed(token)) layout.unclosedFence = at(first);
+      if (at(last) === source.length && !fenceClosed(token, source.slice(at(last - 1), at(last)))) layout.unclosedFence = at(first);
     } else if (token.type === 'code_block') layout.indented.fill(1, at(first), at(last));
     else if (token.type === 'paragraph_open') {
       layout.paragraphOfLine.fill(layout.paragraphs.length, first, last);
@@ -815,15 +831,34 @@ function tagPairs(tokens: TagToken[]): Map<number, number> {
   return pairs;
 }
 
-/** An attribute name and `=` (`id=`), which may follow a quoted value straight away. */
-const ATTRIBUTE_START = /^[A-Za-z_:][\w.:-]*=/;
+/** A character JSX reads as ending a name or value: whitespace, `/`, `>`, or the
+ *  `{` of a spread or expression attribute. */
+const endsJsxPart = (character: string): boolean =>
+  character === '' || character === '/' || character === '>' || character === '{' || /\s/.test(character);
 
 /**
- * Whether an opening tag has text straight after a quoted value that is neither
- * whitespace, `/`, `>` nor another `name=`. JSX strings have no escapes, so in
+ * Whether JSX can read what comes straight after a quoted value at `at`: an end
+ * (see `endsJsxPart`), or the next attribute's name (an identifier, which may hold
+ * `-` and `:`) followed by `=` (with any whitespace around it) or by an end. One
+ * pass over the name, with no length limit.
+ */
+function readableAfterValue(raw: string, at: number): boolean {
+  const next = raw[at] ?? '';
+  if (endsJsxPart(next)) return true;
+  if (!/[A-Za-z_$]/.test(next)) return false;
+  let cursor = at + 1;
+  while (cursor < raw.length && /[\w$:.-]/.test(raw[cursor] ?? '')) cursor++;
+  const after = raw[cursor] ?? '';
+  return after === '=' || endsJsxPart(after);
+}
+
+/**
+ * Whether an opening tag has text straight after a quoted value that JSX can't
+ * read (see `readableAfterValue`). JSX strings have no escapes, so in
  * `title="a \"b\" c"` the value ends at the second quote and `b\" c"` is left
  * over: the editor can't model that, and rewriting the value after an edit kept
- * the leftover (`title="Edited"b\" c"`).
+ * the leftover (`title="Edited"b\" c"`). `title="A"id = "x"` and
+ * `title="A"{...props}` are valid JSX, and stay editable.
  */
 function malformedOpener(token: TagToken): boolean {
   const { raw } = token;
@@ -832,10 +867,7 @@ function malformedOpener(token: TagToken): boolean {
     const written = raw.slice(attribute.start, attribute.end);
     const afterEquals = written.slice(written.indexOf('=') + 1).trimStart();
     if (afterEquals[0] !== '"' && afterEquals[0] !== "'") continue;
-    const next = raw[attribute.end] ?? '';
-    if (next === '' || next === '/' || next === '>' || /\s/.test(next) || ATTRIBUTE_START.test(raw.slice(attribute.end, attribute.end + 256)))
-      continue;
-    return true;
+    if (!readableAfterValue(raw, attribute.end)) return true;
   }
   return false;
 }

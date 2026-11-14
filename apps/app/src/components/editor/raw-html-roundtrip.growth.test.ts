@@ -125,6 +125,10 @@ const nestedIndentedFences = (n: number) => '<Note>\n\n    ```js\n    x\n    ```
 const escapedScripts = (n: number) => '\\<script>'.repeat(n);
 /** `n` Cards whose opening tag has text left over after a quoted value. */
 const leftoverTitles = (n: number) => '<Card title="a \\"b\\" c">\n\nx\n\n</Card>\n\n'.repeat(n);
+/** One Card whose quoted title is followed straight away by an attribute name `n` long. */
+const longAdjacentName = (n: number) => `<Card title="A"${'a'.repeat(n)}="x">\n\nx\n\n</Card>`;
+/** `n` quotes, each holding an unclosed fence that ends in a blank quoted line. */
+const quotedBlankEndings = (n: number) => '> ~~~js\n> a\n>\n\n'.repeat(n);
 
 describe.runIf(growthTestsEnabled)('pages that end in an unclosed block, growth', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
@@ -185,6 +189,17 @@ describe.runIf(growthTestsEnabled)('pages that end in an unclosed block, growth'
 
   it('prepares a page of components with text left over in their opening tags in one pass', () => {
     const [small, large] = growthMs(parse, leftoverTitles(250), leftoverTitles(1000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  // The name after a quoted value is read once, however long.
+  it('prepares a Card with a long attribute name straight after a quoted value in one pass', () => {
+    const [small, large] = growthMs(parse, longAdjacentName(20_000), longAdjacentName(80_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  it('prepares a page of quoted unclosed fences ending in a blank quoted line in one pass', () => {
+    const [small, large] = growthMs(parse, quotedBlankEndings(1000), quotedBlankEndings(4000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 });

@@ -20,8 +20,25 @@ const SEED = 0x58_23_6b_09;
 const COUNT = 256;
 const CYCLES = 5;
 
-type Kind = 'unclosed fence' | 'fence in a component' | 'unterminated raw text';
-const KINDS: readonly [Kind, ...Kind[]] = ['unclosed fence', 'fence in a component', 'unterminated raw text'];
+type Kind = 'unclosed fence' | 'fence in a component' | 'unterminated raw text' | 'unclosed fence ending in container blanks';
+const KINDS: readonly [Kind, ...Kind[]] = [
+  'unclosed fence',
+  'fence in a component',
+  'unterminated raw text',
+  'unclosed fence ending in container blanks',
+];
+
+/** Containers for a fence whose last lines are blank inside them: the opening
+ *  line's prefix (a list item's marker), the prefix of its other lines, and the
+ *  spellings of a blank line there. */
+const BLANK_CONTAINERS = [
+  { head: '', first: '> ', prefix: '> ', blanks: ['> ', '>'] },
+  { head: '', first: '>', prefix: '>', blanks: ['>', '> '] },
+  { head: '', first: '> > ', prefix: '> > ', blanks: ['> > ', '> >'] },
+  { head: '', first: '- ', prefix: '  ', blanks: ['  ', '   '] },
+  { head: '- {item}\n\n', first: '  ', prefix: '  ', blanks: ['  '] },
+  { head: '', first: '> - ', prefix: '>   ', blanks: ['>   ', '>', '> '] },
+] as const;
 
 const LOCALES = [
   { before: 'Intro.', after: 'Outro.', item: 'Item', text: 'Install it:' },
@@ -80,22 +97,39 @@ function generatedCases(seed = SEED, count = COUNT): GeneratedCase[] {
       else block = `- ${locale.item}\n\n${indented('  > ')}`;
       if (where !== 'page' && flip()) block += `\n\n${locale.after}`;
       block += choose(['', '\n', '\n\n']);
+    } else if (kind === 'unclosed fence ending in container blanks') {
+      const container = choose(BLANK_CONTAINERS);
+      const marker = choose(['`', '~'] as const).repeat(3 + (next() % 3));
+      const code = lines(['a', 'const a = 1;', '</Step>', '<Card title="x" />'] as const, 2);
+      const blanks = Array.from({ length: 1 + (next() % 2) }, () => choose(container.blanks));
+      block = [
+        `${container.head.replace('{item}', locale.item)}${container.first}${marker}${choose(['', 'js'])}`,
+        ...code.map((line) => `${container.prefix}${line}`),
+        ...blanks,
+      ].join('\n');
+      block += choose(['', '\n']);
     } else if (kind === 'fence in a component') {
       const indent = choose(['', '  ', '    ', '      ']);
       const code = fence(indent, next() % 4 !== 0);
       const text = flip() ? `${locale.text}\n\n` : '';
       // `blank`: the editor's layout, a blank line around every tag and block.
       // `none`: no blank line, one HTML block to markdown-it, kept whole. `issue`:
-      // the #603 layout, adjacent tags with blank lines around the content.
-      const layout = choose(['blank', 'none', 'issue'] as const);
+      // the #603 layout, adjacent tags with blank lines around the content, only with
+      // a fence indented four columns or more (kept whole): around content the editor
+      // holds, it writes its own blank lines between adjacent tags on the first save,
+      // a known layout change of its own that doesn't grow.
+      const layout = choose(indent.length >= 4 ? (['blank', 'none', 'issue'] as const) : (['blank', 'none'] as const));
       const gap = layout === 'none' ? '\n' : '\n\n';
       const tagGap = layout === 'blank' ? '\n\n' : '\n';
       const content = layout === 'none' ? `${text.replace('\n\n', '\n')}${code}` : `${text}${code}`;
       const component = choose(['Steps', 'Step', 'Frame', 'CodeGroup', 'Note', 'Note in a Step', 'list item in a Step'] as const);
       if (component === 'Steps') block = `<Steps>${tagGap}<Step title="One">${gap}${content}${gap}</Step>${tagGap}</Steps>`;
       else if (component === 'Note in a Step') block = `<Step title="One">${gap}<Note>${gap}${content}${gap}</Note>${gap}</Step>`;
-      else if (component === 'list item in a Step')
-        block = `<Step title="One">${gap}- ${locale.item}\n\n  ${code.replaceAll('\n', '\n  ')}${gap}</Step>`;
+      // Lines straight after a tag, before a blank line, are one HTML block to
+      // markdown-it and lose their Markdown with or without a fence (as in
+      // container-fences.property.test.ts), so the list item gets the editor's
+      // layout: a blank line on each side.
+      else if (component === 'list item in a Step') block = `<Step title="One">\n\n- ${locale.item}\n\n  ${code.replaceAll('\n', '\n  ')}\n\n</Step>`;
       else block = `<${component}${component === 'Frame' ? ' caption="Code"' : ''}>${gap}${content}${gap}</${component}>`;
     } else {
       const tag = choose(['script', 'style', 'textarea', 'title'] as const);
@@ -123,25 +157,28 @@ describe('pages that end in unclosed or unread blocks, generated', () => {
     return getMarkdown(editor);
   };
 
-  it(`never grows ${COUNT} generated pages over ${CYCLES} load/save cycles, and ends at a fixed point`, () => {
+  it(`never grows ${COUNT} generated pages, on the first save or over ${CYCLES} load/save cycles, and ends at a fixed point`, () => {
     const cases = generatedCases();
     const started = performance.now();
     let saves = 0;
-    const failures: Array<{ index: number; kind: Kind; source: string; saved: string; again: string }> = [];
+    const failures: Array<{ index: number; kind: Kind; source: string; first: string; saved: string; again: string }> = [];
     for (const { index, kind, source } of cases) {
       let saved = source;
+      let first = '';
       // A save is a function of the page alone, so once a cycle changes nothing,
       // no later one does: the rest of the five are that same page.
       for (let cycle = 0; cycle < CYCLES; cycle++) {
         const next = save(saved);
         saves++;
+        if (cycle === 0) first = next;
         if (next === saved) break;
         saved = next;
       }
       // One more save, apart from the cycles, must change nothing.
       const again = save(saved);
       saves++;
-      if (saved.length > source.length || again !== saved) failures.push({ index, kind, source, saved, again });
+      if (first.length > source.length || saved.length > source.length || again !== saved)
+        failures.push({ index, kind, source, first, saved, again });
     }
     const seconds = (performance.now() - started) / 1000;
     console.info(`save fixed-point property: ${cases.length} cases, ${saves} saves, ${seconds.toFixed(2)} s`);
