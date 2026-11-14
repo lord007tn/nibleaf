@@ -543,8 +543,9 @@ try {
     const captures = [];
     let axeVersion = null;
     const only = process.env.ONLY?.split(',');
+    const selectedScreens = screens.filter((item) => !only || only.includes(item.key));
     for (const locale of locales)
-      for (const screen of screens.filter((item) => !only || only.includes(item.key)))
+      for (const screen of selectedScreens)
         for (const size of sizes) {
           const name = `${screen.key}-${locale}-${size.width}`;
           const context = await browser.newContext({
@@ -698,7 +699,7 @@ Requests: ${requests.join(', ')}`);
           environment:
             'Isolated actual-route fixture (dashboard shell, ProjectLayout + settings and analytics routes, OrganizationLayout + members route); intercepted fictional HTTP; no server, database or real site',
           locales,
-          screens: screens.map((screen) => screen.key),
+          screens: selectedScreens.map((screen) => screen.key),
           sizes: sizes.map(({ width, height, mobile }) => `${width}×${height}${mobile ? ' touch' : ''}`),
           attempted: attempted.length,
           axe: axeSource ? { version: axeVersion, rules: ['color-contrast'] } : null,

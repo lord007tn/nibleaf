@@ -26,7 +26,10 @@ the generated Paraglide runtime from that stage. Translation JSON is unchanged.
   (identical on purpose, such as a loanword the locale uses as is) or `pending`
   (not translated yet). `pending` only shrinks: a listed key that is now
   translated fails too, and `--baseline` never adds to an existing list, even an
-  empty one. The same test checks that every locale keeps every key, never
+  empty one. Pull-request CI also compares pending lists with the base revision:
+  existing English keys cannot be added back, while new English keys can start
+  pending. Malformed baseline files fail instead of being reset.
+  The same test checks that every locale keeps every key, never
   uses a `{placeholder}` English doesn't have, and keeps every placeholder in a
   plain string. Plural messages are checked as a whole (a form may spell its
   number out), so a placeholder dropped from one form isn't caught here; the

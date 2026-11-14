@@ -1,8 +1,13 @@
+import { execFileSync, spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import * as guard from '../scripts/untranslated.mjs';
 
 type Catalog = Record<string, unknown>;
-const { catalog, exceptions, keepTerms, locales, nextPending, onlyKeptTerms, parityProblems, untranslatedKeys } = guard as {
+const { catalog, exceptions, keepTerms, locales, nextPending, onlyKeptTerms, parityProblems, pendingGrowth, untranslatedKeys } = guard as {
   catalog: (locale: string) => Catalog;
   exceptions: (locale: string) => { sameAsEnglish: string[]; pending: string[] };
   keepTerms: () => string[];
@@ -10,6 +15,7 @@ const { catalog, exceptions, keepTerms, locales, nextPending, onlyKeptTerms, par
   nextPending: (state: { leftovers: string[]; sameAsEnglish: string[]; pending: string[]; exists: boolean }) => string[];
   onlyKeptTerms: (text: string, keep: string[]) => boolean;
   parityProblems: (english: Catalog, messages: Catalog) => string[];
+  pendingGrowth: (english: Catalog, basePending: string[], pending: string[]) => string[];
   untranslatedKeys: (english: Catalog, messages: Catalog, keep: string[]) => string[];
 };
 
@@ -43,6 +49,60 @@ describe('catalog parity with English', () => {
 });
 
 describe('the untranslated check', () => {
+  it('preserves malformed baselines instead of resetting them', () => {
+    const locale = `test-${randomUUID()}`;
+    const file = new URL(`../untranslated/${locale}.json`, import.meta.url);
+    expect(exceptions(locale)).toEqual({ sameAsEnglish: [], pending: [], exists: false });
+    writeFileSync(file, '{invalid');
+    try {
+      expect(() => exceptions(locale)).toThrow(SyntaxError);
+    } finally {
+      rmSync(file);
+    }
+  });
+
+  it('rejects re-listing translated keys against the base but permits new catalog keys', () => {
+    const baseEnglish = { translated: 'Save', pending: 'Delete' };
+    expect(pendingGrowth(baseEnglish, ['pending'], ['pending'])).toEqual([]);
+    expect(pendingGrowth(baseEnglish, ['pending'], [])).toEqual([]);
+    expect(pendingGrowth(baseEnglish, ['pending'], ['translated', 'new_key'])).toEqual(['translated']);
+    expect(pendingGrowth(baseEnglish, [], ['translated'])).toEqual(['translated']);
+  });
+
+  it('enforces the base comparison through the CI command from any working directory', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'nibleaf-i18n-base-'));
+    const relativeRoot = 'packages/i18n/';
+    const write = (path: string, value: unknown) => writeFileSync(join(fixture, relativeRoot, path), JSON.stringify(value));
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: fixture, stdio: 'pipe' });
+    try {
+      for (const dir of ['scripts', 'messages', 'untranslated', 'project.inlang']) mkdirSync(join(fixture, relativeRoot, dir), { recursive: true });
+      copyFileSync(new URL('../scripts/untranslated.mjs', import.meta.url), join(fixture, relativeRoot, 'scripts/untranslated.mjs'));
+      write('messages/en.json', { existing: 'Save' });
+      write('project.inlang/settings.json', { locales: ['en', 'de'] });
+      git('init');
+      git('add', '.');
+      const commit = () =>
+        git('-c', 'user.name=Test', '-c', 'user.email=test@example.test', '-c', 'commit.gpgsign=false', 'commit', '-m', 'baseline');
+      commit();
+      write('untranslated/de.json', { pending: ['existing'] });
+      const run = () =>
+        spawnSync(process.execPath, ['scripts/untranslated.mjs', '--check-base', 'HEAD'], { cwd: join(fixture, relativeRoot), encoding: 'utf8' });
+      // Initial guard adoption has no baseline to compare yet.
+      expect(run().status).toBe(0);
+      write('untranslated/de.json', { pending: [] });
+      git('add', '.');
+      commit();
+      write('untranslated/de.json', { pending: ['existing'] });
+      const regression = run();
+      expect(regression.status).not.toBe(0);
+      expect(regression.stderr).toContain('pending grew from HEAD: existing');
+      write('untranslated/de.json', { pending: ['new_key'] });
+      expect(run().status).toBe(0);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  });
+
   it('accepts strings made only of kept terms, numbers, punctuation and placeholders', () => {
     expect(onlyKeptTerms('GitHub', keep)).toBe(true);
     expect(onlyKeptTerms('{count} MB', keep)).toBe(true);

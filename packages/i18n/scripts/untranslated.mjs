@@ -13,6 +13,7 @@
 // untranslated/<locale>.json lists the exceptions: `sameAsEnglish` (identical
 // on purpose, e.g. a loanword the locale uses as is) and `pending` (not
 // translated yet; it only shrinks). src/untranslated.test.ts enforces both.
+import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -29,10 +30,30 @@ export const exceptions = (locale) => {
   try {
     const { sameAsEnglish = [], pending = [] } = readJson(`untranslated/${locale}.json`);
     return { sameAsEnglish, pending, exists: true };
-  } catch {
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
     return { sameAsEnglish: [], pending: [], exists: false };
   }
 };
+
+/** Existing catalog keys may leave pending, but cannot be added back in a PR. */
+export function pendingGrowth(baseEnglish, basePending, pending) {
+  const previous = new Set(basePending);
+  return pending.filter((key) => key in baseEnglish && !previous.has(key));
+}
+
+function checkBase(base) {
+  const git = (...args) => execFileSync('git', args, { cwd: new URL('../../', root), encoding: 'utf8' });
+  const english = JSON.parse(git('show', `${base}:packages/i18n/messages/en.json`));
+  for (const locale of locales().filter((value) => value !== 'en')) {
+    const path = `packages/i18n/untranslated/${locale}.json`;
+    // The first guard PR establishes the baseline; later PRs must shrink it.
+    if (!git('ls-tree', '--name-only', base, '--', path).trim()) continue;
+    const previous = JSON.parse(git('show', `${base}:${path}`));
+    const grown = pendingGrowth(english, previous.pending ?? [], exceptions(locale).pending);
+    if (grown.length) throw new Error(`${locale}: pending grew from ${base}: ${grown.join(', ')}`);
+  }
+}
 
 /**
  * The next `pending` list from the catalog's leftovers. It may only shrink: a
@@ -109,6 +130,11 @@ export function parityProblems(english, messages) {
 }
 
 function main(argv) {
+  if (argv[0] === '--check-base') {
+    if (argv.length !== 2) throw new Error('usage: untranslated.mjs --check-base <revision>');
+    checkBase(argv[1]);
+    return;
+  }
   const english = catalog('en');
   const keep = keepTerms();
   const rewrite = argv.includes('--baseline');

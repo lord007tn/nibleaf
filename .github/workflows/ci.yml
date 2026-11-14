@@ -67,6 +67,12 @@ jobs:
       - name: Test installer safety boundaries
         run: node --test scripts/installer.test.mjs
 
+      - name: Prevent untranslated baseline growth
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node packages/i18n/scripts/untranslated.mjs --check-base "$BASE_SHA"
+
       - name: Test release notes
         run: node --test scripts/release-notes.test.mjs
 
