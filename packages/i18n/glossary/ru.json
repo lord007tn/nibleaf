@@ -1,5 +1,5 @@
 {
-  "style": "Formal address with lowercase «вы» (Сохраните, Выберите), as in the existing reader and marketing strings. Buttons and tabs: an infinitive (Сохранить, Опубликовать, Удалить) or a noun, no final period. Quote marks «…», nested „…“. Use ё (её, всё, ещё). An em dash with spaces ( — ). A non-breaking space between a number and its unit (30 дней, 5 MB); unit abbreviations from doNotTranslate stay in Latin. Decimal comma (1,5). Counts in plain sentences use «Страниц: {count}» when no plural form is available. Role names are capitalised only as labels (Владелец), lowercase in running text.",
+  "style": "Formal address with lowercase «вы» (Сохраните, Выберите), as in the existing reader and marketing strings. Buttons and tabs: an infinitive (Сохранить, Опубликовать, Удалить) or a noun, no final period. Quote marks «…», nested „…“. Use ё (её, всё, ещё). An em dash with spaces ( — ). A space between a number and its unit (30 дней, 5 MB); unit abbreviations from doNotTranslate stay in Latin. Decimal comma (1,5). Counts in plain sentences use «Страниц: {count}» when no plural form is available. Role names are capitalised only as labels (Владелец), lowercase in running text.",
   "terms": {
     "site": {
       "translation": "сайт",
