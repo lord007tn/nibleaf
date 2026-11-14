@@ -5,12 +5,20 @@ import main from './__fixtures__/jsx-openers-main.json';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
- * This PR leaves component attributes as main reads them: #579 (a Frame caption
- * ending in a backslash) moves to its own PR, with a real JSX attribute grammar.
- * For every generated opening tag (valid MDX, as the MDX compiler accepts it, and
+ * Generated component opening tags (valid MDX, as the MDX compiler accepts it, and
  * malformed: Unicode and namespaced names, spread attributes, `a.b`, `x::y`,
- * backslashes before quotes), the editor gives what main gives: the same nodes,
- * the same saved page, and the same page after the title or caption is edited.
+ * backslashes before quotes), against main's results (#579 reads openers with the
+ * MDX grammar, `./extensions/jsx-attributes`):
+ *
+ * - A page MDX compiles with no backslash in its value gives what main gives: the
+ *   same nodes, the same saved page, and the same page after the title or caption
+ *   is edited.
+ * - A page MDX compiles with a backslash in its value (`title="Old\"`, the title
+ *   `Old\`): main dropped the component or misread its attributes. It now loads as
+ *   the component, saves byte for byte, and an edit rewrites only that value.
+ * - A page MDX rejects (`a.b="x"`, `x::y="1"`, `"a \"b\" c"`) loads as one opaque
+ *   block from the opener to its closing tag and saves byte for byte. Main
+ *   structured some of these and dropped others.
  *
  * `__fixtures__/jsx-openers-main.json` holds main's results (main 14209455) and
  * whether `@mdx-js/mdx` compiles each page; it was made by running this generator
@@ -47,9 +55,15 @@ const FOLLOWERS = [
 /** Every page: a component whose opener is `<Tag key=VALUE FOLLOWER>`, with a body. */
 const pages = COMPONENTS.flatMap(([tag, key]) =>
   VALUES.flatMap((value) =>
-    FOLLOWERS.map((follower) => ({ tag, key, source: `Intro.\n\n<${tag} ${key}=${value}${follower}>\n\nBody\n\n</${tag}>` })),
+    FOLLOWERS.map((follower) => ({ tag, key, value, source: `Intro.\n\n<${tag} ${key}=${value}${follower}>\n\nBody\n\n</${tag}>` })),
   ),
 );
+const COMPONENT_NODE: Record<(typeof COMPONENTS)[number][0], string> = {
+  Card: 'mdxCard',
+  Step: 'mdxStep',
+  Accordion: 'mdxAccordion',
+  Frame: 'mdxFrame',
+};
 
 interface Result {
   nodes: string[];
@@ -82,14 +96,35 @@ describe('component opening tags, as main reads them', () => {
     expect(main.filter((entry) => entry.valid).length).toBeGreaterThanOrEqual(214);
   });
 
-  it(`gives main’s nodes, save and edited save for all ${pages.length} pages`, () => {
-    const differences: Array<{ source: string; main: Result; head: Result }> = [];
-    for (const [index, { key, source }] of pages.entries()) {
-      const expected = main[index] as (typeof main)[number];
+  it(`gives main’s results, or the grammar’s where main misread, for all ${pages.length} pages`, () => {
+    const differences: Array<{ source: string; expected: Result; head: Result }> = [];
+    const counts = { asMain: 0, backslashRead: 0, rejectedOpaque: 0 };
+    for (const [index, { tag, key, value, source }] of pages.entries()) {
+      const fromMain = main[index] as (typeof main)[number];
       const head = read(source, key);
-      const fromMain: Result = { nodes: expected.nodes, saved: expected.saved, edited: expected.edited };
-      if (JSON.stringify(head) !== JSON.stringify(fromMain)) differences.push({ source, main: fromMain, head });
+      let expected: Result;
+      if (fromMain.valid && !value.includes('\\')) {
+        expected = { nodes: fromMain.nodes, saved: fromMain.saved, edited: fromMain.edited };
+        counts.asMain++;
+      } else if (fromMain.valid) {
+        // The component, its value read with no escapes, edited in place.
+        expected = {
+          nodes: ['paragraph', 'text', COMPONENT_NODE[tag], 'paragraph', 'text', 'paragraph'],
+          saved: source,
+          edited: source.replace(`${key}=${value}`, `${key}="Edited"`),
+        };
+        counts.backslashRead++;
+      } else {
+        // One opaque node and no component: a block, or inline where Markdown reads the
+        // opener's line as a paragraph (`title="a \"b\" c"` isn't an HTML tag to it).
+        const opaque = head.nodes.filter((node) => node.startsWith('mdxOpaque')).length === 1 && !head.nodes.includes(COMPONENT_NODE[tag]);
+        expected = { nodes: opaque ? head.nodes : ['one opaque node, no component'], saved: source, edited: null };
+        counts.rejectedOpaque++;
+      }
+      if (JSON.stringify(head) !== JSON.stringify(expected)) differences.push({ source, expected, head });
     }
     expect(differences.slice(0, 3)).toEqual([]);
+    expect(counts.backslashRead).toBeGreaterThan(0);
+    console.info(`[jsx-openers-match-main] ${JSON.stringify(counts)}`);
   }, 60_000);
 });

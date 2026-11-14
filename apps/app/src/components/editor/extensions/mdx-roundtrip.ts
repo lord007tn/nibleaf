@@ -5,6 +5,7 @@ import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
+import { isJsxTagFailure, looseJsxTagEnd, readJsxOpeningTag } from './jsx-attributes';
 
 type SerializeState = {
   write: (text: string) => void;
@@ -449,8 +450,14 @@ interface TagToken {
   editorMarkup?: boolean;
   /** Lowercase HTML the editor keeps opaque (see classifyHtml). */
   rawHtml?: boolean;
-  /** A raw-text element (`<script>`) with no closing tag: its text runs to the end of the page. */
+  /** A raw-text element (`<script>`) with no closing tag: its text runs to the end of the page.
+   *  Also a component opener whose value or tag never ends (see scanTags). */
   runsToEnd?: boolean;
+  /** A supported component's opener the editor can't read with the MDX grammar (see
+   *  `./jsx-attributes`): kept whole, with its children, byte for byte. */
+  malformed?: boolean;
+  /** How far reading a malformed opener got: its `>`, or where the grammar stopped. */
+  reach?: number;
 }
 
 interface SourceRange {
@@ -514,8 +521,11 @@ const decodeAttributeValue = (value: string): string =>
     return code === 0 || (code >= 0xd8_00 && code <= 0xdf_ff) || code > 0x10_ff_ff ? '�' : String.fromCodePoint(code);
   });
 
+/** A value for the HTML the editor parses. Line breaks become references too: a blank
+ *  line inside a value (`caption="a\n\nb"`, a multiline `{…}`) would end the HTML block
+ *  the Markdown parser reads the tag in, and the component with it. */
 const escapeHtmlAttribute = (value: string): string =>
-  value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '&#10;').replace(/\r/g, '&#13;');
 
 const lineIsFence = (line: string): { marker: string; length: number } | null => {
   const match = /^\s*(`{3,}|~{3,})/.exec(line);
@@ -715,6 +725,10 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   const opened: number[] = [];
   // The first `</name` at or after the last search for it, or -1 for none.
   const closers = new Map<string, number>();
+  // How far a failed grammar read got. An opener inside that text is kept as written
+  // without reading it again (the compiler rejected the page there already), so the
+  // grammar reads each character at most once.
+  let grammarReach = 0;
   for (let i = 0; i < source.length; i++) {
     if (source[i] !== '<' || mask[i]) continue;
     if (comments && source.startsWith('<!--', i)) {
@@ -734,13 +748,57 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     const name = nameMatch[0];
     const isHtml = !/^[A-Z]/.test(name);
     cursor += name.length;
-    if (!/[\s/>]/.test(source[cursor] ?? '')) continue;
+    // A supported component's opener is read with the MDX grammar (#579). One it can't
+    // read is kept whole, byte for byte (see unsupportedRanges), to where the compiler's
+    // lexical structure ends it (`looseJsxTagEnd`), or from its `<` to the end of the
+    // page when that never comes, as the compiler reads a value that never closes (and
+    // the scan stops: nothing after it is read as a tag).
+    const component = !isHtml && !closing && Boolean(SUPPORTED_MDX_COMPONENTS[name.toLowerCase()]) && !HTML_ELEMENT_ALIASES.has(name);
+    // MDX also reads a spread right after a component's name (`<Frame{...props}>`).
+    if (!/[\s/>]/.test(source[cursor] ?? '') && (isHtml || closing || source[cursor] !== '{')) {
+      // For MDX `<Frame\` is a tag it rejects; for the editor, text it would rewrite.
+      if (component)
+        tokens.push({
+          start: i,
+          end: cursor,
+          name,
+          raw: source.slice(i, cursor),
+          closing: false,
+          selfClosing: false,
+          html: false,
+          malformed: true,
+          reach: cursor,
+        });
+      continue;
+    }
+    const grammar = component && i >= grammarReach ? readJsxOpeningTag(source, i) : undefined;
+    if (grammar) grammarReach = isJsxTagFailure(grammar) ? grammar.at : grammar.end;
+    if (grammar && !isJsxTagFailure(grammar) && grammar.name === name) {
+      const raw = source.slice(i, grammar.end);
+      tokens.push({ start: i, end: grammar.end, name, raw, closing: false, selfClosing: grammar.selfClosing, html: false });
+      i = grammar.end - 1;
+      continue;
+    }
+    if (component) {
+      // An opener the grammar rejects ends where the compiler's lexical structure ends
+      // it (a `>` in a value or a comment doesn't), or it never does.
+      const end = grammar && isJsxTagFailure(grammar) && grammar.eof ? -1 : looseJsxTagEnd(source, i);
+      if (end < 0) {
+        tokens.push(unendedOpener(source, i, name));
+        break;
+      }
+      const raw = source.slice(i, end);
+      const reach = Math.max(end, grammar && isJsxTagFailure(grammar) ? grammar.at : 0);
+      tokens.push({ start: i, end, name, raw, closing: false, selfClosing: /\/\s*>$/.test(raw), html: false, malformed: true, reach });
+      i = end - 1;
+      continue;
+    }
     let quote = '';
     let braces = 0;
     let escaped = false;
-    // HTML attribute values have no backslash escapes (`title="Old\"` ends at that
-    // quote); only JSX and the JavaScript inside `{…}` do.
-    let escapes = true;
+    // Attribute values, HTML or JSX, have no backslash escapes (`title="Old\"` ends at
+    // that quote); only the JavaScript inside `{…}` does.
+    let escapes = false;
     const kind = isHtml ? 'html' : 'jsx';
     if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
     const known = unclosable[kind];
@@ -761,9 +819,9 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
         }
         passed.push(cursor);
       }
-      if (char === '"' || char === "'" || (char === '`' && (!isHtml || braces > 0))) {
+      if (char === '"' || char === "'" || (char === '`' && braces > 0)) {
         quote = char;
-        escapes = !isHtml || braces > 0;
+        escapes = braces > 0;
       } else if (char === '{') {
         const end = braceEnds.get(cursor);
         if (end === undefined) {
@@ -812,6 +870,27 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   return tokens;
 }
 
+/** The end of the Markdown block holding `at`: the line end before the next blank line, or the end of the page. */
+function blockEnd(source: string, at: number): number {
+  const blankLine = /\n[ \t]*(?:\r?\n|$)/g;
+  blankLine.lastIndex = Math.max(0, at - 1);
+  const found = blankLine.exec(source);
+  return found ? Math.max(at, found.index) : source.length;
+}
+
+/** A component opener that never ends: kept from its `<` to the end of the page. */
+const unendedOpener = (source: string, start: number, name: string): TagToken => ({
+  start,
+  end: source.length,
+  name,
+  raw: source.slice(start),
+  closing: false,
+  selfClosing: false,
+  html: false,
+  malformed: true,
+  runsToEnd: true,
+});
+
 /** Pair each closing tag with the latest unpaired opening tag of the same name. */
 function tagPairs(tokens: TagToken[]): Map<number, number> {
   const pairs = new Map<number, number>();
@@ -837,10 +916,16 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (!token || token.start < coveredUntil) continue;
-    if (token.html ? !token.rawHtml : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
+    if (
+      token.html ? !token.rawHtml : !token.malformed && (SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name))
+    )
+      continue;
     const closeIndex = token.closing ? undefined : pairs.get(i);
     const close = closeIndex == null ? undefined : tokens[closeIndex];
-    const end = close?.end ?? (token.runsToEnd ? source.length : token.end);
+    let end = close?.end ?? (token.runsToEnd ? source.length : token.end);
+    // A malformed opener is kept through the end of its Markdown block at least: where
+    // its `>` is, and so the rest of its line, depends on rules the compiler rejected.
+    if (token.malformed && token.reach !== undefined) end = Math.max(end, blockEnd(source, token.reach));
     ranges.push(sourceRange(source, layout, { start: token.start, end }, token.name));
     if (!token.closing) coveredUntil = end;
   }
@@ -907,7 +992,7 @@ function classifyHtml(tokens: TagToken[], pairs: Map<number, number>): void {
 const isComponentTag = (token: TagToken): boolean =>
   token.html
     ? !token.rawHtml && Boolean(token.editorMarkup || COMPONENT_HTML.has(token.name))
-    : Boolean(SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()]) && !HTML_ELEMENT_ALIASES.has(token.name);
+    : Boolean(SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()]) && !HTML_ELEMENT_ALIASES.has(token.name) && !token.malformed;
 
 /**
  * Text that runs to the end of the page (an unterminated comment or raw-text
@@ -981,7 +1066,33 @@ function keepRawHtml(
   return outermostRanges(kept);
 }
 
+/**
+ * An opening tag's named attributes, offsets in `raw`. A component's (`<Frame …>`) are
+ * read with the MDX grammar (`./jsx-attributes`): quoted values with no escapes,
+ * `{…}` values kept as written, spreads left out. The scan structures only openers
+ * the grammar reads, so none gets here unread; one would have no attributes.
+ */
 function parseAttributes(raw: string, componentName: string): AttributeToken[] {
+  return /^<[A-Z]/.test(raw) ? jsxAttributes(raw) : htmlAttributes(raw, componentName);
+}
+
+function jsxAttributes(raw: string): AttributeToken[] {
+  const tag = readJsxOpeningTag(raw, 0);
+  if (isJsxTagFailure(tag)) return [];
+  return tag.attributes.flatMap((attr): AttributeToken[] => {
+    if (attr.kind === 'spread') return [];
+    const value =
+      attr.kind === 'boolean'
+        ? true
+        : attr.kind === 'string'
+          ? decodeAttributeValue(raw.slice(attr.valueStart + 1, attr.valueEnd - 1))
+          : raw.slice(attr.valueStart, attr.valueEnd);
+    return [{ name: attr.name, start: attr.start, end: attr.end, value }];
+  });
+}
+
+/** A lowercase HTML tag's attributes. HTML values have no backslash escapes either. */
+function htmlAttributes(raw: string, componentName: string): AttributeToken[] {
   const attrs: AttributeToken[] = [];
   let cursor = raw.indexOf(componentName) + componentName.length;
   const limit = raw.length - (raw.endsWith('/>') ? 2 : 1);
@@ -1003,7 +1114,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     const quote = raw[cursor];
     if (quote === '"' || quote === "'") {
       const valueStart = ++cursor;
-      while (cursor < limit && raw[cursor] !== quote) cursor += raw[cursor] === '\\' ? 2 : 1;
+      while (cursor < limit && raw[cursor] !== quote) cursor++;
       value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
@@ -1197,7 +1308,7 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
     const index = range.name === 'Frame' ? tokenAt.get(range.start) : undefined;
     const open = index === undefined ? undefined : tokens[index];
     const close = index === undefined ? undefined : tokens[pairs.get(index) ?? -1];
-    return open && close && !open.closing && !open.selfClosing && close.end === range.end ? { open, close } : undefined;
+    return open && close && !open.closing && !open.selfClosing && !open.malformed && close.end === range.end ? { open, close } : undefined;
   };
   const replacements: Array<{ start: number; end: number; value: string }> = opaque.map((range) => ({
     start: range.start,
