@@ -114,6 +114,22 @@ describe('documentation themes', () => {
     }
   });
 
+  it('searches the other way on a mid-tone canvas, and never makes a passing accent worse', () => {
+    // 4.63:1 on the canvas as authored, but short on its own tint: towards white
+    // never gets there, towards black does.
+    const shade = readableAccentText('#303030', '#999999');
+    expect(contrastRatio(shade, '#999999')).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(contrastRatio(shade, '#999999')).toBeGreaterThanOrEqual(contrastRatio('#303030', '#999999'));
+    // A canvas no colour can reach AA on keeps the best-reading candidate, never a worse one.
+    for (const [accent, canvas] of [
+      ['#7a7a7a', '#777777'],
+      ['#336699', '#5a5a5a'],
+    ] as const) {
+      const result = readableAccentText(accent, canvas);
+      expect(contrastRatio(result, canvas)).toBeGreaterThanOrEqual(Math.min(contrastRatio(accent, canvas), 4.5) - 0.01);
+    }
+  });
+
   it('lightens a dark-mode accent that fails as text on the dark canvas', () => {
     expect(readableAccentText('#2a2a6e', '#0b1120')).not.toBe('#2a2a6e');
     expect(contrastRatio(readableAccentText('#2a2a6e', '#0b1120'), '#0b1120')).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);

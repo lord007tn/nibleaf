@@ -404,12 +404,23 @@ export const readableAccentText = (accent: string, canvas: string): string => {
   const color = normalizeHex(accent);
   if (!/^#[0-9a-f]{6}$/i.test(color) || !/^#[0-9a-f]{6}$/i.test(normalizeHex(canvas))) return accent;
   if (accentTextPasses(color, canvas)) return color;
+  // Towards white on dark canvases and black on light ones first; on a mid
+  // tone that side may never get there while the other does (#303030 on
+  // #999999 passes towards black, never towards white).
   const target = relativeLuminance(canvas) < 0.35 ? '#ffffff' : '#000000';
-  for (let step = 1; step <= 40; step++) {
-    const shade = mixHex(color, target, step / 40);
-    if (accentTextPasses(shade, canvas)) return shade;
+  const alternate = target === '#ffffff' ? '#000000' : '#ffffff';
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(color, endpoint, step / 40);
+      if (accentTextPasses(shade, canvas)) return shade;
+    }
   }
-  return target;
+  // No shade reaches 4.5:1 on both the canvas and the tint (a canvas this mid
+  // can't hold AA text at all). Never trade a passing-on-canvas authored accent
+  // for something worse: keep whichever of the accent and the two endpoints
+  // reads best against the weaker of the two backgrounds.
+  const worst = (candidate: string) => Math.min(contrastRatio(candidate, canvas), contrastRatio(candidate, mixHex(canvas, candidate, ACCENT_TINT)));
+  return [color, target, alternate].reduce((best, candidate) => (worst(candidate) > worst(best) ? candidate : best));
 };
 
 /** Make a resolved palette's accent safe as text, keeping what follows it (the
