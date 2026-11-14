@@ -500,6 +500,27 @@
     border-inline-start: 3px solid var(--callout-color);
   }
 
+  /* A page surface nested in a solid callout (a card, a tab panel, a muted box)
+   * draws its own light or dark fill, so it takes the page's text colours back:
+   * the code-surface aliases above stop at its edge. --theme-foreground and
+   * --theme-muted-foreground hold the page values (custom properties inherit
+   * their computed value), so a card's title reads as it does outside. */
+  .nibleaf-site-chrome[data-theme-callouts="solid"]
+    [data-theme-component="callout"]
+    :is(
+      .bg-card,
+      .bg-background,
+      .bg-popover,
+      .bg-muted,
+      [class*="bg-card/"],
+      [class*="bg-background/"],
+      [class*="bg-muted/"]
+    ) {
+    --foreground: var(--theme-foreground);
+    --muted-foreground: var(--theme-muted-foreground);
+    color: var(--theme-foreground);
+  }
+
   .nibleaf-site-chrome[data-theme-callouts="solid"]
     [data-theme-component="callout"]
     :not(pre)

@@ -20,6 +20,18 @@ describe('preset contrast (PUB-019)', () => {
     expect(rule).toContain('--muted-foreground: var(--theme-code-muted)');
   });
 
+  it('gives a page surface nested in a solid callout (a card) its page text colours back', () => {
+    const css = read('../../styles.css');
+    const start = css.indexOf('.bg-card,');
+    expect(start).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf('}', start));
+    expect(rule).toContain('--foreground: var(--theme-foreground)');
+    expect(rule).toContain('--muted-foreground: var(--theme-muted-foreground)');
+    expect(rule).toContain('color: var(--theme-foreground)');
+    // The boundary is scoped to solid callouts only.
+    expect(css.slice(css.lastIndexOf('.nibleaf-site-chrome', start), start)).toContain('[data-theme-callouts="solid"]');
+  });
+
   it("draws the code block's language label at a contrast that reads on the dark chrome", () => {
     expect(read('reader-code-block.tsx')).toContain('font-mono text-[10px] text-white/70 uppercase');
   });
