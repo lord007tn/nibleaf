@@ -271,7 +271,7 @@ export default function SiteSearchDialog({
   const showFilters = showVersionFilter || showLanguageFilter;
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
-  const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
+  const [debouncedQuery] = useDebouncedValue(query, { wait: 120 });
   const trimmed = query.trim();
   // Keyword search is intentionally language-independent. Omitting `language`
   // asks the public endpoint to search every enabled language in the published

@@ -202,6 +202,7 @@ const retrieveHybrid = async (
     },
     signal,
   );
+  signal?.throwIfAborted();
   const chunks = rerankHybridChunks(
     query,
     points.flatMap((point) => {
@@ -217,6 +218,10 @@ export interface SearchRuntimeResult {
   hits: SearchHit[];
   runtime: 'legacy' | 'legacy-fallback' | 'shadow' | 'hybrid';
 }
+
+// Readiness, workspace lookup, embedding and retrieval share this budget. The
+// keyword lane does not depend on any of them, including on a cold instance.
+const READER_HYBRID_BUDGET_MS = 80;
 
 export const runPublishedSearch = async (
   scope: SearchScope,
@@ -251,16 +256,25 @@ export const runPublishedSearch = async (
     })().catch(() => log.warn({ projectId: scope.projectId }, 'hybrid search shadow request failed'));
     return { hits: legacyHits, runtime: 'shadow' };
   }
-  // Keyword results, without paying to embed a query the serving index cannot answer.
-  if (!qdrant || !(await configuredIndexServing())) return { hits: await legacy(), runtime: 'legacy-fallback' };
-  const provider = await resolveWorkspaceAi(scope.projectId).catch(() => null);
-  if (!provider) return { hits: await legacy(), runtime: 'legacy-fallback' };
-  try {
-    const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider);
-    // A newly published deployment can be served before its async index job
-    // finishes. Keep ordinary search working during that window and recovery.
-    if (result.chunks.length === 0) return { hits: await legacy(), runtime: 'legacy-fallback' };
-    // Normalized like the keyword index for this language (accent folding included).
+  signal?.throwIfAborted();
+  const controller = new AbortController();
+  const hybridSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+  const deadline = performance.now() + READER_HYBRID_BUDGET_MS;
+  const expired = () => hybridSignal.aborted || performance.now() >= deadline;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    hybridSignal.addEventListener('abort', () => resolve(null), { once: true });
+    timer = setTimeout(() => controller.abort(), READER_HYBRID_BUDGET_MS);
+  });
+  const keyword = Promise.resolve().then(legacy);
+  const hybrid = (async () => {
+    // Check after each uncancellable lookup so a late readiness/configuration
+    // response cannot start an embedding request after the reader has moved on.
+    if (!qdrant || !(await configuredIndexServing()) || expired()) return null;
+    const provider = await resolveWorkspaceAi(scope.projectId);
+    if (!provider || expired()) return null;
+    const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), hybridSignal, provider);
+    if (expired() || result.chunks.length === 0) return null;
     const language = oramaLanguageForCode(scope.language);
     const terms = readerSearchTerms(query, language);
     const scored = result.chunks.map((hit) => ({
@@ -271,17 +285,23 @@ export const runPublishedSearch = async (
       ),
     }));
     const floor = readerRelevanceFloor(Math.max(0, ...scored.map((hit) => hit.score)));
-    return {
-      hits: collapseChunkHits(
-        scored.filter((hit) => hit.score >= floor),
-        limit,
-        query,
-      ),
-      runtime: 'hybrid',
-    };
-  } catch {
-    log.error({ projectId: scope.projectId }, 'hybrid search failed; using rollback runtime');
-    return { hits: await legacy(), runtime: 'legacy-fallback' };
+    const hits = collapseChunkHits(
+      scored.filter((hit) => hit.score >= floor),
+      limit,
+      query,
+    );
+    return expired() ? null : hits;
+  })().catch(() => {
+    if (!hybridSignal.aborted) log.error({ projectId: scope.projectId }, 'hybrid search failed; using rollback runtime');
+    return null;
+  });
+  try {
+    const [keywordHits, hybridHits] = await Promise.all([keyword, Promise.race([hybrid, timeout])]);
+    signal?.throwIfAborted();
+    return hybridHits === null ? { hits: keywordHits, runtime: 'legacy-fallback' } : { hits: hybridHits, runtime: 'hybrid' };
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
   }
 };
 

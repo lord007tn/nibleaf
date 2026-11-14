@@ -1,0 +1,133 @@
+{
+  "label": "after",
+  "pages": 300,
+  "measurement": "Hono search action Server-Timing; real PostgreSQL and Orama; controlled readiness delay; no external HTTP",
+  "reports": [
+    {
+      "readinessDelayMs": 0,
+      "coldMs": 258.2620999999999,
+      "samples": 45,
+      "p50Ms": 5.390400000003865,
+      "p95Ms": 15.234099999994214,
+      "perQuery": [
+        {
+          "query": "custom domain",
+          "resultHash": "e3ef4762d3089406335b954ae29ee8ea11999577689a0d5a819ad67af1867cce",
+          "p50Ms": 6.216599999999744,
+          "p95Ms": 6.48750000000291
+        },
+        {
+          "query": "publsh",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 9.373399999996764,
+          "p95Ms": 11.545299999997951
+        },
+        {
+          "query": "zzqxv",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 15.14999999999418,
+          "p95Ms": 15.350099999996019
+        },
+        {
+          "query": "Ù†Ø·Ø§Ù‚",
+          "resultHash": "c98f76fedae4f0f841bdd5e405b2ea980a10c27635942d49cacb072729bfb955",
+          "p50Ms": 4.257400000002235,
+          "p95Ms": 4.803599999999278
+        },
+        {
+          "query": "promo code",
+          "resultHash": "1b0adf93292806d47f53882cade09de238a61fa06840f3c471cec6e0fddf895d",
+          "p50Ms": 5.131600000000617,
+          "p95Ms": 6.175999999999476
+        },
+        {
+          "query": "zzqxv",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 5.497900000002119,
+          "p95Ms": 18.016700000000128
+        },
+        {
+          "query": "Ø§Ù„Ø­Ø¬ÙˆØ²Ø§Øª",
+          "resultHash": "9b5bbc75551ac0dd456f0be24a03479bb636753fac797b513c0dd85bbde64c2f",
+          "p50Ms": 4.051999999996042,
+          "p95Ms": 4.894000000000233
+        },
+        {
+          "query": "reservation",
+          "resultHash": "b325008e2da9142650506770dd39d1c521504e08e5d93f9e74c933b8e74ec638",
+          "p50Ms": 5.391799999997602,
+          "p95Ms": 6.159499999994296
+        },
+        {
+          "query": "install",
+          "resultHash": "81514300732c2ff980c5f9cbf07285e3ebcd248c17b1f7a7b2b0b0f97b597352",
+          "p50Ms": 4.9078000000008615,
+          "p95Ms": 5.67960000000312
+        }
+      ]
+    },
+    {
+      "readinessDelayMs": 700,
+      "coldMs": 91.85610000000452,
+      "samples": 45,
+      "p50Ms": 91.74669999999605,
+      "p95Ms": 93.3830999999991,
+      "perQuery": [
+        {
+          "query": "custom domain",
+          "resultHash": "e3ef4762d3089406335b954ae29ee8ea11999577689a0d5a819ad67af1867cce",
+          "p50Ms": 91.33909999999742,
+          "p95Ms": 91.68149999999878
+        },
+        {
+          "query": "publsh",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 91.2934000000023,
+          "p95Ms": 91.31399999999849
+        },
+        {
+          "query": "zzqxv",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 91.92449999999371,
+          "p95Ms": 93.90579999999318
+        },
+        {
+          "query": "Ù†Ø·Ø§Ù‚",
+          "resultHash": "c98f76fedae4f0f841bdd5e405b2ea980a10c27635942d49cacb072729bfb955",
+          "p50Ms": 92.1114000000016,
+          "p95Ms": 92.49910000000091
+        },
+        {
+          "query": "promo code",
+          "resultHash": "1b0adf93292806d47f53882cade09de238a61fa06840f3c471cec6e0fddf895d",
+          "p50Ms": 92.07019999999466,
+          "p95Ms": 92.43429999999353
+        },
+        {
+          "query": "zzqxv",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 91.347299999994,
+          "p95Ms": 92.2471000000005
+        },
+        {
+          "query": "Ø§Ù„Ø­Ø¬ÙˆØ²Ø§Øª",
+          "resultHash": "9b5bbc75551ac0dd456f0be24a03479bb636753fac797b513c0dd85bbde64c2f",
+          "p50Ms": 91.28740000000107,
+          "p95Ms": 93.3830999999991
+        },
+        {
+          "query": "reservation",
+          "resultHash": "b325008e2da9142650506770dd39d1c521504e08e5d93f9e74c933b8e74ec638",
+          "p50Ms": 91.76920000000246,
+          "p95Ms": 92.6872000000003
+        },
+        {
+          "query": "install",
+          "resultHash": "81514300732c2ff980c5f9cbf07285e3ebcd248c17b1f7a7b2b0b0f97b597352",
+          "p50Ms": 92.30969999999797,
+          "p95Ms": 94.50990000000456
+        }
+      ]
+    }
+  ]
+}
