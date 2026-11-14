@@ -1,5 +1,6 @@
 import type { Locale } from '@nibleaf/i18n';
 import { LayoutGrid } from 'lucide-react';
+import { insertBlockAtFirstItem } from './insert-items';
 import { type SlashItem, scaffoldText } from './types';
 
 const cardContent = (count: number, locale: Locale) =>
@@ -35,16 +36,11 @@ export const cardSlashItems: SlashItem[] = [
     glyph: '▦',
     keywords: ['card', 'cards', 'grid', 'tiles'],
     command: ({ editor, range, locale }) =>
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({
-          type: 'mdxCardGroup',
-          attrs: { cols: '2' },
-          content: cardContent(2, locale),
-        })
-        .run(),
+      insertBlockAtFirstItem(editor, range, {
+        type: 'mdxCardGroup',
+        attrs: { cols: '2' },
+        content: cardContent(2, locale),
+      }),
   },
   ...([3, 4] as const).map(
     (count): SlashItem => ({
@@ -54,12 +50,7 @@ export const cardSlashItems: SlashItem[] = [
       glyph: `▦${count}`,
       keywords: ['card', 'cards', 'grid', 'tiles'],
       command: ({ editor, range, locale }) =>
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .insertContent({ type: 'mdxCardGroup', attrs: { cols: String(count) }, content: cardContent(count, locale) })
-          .run(),
+        insertBlockAtFirstItem(editor, range, { type: 'mdxCardGroup', attrs: { cols: String(count) }, content: cardContent(count, locale) }),
     }),
   ),
 ];

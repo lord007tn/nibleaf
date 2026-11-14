@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getSiteOpenApi: vi.fn(),
   getSiteChangelogRss: vi.fn(),
   getSitePageMarkdown: vi.fn(),
+  searchSite: vi.fn(),
   answerSite: vi.fn(),
   chatSite: vi.fn(),
   getSiteChatPolicy: vi.fn(),
@@ -29,7 +30,7 @@ vi.mock('@/actions/sites', () => ({
   getSitePage: vi.fn(),
   getSitePageMarkdown: mocks.getSitePageMarkdown,
   getSiteOpenApi: mocks.getSiteOpenApi,
-  searchSite: vi.fn(),
+  searchSite: mocks.searchSite,
   answerSite: mocks.answerSite,
   recordSiteEvent: vi.fn(),
   getSiteChangelog: vi.fn(),
@@ -230,5 +231,27 @@ describe('crawler observation authentication and duplicate suppression', () => {
     );
     vi.useRealTimers();
     vi.unstubAllEnvs();
+  });
+});
+
+describe('reader search timing', () => {
+  it('exposes API duration without changing response shape or private cache policy', async () => {
+    const data = { hits: [], searchId: 'search-1', runtime: 'legacy-fallback', capabilities: { answer: false } };
+    mocks.searchSite.mockResolvedValueOnce(data);
+    const response = await app.request('/sites/project/search?q=custom%20domain&prefer=ar');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ data });
+    expect(response.headers.get('server-timing')).toMatch(/^search;dur=\d+\.\d$/);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('vary')).toBe('Cookie, Authorization');
+    expect(mocks.searchSite).toHaveBeenCalledWith(
+      'project',
+      'custom domain',
+      undefined,
+      undefined,
+      undefined,
+      { consentState: 'unknown', sessionId: undefined },
+      'ar',
+    );
   });
 });
