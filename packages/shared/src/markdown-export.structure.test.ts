@@ -43,7 +43,13 @@ const inspect = (source: string) => {
 it.each([
   ['expanded HTML classes 1-7, seed 0x633652bb', expandedExportStructureCases, 19_800],
   ['inert content, closing injections, case and inline hazards', exportContentHazardCases, 3030],
-  ['352-page repository corpus', () => markdownCorpus(fileURLToPath(new URL('../../..', import.meta.url))).map(([, source]) => source), 352],
+  // The repository corpus grows whenever docs are added, so its count is a
+  // floor (the 352 pages reviewed in #652); docs edits never fail CI on count.
+  [
+    'repository corpus (at least 352 pages)',
+    () => markdownCorpus(fileURLToPath(new URL('../../..', import.meta.url))).map(([, source]) => source),
+    352,
+  ],
 ] as const)(
   'preserves structure, source text and inert content: %s',
   (_label, build, count) => {
@@ -77,7 +83,6 @@ it.each([
           failures.push({ source, baseline, output, live: after.elements, newlyLive, structure: comparison.equal, preserved: comparison.preserved });
       }
     console.info(_label, totals);
-    expect(cases.length).toBe(count);
     expect({
       failures,
       live: totals.live,
@@ -86,6 +91,9 @@ it.each([
       textLoss: totals.textLoss,
       inactiveChanges: totals.inactiveChanges,
     }).toEqual({ failures: [], live: 0, newFeatures: 0, structure: 0, textLoss: 0, inactiveChanges: 0 });
+    // Generated matrices are exact; the repository corpus only has a floor.
+    if (build === expandedExportStructureCases || build === exportContentHazardCases) expect(cases.length).toBe(count);
+    else expect(cases.length).toBeGreaterThanOrEqual(count);
   },
   240_000,
 );
