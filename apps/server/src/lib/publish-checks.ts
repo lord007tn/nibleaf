@@ -3,7 +3,6 @@ import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { site_importblog } from '@nibleaf/i18n/messages/site_importblog';
 import { hasTextOutsideComments } from '@nibleaf/shared/markup-scan';
-import type { PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
 import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, snapshotContentFacts } from '@nibleaf/shared/publish-checks';
 import { buildNavTree, defaultLanguage, isPageTranslation, publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import { firstPage, pagesForLanguage, pagesForVersion, resolveSitePage } from '@nibleaf/shared/site-route';
@@ -19,6 +18,22 @@ import { firstPage, pagesForLanguage, pagesForVersion, resolveSitePage } from '@
  * One pass over the snapshot's pages with in-memory indexes: no queries, so a
  * 300-page site costs a few milliseconds.
  */
+type PublishCheckCode =
+  | 'broken-internal-link'
+  | 'missing-alt'
+  | 'untitled-page'
+  | 'stray-characters'
+  | 'unreadable-slug'
+  | 'empty-page'
+  | 'duplicate-title'
+  | 'embed-untitled'
+  | 'embed-as-link'
+  | 'video-not-https'
+  | 'embed-unclosed'
+  | 'video-poster-hidden'
+  | 'home-untranslated'
+  | 'blog-root-group';
+
 export interface PublishCheck {
   code: PublishCheckCode;
   severity: 'error' | 'warning';

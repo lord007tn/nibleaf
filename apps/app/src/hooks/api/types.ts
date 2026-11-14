@@ -2,7 +2,6 @@ import type { ReaderText } from '@/lib/reader-text';
 // UI-facing shapes for API responses. Dates arrive as ISO strings over JSON.
 
 import type { AddonAvailabilityState, AddonGroup, AddonId } from '@nibleaf/shared/addons';
-import type { PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
 import type { LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
 
 export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
@@ -252,7 +251,21 @@ export interface PendingChange {
 /** A pre-publish quality check on the draft being previewed. Warnings leave
  *  publishing allowed; an `error` blocks it (the publish would fail). */
 export interface PublishCheck {
-  code: PublishCheckCode;
+  code:
+    | 'broken-internal-link'
+    | 'missing-alt'
+    | 'untitled-page'
+    | 'stray-characters'
+    | 'unreadable-slug'
+    | 'empty-page'
+    | 'duplicate-title'
+    | 'embed-untitled'
+    | 'embed-as-link'
+    | 'video-not-https'
+    | 'embed-unclosed'
+    | 'video-poster-hidden'
+    | 'home-untranslated'
+    | 'blog-root-group';
   severity: 'error' | 'warning';
   pageId: string;
   languageCode: string;

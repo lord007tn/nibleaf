@@ -27,7 +27,6 @@
     "./markdown-code": "./src/markdown-code.ts",
     "./public-markdown": "./src/public-markdown.ts",
     "./public-markdown-content": "./src/public-markdown-content.ts",
-    "./publish-check-codes": "./src/publish-check-codes.ts",
     "./publish-checks": "./src/publish-checks.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",

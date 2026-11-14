@@ -15,7 +15,6 @@ import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/u
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { isRtl } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
-import { PUBLISH_CHECK_CODES } from '@nibleaf/shared/publish-check-codes';
 import { canAdminister } from '@nibleaf/shared/rbac';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { type QueryClient, type UseQueryResult, useQueries, useQueryClient } from '@tanstack/react-query';
@@ -138,9 +137,6 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
       .object({
         firstPublish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
         page: z.string().min(1).optional().catch(undefined),
-        // A publish check's Fix (contract: @nibleaf/shared/publish-checks); the editor's arrival reads them.
-        fix: z.enum(PUBLISH_CHECK_CODES).optional().catch(undefined),
-        fixTarget: z.string().min(1).optional().catch(undefined),
         publish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
       })
       .parse(search),

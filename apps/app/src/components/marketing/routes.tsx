@@ -1,4 +1,4 @@
-import { type AnyRouteMatch, notFound } from '@tanstack/react-router';
+import { type AnyRouteMatch, notFound, redirect } from '@tanstack/react-router';
 import { type ComponentType, lazy, Suspense } from 'react';
 import { MarketingDataContext, type MarketingLoadInput } from './page-data';
 
@@ -95,9 +95,25 @@ const loaded = new Map<string, MarketingPageModule>();
 
 /** The loader of every marketing route: the page's data, with its head and
  *  which entry rendered it. An unknown path is not found, as before. */
+/** The same page in the other marketing language, when the site has it
+ *  (MKT-002): `/pricing` ↔ `/ar/pricing` once that exists, `/` ↔ `/ar`. */
+export const marketingCounterpart = (pathname: string): string | null => {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  const arabic = clean === '/ar' || clean.startsWith('/ar/');
+  const other = arabic ? clean.slice(3) || '/' : clean === '/' ? '/ar' : `/ar${clean}`;
+  return matchMarketingRoute(other) ? other : null;
+};
+
 export const loadMarketingPage = async (pathname: string): Promise<MarketingPageData> => {
   const match = matchMarketingRoute(pathname);
-  if (!match) throw notFound();
+  if (!match) {
+    // An Arabic address for a page that exists only in English (`/ar/pricing`)
+    // opens the English page rather than a dead end (MKT-002). Temporary, so a
+    // translation can take the address over.
+    const english = pathname.startsWith('/ar/') ? marketingCounterpart(pathname) : null;
+    if (english) throw redirect({ href: english, statusCode: 307 });
+    throw notFound();
+  }
   const module = await match.route.module();
   loaded.set(match.route.path, module);
   const data = (await module.load({ params: match.params })) as Record<string, unknown> & { head?: MarketingHead };
