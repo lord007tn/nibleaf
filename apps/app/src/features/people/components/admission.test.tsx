@@ -73,6 +73,7 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
+import { ACCEPT_INTENT_TTL_MS, rememberAcceptIntent } from '@/lib/invitations';
 import { Route as DashboardRoute } from '@/routes/app/route';
 import { AcceptInvitationView, JoinLinkView } from './admission';
 
@@ -162,6 +163,100 @@ describe('accept invitation page', () => {
     await render(<AcceptInvitationView invitationId="inv-1" />);
     expect(heading()).toBe('people.admission.used');
     expect(buttons()).toContain('people.admission.openOrg(Acme)');
+  });
+});
+
+// P3-JRN-003: after signing up from an invitation, the invitee had to press
+// "Accept invitation" a second time.
+describe('invitee journey: invitation, sign-up, then into the site', () => {
+  const backFromAuth = async () => {
+    await act(async () => root.unmount());
+    document.body.replaceChildren();
+    signedIn();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+  };
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    mocks.invitation.mockResolvedValue(invitation);
+    mocks.accept.mockResolvedValue({ organizationId: 'org-1', landing: { projectId: 'p-1' } });
+  });
+
+  it.each([
+    ['people.admission.createToAccept', '/sign-up'],
+    ['people.admission.logInToAccept', '/sign-in'],
+  ])('accepts once, without a second press, after "%s", and lands in the site', async (label, to) => {
+    signedOut();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    const choice = [...host.querySelectorAll('a')].find((link) => link.textContent === label);
+    expect(choice?.getAttribute('href')).toBe(to);
+    await act(async () => choice?.click());
+    expect(mocks.accept).not.toHaveBeenCalled();
+
+    // Signed up (or in) as the invited address, back on the invitation.
+    await backFromAuth();
+    expect(mocks.accept).toHaveBeenCalledTimes(1);
+    expect(mocks.accept).toHaveBeenCalledWith('inv-1');
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/projects/$projectId', params: { projectId: 'p-1' } });
+
+    // The intent is used up: coming back later asks again.
+    await backFromAuth();
+    expect(mocks.accept).toHaveBeenCalledTimes(1);
+  });
+
+  it('never accepts on a visit alone: a link cannot accept an invitation for someone', async () => {
+    signedIn();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    expect(mocks.accept).not.toHaveBeenCalled();
+    expect(buttons().some((label) => label?.startsWith('people.admission.accept'))).toBe(true);
+  });
+
+  it('ignores an intent recorded for another invitation', async () => {
+    rememberAcceptIntent('inv-other');
+    signedIn();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    expect(mocks.accept).not.toHaveBeenCalled();
+  });
+
+  it('never accepts on a choice older than the sign-up window', async () => {
+    rememberAcceptIntent('inv-1', Date.now() - ACCEPT_INTENT_TTL_MS - 1000);
+    signedIn();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    expect(mocks.accept).not.toHaveBeenCalled();
+  });
+
+  // Sol review of #621: "Not now" on the wrong account kept the earlier yes.
+  it('forgets the choice when the wrong account says "Not now"', async () => {
+    signedOut();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    await act(async () => [...host.querySelectorAll('a')].find((link) => link.textContent === 'people.admission.logInToAccept')?.click());
+    await act(async () => root.unmount());
+    document.body.replaceChildren();
+    signedIn('other@example.test');
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    await act(async () => [...host.querySelectorAll('a')].find((link) => link.textContent === 'people.admission.notNow')?.click());
+    await backFromAuth();
+    expect(mocks.accept).not.toHaveBeenCalled();
+  });
+
+  it('keeps the choice for this invitation when another, unusable invitation is opened', async () => {
+    rememberAcceptIntent('inv-1');
+    signedIn();
+    mocks.invitation.mockRejectedValueOnce(new ApiResponseError('missing', 404));
+    await render(<AcceptInvitationView invitationId="inv-gone" />);
+    await backFromAuth();
+    expect(mocks.accept).toHaveBeenCalledWith('inv-1');
+  });
+
+  it('says why when the automatic acceptance fails, and offers Accept without retrying on its own', async () => {
+    mocks.accept.mockRejectedValueOnce(new ApiResponseError('boom', 500));
+    signedOut();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    await act(async () => [...host.querySelectorAll('a')].find((link) => link.textContent === 'people.admission.createToAccept')?.click());
+    await backFromAuth();
+    expect(mocks.accept).toHaveBeenCalledTimes(1);
+    expect(host.textContent).toContain('people.admission.acceptFailed');
+    expect(buttons().some((label) => label?.startsWith('people.admission.accept'))).toBe(true);
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });
 

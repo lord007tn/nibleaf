@@ -5037,5 +5037,23 @@
   "settings_aiassistants_watch_again": "دوبارہ انتظار کریں",
   "settings_aiassistants_keysloaderror": "ذاتی کلیدیں لوڈ نہیں ہو سکیں۔ سائن اِن کی ہوئی ایپس اب بھی دکھائی جا رہی ہیں۔",
   "settings_aiassistants_appsloaderror": "سائن اِن کی ہوئی ایپس لوڈ نہیں ہو سکیں۔ ذاتی کلیدیں اب بھی دکھائی جا رہی ہیں۔",
-  "oauth_consent_can_aiconversations": "محفوظ کیے گئے Ask AI سوالات اور جوابات پڑھنا۔ ای میل پتے، فون نمبر اور کلیدیں ہٹا دی جاتی ہیں، لیکن نام، پتے اور دیگر ذاتی معلومات باقی رہ سکتی ہیں۔"
+  "oauth_consent_can_aiconversations": "محفوظ کیے گئے Ask AI سوالات اور جوابات پڑھنا۔ ای میل پتے، فون نمبر اور کلیدیں ہٹا دی جاتی ہیں، لیکن نام، پتے اور دیگر ذاتی معلومات باقی رہ سکتی ہیں۔",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} غیر شائع شدہ تبدیلی",
+        "form=*": "{count} غیر شائع شدہ تبدیلیاں"
+      }
+    }
+  ],
+  "pending_siteonly": "نیویگیشن یا ترتیبات میں غیر شائع شدہ تبدیلیاں",
+  "pending_readersstillsee": "قارئین ابھی بھی ورژن {version} دیکھ رہے ہیں۔",
+  "pending_review": "جائزہ لیں اور شائع کریں",
+  "pending_draft": "ابھی لائیو نہیں",
+  "overview_col_status": "حیثیت",
+  "pagestatus_draft": "غیر شائع شدہ",
+  "pagestatus_changed": "تبدیل شدہ",
+  "pagestatus_live": "لائیو"
 }

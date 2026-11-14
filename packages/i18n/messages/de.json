@@ -5046,5 +5046,23 @@
   "settings_aiassistants_watch_again": "Erneut warten",
   "settings_aiassistants_keysloaderror": "Persönliche Schlüssel konnten nicht geladen werden. Angemeldete Apps werden weiterhin angezeigt.",
   "settings_aiassistants_appsloaderror": "Angemeldete Apps konnten nicht geladen werden. Persönliche Schlüssel werden weiterhin angezeigt.",
-  "oauth_consent_can_aiconversations": "Gespeicherte „Ask AI“-Fragen und -Antworten lesen. E-Mail-Adressen, Telefonnummern und Schlüssel werden entfernt, Namen, Adressen und andere persönliche Angaben können aber enthalten bleiben."
+  "oauth_consent_can_aiconversations": "Gespeicherte „Ask AI“-Fragen und -Antworten lesen. E-Mail-Adressen, Telefonnummern und Schlüssel werden entfernt, Namen, Adressen und andere persönliche Angaben können aber enthalten bleiben.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} unveröffentlichte Änderung",
+        "form=*": "{count} unveröffentlichte Änderungen"
+      }
+    }
+  ],
+  "pending_siteonly": "Unveröffentlichte Änderungen an Navigation oder Einstellungen",
+  "pending_readersstillsee": "Leser sehen noch Version {version}.",
+  "pending_review": "Prüfen und veröffentlichen",
+  "pending_draft": "Noch nicht live",
+  "overview_col_status": "Status",
+  "pagestatus_draft": "Nicht veröffentlicht",
+  "pagestatus_changed": "Geändert",
+  "pagestatus_live": "Live"
 }
