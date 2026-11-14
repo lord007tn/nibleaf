@@ -1,9 +1,11 @@
 {
   "baseline": "4e80721353e7ba3119c8cd4694c80a825fa7fdb8",
-  "head": "1a6ebe34069e30d5df0cb72fb13b5ec98465be34",
+  "head": "87261fbb3dcaa8c7c37aa6a88a015793b66f1fbd",
+  "uncommitted": [],
   "environment": "Isolated actual-route fixture (ProjectLayout + analytics routes); intercepted fictional HTTP; no server, database or real site",
   "swappedForBefore": [
     "apps/app/src/components/analytics/insights/vitals.tsx",
+    "apps/app/src/components/app/org-switcher/organization-switcher.tsx",
     "apps/app/src/components/app/project-sidebar.tsx",
     "apps/app/src/components/ui/section-tabs.tsx",
     "apps/app/src/layouts/project.tsx",
@@ -30,9 +32,9 @@
         "locale": "en",
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 47,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 57,
+        "cutPx": 64,
         "previewInHeader": true
       },
       {
@@ -50,9 +52,9 @@
         "locale": "ar",
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 40,
+        "clientWidth": 33,
         "fits": false,
-        "cutPx": 26,
+        "cutPx": 33,
         "previewInHeader": true
       },
       {
@@ -436,9 +438,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 47,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 57
+        "cutPx": 64
       },
       "previewInHeader": true,
       "tabs": {
@@ -499,9 +501,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 47,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 57
+        "cutPx": 64
       },
       "previewInHeader": true,
       "tabs": {
@@ -562,9 +564,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 40,
+        "clientWidth": 33,
         "fits": false,
-        "cutPx": 26
+        "cutPx": 33
       },
       "previewInHeader": true,
       "tabs": {
@@ -625,9 +627,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 40,
+        "clientWidth": 33,
         "fits": false,
-        "cutPx": 26
+        "cutPx": 33
       },
       "previewInHeader": true,
       "tabs": {
@@ -688,9 +690,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 47,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 57
+        "cutPx": 64
       },
       "previewInHeader": true,
       "tabs": {
@@ -787,9 +789,9 @@
       "websiteName": {
         "text": "Team handbook",
         "scrollWidth": 104,
-        "clientWidth": 47,
+        "clientWidth": 40,
         "fits": false,
-        "cutPx": 57
+        "cutPx": 64
       },
       "previewInHeader": true,
       "tabs": {
@@ -1058,9 +1060,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 40,
+        "clientWidth": 33,
         "fits": false,
-        "cutPx": 26
+        "cutPx": 33
       },
       "previewInHeader": true,
       "tabs": {
@@ -1157,9 +1159,9 @@
       "websiteName": {
         "text": "دليل الفريق",
         "scrollWidth": 66,
-        "clientWidth": 40,
+        "clientWidth": 33,
         "fits": false,
-        "cutPx": 26
+        "cutPx": 33
       },
       "previewInHeader": true,
       "tabs": {
@@ -3171,7 +3173,7 @@
       "sheet": {
         "previewItem": {
           "text": "Preview",
-          "ariaLabel": "Preview draft website",
+          "ariaLabel": null,
           "href": "/app/projects/handbook/preview",
           "visible": true,
           "itemIndex": 7
@@ -3255,7 +3257,7 @@
       "sheet": {
         "previewItem": {
           "text": "Preview",
-          "ariaLabel": "Preview draft website",
+          "ariaLabel": null,
           "href": "/app/projects/handbook/preview",
           "visible": true,
           "itemIndex": 7
@@ -3325,12 +3327,9 @@
         "GET /api/app/projects/handbook/domains",
         "GET /api/app/projects/handbook/members",
         "GET /api/app/projects/handbook/deployments/changes",
-        "GET /api/auth/get-session",
-        "PUT /api/app/me/last-organization"
+        "GET /api/auth/get-session"
       ],
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ]
+      "unexpectedRequests": []
     },
     {
       "phase": "after",
@@ -3342,7 +3341,7 @@
       "sheet": {
         "previewItem": {
           "text": "معاينة",
-          "ariaLabel": "معاينة مسودة الموقع",
+          "ariaLabel": null,
           "href": "/app/projects/handbook/preview",
           "visible": true,
           "itemIndex": 7
@@ -3426,7 +3425,7 @@
       "sheet": {
         "previewItem": {
           "text": "معاينة",
-          "ariaLabel": "معاينة مسودة الموقع",
+          "ariaLabel": null,
           "href": "/app/projects/handbook/preview",
           "visible": true,
           "itemIndex": 7
