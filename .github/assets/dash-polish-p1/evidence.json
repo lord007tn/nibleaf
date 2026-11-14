@@ -297,15 +297,11 @@
       },
       {
         "file": "after-performance-en-1440-light.png",
-        "violations": [
-          "region (moderate) ×7"
-        ]
+        "violations": ["region (moderate) ×7"]
       },
       {
         "file": "after-performance-en-1440-dark.png",
-        "violations": [
-          "region (moderate) ×7"
-        ]
+        "violations": ["region (moderate) ×7"]
       },
       {
         "file": "after-performance-ar-390-light.png",
@@ -317,39 +313,27 @@
       },
       {
         "file": "after-performance-ar-1440-light.png",
-        "violations": [
-          "region (moderate) ×7"
-        ]
+        "violations": ["region (moderate) ×7"]
       },
       {
         "file": "after-performance-ar-1440-dark.png",
-        "violations": [
-          "region (moderate) ×7"
-        ]
+        "violations": ["region (moderate) ×7"]
       },
       {
         "file": "after-header-en-1440-light.png",
-        "violations": [
-          "region (moderate) ×7"
-        ]
+        "violations": ["region (moderate) ×7"]
       },
       {
         "file": "after-header-en-1440-dark.png",
-        "violations": [
-          "region (moderate) ×7"
-        ]
+        "violations": ["region (moderate) ×7"]
       },
       {
         "file": "after-header-ar-1440-light.png",
-        "violations": [
-          "region (moderate) ×7"
-        ]
+        "violations": ["region (moderate) ×7"]
       },
       {
         "file": "after-header-ar-1440-dark.png",
-        "violations": [
-          "region (moderate) ×7"
-        ]
+        "violations": ["region (moderate) ×7"]
       },
       {
         "file": "after-sidebar-en-390-light.png",
@@ -418,9 +402,7 @@
       "GET /api/auth/get-session",
       "PUT /api/app/me/last-organization"
     ],
-    "unexpectedRequests": [
-      "PUT /api/app/me/last-organization"
-    ]
+    "unexpectedRequests": ["PUT /api/app/me/last-organization"]
   },
   "captures": [
     {
@@ -2037,9 +2019,7 @@
         "GET /api/app/projects/handbook/analytics/insights/overview",
         "PUT /api/app/me/last-organization"
       ],
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ]
+      "unexpectedRequests": ["PUT /api/app/me/last-organization"]
     },
     {
       "phase": "after",
@@ -2155,9 +2135,7 @@
         "GET /api/app/projects/handbook/analytics/insights/overview",
         "PUT /api/app/me/last-organization"
       ],
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ]
+      "unexpectedRequests": ["PUT /api/app/me/last-organization"]
     },
     {
       "phase": "after",
@@ -2503,9 +2481,7 @@
         "GET /api/app/projects/handbook/analytics/insights/overview",
         "PUT /api/app/me/last-organization"
       ],
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ]
+      "unexpectedRequests": ["PUT /api/app/me/last-organization"]
     },
     {
       "phase": "after",
@@ -2621,9 +2597,7 @@
         "GET /api/app/projects/handbook/analytics/insights/overview",
         "PUT /api/app/me/last-organization"
       ],
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ]
+      "unexpectedRequests": ["PUT /api/app/me/last-organization"]
     },
     {
       "phase": "after",
