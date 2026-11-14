@@ -67,7 +67,7 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
         <div className="flex items-center justify-between gap-3 border-white/[0.08] border-b bg-white/[0.04] px-4 py-2 [direction:ltr]">
           <span className="truncate font-mono text-[12px] text-white/60">{title}</span>
           <div className="flex shrink-0 items-center gap-2">
-            {lang ? <span className="font-mono text-[10px] text-white/50 uppercase">{lang}</span> : null}
+            {lang ? <span className="font-mono text-[10px] text-white/70 uppercase">{lang}</span> : null}
             {copyButton}
           </div>
         </div>

@@ -13,6 +13,16 @@ import { normalizeMintlifyMdx } from './mintlify-mdx';
 describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
   const rewrite = (content: string) => rewriteMintlifyAssetReferences(content, 'docs/page.mdx', new Set(), (path) => `https://raw.example/${path}`);
   it.each([
+    [
+      'literal reference-definition lines',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['next', '/guides-2/next-2']])),
+      (n: number) => '[next]: /next#section "Start"\n'.repeat(n),
+    ],
+    [
+      'unclosed escaped reference labels',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map()),
+      (n: number) => `[${'\\\\'.repeat(n)}`,
+    ],
     ['unclosed media openers', normalizeImportFidelity, (n: number) => '<video src="https://cdn.test/a.mp4">\n\nAfter.\n\n'.repeat(n)],
     [
       'unclosed component container fences',
@@ -86,6 +96,16 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
     ['case E', htmlToPlainText, (n: number) => '<script a'.repeat(n)],
     ['case F', htmlToPlainText, (n: number) => '<p a'.repeat(n)],
     ['case G', htmlToPlainText, (n: number) => `<p>${'\r'.repeat(n)}x</p>`],
+    [
+      'main image and reference-definition exclusion',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['next', '/guides-2/next-2']])),
+      (n: number) => '![Image][shot]\n\n[Shared][shot]\n\n[shot]: /next\n\n'.repeat(n),
+    ],
+    [
+      'main scanner around definitions and attribute text',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['next', '/guides-2/next-2']])),
+      (n: number) => '[not-a-definition]: /next extra text\n\n[Go](/next)\n\n<span title="[Literal](/next)">Text</span>\n\n'.repeat(n),
+    ],
   ] as const)(
     'stays linear on %s',
     (_label, run, build) => {
