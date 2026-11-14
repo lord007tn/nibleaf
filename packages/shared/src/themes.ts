@@ -355,6 +355,23 @@ export const contrastRatio = (foreground: string, background: string): number =>
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 };
 
+/** Contrast of `color` on a `weight` tint of itself over `background`: the
+ * accent at that alpha, composited in sRGB as the browser does. The composite
+ * keeps fractional channels; rounding it to a hex first can lift 4.478:1 to
+ * 4.502:1 and pass a colour that falls short (WCAG's 4.5:1 is a strict floor). */
+const contrastOnTint = (color: string, background: string, weight: number): number => {
+  const fg = normalizeHex(color);
+  const bg = normalizeHex(background);
+  if (!/^#[0-9a-f]{6}$/i.test(fg) || !/^#[0-9a-f]{6}$/i.test(bg)) return contrastRatio(color, background);
+  const tint = [0.2126, 0.7152, 0.0722].reduce((sum, weightOfChannel, index) => {
+    const start = 1 + index * 2;
+    const value = Number.parseInt(bg.slice(start, start + 2), 16) * (1 - weight) + Number.parseInt(fg.slice(start, start + 2), 16) * weight;
+    return sum + weightOfChannel * channel(value);
+  }, 0);
+  const text = relativeLuminance(fg);
+  return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
+};
+
 export const contrastingText = (background: string): '#ffffff' | '#111318' =>
   contrastRatio('#ffffff', background) >= contrastRatio('#111318', background) ? '#ffffff' : '#111318';
 
@@ -394,7 +411,7 @@ const readableAccent = (accent: string, canvas: string): string => readableOnBac
 export const ACCENT_TEXT_CONTRAST = 4.5;
 const ACCENT_TINT = 0.1;
 const accentTextPasses = (color: string, canvas: string): boolean =>
-  contrastRatio(color, canvas) >= ACCENT_TEXT_CONTRAST && contrastRatio(color, mixHex(canvas, color, ACCENT_TINT)) >= ACCENT_TEXT_CONTRAST;
+  contrastRatio(color, canvas) >= ACCENT_TEXT_CONTRAST && contrastOnTint(color, canvas, ACCENT_TINT) >= ACCENT_TEXT_CONTRAST;
 
 /** The nearest shade of `accent` that reads as body text (WCAG AA, 4.5:1) on
  * the canvas and on the accent's own tint: darker on a light canvas, lighter on
@@ -445,7 +462,7 @@ export const readableOnAccent = (accent: string): string => {
 /** The tint under the active item of a rail sidebar, which is drawn on the code
  * surface: `color-mix(in oklab, var(--primary) 14%, transparent)` (styles.css,
  * compact navigation). Mixing with transparent keeps the accent's own colour at
- * 14% alpha, which the browser composites in sRGB: mixHex(code, accent, 0.14). */
+ * 14% alpha, which the browser composites in sRGB (contrastOnTint). */
 const RAIL_ACTIVE_TINT = 0.14;
 
 /** The accent as text on the always-dark code surface (Signal's rail, solid
@@ -456,8 +473,7 @@ const RAIL_ACTIVE_TINT = 0.14;
  * tint, the nearest shade of it that reaches AA on both. */
 export const readableCodeAccent = (accent: string, code: string): string => {
   const passes = (candidate: string) =>
-    contrastRatio(candidate, code) >= ACCENT_TEXT_CONTRAST &&
-    contrastRatio(candidate, mixHex(code, candidate, RAIL_ACTIVE_TINT)) >= ACCENT_TEXT_CONTRAST;
+    contrastRatio(candidate, code) >= ACCENT_TEXT_CONTRAST && contrastOnTint(candidate, code, RAIL_ACTIVE_TINT) >= ACCENT_TEXT_CONTRAST;
   const base = readableOnBackground(accent, code);
   if (passes(base)) return base;
   const target = relativeLuminance(code) < 0.35 ? '#ffffff' : '#000000';

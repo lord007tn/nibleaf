@@ -21,6 +21,20 @@ import {
   themeTemplateFromConfig,
 } from './themes';
 
+/** Contrast of `color` on a `weight` tint of itself over `background`, worked
+ * out here independently with unrounded channels (no hex rounding). */
+const onTint = (color: string, background: string, weight: number) => {
+  const rgb = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+  const linear = (value: number) => {
+    const n = value / 255;
+    return n <= 0.040_45 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = ([r = 0, g = 0, b = 0]: number[]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  const text = luminance(rgb(color));
+  const tint = luminance(rgb(background).map((value, index) => value * (1 - weight) + (rgb(color)[index] ?? 0) * weight));
+  return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
+};
+
 describe('readableOnBackground', () => {
   it('reaches the target on a mid-tone background by trying the other side too', () => {
     // Towards white never reaches 4.7:1 on #999999; towards black does.
@@ -93,15 +107,7 @@ describe('documentation themes', () => {
     const { light } = resolveTheme(config).colors;
     expect(contrastRatio(light.accent, light.canvas)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
     // Also on its 10% tint (bg-primary/10), where the active nav item sits.
-    const channels = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
-    const tint = `#${channels(light.canvas)
-      .map((value, index) =>
-        Math.round(value * 0.9 + (channels(light.accent)[index] ?? 0) * 0.1)
-          .toString(16)
-          .padStart(2, '0'),
-      )
-      .join('')}`;
-    expect(contrastRatio(light.accent, tint)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(onTint(light.accent, light.canvas, 0.1)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
     expect(light.accent).not.toBe('#b96a3d');
     // The focus ring followed the accent, and the text on it reads.
     expect(light.focus).toBe(light.accent);
@@ -142,17 +148,15 @@ describe('documentation themes', () => {
 
   it('draws the code accent from the authored colour, at AA on the code surface and the rail tint', () => {
     // The rail's active item sits on a 14% tint of the accent over the code surface.
-    const tint = (accent: string, code: string) =>
-      `#${[1, 3, 5]
-        .map((i) =>
-          Math.round(Number.parseInt(code.slice(i, i + 2), 16) * 0.86 + Number.parseInt(accent.slice(i, i + 2), 16) * 0.14)
-            .toString(16)
-            .padStart(2, '0'),
-        )
-        .join('')}`;
+    const tint = (accent: string, code: string) => onTint(accent, code, 0.14);
     // Signal with #009966: main drew #009966 on the rail; starting from the
     // canvas shade (#00774f) would have read 4.35:1 on the tint.
     expect(readableCodeAccent('#009966', '#0e0f1a')).toBe('#009966');
+    // #387818 nudges to #609347 on the code surface, which reads 4.478:1 on its
+    // unrounded tint (rounded to #192120 it would look like 4.502:1): one more step.
+    expect(onTint('#609347', '#0e0f1a', 0.14)).toBeLessThan(ACCENT_TEXT_CONTRAST);
+    expect(readableCodeAccent('#387818', '#0e0f1a')).not.toBe('#609347');
+    expect(onTint(readableCodeAccent('#387818', '#0e0f1a'), '#0e0f1a', 0.14)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
     const levels = ['00', '33', '66', '99', 'cc', 'ff'];
     const colours = levels.flatMap((r) => levels.flatMap((g) => levels.map((b) => `#${r}${g}${b}`)));
     let shaded = 0;
@@ -160,10 +164,10 @@ describe('documentation themes', () => {
       for (const accent of colours) {
         const result = readableCodeAccent(accent, code);
         expect(contrastRatio(result, code), `${accent} on ${code}`).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
-        expect(contrastRatio(result, tint(result, code)), `${accent} on the ${code} tint`).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+        expect(tint(result, code), `${accent} on the ${code} tint`).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
         // Where main's colour already passes on both, it is kept as is.
         const before = readableOnBackground(accent, code);
-        if (contrastRatio(before, tint(before, code)) >= ACCENT_TEXT_CONTRAST) expect(result).toBe(before);
+        if (tint(before, code) >= ACCENT_TEXT_CONTRAST) expect(result).toBe(before);
         else shaded++;
       }
     }

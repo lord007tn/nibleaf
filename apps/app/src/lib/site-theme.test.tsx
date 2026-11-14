@@ -13,6 +13,20 @@ import {
 } from '@/components/site/documentation-theme-provider';
 import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteThemeNoFlashScript } from './site-theme';
 
+/** Contrast of `color` on a `weight` tint of itself over `background`, worked
+ * out here independently with unrounded channels (no hex rounding). */
+const onTint = (color: string, background: string, weight: number) => {
+  const rgb = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+  const linear = (value: number) => {
+    const n = value / 255;
+    return n <= 0.040_45 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = ([r = 0, g = 0, b = 0]: number[]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  const text = luminance(rgb(color));
+  const tint = luminance(rgb(background).map((value, index) => value * (1 - weight) + (rgb(color)[index] ?? 0) * weight));
+  return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
+};
+
 describe('footer small print contrast', () => {
   const footerColors = (css: string) => [...css.matchAll(/--theme-footer-muted:([^;}]+)/g)].map((match) => match[1]);
   it.each(['harbor', 'manuscript', 'signal'] as const)('clears 4.7:1 on the %s canvas in light and dark', (preset) => {
@@ -102,24 +116,17 @@ describe('published theme projection', () => {
     expect(String(projectThemeStyle({ typography: { bodyFont: 'Inter' } }).fontFamily)).toMatch(/^'Inter','Noto Sans Arabic Variable',/);
   });
 
-  it('keeps the rail accent at AA on Signal with a custom accent, in the CSS and the dashboard preview', () => {
-    const config = { theme: { preset: 'signal', colors: { light: { accent: '#009966' } } } } as never;
+  it.each(['#009966', '#387818'])('keeps the rail accent at AA on Signal with accent %s, in the CSS and the dashboard preview', (accent) => {
+    const config = { theme: { preset: 'signal', colors: { light: { accent } } } } as never;
     const code = resolveProjectTheme(config).colors.light.code;
-    const tint = (accent: string, code: string) =>
-      `#${[1, 3, 5]
-        .map((i) =>
-          Math.round(Number.parseInt(code.slice(i, i + 2), 16) * 0.86 + Number.parseInt(accent.slice(i, i + 2), 16) * 0.14)
-            .toString(16)
-            .padStart(2, '0'),
-        )
-        .join('')}`;
     const css = projectThemeCss(config);
     const fromCss = css.match(/:root,\.nibleaf-site-chrome\{[^}]*--theme-code-accent:(#[0-9a-f]{6})/)?.[1] as string;
     const fromPreview = projectThemeVariables(config, 'light')['--theme-code-accent' as never] as string;
     expect(fromCss).toBe(fromPreview);
     // Main drew the authored #009966 here; the canvas shade would have read 4.35:1 on the tint.
-    expect(fromCss).toBe('#009966');
-    expect(contrastRatio(fromCss, tint(fromCss, code))).toBeGreaterThanOrEqual(4.5);
+    if (accent === '#009966') expect(fromCss).toBe('#009966');
+    // The rail's active item: the code accent on a 14% tint of itself, unrounded.
+    expect(onTint(fromCss, code, 0.14)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(fromCss, code)).toBeGreaterThanOrEqual(4.5);
   });
 
