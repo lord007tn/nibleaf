@@ -3,7 +3,9 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@nibleaf/i18n/react', () => ({
+  useT: () => (key: string, vars?: Record<string, string>) => (key === 'settings.usage.period' && vars ? `${key}(${vars.start}|${vars.end})` : key),
+}));
 vi.mock('@tanstack/react-router', () => ({ Link: () => null }));
 vi.mock('@/lib/format', () => ({ useFormatters: () => ({ date: () => 'Nov 1', number: (value: bigint | number) => String(value) }) }));
 vi.mock('@/hooks/api', () => ({ useProjectUsage: () => ({}) }));
@@ -56,5 +58,12 @@ describe('UsageOverview headings', () => {
   it('says a reason shared by every missing number once, not on each tile', async () => {
     const host = await render();
     expect(host.textContent?.split('settings.usage.reason.meteringDisabled').length).toBe(2);
+  });
+
+  // P2-DASH-025: the Arabic period line scrambled its dates around "UTC".
+  it('isolates each date of the period, so a right-to-left line keeps them in order', async () => {
+    const host = await render();
+    const text = host.textContent ?? '';
+    expect(text).toContain('settings.usage.period(⁨Nov 1⁩|⁨Nov 1⁩)');
   });
 });

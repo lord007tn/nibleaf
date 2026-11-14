@@ -87,7 +87,7 @@ export const basicSlashItems: SlashItem[] = [
   },
 ];
 
-/** Listed after the component blocks, at the end of the Advanced section. */
+/** The divider, listed at the end of Basics (see slash-search.ts). */
 export const dividerSlashItems: SlashItem[] = [
   {
     titleKey: 'editor.slash.divider.title',
