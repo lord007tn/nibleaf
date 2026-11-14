@@ -169,7 +169,7 @@ const SerializerState = MarkdownSerializerState as unknown as new (
  * tiptap-markdown's handling of bold and italic runs, writing into a
  * `MarkdownOutput` (see the note at the top).
  */
-export class LinearMarkdownSerializerState extends SerializerState {
+class LinearMarkdownSerializerState extends SerializerState {
   declare output: MarkdownOutput;
   inTable = false;
   private readonly inlines: InlineState[] = [];
