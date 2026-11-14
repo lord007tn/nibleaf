@@ -203,7 +203,7 @@
       "translation": "restaurar"
     },
     "promote": {
-      "translation": "llevar a la principal",
+      "translation": "promover a la principal",
       "note": "Merging a branch into main; never \"publicar\"."
     },
     "rollback": {
