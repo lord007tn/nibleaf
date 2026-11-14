@@ -138,6 +138,7 @@ describe.runIf(growthTestsEnabled)('saving pages of fences, growth (#612)', () =
       const large = loaded(shape(4 * n));
       // Main: 39.7 → 1,868 ms, 24.1 → 997 ms and 6.8 → 130 ms per call (#612).
       const [smallMs, largeMs] = growthMs(getMarkdown, small, large, { budgetMs: 60_000 });
+      console.info(`#612 save growth, ${_name}: ${smallMs.toFixed(1)} → ${largeMs.toFixed(1)} ms (limit ${linearGrowthLimit(smallMs).toFixed(1)})`);
       expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
       // Loading the two pages takes seconds on a loaded runner, before any timing.
     },

@@ -43,6 +43,9 @@ describe.runIf(growthTestsEnabled)('paragraph source lines growth', () => {
     const large = at(2000);
     try {
       const [smallMs, largeMs] = growthMs(getMarkdown, small, large, { budgetMs: 60_000 });
+      console.info(
+        `#612 save growth, wrapped paragraphs 500 → 2,000: ${smallMs.toFixed(1)} → ${largeMs.toFixed(1)} ms (limit ${linearGrowthLimit(smallMs).toFixed(1)})`,
+      );
       expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
     } finally {
       small.destroy();
