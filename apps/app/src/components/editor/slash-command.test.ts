@@ -88,7 +88,7 @@ describe('slash command scaffolds', () => {
   const recordingEditor = () => {
     const inserted: unknown[] = [];
     const chain: Record<string, (...args: unknown[]) => unknown> = {};
-    for (const name of ['focus', 'deleteRange', 'setImage', 'setParagraph']) {
+    for (const name of ['focus', 'deleteRange', 'setImage', 'setParagraph', 'command']) {
       chain[name] = () => chain;
     }
     chain.insertContent = (content: unknown) => {
