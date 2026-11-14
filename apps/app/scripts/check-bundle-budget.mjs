@@ -59,7 +59,8 @@ const gzipBudgets = {
   'public-docs': 345_100,
   'public-docs-index': 345_100,
   'auth-sign-in': 402_000,
-  'auth-sign-up': 402_000,
+  // 402,000 → 403,000: #674 (Arabic pricing) and #613 (accent contrast helpers in the shared themes chunk) together took sign-up to 402,212.
+  'auth-sign-up': 403_000,
 };
 
 /** The published-docs profiles: the dashboard, auth and marketing boundaries
