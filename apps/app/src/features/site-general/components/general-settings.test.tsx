@@ -7,7 +7,8 @@ import type { Project } from '@/hooks/api';
 import { isolate } from '@/lib/bidi';
 import { GeneralSettings } from './general-settings';
 
-const mocks = vi.hoisted(() => ({ updateProject: vi.fn(), updateLanguage: vi.fn(), languages: [] as unknown[] }));
+const mocks = vi.hoisted(() => ({ updateProject: vi.fn(), updateLanguage: vi.fn(), toastError: vi.fn(), languages: [] as unknown[] }));
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError, success: vi.fn() } }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, translateFn: (key: string) => key }));
 vi.mock('@/env', () => ({ env: { VITE_SITE_BASE_DOMAIN: 'nibleaf.app' } }));
 vi.mock('@/hooks/api', () => ({
@@ -155,6 +156,52 @@ describe('GeneralSettings', () => {
     expect(region()).not.toBeNull();
     await type(slug, 'help-center');
     expect(slug.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  // P0-DASH-001: this site has the address `docs`, which is reserved. Saving
+  // another field used to re-send it and fail with only a toast.
+  it('saves a description change on a site with a reserved address, sending only the description', async () => {
+    mocks.updateProject.mockResolvedValueOnce(undefined);
+    await type(input('settings.general.description.label'), 'Edited');
+    await save();
+    expect(mocks.updateProject).toHaveBeenCalledWith({ description: 'Edited' });
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(region()).toBeNull();
+  });
+
+  it('says a reserved address is reserved once the field is left, and sends nothing', async () => {
+    const slug = input('settings.general.url.label');
+    await type(slug, 'www');
+    await blur(slug);
+    expect(slug.getAttribute('aria-invalid')).toBe('true');
+    expect(errorOf(slug)).toBe('settings.general.url.reserved');
+    await save();
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    // Going back to the address the site already has is fine.
+    await type(slug, 'docs');
+    expect(slug.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it.each([
+    [{ status: 400, code: 'http:bad_request', details: { reason: 'slug_reserved' } }, 'settings.general.url.reserved'],
+    [{ status: 422, code: 'validation:failed', details: { issues: [{ path: ['slug'], message: 'Invalid' }] } }, 'settings.general.url.error'],
+  ])('shows the server refusing the address on the field instead of a toast (%j)', async (refusal, message) => {
+    mocks.updateProject.mockRejectedValueOnce(refusal);
+    const slug = input('settings.general.url.label');
+    await type(slug, 'handbook');
+    await save();
+    expect(slug.getAttribute('aria-invalid')).toBe('true');
+    expect(errorOf(slug)).toBe(message);
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(region()).not.toBeNull();
+  });
+
+  it('keeps the toast for a failure that is not about a field', async () => {
+    mocks.updateProject.mockRejectedValueOnce({ status: 500 });
+    await type(input('settings.general.name.label'), 'Renamed');
+    await save();
+    expect(mocks.toastError).toHaveBeenCalledWith('Could not save');
+    expect(container.querySelector('[aria-invalid="true"]')).toBeNull();
   });
 
   it('leaves a corrected address clean when the refusal for the old one arrives late', async () => {

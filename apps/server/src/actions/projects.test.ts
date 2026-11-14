@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   memberFindMany: vi.fn(),
   projectFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
+  projectUpdate: vi.fn(),
   deploymentGroupBy: vi.fn(),
   deploymentFindFirst: vi.fn(),
   deploymentFindMany: vi.fn(),
@@ -67,7 +68,7 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     member: { findMany: mocks.memberFindMany },
     userPreference: { findUnique: mocks.preferenceFindUnique },
-    project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst },
+    project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst, update: mocks.projectUpdate },
     deployment: {
       groupBy: mocks.deploymentGroupBy,
       findFirst: mocks.deploymentFindFirst,
@@ -475,6 +476,46 @@ describe('site creation language, starters and address availability', () => {
           : updateProject('org-a', 'project-new', { slug });
     await expect(action).rejects.toMatchObject({ status: 400, details: { reason: 'slug_reserved' } });
     expect(mocks.tx.project.create).not.toHaveBeenCalled();
+  });
+
+  // P0-DASH-001: the first sign-up's starter site was once given `docs`, which
+  // is reserved. It must stay editable without its live address changing.
+  it.each(['docs', 'xn--nibleaf', 'dashboard'])('saves other fields of a site that already has the reserved address %s', async (slug) => {
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.id ? { id: 'project-legacy', organizationId: 'org-a', slug } : null));
+    mocks.projectUpdate.mockImplementation(async ({ data }) => ({ id: 'project-legacy', slug, ...data }));
+    await expect(updateProject('org-a', 'project-legacy', { name: 'Docs', slug, description: 'Renamed' })).resolves.toMatchObject({
+      slug,
+      description: 'Renamed',
+    });
+    // The unchanged address is not written back.
+    expect(mocks.projectUpdate).toHaveBeenCalledWith({ where: { id: 'project-legacy' }, data: { name: 'Docs', description: 'Renamed' } });
+  });
+  it('never writes back an unchanged reserved address over a rename that landed after it was read', async () => {
+    // The stale request read `docs`; a rename to `handbook` commits before its write.
+    let stored = 'docs';
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => {
+      if (!where.id) return null;
+      const snapshot = { id: 'project-legacy', organizationId: 'org-a', slug: stored };
+      stored = 'handbook';
+      return snapshot;
+    });
+    mocks.projectUpdate.mockImplementation(async ({ data }) => {
+      if (data.slug !== undefined) stored = data.slug;
+      return { id: 'project-legacy', slug: stored, ...data };
+    });
+    await updateProject('org-a', 'project-legacy', { slug: 'docs', description: 'Edited' });
+    expect(mocks.projectUpdate).toHaveBeenCalledWith({ where: { id: 'project-legacy' }, data: { description: 'Edited' } });
+    expect(stored).toBe('handbook');
+  });
+  it('still refuses moving a site with a reserved address to another reserved address', async () => {
+    mocks.projectFindFirst.mockImplementation(async ({ where }) =>
+      where.id ? { id: 'project-legacy', organizationId: 'org-a', slug: 'docs' } : null,
+    );
+    await expect(updateProject('org-a', 'project-legacy', { slug: 'www' })).rejects.toMatchObject({
+      status: 400,
+      details: { reason: 'slug_reserved' },
+    });
+    expect(mocks.projectUpdate).not.toHaveBeenCalled();
   });
 
   it('returns only availability and an optional suggestion, without names or counts', async () => {

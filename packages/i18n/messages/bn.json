@@ -642,6 +642,7 @@
   "settings_general_customdomain_hint": "পাঠকেরা কি আপনার নিজের ডোমেইন ব্যবহার করুক, চান?",
   "settings_general_customdomain_link": "কাস্টম ডোমেইন সেট আপ করুন",
   "settings_general_url_taken": "অন্য একটি সাইট ইতিমধ্যে এই ঠিকানা ব্যবহার করছে। অন্য একটি চেষ্টা করুন।",
+  "settings_general_url_reserved": "এই ঠিকানাটি সিস্টেমের জন্য সংরক্ষিত। অন্য একটি বেছে নিন।",
   "settings_branding_title": "ব্র্যান্ডিং",
   "settings_branding_upload": "আপলোড করুন",
   "settings_branding_uploaded": "আপলোড করা হয়েছে",
@@ -4837,7 +4838,9 @@
   "publish_checks_allclear": "সব যাচাই সফল হয়েছে",
   "publish_checks_allclearhint": "কোনো ভাঙা লিংক, বিকল্প টেক্সট ছাড়া ছবি, শিরোনামহীন পৃষ্ঠা বা বাড়তি অক্ষর নেই।",
   "publish_checks_fix": "ঠিক করুন",
-  "publish_checks_fixlabel": "এডিটরে {title} ঠিক করুন",
+  "publish_checks_fixproblem": "“{title}” ঠিক করুন: {problem}",
+  "publish_checks_show": "দেখান ({count})",
+  "publish_checks_hide": "লুকান",
   "publish_checks_blockedreason": "প্রকাশ করার আগে যাচাই অংশের ত্রুটিগুলো ঠিক করুন।",
   "publish_checks_error": "ত্রুটি",
   "publish_checks_warning": "সতর্কতা",
@@ -4983,5 +4986,23 @@
   "settings_aiassistants_watch_again": "আবার অপেক্ষা করুন",
   "settings_aiassistants_keysloaderror": "ব্যক্তিগত কী লোড করা যায়নি। সাইন ইন করা অ্যাপগুলো এখনও দেখানো হচ্ছে।",
   "settings_aiassistants_appsloaderror": "সাইন ইন করা অ্যাপ লোড করা যায়নি। ব্যক্তিগত কীগুলো এখনও দেখানো হচ্ছে।",
-  "oauth_consent_can_aiconversations": "সংরক্ষিত Ask AI প্রশ্ন ও উত্তর পড়া। ইমেল ঠিকানা, ফোন নম্বর ও কী মুছে ফেলা হয়, তবে নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্য থেকে যেতে পারে।"
+  "oauth_consent_can_aiconversations": "সংরক্ষিত Ask AI প্রশ্ন ও উত্তর পড়া। ইমেল ঠিকানা, ফোন নম্বর ও কী মুছে ফেলা হয়, তবে নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্য থেকে যেতে পারে।",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count}টি অপ্রকাশিত পরিবর্তন",
+        "form=*": "{count}টি অপ্রকাশিত পরিবর্তন"
+      }
+    }
+  ],
+  "pending_siteonly": "নেভিগেশন বা সেটিংসে অপ্রকাশিত পরিবর্তন",
+  "pending_readersstillsee": "পাঠকেরা এখনও সংস্করণ {version} দেখছেন।",
+  "pending_review": "পর্যালোচনা করে প্রকাশ করুন",
+  "pending_draft": "এখনও লাইভ নয়",
+  "overview_col_status": "অবস্থা",
+  "pagestatus_draft": "অপ্রকাশিত",
+  "pagestatus_changed": "পরিবর্তিত",
+  "pagestatus_live": "লাইভ"
 }
