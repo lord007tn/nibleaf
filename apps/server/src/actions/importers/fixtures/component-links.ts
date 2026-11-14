@@ -1,5 +1,5 @@
 export const componentLinkFixtures: Array<{ name: string; content: string }> = [];
-export const componentRepro = '<Steps>\n<Step title="One">\n[Go](/next)\n</Step>\n</Steps>\n\n[Real](/next)';
+const componentRepro = '<Steps>\n<Step title="One">\n[Go](/next)\n</Step>\n</Steps>\n\n[Real](/next)';
 componentLinkFixtures.push({ name: 'no-collision Steps repro', content: componentRepro });
 for (const [name, open, close] of [
   ['Steps/Step', '<Steps>\n<Step title="One">', '</Step>\n</Steps>'],

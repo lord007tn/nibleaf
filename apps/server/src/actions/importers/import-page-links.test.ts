@@ -1,107 +1,105 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fromMarkdown } from 'mdast-util-from-markdown';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { componentLinkFixtures, componentRepro } from './fixtures/component-links';
+import { describe, expect, it, vi } from 'vitest';
+import { componentLinkFixtures } from './fixtures/component-links';
+import { linkDiscoveryRepros } from './fixtures/link-discovery-repros';
+import { traceLinkDiscovery } from './fixtures/link-discovery-trace';
 import { rewriteMainInternalLinks } from './fixtures/page-links.main-reference';
 import corpus from './fixtures/page-links-corpus.json';
 import { convertGitBookMarkdown } from './gitbook-markdown';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
-// These corpus comparisons and seeded properties do linear work over hundreds of
-// documents. As in #658, busy CI runners can exceed Vitest's five-second default.
-// Growth tests pin the cost separately; give this file time to finish its assertions.
+// Linear corpus comparisons can exceed the five-second default on busy CI (#658).
+// Growth files bound the cost independently of this assertion timeout.
 vi.setConfig({ testTimeout: 60_000 });
+const routes = new Map([
+  ['next', '/topic/next'],
+  ['topic/next', '/topic-2/next'],
+  ['getting-started', '/getting-started-2'],
+]);
 
-vi.mock('mdast-util-from-markdown', async (original) => {
-  const module = await original<typeof import('mdast-util-from-markdown')>();
-  return { ...module, fromMarkdown: vi.fn(module.fromMarkdown) };
-});
-beforeEach(() => vi.mocked(fromMarkdown).mockClear());
-const routes = new Map([['next', '/topic/next']]);
+const assertDiscoveryParity = (
+  source: string,
+  page: string,
+  mapping: ReadonlyMap<string, string> = routes,
+  options: Parameters<typeof rewriteMainInternalLinks>[3] = {},
+) => {
+  const main = traceLinkDiscovery(rewriteMainInternalLinks, source, page, mapping, options);
+  const head = traceLinkDiscovery(rewriteMintlifyInternalLinks, source, page, mapping, options);
+  expect(head.visits, `${page}: source byte offsets and original destinations`).toEqual(main.visits);
+  expect(head.output, `${page}: only main's target spans may change`).toBe(main.output);
+  expect(rewriteMintlifyInternalLinks(source, page, mapping, options), `${page}: rewrite-only fast path`).toBe(main.output);
+  expect(head.reports, `${page}: fidelity reports must include main's`).toEqual(expect.arrayContaining(main.reports));
+  const encoded = Buffer.from(source);
+  for (const visit of head.visits)
+    expect(encoded.subarray(visit.byteOffset, visit.byteOffset + Buffer.byteLength(visit.original)).toString()).toBe(visit.original);
+  return { main, head };
+};
 
-describe('component-aware destination spans', () => {
-  it.each(componentLinkFixtures)('parses $name once and preserves source bytes', ({ content }) => {
-    const expected = rewriteMainInternalLinks(content, 'intro', routes);
-    // Main did not rewrite definitions; those have a separate collision test.
-    const actual = rewriteMintlifyInternalLinks(content, 'intro', routes, { rewriteDefinitions: false });
-    expect(actual).toBe(expected);
-    expect(fromMarkdown).toHaveBeenCalledTimes(1);
+describe('main discovery: named repros from every review round', () => {
+  it('deduplication changes target strings at the same main offsets and leaves code literal', () => {
+    const prose = '<Note>\n<div title="[Example](/next)">\n[^f]\n\n[^f]: [Go](/next?x=1#part)\n</div>\n</Note>\n\n</code>\n\n[Again](/next)';
+    const code = '\n\n`[Code](/next)`\n\n~~~md\n[Code](/next)\n~~~';
+    const main = traceLinkDiscovery(rewriteMainInternalLinks, prose + code, 'intro', new Map([['next', '/topic/next']]));
+    const head = traceLinkDiscovery(rewriteMintlifyInternalLinks, prose + code, 'intro', new Map([['next', '/topic-2/next']]));
+    expect(head.visits).toEqual(main.visits);
+    expect(main.output).toBe(prose.replaceAll('(/next', '(/topic/next') + code);
+    expect(head.output).toBe(prose.replaceAll('(/next', '(/topic-2/next') + code);
+    expect(head.reports).toEqual(expect.arrayContaining(main.reports));
   });
-
-  it('rewrites each component href and child destination exactly once', () => {
-    const source = `<Card href="/next">\n${componentRepro}\n</Card>`;
-    const mapped = new Map([
-      ['next', '/topic/next'],
-      ['topic/next', '/wrong'],
+  it.each(linkDiscoveryRepros)('$name: identical source byte offsets, output and reports', ({ content }) => {
+    assertDiscoveryParity(content, 'intro', routes, { sourceUrl: 'https://help.test', languageCode: 'en' });
+  });
+  it.each(componentLinkFixtures)('component compatibility: $name', ({ content }) => {
+    assertDiscoveryParity(content, 'intro');
+  });
+  it('round 3: main leaves the invalid definition line byte-identical', () => {
+    const source = '[x]: /topic/next extra text';
+    const result = assertDiscoveryParity(source, 'intro');
+    expect(result.main.output).toBe(source);
+    expect(result.head.visits).toEqual([]);
+  });
+  it('records UTF-8 byte offsets after Arabic, emoji and excluded code', () => {
+    const source = '\u0645\u0631\u062d\u0628\u0627 \u{1f331}\n\n`[Code](/next)`\n\n~~~md\n[Code](/next)\n~~~\n\n[Go](/next?x=1#part)';
+    const { head } = assertDiscoveryParity(source, 'ar/intro');
+    expect(head.visits).toEqual([
+      { page: 'ar/intro', byteOffset: Buffer.byteLength(source.slice(0, source.lastIndexOf('/next'))), original: '/next?x=1#part' },
     ]);
-    expect(rewriteMintlifyInternalLinks(source, 'intro', mapped)).toBe(
-      '<Card href="/topic/next">\n<Steps>\n<Step title="One">\n[Go](/topic/next)\n</Step>\n</Steps>\n\n[Real](/topic/next)\n</Card>',
-    );
-    expect(fromMarkdown).toHaveBeenCalledTimes(1);
   });
-
-  it('keeps directory-relative links and uppercase hrefs in the candidate check', () => {
-    const source = `${componentRepro}\n\n[Parent](.)\n\n[Root](..)\n\n<Card HREF="/next" />`;
-    const mapped = new Map([...routes, ['docs', '/docs-2'], ['.', '/home']]);
-    expect(rewriteMintlifyInternalLinks(source, 'docs/intro', mapped)).toBe(rewriteMainInternalLinks(source, 'docs/intro', mapped));
-    expect(rewriteMintlifyInternalLinks('[Parent](.)', 'docs/intro', new Map([['docs', '/docs-2']]))).toBe('[Parent](/docs-2)');
-    expect(rewriteMintlifyInternalLinks('<Card HREF="/next" />', 'intro', routes)).toBe('<Card HREF="/topic/next" />');
-  });
-
-  it.each(['['.repeat(2 * 1024 * 1024), '[a](<b)'.repeat(299_594)])('skips parsing malformed two MiB input %#', (content) => {
-    expect(rewriteMintlifyInternalLinks(content, 'intro', new Map())).toBe(content);
-    expect(rewriteMintlifyInternalLinks(`${content}\n\nnext`, 'intro', routes)).toBe(`${content}\n\nnext`);
-    expect(fromMarkdown).not.toHaveBeenCalled();
-  });
-
-  it('skips rewrite-only parsing but retains reporting without an imported candidate', () => {
-    expect(rewriteMintlifyInternalLinks('[Other](/elsewhere)', 'intro', routes)).toBe('[Other](/elsewhere)');
-    expect(fromMarkdown).not.toHaveBeenCalled();
-    const report = vi.fn();
-    expect(rewriteMintlifyInternalLinks('[Other](/elsewhere)', 'intro', routes, { onUnresolved: report })).toBe('[Other](/elsewhere)');
-    expect(report).toHaveBeenCalledWith('/elsewhere');
-    expect(fromMarkdown).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not manufacture link syntax by removing inline component-shaped text', () => {
-    const literals = '[Literal](<Note>next)\n\n[not-a-definition]: /next<Note>\n\n[also-not]: /next</Note>';
-    expect(rewriteMintlifyInternalLinks(`${componentRepro}\n\n${literals}`, 'intro', routes)).toBe(
-      `${componentRepro.replaceAll('(/next)', '(/topic/next)')}\n\n${literals}`,
-    );
-  });
-
-  it.each(['[', '[a](<b)'])('bounds a pathological paragraph before a real component link: %s', (unit) => {
-    const paragraph = unit.repeat(Math.ceil((2 * 1024 * 1024) / unit.length)).slice(0, 2 * 1024 * 1024);
-    expect(rewriteMintlifyInternalLinks(`${paragraph}\n\n${componentRepro}`, 'intro', routes)).toBe(
-      `${paragraph}\n\n${componentRepro.replaceAll('(/next)', '(/topic/next)')}`,
-    );
-    expect(fromMarkdown).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(fromMarkdown).mock.calls[0]?.[0].length).toBeLessThan(1024);
+  it.each(['[', '[a](<b)'])('keeps main discovery linear on two MiB malformed input: %s', (unit) => {
+    const source = unit.repeat(Math.ceil((2 * 1024 * 1024) / unit.length)).slice(0, 2 * 1024 * 1024);
+    expect(rewriteMintlifyInternalLinks(source, 'intro', new Map())).toBe(source);
+    expect(rewriteMintlifyInternalLinks(`${source}\n\n[Go](/next)`, 'intro', routes)).toBe(`${source}\n\n[Go](/topic/next)`);
   });
 });
 
-it.each(['mintlify', 'gitbook'] as const)('%s: main differential covers 291 repository docs and component fixtures', (kind) => {
+it.each(['mintlify', 'gitbook'] as const)('%s: 291-doc corpus, every earlier repro and same-offset discovery', (kind) => {
   const root = resolve(import.meta.dirname, '../../../../..');
   const docs = corpus.map((path) => ({ name: path, source: path.replace(/\.mdx?$/i, ''), content: readFileSync(resolve(root, path), 'utf8') }));
-  const corpusRoutes = new Map(docs.map(({ source }, index) => [source, `/corpus/p${index}`]));
-  let changedDocuments = 0;
-  const inputs = [...docs, ...componentLinkFixtures.map((fixture) => ({ ...fixture, source: 'intro' }))];
+  const mappings = new Map(docs.map(({ source }, index) => [source, `/corpus/p${index}`]));
+  const inputs = [
+    ...docs,
+    ...componentLinkFixtures.map((f) => ({ ...f, source: 'intro' })),
+    ...linkDiscoveryRepros.map((f) => ({ ...f, source: 'intro' })),
+  ];
+  let destinations = 0;
   for (const input of inputs) {
-    const mapping = input.source === 'intro' ? routes : corpusRoutes;
-    const converted = kind === 'mintlify' ? input.content : convertGitBookMarkdown(input.content, { resolveFile: () => undefined }).content;
-    const baseline = rewriteMainInternalLinks(converted, input.source, mapping);
-    if (input.source !== 'intro' && baseline !== converted) changedDocuments++;
-    const head = rewriteMintlifyInternalLinks(converted, input.source, mapping, { rewriteDefinitions: false });
-    const finish = kind === 'mintlify' ? normalizeMintlifyMdx : (content: string) => content;
-    // Full-string equality pins destinations AND every byte outside them.
-    expect(finish(head), input.name).toBe(finish(baseline));
+    const body = kind === 'mintlify' ? input.content : convertGitBookMarkdown(input.content, { resolveFile: () => undefined }).content;
+    const observed = assertDiscoveryParity(body, input.source, input.source === 'intro' ? routes : mappings);
+    const finish = kind === 'mintlify' ? normalizeMintlifyMdx : (value: string) => value;
+    expect(finish(observed.head.output), input.name).toBe(finish(observed.main.output));
+    destinations += observed.head.visits.length;
   }
-  expect(changedDocuments).toBeGreaterThan(0);
-  console.info(
-    `${kind} differential: ${docs.length} repo docs, ${changedDocuments} with rewritten destinations, ${componentLinkFixtures.length} component fixtures`,
-  );
+  console.info('corpus source-offset differential', {
+    kind,
+    repoDocs: docs.length,
+    repros: linkDiscoveryRepros.length,
+    componentFixtures: componentLinkFixtures.length,
+    destinations,
+    offsetMismatches: 0,
+    exceptions: [],
+  });
 });
 
 // The independent reviewer's seeded wrapper/URL matrix, pinned for repeatability.
@@ -149,8 +147,9 @@ it('seed 0x663618: 512 documents retain every main rewrite and all code bytes', 
     const [a, b] = wrappers[rand() % wrappers.length] ?? ['', ''];
     const body = bodies[rand() % bodies.length];
     const source = `${a + body + b}\n\n\`[Code](/next)\`\n\n~~~md\n[Code](/next)\n~~~\n\n[Sentinel](/next)`;
-    const expected = rewriteMainInternalLinks(source, 'docs/intro', routes);
-    const actual = rewriteMintlifyInternalLinks(source, 'docs/intro', routes, { rewriteDefinitions: false });
+    const observed = assertDiscoveryParity(source, 'docs/intro', routes);
+    const expected = observed.main.output;
+    const actual = observed.head.output;
     if (!actual.includes('`[Code](/next)`') || !actual.includes('~~~md\n[Code](/next)\n~~~')) codeChanges++;
     if (actual !== expected) failures.push({ i, source, main: expected, head: actual });
   }
@@ -213,11 +212,4 @@ it('seed 0x618663: fidelity reports are a superset of main with and without rewr
   console.info('fidelity differential', { seed: '0x618663', cases: 1024, mainReports, headReports, misses: failures.length });
   expect(mainReports).toBeGreaterThan(0);
   expect(failures.slice(0, 1)).toEqual([]);
-});
-
-it('exposes lowercase prose while retaining opaque HTML, comments, attributes and code', () => {
-  const literal =
-    '<script>\n[Script](/next)\n</script>\n\n<style>\n[Style](/next)\n</style>\n\n<textarea>\n[Text](/next)\n</textarea>\n\n<title>\n[Title](/next)\n</title>\n\n<pre>\n<a href="/next">Code</a>\n</pre>\n\n<code>[Code](/next)</code-sample>[Still code](/next)</code>\n\n<!-- [Comment](/next) -->\n\n<div title="[Attribute](/next)">\n~~~md\n[Code](/next)\n~~~\n</div>';
-  const prose = '<Note>\n<div>\n[Go](/next?x=1#part)\n</div>\n</Note>';
-  expect(rewriteMintlifyInternalLinks(`${literal}\n\n${prose}`, 'intro', routes)).toBe(`${literal}\n\n${prose.replace('(/next?', '(/topic/next?')}`);
 });

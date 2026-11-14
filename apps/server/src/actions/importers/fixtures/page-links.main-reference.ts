@@ -1,4 +1,4 @@
-// Pinned link-rewrite oracle from main f8e1f166. Test-only; do not use in production.
+// Pinned link-rewrite oracle from origin/main 8de1a622546203e2dedbc1745cb752e218e4e5b5 (rewrite source unchanged from f8e1f166). Test-only; do not use in production.
 import { posix } from 'node:path';
 import { importSiteHref } from '@nibleaf/shared/site-links';
 import { safeDecodeUri as safeDecode } from '../gitbook-markdown';

@@ -3,10 +3,12 @@ import { slugify } from '@nibleaf/shared';
 import { importSiteHref } from '@nibleaf/shared/site-links';
 import { stableHash } from './content';
 import { safeDecodeUri as safeDecode } from './gitbook-markdown';
+import { decodeImportEntities } from './import-fidelity';
 import { protectImportCode } from './import-markdown-code';
-import { importPageLinks } from './import-page-links';
-import { replaceImportReferences } from './import-references';
+import { markdownReferences, replaceImportReferences } from './import-references';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
+
+const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
 
 const trimSlashes = (value: string): string => {
   let end = value.length;
@@ -159,7 +161,11 @@ export const mintlifyInternalLinkTargets = (
     if (page === null) return;
     targets.add(page?.source ?? key);
   };
-  for (const reference of importPageLinks(prose)) if (reference.kind !== 'definition') add(reference.value);
+  for (const reference of markdownReferences(prose)) if (!reference.image) add(reference.value);
+  prose.replace(HREF_ATTRIBUTE, (_match, _before: string, reference: string) => {
+    add(decodeImportEntities(reference));
+    return _match;
+  });
   return [...targets];
 };
 
@@ -174,7 +180,6 @@ export const rewriteMintlifyInternalLinks = (
     appOrigins?: readonly string[];
     onUnresolved?: (reference: string) => void;
     languageCode?: string;
-    rewriteDefinitions?: boolean;
     languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>;
   } = {},
 ): string => {
@@ -233,16 +238,23 @@ export const rewriteMintlifyInternalLinks = (
     for (const [name, value] of destination.searchParams) params.set(name, value);
     return `${destination.pathname}?${params}${suffixUrl.hash}`;
   };
-  const references = importPageLinks(protectedCode.content).filter(
-    (reference) => options.rewriteDefinitions !== false || reference.kind !== 'definition',
+  const markdown = replaceImportReferences(
+    protectedCode.content,
+    markdownReferences(protectedCode.content).filter((reference) => !reference.image),
+    (reference) => rewrite(reference.value),
   );
   return protectedCode.restore(
-    replaceImportReferences(protectedCode.content, references, (reference) => {
-      const rewritten = rewrite(reference.value);
-      if (rewritten === reference.value) return protectedCode.content.slice(reference.start, reference.end);
-      if ('kind' in reference && reference.kind === 'href')
-        return rewritten.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&#39;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-      return rewritten;
+    markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string) => {
+      const decoded = decodeImportEntities(reference);
+      const rewritten = rewrite(decoded);
+      if (rewritten === decoded) return match;
+      const escaped = rewritten
+        .replaceAll('&', '&amp;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+      return `${before}${escaped}${after}`;
     }),
   );
 };

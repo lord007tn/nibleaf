@@ -8,7 +8,6 @@ export interface ImportDestinations {
 
 /** Source documents and navigation groups have separate identities, even at the same authored path. */
 export class ImportFinalPaths {
-  changed = false;
   private readonly scopes: Array<{ target: ImportTarget; routes: Map<string, string>; destinations: ImportDestinations }> = [];
 
   add(target: ImportTarget, routes: Map<string, string>): ImportDestinations {
@@ -39,7 +38,6 @@ export class ImportFinalPaths {
         if (!path) throw new Error(`An imported destination disappeared before content was written: ${source} (${id}).`);
         routes.set(source, path);
         if (path !== planned) {
-          this.changed = true;
           aliases.set(planned.replace(/^\/+/, ''), path);
         }
       }
@@ -49,10 +47,7 @@ export class ImportFinalPaths {
       for (const [source, id] of groups) {
         const path = paths.get(id);
         if (!path) throw new Error(`An imported group disappeared before content was written: ${source}.`);
-        if (path !== `/${source}`) {
-          this.changed = true;
-          if (!routes.has(source) && !existingPages.has(source)) routes.set(source, path);
-        }
+        if (path !== `/${source}` && !routes.has(source) && !existingPages.has(source)) routes.set(source, path);
       }
     }
   }

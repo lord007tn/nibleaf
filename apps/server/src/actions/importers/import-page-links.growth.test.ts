@@ -8,7 +8,7 @@ describe.runIf(growthTestsEnabled)('component link rewriting: growth', () => {
     ['component children', (n: number) => '<Columns>\n<Card href="/next">\n[Go](/next)\n</Card>\n</Columns>\n\n'.repeat(n), 2000],
     ['lowercase HTML children', (n: number) => '<Note>\n<div>\n<section>\n[Go](/next)\n</section>\n</div>\n</Note>\n\n'.repeat(n), 2000],
     [
-      'opaque HTML bodies',
+      'main HTML destination scanning',
       (n: number) =>
         '<code>[Literal](/next)</code-sample>[Still literal](/next)</code>\n\n<pre>\n[Literal](/next)\n</pre>\n\n<div>\n[Go](/next)\n</div>\n\n'.repeat(
           n,

@@ -567,7 +567,6 @@ const importNodes = async (
     state.write.push(async () => {
       const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap, {
         languageCode: languageCode ?? repo.defaultLanguageCode,
-        rewriteDefinitions: state.paths.changed,
         languageRoutes,
         sourceUrl: repo.sourceUrl,
         appOrigins: repo.appOrigins,

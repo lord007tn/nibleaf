@@ -361,7 +361,6 @@ const importNodes = async (
     context.write.push(async () => {
       const linked = rewriteMintlifyInternalLinks(converted.content, path, context.routes, {
         languageCode: context.languageCode,
-        rewriteDefinitions: context.finalPaths.changed,
         sourceUrl: context.sourceUrl,
         appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
         onUnresolved: (reference) => {
