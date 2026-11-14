@@ -197,4 +197,24 @@ describe('ThemeSection controls', () => {
     }
     expect(container.querySelector('textarea')?.getAttribute('dir')).toBe('ltr');
   });
+
+  it('shows no accent adjustment for a preset that already reads as text', () => {
+    expect(container.querySelector('[data-accent-adjustments]')).toBeNull();
+  });
+
+  it('shows the shade links will use when the authored accent fails as text, and keeps the input on the authored colour (PUB-006)', async () => {
+    const branded = { ...project, config: { theme: { version: 1, preset: 'harbor', colors: { light: { accent: '#b96a3d' } } } } } as Project;
+    // The draft starts from the project it mounted with, so mount afresh.
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await act(async () => root.render(<ThemeSection project={branded} />));
+    const readout = container.querySelector<HTMLElement>('[data-accent-adjustments]');
+    expect(readout).not.toBeNull();
+    expect(readout?.getAttribute('role')).toBeNull();
+    const line = readout?.querySelector('li')?.textContent ?? '';
+    expect(line).toMatch(/#b96a3d 3\.94:1→#[0-9a-f]{6} [4-9]\.\d\d:1/);
+    expect(readout?.querySelector('li')?.getAttribute('dir')).toBe('ltr');
+    const accentInput = [...container.querySelectorAll<HTMLInputElement>('input[type="color"]')].find((input) => input.value === '#b96a3d');
+    expect(accentInput).toBeDefined();
+  });
 });

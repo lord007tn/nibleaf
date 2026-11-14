@@ -765,6 +765,8 @@
   "settings_theme_color_warning": "التحذير",
   "settings_theme_color_danger": "الخطر",
   "settings_theme_contrasttitle": "يحتاج التباين إلى مراجعة",
+  "settings_theme_accentadjustedtitle": "عُدّل لون التمييز ليكون النص مقروءًا",
+  "settings_theme_accentadjustedbody": "في الموقع المنشور، تستخدم الروابط والصفحة النشطة والأزرار أقرب درجة من لون التمييز تُقرأ نصًا (WCAG AA، 4.5:1).",
   "settings_theme_contrastpass": "تجتاز أزواج النص والتركيز واللون المميّز والشيفرة في الوضعين الفاتح والداكن معايير WCAG المحددة.",
   "settings_theme_contrastblocked": "أصلح أزواج التباين المذكورة قبل الحفظ.",
   "settings_theme_preview": "معاينة مباشرة",

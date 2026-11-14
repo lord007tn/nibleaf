@@ -355,6 +355,23 @@ export const contrastRatio = (foreground: string, background: string): number =>
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 };
 
+/** Contrast of `color` on a `weight` tint of itself over `background`: the
+ * accent at that alpha, composited in sRGB as the browser does. The composite
+ * keeps fractional channels; rounding it to a hex first can lift 4.478:1 to
+ * 4.502:1 and pass a colour that falls short (WCAG's 4.5:1 is a strict floor). */
+const contrastOnTint = (color: string, background: string, weight: number): number => {
+  const fg = normalizeHex(color);
+  const bg = normalizeHex(background);
+  if (!/^#[0-9a-f]{6}$/i.test(fg) || !/^#[0-9a-f]{6}$/i.test(bg)) return contrastRatio(color, background);
+  const tint = [0.2126, 0.7152, 0.0722].reduce((sum, weightOfChannel, index) => {
+    const start = 1 + index * 2;
+    const value = Number.parseInt(bg.slice(start, start + 2), 16) * (1 - weight) + Number.parseInt(fg.slice(start, start + 2), 16) * weight;
+    return sum + weightOfChannel * channel(value);
+  }, 0);
+  const text = relativeLuminance(fg);
+  return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
+};
+
 export const contrastingText = (background: string): '#ffffff' | '#111318' =>
   contrastRatio('#ffffff', background) >= contrastRatio('#111318', background) ? '#ffffff' : '#111318';
 
@@ -389,7 +406,103 @@ export const readableOnBackground = (color: string, background: string, required
 
 const readableAccent = (accent: string, canvas: string): string => readableOnBackground(accent, canvas, 3);
 
-export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedTheme => {
+/** The accent is also text: body links, breadcrumb eyebrows, the active TOC
+ * item, and the active nav item on its 10% accent tint (`bg-primary/10`). */
+export const ACCENT_TEXT_CONTRAST = 4.5;
+const ACCENT_TINT = 0.1;
+const accentTextPasses = (color: string, canvas: string): boolean =>
+  contrastRatio(color, canvas) >= ACCENT_TEXT_CONTRAST && contrastOnTint(color, canvas, ACCENT_TINT) >= ACCENT_TEXT_CONTRAST;
+
+/** The nearest shade of `accent` that reads as body text (WCAG AA, 4.5:1) on
+ * the canvas and on the accent's own tint: darker on a light canvas, lighter on
+ * a dark one, in small steps so the brand stays recognisable (PUB-006). An
+ * accent that already passes comes back unchanged. */
+export const readableAccentText = (accent: string, canvas: string): string => {
+  const color = normalizeHex(accent);
+  if (!/^#[0-9a-f]{6}$/i.test(color) || !/^#[0-9a-f]{6}$/i.test(normalizeHex(canvas))) return accent;
+  if (accentTextPasses(color, canvas)) return color;
+  // Towards white on dark canvases and black on light ones first; on a mid
+  // tone that side may never get there while the other does (#303030 on
+  // #999999 passes towards black, never towards white).
+  const target = relativeLuminance(canvas) < 0.35 ? '#ffffff' : '#000000';
+  const alternate = target === '#ffffff' ? '#000000' : '#ffffff';
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(color, endpoint, step / 40);
+      if (accentTextPasses(shade, canvas)) return shade;
+    }
+  }
+  // No shade reaches 4.5:1 on both the canvas and the tint (a canvas this mid
+  // can't hold AA text on its tint at all). The canvas is where text mostly
+  // sits, so it decides, and its contrast never drops below what was authored:
+  // an accent that already reads on the canvas stays as authored; otherwise the
+  // nearest shade that reads on the canvas alone; otherwise whichever of the
+  // accent and the two endpoints reads best on it.
+  if (contrastRatio(color, canvas) >= ACCENT_TEXT_CONTRAST) return color;
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(color, endpoint, step / 40);
+      if (contrastRatio(shade, canvas) >= ACCENT_TEXT_CONTRAST) return shade;
+    }
+  }
+  return [color, target, alternate].reduce((best, candidate) => (contrastRatio(candidate, canvas) > contrastRatio(best, canvas) ? candidate : best));
+};
+
+/** Text drawn on the accent (a button's label) that reaches AA: the palette's
+ * usual near-black or white when it does, otherwise pure black or white,
+ * whichever reads better. One of the two always reaches about 4.58:1, so the
+ * result never falls short where main's choice passed (#606060 shaded to
+ * #7c7c7c takes black at 5.03:1, not #111318 at 4.45:1). */
+export const readableOnAccent = (accent: string): string => {
+  const preferred = contrastingText(accent);
+  if (contrastRatio(preferred, accent) >= ACCENT_TEXT_CONTRAST) return preferred;
+  return contrastRatio('#ffffff', accent) >= contrastRatio('#000000', accent) ? '#ffffff' : '#000000';
+};
+
+/** The tint under the active item of a rail sidebar, which is drawn on the code
+ * surface: `color-mix(in oklab, var(--primary) 14%, transparent)` (styles.css,
+ * compact navigation). Mixing with transparent keeps the accent's own colour at
+ * 14% alpha, which the browser composites in sRGB (contrastOnTint). */
+const RAIL_ACTIVE_TINT = 0.14;
+
+/** The accent as text on the always-dark code surface (Signal's rail, solid
+ * callouts, code chrome) and on the rail's active-item tint. It starts from the
+ * owner's authored accent, never the canvas shade (readableAccentText darkens a
+ * light-mode accent, which only reads worse on a dark surface), nudged until it
+ * reads on the code surface as before; when that colour falls short on the
+ * tint, the nearest shade of it that reaches AA on both. */
+export const readableCodeAccent = (accent: string, code: string): string => {
+  const passes = (candidate: string) =>
+    contrastRatio(candidate, code) >= ACCENT_TEXT_CONTRAST && contrastOnTint(candidate, code, RAIL_ACTIVE_TINT) >= ACCENT_TEXT_CONTRAST;
+  const base = readableOnBackground(accent, code);
+  if (passes(base)) return base;
+  const target = relativeLuminance(code) < 0.35 ? '#ffffff' : '#000000';
+  const alternate = target === '#ffffff' ? '#000000' : '#ffffff';
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(base, endpoint, step / 40);
+      if (passes(shade)) return shade;
+    }
+  }
+  // A code surface no shade reaches AA on with its tint: keep what reads on the surface.
+  return base;
+};
+
+/** Make a resolved palette's accent safe as text, keeping what follows it (the
+ * focus ring when it was the accent, the text drawn on the accent) in step. */
+const textSafeAccent = (colors: ThemeColorTokens): void => {
+  const accent = readableAccentText(colors.accent, colors.canvas);
+  if (accent === normalizeHex(colors.accent)) return;
+  if (normalizeHex(colors.focus) === normalizeHex(colors.accent)) colors.focus = accent;
+  if (normalizeHex(colors.info) === normalizeHex(colors.accent)) colors.info = accent;
+  colors.accent = accent;
+  if (contrastRatio(colors.accentForeground, accent) < ACCENT_TEXT_CONTRAST) colors.accentForeground = readableOnAccent(accent);
+};
+
+/** Resolve a site's theme. Accents come back safe as text (see
+ * readableAccentText); `{ authoredAccent: true }` skips that, to show the
+ * owner what was adjusted. */
+export const resolveTheme = (config?: ThemeOwnedProjectConfig | null, options: { authoredAccent?: boolean } = {}): ResolvedTheme => {
   const id = config?.theme?.preset && THEME_PRESET_IDS.includes(config.theme.preset) ? config.theme.preset : 'harbor';
   const preset = THEME_PRESETS[id];
   const accent = config?.styling?.primaryColor ? normalizeHex(config.styling.primaryColor) : undefined;
@@ -421,6 +534,10 @@ export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedT
       dark.focus = dark.accent;
     }
   }
+  if (!options.authoredAccent) {
+    textSafeAccent(light);
+    textSafeAccent(dark);
+  }
   return {
     id,
     metadata: { ...preset.metadata, ...config?.theme?.metadata },
@@ -428,6 +545,28 @@ export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedT
     layout: { ...preset.layout, ...config?.theme?.layout, ...(config?.styling?.radius ? { radius: config.styling.radius } : {}) },
     components: { ...preset.components, ...config?.theme?.components },
   };
+};
+
+export interface AccentTextAdjustment {
+  mode: 'light' | 'dark';
+  from: string;
+  fromRatio: number;
+  to: string;
+  toRatio: number;
+}
+
+/** Where the published site draws the accent darker or lighter than authored,
+ * so links and buttons pass AA: shown beside the theme's colours. */
+export const accentTextAdjustments = (config?: ThemeOwnedProjectConfig | null): AccentTextAdjustment[] => {
+  const authored = resolveTheme(config, { authoredAccent: true });
+  const applied = resolveTheme(config);
+  return (['light', 'dark'] as const).flatMap((mode) => {
+    const from = normalizeHex(authored.colors[mode].accent);
+    const to = applied.colors[mode].accent;
+    if (from === to) return [];
+    const canvas = applied.colors[mode].canvas;
+    return [{ mode, from, fromRatio: contrastRatio(from, canvas), to, toRatio: contrastRatio(to, canvas) }];
+  });
 };
 
 export interface ThemeContrastIssue {
