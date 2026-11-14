@@ -144,6 +144,18 @@ export const recordExportBaseline = (
   };
 };
 
+const unquoted = (text: string) => text.split('\n').map((line) => line.replace(/^(?:[ \t]*>[ \t]?)*/, ''));
+const isSourceText = (samples: readonly string[], source: string): boolean => {
+  const lines = unquoted(source);
+  let at = 0;
+  for (const sample of samples)
+    for (const line of unquoted(sample)) {
+      while (at < lines.length && lines[at] !== line) at++;
+      if (at === lines.length) return false;
+      at++;
+    }
+  return true;
+};
 export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline: ExportGuardBaseline, projectors: ExportProjectors) => {
   const stats = [0, 1].map(() => ({
     lost: 0,
@@ -188,11 +200,20 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       // and activity assertion. No Markdown or reader parse is needed.
       if (unchanged && active === 0) continue;
       const mayBeActive = mayHaveActiveExportHtml(output);
-      const analysis = mayBeActive || code.length ? analyzeExport(output, mayBeActive) : undefined;
+      // Any changed output is parsed: an empty code baseline must still reject
+      // code that the change introduced.
+      const analysis = !unchanged || mayBeActive || code.length ? analyzeExport(output, mayBeActive) : undefined;
       const outputCode = analysis?.code ?? [];
       const expectedTokens = baseline.codeTokens[index]?.[target];
       const actualTokens = analysis?.codeTokens ?? [];
-      if (JSON.stringify(outputCode) !== JSON.stringify(code) || exportHash(JSON.stringify(actualTokens)) !== expectedTokens) {
+      // Where main had no code but an active element, neutralizing that element
+      // can reveal code that main swallowed into raw HTML (an unclosed <style>
+      // in a quote turns the source's own fence into a code block). Production
+      // only pins code when main had some; the guard allows revealed code only
+      // as source lines in source order (ignoring the quote prefix portable
+      // components gain), so fabricated code still fails.
+      const revealed = code.length === 0 && active > 0 && isSourceText(outputCode, source);
+      if (!revealed && (JSON.stringify(outputCode) !== JSON.stringify(code) || exportHash(JSON.stringify(actualTokens)) !== expectedTokens)) {
         tally.changedCode++;
         failures.push({ index, target, reason: 'code tokens changed (bytes, role, content, order or occurrences)' });
       }

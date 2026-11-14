@@ -76,3 +76,22 @@ it.each([
   const report = checkExportBaseline(cases, baseline, [corrupt, corrupt]);
   expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
 });
+
+it('rejects code introduced into a changed output whose main output had none', () => {
+  const source = '<script>ACTIVE</script>\n\nTEXT';
+  const cases = [{ index: 0, source, markers: ['TEXT'] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const corrupt = () => '&lt;script>ACTIVE&lt;/script>\n\nTEXT\n\n~~~\nNEW\n~~~';
+  const report = checkExportBaseline(cases, baseline, [corrupt, corrupt]);
+  expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it('accepts source code revealed by neutralizing an unclosed active element, in source order only', () => {
+  const source = '> <style>\n> ~~~\n> KEPT\n> ~~~\n\nTEXT';
+  const cases = [{ index: 0, source, markers: ['TEXT'] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const revealed = () => '> &lt;style>\n> ~~~\n> KEPT\n> ~~~\n\nTEXT';
+  const reordered = () => '> &lt;style>\n> ~~~\n> TEXT\n> ~~~\n\nKEPT';
+  expect(checkExportBaseline(cases, baseline, [revealed, revealed]).stats.map((stats) => stats.changedCode)).toEqual([0, 0]);
+  expect(checkExportBaseline(cases, baseline, [reordered, reordered]).stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
