@@ -1,7 +1,9 @@
 # Published language path evidence
 
 Fictional Tidewater fixture, captured locally on 2026-11-14. The `before`
-source was `77c679ec0`; the `after` source is the implementation in this PR.
+source was `77c679ec0`; the existing `after` screenshots/recording were captured at the initial PR
+implementation (`051931cbb`, preceding `0df1cd3de`). They are retained as
+ordinary EN/AR migration evidence, not a new capture of the review fixes.
 The API mock uses port 4410 and Vite uses port 4310. No database or provider
 services were used. Both local servers were stopped and the owned shared lock
 was released after capture.
@@ -28,6 +30,16 @@ combinations (trailing line whitespace normalized). The custom fixture host is `
 header to the local app. [custom-ar-ssr.txt](custom-ar-ssr.txt) records its
 Arabic SSR metadata. Production DNS, CDN caching and deployed behavior were not
 tested.
+
+The review revision adds [collision-headers.txt](collision-headers.txt), real
+curl output for `/ar/guide?lang=ar&tab=cli` becoming
+`/~lang/ar/ar/guide?tab=cli` on the collision fixture. Focused resolver tests
+compare page IDs and versions with main's unchanged lookup. SSR/document tests
+cover escaped prefixes and `/ar/??lang=unknown`; route tests cover private
+redirect cache isolation. The updated runner adds collision and unknown-query
+screenshots. A fresh browser rerun was deferred: the shared lock was owned by
+another builder and later RAM checks were below the 5 GB capture gate. The
+existing screenshots do not claim runtime coverage of those added cases.
 
 Reproduce under the required shared dev-stack lock and resource gate:
 
