@@ -1,6 +1,9 @@
 import { CircleCheck, Info, Lightbulb, OctagonAlert, TriangleAlert } from 'lucide-react';
 import type { SlashItem } from './types';
 
+/** Every variant answers to "callout" (English and Arabic), so "/call" lists Note too. */
+const CALLOUT_KEYWORDS = ['callout', 'admonition', 'تنبيه'];
+
 /** Callout variants (the `callout` extension). */
 export const calloutSlashItems: SlashItem[] = [
   {
@@ -8,7 +11,7 @@ export const calloutSlashItems: SlashItem[] = [
     descKey: 'editor.slash.note.desc',
     icon: Lightbulb,
     glyph: '!',
-    keywords: ['note', 'admonition', 'warning', 'info'],
+    keywords: [...CALLOUT_KEYWORDS, 'remark', 'aside'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'note' }).run(),
   },
   {
@@ -16,7 +19,7 @@ export const calloutSlashItems: SlashItem[] = [
     descKey: 'editor.slash.info.desc',
     icon: Info,
     glyph: 'i',
-    keywords: ['callout', 'information', 'important'],
+    keywords: [...CALLOUT_KEYWORDS, 'information', 'important'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'info' }).run(),
   },
   {
@@ -24,7 +27,7 @@ export const calloutSlashItems: SlashItem[] = [
     descKey: 'editor.slash.tip.desc',
     icon: Lightbulb,
     glyph: '✦',
-    keywords: ['callout', 'hint', 'recommendation'],
+    keywords: [...CALLOUT_KEYWORDS, 'hint', 'recommendation'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'tip' }).run(),
   },
   {
@@ -32,7 +35,7 @@ export const calloutSlashItems: SlashItem[] = [
     descKey: 'editor.slash.check.desc',
     icon: CircleCheck,
     glyph: '✓',
-    keywords: ['callout', 'success', 'done'],
+    keywords: [...CALLOUT_KEYWORDS, 'success', 'done'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'check' }).run(),
   },
   {
@@ -40,7 +43,7 @@ export const calloutSlashItems: SlashItem[] = [
     descKey: 'editor.slash.warning.desc',
     icon: TriangleAlert,
     glyph: '△',
-    keywords: ['callout', 'caution', 'alert'],
+    keywords: [...CALLOUT_KEYWORDS, 'caution', 'alert'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'warning' }).run(),
   },
   {
@@ -48,7 +51,7 @@ export const calloutSlashItems: SlashItem[] = [
     descKey: 'editor.slash.danger.desc',
     icon: OctagonAlert,
     glyph: '!',
-    keywords: ['callout', 'danger', 'destructive'],
+    keywords: [...CALLOUT_KEYWORDS, 'danger', 'destructive'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'danger' }).run(),
   },
 ];
