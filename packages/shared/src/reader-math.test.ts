@@ -81,6 +81,15 @@ describe('math detection', () => {
     expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
   });
 
+  it('past the parser bounds, gives every rich page KaTeX, even where only normalization reveals the math', () => {
+    for (const body of ['<code class="ma{/* note */}th-inline">x^2</code>', '<Note>No math here</Note>']) {
+      const content = `${body}\n\n${'word '.repeat(80_001)}`;
+      expect(readerRenderMode(content), body).toMatchObject({ rich: true, math: true, usage: null });
+    }
+    // A plain page past the bounds still gets neither.
+    expect(readerRenderMode(`# Title\n\n${'word '.repeat(80_001)}`)).toMatchObject({ rich: false, math: false });
+  });
+
   it('a math fence alone keeps a page on the plain renderer, as before', () => {
     expect(readerRenderMode('```math\n\\sqrt{2}\n```').rich).toBe(false);
   });
