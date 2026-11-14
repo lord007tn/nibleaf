@@ -60,6 +60,7 @@
     "test:reader-language-paths:browser": "node scripts/reader-language-paths-evidence.mjs",
     "test:reader-navigation:browser": "node tests/integration/reader-navigation/browser.mjs",
     "test:reader-deferred-controls:browser": "node tests/integration/reader-deferred-controls/browser.mjs",
+    "test:reader-image-dimensions:browser": "node tests/integration/reader-image-dimensions/browser.mjs",
     "test:reader-video-embeds:browser": "node tests/integration/reader-video-embeds/browser.mjs",
     "test:editor-video-blocks:browser": "node --env-file=.env --import tsx tests/integration/editor-video-blocks/browser.mjs",
     "test:capture-network:browser": "node tests/integration/lib/capture-network.browser.mjs",

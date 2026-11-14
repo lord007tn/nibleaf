@@ -213,6 +213,15 @@ describe('getSitePage lede vs excerpt', () => {
     expect(result.page.excerpt).toBe(body);
   });
 
+  it('returns the published page image dimensions and accepts older snapshots without them', async () => {
+    const imageDimensions = { '/api/public/assets/projects/project-1/assets/a.png': { width: 1313, height: 900 } };
+    mocks.deploymentFindUnique.mockResolvedValueOnce({
+      snapshot: { ...snapshot, pages: [{ ...snapshot.pages[0], imageDimensions }, snapshot.pages[1]] },
+    });
+    expect((await getSitePage('project-1', 'authentication')).page.imageDimensions).toEqual(imageDimensions);
+    expect((await getSitePage('project-1', 'getting-started')).page.imageDimensions).toBeUndefined();
+  });
+
   it('never promotes the derived excerpt to a lede when the author wrote no description', async () => {
     const result = await getSitePage('project-1', 'getting-started');
     expect(result.page.description).toBeNull();

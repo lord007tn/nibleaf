@@ -459,6 +459,7 @@ export interface SitePage {
     icon: string | null;
     path: string;
     content: string;
+    imageDimensions?: Record<string, { width: number; height: number }>;
     headings: Heading[];
     config: PageConfig | null;
   };
