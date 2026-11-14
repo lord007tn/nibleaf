@@ -94,9 +94,11 @@
     "remark-math": "6.0.0"
   },
   "devDependencies": {
+    "@types/markdown-it": "14.1.2",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "markdown-it": "14.3.3"
   }
 }
