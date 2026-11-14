@@ -25,6 +25,7 @@ import type { ReactNode } from 'react';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Project } from '@/hooks/api';
 import { useProjectUsage } from '@/hooks/api';
+import { isolate } from '@/lib/bidi';
 import { useFormatters } from '@/lib/format';
 import { formatByteQuantity } from '@/lib/usage-format';
 import {
@@ -163,8 +164,9 @@ export function UsageOverview({
           <span>
             {usage
               ? t('settings.usage.period', {
-                  start: date(usage.period.start),
-                  end: date(new Date(new Date(usage.period.endExclusive).getTime() - 1)),
+                  // Isolated, so an Arabic line keeps "start – end" in order around Latin digits.
+                  start: isolate(date(usage.period.start)),
+                  end: isolate(date(new Date(new Date(usage.period.endExclusive).getTime() - 1))),
                 })
               : t('settings.usage.period.loading')}
           </span>

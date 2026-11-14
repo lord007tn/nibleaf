@@ -14,13 +14,19 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fencedMarkdownLines } from './markdown-code';
 import { readerSections } from './reader-headings';
 import { extractHeadings } from './site';
 import { AFTER_FENCE, FENCE_CONTAINER_REPROS } from './testing/fence-cases';
 import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
 import { markdownCorpus } from './testing/markdown-corpus';
+
+// Some tests here work through large generated case sets or whole documentation
+// corpora. On a loaded CI runner such tests have taken ~28x as long as on a laptop
+// (5.5 s against 0.19 s), past Vitest's 5 s default, so the file gets an explicit
+// timeout. Their cost stays linear; the *.growth.test.ts files pin that.
+vi.setConfig({ testTimeout: 60_000 });
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const REGENERATE = 'node --import tsx packages/shared/src/__fixtures__/markdown-code.corpus.generate.mjs';

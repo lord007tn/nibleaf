@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks';
 import MarkdownIt from 'markdown-it';
 import { fromMarkdown } from 'mdast-util-from-markdown';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { fencedMarkdownLines, openingMarkdownFence } from './markdown-code';
 import { readerSections } from './reader-headings';
 import { extractHeadings } from './site';
@@ -24,6 +24,12 @@ import {
   TAB_BEFORE_QUOTE_IN_ITEM,
 } from './testing/fence-cases';
 import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
+
+// Some tests here work through large generated case sets or whole documentation
+// corpora. On a loaded CI runner such tests have taken ~28x as long as on a laptop
+// (5.5 s against 0.19 s), past Vitest's 5 s default, so the file gets an explicit
+// timeout. Their cost stays linear; the *.growth.test.ts files pin that.
+vi.setConfig({ testTimeout: 60_000 });
 
 const markdown = new MarkdownIt({ html: true });
 
