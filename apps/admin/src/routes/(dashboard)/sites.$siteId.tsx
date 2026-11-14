@@ -308,7 +308,7 @@ function SiteDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Users className="size-4 text-muted-foreground" />
-                Workspace access
+                {t('admin.site.workspaceAccess')}
               </CardTitle>
               <CardDescription>{t('admin.site.accessBody')}</CardDescription>
             </CardHeader>
