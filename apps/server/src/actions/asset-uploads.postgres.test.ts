@@ -8,6 +8,8 @@ vi.mock('@nibleaf/storage', async (importOriginal) => ({
   ...storage,
   putObject: vi.fn(),
   isNotFound: () => false,
+  // Synthetic storage has no image bytes to measure: no dimensions, as for any unreadable object.
+  storedImageDimensions: vi.fn(async () => null),
 }));
 vi.mock('./projects', () => ({ assertProjectInOrg: vi.fn() }));
 

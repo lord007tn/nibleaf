@@ -31,10 +31,10 @@ const isTiny = (node: HastNode): boolean =>
  * screenshot-heavy article doesn't fetch everything up front. All decode off the
  * main thread. An author's own valid `loading` or `decoding` wins.
  *
- * Runs before the sanitizer, which drops the authored sizes and classes it
- * doesn't allow, and keeps only the valid `loading`/`decoding` values.
+ * Runs before the sanitizer. Authored dimensions win; stored dimensions only
+ * fill an entirely unsized image, so a lone authored width still scales naturally.
  */
-export const rehypeImageLoading = () => (tree: HastNode) => {
+export const rehypeImageLoading = (dimensions?: Record<string, { width: number; height: number }>) => (tree: HastNode) => {
   const images: HastNode[] = [];
   const collect = (node: HastNode) => {
     if (node.type === 'element' && node.tagName === 'img') images.push(node);
@@ -54,6 +54,11 @@ export const rehypeImageLoading = () => (tree: HastNode) => {
   for (const image of images) {
     image.properties ??= {};
     const properties = image.properties;
+    const size = dimensions?.[String(properties.src)];
+    if (size && properties.width == null && properties.height == null) {
+      properties.width = size.width;
+      properties.height = size.height;
+    }
     if (!LOADING.has(String(properties.loading))) properties.loading = eager.has(image) ? 'eager' : 'lazy';
     if (!DECODING.has(String(properties.decoding))) properties.decoding = 'async';
   }

@@ -41,6 +41,7 @@ export interface SiteLinkContext {
 
 export interface MarkdownProps {
   content: string;
+  imageDimensions?: Record<string, { width: number; height: number }>;
   className?: string;
   site?: SiteLinkContext;
   /** Grammars beyond the core set, loaded for this content (see `Markdown`). */
@@ -289,14 +290,24 @@ function MarkdownContent(props: MarkdownProps) {
   );
 }
 
-function MarkdownBody({ content, className, site, highlightGrammars, rich, math }: MarkdownProps & { rich: boolean; math: boolean }) {
+function MarkdownBody({
+  content,
+  imageDimensions,
+  className,
+  site,
+  highlightGrammars,
+  rich,
+  math,
+}: MarkdownProps & { rich: boolean; math: boolean }) {
   if (rich) {
     // The router loads the rich chunk before hydrating markup it rendered, and
     // the reader's loaders before navigating. Until it loads, hydrating keeps
     // the server's markup and a client render shows the plain renderer, which
     // keeps the text readable; so does a chunk that never loads. Only the
     // server render suspends, waiting for the chunk.
-    const plain = <MarkdownRenderer content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
+    const plain = (
+      <MarkdownRenderer content={content} imageDimensions={imageDimensions} className={className} site={site} highlightGrammars={highlightGrammars} />
+    );
     return (
       <Suspense fallback={plain}>
         <HydrationIsland
@@ -311,6 +322,7 @@ function MarkdownBody({ content, className, site, highlightGrammars, rich, math 
             return (
               <Rich
                 content={content}
+                imageDimensions={imageDimensions}
                 className={className}
                 site={site}
                 highlightGrammars={highlightGrammars}
@@ -322,11 +334,14 @@ function MarkdownBody({ content, className, site, highlightGrammars, rich, math 
       </Suspense>
     );
   }
-  return <MarkdownRenderer content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
+  return (
+    <MarkdownRenderer content={content} imageDimensions={imageDimensions} className={className} site={site} highlightGrammars={highlightGrammars} />
+  );
 }
 
 export function MarkdownRenderer({
   content,
+  imageDimensions,
   className,
   site,
   highlightGrammars,
@@ -393,7 +408,7 @@ export function MarkdownRenderer({
           rehypeAuthoredComponentProps,
           // Before the sanitizer: it reads authored sizes and light/dark classes
           // to pick the image that loads at once; the rest load as the reader scrolls.
-          rehypeImageLoading,
+          [rehypeImageLoading, imageDimensions],
           [rehypeSanitize, sanitizeSchema],
           ...afterSanitizePlugins,
           rehypeMermaid,
