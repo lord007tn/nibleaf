@@ -1,0 +1,108 @@
+{
+  "terms": {
+    "site": { "translation": "网站", "note": "Always 网站, never 站点." },
+    "organization": {
+      "translation": "组织",
+      "note": "Never 工作区 or 工作空间, even where English still says workspace."
+    },
+    "page": { "translation": "页面" },
+    "group": { "translation": "分组" },
+    "page-tree": { "translation": "页面树" },
+    "publish": { "translation": "发布", "note": "Noun: 一次发布 / 发布记录." },
+    "draft": { "translation": "草稿" },
+    "unpublished-changes": { "translation": "未发布的更改" },
+    "preview": { "translation": "预览" },
+    "live-site": { "translation": "线上网站" },
+    "reader": {
+      "translation": "读者",
+      "note": "Never 查看者, which is the Viewer role."
+    },
+    "member": {
+      "translation": "成员",
+      "note": "Not 会员 (that means a paying subscriber)."
+    },
+    "people": { "translation": "人员" },
+    "invitation": { "translation": "邀请", "short": "邀请" },
+    "join-link": { "translation": "加入链接" },
+    "role": { "translation": "角色" },
+    "role-owner": { "translation": "所有者" },
+    "role-admin": { "translation": "管理员" },
+    "role-editor": {
+      "translation": "编辑者",
+      "note": "The editing screen is 编辑器."
+    },
+    "role-viewer": { "translation": "查看者" },
+    "server-admin": {
+      "translation": "服务器管理员",
+      "note": "Always with 服务器, so it never reads as the site Admin role."
+    },
+    "account": { "translation": "账户" },
+    "sign-in": { "translation": "登录 / 注册 / 退出登录" },
+    "settings": { "translation": "设置" },
+    "general": { "translation": "常规" },
+    "appearance": { "translation": "外观" },
+    "theme": { "translation": "主题" },
+    "custom-domain": { "translation": "自定义域名" },
+    "domain": {
+      "translation": "域名",
+      "note": "地址 when English means the address in general."
+    },
+    "redirect": { "translation": "重定向" },
+    "visibility": {
+      "translation": "可见性",
+      "note": "访问权限 when English says access."
+    },
+    "add-on": { "translation": "附加组件" },
+    "integration": { "translation": "集成" },
+    "webhook": { "translation": "Webhook" },
+    "api-key": { "translation": "API 密钥" },
+    "token": { "translation": "令牌" },
+    "branch": { "translation": "分支" },
+    "sync": { "translation": "同步" },
+    "import": { "translation": "导入" },
+    "export": { "translation": "导出" },
+    "language": { "translation": "语言", "note": "Source language: 源语言." },
+    "ask-ai": { "translation": "问 AI" },
+    "ai-assistant": { "translation": "AI 助手" },
+    "smart-ai": { "translation": "智能 AI" },
+    "analytics": { "translation": "分析" },
+    "page-views": { "translation": "页面浏览量", "short": "浏览量" },
+    "visits": { "translation": "访问次数", "short": "访问" },
+    "searches": { "translation": "搜索次数", "short": "搜索" },
+    "feedback": { "translation": "反馈" },
+    "period": { "translation": "时间段" },
+    "compare": { "translation": "与上一时间段比较" },
+    "web-vitals": {
+      "translation": "Web Vitals（主要内容显示速度、点击响应速度、布局稳定性）",
+      "note": "Web Vitals, LCP, INP and CLS stay in English."
+    },
+    "ai-crawlers": { "translation": "AI 爬虫 / AI 可见度" },
+    "plan": { "translation": "套餐" },
+    "usage": { "translation": "用量" },
+    "billing": { "translation": "账单" },
+    "notifications": { "translation": "通知" },
+    "history": { "translation": "历史记录" },
+    "version": { "translation": "版本" },
+    "restore": { "translation": "恢复" },
+    "promote": {
+      "translation": "合并到主线",
+      "note": "Not 发布: promoting merges a branch, publishing makes the draft live."
+    },
+    "rollback": { "translation": "回滚" },
+    "checks": { "translation": "发布检查", "short": "修复" },
+    "danger-zone": { "translation": "危险操作" },
+    "delete": { "translation": "删除 / 移到回收站" },
+    "trash": { "translation": "回收站" },
+    "delete-permanently": { "translation": "永久删除" },
+    "remove": { "translation": "移除" },
+    "save": { "translation": "保存 / 已保存 / 未保存的更改" },
+    "cancel": { "translation": "取消" },
+    "copy": { "translation": "复制 / 已复制" },
+    "self-hosted": { "translation": "自托管" },
+    "dashboard": { "translation": "控制台" },
+    "editor-screen": { "translation": "编辑器" },
+    "component": { "translation": "组件" },
+    "callout": { "translation": "提示框" }
+  },
+  "style": "Address the user as 你 (never 您), plainly and briefly. Full-width punctuation in Chinese text (，。：；！？（）), curly quotes “ ”, ellipsis …. Half-width space between Chinese and Latin words or numbers (“3 个网站”, “API 密钥”), none before full-width punctuation. Buttons are short verbs (保存, 发布, 邀请). No plural forms: plural messages use a single * form."
+}
