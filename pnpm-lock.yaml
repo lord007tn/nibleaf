@@ -270,6 +270,9 @@ importers:
       '@tiptap/extension-image':
         specifier: 3.33.0
         version: 3.33.0(@tiptap/core@3.33.0(@tiptap/pm@3.33.0))
+      '@tiptap/extension-paragraph':
+        specifier: 3.33.0
+        version: 3.33.0(@tiptap/core@3.33.0(@tiptap/pm@3.33.0))
       '@tiptap/extension-placeholder':
         specifier: 3.33.0
         version: 3.33.0(@tiptap/extensions@3.33.0(@tiptap/core@3.33.0(@tiptap/pm@3.33.0))(@tiptap/pm@3.33.0))
@@ -1251,12 +1254,18 @@ importers:
       '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@types/markdown-it':
+        specifier: 14.1.2
+        version: 14.1.2
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
+      markdown-it:
+        specifier: 14.3.3
+        version: 14.3.3
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

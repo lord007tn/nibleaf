@@ -22,11 +22,15 @@ import { ShellSearchButton } from '@/components/app/shell-search-button';
 import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
 import { PublishLauncherContext } from '@/features/publish/components/publish-launcher';
+import { isSectionId } from '@/features/site-settings/model/ids';
+import { sectionLabelKey } from '@/features/site-settings/model/sections';
 import { useDeployments, useOrganizationOfProject, usePendingChanges, useProject } from '@/hooks/api';
 import type { Project } from '@/hooks/api/types';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { useRecordVisitEffect } from '@/hooks/use-record-visit';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
+import { pageTitle } from '@/lib/page-title';
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow.
  *  `initialPublishOpen` opens the publish modal on mount (deep link: editor?publish=true). */
@@ -176,6 +180,14 @@ function sectionKeysFromPathname(pathname: string): MessageKey[] {
   return [];
 }
 
+/** The tab title's first part for a site page: the settings section, the
+ *  analytics tab, the page, or Overview. */
+function pageTitleKey(pathname: string, sectionKeys: readonly MessageKey[], settingsSection: unknown): MessageKey {
+  if (/\/editor\/?$/.test(pathname)) return 'project.editor';
+  if (/\/settings\/?$/.test(pathname) && isSectionId(settingsSection)) return sectionLabelKey(settingsSection);
+  return sectionKeys.at(-1) ?? 'project.overview';
+}
+
 /** The per-site shell: a left sidebar (switcher + sections + account) with a slim
  *  content header. The header offers Preview and Publish on every site page
  *  (P1-DASH-005): unpublished changes are never only visible in the editor.
@@ -190,7 +202,9 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const settingsSection = useRouterState({ select: (s) => (s.location.search as { section?: unknown } | undefined)?.section });
   const sectionKeys = sectionKeysFromPathname(pathname);
+  usePageTitle(pageTitle(t(pageTitleKey(pathname, sectionKeys, settingsSection)), project?.name));
   // The draft preview marks its own article area as the skip target, past its page list.
   const pageOwnsSkipTarget = /\/preview\/?$/.test(pathname);
   const [publishRequest, setPublishRequest] = useState(0);
