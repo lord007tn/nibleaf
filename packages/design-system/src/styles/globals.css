@@ -142,7 +142,8 @@
   --accent: #262626;
   --accent-foreground: #fafafa;
   --destructive: #f87171;
-  --destructive-foreground: #fafafa;
+  /* Dark text on the lighter red: 6.48:1 on a solid fill (white would be 2.65). */
+  --destructive-foreground: #171717;
   --info: #60a5fa;
   --info-foreground: #172554;
   --warning: #fbbf24;
