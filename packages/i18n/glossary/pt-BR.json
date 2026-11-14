@@ -1,0 +1,262 @@
+{
+  "terms": {
+    "site": {
+      "translation": "site",
+      "note": "Always \"site\" (o site), never \"local\", \"website\" or \"projeto\"."
+    },
+    "organization": {
+      "translation": "organização",
+      "note": "Never \"espaço de trabalho\"."
+    },
+    "page": {
+      "translation": "página"
+    },
+    "group": {
+      "translation": "grupo"
+    },
+    "page-tree": {
+      "translation": "árvore de páginas"
+    },
+    "publish": {
+      "translation": "publicar; publicação (noun)",
+      "short": "Publicar"
+    },
+    "draft": {
+      "translation": "rascunho"
+    },
+    "unpublished-changes": {
+      "translation": "alterações não publicadas"
+    },
+    "preview": {
+      "translation": "pré-visualização; visualizar (verb)",
+      "short": "Visualizar"
+    },
+    "live-site": {
+      "translation": "site publicado"
+    },
+    "reader": {
+      "translation": "leitor",
+      "note": "Plural \"leitores\"."
+    },
+    "member": {
+      "translation": "membro"
+    },
+    "people": {
+      "translation": "Pessoas"
+    },
+    "invitation": {
+      "translation": "convite",
+      "short": "Convidar"
+    },
+    "join-link": {
+      "translation": "link de entrada",
+      "short": "link"
+    },
+    "role": {
+      "translation": "função",
+      "note": "The catalog already uses \"função\" for role."
+    },
+    "role-owner": {
+      "translation": "Proprietário",
+      "note": "Role names are capitalised."
+    },
+    "role-admin": {
+      "translation": "Administrador",
+      "short": "Admin"
+    },
+    "role-editor": {
+      "translation": "Editor",
+      "note": "The screen is \"o editor\" (lowercase)."
+    },
+    "role-viewer": {
+      "translation": "Leitor",
+      "note": "As in Google Drive. Capitalised as a role; the site's readers are \"leitores\"."
+    },
+    "server-admin": {
+      "translation": "administrador do servidor",
+      "note": "Not the Admin role."
+    },
+    "account": {
+      "translation": "conta"
+    },
+    "sign-in": {
+      "translation": "entrar, criar conta, sair",
+      "short": "Entrar"
+    },
+    "settings": {
+      "translation": "configurações",
+      "short": "Configurações"
+    },
+    "general": {
+      "translation": "Geral"
+    },
+    "appearance": {
+      "translation": "Aparência"
+    },
+    "theme": {
+      "translation": "tema"
+    },
+    "custom-domain": {
+      "translation": "domínio personalizado"
+    },
+    "domain": {
+      "translation": "domínio; endereço"
+    },
+    "redirect": {
+      "translation": "redirecionamento"
+    },
+    "visibility": {
+      "translation": "visibilidade, acesso"
+    },
+    "add-on": {
+      "translation": "complemento"
+    },
+    "integration": {
+      "translation": "integração"
+    },
+    "webhook": {
+      "translation": "webhook",
+      "note": "Loanword, masculine (o webhook)."
+    },
+    "api-key": {
+      "translation": "chave de API"
+    },
+    "token": {
+      "translation": "token"
+    },
+    "branch": {
+      "translation": "branch",
+      "note": "Developer loanword (o branch), as GitHub uses in pt-BR."
+    },
+    "sync": {
+      "translation": "sincronizar; sincronização"
+    },
+    "import": {
+      "translation": "importar; importação"
+    },
+    "export": {
+      "translation": "exportar; exportação"
+    },
+    "language": {
+      "translation": "idioma",
+      "note": "Source language = idioma de origem."
+    },
+    "ask-ai": {
+      "translation": "Perguntar à IA",
+      "note": "Feature name, identical everywhere."
+    },
+    "ai-assistant": {
+      "translation": "assistente de IA"
+    },
+    "smart-ai": {
+      "translation": "Smart AI",
+      "note": "Feature name kept as is."
+    },
+    "analytics": {
+      "translation": "Análises"
+    },
+    "page-views": {
+      "translation": "visualizações de página"
+    },
+    "visits": {
+      "translation": "visitas"
+    },
+    "searches": {
+      "translation": "pesquisas"
+    },
+    "feedback": {
+      "translation": "feedback",
+      "note": "Common loanword in pt-BR software."
+    },
+    "period": {
+      "translation": "período, intervalo"
+    },
+    "compare": {
+      "translation": "comparar com o período anterior"
+    },
+    "web-vitals": {
+      "translation": "Web Vitals (O conteúdo principal aparece, Responde aos cliques, O layout fica estável)",
+      "note": "LCP, INP and CLS stay in English."
+    },
+    "ai-crawlers": {
+      "translation": "rastreadores de IA, visibilidade em IA"
+    },
+    "plan": {
+      "translation": "plano"
+    },
+    "usage": {
+      "translation": "uso"
+    },
+    "billing": {
+      "translation": "cobrança"
+    },
+    "notifications": {
+      "translation": "notificações"
+    },
+    "history": {
+      "translation": "histórico"
+    },
+    "version": {
+      "translation": "versão"
+    },
+    "restore": {
+      "translation": "restaurar"
+    },
+    "promote": {
+      "translation": "promover para a principal",
+      "note": "Merging a branch into main; never \"publicar\"."
+    },
+    "rollback": {
+      "translation": "reverter"
+    },
+    "checks": {
+      "translation": "verificações de publicação",
+      "short": "Corrigir"
+    },
+    "danger-zone": {
+      "translation": "Zona de perigo"
+    },
+    "delete": {
+      "translation": "excluir; mover para a lixeira",
+      "short": "Excluir"
+    },
+    "trash": {
+      "translation": "Lixeira"
+    },
+    "delete-permanently": {
+      "translation": "excluir permanentemente"
+    },
+    "remove": {
+      "translation": "remover"
+    },
+    "save": {
+      "translation": "salvar, salvo, alterações não salvas",
+      "short": "Salvar"
+    },
+    "cancel": {
+      "translation": "cancelar",
+      "short": "Cancelar"
+    },
+    "copy": {
+      "translation": "copiar, copiado",
+      "short": "Copiar"
+    },
+    "self-hosted": {
+      "translation": "auto-hospedado"
+    },
+    "dashboard": {
+      "translation": "painel"
+    },
+    "editor-screen": {
+      "translation": "editor"
+    },
+    "component": {
+      "translation": "componente, bloco"
+    },
+    "callout": {
+      "translation": "destaque",
+      "note": "Note = Nota, Tip = Dica, Warning = Aviso."
+    }
+  },
+  "style": "Brazilian Portuguese with \"você\" (Crie, Escolha, seu site), never \"tu\". Sentence case. Buttons use the infinitive, as the catalog already does (Salvar, Publicar, Convidar); instructions use the imperative (Adicione, Escolha). Names and titles in “aspas curvas”. \"e-mail\" with a hyphen. A space between a number and its unit (10 MB, 30 dias). Decimal comma in prose."
+}
