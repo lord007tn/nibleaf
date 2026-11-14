@@ -3453,7 +3453,7 @@
   "analytics_resource_rss": "RSS ফিড",
   "analytics_resource_other": "অন্যান্য ফাইল",
   "analytics_perf_title": "আপনার পৃষ্ঠাগুলো কতটা দ্রুত লাগে",
-  "analytics_perf_description": "সত্যিকারের পাঠকদের ডিভাইসে মাপা। আমরা যে মান দেখাই, 75% পৃষ্ঠা লোড তার সমান বা তার চেয়ে দ্রুত।",
+  "analytics_perf_description": "সত্যিকারের পাঠকদের ডিভাইসে মাপা। 75% পৃষ্ঠা লোড এই মানের সমান বা তার কম।",
   "analytics_perf_distribution": "সামগ্রিক রেটিং অনুযায়ী পৃষ্ঠা লোড",
   "analytics_perf_samples": "পরিমাপ করা পৃষ্ঠা লোড: {count}",
   "analytics_perf_secondary": "প্রথম কনটেন্ট {fcp} · সার্ভারের সাড়া {ttfb}",

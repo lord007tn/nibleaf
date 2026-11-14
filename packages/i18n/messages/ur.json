@@ -3510,7 +3510,7 @@
   "analytics_resource_rss": "RSS فیڈ",
   "analytics_resource_other": "دیگر فائلیں",
   "analytics_perf_title": "آپ کے صفحات کتنے تیز محسوس ہوتے ہیں",
-  "analytics_perf_description": "حقیقی قارئین کی ڈیوائسز پر ناپا گیا۔ ہم جو قدر دکھاتے ہیں، 75% صفحہ لوڈز اس کے برابر یا اس سے تیز ہوتے ہیں۔",
+  "analytics_perf_description": "حقیقی قارئین کی ڈیوائسز پر ناپا گیا۔ 75% صفحہ لوڈز اس قدر کے برابر یا اس سے کم ہیں۔",
   "analytics_perf_distribution": "مجموعی درجہ بندی کے لحاظ سے صفحہ لوڈز",
   "analytics_perf_samples": "ناپے گئے صفحہ لوڈز: {count}",
   "analytics_perf_secondary": "پہلا مواد {fcp} · سرور کا جواب {ttfb}",
