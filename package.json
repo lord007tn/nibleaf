@@ -79,7 +79,7 @@
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",
     "test": "pnpm test:scripts && turbo run test",
-    "test:scripts": "node --test scripts/container-commands.test.mjs scripts/release-notes.test.mjs scripts/email-runtime.test.mjs scripts/ui-primitives.test.mjs scripts/server-i18n-imports.test.mjs scripts/service-signals.test.mjs scripts/backup.test.mjs scripts/self-host-setup.test.mjs scripts/self-host-release.test.mjs scripts/vitest-env.test.mjs scripts/vitest-cache.test.mjs tests/integration/lib/capture-env.test.mjs",
+    "test:scripts": "node --test scripts/container-commands.test.mjs scripts/release-notes.test.mjs scripts/email-runtime.test.mjs scripts/ui-primitives.test.mjs scripts/server-i18n-imports.test.mjs scripts/service-signals.test.mjs scripts/backup.test.mjs scripts/self-host-setup.test.mjs scripts/self-host-release.test.mjs scripts/vitest-env.test.mjs scripts/vitest-cache.test.mjs tests/integration/lib/capture-env.test.mjs tests/integration/lib/evidence-json.test.mjs",
     "check:dead-code": "knip --include files,dependencies,exports,types,duplicates,unlisted --no-config-hints",
     "check:react": "react-doctor --project @nibleaf/app,@nibleaf/admin --no-dead-code --no-supply-chain --no-score --blocking error",
     "release:notes": "node scripts/release-notes.mjs",
