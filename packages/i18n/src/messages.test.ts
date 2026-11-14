@@ -376,7 +376,9 @@ describe('dashboard safety copy', () => {
 });
 
 it('keeps the settings arrow and replacement warnings clear in English, Arabic and fallback catalogs', () => {
-  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => !['ar', 'de', 'fr', 'es', 'pt-BR', 'ru', 'id', 'zh-CN', 'hi', 'bn', 'ur'].includes(code))) {
+  for (const { code } of INTERFACE_LOCALES.filter(
+    ({ code }) => !['ar', 'de', 'fr', 'es', 'pt-BR', 'ru', 'id', 'zh-CN', 'hi', 'bn', 'ur'].includes(code),
+  )) {
     expect(loadCatalog(code).preview_disabledaskadmin).toContain('Settings → Add-ons');
   }
   expect(loadCatalog('de').preview_disabledaskadmin).toContain('Einstellungen → Add-ons');
@@ -423,7 +425,9 @@ it('localizes the compact checklist permission failure in Arabic and uses Englis
   expect(loadCatalog('hi').overview_nudge_permissionserror).toBe('आपकी अनुमतियाँ जाँची नहीं जा सकीं।');
   expect(loadCatalog('bn').overview_nudge_permissionserror).toBe('আপনার অনুমতি যাচাই করা যায়নি।');
   expect(loadCatalog('ur').overview_nudge_permissionserror).toBe('آپ کی اجازتیں جانچی نہیں جا سکیں۔');
-  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => !['ar', 'de', 'fr', 'es', 'pt-BR', 'ru', 'id', 'zh-CN', 'hi', 'bn', 'ur'].includes(code))) {
+  for (const { code } of INTERFACE_LOCALES.filter(
+    ({ code }) => !['ar', 'de', 'fr', 'es', 'pt-BR', 'ru', 'id', 'zh-CN', 'hi', 'bn', 'ur'].includes(code),
+  )) {
     expect(loadCatalog(code).overview_nudge_permissionserror).toBe(english);
   }
 });
