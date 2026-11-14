@@ -1,51 +1,12 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
 import { importSiteHref } from '@nibleaf/shared/site-links';
-import { fromMarkdown } from 'mdast-util-from-markdown';
 import { stableHash } from './content';
 import { safeDecodeUri as safeDecode } from './gitbook-markdown';
-import { decodeImportEntities } from './import-fidelity';
 import { protectImportCode } from './import-markdown-code';
-import { markdownReferences, replaceImportReferences } from './import-references';
+import { importPageLinks } from './import-page-links';
+import { replaceImportReferences } from './import-references';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
-
-const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
-
-/** A shared image/link definition cannot change without also changing the image. */
-const imageDefinitionOffsets = (content: string): ReadonlySet<number> => {
-  const offsets = new Set<number>();
-  if (!content.includes('![')) return offsets;
-  const images = new Set<string>();
-  const definitions: Array<{ identifier: string; offset: number }> = [];
-  type Node = { type: string; identifier?: string; position?: { start: { offset?: number } }; children?: Node[] };
-  const pending: Node[] = [fromMarkdown(content)];
-  while (pending.length) {
-    const node = pending.pop();
-    if (!node) continue;
-    if (node.type === 'imageReference' && node.identifier) images.add(node.identifier);
-    if (node.type === 'definition' && node.identifier && node.position?.start.offset !== undefined) {
-      definitions.push({ identifier: node.identifier, offset: node.position.start.offset });
-    }
-    if (node.children) for (const child of node.children) pending.push(child);
-  }
-  for (const definition of definitions) if (images.has(definition.identifier)) offsets.add(definition.offset);
-  return offsets;
-};
-
-const rewriteReferenceDefinitions = (content: string, rewrite: (reference: string) => string): string => {
-  const imageDefinitions = imageDefinitionOffsets(content);
-  // Definitions may be shared by multiple reference links. Rewrite their
-  // destination once, preserving the authored label, title and delimiters.
-  return content.replace(
-    /(^[ \t>]*(?:(?:[-+*]|\d+[.)])[ \t>]+)?\[(?:\\.|[^\]\\\r\n])+\]:[ \t]*(?:\r?\n[ \t>]*)?)(?:<([^<>\r\n]*)>|([^\s]+))/gm,
-    (match, before: string, angle: string | undefined, bare: string | undefined, offset: number) => {
-      if (imageDefinitions.has(offset + before.indexOf('['))) return match;
-      const original = angle ?? bare ?? '';
-      const destination = rewrite(original);
-      return destination === original ? match : `${before}${angle !== undefined ? `<${destination}>` : destination}`;
-    },
-  );
-};
 
 const trimSlashes = (value: string): string => {
   let end = value.length;
@@ -198,11 +159,7 @@ export const mintlifyInternalLinkTargets = (
     if (page === null) return;
     targets.add(page?.source ?? key);
   };
-  for (const reference of markdownReferences(prose)) if (!reference.image) add(reference.value);
-  prose.replace(HREF_ATTRIBUTE, (_match, _before: string, reference: string) => {
-    add(decodeImportEntities(reference));
-    return _match;
-  });
+  for (const reference of importPageLinks(prose)) if (reference.kind !== 'definition') add(reference.value);
   return [...targets];
 };
 
@@ -256,24 +213,16 @@ export const rewriteMintlifyInternalLinks = (
     for (const [name, value] of destination.searchParams) params.set(name, value);
     return `${destination.pathname}?${params}${suffixUrl.hash}`;
   };
-  const definitions = options.rewriteDefinitions === false ? protectedCode.content : rewriteReferenceDefinitions(protectedCode.content, rewrite);
-  const markdown = replaceImportReferences(
-    definitions,
-    markdownReferences(definitions).filter((reference) => !reference.image),
-    (reference) => rewrite(reference.value),
+  const references = importPageLinks(protectedCode.content).filter(
+    (reference) => options.rewriteDefinitions !== false || reference.kind !== 'definition',
   );
   return protectedCode.restore(
-    markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string) => {
-      const decoded = decodeImportEntities(reference);
-      const rewritten = rewrite(decoded);
-      if (rewritten === decoded) return match;
-      const escaped = rewritten
-        .replaceAll('&', '&amp;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-      return `${before}${escaped}${after}`;
+    replaceImportReferences(protectedCode.content, references, (reference) => {
+      const rewritten = rewrite(reference.value);
+      if (rewritten === reference.value) return protectedCode.content.slice(reference.start, reference.end);
+      if ('kind' in reference && reference.kind === 'href')
+        return rewritten.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&#39;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+      return rewritten;
     }),
   );
 };

@@ -101,6 +101,11 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
       (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['next', '/guides-2/next-2']])),
       (n: number) => '![Image][shot]\n\n[Shared][shot]\n\n[shot]: /next\n\n'.repeat(n),
     ],
+    [
+      'parsed links alongside invalid definitions and attribute text',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['next', '/guides-2/next-2']])),
+      (n: number) => '[not-a-definition]: /next extra text\n\n[Go](/next)\n\n<span title="[Literal](/next)">Text</span>\n\n'.repeat(n),
+    ],
   ] as const)(
     'stays linear on %s',
     (_label, run, build) => {

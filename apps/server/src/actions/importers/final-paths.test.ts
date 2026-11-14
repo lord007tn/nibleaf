@@ -307,7 +307,7 @@ describe('final imported destinations', () => {
 const rendered = (sourcePath: string, type: string, attribute: string): Array<string | null> => {
   const source = mem.rows.find((row) => row.path === sourcePath);
   expect(source).toBeDefined();
-  return new MarkdownIt()
+  return new MarkdownIt({ html: true })
     .parse(source?.content ?? '', {})
     .flatMap((token) => token.children ?? [])
     .filter((token) => token.type === type)
@@ -398,4 +398,54 @@ describe('source identity and reference ownership', () => {
     assertExactTarget('intro', `/${existingPath}`, existingPath);
     assertExactTarget('intro', '/getting-started-2/quickstart', 'getting-started-2/quickstart');
   });
+});
+
+describe('parsed reference destinations preserve literal text', () => {
+  const cases = [
+    ['audit repro', '', ''],
+    ['invalid definition with trailing text', '[also-not]: /topic/next "Quoted" extra text', '[also-not]: /topic/next "Quoted" extra text'],
+    [
+      'fenced and indented definitions',
+      '```md\n[code]: /topic/next "Code"\n```\n\n    [indented]: /topic/next "Indented"',
+      '```md\n[code]: /topic/next "Code"\n```\n\n    [indented]: /topic/next "Indented"',
+    ],
+    [
+      'escaped definitions, inline code and attribute text',
+      '\\[escaped]: /topic/next\n\n\\[Escaped](/topic/next)\n\n`[Code](/topic/next)`\n\n<span title="[Attribute](/topic/next)">Example</span>\n\n<span title=\'href="/topic/next"\'>Example</span>\n\n<span href="/topic/next">Plain span</span>',
+      null,
+    ],
+    [
+      'valid definition with a quoted title',
+      '[Reference][valid]\n\n[valid]: /topic/next "Quoted title"',
+      '[Reference][valid]\n\n[valid]: /topic-2/next "Quoted title"',
+    ],
+    [
+      'valid image definition',
+      '![Image][shot]\n\n[shot]: /topic/next "Existing screenshot"',
+      '![Image][shot]\n\n[shot]: /topic/next "Existing screenshot"',
+    ],
+  ] as const;
+  for (const kind of ['mintlify', 'gitbook'] as const) {
+    it.each(cases)(`${kind}: %s alongside the literal repro`, async (_name, fragment, expectedFragment) => {
+      const mintlify = kind === 'mintlify';
+      const topic = seed('topic', 'PAGE');
+      seed('next', 'PAGE', 'en', topic);
+      if (mintlify) mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['intro', { group: 'Topic', pages: ['topic/next'] }] } }));
+      const literal = 'Literal example:\n\n[not-a-definition]: /topic/next extra text';
+      const body = [literal, fragment, '[Go](/topic/next)'].filter(Boolean).join('\n\n');
+      const expected = [literal, expectedFragment ?? fragment, '[Go](/topic-2/next)'].filter(Boolean).join('\n\n');
+      mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, body);
+      mem.files.set(`topic/next.${mintlify ? 'mdx' : 'md'}`, 'Destination.');
+      await run(mintlify ? mintlifyImporter : gitbookImporter);
+      expect(mem.rows.find((row) => row.path === 'intro')?.content).toBe(expected);
+      expect(rendered('intro', 'link_open', 'href')).toEqual(
+        _name === 'valid definition with a quoted title' ? ['/topic-2/next', '/topic-2/next'] : ['/topic-2/next'],
+      );
+      assertExactTarget('intro', '/topic-2/next', 'topic-2/next');
+      if (_name === 'valid image definition') {
+        expect(rendered('intro', 'image', 'src')).toEqual(['/topic/next']);
+        assertExactTarget('intro', '/topic/next', 'topic/next');
+      }
+    });
+  }
 });
