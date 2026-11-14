@@ -73,6 +73,13 @@ it.each([false, true])(
     await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
     await act(async () => trigger?.click());
     drawer = document.querySelector('[data-slot="sheet-content"]');
+    // The page tree comes first; links and the call to action follow it (PUB-011).
+    const nav = drawer?.querySelector('nav[data-site-nav]');
+    const footer = drawer?.querySelector('[data-mobile-nav-footer]');
+    expect(nav).not.toBeNull();
+    expect(footer).not.toBeNull();
+    expect(nav && footer ? nav.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING : 0).toBeTruthy();
+    expect(footer?.querySelector('a[data-analytics-cta]')).not.toBeNull();
     const community = drawer?.querySelector<HTMLAnchorElement>('a[href="https://community.example.com"]');
     expect(community?.textContent).toContain('Community');
     expect(community?.target).toBe('_blank');

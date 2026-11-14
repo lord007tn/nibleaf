@@ -170,6 +170,8 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
       setOpen(true);
     }
   }, [currentPath, node]);
+  // The list it opens and closes (P3-PUB-029); named only while it is rendered.
+  const childrenId = useId();
   return (
     <li className="mt-7 first:mt-1">
       <button
@@ -178,6 +180,7 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
         onFocus={showClampedTitle}
         onPointerEnter={showClampedTitle}
         aria-expanded={open}
+        aria-controls={open && node.children.length > 0 ? childrenId : undefined}
         className="group flex w-full cursor-pointer items-start justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
         <span className="line-clamp-2 min-w-0 break-words in-focus-visible:line-clamp-none" dir={blockDirection(node.title)} data-nav-label>
@@ -193,7 +196,7 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
         />
       </button>
       {open && node.children.length > 0 ? (
-        <div className="mt-1">
+        <div className="mt-1" id={childrenId}>
           <NavItems
             nodes={node.children}
             projectId={projectId}
@@ -220,6 +223,7 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
       setOpen(true);
     }
   }, [currentPath, node]);
+  const childrenId = useId();
   return (
     <li>
       <button
@@ -228,6 +232,7 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
         onFocus={showClampedTitle}
         onPointerEnter={showClampedTitle}
         aria-expanded={open}
+        aria-controls={open && node.children.length > 0 ? childrenId : undefined}
         className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
         <ChevronRight className={cn('mt-[3px] size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
@@ -237,16 +242,18 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
         </span>
       </button>
       {open && node.children.length > 0 ? (
-        <NavItems
-          nodes={node.children}
-          projectId={projectId}
-          currentPath={currentPath}
-          depth={depth + 1}
-          lang={lang}
-          version={version}
-          toggleLabel={toggleLabel}
-          rail
-        />
+        <div id={childrenId}>
+          <NavItems
+            nodes={node.children}
+            projectId={projectId}
+            currentPath={currentPath}
+            depth={depth + 1}
+            lang={lang}
+            version={version}
+            toggleLabel={toggleLabel}
+            rail
+          />
+        </div>
       ) : null}
     </li>
   );
