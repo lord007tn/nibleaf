@@ -46,6 +46,16 @@ const mem = vi.hoisted(() => ({
 
 vi.mock('@nibleaf/database', () => ({
   prisma: {
+    page: {
+      findMany: async ({ where }: { where: { id: { in: string[] } } }) => {
+        const path = (id: string): string => {
+          const row = mem.rows.find((page) => page.id === id);
+          if (!row) throw new Error('Page missing from fixture');
+          return `${row.parentId ? `${path(row.parentId)}/` : ''}${row.slug}`;
+        };
+        return mem.rows.filter((row) => where.id.in.includes(row.id)).map((row) => ({ id: row.id, path: path(row.id) }));
+      },
+    },
     branch: { deleteMany: vi.fn(async () => ({ count: 1 })) },
     project: { update: vi.fn(async () => ({})) },
     language: {
@@ -86,6 +96,11 @@ vi.mock('./github', () => ({
   fetchRawText: async (path: string) => mem.repoFiles.get(path) ?? null,
 }));
 vi.mock('./persistence', () => ({
+  writeImportPageContent: async (_target: unknown, id: string, content: string) => {
+    const row = mem.rows.find((page) => page.id === id);
+    if (!row) throw new Error('Page missing from fixture');
+    row.content = content;
+  },
   defaultImportTarget: async (projectId: string) => ({ projectId, branchId: 'branch', languageId: 'lang-en' }),
   removeImportPlaceholders: async () => 0,
   ensureGroupPage: async (
@@ -116,13 +131,13 @@ vi.mock('./persistence', () => ({
     mem.rows.push(row);
     return row.id;
   },
-  upsertLeafPage: async (
+  reserveImportPage: async (
     target: { languageId: string },
     page: {
       parentId: string | null;
       slug: string;
       title: string;
-      content: string;
+      content?: string;
       translationKey?: string;
       description?: string;
       icon?: string;
@@ -141,10 +156,11 @@ vi.mock('./persistence', () => ({
       found.icon = page.icon;
       found.config = page.config;
       found.position = page.position;
-      return 'updated' as const;
+      return { outcome: 'updated' as const, id: found.id };
     }
+    const id = `row-${mem.nextId++}`;
     mem.rows.push({
-      id: `row-${mem.nextId++}`,
+      id,
       kind: 'PAGE' as const,
       languageId: target.languageId,
       parentId: page.parentId,
@@ -157,7 +173,7 @@ vi.mock('./persistence', () => ({
       config: page.config,
       position: page.position,
     });
-    return 'imported' as const;
+    return { outcome: 'imported' as const, id };
   },
 }));
 

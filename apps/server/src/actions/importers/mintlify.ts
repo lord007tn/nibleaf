@@ -7,16 +7,11 @@ import { captureImportDraft, createImportReplacementBranch, promoteImportReplace
 import { createLanguage, updateLanguage } from '../languages';
 import { assertProjectInOrg } from '../projects';
 import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './content';
+import { ImportFinalPaths } from './final-paths';
 import { RemoteAssetMigrator } from './ghost-assets';
 import { getGitHubDefaultBranch, getGitHubSnapshot, getGitHubTextFile, githubRawUrl } from './github';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
-import {
-  buildMintlifyLanguageRouteMap,
-  buildMintlifyLanguageRouteMaps,
-  buildMintlifyRouteMap,
-  mintlifyInternalLinkTargets,
-  rewriteMintlifyInternalLinks,
-} from './mintlify-links';
+import { buildMintlifyRouteMap, mintlifyInternalLinkTargets, normalizedSourcePath, rewriteMintlifyInternalLinks } from './mintlify-links';
 import {
   findMintlifyConfigPath,
   type MintlifyLanguageNavigation,
@@ -29,7 +24,14 @@ import {
 } from './mintlify-mapping';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 import { resolveMintlifyReferences } from './mintlify-references';
-import { defaultImportTarget, ensureGroupPage, type ImportTarget, removeImportPlaceholders, upsertLeafPage } from './persistence';
+import {
+  defaultImportTarget,
+  ensureGroupPage,
+  type ImportTarget,
+  removeImportPlaceholders,
+  reserveImportPage,
+  writeImportPageContent,
+} from './persistence';
 import { emptySummary, type ImporterSource, type ImportSummary } from './types';
 
 /**
@@ -106,7 +108,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
       };
       const defaultTarget = { ...currentTarget, branchId: replacementBranch.id };
       const assets = new RemoteAssetMigrator(projectId, 'mintlify');
-      const state = { pages: 0, versions: new Set<string>() };
+      const state: ImportState = { pages: 0, versions: new Set(), paths: new ImportFinalPaths(), routes: new Map(), prepare: [], write: [] };
       summary.warnings.push(...languageResult.warnings);
       let chromeNodes: NavNode[];
 
@@ -145,6 +147,9 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
         chromeNodes = nodes;
         await importNavigation(nodes, defaultTarget, undefined, input.replaceExisting !== true, repository, baseDir, blobs, assets, summary, state);
       }
+      await state.paths.resolve();
+      for (const prepare of state.prepare) prepare();
+      for (const write of state.write) await write();
       if (state.versions.size > 0) {
         summary.warnings.push(`Imported Mintlify versions as Nibleaf documentation versions: ${[...state.versions].join(', ')}.`);
       }
@@ -222,7 +227,7 @@ const importNavigation = async (
   blobs: ReadonlySet<string>,
   assets: RemoteAssetMigrator,
   summary: ImportSummary,
-  state: { pages: number; versions: Set<string> },
+  state: ImportState,
   languageNavigation: readonly MintlifyLanguageNavigation[] = [],
 ) => {
   const { unversioned, versions } = partitionMintlifyVersions(sourceNodes);
@@ -249,9 +254,25 @@ const importNavigation = async (
         `Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}${languageCode ? ` from ${languageCode}` : ''}.`,
       );
     }
-    const currentRoutes = buildMintlifyRouteMap(partition.nodes);
-    const languageRoutes = buildMintlifyLanguageRouteMaps(languageNavigation, partition.versionName);
+    const currentRoutes = new Map(buildMintlifyRouteMap(partition.nodes));
+    const destinations = state.paths.add(partition.target, currentRoutes);
+    const versionKey = partition.target.branchId;
+    let languageRoutes = state.routes.get(versionKey);
+    if (!languageRoutes) {
+      languageRoutes = new Map();
+      state.routes.set(versionKey, languageRoutes);
+    }
     languageRoutes.set((languageCode ?? repository.defaultLanguageCode).toLowerCase(), currentRoutes);
+    const routeMap = new Map<string, string>();
+    state.prepare.push(() => {
+      for (const language of languageNavigation) {
+        if (language.code.toLowerCase() === languageCode?.toLowerCase()) continue;
+        for (const [source, destination] of languageRoutes.get(language.code.toLowerCase()) ?? []) {
+          routeMap.set(source, `${destination}?lang=${encodeURIComponent(language.code)}`);
+        }
+      }
+      for (const [source, destination] of currentRoutes) routeMap.set(source, destination);
+    });
     await importNodes(
       partition.nodes,
       null,
@@ -260,11 +281,13 @@ const importNavigation = async (
       blobs,
       partition.target,
       assets,
-      new Map([...buildMintlifyLanguageRouteMap(languageNavigation, languageCode, partition.versionName), ...currentRoutes]),
+      routeMap,
       summary,
       state,
       languageCode,
       languageRoutes,
+      destinations,
+      '',
     );
   }
 };
@@ -305,6 +328,15 @@ const ensureLanguageTarget = async (
   }
   return { projectId, branchId: defaultTarget.branchId, languageId: persisted.id, languageCode: persisted.code };
 };
+
+interface ImportState {
+  pages: number;
+  versions: Set<string>;
+  paths: ImportFinalPaths;
+  routes: Map<string, Map<string, ReadonlyMap<string, string>>>;
+  prepare: Array<() => void>;
+  write: Array<() => Promise<void>>;
+}
 
 interface RepoRef {
   configuredLanguages: readonly string[];
@@ -414,9 +446,11 @@ const importNodes = async (
   assets: RemoteAssetMigrator,
   routeMap: ReadonlyMap<string, string>,
   summary: ImportSummary,
-  state: { pages: number },
-  languageCode?: string,
-  languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>,
+  state: ImportState,
+  languageCode: string | undefined,
+  languageRoutes: ReadonlyMap<string, ReadonlyMap<string, string>>,
+  destinations: Map<string, string>,
+  parentRoute: string,
 ): Promise<void> => {
   // Slug ledger (slug → nav path) for THIS parent's children; a fresh map per
   // invocation gives per-parent scoping through the recursion. Two sibling nav
@@ -449,7 +483,24 @@ const importNodes = async (
         ...(node.icon ? { icon: node.icon.slice(0, 64) } : {}),
         position,
       });
-      await importNodes(node.children, groupId, repo, baseDir, blobs, target, assets, routeMap, summary, state, languageCode, languageRoutes);
+      const groupRoute = `${parentRoute}/${groupSlug}`;
+      destinations.set(groupRoute.slice(1), groupId);
+      await importNodes(
+        node.children,
+        groupId,
+        repo,
+        baseDir,
+        blobs,
+        target,
+        assets,
+        routeMap,
+        summary,
+        state,
+        languageCode,
+        languageRoutes,
+        destinations,
+        groupRoute,
+      );
       continue;
     }
 
@@ -478,32 +529,6 @@ const importNodes = async (
     if (languageCode && meta.lang && meta.lang.toLowerCase() !== languageCode.toLowerCase()) {
       summary.warnings.push(`Page "${node.path}" declares lang "${meta.lang}" but is navigated under "${languageCode}".`);
     }
-    const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap, {
-      languageCode: languageCode ?? repo.defaultLanguageCode,
-      languageRoutes,
-      sourceUrl: repo.sourceUrl,
-      appOrigins: repo.appOrigins,
-      onUnresolved: (reference) => {
-        summary.fidelityIssues ??= [];
-        summary.fidelityIssues.push({ kind: 'link', page: node.path, reference });
-      },
-    });
-    const assetReferences = rewriteMintlifyAssetReferences(
-      linkedBody,
-      filePath,
-      blobs,
-      (path) => githubRawUrl(repo.owner, repo.name, repo.branch, path),
-      baseDir,
-    );
-    if (assetReferences.missing.length > 0) {
-      summary.warnings.push(
-        `Page "${node.path}" references ${assetReferences.missing.length} image${assetReferences.missing.length === 1 ? '' : 's'} not found in the repository: ${assetReferences.missing.slice(0, 3).join(', ')}.`,
-      );
-    }
-    const content = normalizeMintlifyMdx(await assets.rewrite(assetReferences.content), (reference) => {
-      summary.fidelityIssues ??= [];
-      summary.fidelityIssues.push({ kind: 'embed', page: node.path, reference });
-    });
     const fileBase = node.path.split('/').filter(Boolean).pop() ?? 'page';
     let slug = slugify(fileBase);
     if (!slug) {
@@ -517,11 +542,10 @@ const importNodes = async (
       slug = fullPathSlug;
     }
     usedSlugs.set(slug, node.path);
-    const outcome = await upsertLeafPage(target, {
+    const { outcome, id } = await reserveImportPage(target, {
       parentId,
       slug,
       title: (node.title ?? deriveTitle(meta, body, fileBase)).slice(0, 200),
-      content,
       ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
       ...(node.icon || meta.icon ? { icon: (node.icon ?? meta.icon)?.slice(0, 64) } : {}),
       ...(node.tag || meta.tag
@@ -538,6 +562,37 @@ const importNodes = async (
           }
         : {}),
       position,
+    });
+    destinations.set(normalizedSourcePath(node.path), id);
+    state.write.push(async () => {
+      const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap, {
+        languageCode: languageCode ?? repo.defaultLanguageCode,
+        rewriteDefinitions: state.paths.changed,
+        languageRoutes,
+        sourceUrl: repo.sourceUrl,
+        appOrigins: repo.appOrigins,
+        onUnresolved: (reference) => {
+          summary.fidelityIssues ??= [];
+          summary.fidelityIssues.push({ kind: 'link', page: node.path, reference });
+        },
+      });
+      const assetReferences = rewriteMintlifyAssetReferences(
+        linkedBody,
+        filePath,
+        blobs,
+        (path) => githubRawUrl(repo.owner, repo.name, repo.branch, path),
+        baseDir,
+      );
+      if (assetReferences.missing.length > 0) {
+        summary.warnings.push(
+          `Page "${node.path}" references ${assetReferences.missing.length} image${assetReferences.missing.length === 1 ? '' : 's'} not found in the repository: ${assetReferences.missing.slice(0, 3).join(', ')}.`,
+        );
+      }
+      const content = normalizeMintlifyMdx(await assets.rewrite(assetReferences.content), (reference) => {
+        summary.fidelityIssues ??= [];
+        summary.fidelityIssues.push({ kind: 'embed', page: node.path, reference });
+      });
+      await writeImportPageContent(target, id, content);
     });
     summary[outcome === 'imported' ? 'imported' : 'updated']++;
   }

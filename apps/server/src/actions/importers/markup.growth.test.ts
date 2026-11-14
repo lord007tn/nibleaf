@@ -13,6 +13,16 @@ import { normalizeMintlifyMdx } from './mintlify-mdx';
 describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
   const rewrite = (content: string) => rewriteMintlifyAssetReferences(content, 'docs/page.mdx', new Set(), (path) => `https://raw.example/${path}`);
   it.each([
+    [
+      'reference definition destinations',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['next', '/guides-2/next-2']])),
+      (n: number) => '[next]: /next#section "Start"\n'.repeat(n),
+    ],
+    [
+      'unclosed escaped reference labels',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map()),
+      (n: number) => `[${'\\\\'.repeat(n)}`,
+    ],
     ['unclosed media openers', normalizeImportFidelity, (n: number) => '<video src="https://cdn.test/a.mp4">\n\nAfter.\n\n'.repeat(n)],
     [
       'unclosed component container fences',

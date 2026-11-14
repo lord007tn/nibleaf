@@ -10,13 +10,26 @@ import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersion
 
 const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
 
+const rewriteReferenceDefinitions = (content: string, rewrite: (reference: string) => string): string => {
+  // Definitions may be shared by multiple reference links. Rewrite their
+  // destination once, preserving the authored label, title and delimiters.
+  return content.replace(
+    /(^[ \t>]*(?:(?:[-+*]|\d+[.)])[ \t>]+)?\[(?:\\.|[^\]\\\r\n])+\]:[ \t]*(?:\r?\n[ \t>]*)?)(?:<([^<>\r\n]*)>|([^\s]+))/gm,
+    (match, before: string, angle: string | undefined, bare: string | undefined) => {
+      const original = angle ?? bare ?? '';
+      const destination = rewrite(original);
+      return destination === original ? match : `${before}${angle !== undefined ? `<${destination}>` : destination}`;
+    },
+  );
+};
+
 const trimSlashes = (value: string): string => {
   let end = value.length;
   while (value[end - 1] === '/') end--;
   return value.slice(0, end);
 };
 
-const normalizedSourcePath = (value: string): string =>
+export const normalizedSourcePath = (value: string): string =>
   posix
     .normalize(trimSlashes(value.replace(/^\/+/, '').replace(/\.(?:md|mdx)$/i, '')))
     .replace(/^\.\//, '')
@@ -180,6 +193,7 @@ export const rewriteMintlifyInternalLinks = (
     appOrigins?: readonly string[];
     onUnresolved?: (reference: string) => void;
     languageCode?: string;
+    rewriteDefinitions?: boolean;
     languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>;
   } = {},
 ): string => {
@@ -218,9 +232,10 @@ export const rewriteMintlifyInternalLinks = (
     for (const [name, value] of destination.searchParams) params.set(name, value);
     return `${destination.pathname}?${params}${suffixUrl.hash}`;
   };
+  const definitions = options.rewriteDefinitions === false ? protectedCode.content : rewriteReferenceDefinitions(protectedCode.content, rewrite);
   const markdown = replaceImportReferences(
-    protectedCode.content,
-    markdownReferences(protectedCode.content).filter((reference) => !reference.image),
+    definitions,
+    markdownReferences(definitions).filter((reference) => !reference.image),
     (reference) => rewrite(reference.value),
   );
   return protectedCode.restore(
