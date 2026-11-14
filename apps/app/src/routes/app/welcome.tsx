@@ -16,9 +16,11 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { acceptInvitation, type PendingInvitation, useCreateOrganization, useMyInvitations, useSwitcher } from '@/hooks/api';
 import { organizationKeys } from '@/hooks/api/organization-keys';
 import { queryKeys } from '@/hooks/api/query-keys';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { useFormatters } from '@/lib/format';
 import { roleLabelKey } from '@/lib/member-roles';
+import { pageTitle } from '@/lib/page-title';
 import { useSession } from '@/services/auth-client';
 import { rememberActiveProject } from '@/stores/active-project';
 
@@ -48,6 +50,7 @@ function WelcomePage() {
 
   const title = reason === 'invitation' ? 'welcome.noAccess.title' : reason === 'left' ? 'welcome.left.title' : 'welcome.create.title';
   const body = reason === 'invitation' ? 'welcome.noAccess.body' : reason === 'left' ? 'welcome.left.body' : 'welcome.create.body';
+  usePageTitle(pageTitle(t(title)));
 
   return (
     <main className="min-h-screen bg-background px-4 py-10 sm:py-16" id="main-content" tabIndex={-1}>
