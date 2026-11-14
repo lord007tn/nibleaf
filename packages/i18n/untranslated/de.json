@@ -1,5 +1,8 @@
 {
-  "sameAsEnglish": [],
+  "sameAsEnglish": [
+    "editor_slash_section_inline",
+    "editor_slash_section_layout"
+  ],
   "pending": [
     "brand_oss",
     "settings_branding",
