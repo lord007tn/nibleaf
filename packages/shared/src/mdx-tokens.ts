@@ -1,4 +1,4 @@
-import { markdownLineKinds } from './markdown-code';
+import { closesMarkdownFence, markdownLineKinds, openingMarkdownFence } from './markdown-code';
 
 /**
  * One tokenizer for authored MDX, shared by every public projection (#341).
@@ -206,7 +206,7 @@ const escapedAt = (source: string, index: number): boolean => {
 
 /** Tokenize one stretch of prose that holds no fence. `components` holds the lowercase names read
  *  as components; like HTML, tag names match whatever their case. */
-const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: MdxToken[]): void => {
+const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: MdxToken[], htmlLines: readonly boolean[] = []): void => {
   quoteBounds = null;
   // Text between tokens is always one contiguous stretch of the source, so it is
   // taken as a single slice when a token (or the end) closes it. Building it one
@@ -219,7 +219,16 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
   const blankLines = paragraphEnds(source);
   let index = 0;
   let lineStart = true;
+  let lineIndex = 0;
+  let nextNewline = source.indexOf('\n');
   while (index < source.length) {
+    // Tokens can jump over several lines. Advance this cursor once per newline,
+    // while keeping active HTML spans intact across reader line-kind changes.
+    while (nextNewline >= 0 && nextNewline < index) {
+      lineIndex += 1;
+      nextNewline = source.indexOf('\n', nextNewline + 1);
+    }
+    const literalHtml = htmlLines[lineIndex] === true;
     const character = source[index] as string;
     if (lineStart) {
       const lineEnd = source.indexOf('\n', index);
@@ -260,7 +269,7 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
       const name = (tag?.[2] ?? '').toLowerCase();
       const opening = tag?.[0] ?? '';
       const isFormatting = FORMATTING_TAGS.has(name) && source.slice(index, index + opening.length + 1) === `${opening}>`;
-      if (tag && (components.has(name) || isFormatting)) {
+      if (tag && (isFormatting || (!literalHtml && components.has(name)))) {
         const end = isFormatting ? index + tag[0].length + 1 : tagEnd(source, index + tag[0].length);
         if (end > 0) {
           const raw = source.slice(index, end);
@@ -276,7 +285,7 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
         }
       }
     }
-    if (character === '{' && !escapedAt(source, index)) {
+    if (!literalHtml && character === '{' && !escapedAt(source, index)) {
       const end = expressionEnd(source, index);
       if (end > 0) {
         flush(index);
@@ -291,34 +300,50 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
   flush(source.length);
 };
 
-/** Read authored MDX into tokens using the reader's fence boundaries. An unclosed
- * fence runs to the end unless its container ends. HTML lines follow the existing
- * prose tokenizer: their inline code, components and active HTML keep their rules. */
+/** Read authored MDX using the reader's non-HTML fence boundaries. HTML blocks
+ * preserve literal fence examples using the shared fence helpers; other HTML
+ * text never becomes a component or expression. Active HTML and ESM still use
+ * the existing sanitizer, stopping before protected examples as on main. */
 export const tokenizeMdx = (source: string, components: ReadonlySet<string>): MdxToken[] => {
   scanBudget = 64 * source.length + 65_536;
   const tokens: MdxToken[] = [];
   const lines = source.split('\n');
-  const kinds = markdownLineKinds(lines);
+  const htmlContent: string[] = [];
+  const kinds = markdownLineKinds(lines, (index, content) => {
+    htmlContent[index] = content;
+  });
   let prose: string[] = [];
+  let proseHtml: boolean[] = [];
   const flushProse = (beforeFence: boolean) => {
-    if (prose.length > 0) tokenizeProse(`${prose.join('\n')}${beforeFence ? '\n' : ''}`, components, tokens);
+    if (prose.length > 0) tokenizeProse(`${prose.join('\n')}${beforeFence ? '\n' : ''}`, components, tokens, proseHtml);
     prose = [];
+    proseHtml = [];
   };
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] as string;
-    if (kinds[index] !== 'code') {
+    const html = kinds[index] === 'html';
+    const literalFence = html ? openingMarkdownFence(htmlContent[index] as string, Number.POSITIVE_INFINITY) : undefined;
+    if (kinds[index] !== 'code' && !literalFence) {
       prose.push(line);
+      proseHtml.push(html);
       continue;
     }
     flushProse(true);
     let end = index + 1;
-    while (end < lines.length && kinds[end] === 'code') end += 1;
+    if (literalFence) {
+      while (end < lines.length && kinds[end] === 'html' && !closesMarkdownFence(htmlContent[end] as string, literalFence, Number.POSITIVE_INFINITY))
+        end += 1;
+      if (kinds[end] === 'html') end += 1;
+    } else while (end < lines.length && kinds[end] === 'code') end += 1;
     tokens.push({ kind: 'code', value: lines.slice(index, end).join('\n'), block: true });
     index = end - 1;
     // The line break after the fence belongs to the prose that follows.
-    if (index < lines.length - 1) prose.push('');
+    if (index < lines.length - 1) {
+      prose.push('');
+      proseHtml.push(false);
+    }
   }
-  if (prose.length > 0) tokenizeProse(prose.join('\n'), components, tokens);
+  flushProse(false);
   return tokens;
 };
 

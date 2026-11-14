@@ -9,6 +9,14 @@ import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growt
 // (a large call takes 3 to 10 ms) and samples last at least 20 ms, so each
 // spans several scheduler slices on a busy runner rather than one.
 describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () => {
+  it('preserves HTML examples in linear time (n vs 4n)', () => {
+    const block = '<div>\n~~~\n{VISIBLE}\n<Note>Literal</Note>\n~~~\n</div>\n\n';
+    expect(md(block)).toContain('{VISIBLE}\n<Note>Literal</Note>');
+    const [small, large] = growthMs((source: string) => [md(source), portable(source)], block.repeat(2000), block.repeat(8000));
+    console.info(`HTML export growth: 2,000 vs 8,000 blocks, ${small.toFixed(1)} vs ${large.toFixed(1)} ms`);
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it('groups reader-classified container code in linear time (n vs 4n, #591)', () => {
     const components = new Set(['note']);
     const example = '1. >~~~md\n   > [Literal](/literal)\n   > ~~~';

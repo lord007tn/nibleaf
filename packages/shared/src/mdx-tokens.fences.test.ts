@@ -1,6 +1,6 @@
 import { performance } from 'node:perf_hooks';
 import { expect, it } from 'vitest';
-import { fencedMarkdownLines } from './markdown-code';
+import { fencedMarkdownLines, markdownLineKinds } from './markdown-code';
 import { type MdxToken, tokenizeMdx } from './mdx-tokens';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 import {
@@ -46,19 +46,22 @@ it('uses the reader boundaries for all #587 and #590 repros, keeping the followi
     const source = `${example}\n\n<Note>After</Note>`;
     const tokens = tokenizeMdx(source, components);
     const actual = blockCodeLines(source, tokens);
+    const kinds = markdownLineKinds(source.split('\n'));
     const expected = fencedMarkdownLines(source.split('\n'));
-    if (actual.some((flag, line) => flag !== expected[line])) failures.push(`${name}: code lines`);
+    // HTML has an export-only literal-example exception; all non-HTML fence
+    // boundaries still come from the reader.
+    if (actual.some((flag, line) => kinds[line] !== 'html' && flag !== expected[line])) failures.push(`${name}: code lines`);
     if (!tokens.some((token) => token.kind === 'open' && token.name === 'note' && token.raw === '<Note>')) failures.push(`${name}: Note`);
   }
   expect(failures).toEqual([]);
   expect(tokenizeMdx('```md\n<Note>Still literal</Note>', components)).toEqual([
     { kind: 'code', value: '```md\n<Note>Still literal</Note>', block: true },
   ]);
-  // HTML controls fence recognition only: prose tokenization still reads inline
-  // code and registered components inside an HTML block as it did before.
-  const htmlTokens = tokenizeMdx('<div>\n`inline` <Note>Inside</Note>\n</div>', components);
+  // Inline code stays protected, and HTML examples never become MDX components.
+  const htmlTokens = tokenizeMdx('<div>\n`inline` <Note>Inside</Note> H<sub>2</sub>\n</div>', components);
   expect(htmlTokens).toContainEqual({ kind: 'code', value: '`inline`', block: false });
-  expect(htmlTokens.some((token) => token.kind === 'open' && token.name === 'note')).toBe(true);
+  expect(htmlTokens.some((token) => token.kind === 'open' && token.name === 'note')).toBe(false);
+  expect(htmlTokens.some((token) => token.kind === 'open' && token.name === 'sub')).toBe(true);
 });
 
 it('matches the reader on all 3,072 generated sources (seed 0x58236b09)', () => {

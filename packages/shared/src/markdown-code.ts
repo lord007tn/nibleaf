@@ -293,14 +293,14 @@ const interruptsParagraph = (content: string): boolean => {
  * or HTML block's container). Shared by the reader's MDX normalizer, heading
  * extraction and search sections, so all three agree on what is code.
  */
-const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
+const scanMarkdownLines = (lines: readonly string[], onHtmlLine?: (index: number, content: string) => void): MarkdownLineKind[] => {
   let fence: MarkdownFence | undefined;
   let html: HtmlBlockEnd | undefined;
   const stack: ContainerStack = { items: [], quotes: [] };
   let paragraph = false;
   let components = 0;
   let pendingOpener = false;
-  const read = (line: string, continued: Continuation): MarkdownLineKind => {
+  const read = (line: string, continued: Continuation, index: number): MarkdownLineKind => {
     if (continued.blank) {
       closeContainers(stack, continued.matched);
       paragraph = false;
@@ -337,6 +337,7 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
         const end = block[1];
         html = end === 'blank' || !end(text) ? end : undefined;
         paragraph = false;
+        onHtmlLine?.(index, content);
         return 'html';
       }
     }
@@ -359,7 +360,7 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
     }
     return 'prose';
   };
-  return lines.map((line) => {
+  return lines.map((line, index) => {
     const continued = continuation(line, stack);
     const inside = continued.matched === stack.items.length;
     if (fence) {
@@ -374,13 +375,15 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
       if (inside && !(continued.blank && html === 'blank')) {
         // The end is looked for after the containers' prefixes: a quote's own `>`
         // does not end a `<!DOCTYPE` block.
-        if (html !== 'blank' && html(contentAt(line, continued.cursor))) html = undefined;
+        const content = contentAt(line, continued.cursor);
+        if (html !== 'blank' && html(content)) html = undefined;
+        onHtmlLine?.(index, content);
         return 'html';
       }
       // A blank line, or a line that leaves a container, ends the HTML block.
       html = undefined;
     }
-    return read(line, continued);
+    return read(line, continued, index);
   });
 };
 
@@ -389,8 +392,11 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
 export type MarkdownLineKind = 'prose' | 'code' | 'html';
 
 /** Each line's kind, from the same single pass as `fencedMarkdownLines`: heading
- * extraction skips both code and HTML-block lines, as the reader renders them. */
-export const markdownLineKinds = (lines: readonly string[]): MarkdownLineKind[] => scanMarkdownLines(lines);
+ * extraction skips both code and HTML-block lines, as the reader renders them.
+ * Exports may also read HTML content after its container prefixes, without
+ * duplicating the quote/list rules or changing the reader's classification. */
+export const markdownLineKinds = (lines: readonly string[], onHtmlLine?: (index: number, content: string) => void): MarkdownLineKind[] =>
+  scanMarkdownLines(lines, onHtmlLine);
 
 /** Whether each line belongs to fenced code (see `scanMarkdownLines`). */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => scanMarkdownLines(lines).map((kind) => kind === 'code');

@@ -165,9 +165,11 @@ describe("regression cases from #320's reviews (#341)", () => {
     for (const output of [md(source), portable(source)]) expect(output).not.toMatch(PRIVATE_USE);
   });
 
-  it('keeps fence lookalikes in an unclosed style block on the active-HTML path (#591)', () => {
+  it('lets an unclosed <style> hide at most its own stretch of prose, never later code', () => {
     const output = md('<style>unclosed\n\n```txt\nkept code\n```\n\nKept prose.');
-    expect(output).toBe('');
+    expect(output).toContain('kept code');
+    expect(output).toContain('Kept prose.');
+    expect(output).not.toContain('unclosed');
   });
 });
 
