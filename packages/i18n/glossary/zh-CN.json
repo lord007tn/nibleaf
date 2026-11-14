@@ -13,7 +13,10 @@
     "unpublished-changes": { "translation": "未发布的更改" },
     "preview": { "translation": "预览" },
     "live-site": { "translation": "线上网站" },
-    "reader": { "translation": "读者", "note": "Never 查看者, which is the Viewer role." },
+    "reader": {
+      "translation": "读者",
+      "note": "Never 查看者, which is the Viewer role."
+    },
     "member": {
       "translation": "成员",
       "note": "Not 会员 (that means a paying subscriber)."
