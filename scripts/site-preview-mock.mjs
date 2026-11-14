@@ -461,7 +461,7 @@ ${FENCE}
 
 | Variable | Required | Default | Scope | Example | Purpose |
 | --- | --- | --- | --- | --- | --- |
-| \`TIDEWATER_KEY\` | Yes | None | Agent and CLI | \`tw_live_9f3c\` | The API key the agent authenticates with. |
+| \`TIDEWATER_KEY\` | Yes | None | Agent and CLI | \`tw_live_9f3c\` | The [API key](/guides/authentication) the agent authenticates with. |
 | \`TIDEWATER_REGION\` | No | \`eu-west\` | Agent | \`me-central\` | Where shipment data is stored and processed. |
 | \`TIDEWATER_WEBHOOK_SECRET\` | No | Empty | Webhook receiver | \`whsec_51ab\` | Verifies the signature on every delivery. |
 
@@ -486,7 +486,7 @@ ${FENCE}`,
 
 | المتغير | إلزامي | الافتراضي | النطاق | مثال | الغرض |
 | --- | --- | --- | --- | --- | --- |
-| \`TIDEWATER_KEY\` | نعم | لا يوجد | الوكيل والأداة | \`tw_live_9f3c\` | مفتاح الواجهة الذي يصادق به الوكيل. |
+| \`TIDEWATER_KEY\` | نعم | لا يوجد | الوكيل والأداة | \`tw_live_9f3c\` | [مفتاح الواجهة](/guides/authentication) الذي يصادق به الوكيل. |
 | \`TIDEWATER_REGION\` | لا | \`eu-west\` | الوكيل | \`me-central\` | مكان تخزين بيانات الشحنات ومعالجتها. |
 | \`TIDEWATER_WEBHOOK_SECRET\` | لا | فارغ | مستقبل الإشعارات | \`whsec_51ab\` | يتحقق من التوقيع على كل إرسال. |
 

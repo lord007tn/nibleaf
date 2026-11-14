@@ -5,6 +5,8 @@
  * scrollable-region-focusable). jsdom does no layout, so each test states the
  * scroller's widths.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -116,7 +118,7 @@ describe('scroll regions', () => {
     unmount();
   });
 
-  it('names an overflowing table after its section and an overflowing code block after its title or language', () => {
+  it('names an overflowing table after its section and an overflowing code block after its title or language and section', () => {
     layout.scrollWidth = 1546;
     layout.clientWidth = 734;
     const { host, unmount } = mount();
@@ -126,8 +128,8 @@ describe('scroll regions', () => {
     expect(table?.getAttribute('aria-label')).toBe('Table: Block components');
     expect(table?.querySelector(':scope > table')).not.toBeNull();
     const [titled, untitled] = Array.from(host.querySelectorAll('pre'));
-    expect(titled?.getAttribute('aria-label')).toBe('Code: install.sh');
-    expect(untitled?.getAttribute('aria-label')).toBe('Code: json');
+    expect(titled?.getAttribute('aria-label')).toBe('Code: install.sh, Install');
+    expect(untitled?.getAttribute('aria-label')).toBe('Code: json, Install');
     expect(titled?.getAttribute('tabindex')).toBe('0');
     unmount();
   });
@@ -164,6 +166,48 @@ describe('scroll regions', () => {
     const table = host.querySelector('.typeset-scroll');
     expect(table?.hasAttribute('role')).toBe(false);
     expect(table?.hasAttribute('tabindex')).toBe(false);
+    unmount();
+  });
+
+  it('numbers regions that would otherwise share a name, so landmarks stay distinguishable', () => {
+    layout.scrollWidth = 1000;
+    layout.clientWidth = 500;
+    const { host, unmount } = mount(
+      [
+        '## Register an endpoint',
+        '',
+        `${FENCE}bash`,
+        'curl -X POST https://example.com/a',
+        FENCE,
+        '',
+        `${FENCE}bash`,
+        'curl -X POST https://example.com/b',
+        FENCE,
+        '',
+        '| A | B |',
+        '| --- | --- |',
+        '| 1 | 2 |',
+        '',
+        '| C | D |',
+        '| --- | --- |',
+        '| 3 | 4 |',
+        '',
+        '## Verify',
+        '',
+        `${FENCE}bash`,
+        'curl https://example.com/c',
+        FENCE,
+      ].join('\n'),
+    );
+    const names = Array.from(host.querySelectorAll('[role="region"]')).map((region) => region.getAttribute('aria-label'));
+    expect(names).toEqual([
+      'Code: bash, Register an endpoint (1)',
+      'Code: bash, Register an endpoint (2)',
+      'Table: Register an endpoint (1)',
+      'Table: Register an endpoint (2)',
+      'Code: bash, Verify',
+    ]);
+    expect(new Set(names).size).toBe(names.length);
     unmount();
   });
 
@@ -223,5 +267,14 @@ describe('prose cells', () => {
     };
     expect(isProseCell(cell)).toBe(true);
     expect(isProseCell(undefined)).toBe(false);
+  });
+});
+
+describe('scroll region fade', () => {
+  it('steps aside while focus is on the region or on a link or button inside it', () => {
+    const css = readFileSync(resolve(import.meta.dirname, '../../typeset.css'), 'utf8');
+    const rule = /\[data-scroll-region\]:is\(\[data-fade-start\], \[data-fade-end\]\):not\(([^)]*\)?[^)]*)\)\s*\{[^}]*mask-image/.exec(css);
+    expect(rule?.[1]).toMatch(/:focus-visible/);
+    expect(rule?.[1]).toMatch(/:has\(:focus-visible\)/);
   });
 });

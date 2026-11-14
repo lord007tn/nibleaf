@@ -557,8 +557,9 @@
  * blocks, and the reader's 2px focus outline drawn inside the box so the
  * scroller's own clipping can't hide it. The fade is a mask, so it works over
  * any surface (tinted cells, the code panel, a theme's table cards). While the
- * region has keyboard focus the fade steps aside: the outline marks it then,
- * and arrow keys reveal the rest. */
+ * region, or a link or button inside it, has keyboard focus the fade steps
+ * aside, so no focus outline is ever faded: the outline marks it then, and
+ * arrow keys reveal the rest. */
 [data-scroll-region] {
   --scroll-fade-size: 2.5rem;
   --scroll-fade-start: 0px;
@@ -575,7 +576,8 @@
   --scroll-fade-end: var(--scroll-fade-size);
 }
 [data-scroll-region]:is([data-fade-start], [data-fade-end]):not(
-  :focus-visible
+  :focus-visible,
+  :has(:focus-visible)
 ) {
   mask-image: linear-gradient(
     to var(--scroll-fade-to),

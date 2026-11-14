@@ -98,6 +98,50 @@ export function precedingHeadingText(element: Element): string | undefined {
   return text || undefined;
 }
 
+type RegionKind = 'table' | 'code';
+const REGION_SELECTOR: Record<RegionKind, string> = { table: '.typeset-scroll', code: '[data-theme-component="code"] > pre' };
+
+/** Joins a name and its section. Not Intl.ListFormat: its Arabic "unit" list
+ *  joins with و ("and"), which reads as two things rather than one in a section. */
+const listSeparator = (locale?: string) => {
+  const language = (locale ?? 'en').toLowerCase().split('-')[0];
+  if (language === 'ar' || language === 'ur') return '، ';
+  if (language === 'zh') return '，';
+  return ', ';
+};
+
+/** What tells a block apart before its section: a code block's title or language. */
+const regionPrimary = (element: Element) => element.getAttribute('data-region-name') ?? '';
+
+/**
+ * A region's name: its kind, what it is (a code block's title or language),
+ * and the section it sits in ("Code: bash, Register an endpoint"), so a
+ * screen reader's landmark list tells regions apart (WAI-ARIA APG, region).
+ * Blocks that would still share a name are numbered in reading order.
+ */
+function regionName(element: Element, kind: RegionKind, locale?: string): string {
+  const t = siteContentT(locale);
+  const section = precedingHeadingText(element);
+  const primary = regionPrimary(element);
+  const parts = [primary, section].filter((part): part is string => Boolean(part));
+  const named = parts.join(listSeparator(locale));
+  const base = kind === 'table' ? (named ? t('tableOf', { name: named }) : t('table')) : named ? t('codeOf', { name: named }) : t('code');
+  const root = element.closest('.typeset') ?? element.ownerDocument.body;
+  const twins = Array.from(root.querySelectorAll(REGION_SELECTOR[kind])).filter(
+    (other) => regionPrimary(other) === primary && precedingHeadingText(other) === section,
+  );
+  return twins.length > 1 ? `${base} (${(twins.indexOf(element) + 1).toLocaleString(locale)})` : base;
+}
+
+/** The name an overflowing block takes as a region, worked out once it overflows. */
+export function useRegionName(ref: RefObject<HTMLElement | null>, overflow: boolean, kind: RegionKind, locale?: string): string {
+  const [name, setName] = useState('');
+  useEffect(() => {
+    if (overflow && ref.current) setName(regionName(ref.current, kind, locale));
+  }, [overflow, ref, kind, locale]);
+  return name;
+}
+
 /** A Markdown table in its scroll wrapper. The table fits the column first and
  *  scrolls only when its cells cannot shrink any further; then the wrapper
  *  becomes a named region ("Table: <section heading>") a keyboard can reach,
@@ -106,15 +150,9 @@ export function precedingHeadingText(element: Element): string | undefined {
 export function ScrollTable({ locale, node: _node, ...props }: ComponentProps<'table'> & { locale?: string; node?: unknown }) {
   const ref = useRef<HTMLDivElement>(null);
   const state = useScrollOverflow(ref);
-  const [heading, setHeading] = useState<string>();
-  useEffect(() => {
-    if (state.overflow && ref.current) {
-      setHeading(precedingHeadingText(ref.current));
-    }
-  }, [state.overflow]);
-  const t = siteContentT(locale);
+  const name = useRegionName(ref, state.overflow, 'table', locale);
   return (
-    <div ref={ref} className="typeset-scroll" {...scrollRegionProps(state, heading ? t('tableOf', { name: heading }) : t('table'))}>
+    <div ref={ref} className="typeset-scroll" {...scrollRegionProps(state, name)}>
       <table {...props} />
     </div>
   );
