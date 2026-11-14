@@ -1,0 +1,189 @@
+[
+  {
+    "file": "before-ar-pricing-1440-light.png",
+    "path": "/ar/pricing",
+    "width": 1440,
+    "theme": "light",
+    "chain": [
+      "307 /ar/pricing",
+      "200 /pricing"
+    ],
+    "finalPath": "/pricing",
+    "htmlLang": "en",
+    "htmlDir": "ltr",
+    "shellLang": "en",
+    "shellDir": "ltr",
+    "h1": "Free while in beta. Self-host when you prefer.",
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "overflowing": [],
+    "canonical": "http://localhost:4310/pricing",
+    "hreflang": [],
+    "switcher": "/ar",
+    "title": "Nibleaf pricing: free cloud beta and self-hosting status"
+  },
+  {
+    "file": "before-ar-self-hosting-1440-light.png",
+    "path": "/ar/self-hosting",
+    "width": 1440,
+    "theme": "light",
+    "chain": [
+      "307 /ar/self-hosting",
+      "200 /self-hosting"
+    ],
+    "finalPath": "/self-hosting",
+    "htmlLang": "en",
+    "htmlDir": "ltr",
+    "shellLang": "en",
+    "shellDir": "ltr",
+    "h1": "Run Nibleaf on your own infrastructure",
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "overflowing": [],
+    "canonical": "http://localhost:4310/self-hosting",
+    "hreflang": [],
+    "switcher": "/ar",
+    "title": "Nibleaf self-hosting status and deployment architecture"
+  },
+  {
+    "file": "before-ar-pricing-390-light.png",
+    "path": "/ar/pricing",
+    "width": 390,
+    "theme": "light",
+    "chain": [
+      "307 /ar/pricing",
+      "200 /pricing"
+    ],
+    "finalPath": "/pricing",
+    "htmlLang": "en",
+    "htmlDir": "ltr",
+    "shellLang": "en",
+    "shellDir": "ltr",
+    "h1": "Free while in beta. Self-host when you prefer.",
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "overflowing": [],
+    "canonical": "http://localhost:4310/pricing",
+    "hreflang": [],
+    "switcher": "/ar",
+    "title": "Nibleaf pricing: free cloud beta and self-hosting status"
+  },
+  {
+    "file": "before-ar-self-hosting-390-light.png",
+    "path": "/ar/self-hosting",
+    "width": 390,
+    "theme": "light",
+    "chain": [
+      "307 /ar/self-hosting",
+      "200 /self-hosting"
+    ],
+    "finalPath": "/self-hosting",
+    "htmlLang": "en",
+    "htmlDir": "ltr",
+    "shellLang": "en",
+    "shellDir": "ltr",
+    "h1": "Run Nibleaf on your own infrastructure",
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "overflowing": [],
+    "canonical": "http://localhost:4310/self-hosting",
+    "hreflang": [],
+    "switcher": "/ar",
+    "title": "Nibleaf self-hosting status and deployment architecture"
+  },
+  {
+    "file": "before-ar-pricing-1440-dark.png",
+    "path": "/ar/pricing",
+    "width": 1440,
+    "theme": "dark",
+    "chain": [
+      "307 /ar/pricing",
+      "200 /pricing"
+    ],
+    "finalPath": "/pricing",
+    "htmlLang": "en",
+    "htmlDir": "ltr",
+    "shellLang": "en",
+    "shellDir": "ltr",
+    "h1": "Free while in beta. Self-host when you prefer.",
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "overflowing": [],
+    "canonical": "http://localhost:4310/pricing",
+    "hreflang": [],
+    "switcher": "/ar",
+    "title": "Nibleaf pricing: free cloud beta and self-hosting status"
+  },
+  {
+    "file": "before-ar-self-hosting-1440-dark.png",
+    "path": "/ar/self-hosting",
+    "width": 1440,
+    "theme": "dark",
+    "chain": [
+      "307 /ar/self-hosting",
+      "200 /self-hosting"
+    ],
+    "finalPath": "/self-hosting",
+    "htmlLang": "en",
+    "htmlDir": "ltr",
+    "shellLang": "en",
+    "shellDir": "ltr",
+    "h1": "Run Nibleaf on your own infrastructure",
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "overflowing": [],
+    "canonical": "http://localhost:4310/self-hosting",
+    "hreflang": [],
+    "switcher": "/ar",
+    "title": "Nibleaf self-hosting status and deployment architecture"
+  },
+  {
+    "file": "before-ar-pricing-390-dark.png",
+    "path": "/ar/pricing",
+    "width": 390,
+    "theme": "dark",
+    "chain": [
+      "307 /ar/pricing",
+      "200 /pricing"
+    ],
+    "finalPath": "/pricing",
+    "htmlLang": "en",
+    "htmlDir": "ltr",
+    "shellLang": "en",
+    "shellDir": "ltr",
+    "h1": "Free while in beta. Self-host when you prefer.",
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "overflowing": [],
+    "canonical": "http://localhost:4310/pricing",
+    "hreflang": [],
+    "switcher": "/ar",
+    "title": "Nibleaf pricing: free cloud beta and self-hosting status"
+  },
+  {
+    "file": "before-ar-self-hosting-390-dark.png",
+    "path": "/ar/self-hosting",
+    "width": 390,
+    "theme": "dark",
+    "chain": [
+      "307 /ar/self-hosting",
+      "200 /self-hosting"
+    ],
+    "finalPath": "/self-hosting",
+    "htmlLang": "en",
+    "htmlDir": "ltr",
+    "shellLang": "en",
+    "shellDir": "ltr",
+    "h1": "Run Nibleaf on your own infrastructure",
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "overflowing": [],
+    "canonical": "http://localhost:4310/self-hosting",
+    "hreflang": [],
+    "switcher": "/ar",
+    "title": "Nibleaf self-hosting status and deployment architecture"
+  },
+  {
+    "attemptedOutside": 0
+  }
+]
