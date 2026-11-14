@@ -11,22 +11,35 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * `<Step>`, `<Frame>`, `<CodeGroup>`, `<Note>`) holding fences indented 0 to 6
  * columns, closed or not, with blank lines around their tags or none, some nested
  * (a Note or a list item in a Step), and unterminated raw-text elements on the page,
- * in a list item or in a component. After five load/save cycles the page is no
- * longer than it was, and one more cycle changes nothing. The generator is the
+ * in a list item or in a component; and unclosed fences in quotes and list items
+ * ending in lines blank inside them, or followed by whitespace-only lines through
+ * the end of the page. After the first save and after five load/save cycles the
+ * page is no longer than it was, the fences followed by whitespace lines save back
+ * exactly as written, and one more save changes nothing. The generator is the
  * xorshift and seed of `container-fences.property.test.ts`.
  */
 
 const SEED = 0x58_23_6b_09;
-const COUNT = 256;
+const COUNT = 320;
 const CYCLES = 5;
 
-type Kind = 'unclosed fence' | 'fence in a component' | 'unterminated raw text' | 'unclosed fence ending in container blanks';
+type Kind =
+  | 'unclosed fence'
+  | 'fence in a component'
+  | 'unterminated raw text'
+  | 'unclosed fence ending in container blanks'
+  | 'unclosed fence then whitespace lines';
 const KINDS: readonly [Kind, ...Kind[]] = [
   'unclosed fence',
   'fence in a component',
   'unterminated raw text',
   'unclosed fence ending in container blanks',
+  'unclosed fence then whitespace lines',
 ];
+/** Kinds that must save back exactly as written, not only no longer. */
+const EXACT: ReadonlySet<Kind> = new Set(['unclosed fence then whitespace lines']);
+/** Whitespace-only lines that may follow a fence at the end of the page. */
+const WHITESPACE_LINES = ['', ' ', '  ', '   ', '    ', '\t', ' \t', '\t ', '  \t  '] as const;
 
 /** Containers for a fence whose last lines are blank inside them: the opening
  *  line's prefix (a list item's marker), the prefix of its other lines, and the
@@ -108,6 +121,20 @@ function generatedCases(seed = SEED, count = COUNT): GeneratedCase[] {
         ...blanks,
       ].join('\n');
       block += choose(['', '\n']);
+    } else if (kind === 'unclosed fence then whitespace lines') {
+      // The same containers, then one to three whitespace-only lines through the
+      // end of the page: markdown-it reads the last of them outside the container.
+      const container = choose(BLANK_CONTAINERS);
+      const marker = choose(['`', '~'] as const).repeat(3 + (next() % 3));
+      const code = lines(['a', 'const a = 1;', '</Step>'] as const, 2);
+      const trailing = Array.from({ length: 1 + (next() % 3) }, () => choose(WHITESPACE_LINES));
+      if (trailing[trailing.length - 1] === '') trailing[trailing.length - 1] = '   ';
+      block = [
+        `${container.head.replace('{item}', locale.item)}${container.first}${marker}${choose(['', 'js'])}`,
+        ...code.map((line) => `${container.prefix}${line}`),
+        ...trailing,
+      ].join('\n');
+      block += choose(['', '\n']);
     } else if (kind === 'fence in a component') {
       const indent = choose(['', '  ', '    ', '      ']);
       const code = fence(indent, next() % 4 !== 0);
@@ -177,7 +204,8 @@ describe('pages that end in unclosed or unread blocks, generated', () => {
       // One more save, apart from the cycles, must change nothing.
       const again = save(saved);
       saves++;
-      if (first.length > source.length || saved.length > source.length || again !== saved)
+      const exact = !EXACT.has(kind) || saved === source;
+      if (first.length > source.length || saved.length > source.length || again !== saved || !exact)
         failures.push({ index, kind, source, first, saved, again });
     }
     const seconds = (performance.now() - started) / 1000;

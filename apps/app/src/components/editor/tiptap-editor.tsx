@@ -153,6 +153,11 @@ const CodeBlock = CodeBlockLowlight.extend({
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-lines')),
         rendered: false,
       },
+      sourceFenceTail: {
+        default: '',
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-tail')),
+        rendered: false,
+      },
     };
   },
   renderHTML({ node, HTMLAttributes }) {

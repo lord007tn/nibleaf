@@ -132,6 +132,7 @@ const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
  */
 export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const lines = state.src.split('\n');
+  const lastContent = lastContentLine(lines);
   const containers: FenceContainer[] = [];
   /** Open lists, innermost last: their open token, and whether they hold a shown
    *  paragraph or a lead. A list passes both on to the list around it when it
@@ -166,7 +167,7 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
       }
     }
     if (token.type === 'fence' && token.map) {
-      annotateFence(token, lines, containers);
+      annotateFence(token, lines, containers, lastContent);
       if (after?.type === 'list_item_open') {
         tokens.push(...leadParagraph(state, token));
         if (list) list.lead = true;
@@ -183,7 +184,7 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
  * empty closing line, and its lines end with its last line of code. Reading that
  * last line as the closer wrote it again after the code on every save (#602).
  */
-function annotateFence(token: MarkdownToken, lines: readonly string[], containers: readonly FenceContainer[]): void {
+function annotateFence(token: MarkdownToken, lines: readonly string[], containers: readonly FenceContainer[], lastContent: number): void {
   const [first, end] = token.map ?? [0, 0];
   const closed = fenceClosed(token, lines[end - 1]);
   // A last line of code blank inside its containers (`> ` at the end of the page)
@@ -194,14 +195,29 @@ function annotateFence(token: MarkdownToken, lines: readonly string[], container
   const open = (withoutContainers(lines[first] ?? '', first, containers) as LineRest).text;
   const close = closed ? (withoutContainers(lines[last] ?? '', last, containers) as LineRest).text : '';
   const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
-  // An unclosed fence at the very end of the page keeps the page's last line
-  // break, as an empty line after its code: without it, every save dropped one
-  // trailing line of the code.
-  const pageBreak = !closed && end === lines.length - 1 && lines[end] === '' ? 1 : 0;
+  // What follows an unclosed fence at the end of the page, when it is only
+  // whitespace: the page's last line break, and whitespace lines markdown-it reads
+  // outside the fence's quote or list item (`   ` after `- ~~~js`). It belongs to
+  // no block, so the fence keeps it and writes it back; dropped, each save lost one
+  // more line (a line that read as the fence's code on the next load).
+  const tail =
+    !closed && end > lastContent
+      ? lines
+          .slice(end)
+          .map((line) => `\n${line}`)
+          .join('')
+      : '';
   token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
   token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
   token.attrSet('data-mdx-fence-language', encodeMdxSource(language));
-  token.attrSet('data-mdx-fence-lines', encodeMdxSource(lines.slice(first, closed ? last + 1 : end + pageBreak).join('\n')));
+  token.attrSet('data-mdx-fence-lines', encodeMdxSource(lines.slice(first, closed ? last + 1 : end).join('\n')));
+  token.attrSet('data-mdx-fence-tail', encodeMdxSource(tail));
+}
+
+/** The last line with anything but spaces and tabs on it, or -1. */
+function lastContentLine(lines: readonly string[]): number {
+  for (let index = lines.length - 1; index >= 0; index--) if (/[^ \t]/.test(lines[index] ?? '')) return index;
+  return -1;
 }
 
 /** An empty paragraph, as markdown-it's tokens, to go before `fence` in its list item. */
@@ -290,32 +306,24 @@ function codeLine(line: string, containers: readonly FenceContainer[], indent: n
  * needs a container's `>` or indent it lacks, or differs once the fence's own
  * indent is taken off, means the containers changed; then null.
  */
-function sourceLinesFor(node: PMNode, open: string, delim: string, first: string, end: UnclosedEnd): string[] | null {
+function sourceLinesFor(node: PMNode, open: string, delim: string, first: string, endsHere: boolean): string[] | null {
   const lines = String(node.attrs.sourceFenceLines ?? '').split('\n');
   const close = String(node.attrs.sourceFenceClose ?? '');
+  const closing = close === '' ? 0 : 1;
   // Code of blank lines only loads as no text at all, so empty code is as many empty
-  // lines as the source has (none, or `> ` after an unclosed opener), short of the
-  // page's last line break; each must still read as empty below.
-  const unclosedPageBreak = close === '' && lines.length > 1 && lines[lines.length - 1] === '' ? 1 : 0;
-  const code = node.textContent
-    ? node.textContent.split('\n')
-    : lines.slice(1, lines.length - (close === '' ? 0 : 1) - unclosedPageBreak).map(() => '');
+  // lines as the source has (none, or `> ` after an unclosed opener); each must still
+  // read as empty below.
+  const code = node.textContent ? node.textContent.split('\n') : lines.slice(1, lines.length - closing).map(() => '');
   const containers = serializedContainers(delim, first);
   const indent = /^ */.exec(open)?.[0].length ?? 0;
   // An unclosed fence (no closing line) keeps its source only where it still ends
-  // with its container; anything after it there would read as code. The page's last
-  // line break after it, kept as an empty last line (see `annotateFence`), is
-  // written again only while the fence still ends the page.
-  const closing = close === '' ? 0 : 1;
-  const pageBreak = !closing && lines.length === code.length + 2 && lines[lines.length - 1] === '';
-  if (pageBreak) lines.pop();
-  if (!containers || (!closing && end === 'none') || lines.length !== code.length + 1 + closing || open[indent] === '\t') return null;
+  // with its container; anything after it there would read as code.
+  if (!containers || (!closing && !endsHere) || lines.length !== code.length + 1 + closing || open[indent] === '\t') return null;
   const read = (line: string, at: number) => withoutContainers(line, at, containers, true);
   const opening = read(lines[0] ?? '', first ? 0 : 1);
   if (opening?.text !== open || nonSpace(lines[0] ?? '') !== nonSpace(first || delim) + nonSpace(open)) return null;
   if (closing && read(lines[lines.length - 1] ?? '', 1)?.text !== close) return null;
   for (const [index, text] of code.entries()) if (codeLine(lines[index + 1] ?? '', containers, indent) !== text) return null;
-  if (pageBreak && end === 'page') lines.push('');
   return lines;
 }
 
@@ -324,23 +332,19 @@ const FENCE_MARKER = /^[ \t]*(`{3,}|~{3,})/;
 /** The nodes CommonMark ends a fence with: the page, a quote, a list item. */
 const FENCE_ENDING_CONTAINERS: ReadonlySet<string> = new Set(['doc', 'blockquote', 'listItem', 'taskItem']);
 
-/** Where an unclosed fence would end if written without a closing line: at the
- *  page's end, at its quote's or list item's end, or (`none`) not before what
- *  follows it. */
-type UnclosedEnd = 'page' | 'container' | 'none';
-
-/** Where an unclosed fence at `index` ends: see `UnclosedEnd`. It must be the last
- *  block in a container whose end also ends a fence in it; empty paragraphs after
- *  it write nothing (the editor adds one at the end of the page). `none` for a
- *  closed fence, and on the clipboard, whose slice may be pasted anywhere. */
-function unclosedEnd(node: PMNode, parent: PMNode | Fragment | undefined, index: number): UnclosedEnd {
-  if (String(node.attrs.sourceFenceClose ?? '') !== '') return 'none';
-  if (!parent || !('type' in parent) || !FENCE_ENDING_CONTAINERS.has(parent.type.name)) return 'none';
+/** Whether an unclosed fence at `index` still ends where it did if written without
+ *  a closing line: it must be the last block in a container whose end also ends a
+ *  fence in it; empty paragraphs after it write nothing (the editor adds one at the
+ *  end of the page). False for a closed fence, and on the clipboard, whose slice
+ *  may be pasted anywhere. */
+function endsWithContainer(node: PMNode, parent: PMNode | Fragment | undefined, index: number): boolean {
+  if (String(node.attrs.sourceFenceClose ?? '') !== '') return false;
+  if (!parent || !('type' in parent) || !FENCE_ENDING_CONTAINERS.has(parent.type.name)) return false;
   for (let next = index + 1; next < parent.childCount; next++) {
     const sibling = parent.child(next);
-    if (sibling.type.name !== 'paragraph' || sibling.content.size > 0) return 'none';
+    if (sibling.type.name !== 'paragraph' || sibling.content.size > 0) return false;
   }
-  return parent.type.name === 'doc' ? 'page' : 'container';
+  return true;
 }
 
 /**
@@ -361,12 +365,15 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
   const atLineStart = state.out === '' || state.out.endsWith('\n');
   const first = state.closed || atLineStart ? '' : state.out.slice(state.out.lastIndexOf('\n') + 1);
   const unchanged = open !== '' && open === String(node.attrs.sourceFenceOpen ?? '');
-  const lines = unchanged ? sourceLinesFor(node, open, state.delim, first, unclosedEnd(node, parent, index)) : null;
+  const endsHere = endsWithContainer(node, parent, index);
+  const lines = unchanged ? sourceLinesFor(node, open, state.delim, first, endsHere) : null;
   if (lines) {
     state.flushClose();
     // The source's first line has its own markers in place of the ones written.
     if (first) state.out = state.out.slice(0, state.out.length - first.length);
-    state.out += lines.join('\n');
+    // An unclosed fence's whitespace after it at the end of the page (see
+    // `annotateFence`) goes with it while it still ends its container.
+    state.out += lines.join('\n') + (endsHere ? String(node.attrs.sourceFenceTail ?? '') : '');
     state.closeBlock(node);
     return;
   }

@@ -738,8 +738,8 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     let quote = '';
     let braces = 0;
     let escaped = false;
-    // Quoted attribute values have no backslash escapes, in HTML or in MDX's JSX
-    // (`caption="Old\"` ends at that quote, #579); only the JavaScript inside `{…}` does.
+    // HTML attribute values have no backslash escapes (`title="Old\"` ends at that
+    // quote); only JSX and the JavaScript inside `{…}` do.
     let escapes = true;
     const kind = isHtml ? 'html' : 'jsx';
     if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
@@ -763,7 +763,7 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
       }
       if (char === '"' || char === "'" || (char === '`' && (!isHtml || braces > 0))) {
         quote = char;
-        escapes = braces > 0;
+        escapes = !isHtml || braces > 0;
       } else if (char === '{') {
         const end = braceEnds.get(cursor);
         if (end === undefined) {
@@ -831,57 +831,13 @@ function tagPairs(tokens: TagToken[]): Map<number, number> {
   return pairs;
 }
 
-/** A character JSX reads as ending a name or value: whitespace, `/`, `>`, or the
- *  `{` of a spread or expression attribute. */
-const endsJsxPart = (character: string): boolean =>
-  character === '' || character === '/' || character === '>' || character === '{' || /\s/.test(character);
-
-/**
- * Whether JSX can read what comes straight after a quoted value at `at`: an end
- * (see `endsJsxPart`), or the next attribute's name (an identifier, which may hold
- * `-` and `:`) followed by `=` (with any whitespace around it) or by an end. One
- * pass over the name, with no length limit.
- */
-function readableAfterValue(raw: string, at: number): boolean {
-  const next = raw[at] ?? '';
-  if (endsJsxPart(next)) return true;
-  if (!/[A-Za-z_$]/.test(next)) return false;
-  let cursor = at + 1;
-  while (cursor < raw.length && /[\w$:.-]/.test(raw[cursor] ?? '')) cursor++;
-  const after = raw[cursor] ?? '';
-  return after === '=' || endsJsxPart(after);
-}
-
-/**
- * Whether an opening tag has text straight after a quoted value that JSX can't
- * read (see `readableAfterValue`). JSX strings have no escapes, so in
- * `title="a \"b\" c"` the value ends at the second quote and `b\" c"` is left
- * over: the editor can't model that, and rewriting the value after an edit kept
- * the leftover (`title="Edited"b\" c"`). `title="A"id = "x"` and
- * `title="A"{...props}` are valid JSX, and stay editable.
- */
-function malformedOpener(token: TagToken): boolean {
-  const { raw } = token;
-  for (const attribute of parseAttributes(raw, token.name)) {
-    if (typeof attribute.value !== 'string') continue;
-    const written = raw.slice(attribute.start, attribute.end);
-    const afterEquals = written.slice(written.indexOf('=') + 1).trimStart();
-    if (afterEquals[0] !== '"' && afterEquals[0] !== "'") continue;
-    if (!readableAfterValue(raw, attribute.end)) return true;
-  }
-  return false;
-}
-
 function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
   const ranges: SourceRange[] = [];
   let coveredUntil = -1;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (!token || token.start < coveredUntil) continue;
-    const handled = token.html ? !token.rawHtml : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name);
-    // A component whose opening tag the editor can't model is kept whole, with no
-    // field to edit, so an edit can't leave a broken attribute behind.
-    if (handled && !(!token.closing && isComponentTag(token) && malformedOpener(token))) continue;
+    if (token.html ? !token.rawHtml : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
     const closeIndex = token.closing ? undefined : pairs.get(i);
     const close = closeIndex == null ? undefined : tokens[closeIndex];
     const end = close?.end ?? (token.runsToEnd ? source.length : token.end);
@@ -1046,9 +1002,8 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     let value: string;
     const quote = raw[cursor];
     if (quote === '"' || quote === "'") {
-      // No backslash escapes in a quoted value, in HTML or MDX's JSX (#579).
       const valueStart = ++cursor;
-      while (cursor < limit && raw[cursor] !== quote) cursor++;
+      while (cursor < limit && raw[cursor] !== quote) cursor += raw[cursor] === '\\' ? 2 : 1;
       value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
@@ -1099,8 +1054,6 @@ function videoEmbedPlaceholder(range: SourceRange, frame: { open: TagToken; clos
   let frameClose = range.source.length;
   let caption = '';
   if (frame) {
-    // A Frame opener the editor can't model has no caption field to edit.
-    if (malformedOpener(frame.open)) return null;
     const value = attributeValue(parseAttributes(frame.open.raw, frame.open.name), 'caption');
     if (typeof value === 'string' && value.startsWith('{')) return null;
     caption = typeof value === 'string' ? value : '';

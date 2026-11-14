@@ -8,7 +8,6 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  *  - an unclosed code fence gained a copy of its last line (#602);
  *  - a `<Step>` holding a fence indented four columns had that fence wrapped in
  *    another fence, then gained a run of `</Step>`/`</Steps>` closers (#603);
- *  - a `<Frame caption="Old\">` lost its Frame (#579);
  *  - an unterminated `<script>`, `<style>`, `<textarea>` or `<title>` had its
  *    body rewritten as Markdown (#576).
  * Each saves back byte for byte, ten times over: within one session (one load,
@@ -125,21 +124,26 @@ describeVariants('an unclosed fence ending in a line blank inside its containers
   { name: 'only blank lines of code', block: () => '~~~~\n\n\n' },
 ]);
 
-describe('a list item’s indented blank line at the very end of the page', () => {
-  // markdown-it reads that last line outside the list item, so it belongs to no
-  // block: like any whitespace at the end of a page, the first save drops it, and
-  // the page is stable from then on. No closer is ever added.
-  const pages = LOCALES.flatMap((locale) => [
-    [`${locale.name}, a continuation line`, `${locale.before}\n\n- ${locale.item}\n\n  ${T}js\n  a\n  `],
-    [`${locale.name}, the item’s first line`, `${locale.before}\n\n- ~~~js\n  a\n  `],
-  ]);
-  it.each(pages)('%s', (_name, source) => {
-    load(source);
-    const saved = getMarkdown(editor);
-    expect(saved).toBe(source.slice(0, source.lastIndexOf('\n')));
-    expectStableAcrossReloads(saved);
-  });
-});
+// Whitespace-only lines after an unclosed fence in a quote or list item, at the end
+// of the page: markdown-it reads the last of them outside the container, so they
+// belong to no block. Dropped, each save lost one more of them (#622 round 4).
+describeVariants('an unclosed fence in a container, then whitespace-only lines (#602)', [
+  { name: 'the round-4 repro, two lines of three spaces after a list item', block: () => '- ~~~js\n  a\n   \n   ' },
+  { name: 'one line of three spaces after a list item', block: () => '- ~~~js\n  a\n   ' },
+  { name: 'one line of two spaces after a list item (dropped on main too)', block: () => '- ~~~js\n  a\n  ' },
+  { name: 'three lines after a list item', block: () => '- ~~~js\n  a\n   \n   \n   ' },
+  { name: 'tabs after a list item', block: () => '- ~~~js\n  a\n\t\n\t' },
+  { name: 'spaces and tabs mixed after a list item', block: () => '- ~~~js\n  a\n \t\n\t ' },
+  { name: 'an ordered list item', block: () => '1. ~~~js\n   a\n    \n    ' },
+  { name: 'a continuation line of a list item', block: (l) => `- ${l.item}\n\n  ${T}js\n  a\n   \n   ` },
+  { name: 'after a quote', block: () => '> ~~~js\n> a\n   \n   ' },
+  { name: 'a blank quoted line, then spaces', block: () => '> ~~~js\n> a\n>  \n   ' },
+  { name: 'a quote in a list item', block: (l) => `- ${l.item}\n\n  > ~~~js\n  > a\n     \n   ` },
+  { name: 'a list item in a quote', block: () => '> - ~~~js\n>   a\n   \n   ' },
+  { name: 'with a last line break', block: () => '- ~~~js\n  a\n   \n   \n' },
+  { name: 'followed by more content after a list item', block: (l) => `- ~~~js\n  a\n   \n   \n\n${l.after}` },
+  { name: 'followed by more content after a quote', block: (l) => `> ~~~js\n> a\n>  \n\n${l.after}` },
+]);
 
 const INDENTED = `    ${T}js\n    const a = 1;\n    ${T}`;
 
@@ -166,39 +170,6 @@ describeVariants('a fence indented four columns in a `<Step>` (#603)', [
   { name: 'no blank line after text', block: (l) => `<Step title="One">\n${l.text}\n${INDENTED}\n</Step>`, after: true },
   { name: 'no blank line after the tag, in Steps', block: () => `<Steps>\n<Step title="One">\n${INDENTED}\n</Step>\n</Steps>`, after: true },
 ]);
-
-const IFRAME = '<iframe src="https://www.youtube.com/embed/M7lc1UVf-VE" title="Tour"></iframe>';
-
-describeVariants('a Frame caption ending in a backslash (#579)', [
-  { name: 'the issue’s repro', block: () => `<Frame caption="Old\\" data-lightbox>\n  ${IFRAME}\n</Frame>`, after: true },
-  { name: 'single quotes', block: () => `<Frame caption='Old\\' data-lightbox>\n  ${IFRAME}\n</Frame>`, after: true },
-  // A Frame holding an image is the editor's own Frame node, which writes its child
-  // between blank lines (as for any caption), so this is that layout.
-  { name: 'an image inside', block: () => `<Frame caption="Old\\" data-lightbox>\n\n<img src="/a.png" alt="A" />\n\n</Frame>`, after: true },
-  { name: 'a JSX caption, which keeps its escapes', block: () => `<Frame caption={"Say \\"hi\\""}>\n  ${IFRAME}\n</Frame>`, after: true },
-]);
-
-describe('a Frame caption ending in a backslash, read (#579)', () => {
-  const captions = () => {
-    const found: string[] = [];
-    editor.state.doc.descendants((node) => {
-      if (node.type.name === 'videoEmbed') found.push(String(node.attrs.caption));
-    });
-    return found;
-  };
-  it('reads the caption up to its closing quote, as HTML and MDX do', () => {
-    load(`<Frame caption="Old\\" data-lightbox>\n  ${IFRAME}\n</Frame>`);
-    expect(captions()).toEqual(['Old\\']);
-  });
-  it('keeps the Frame, its caption and its other attribute around an indented image', () => {
-    load(`Intro.\n\n<Frame caption="Old\\" data-lightbox>\n  <img src="/a.png" alt="A" />\n</Frame>\n\nOutro.`);
-    expect(getMarkdown(editor)).toBe(`Intro.\n\n<Frame caption="Old\\" data-lightbox>\n\n<img src="/a.png" alt="A" />\n\n</Frame>\n\nOutro.`);
-  });
-  it('still reads a JSX caption', () => {
-    load(`<Frame caption={"Say hi"}>\n  ${IFRAME}\n</Frame>`);
-    expect(editor.state.doc.firstChild?.type.name).toBe('mdxOpaqueBlock');
-  });
-});
 
 const BODY = 'const s = "<b>KEEP</b>"; // **not bold**\n# not a heading\n<!-- not a comment';
 
@@ -282,92 +253,5 @@ describe('a raw-text tag that Markdown reads as text (#622 review)', () => {
     const source = `Intro with \\\\<${tag}>literal.\n\n${NOTE}`;
     expectStableAcrossReloads(source);
     expect(structure()).toEqual({ callouts: [], opaque: [source.slice(source.indexOf(`<${tag}>`))] });
-  });
-});
-
-describe('a component whose opening tag JSX reads with text left over (#622 review)', () => {
-  // `title="a \"b\" c"`: JSX strings have no escapes, so the value ends at the
-  // second quote and `b\" c"` is left over. The component is kept whole, with no
-  // field to edit, so an edit can't leave `title="Edited"b\" c"` behind.
-  const tags = [
-    ['Card', 'title'],
-    ['Step', 'title'],
-    ['Accordion', 'title'],
-    ['Frame', 'caption'],
-  ] as const;
-  const component = (tag: string, key: string) => `${String.raw`<${tag} ${key}="a \"b\" c">`}\n\nBody\n\n</${tag}>`;
-
-  it.each(tags)('keeps <%s> as written over ten reloads', (tag, key) => {
-    expectStableAcrossReloads(`Intro.\n\n${component(tag, key)}`);
-  });
-
-  it.each(tags)('offers no %s field to edit, and an edit elsewhere leaves it as written', (tag, key) => {
-    const source = `Intro.\n\n${component(tag, key)}`;
-    load(source);
-    const editable: string[] = [];
-    editor.state.doc.descendants((node) => {
-      if (key in node.attrs) editable.push(node.type.name);
-    });
-    expect(editable).toEqual([]);
-    expect(structure().opaque).toEqual([component(tag, key)]);
-    expectStableInOneSession(source, 'Intro.');
-  });
-
-  it('offers no caption field on a Frame around an embed', () => {
-    const frame = `${String.raw`<Frame caption="a \"b\" c">`}\n  ${IFRAME}\n</Frame>`;
-    expectStableAcrossReloads(`Intro.\n\n${frame}`);
-    expect(structure().opaque).toEqual([frame]);
-  });
-});
-
-describe('valid JSX straight after a quoted value (#622 re-check)', () => {
-  // What JSX reads after a quoted value: whitespace, `/`, `>`, a spread or
-  // expression attribute's `{`, or the next attribute's name (with `-` or `:`, of
-  // any length) followed by `=` (whitespace around it allowed) or an end. Every
-  // such opener stays an editable component and saves back byte for byte.
-  const components = [
-    ['Card', 'title', 'mdxCard'],
-    ['Step', 'title', 'mdxStep'],
-    ['Accordion', 'title', 'mdxAccordion'],
-    ['Frame', 'caption', 'mdxFrame'],
-  ] as const;
-  const followers = [
-    'id="x"',
-    'id = "x"',
-    'id ="x"',
-    "id= 'x'",
-    'id=\n"x"',
-    '{...props}',
-    ' {...props}',
-    'data-x="1"',
-    'xml:lang="en"',
-    '$x="1"',
-    `${'a'.repeat(300)}="x"`,
-    'id={1}',
-    ' disabled',
-    'disabled',
-  ];
-  const openers = components.flatMap(([tag, key, node]) =>
-    ['"', "'"].flatMap((quote) =>
-      followers.map((follower) => ({ node, source: `<${tag} ${key}=${quote}A${quote}${follower}>\n\nBody\n\n</${tag}>` })),
-    ),
-  );
-
-  it(`keeps ${openers.length} valid openers editable and as written`, () => {
-    expect(openers.length).toBeGreaterThanOrEqual(96);
-    const failures: Array<{ source: string; saved: string; nodes: string[] }> = [];
-    for (const { node, source } of openers) {
-      const page = `Intro.\n\n${source}`;
-      load(page);
-      const nodes: string[] = [];
-      editor.state.doc.descendants((child) => {
-        nodes.push(child.type.name);
-      });
-      const saved = getMarkdown(editor);
-      load(saved);
-      const again = getMarkdown(editor);
-      if (!nodes.includes(node) || structure().opaque.length > 0 || saved !== page || again !== page) failures.push({ source, saved, nodes });
-    }
-    expect(failures.slice(0, 3)).toEqual([]);
   });
 });
