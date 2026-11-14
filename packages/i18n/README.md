@@ -31,6 +31,11 @@ the generated Paraglide runtime from that stage. Translation JSON is unchanged.
   plain string. Plural messages are checked as a whole (a form may spell its
   number out), so a placeholder dropped from one form isn't caught here; the
   paraglide compile and messages.test.ts check the plural syntax and forms.
+- **Adding a string.** A PR that adds an English key must translate it in every
+  locale, or list it in that locale's `untranslated/<locale>.json`: under
+  `sameAsEnglish` when the identical word is right there (a loanword), otherwise
+  under `pending` (by hand; `--baseline` never grows the list). Copying the
+  English text into a catalog without listing it fails CI.
 - **Counts.** `pnpm --filter @nibleaf/i18n run untranslated [locale]` prints
   each locale's untranslated count (and, for one locale, the keys not listed).
   After translating, `pnpm --filter @nibleaf/i18n run untranslated -- --baseline <locale>`
