@@ -178,6 +178,24 @@ export const rewriteMintlifyInternalLinks = (
     languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>;
   } = {},
 ): string => {
+  const maps = [routes, ...(options.languageRoutes?.values() ?? [])];
+  if (!maps.some((map) => map.size)) return content;
+  if (!content.includes('](') && !content.includes(']:') && !/href/i.test(content)) return content;
+  // Basenames also cover relative links and Nibleaf /pages/ aliases. Encoded
+  // text and directory-only relative destinations are conservatively parsed.
+  const candidate =
+    content.includes('%') ||
+    content.includes('&') ||
+    /(?:\]\(|\]:|href\s*=\s*["'])\s*\.{1,2}(?=[/#?\s)"']|$)/i.test(content) ||
+    maps.some((map) =>
+      [...map].some(([source, target]) =>
+        [source, splitSuffix(target).path].some((path) => {
+          const basename = posix.basename(path);
+          return basename === '.' ? true : Boolean(basename && content.includes(basename));
+        }),
+      ),
+    );
+  if (!candidate) return content;
   const protectedCode = protectImportCode(content);
   const appPageTarget = createAppPageLookup();
   const rewrite = (original: string): string => {

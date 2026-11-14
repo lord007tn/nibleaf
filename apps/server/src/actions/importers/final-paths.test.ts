@@ -3,6 +3,10 @@ import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
 import { createLinkResolver } from '@nibleaf/shared/site-links';
 import MarkdownIt from 'markdown-it';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { componentLinkFixtures, componentRepro } from './fixtures/component-links';
+import { rewriteMainInternalLinks } from './fixtures/page-links.main-reference';
+import { convertGitBookMarkdown } from './gitbook-markdown';
+import { normalizeMintlifyMdx } from './mintlify-mdx';
 
 interface Row {
   id: string;
@@ -446,6 +450,55 @@ describe('parsed reference destinations preserve literal text', () => {
         expect(rendered('intro', 'image', 'src')).toEqual(['/topic/next']);
         assertExactTarget('intro', '/topic/next', 'topic/next');
       }
+    });
+  }
+});
+
+describe('component children retain main link destinations', () => {
+  for (const kind of ['mintlify', 'gitbook'] as const) {
+    it.each(componentLinkFixtures)(`${kind}: $name`, async ({ content }) => {
+      const mintlify = kind === 'mintlify';
+      if (mintlify) mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['intro', { group: 'Topic', pages: ['next'] }] } }));
+      else {
+        mem.files.set('SUMMARY.md', '* [Intro](intro.md)\n* [Topic](topic.md)\n  * [Next](next.md)');
+        mem.files.set('topic.md', 'Topic.');
+      }
+      mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, content);
+      mem.files.set(`next.${mintlify ? 'mdx' : 'md'}`, 'Destination.');
+      const converted = mintlify ? content : convertGitBookMarkdown(content, { resolveFile: () => undefined }).content;
+      const main = rewriteMainInternalLinks(converted, 'intro', new Map([['next', '/topic/next']]));
+      const expected = mintlify ? normalizeMintlifyMdx(main) : main;
+      await run(mintlify ? mintlifyImporter : gitbookImporter);
+      expect(mem.rows.find((row) => row.path === 'intro')?.content).toBe(expected);
+      const page = snapshot().pages.find((row) => row.path === 'intro');
+      if (!page) throw new Error('Missing imported intro');
+      expect(pageContentFacts(page.content).links).toContain('/topic/next');
+      expect(pageContentFacts(page.content).links).not.toContain('/next');
+      assertExactTarget('intro', '/topic/next', 'topic/next');
+    });
+    it(`${kind}: rewrites a component definition after an address collision`, async () => {
+      seed('topic', 'PAGE');
+      const mintlify = kind === 'mintlify';
+      if (mintlify) mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['intro', { group: 'Topic', pages: ['next'] }] } }));
+      else mem.files.set('SUMMARY.md', '* [Intro](intro.md)\n* [Topic](topic.md)\n  * [Next](next.md)');
+      const content = `${componentRepro}\n\n<Note>\n[inside]: /next "Title"\n[Reference][inside]\n</Note>`;
+      mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, content);
+      mem.files.set(`next.${mintlify ? 'mdx' : 'md'}`, 'Destination.');
+      if (!mintlify) mem.files.set('topic.md', 'Topic.');
+      // GitBook nests under a PAGE, so collide that page with a GROUP instead.
+      if (!mintlify) {
+        mem.rows = [];
+        seed('topic', 'GROUP');
+      }
+      await run(mintlify ? mintlifyImporter : gitbookImporter);
+      const stored = mem.rows.find((row) => row.path === 'intro')?.content;
+      expect(stored).toContain('[inside]: /topic-2/next "Title"');
+      const site = snapshot();
+      const page = site.pages.find((row) => row.path === 'intro');
+      if (!page) throw new Error('Missing imported intro');
+      expect(pageContentFacts(page.content).links).toEqual(['/topic-2/next', '/topic-2/next', '/topic-2/next']);
+      assertExactTarget('intro', '/topic-2/next', 'topic-2/next');
+      expect(findBrokenInternalLinks(site)).toEqual([]);
     });
   }
 });

@@ -1,8 +1,9 @@
 import { documentationComponentContractEntries, documentationReaderTag } from '@nibleaf/shared/documentation-component-contract';
 import { fromMarkdown, type Handle } from 'mdast-util-from-markdown';
+import { componentMarkdownSource } from './import-component-source';
 import { decodeImportEntities } from './import-fidelity';
 import { readImportComponentTag } from './import-markdown-code';
-import type { ImportReference } from './import-references';
+import { type ImportReference, markdownReferences } from './import-references';
 
 interface PageReference extends ImportReference {
   kind: 'link' | 'definition' | 'href';
@@ -75,6 +76,9 @@ export const importPageLinks = (content: string): PageReference[] => {
     position?: { start: { offset?: number }; end: { offset?: number } };
     children?: Node[];
   };
+  const resources = markdownReferences(content);
+  if (!resources.length && !content.includes(']:') && !/href/i.test(content)) return [];
+  const view = componentMarkdownSource(content, resources);
   const captured: Array<{ owner: Node; start: number; end: number }> = [];
   const capture: Handle = function (token) {
     const owner = this.stack.at(-1);
@@ -82,12 +86,15 @@ export const importPageLinks = (content: string): PageReference[] => {
     // Keep the compiler's normal destination decoding and AST construction.
     this.buffer();
   };
-  const tree = fromMarkdown(content, {
+  const tree = fromMarkdown(view.content, {
     mdastExtensions: [{ enter: { resourceDestinationString: capture, definitionDestinationString: capture } }],
   });
   const images = new Set<string>();
   const links = new Set<Node>();
-  const hrefs: PageReference[] = [];
+  const hrefs = new Map<number, PageReference>();
+  for (const tag of view.tags) {
+    if (tag.complete && !tag.closing) for (const href of htmlHrefs(content, tag.start, tag.end)) hrefs.set(href.start, href);
+  }
   const pending: Node[] = [tree];
   while (pending.length) {
     const node = pending.pop();
@@ -96,7 +103,9 @@ export const importPageLinks = (content: string): PageReference[] => {
     if (node.type === 'image' || node.type === 'imageReference') continue;
     if (node.type === 'link') links.add(node);
     if (node.type === 'html' && node.position?.start.offset !== undefined && node.position.end.offset !== undefined) {
-      for (const href of htmlHrefs(content, node.position.start.offset, node.position.end.offset)) hrefs.push(href);
+      for (const href of htmlHrefs(content, view.originalOffset(node.position.start.offset), view.originalOffset(node.position.end.offset - 1) + 1)) {
+        hrefs.set(href.start, href);
+      }
     }
     if (node.children)
       for (let index = node.children.length - 1; index >= 0; index--) {
@@ -108,21 +117,15 @@ export const importPageLinks = (content: string): PageReference[] => {
   for (const { owner, start, end } of captured) {
     const definition = owner.type === 'definition';
     if (owner.url === undefined || (!links.has(owner) && !definition) || (definition && owner.identifier && images.has(owner.identifier))) continue;
-    markdown.push({ value: content.slice(start, end), start, end, image: false, kind: definition ? 'definition' : 'link' });
+    const originalStart = view.originalOffset(start);
+    const originalEnd = end > start ? view.originalOffset(end - 1) + 1 : originalStart;
+    markdown.push({
+      value: content.slice(originalStart, originalEnd),
+      start: originalStart,
+      end: originalEnd,
+      image: false,
+      kind: definition ? 'definition' : 'link',
+    });
   }
-  // Both parser streams are in source order. Merge without sorting or rescanning bodies.
-  const references: PageReference[] = [];
-  let index = 0;
-  for (const reference of markdown) {
-    while (hrefs[index] && (hrefs[index]?.start ?? 0) < reference.start) {
-      const href = hrefs[index++];
-      if (href) references.push(href);
-    }
-    references.push(reference);
-  }
-  for (; index < hrefs.length; index++) {
-    const href = hrefs[index];
-    if (href) references.push(href);
-  }
-  return references;
+  return [...markdown, ...hrefs.values()].sort((left, right) => left.start - right.start);
 };
