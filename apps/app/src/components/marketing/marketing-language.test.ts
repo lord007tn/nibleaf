@@ -34,8 +34,14 @@ describe('Arabic addresses', () => {
     expect((outcome as { options: { href?: string; statusCode?: number } }).options).toMatchObject({ href: path.slice(3), statusCode: 307 });
   });
 
-  it.each(['/ar/pricing', '/ar/self-hosting'])('%s renders its own Arabic page instead of redirecting', async (path) => {
-    const data = await loadMarketingPage(path);
-    expect(data.marketingPath).toBe(path);
-  });
+  // The first page loaded pays for importing the marketing pages and their SEO
+  // helpers, which can pass the default 5 s on a busy machine (as routes.test.ts).
+  it.each(['/ar/pricing', '/ar/self-hosting'])(
+    '%s renders its own Arabic page instead of redirecting',
+    async (path) => {
+      const data = await loadMarketingPage(path);
+      expect(data.marketingPath).toBe(path);
+    },
+    60_000,
+  );
 });
