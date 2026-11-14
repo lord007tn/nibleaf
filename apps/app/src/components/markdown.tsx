@@ -55,6 +55,16 @@ const RICH_MODULES = [richMarkdownModule];
 const RICH_MATH_MODULES = [richMarkdownModule, mathMarkdownModule];
 const RICH_MATH_MARKER = { [HYDRATION_MODULE_ATTRIBUTE]: RICH_MATH_MODULES.map((module) => module.key).join(' ') };
 
+/** The modules this page's article island waits on, by the renderer's own
+ *  decision (readerRenderMode). The reader's navigation loader awaits them, so
+ *  a navigation never shows the island's plain pending body, even where the
+ *  line-scan guess before it missed (math that only normalization reveals). */
+export const rendererModulesFor = (content: string) => {
+  const { rich, math } = readerRenderMode(content);
+  if (!rich) return [];
+  return math ? RICH_MATH_MODULES : RICH_MODULES;
+};
+
 /** Rewrite a root-relative internal doc link to the site base. External URLs,
  *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
 export function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefined): string | undefined {

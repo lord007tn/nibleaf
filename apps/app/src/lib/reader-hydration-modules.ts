@@ -58,7 +58,23 @@ export const loadArticleRenderer = async (content: string): Promise<void> => {
   const grammars = import('@/lib/highlight-languages')
     .then((languages) => Promise.all(languages.lazyHighlightLanguages(content).map((name) => highlightLanguageModule(name).load())))
     .catch(() => undefined);
-  await Promise.all([...[articleMarkdownModule, ...articleRendererModules(content)].map((module) => module.load().catch(() => undefined)), grammars]);
+  // The line scan's guess starts at once; then, with the article module (which
+  // holds the parser) loaded, the renderer's own decision is awaited too, so
+  // the island never falls back to the plain renderer after navigating.
+  const decided = (async () => {
+    try {
+      await articleMarkdownModule.load();
+      const markdown = await import('@/components/markdown');
+      await Promise.all(markdown.rendererModulesFor(content).map((module) => module.load().catch(() => undefined)));
+    } catch {
+      // A failed download is the article island's to retry.
+    }
+  })();
+  await Promise.all([
+    ...[articleMarkdownModule, ...articleRendererModules(content)].map((module) => module.load().catch(() => undefined)),
+    decided,
+    grammars,
+  ]);
 };
 
 /** Loads the reader modules whose markup is in the server HTML under `root`

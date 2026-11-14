@@ -4,7 +4,13 @@ import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { articleRendererModules, mathMarkdownModule, needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
+import {
+  articleRendererModules,
+  loadArticleRenderer,
+  mathMarkdownModule,
+  needsRichMarkdown,
+  richMarkdownModule,
+} from '@/lib/reader-hydration-modules';
 import { mathPlugins } from './markdown-math';
 import RichMarkdown from './markdown-rich';
 
@@ -26,6 +32,19 @@ describe('conditional Markdown renderer', () => {
   ])('detects math wherever the rich renderer typesets it: %s', (content) => {
     expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
     expect(renderToStaticMarkup(createElement(RichMarkdown, { content, math: mathPlugins }))).toContain('class="katex"');
+  });
+
+  it('loads what the renderer decides before a navigation, even where the line scan guessed no math', async () => {
+    // Normalization joins the class into math-inline; past the parser bounds the
+    // renderer gives this rich page KaTeX, while the line scan sees no math.
+    const content = `<code class="ma{/* note */}th-inline">x^2</code>\n\n${'word '.repeat(80_001)}`;
+    expect(articleRendererModules(content)).toEqual([richMarkdownModule]);
+    expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
+    expect(mathMarkdownModule.status()).toBe('idle');
+    await loadArticleRenderer(content);
+    // The island would wait on both; both are in before the page renders.
+    expect(mathMarkdownModule.status()).toBe('loaded');
+    expect(richMarkdownModule.status()).toBe('loaded');
   });
 
   it('preloads KaTeX only with the rich renderer, never for a code-only page', () => {
