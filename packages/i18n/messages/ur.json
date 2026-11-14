@@ -652,6 +652,7 @@
   "settings_general_customdomain_hint": "کیا آپ چاہتے ہیں کہ قارئین آپ کا اپنا ڈومین استعمال کریں؟",
   "settings_general_customdomain_link": "حسب ضرورت ڈومین ترتیب دیں",
   "settings_general_url_taken": "یہ پتہ پہلے ہی کوئی اور سائٹ استعمال کر رہی ہے۔ کوئی دوسرا آزمائیں۔",
+  "settings_general_url_reserved": "یہ پتہ سسٹم کے لیے مخصوص ہے۔ کوئی دوسرا منتخب کریں۔",
   "settings_branding_title": "برانڈنگ",
   "settings_branding_upload": "اپ لوڈ کریں۔",
   "settings_branding_uploaded": "اپ لوڈ کیا گیا",

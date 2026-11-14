@@ -652,6 +652,7 @@
   "settings_general_customdomain_hint": "Sollen Leser Ihre eigene Domain verwenden?",
   "settings_general_customdomain_link": "Eigene Domain einrichten",
   "settings_general_url_taken": "Diese Adresse wird bereits von einer anderen Website verwendet. Versuchen Sie eine andere.",
+  "settings_general_url_reserved": "Diese Adresse ist für das System reserviert. Wählen Sie eine andere.",
   "settings_branding_title": "Branding",
   "settings_branding_upload": "Hochladen",
   "settings_branding_uploaded": "Hochgeladen",

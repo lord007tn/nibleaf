@@ -1200,6 +1200,7 @@ export const MESSAGE_IDS = {
   'settings.general.customDomain.hint': 'settings_general_customdomain_hint',
   'settings.general.customDomain.link': 'settings_general_customdomain_link',
   'settings.general.url.taken': 'settings_general_url_taken',
+  'settings.general.url.reserved': 'settings_general_url_reserved',
   'settings.branding.title': 'settings_branding_title',
   'settings.branding.upload': 'settings_branding_upload',
   'settings.branding.uploaded': 'settings_branding_uploaded',
