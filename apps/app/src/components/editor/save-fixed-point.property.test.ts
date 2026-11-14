@@ -130,15 +130,17 @@ describe('pages that end in unclosed or unread blocks, generated', () => {
     const failures: Array<{ index: number; kind: Kind; source: string; saved: string; again: string }> = [];
     for (const { index, kind, source } of cases) {
       let saved = source;
-      let again = source;
       // A save is a function of the page alone, so once a cycle changes nothing,
       // no later one does: the rest of the five are that same page.
-      for (let cycle = 0; cycle <= CYCLES; cycle++) {
-        again = save(saved);
+      for (let cycle = 0; cycle < CYCLES; cycle++) {
+        const next = save(saved);
         saves++;
-        if (again === saved) break;
-        saved = again;
+        if (next === saved) break;
+        saved = next;
       }
+      // One more save, apart from the cycles, must change nothing.
+      const again = save(saved);
+      saves++;
       if (saved.length > source.length || again !== saved) failures.push({ index, kind, source, saved, again });
     }
     const seconds = (performance.now() - started) / 1000;

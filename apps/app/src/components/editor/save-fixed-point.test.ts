@@ -206,3 +206,86 @@ describe('an unterminated raw-text element, read (#576)', () => {
     expect(getMarkdown(editor)).toBe(`Intro.\n\n${T}\n<${tag}>example\n${T}\n\n<Note>\n\nText\n\n</Note>`);
   });
 });
+
+const NOTE = '<Note>\n\nEditable.\n\n</Note>';
+const RAW_TEXT_TAGS = ['script', 'style', 'textarea', 'title'] as const;
+
+/** The callouts on the page and their text, and the opaque blocks' sources. */
+const structure = () => {
+  const callouts: string[] = [];
+  const opaque: string[] = [];
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === 'callout') callouts.push(node.textContent);
+    if (node.type.name === 'mdxOpaqueBlock' || node.type.name === 'mdxOpaqueInline') opaque.push(String(node.attrs.source));
+  });
+  return { callouts, opaque };
+};
+
+describe('a raw-text tag that Markdown reads as text (#622 review)', () => {
+  // A backslash before `<` escapes it (CommonMark, as markdown-it reads it): the tag
+  // is literal text and starts no raw text, so the Note after it stays editable.
+  // The `\<tag>` itself still saves as an escaped placeholder
+  // (`&lt;nibleaf-mdx-opaque-inline …&gt;`), as on main: a separate follow-up, so
+  // only the page from the text after it is compared byte for byte.
+  it.each(RAW_TEXT_TAGS)('an escaped \\<%s> leaves the page after it editable', (tag) => {
+    const source = `Intro with \\<${tag}>literal.\n\n${NOTE}`;
+    load(source);
+    expect(structure().callouts).toEqual(['Editable.']);
+    const saved = getMarkdown(editor);
+    const tail = source.slice(source.indexOf('literal.'));
+    expect(saved.startsWith('Intro with ') && saved.endsWith(tail)).toBe(true);
+    load(saved);
+    expect(getMarkdown(editor)).toBe(saved);
+    expect(structure().callouts).toEqual(['Editable.']);
+  });
+
+  // In inline code the tag is code: guarded since #573's code mask.
+  it.each(RAW_TEXT_TAGS)('<%s> in inline code leaves the page after it editable', (tag) => {
+    const source = `Intro with \`<${tag}>\` literal.\n\n${NOTE}`;
+    expectStableAcrossReloads(source);
+    expect(structure().callouts).toEqual(['Editable.']);
+  });
+
+  // Two backslashes are an escaped backslash, then a real tag (markdown-it reads
+  // `\\<title>` as `\` and inline HTML): its text runs to the end of the page.
+  it.each(RAW_TEXT_TAGS)('<%s> after an escaped backslash is raw text through the end of the page', (tag) => {
+    const source = `Intro with \\\\<${tag}>literal.\n\n${NOTE}`;
+    expectStableAcrossReloads(source);
+    expect(structure()).toEqual({ callouts: [], opaque: [source.slice(source.indexOf(`<${tag}>`))] });
+  });
+});
+
+describe('a component whose opening tag JSX reads with text left over (#622 review)', () => {
+  // `title="a \"b\" c"`: JSX strings have no escapes, so the value ends at the
+  // second quote and `b\" c"` is left over. The component is kept whole, with no
+  // field to edit, so an edit can't leave `title="Edited"b\" c"` behind.
+  const tags = [
+    ['Card', 'title'],
+    ['Step', 'title'],
+    ['Accordion', 'title'],
+    ['Frame', 'caption'],
+  ] as const;
+  const component = (tag: string, key: string) => `${String.raw`<${tag} ${key}="a \"b\" c">`}\n\nBody\n\n</${tag}>`;
+
+  it.each(tags)('keeps <%s> as written over ten reloads', (tag, key) => {
+    expectStableAcrossReloads(`Intro.\n\n${component(tag, key)}`);
+  });
+
+  it.each(tags)('offers no %s field to edit, and an edit elsewhere leaves it as written', (tag, key) => {
+    const source = `Intro.\n\n${component(tag, key)}`;
+    load(source);
+    const editable: string[] = [];
+    editor.state.doc.descendants((node) => {
+      if (key in node.attrs) editable.push(node.type.name);
+    });
+    expect(editable).toEqual([]);
+    expect(structure().opaque).toEqual([component(tag, key)]);
+    expectStableInOneSession(source, 'Intro.');
+  });
+
+  it('offers no caption field on a Frame around an embed', () => {
+    const frame = `${String.raw`<Frame caption="a \"b\" c">`}\n  ${IFRAME}\n</Frame>`;
+    expectStableAcrossReloads(`Intro.\n\n${frame}`);
+    expect(structure().opaque).toEqual([frame]);
+  });
+});

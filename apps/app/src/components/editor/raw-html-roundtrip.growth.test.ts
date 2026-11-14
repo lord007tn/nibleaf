@@ -117,6 +117,14 @@ const indentedStepFences = (n: number) => '<Steps>\n<Step title="x">\n\n    ```j
 const openNotesBeforeScript = (n: number) => `${'<Note>\n\nText\n\n'.repeat(n)}<script>x`;
 /** `n` closed components, then a comment that runs to the end of the page. */
 const closedNotesBeforeComment = (n: number) => `${'<Note>\n\nText\n\n</Note>\n\n'.repeat(n)}<!-- x`;
+/** `n` Notes nested in one another, each holding a fence the reader reads at four
+ *  columns (the #622 review's shape): each is kept whole without walking the Notes
+ *  around it again. */
+const nestedIndentedFences = (n: number) => '<Note>\n\n    ```js\n    x\n    ```\n\n'.repeat(n) + '</Note>\n\n'.repeat(n);
+/** `n` escaped script tags, which are text and start no raw text. */
+const escapedScripts = (n: number) => '\\<script>'.repeat(n);
+/** `n` Cards whose opening tag has text left over after a quoted value. */
+const leftoverTitles = (n: number) => '<Card title="a \\"b\\" c">\n\nx\n\n</Card>\n\n'.repeat(n);
 
 describe.runIf(growthTestsEnabled)('pages that end in an unclosed block, growth', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
@@ -161,6 +169,22 @@ describe.runIf(growthTestsEnabled)('pages that end in an unclosed block, growth'
 
   it('prepares a page of closed components before an unclosed comment in one pass', () => {
     const [small, large] = growthMs(parse, closedNotesBeforeComment(250), closedNotesBeforeComment(1000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  // Each unread fence used to walk all the Notes around it: 14x for 4x the page.
+  it('prepares nested components each holding an indented fence in one pass', () => {
+    const [small, large] = growthMs(parse, nestedIndentedFences(2000), nestedIndentedFences(8000), { budgetMs: 60_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  it('prepares a page of escaped script tags in one pass', () => {
+    const [small, large] = growthMs(parse, escapedScripts(1000), escapedScripts(4000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  it('prepares a page of components with text left over in their opening tags in one pass', () => {
+    const [small, large] = growthMs(parse, leftoverTitles(250), leftoverTitles(1000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 });

@@ -367,39 +367,57 @@ function innermostContainers(containers: Container[], spans: readonly Span[]): n
  * whole: the editor would otherwise rewrite it in its own HTML. Inside a supported
  * component, raw HTML stays a child when it is inline or sits in the component's
  * usual block layout; otherwise (an indented block, or read as indented code) the
- * nearest component that does is kept whole. Returns null for code outside any component.
+ * nearest component that does is kept whole. A component that holds only certain
+ * children (`<Steps>` holds `<Step>`s) has no room for an opaque block, which the
+ * editor wrapped in a new child (#603), so the range widens past it too. Returns
+ * null for code outside any component.
  */
 function rawHtmlRange(
   layout: MarkdownLayout,
   raw: Span,
   inCode: boolean,
   containers: Container[],
+  widening: Widening,
   innermost: number,
 ): (Span & { name: string }) | null {
-  let current: Span & { name: string } = { ...raw, name: '' };
-  let around = innermost;
-  let code = inCode;
-  for (;;) {
-    let outerHtml = -1;
-    for (let index = around; index >= 0; index = containers[index]?.parent ?? -1) if (containers[index]?.html) outerHtml = index;
-    const html = containers[outerHtml];
-    if (html) {
-      current = html;
-      around = html.parent;
-      code = false;
-      continue;
-    }
-    const component = containers[around];
-    // A component that holds only certain children (`<Steps>` holds `<Step>`s) has
-    // no room for an opaque block: the editor wrapped it in a new child (#603).
-    const room = !component || !SUPPORTED_MDX_COMPONENTS[component.name.toLowerCase()]?.childrenOnly;
-    if (!code && room && (!isBlockRange(layout, current) || isolated(layout, current))) break;
-    if (!component) break;
-    current = component;
-    around = component.parent;
-    code = false;
+  const html = widening.outerHtml[innermost] ?? -1;
+  if (html >= 0) return containers[widening.target[html] ?? html] ?? null;
+  const component = containers[innermost];
+  if (!inCode && hasRoom(component) && (!isBlockRange(layout, raw) || isolated(layout, raw))) return { ...raw, name: '' };
+  if (!component) return inCode ? null : { ...raw, name: '' };
+  return containers[widening.target[innermost] ?? innermost] ?? null;
+}
+
+const hasRoom = (container: Container | undefined): boolean => !container || !SUPPORTED_MDX_COMPONENTS[container.name.toLowerCase()]?.childrenOnly;
+
+/** For each container: the outermost structured HTML element at or around it
+ *  (or -1), and the container an opaque range kept at it widens to. */
+interface Widening {
+  outerHtml: Int32Array;
+  target: Int32Array;
+}
+
+/**
+ * The widening `rawHtmlRange` applies, worked out once per container in one
+ * forward pass (a parent comes before its children). Inside a structured HTML
+ * element the outermost such element is kept; otherwise a container stays when it
+ * sits in its parent's usual block layout and its parent has room for it, and
+ * widens to its parent's target when not. Walking each candidate's ancestors
+ * instead made a page of nested components, each holding an unread fence,
+ * quadratic.
+ */
+function wideningTargets(layout: MarkdownLayout, containers: Container[]): Widening {
+  const outerHtml = new Int32Array(containers.length).fill(-1);
+  const target = new Int32Array(containers.length);
+  for (const [index, container] of containers.entries()) {
+    const parent = container.parent;
+    const aboveHtml = parent >= 0 ? (outerHtml[parent] ?? -1) : -1;
+    outerHtml[index] = aboveHtml >= 0 ? aboveHtml : container.html ? index : -1;
+    if (aboveHtml >= 0) target[index] = target[aboveHtml] ?? aboveHtml;
+    else if (parent < 0 || (hasRoom(containers[parent]) && (!isBlockRange(layout, container) || isolated(layout, container)))) target[index] = index;
+    else target[index] = target[parent] ?? parent;
   }
-  return code ? null : current;
+  return { outerHtml, target };
 }
 
 interface TagToken {
@@ -643,6 +661,14 @@ function expressionEnds(source: string): (start: number) => number | null {
   };
 }
 
+/** Whether the character at `at` is backslash-escaped in Markdown: an odd run of
+ *  backslashes before it (`\\<` is an escaped backslash, then a real `<`). */
+function escapedAt(source: string, at: number): boolean {
+  let start = at;
+  while (start > 0 && source[start - 1] === '\\') start--;
+  return (at - start) % 2 === 1;
+}
+
 const JSX_NAME = /[A-Z][A-Za-z0-9_.:-]*/y;
 // Lowercase HTML names, custom elements (`my-widget`) included.
 const HTML_NAME = /[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*/y;
@@ -748,8 +774,9 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     const token: TagToken = { start: i, end: cursor + 1, name, raw, closing, selfClosing, html: isHtml };
     tokens.push(token);
     i = cursor;
-    // In indented code a `<script>` is code, so its text runs nowhere.
-    if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name) && indented?.[token.start] !== 1) {
+    // In indented code a `<script>` is code, and after an odd run of backslashes
+    // (`\<title>`) its `<` is an escaped, literal character: neither starts raw text.
+    if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name) && indented?.[token.start] !== 1 && !escapedAt(source, token.start)) {
       // A script's or style's content is text up to its closing tag.
       // A search that found no closer means none after any later tag either.
       lower ??= source.toLowerCase();
@@ -788,13 +815,41 @@ function tagPairs(tokens: TagToken[]): Map<number, number> {
   return pairs;
 }
 
+/** An attribute name and `=` (`id=`), which may follow a quoted value straight away. */
+const ATTRIBUTE_START = /^[A-Za-z_:][\w.:-]*=/;
+
+/**
+ * Whether an opening tag has text straight after a quoted value that is neither
+ * whitespace, `/`, `>` nor another `name=`. JSX strings have no escapes, so in
+ * `title="a \"b\" c"` the value ends at the second quote and `b\" c"` is left
+ * over: the editor can't model that, and rewriting the value after an edit kept
+ * the leftover (`title="Edited"b\" c"`).
+ */
+function malformedOpener(token: TagToken): boolean {
+  const { raw } = token;
+  for (const attribute of parseAttributes(raw, token.name)) {
+    if (typeof attribute.value !== 'string') continue;
+    const written = raw.slice(attribute.start, attribute.end);
+    const afterEquals = written.slice(written.indexOf('=') + 1).trimStart();
+    if (afterEquals[0] !== '"' && afterEquals[0] !== "'") continue;
+    const next = raw[attribute.end] ?? '';
+    if (next === '' || next === '/' || next === '>' || /\s/.test(next) || ATTRIBUTE_START.test(raw.slice(attribute.end, attribute.end + 256)))
+      continue;
+    return true;
+  }
+  return false;
+}
+
 function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
   const ranges: SourceRange[] = [];
   let coveredUntil = -1;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (!token || token.start < coveredUntil) continue;
-    if (token.html ? !token.rawHtml : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
+    const handled = token.html ? !token.rawHtml : SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name);
+    // A component whose opening tag the editor can't model is kept whole, with no
+    // field to edit, so an edit can't leave a broken attribute behind.
+    if (handled && !(!token.closing && isComponentTag(token) && malformedOpener(token))) continue;
     const closeIndex = token.closing ? undefined : pairs.get(i);
     const close = closeIndex == null ? undefined : tokens[closeIndex];
     const end = close?.end ?? (token.runsToEnd ? source.length : token.end);
@@ -925,10 +980,15 @@ function keepRawHtml(
     ...extra.filter((span) => !covered(span.start, span.end)),
   ].sort((a, b) => a.start - b.start);
   const innermost = innermostContainers(containers, candidates);
+  const widening = wideningTargets(layout, containers);
   const kept = [...opaque];
+  // Many candidates can widen to the same container: it is kept once.
+  const keptContainers = new Set<Span>();
   for (const [index, candidate] of candidates.entries()) {
-    const range = rawHtmlRange(layout, candidate, candidate.inCode, containers, innermost[index] ?? -1);
-    if (range) kept.push(sourceRange(source, layout, range, range.name || candidate.name));
+    const range = rawHtmlRange(layout, candidate, candidate.inCode, containers, widening, innermost[index] ?? -1);
+    if (!range || keptContainers.has(range)) continue;
+    if (range.name) keptContainers.add(range);
+    kept.push(sourceRange(source, layout, range, range.name || candidate.name));
   }
   return outermostRanges(kept);
 }
@@ -1007,6 +1067,8 @@ function videoEmbedPlaceholder(range: SourceRange, frame: { open: TagToken; clos
   let frameClose = range.source.length;
   let caption = '';
   if (frame) {
+    // A Frame opener the editor can't model has no caption field to edit.
+    if (malformedOpener(frame.open)) return null;
     const value = attributeValue(parseAttributes(frame.open.raw, frame.open.name), 'caption');
     if (typeof value === 'string' && value.startsWith('{')) return null;
     caption = typeof value === 'string' ? value : '';
