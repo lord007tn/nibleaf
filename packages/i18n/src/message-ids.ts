@@ -4892,6 +4892,8 @@ export const MESSAGE_IDS = {
   'overview.activity.viewAll': 'overview_activity_viewall',
   'publishes.tooLarge': 'publishes_toolarge',
   'publishes.noSnapshot': 'publishes_nosnapshot',
+  'newSite.reason.name': 'newsite_reason_name',
+  'nav.main': 'nav_main',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;
