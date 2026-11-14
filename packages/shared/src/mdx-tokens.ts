@@ -1,4 +1,4 @@
-import { closesMarkdownFence, markdownLineKinds, openingMarkdownFence } from './markdown-code';
+import { markdownExportLineKinds } from './markdown-code';
 
 /**
  * One tokenizer for authored MDX, shared by every public projection (#341).
@@ -308,10 +308,7 @@ export const tokenizeMdx = (source: string, components: ReadonlySet<string>): Md
   scanBudget = 64 * source.length + 65_536;
   const tokens: MdxToken[] = [];
   const lines = source.split('\n');
-  const htmlContent: string[] = [];
-  const kinds = markdownLineKinds(lines, (index, content) => {
-    htmlContent[index] = content;
-  });
+  const kinds = markdownExportLineKinds(lines);
   let prose: string[] = [];
   let proseHtml: boolean[] = [];
   const flushProse = (beforeFence: boolean) => {
@@ -322,19 +319,14 @@ export const tokenizeMdx = (source: string, components: ReadonlySet<string>): Md
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] as string;
     const html = kinds[index] === 'html';
-    const literalFence = html ? openingMarkdownFence(htmlContent[index] as string, Number.POSITIVE_INFINITY) : undefined;
-    if (kinds[index] !== 'code' && !literalFence) {
+    if (kinds[index] !== 'code') {
       prose.push(line);
       proseHtml.push(html);
       continue;
     }
     flushProse(true);
     let end = index + 1;
-    if (literalFence) {
-      while (end < lines.length && kinds[end] === 'html' && !closesMarkdownFence(htmlContent[end] as string, literalFence, Number.POSITIVE_INFINITY))
-        end += 1;
-      if (kinds[end] === 'html') end += 1;
-    } else while (end < lines.length && kinds[end] === 'code') end += 1;
+    while (end < lines.length && kinds[end] === 'code') end += 1;
     tokens.push({ kind: 'code', value: lines.slice(index, end).join('\n'), block: true });
     index = end - 1;
     // The line break after the fence belongs to the prose that follows.

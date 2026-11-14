@@ -9,6 +9,14 @@ import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growt
 // (a large call takes 3 to 10 ms) and samples last at least 20 ms, so each
 // spans several scheduler slices on a busy runner rather than one.
 describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () => {
+  it('continues HTML-origin examples across block ends in linear time (n vs 4n)', () => {
+    const block = '<div>\n~~~\n\n{VISIBLE}\nimport KEPT from "pkg"\n<Note>Literal</Note>\n~~~\n</div>\n\n';
+    expect(md(block)).toContain('{VISIBLE}\nimport KEPT from "pkg"\n<Note>Literal</Note>');
+    const [small, large] = growthMs((source: string) => [md(source), portable(source)], block.repeat(2000), block.repeat(8000));
+    console.info(`HTML boundary growth: 2,000 vs 8,000 blocks, ${small.toFixed(1)} vs ${large.toFixed(1)} ms`);
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it('preserves HTML examples in linear time (n vs 4n)', () => {
     const block = '<div>\n~~~\n{VISIBLE}\n<Note>Literal</Note>\n~~~\n</div>\n\n';
     expect(md(block)).toContain('{VISIBLE}\n<Note>Literal</Note>');

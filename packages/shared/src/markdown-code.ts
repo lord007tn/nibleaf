@@ -293,14 +293,15 @@ const interruptsParagraph = (content: string): boolean => {
  * or HTML block's container). Shared by the reader's MDX normalizer, heading
  * extraction and search sections, so all three agree on what is code.
  */
-const scanMarkdownLines = (lines: readonly string[], onHtmlLine?: (index: number, content: string) => void): MarkdownLineKind[] => {
+const scanMarkdownLines = (lines: readonly string[], literalHtmlFences = false): MarkdownLineKind[] => {
   let fence: MarkdownFence | undefined;
+  let htmlFence = false;
   let html: HtmlBlockEnd | undefined;
   const stack: ContainerStack = { items: [], quotes: [] };
   let paragraph = false;
   let components = 0;
   let pendingOpener = false;
-  const read = (line: string, continued: Continuation, index: number): MarkdownLineKind => {
+  const read = (line: string, continued: Continuation): MarkdownLineKind => {
     if (continued.blank) {
       closeContainers(stack, continued.matched);
       paragraph = false;
@@ -337,7 +338,6 @@ const scanMarkdownLines = (lines: readonly string[], onHtmlLine?: (index: number
         const end = block[1];
         html = end === 'blank' || !end(text) ? end : undefined;
         paragraph = false;
-        onHtmlLine?.(index, content);
         return 'html';
       }
     }
@@ -360,10 +360,21 @@ const scanMarkdownLines = (lines: readonly string[], onHtmlLine?: (index: number
     }
     return 'prose';
   };
-  return lines.map((line, index) => {
+  return lines.map((line) => {
     const continued = continuation(line, stack);
     const inside = continued.matched === stack.items.length;
     if (fence) {
+      if (htmlFence) {
+        const content = contentAt(line, continued.cursor);
+        // The HTML block may end before its literal example does. Track its
+        // end, but never interpret the example's expressions, ESM or tags.
+        if (html && (!inside || (continued.blank && html === 'blank') || (html !== 'blank' && html(content)))) html = undefined;
+        if (closesMarkdownFence(content, fence, Number.POSITIVE_INFINITY)) {
+          fence = undefined;
+          htmlFence = false;
+        }
+        return 'code';
+      }
       if (inside) {
         if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, Number.POSITIVE_INFINITY)) fence = undefined;
         return 'code';
@@ -377,13 +388,21 @@ const scanMarkdownLines = (lines: readonly string[], onHtmlLine?: (index: number
         // does not end a `<!DOCTYPE` block.
         const content = contentAt(line, continued.cursor);
         if (html !== 'blank' && html(content)) html = undefined;
-        onHtmlLine?.(index, content);
+        if (literalHtmlFences) {
+          const opening = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
+          if (opening) {
+            fence = opening;
+            htmlFence = true;
+            paragraph = false;
+            return 'code';
+          }
+        }
         return 'html';
       }
       // A blank line, or a line that leaves a container, ends the HTML block.
       html = undefined;
     }
-    return read(line, continued, index);
+    return read(line, continued);
   });
 };
 
@@ -392,11 +411,14 @@ const scanMarkdownLines = (lines: readonly string[], onHtmlLine?: (index: number
 export type MarkdownLineKind = 'prose' | 'code' | 'html';
 
 /** Each line's kind, from the same single pass as `fencedMarkdownLines`: heading
- * extraction skips both code and HTML-block lines, as the reader renders them.
- * Exports may also read HTML content after its container prefixes, without
- * duplicating the quote/list rules or changing the reader's classification. */
-export const markdownLineKinds = (lines: readonly string[], onHtmlLine?: (index: number, content: string) => void): MarkdownLineKind[] =>
-  scanMarkdownLines(lines, onHtmlLine);
+ * extraction skips both code and HTML-block lines, as the reader renders them. */
+export const markdownLineKinds = (lines: readonly string[]): MarkdownLineKind[] => scanMarkdownLines(lines);
+
+/** Export preserves an example opened inside HTML through its matching closer
+ * or EOF, even when a blank, tag or container exit ends the surrounding HTML.
+ * The shared pass consumes that closer once, so it cannot reopen a false fence
+ * over the following prose. All other fences use the reader's rules. */
+export const markdownExportLineKinds = (lines: readonly string[]): MarkdownLineKind[] => scanMarkdownLines(lines, true);
 
 /** Whether each line belongs to fenced code (see `scanMarkdownLines`). */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => scanMarkdownLines(lines).map((kind) => kind === 'code');
