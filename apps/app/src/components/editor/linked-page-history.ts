@@ -6,6 +6,9 @@ declare module '@tanstack/react-router' {
   interface HistoryState {
     /** The page editor's scroll position when this history entry was left for a linked page. */
     editorScroll?: number;
+    /** This entry only rewrote the address of the page on screen (a publish check's Fix
+     *  dropping its parameters): the page stays where the writer is. */
+    editorKeepScroll?: boolean;
   }
 }
 
@@ -56,6 +59,7 @@ export function useLinkedPageHistory({
   const entry = location.state.__TSR_key ?? location.href;
   const named = (location.search as { page?: string }).page;
   const saved = location.state.editorScroll;
+  const keep = location.state.editorKeepScroll === true;
   const section = sectionFragment(location.hash);
   const positions = useRef(new Map<string, number>());
   const entryRef = useRef(entry);
@@ -100,6 +104,7 @@ export function useLinkedPageHistory({
     restored.current = entry;
     const samePage = shown.current === pageId;
     shown.current = pageId;
+    if (keep && samePage) return;
     const left = positions.current.get(entry) ?? saved;
     let frames = 0;
     let frame = 0;
@@ -118,7 +123,7 @@ export function useLinkedPageHistory({
     };
     apply();
     return () => cancelAnimationFrame(frame);
-  }, [entry, named, pageId, saved, section, startLanding]);
+  }, [entry, keep, named, pageId, saved, section, startLanding]);
 
   const open = useCallback(
     async (id: string, target?: string) => {

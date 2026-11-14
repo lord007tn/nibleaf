@@ -52,6 +52,51 @@
 .pl-editor .ProseMirror .pl-comment-active {
   background: rgba(250, 204, 21, 0.45);
 }
+/* A publish check's Fix (publish-fix-bar.tsx): every place found, the current one
+   outlined and flashed once. Reduced motion keeps the outline without the flash. */
+.pl-editor .ProseMirror .pl-fix-match {
+  background: rgba(245, 158, 11, 0.16);
+  box-shadow: inset 0 -2px 0 rgba(245, 158, 11, 0.6);
+  border-radius: 2px;
+}
+.pl-editor .ProseMirror .pl-fix-current {
+  outline: 2px solid rgba(217, 119, 6, 0.9);
+  outline-offset: 2px;
+  animation: pl-fix-flash 1.4s ease-out 1;
+}
+@keyframes pl-fix-flash {
+  0%,
+  35% {
+    background: rgba(245, 158, 11, 0.5);
+  }
+  100% {
+    background: rgba(245, 158, 11, 0.16);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pl-editor .ProseMirror .pl-fix-current {
+    animation: none;
+  }
+}
+/* A link into the site that leads to no page (extensions/broken-link-flags.ts). */
+.pl-editor .ProseMirror a:has(> .pl-broken-link) {
+  text-decoration: none;
+}
+.pl-editor .ProseMirror .pl-broken-link {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--destructive);
+  text-underline-offset: 3px;
+}
+@media (forced-colors: active) {
+  .pl-editor .ProseMirror .pl-fix-current {
+    outline-color: Highlight;
+  }
+  .pl-editor .ProseMirror .pl-broken-link {
+    text-decoration-color: LinkText;
+  }
+}
 .pl-editor.is-comment-mode .ProseMirror {
   cursor: text;
   caret-color: transparent;
