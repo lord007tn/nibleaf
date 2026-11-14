@@ -10,7 +10,7 @@
  */
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
-import { parseSiteLanguagePath } from './site-language';
+import { type PathLanguage, parseSiteLanguagePath } from './site-language';
 import { sitePathLanguages } from './site-language-policy';
 import { resolveSiteRoute } from './site-route';
 
@@ -93,13 +93,13 @@ interface Reached {
  *  language-prefix redirects (bounded like redirect chains). A redirect is a
  *  Location, so as in a browser a destination's fragment replaces the one the
  *  link carried, and a destination without one keeps it. */
-const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined): Reached => {
+const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined, languages: readonly PathLanguage[]): Reached => {
   let path = startPath;
   let lang = startLang;
   let fragment: string | undefined;
   for (let hop = 0; hop <= MAX_REDIRECT_CHAIN_LENGTH; hop++) {
     if (RESERVED_ROUTES.has(path)) return { destination: true, fragment };
-    const route = resolveSiteRoute(snapshot, path, { lang });
+    const route = resolveSiteRoute(snapshot, path, { lang, languages });
     if (route.kind === 'page') return { destination: route.page, fragment };
     if (route.kind === 'openapi') return { destination: true, fragment };
     if (route.kind === 'not-found') return { destination: false };
@@ -137,6 +137,7 @@ export const createLinkResolver = (snapshot: SiteSnapshot) => {
  * (`old-setup` → `guides/setup#install`). Raw, as written (not decoded).
  */
 export const createLinkTargetResolver = (snapshot: SiteSnapshot) => {
+  const languages = sitePathLanguages(snapshot).filter((item) => item.isDefault || item.enabled !== false);
   const defaultCode = publicLanguages(snapshot.project.languages).find((language) => language.isDefault)?.code;
   const versionById = new Map(snapshot.project.versions.map((version) => [version.id, version]));
   // A site's shared navigation links repeat across many bodies. Normalize in
@@ -157,9 +158,7 @@ export const createLinkTargetResolver = (snapshot: SiteSnapshot) => {
     const params = new URLSearchParams(query);
     const legacyLanguage = snapshot.project.languages.some((item) => item.code === params.get('lang'));
     const parsed =
-      siteAbsolute && !legacyLanguage
-        ? parseSiteLanguagePath(pathname, sitePathLanguages(snapshot))
-        : { path: pathname.replace(/^\/+/, ''), language: undefined };
+      siteAbsolute && !legacyLanguage ? parseSiteLanguagePath(pathname, languages) : { path: pathname.replace(/^\/+/, ''), language: undefined };
     const documentPath = absolute ? parsed.path : pathname;
     const versionPrefix = !siteAbsolute && version && !version.isDefault ? [version.slug] : [];
     const base = absolute ? versionPrefix : [...versionPrefix, ...page.path.split('/').filter(Boolean).slice(0, -1)];
@@ -175,7 +174,7 @@ export const createLinkTargetResolver = (snapshot: SiteSnapshot) => {
     const key = JSON.stringify([path, lang]);
     const cached = destinations.get(key);
     if (cached !== undefined) return withFragment(cached);
-    const reached = reaches(snapshot, path, lang);
+    const reached = reaches(snapshot, path, lang, languages);
     destinations.set(key, reached);
     return withFragment(reached);
   };

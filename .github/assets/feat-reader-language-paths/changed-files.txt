@@ -15,8 +15,12 @@
 .github/assets/feat-reader-language-paths/headers.txt
 .github/assets/feat-reader-language-paths/navigation.webm
 CHANGELOG.md
+apps/app/src/components/ai-conversations/transcript.test.tsx
+apps/app/src/components/ai-conversations/transcript.tsx
 apps/app/src/components/markdown.test.ts
 apps/app/src/components/markdown.tsx
+apps/app/src/components/project/deploy-pipeline.test.ts
+apps/app/src/components/project/deploy-pipeline.tsx
 apps/app/src/components/site/ai-chat/message.test.tsx
 apps/app/src/components/site/ai-chat/message.tsx
 apps/app/src/components/site/ai-chat/panel.test.tsx
@@ -43,6 +47,8 @@ apps/app/src/lib/site-redirects.ts
 apps/app/src/lib/site-seo.client.test.ts
 apps/app/src/lib/site-seo.test.ts
 apps/app/src/lib/site-seo.ts
+apps/app/src/routes/-git-preview.test.tsx
+apps/app/src/routes/git-preview.$token.tsx
 apps/app/src/routes/sites/$projectId/$.tsx
 apps/app/src/routes/sites/$projectId/-reader-language.test.tsx
 apps/app/src/routes/sites/$projectId/-reader-theme.test.tsx
@@ -50,6 +56,7 @@ apps/app/src/routes/sites/$projectId/-route-errors.test.ts
 apps/app/src/routes/sites/$projectId/changelog.tsx
 apps/app/src/routes/sites/$projectId/index.tsx
 apps/app/src/routes/sites/$projectId/route.tsx
+apps/app/src/server-burst.test.ts
 apps/app/src/server.test.ts
 apps/app/src/server.ts
 apps/server/src/actions/sites.test.ts

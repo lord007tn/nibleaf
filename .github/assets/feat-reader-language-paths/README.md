@@ -40,6 +40,8 @@ redirect cache isolation. The updated runner adds collision and unknown-query
 screenshots. A fresh browser rerun was deferred: the shared lock was owned by
 another builder and later RAM checks were below the 5 GB capture gate. The
 existing screenshots do not claim runtime coverage of those added cases.
+A later server-launch attempt after RAM recovered was rejected by automatic
+approval review (`blocked by policy`); it started no servers.
 
 Reproduce under the required shared dev-stack lock and resource gate:
 

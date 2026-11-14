@@ -282,15 +282,20 @@ const storedRedirects = (snapshot: SiteSnapshot): RedirectPair[] => {
 };
 
 /**
- * What the reader serves for `path` (relative to the site, any version prefix
- * included) with `?lang=` set to `lang`, in the page route's order.
+ * Resolve a public prefix URL, or the full old path when a known `lang` query
+ * is supplied. Batch link scans may reuse their derived language metadata.
  */
-export function resolveSiteRoute(snapshot: SiteSnapshot, path: string, options: { lang?: string } = {}): SiteRoute {
+export function resolveSiteRoute(
+  snapshot: SiteSnapshot,
+  path: string,
+  options: { lang?: string; languages?: readonly PathLanguage[] } = {},
+): SiteRoute {
   if (sitePathTooLong(path)) {
     return { kind: 'not-found', reason: 'path-too-long' };
   }
-  const legacyLanguage = publicLanguages(snapshot.project.languages).some((language) => language.code === options.lang);
-  const parsed = legacyLanguage ? { path: trimSlashes(path), language: undefined } : parseSiteLanguagePath(path, sitePathLanguages(snapshot));
+  const languages = options.languages ?? sitePathLanguages(snapshot).filter((item) => item.isDefault || item.enabled !== false);
+  const legacyLanguage = languages.some((language) => language.code === options.lang);
+  const parsed = legacyLanguage ? { path: trimSlashes(path), language: undefined } : parseSiteLanguagePath(path, languages);
   const splat = trimSlashes(parsed.path);
   const lang = parsed.language?.code ?? options.lang;
   // The page route passes the first segment as the version; the lookup only
@@ -326,7 +331,7 @@ export function resolveSiteRoute(snapshot: SiteSnapshot, path: string, options: 
         lang: lang === defaultLanguage(snapshot.project).code ? undefined : lang,
         customDomain: true,
         defaultLanguage: defaultLanguage(snapshot.project).code,
-        languages: sitePathLanguages(snapshot),
+        languages,
       });
       return { kind: 'redirect', to, reason: 'configured' };
     } catch {
@@ -335,7 +340,7 @@ export function resolveSiteRoute(snapshot: SiteSnapshot, path: string, options: 
   }
   // Main also accepted guessed language prefixes after every real resource
   // missed. Keep those aliases, without letting them steal an existing path.
-  const alias = parseSiteLanguageAlias(splat, snapshot.project.languages);
-  if (alias.language) return resolveSiteRoute(snapshot, alias.path, { lang: alias.language.code });
+  const alias = parseSiteLanguageAlias(splat, languages);
+  if (alias.language) return resolveSiteRoute(snapshot, alias.path, { lang: alias.language.code, languages });
   return { kind: 'not-found' };
 }

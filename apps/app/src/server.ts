@@ -750,6 +750,19 @@ function withoutClientSiteOrigin(request: Request): Request {
 const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) => {
   const request = withoutClientSiteOrigin(incoming);
   const url = new URL(request.url);
+  const requestHasCredentials = request.headers.has('cookie') || request.headers.has('authorization');
+  // Reuse metadata inside this request only. Credentials never cross requests;
+  // a fresh access recheck also replaces this request's earlier public answer.
+  const metadata = new Map<string, Promise<SiteMeta | null>>();
+  const requestSiteMeta = (projectId: string, fresh = false) => {
+    if (fresh) metadata.delete(projectId);
+    let pending = metadata.get(projectId);
+    if (!pending) {
+      pending = resolveSiteMeta(projectId, fresh);
+      metadata.set(projectId, pending);
+    }
+    return pending;
+  };
   const host = effectiveRequestHost(request, url);
   const bare = host.split(':')[0] ?? '';
   const isCustomDomain = Boolean(host) && !ownHosts.has(host) && !ownHosts.has(bare);
@@ -800,7 +813,7 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
         const routedPath = siteMatch[2] || '/';
         const publicPath = decodePublishedPathname(routedPath);
         const requestOrigin = documentRequest.headers.get('x-nibleaf-site-origin');
-        const meta = await resolveSiteMeta(projectId);
+        const meta = await requestSiteMeta(projectId);
         const base = meta?.primaryDomain
           ? `https://${meta.primaryDomain}`
           : requestOrigin
@@ -823,7 +836,7 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
       // the HTML never waits on a second, full Markdown render just to decide
       // this header.
       if (!rendered.markdownAlternate) return rendered.response;
-      const meta = await resolveSiteMeta(siteMatch[1]);
+      const meta = await requestSiteMeta(siteMatch[1]);
       if (!meta || meta.isPrivate) return rendered.response;
       const requestOrigin = documentRequest.headers.get('x-nibleaf-site-origin');
       const base = meta.primaryDomain
@@ -879,7 +892,7 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
       const match = /^\/sites\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
       const projectId = isCustomDomain && !isAppOwnedPath(url.pathname) ? await resolveHost(bare) : match?.[1];
       if (projectId && (isDocumentPath(url.pathname) || url.pathname.endsWith('/changelog/rss.xml'))) {
-        let meta = await resolveSiteMeta(projectId);
+        let meta = await requestSiteMeta(projectId);
         const path = isCustomDomain ? url.pathname.slice(1) : (match?.[2] ?? '');
         let target = legacySiteLanguageTarget({
           path,
@@ -889,8 +902,8 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
         });
         // Never authorize a permanent redirect from shared/stale public metadata.
         // A site may have become private since the anonymous metadata was cached.
-        if (target && !request.headers.has('cookie') && !request.headers.has('authorization')) {
-          meta = await resolveSiteMeta(projectId, true);
+        if (target && !requestHasCredentials) {
+          meta = await requestSiteMeta(projectId, true);
           target = legacySiteLanguageTarget({
             path,
             languages: meta?.languages ?? [],
@@ -898,7 +911,7 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
             search: url.search,
           });
         }
-        if (meta?.isPrivate && !request.headers.has('cookie') && !request.headers.has('authorization')) target = null;
+        if (meta?.isPrivate && !requestHasCredentials) target = null;
         if (target) {
           const migrated = new URL(target, url.origin);
           const location = markdownAliasCanonical ? `${markdownAliasPath(migrated.pathname)}${migrated.search}` : target;
@@ -950,11 +963,11 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
         // Never consolidate the machine files (robots/sitemap/llms) — they were
         // handled above; a transient proxy failure must not turn into a 301.
         if (siteMatch?.[1] && !APP_SEO_FILE.test(url.pathname)) {
-          const meta = await resolveSiteMeta(siteMatch[1]);
+          const meta = await requestSiteMeta(siteMatch[1]);
           // Consolidate SEO equity: when a verified primary custom domain exists,
           // 301 the internal /sites/:id URL onto it. Loop-safe: on the primary
           // domain itself the request is a custom-domain request, not this branch.
-          if (meta?.primaryDomain && meta.primaryDomain !== bare) {
+          if (meta?.primaryDomain && (!meta.isPrivate || requestHasCredentials) && meta.primaryDomain !== bare) {
             return Response.redirect(`https://${meta.primaryDomain}${siteMatch[2] || '/'}${url.search}`, 301);
           }
           // `/sites/<slug>`: the site's name in the address rather than its id
@@ -1005,11 +1018,17 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
     if (!isAppOwnedPath(url.pathname)) {
       const projectId = await resolveHost(bare);
       if (projectId) {
-        const meta = await resolveSiteMeta(projectId);
+        const meta = await requestSiteMeta(projectId);
         // A secondary (non-primary) custom domain 301s onto the primary. Only
         // redirect when the hosts actually differ — never from the primary
         // itself, and never for the machine files handled above.
-        if (request.method === 'GET' && meta?.primaryDomain && meta.primaryDomain !== bare && !DOMAIN_SEO_FILE.test(url.pathname)) {
+        if (
+          request.method === 'GET' &&
+          meta?.primaryDomain &&
+          (!meta.isPrivate || requestHasCredentials) &&
+          meta.primaryDomain !== bare &&
+          !DOMAIN_SEO_FILE.test(url.pathname)
+        ) {
           return Response.redirect(`https://${meta.primaryDomain}${url.pathname}${url.search}`, 301);
         }
         url.pathname = `/sites/${projectId}${url.pathname === '/' ? '' : url.pathname}`;

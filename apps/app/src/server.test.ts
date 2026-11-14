@@ -658,6 +658,19 @@ describe('language redirects isolate private and credential-dependent requests',
     expect(response.status).toBe(404);
     expect(response.headers.get('location')).toBeNull();
   });
+  it.each(['http://localhost:4310/sites/private-primary-014', 'https://private-primary-014.example'])(
+    'does not reveal an anonymous private primary domain on %s',
+    async (base) => {
+      mocks.got.mockImplementation(async (target: string) =>
+        target.includes('/domains/resolve?')
+          ? upstream({ data: { projectId: 'private-primary-014' } })
+          : upstream({ data: { ...privateShell.data, project: { ...privateShell.data.project, primaryDomain: 'hidden-primary.example' } } }),
+      );
+      const response = await server.fetch(new Request(`${base}/guide?lang=ar`));
+      expect(response.status).toBe(404);
+      expect(response.headers.get('location')).toBeNull();
+    },
+  );
   it('isolates redirects on public sites when the request carries credentials', async () => {
     mocks.got.mockResolvedValue(upstream({ data: { ...privateShell.data, project: { config: { visibility: 'public' }, primaryDomain: null } } }));
     const response = await server.fetch(

@@ -266,3 +266,14 @@ it('retains main regional-language aliases only after existing default content m
     page: { id: 'regional-guide' },
   });
 });
+
+it('does not turn a disabled language prefix into a default-language page alias', () => {
+  const snapshot: SiteSnapshot = {
+    ...site,
+    project: {
+      ...site.project,
+      languages: [...site.project.languages, { code: 'fr', label: 'French', direction: 'LTR', isDefault: false, config: null, enabled: false }],
+    },
+  };
+  expect(resolveSiteRoute(snapshot, 'fr/guide')).toEqual({ kind: 'not-found' });
+});

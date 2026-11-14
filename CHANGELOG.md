@@ -20,6 +20,9 @@ page paths and version slugs win when they collide with a language code. Only
 that language uses an escaped prefix, for example `/~lang/ar/guides/start`;
 if `~lang` is already used, append `~` until the marker is unused. The old
 query selects the entire original content/version path, so no segment is lost.
+Owner-side Copy link and saved-conversation links keep the compatibility query
+form when published path metadata is unavailable; the reader redirects them to
+the canonical path without guessing from draft content.
 
 ### Changed
 
