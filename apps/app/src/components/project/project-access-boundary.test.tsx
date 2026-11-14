@@ -17,6 +17,8 @@ const lostWebsite = vi.fn();
 vi.mock('@/hooks/api', () => ({
   useProject: () => query,
   useOrganizationOfProject: (organizationId?: string) => ({ organization: organizationId ? { slug: 'acme' } : undefined }),
+  // The not-found page sits in the account shell, which offers the way back.
+  useSwitcher: () => ({ data: undefined, isPending: false }),
 }));
 vi.mock('@/components/organization/use-access-loss', () => ({ useAccessLoss: () => ({ lostWebsite }) }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
@@ -79,7 +81,10 @@ describe('project access boundary', () => {
     expect(container.querySelector('textarea')).toBeNull();
     expect(container.textContent).toContain('notFound.title');
     expect(container.textContent).not.toContain('Private server detail');
-    expect(container.querySelector('a')?.getAttribute('href')).toBe('/app');
+    expect(container.querySelector('[data-testid="dashboard-problem"] a')?.getAttribute('href')).toBe('/app');
+    // P2-DASH-026: inside the app shell, with a main landmark and a header.
+    expect(container.querySelector('main [data-testid="dashboard-problem"]')).not.toBeNull();
+    expect(container.querySelector('header')).not.toBeNull();
   });
 
   it.each([403, 404])('names a website you lost access to while viewing (%i) and returns to its org', async (status) => {

@@ -17,6 +17,10 @@ export type SelectionMenuRequest = 'link' | 'toolbar';
 export const selectionMenuRequest = (transaction: Transaction): SelectionMenuRequest | undefined =>
   transaction.getMeta(SELECTION_MENU_META) as SelectionMenuRequest | undefined;
 
+/** Ask the selection menu to open its link field for the selected link, as Ctrl/⌘+K does. */
+export const requestLinkField = (transaction: Transaction): Transaction =>
+  transaction.setMeta(SELECTION_MENU_META, 'link' satisfies SelectionMenuRequest);
+
 /**
  * Whether the text selection menu applies: a text selection, or the caret inside
  * a link (where it acts as a link inspector). Never inside code blocks (they have

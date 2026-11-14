@@ -19,6 +19,7 @@
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
     "./page-moves": "./src/page-moves.ts",
+    "./page-content-facts": "./src/page-content-facts.ts",
     "./integrations": "./src/integrations.ts",
     "./join-links": "./src/join-links.ts",
     "./mcp": "./src/mcp.ts",

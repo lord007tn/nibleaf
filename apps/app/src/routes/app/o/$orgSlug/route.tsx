@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useEffect, useRef, useSyncExternalStore } from 'react';
-import { NotFound } from '@/components/not-found';
+import { DashboardProblem } from '@/components/app/dashboard-problem';
 import { OrganizationContext } from '@/components/organization/organization-context';
 import { isAccessLoss, useAccessLoss } from '@/components/organization/use-access-loss';
-import { QueryErrorState } from '@/components/query-error-state';
 import { useSwitcher } from '@/hooks/api';
 import { organizationBySlugQueryOptions, switcherQueryOptions } from '@/hooks/api/organization-query-options';
 import { useRecordVisitEffect } from '@/hooks/use-record-visit';
@@ -86,13 +85,10 @@ function OrganizationRoute() {
     if (lost && cachedName && pathname.startsWith(`/app/o/${orgSlug}`)) lostOrganization(cachedName);
   }, [lost, cachedName, lostOrganization, pathname, orgSlug]);
 
-  if (lost && !cachedName) return <NotFound />;
+  if (lost && !cachedName) return <DashboardProblem />;
+  // A failed load (not a 404) stays in the account shell too, with retry and a way back.
   if (organization.isError && !lost && !data) {
-    return (
-      <div className="grid min-h-screen place-items-center p-6">
-        <QueryErrorState onRetry={() => void organization.refetch()} retrying={organization.isFetching} />
-      </div>
-    );
+    return <DashboardProblem kind="error" retry={{ onRetry: () => void organization.refetch(), retrying: organization.isFetching }} />;
   }
   return (
     <OrganizationLayout orgSlug={orgSlug} organization={lost ? undefined : data}>

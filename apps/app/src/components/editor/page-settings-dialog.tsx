@@ -155,6 +155,7 @@ export function PageSettingsDialog({
   published = false,
   languages = [],
   pages = [],
+  initialField,
 }: {
   projectId: string;
   page: PageNode;
@@ -166,6 +167,8 @@ export function PageSettingsDialog({
   languages?: ReadonlyArray<{ id: string; label: string }>;
   /** Every page on the page's branch, to move its subtree along and append it in the target language. */
   pages?: readonly PageNode[];
+  /** The field to focus on opening (a publish check's Fix about the page's title or address). */
+  initialField?: 'title' | 'slug';
 }) {
   const t = useT();
   const update = useUpdatePage(projectId);
@@ -321,7 +324,11 @@ export function PageSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl" showCloseButton={false}>
+      <DialogContent
+        className="gap-0 overflow-hidden p-0 sm:max-w-3xl"
+        initialFocus={initialField ? () => fieldToFocus(initialField) : undefined}
+        showCloseButton={false}
+      >
         <DialogDescription className="sr-only">{t('editor.pageSettings.desc')}</DialogDescription>
         <div className="flex h-[min(620px,85dvh)] flex-col sm:flex-row">
           {/* Left settings sidebar */}
@@ -598,6 +605,15 @@ function hasMoreOptions(page: PageNode): boolean {
       config?.categoryIcon ||
       config?.categoryOrder !== undefined,
   );
+}
+
+/** The General field a Fix asked for, its text selected so typing replaces it. */
+function fieldToFocus(field: 'title' | 'slug'): HTMLElement | true {
+  const input = document.getElementById(field === 'slug' ? 'page-slug' : 'page-title');
+  if (!(input instanceof HTMLInputElement)) return true;
+  // Selected once it has focus, so the dialog's focus move keeps the selection.
+  requestAnimationFrame(() => input.select());
+  return input;
 }
 
 /** The page's address on the published site, as it will be after saving. */
