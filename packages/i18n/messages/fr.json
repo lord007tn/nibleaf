@@ -4684,7 +4684,7 @@
   "people_links_maxuseshint": "Laissez vide pour ne pas fixer de limite.",
   "people_links_unlimited": "Illimité",
   "people_links_domain": "Uniquement les adresses de (facultatif)",
-  "people_links_domainhint": "p. ex. example.com. Seules les adresses vérifiées de ce domaine peuvent rejoindre.",
+  "people_links_domainhint": "p. ex. example.com. Seules les adresses vérifiées de ce domaine peuvent rejoindre l’organisation.",
   "people_links_error_website": "Choisissez au moins un site.",
   "people_links_error_domain": "Saisissez un domaine comme example.com.",
   "people_links_error_maxuses": "Saisissez un nombre entier de 1 à 10 000.",
