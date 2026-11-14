@@ -58,6 +58,7 @@ import { BlockImage, LegacyImage } from './extensions/block-image';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CleanPaste } from './extensions/clean-paste';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
+import { FixHighlight } from './extensions/fix-highlight';
 import { ImageControls } from './extensions/image-controls';
 import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions/image-upload';
 import { InternalLinkClicks } from './extensions/internal-link-clicks';
@@ -383,6 +384,7 @@ export function buildEditorExtensions({
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
     SelectionShortcuts,
     InternalLinkClicks.configure({ getLinks }),
+    FixHighlight,
     SectionTarget,
   ];
 }
