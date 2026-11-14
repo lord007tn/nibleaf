@@ -1,0 +1,12 @@
+$ curl.exe -sSI "http://localhost:4310/sites/preview-language-collision/ar/guide?lang=ar&tab=cli"
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 14:48:41 GMT
+location: /sites/preview-language-collision/~lang/ar/ar/guide?tab=cli
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5

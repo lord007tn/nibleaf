@@ -10,6 +10,9 @@
  */
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
+import type { PathLanguage } from './site-language';
+import { sitePathLanguages } from './site-language-policy';
+import { parseSiteLanguagePath } from './site-language-prefix';
 import { resolveSiteRoute } from './site-route';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
@@ -91,13 +94,13 @@ interface Reached {
  *  language-prefix redirects (bounded like redirect chains). A redirect is a
  *  Location, so as in a browser a destination's fragment replaces the one the
  *  link carried, and a destination without one keeps it. */
-const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined): Reached => {
+const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | undefined, languages: readonly PathLanguage[]): Reached => {
   let path = startPath;
   let lang = startLang;
   let fragment: string | undefined;
   for (let hop = 0; hop <= MAX_REDIRECT_CHAIN_LENGTH; hop++) {
     if (RESERVED_ROUTES.has(path)) return { destination: true, fragment };
-    const route = resolveSiteRoute(snapshot, path, { lang });
+    const route = resolveSiteRoute(snapshot, path, { lang, languages });
     if (route.kind === 'page') return { destination: route.page, fragment };
     if (route.kind === 'openapi') return { destination: true, fragment };
     if (route.kind === 'not-found') return { destination: false };
@@ -121,7 +124,7 @@ const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | 
  * Rendering follows the reader (`resolveDocHref`): a root-relative link gets
  * the page's version prefix (non-default versions) and, unless it names one,
  * the page's language (non-default languages); a relative link resolves
- * against the page URL and carries only its own `?lang=`.
+ * against the page path and retains its language.
  */
 export const createLinkResolver = (snapshot: SiteSnapshot) => {
   const resolve = createLinkTargetResolver(snapshot);
@@ -135,6 +138,7 @@ export const createLinkResolver = (snapshot: SiteSnapshot) => {
  * (`old-setup` → `guides/setup#install`). Raw, as written (not decoded).
  */
 export const createLinkTargetResolver = (snapshot: SiteSnapshot) => {
+  const languages = sitePathLanguages(snapshot).filter((item) => item.isDefault || item.enabled !== false);
   const defaultCode = publicLanguages(snapshot.project.languages).find((language) => language.isDefault)?.code;
   const versionById = new Map(snapshot.project.versions.map((version) => [version.id, version]));
   // A site's shared navigation links repeat across many bodies. Normalize in
@@ -152,24 +156,26 @@ export const createLinkTargetResolver = (snapshot: SiteSnapshot) => {
     if (!pathname) return null;
     const absolute = pathname.startsWith('/');
     const version = versionById.get(page.versionId);
+    const params = new URLSearchParams(query);
+    const legacyLanguage = snapshot.project.languages.some((item) => item.code === params.get('lang'));
+    const parsed =
+      siteAbsolute && !legacyLanguage ? parseSiteLanguagePath(pathname, languages) : { path: pathname.replace(/^\/+/, ''), language: undefined };
+    const documentPath = absolute ? parsed.path : pathname;
     const versionPrefix = !siteAbsolute && version && !version.isDefault ? [version.slug] : [];
     const base = absolute ? versionPrefix : [...versionPrefix, ...page.path.split('/').filter(Boolean).slice(0, -1)];
-    const segments = resolveSegments(absolute ? pathname.slice(1) : pathname, base);
+    const segments = resolveSegments(documentPath, base);
     const last = segments.at(-1) ?? '';
     if (PAGE_EXTENSION.test(last)) segments[segments.length - 1] = last.replace(PAGE_EXTENSION, '');
     else if (FILE_EXTENSION.test(last)) return null;
 
-    const params = new URLSearchParams(query);
-    const lang = params.has('lang')
-      ? searchLanguage(params)
-      : !siteAbsolute && absolute && page.languageCode !== defaultCode
-        ? page.languageCode
-        : undefined;
+    const lang =
+      parsed.language?.code ??
+      (params.has('lang') ? searchLanguage(params) : !siteAbsolute && page.languageCode !== defaultCode ? page.languageCode : undefined);
     const path = segments.join('/');
     const key = JSON.stringify([path, lang]);
     const cached = destinations.get(key);
     if (cached !== undefined) return withFragment(cached);
-    const reached = reaches(snapshot, path, lang);
+    const reached = reaches(snapshot, path, lang, languages);
     destinations.set(key, reached);
     return withFragment(reached);
   };

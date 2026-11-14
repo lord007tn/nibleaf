@@ -7,7 +7,7 @@ export interface SiteReaderContextValue {
   lang?: string;
   /** The site's languages, so content shown in another language (a fallback
    *  page) can carry that language's direction. */
-  languages?: ReadonlyArray<{ code: string; direction: 'LTR' | 'RTL'; label?: string }>;
+  languages?: ReadonlyArray<{ code: string; direction: 'LTR' | 'RTL'; label?: string; isDefault?: boolean; pathPrefix?: string }>;
   /** The docs home URL, keeping the active language and version. */
   homeHref: string;
   /** Opens the search dialog; absent when the site turned search off. */

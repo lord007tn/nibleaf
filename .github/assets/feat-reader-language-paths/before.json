@@ -1,0 +1,31 @@
+[
+  {
+    "language": "en",
+    "requestedUrl": "http://localhost:4310/sites/preview-harbor/getting-started/introduction",
+    "browserUrl": "http://localhost:4310/sites/preview-harbor/getting-started/introduction",
+    "status": 200,
+    "tags": [
+      "<html lang=\"en\" dir=\"ltr\">",
+      "<link rel=\"canonical\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"0G7nDXE4iPE9gwL3/yE8k1QT\"/>",
+      "<link rel=\"alternate\" hrefLang=\"en\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"0G7nDXE4iPE9gwL3/yE8k1QT\"/>",
+      "<link rel=\"alternate\" hrefLang=\"ar\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar\" nonce=\"0G7nDXE4iPE9gwL3/yE8k1QT\"/>",
+      "<link rel=\"alternate\" hrefLang=\"x-default\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"0G7nDXE4iPE9gwL3/yE8k1QT\"/>"
+    ]
+  },
+  {
+    "language": "ar",
+    "requestedUrl": "http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar",
+    "browserUrl": "http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar",
+    "status": 200,
+    "tags": [
+      "<html lang=\"ar\" dir=\"rtl\">",
+      "<link rel=\"canonical\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar\" nonce=\"Yv8sxZsWqD9Pm1EOPWJ8TuYS\"/>",
+      "<link rel=\"alternate\" hrefLang=\"en\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"Yv8sxZsWqD9Pm1EOPWJ8TuYS\"/>",
+      "<link rel=\"alternate\" hrefLang=\"ar\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar\" nonce=\"Yv8sxZsWqD9Pm1EOPWJ8TuYS\"/>",
+      "<link rel=\"alternate\" hrefLang=\"x-default\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"Yv8sxZsWqD9Pm1EOPWJ8TuYS\"/>"
+    ]
+  },
+  {
+    "outsideNetworkAttempts": 0
+  }
+]

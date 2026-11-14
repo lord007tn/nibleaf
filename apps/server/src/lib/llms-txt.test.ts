@@ -76,15 +76,15 @@ describe('llmsPageUrl', () => {
     const snap = snapshot([page({ id: 'intro', versionId: 'v-main' })]);
     expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(`${BASE}/intro.md`);
   });
-  it('adds a version prefix for non-default versions and ?lang for non-default languages', () => {
+  it('prefixes the language before a non-default version', () => {
     const snap = snapshot([page({ id: 'guide', versionId: 'v-2', languageCode: 'ar' })]);
-    expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(`${BASE}/v2/guide.md?lang=ar`);
+    expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(`${BASE}/ar/v2/guide.md`);
   });
 
   it('percent-encodes non-ASCII path segments so the link stays a valid ASCII URL', () => {
     const snap = snapshot([page({ id: 'auth', path: 'الأدلة/المصادقة', languageCode: 'ar' })]);
     expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(
-      `${BASE}/%D8%A7%D9%84%D8%A3%D8%AF%D9%84%D8%A9/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9.md?lang=ar`,
+      `${BASE}/ar/%D8%A7%D9%84%D8%A3%D8%AF%D9%84%D8%A9/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9.md`,
     );
   });
 });
@@ -101,7 +101,7 @@ describe('buildLlmsTxt', () => {
     expect(txt).toContain('## Docs (English)');
     expect(txt).toContain('## Docs (العربية)');
     expect(txt).toContain(`- [Introduction](${BASE}/intro.md): Start here.`);
-    expect(txt).toContain(`- [مقدمة](${BASE}/intro-ar.md?lang=ar)`);
+    expect(txt).toContain(`${BASE}/ar/intro-ar.md`);
   });
   it('uses a single Docs section for single-language sites and omits excluded pages', () => {
     const snap = snapshot([page({ id: 'intro' }), page({ id: 'secret', hidden: true })], {
@@ -155,4 +155,10 @@ describe('an untitled page in llms.txt', () => {
     expect(buildLlmsTxt(snap, BASE)).not.toContain('[](');
     expect(buildLlmsFullTxt(snap, BASE)).toContain('# Untitled');
   });
+});
+
+it('uses collision-safe language paths in llms and llms-full source URLs', () => {
+  const snap = snapshot([page({ id: 'english', path: 'ar/guide' }), page({ id: 'arabic', path: 'ar/guide', languageCode: 'ar' })]);
+  expect(buildLlmsTxt(snap, BASE)).toContain(`${BASE}/~lang/ar/ar/guide.md`);
+  expect(buildLlmsFullTxt(snap, BASE)).toContain(`Source: ${BASE}/~lang/ar/ar/guide.md`);
 });

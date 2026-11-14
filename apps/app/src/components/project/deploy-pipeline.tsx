@@ -24,10 +24,10 @@ export interface PublishPage {
   versionSlug?: string;
 }
 
-/** The published address of a page: `<site>/<version>/<path>?lang=<code>`, with the
- *  version segment only for a non-default version (the site's URL convention). */
+/** Owner data has no frozen snapshot collision policy. Keep its legacy query
+ *  link so the reader redirects to the correct published language prefix. */
 export const publishedPageUrl = (projectId: string, page: PublishPage, site?: SiteUrlOptions): string =>
-  sitePageUrl(projectId, [page.versionSlug, ...page.path.split('/')].filter(Boolean).join('/'), page.languageCode, site);
+  `${sitePageUrl(projectId, [page.versionSlug, ...page.path.split('/')].filter(Boolean).join('/'), undefined, site)}${page.languageCode ? `?lang=${encodeURIComponent(page.languageCode)}` : ''}`;
 
 /** What a failed publish reported, for the "What went wrong" details: the
  *  per-page check issues when there are any, else the raw error text. */

@@ -2,6 +2,7 @@
 // chunk, and that module brings the whole message catalog.
 import { getLocale, renderedLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
 import { isRtl, type Locale } from '@nibleaf/i18n/locales';
+import { matchSiteLanguagePrefix } from '@nibleaf/shared/site-language';
 import { type RouterState, useRouterState } from '@tanstack/react-router';
 import { useState, useSyncExternalStore } from 'react';
 import type { SiteShell } from '@/hooks/api/types';
@@ -52,7 +53,13 @@ const selectRootDocument = (state: RouterState): Selected => {
       ? { lang: 'ar', dir: 'rtl', pathname, reloadingSiteProjectId }
       : { lang: 'en', dir: 'ltr', pathname, reloadingSiteProjectId };
   }
-  const code = (state.location.search as { lang?: string }).lang ?? site.activeLanguage;
+  // A pending navigation still has the previous shell. Its published prefix
+  // policy selects the requested language until the resolved shell arrives.
+  const parts = pathname
+    .replace(/^\/sites\/[^/]+(?:\/|$)/, '')
+    .replace(/^\/+/, '')
+    .split('/');
+  const code = matchSiteLanguagePrefix(parts, site.languages)?.code ?? site.activeLanguage;
   const active = site.languages.find((l) => l.code === code) ?? site.languages.find((l) => l.isDefault) ?? site.languages[0];
   return {
     lang: active?.code ?? 'en',

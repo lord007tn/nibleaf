@@ -66,6 +66,11 @@ describe('published metadata during reader bursts', () => {
     const responses = await Promise.all(['one', 'two'].map((viewer) => server.fetch(request(project, { [header]: viewer }))));
     expect(responses.map((response) => response.headers.get('location'))).toEqual(['https://one.example/intro', 'https://two.example/intro']);
     expect(mocks.got).toHaveBeenCalledTimes(2);
+    for (const response of responses) {
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+      expect(response.headers.get('vary')).toContain('Cookie');
+      expect(response.headers.get('vary')).toContain('Authorization');
+    }
   });
 
   it('retries metadata after an upstream failure instead of retaining the failed request', async () => {
