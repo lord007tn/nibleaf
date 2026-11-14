@@ -941,6 +941,21 @@
   }
 }
 
+/* One focus indicator across the published reader's chrome (PUB-020): header
+ * links, the language pill, the theme toggle, footer links. The design-system
+ * fallback is a 1px half-opacity outline; this matches the article's controls.
+ * Design-system components (data-slot) draw their own ring, and scroll regions
+ * draw theirs inside the box. Unlayered, so it wins over the base layer. */
+.nibleaf-site-chrome
+:is(a, button, summary, [tabindex]):not(
+  [data-slot],
+  [data-scroll-region],
+  [tabindex="-1"]
+):focus-visible {
+  outline: 2px solid var(--ring, currentColor);
+  outline-offset: 2px;
+}
+
 /* Ask AI docked beside the article (PUB-003; ai-chat/panel.tsx, use-docked.ts).
  * From 80rem the panel is a non-modal column at the inline end; while it is
  * open (html[data-chat-docked]) the reader chrome makes room for it, and the

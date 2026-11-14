@@ -2329,6 +2329,7 @@
   "site_languagecurrent": "ভাষা: {language}",
   "site_versioncurrent": "সংস্করণ: {version}",
   "site_sitelinks": "সাইটের লিংক",
+  "site_quicklinks": "দ্রুত লিংক",
   "site_docssections": "ডকুমেন্টেশনের বিভাগ",
   "site_docspages": "ডকুমেন্টেশনের পাতা",
   "site_notfoundtitle": "আমরা পাতাটি খুঁজে পাইনি",

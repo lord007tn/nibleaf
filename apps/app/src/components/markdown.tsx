@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { LanguageFn } from 'highlight.js';
-import { type ComponentProps, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { type ComponentProps, createContext, Suspense, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
@@ -98,10 +98,55 @@ const htmlComponents: Components = {
   h3: ({ node: _node, ...props }) => <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
   h4: ({ node: _node, ...props }) => <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
   pre: Pre,
+  li: TaskListItem,
+  input: TaskCheckbox,
   // Authored classes (light/dark image pairs) add to the default frame, and an
   // image without alt text is marked decorative instead of losing the attribute.
   img: ({ node: _node, ...props }) => <img {...props} alt={props.alt ?? ''} className={cn('rounded-xl border border-border', props.className)} />,
 };
+
+/** Text of a hast node, without nested lists (a sub-task names its own box).
+ *  An image counts as its alt text, so an image-only task is named too. */
+function itemText(
+  node: { type: string; value?: string; tagName?: string; properties?: { alt?: unknown }; children?: unknown[] } | undefined,
+): string {
+  if (!node) return '';
+  if (node.type === 'text') return node.value ?? '';
+  if (node.tagName === 'img') return typeof node.properties?.alt === 'string' ? ` ${node.properties.alt} ` : '';
+  if (node.tagName === 'ul' || node.tagName === 'ol' || node.tagName === 'input') return '';
+  return ((node.children ?? []) as (typeof node)[]).map(itemText).join('');
+}
+
+/** The name for the checkbox of the nearest task item. Every list item sets it
+ *  (a plain item to nothing), so a sub-item never borrows its parent's name. */
+const TaskItemLabel = createContext<string | undefined>(undefined);
+
+/** GFM task items: the read-only checkbox is named by the item's text, so a
+ *  screen reader says "Sandbox shipment booked, checkbox, checked" rather than
+ *  an unnamed checkbox (P3-PUB-025; axe `label`). Other items pass through. */
+function TaskListItem({ node, children, ...props }: ComponentProps<'li'> & { node?: { children?: unknown[] } }) {
+  const isTask = props.className?.split(/\s+/).includes('task-list-item');
+  const label = isTask
+    ? itemText(node as Parameters<typeof itemText>[0])
+        .replace(/\s+/g, ' ')
+        .trim() || undefined
+    : undefined;
+  return (
+    <li {...props}>
+      <TaskItemLabel.Provider value={label}>{children}</TaskItemLabel.Provider>
+    </li>
+  );
+}
+
+/** A task item's checkbox, wherever it sits in the item: a tight list puts it
+ *  directly in the <li>, a loose one inside the item's first paragraph. A box
+ *  that already has a name of its own (an authored `title`, `aria-label` or
+ *  `aria-labelledby` in raw HTML) keeps it. */
+function TaskCheckbox({ node: _node, ...props }: ComponentProps<'input'> & { node?: unknown }) {
+  const label = useContext(TaskItemLabel);
+  const named = Boolean(props['aria-label'] || props['aria-labelledby'] || props.title);
+  return <input {...props} aria-label={named || props.type !== 'checkbox' ? props['aria-label'] : label} />;
+}
 
 /** Anchor renderer, built per site-context. Heading self-links (added by
  *  rehype-autolink-headings with the `heading-anchor` class) keep the heading's

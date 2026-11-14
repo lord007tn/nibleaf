@@ -1,7 +1,8 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@nibleaf/design-system/components/ui/dropdown-menu';
+import { DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@nibleaf/design-system/components/ui/dropdown-menu-radio';
 import { siteT } from '@nibleaf/i18n/site';
 import { sitePageActionsT } from '@nibleaf/i18n/site-page-actions';
-import { Bot, Check, Copy, FileText, MessageSquare } from 'lucide-react';
+import { Bot, Copy, FileText, MessageSquare } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { languageTriggerProps, type SiteLanguage } from '@/components/site/language-switcher';
 import { askAiLinks, pageActionsTriggerProps } from '@/components/site/page-actions';
@@ -39,14 +40,16 @@ export function LanguageMenu({
     <DropdownMenu defaultOpen={start.defaultOpen}>
       <DropdownMenuTrigger ref={trigger} render={<button {...languageTriggerProps(languages, activeCode)} />} />
       <DropdownMenuContent align="end" className="w-44">
-        {languages.map((language) => (
-          <DropdownMenuItem key={language.code} onClick={() => onChange(language.code)} className="pointer-coarse:min-h-11">
-            <span className="flex-1" dir={language.direction === 'RTL' ? 'rtl' : 'ltr'} lang={language.code}>
-              {language.label}
-            </span>
-            {language.code === activeCode ? <Check className="size-4" aria-hidden /> : null}
-          </DropdownMenuItem>
-        ))}
+        {/* A radio group: the current language is announced as checked and marked (PUB-014). */}
+        <DropdownMenuRadioGroup value={activeCode} onValueChange={(code) => onChange(String(code))}>
+          {languages.map((language) => (
+            <DropdownMenuRadioItem key={language.code} value={language.code} className="pointer-coarse:min-h-11">
+              <span className="flex-1" dir={language.direction === 'RTL' ? 'rtl' : 'ltr'} lang={language.code}>
+                {language.label}
+              </span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -71,14 +74,15 @@ export function VersionMenu({
   return (
     <DropdownMenu defaultOpen={start.defaultOpen}>
       <DropdownMenuTrigger ref={trigger} render={<button {...versionTriggerProps(versions, activeSlug, lang)} />} />
-      <DropdownMenuContent align="end" className="w-44">
-        {versions.map((version) => (
-          <DropdownMenuItem key={version.id} onClick={() => onChange(version.slug)} className="pointer-coarse:min-h-11">
-            <span className="flex-1 truncate">{version.name}</span>
-            {version.isDefault ? <span className="text-[10px] text-muted-foreground">{t('defaultVersion')}</span> : null}
-            {version.slug === active?.slug ? <Check className="size-4" aria-hidden /> : null}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuRadioGroup value={active?.slug} onValueChange={(slug) => onChange(String(slug))}>
+          {versions.map((version) => (
+            <DropdownMenuRadioItem key={version.id} value={version.slug} className="pointer-coarse:min-h-11">
+              <span className="flex-1 truncate">{version.name}</span>
+              {version.isDefault ? <span className="text-[10px] text-muted-foreground">{t('defaultVersion')}</span> : null}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
