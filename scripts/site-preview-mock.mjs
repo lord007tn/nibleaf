@@ -440,6 +440,64 @@ ${FENCE}
     },
   },
   {
+    // Wide blocks (PUB-001, PUB-005): a table with long prose cells that must
+    // wrap to the column, a many-column table that still has to scroll, and a
+    // code line longer than any column.
+    group: 'reference',
+    slug: 'configuration',
+    icon: 'settings',
+    en: {
+      title: 'Configuration',
+      description: 'Every environment variable the Tidewater agent reads, with defaults.',
+      content: `The agent reads its settings from the environment at start-up.
+
+## Block components
+
+| Component | Purpose | Attributes |
+| --- | --- | --- |
+| \`Tabs\` | Groups alternatives side by side, one tab per operating system or language, and remembers the reader's choice across pages. | \`items\`, \`defaultValue\`, \`sync\` |
+| \`Steps\` | Numbers a procedure so the reader can keep their place while they switch between the docs and a terminal. | \`titleSize\` |
+| \`Callout\` | Draws attention to a warning, a tip or a note without breaking the reading flow of the surrounding section. | \`type\`, \`title\`, \`icon\` |
+
+## Environment variables
+
+| Variable | Required | Default | Scope | Example | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| \`TIDEWATER_KEY\` | Yes | None | Agent and CLI | \`tw_live_9f3c\` | The [API key](/guides/authentication) the agent authenticates with. |
+| \`TIDEWATER_REGION\` | No | \`eu-west\` | Agent | \`me-central\` | Where shipment data is stored and processed. |
+| \`TIDEWATER_WEBHOOK_SECRET\` | No | Empty | Webhook receiver | \`whsec_51ab\` | Verifies the signature on every delivery. |
+
+${FENCE}bash title="start-agent.sh"
+TIDEWATER_KEY=tw_live_9f3c TIDEWATER_REGION=me-central TIDEWATER_WEBHOOK_SECRET=whsec_51ab npx @tidewater/agent start --port 8080 --log-level info
+${FENCE}`,
+    },
+    ar: {
+      title: 'الإعدادات',
+      description: 'كل متغيرات البيئة التي يقرؤها وكيل تايدووتر وقيمها الافتراضية.',
+      content: `يقرأ الوكيل إعداداته من البيئة عند بدء التشغيل.
+
+## مكوّنات الكتل
+
+| المكوّن | الغرض | الخصائص |
+| --- | --- | --- |
+| \`Tabs\` | يجمع البدائل جنبًا إلى جنب، تبويبًا لكل نظام تشغيل أو لغة، ويتذكر اختيار القارئ بين الصفحات. | \`items\`، \`defaultValue\`، \`sync\` |
+| \`Steps\` | يرقّم الإجراء ليحافظ القارئ على موضعه وهو ينتقل بين التوثيق والطرفية. | \`titleSize\` |
+| \`Callout\` | يلفت الانتباه إلى تحذير أو نصيحة أو ملاحظة دون أن يقطع تسلسل القراءة في القسم المحيط. | \`type\`، \`title\`، \`icon\` |
+
+## متغيرات البيئة
+
+| المتغير | إلزامي | الافتراضي | النطاق | مثال | الغرض |
+| --- | --- | --- | --- | --- | --- |
+| \`TIDEWATER_KEY\` | نعم | لا يوجد | الوكيل والأداة | \`tw_live_9f3c\` | [مفتاح الواجهة](/guides/authentication) الذي يصادق به الوكيل. |
+| \`TIDEWATER_REGION\` | لا | \`eu-west\` | الوكيل | \`me-central\` | مكان تخزين بيانات الشحنات ومعالجتها. |
+| \`TIDEWATER_WEBHOOK_SECRET\` | لا | فارغ | مستقبل الإشعارات | \`whsec_51ab\` | يتحقق من التوقيع على كل إرسال. |
+
+${FENCE}bash title="start-agent.sh"
+TIDEWATER_KEY=tw_live_9f3c TIDEWATER_REGION=me-central TIDEWATER_WEBHOOK_SECRET=whsec_51ab npx @tidewater/agent start --port 8080 --log-level info
+${FENCE}`,
+    },
+  },
+  {
     group: 'guides',
     slug: 'authentication',
     icon: 'key',
