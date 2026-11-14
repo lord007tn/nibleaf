@@ -27,8 +27,12 @@ function ProductNotFound() {
 }
 
 /** A dashboard address keeps the product page; any other address is a page of
- *  the marketing site (published docs have their own, SiteNotFound). */
-const isProductPath = (pathname: string) => pathname === '/app' || pathname.startsWith('/app/');
+ *  the marketing site (published docs have their own, SiteNotFound). Compared
+ *  without case, as the router matches paths: `/APP/missing` is the dashboard's. */
+export const isProductPath = (pathname: string) => {
+  const path = pathname.toLowerCase();
+  return path === '/app' || path.startsWith('/app/');
+};
 
 export function NotFound() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });

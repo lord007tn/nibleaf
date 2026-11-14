@@ -2,6 +2,7 @@
 /** The marketing site's not-found page sits in its shell, in its language (MKT-003). */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { isProductPath } from '@/components/not-found';
 import MarketingNotFound from './marketing-not-found';
 
 const render = (pathname: string) => {
@@ -28,5 +29,12 @@ describe('marketing not-found page', () => {
     expect(shell?.getAttribute('dir')).toBe('rtl');
     expect(page.querySelector('main h1')?.textContent).toBe('الصفحة غير موجودة');
     expect(page.querySelector('main ul a')?.getAttribute('href')).toBe('/ar');
+  });
+});
+
+describe('which not-found page an address gets', () => {
+  it('keeps every dashboard address, in any case, on the product page', () => {
+    for (const path of ['/app', '/app/missing', '/APP/missing', '/App']) expect(isProductPath(path), path).toBe(true);
+    for (const path of ['/', '/pricing', '/application', '/ar/app']) expect(isProductPath(path), path).toBe(false);
   });
 });
