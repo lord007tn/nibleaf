@@ -3,7 +3,7 @@ import { PassThrough } from 'node:stream';
 import { siteT } from '@nibleaf/i18n/site';
 import { siteContentT } from '@nibleaf/i18n/site-content';
 import { act, type ReactNode } from 'react';
-import { hydrateRoot, type Root } from 'react-dom/client';
+import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToPipeableStream } from 'react-dom/server';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SitePage } from '@/hooks/api/types';
@@ -284,6 +284,50 @@ describe('everything around a fallback article follows the reader (#481)', () =>
     expect(desktop?.getAttribute('aria-label')).toBe(ar('onThisPage'));
     expect(desktop?.querySelector('ul')?.getAttribute('lang')).toBe('en');
     expect(desktop?.querySelector('ul')?.getAttribute('dir')).toBe('ltr');
+  });
+
+  it('labels the page actions in Arabic, right to left, and copies the English page it shows', async () => {
+    const fetchMock = vi.fn(async () => new Response('# Add a new reservation', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(async () => undefined) } });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          <SiteReaderContext.Provider value={shell('ar')}>
+            <SitePageView projectId="docs" lang="ar" data={page()} />
+          </SiteReaderContext.Provider>,
+        ),
+      );
+      const actions = host.querySelector('[data-page-actions]');
+      expect(actions?.getAttribute('lang')).toBe('ar');
+      expect(actions?.getAttribute('dir')).toBe('rtl');
+      const copy = host.querySelector<HTMLButtonElement>('[data-page-actions] button');
+      expect(copy).not.toBeNull();
+      await act(async () => copy?.click());
+      // The Markdown twin of the English page shown, not ?lang=ar (which answers 404).
+      expect(fetchMock).toHaveBeenCalledWith('/sites/docs/blog/add-new-reservation-2.md', expect.anything());
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each([
+    ['a private site', 'private', null],
+    ['a noindex page', 'public', { seo: { noindex: true } }],
+  ] as const)('offers no page actions on %s, so nothing private is copied or sent to an AI', async (_case, visibility, pageConfig) => {
+    const base = page();
+    const data = page({
+      project: { ...base.project, config: { ...base.project.config, visibility } },
+      page: { ...base.page, config: pageConfig } as SitePage['page'],
+    });
+    const view = await renderPage(data, shell('en'));
+    expect(view.querySelector('h1')).not.toBeNull();
+    expect(view.querySelector('[data-page-actions]')).toBeNull();
   });
 
   it('keeps the reader in Arabic on the next page they open', async () => {
