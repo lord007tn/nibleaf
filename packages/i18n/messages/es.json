@@ -3519,7 +3519,7 @@
   "analytics_resource_rss": "Feed RSS",
   "analytics_resource_other": "Otros archivos",
   "analytics_perf_title": "Velocidad de tus páginas según los lectores",
-  "analytics_perf_description": "Medido en los dispositivos de lectores reales. Mostramos el valor por debajo del cual queda el 75 % de las cargas de página.",
+  "analytics_perf_description": "Medido en los dispositivos de lectores reales. El 75 % de las cargas de página están en este valor o por debajo.",
   "analytics_perf_distribution": "Cargas de página por valoración general",
   "analytics_perf_samples": "Cargas de página medidas: {count}",
   "analytics_perf_secondary": "Primer contenido {fcp} · respuesta del servidor {ttfb}",

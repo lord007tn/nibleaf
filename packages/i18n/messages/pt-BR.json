@@ -3520,7 +3520,7 @@
   "analytics_resource_rss": "Feed RSS",
   "analytics_resource_other": "Outros arquivos",
   "analytics_perf_title": "Quão rápidas suas páginas parecem",
-  "analytics_perf_description": "Medido nos dispositivos de leitores reais. Mostramos o valor abaixo do qual ficam 75% dos carregamentos de página.",
+  "analytics_perf_description": "Medido nos dispositivos de leitores reais. 75% dos carregamentos de página ficam neste valor ou abaixo dele.",
   "analytics_perf_distribution": "Carregamentos de página por avaliação geral",
   "analytics_perf_samples": "Carregamentos de página medidos: {count}",
   "analytics_perf_secondary": "Primeiro conteúdo {fcp} · resposta do servidor {ttfb}",
