@@ -838,6 +838,8 @@
   "settings_unsaved_description": "Tus cambios no se han guardado.",
   "settings_unsaved_keep": "Seguir editando",
   "settings_appearance_location": "También disponible en Ajustes del sitio → Apariencia y en el panel de ajustes del editor.",
+  "settings_appearance_summary": "Cómo se ve tu sitio publicado: su marca, tema, tipografía, encabezado, pie de página y banner.",
+  "settings_appearance_sections": "Secciones de apariencia",
   "settings_domain_guide_step1": "Abre los ajustes DNS de tu proveedor de dominio.",
   "settings_domain_guide_step2": "Añade cada registro: Tipo, Nombre/Host, Valor/Destino. CNAME dirige la dirección a este sitio; TXT acredita la propiedad. Normalmente se usa el nombre corto; usa el nombre completo de abajo solo si se solicita.",
   "settings_domain_guide_step3": "Guarda y comprueba de nuevo.",
@@ -2358,6 +2360,10 @@
   "site_copysectionlink": "Copiar enlace a esta sección",
   "site_viewfullsize": "Ver a tamaño completo",
   "site_closeimage": "Cerrar imagen",
+  "site_table": "Tabla",
+  "site_tableof": "Tabla: {name}",
+  "site_code": "Código",
+  "site_codeof": "Código: {name}",
   "site_viewmarkdown": "Ver Markdown",
   "site_copymarkdown": "Copiar Markdown",
   "site_markdowncopyfailed": "No se pudo copiar el Markdown",
@@ -4900,7 +4906,9 @@
   "publish_checks_allclear": "Todas las comprobaciones superadas",
   "publish_checks_allclearhint": "No hay enlaces rotos, imágenes sin texto alternativo, páginas sin título ni caracteres sobrantes.",
   "publish_checks_fix": "Corregir",
-  "publish_checks_fixlabel": "Corregir {title} en el editor",
+  "publish_checks_fixproblem": "Corregir «{title}»: {problem}",
+  "publish_checks_show": "Mostrar ({count})",
+  "publish_checks_hide": "Ocultar",
   "publish_checks_blockedreason": "Corrige los errores de Comprobaciones antes de publicar.",
   "publish_checks_error": "Error",
   "publish_checks_warning": "Advertencia",
@@ -5046,5 +5054,23 @@
   "settings_aiassistants_watch_again": "Volver a esperar",
   "settings_aiassistants_keysloaderror": "No se pudieron cargar las claves personales. Las apps con sesión iniciada siguen en la lista.",
   "settings_aiassistants_appsloaderror": "No se pudieron cargar las apps con sesión iniciada. Las claves personales siguen en la lista.",
-  "oauth_consent_can_aiconversations": "Leer las preguntas y respuestas guardadas de Ask AI. Se quitan los correos electrónicos, los números de teléfono y las claves, pero pueden quedar nombres, direcciones y otros datos personales."
+  "oauth_consent_can_aiconversations": "Leer las preguntas y respuestas guardadas de Ask AI. Se quitan los correos electrónicos, los números de teléfono y las claves, pero pueden quedar nombres, direcciones y otros datos personales.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} cambio sin publicar",
+        "form=*": "{count} cambios sin publicar"
+      }
+    }
+  ],
+  "pending_siteonly": "Cambios sin publicar en la navegación o la configuración",
+  "pending_readersstillsee": "Los lectores todavía ven la versión {version}.",
+  "pending_review": "Revisar y publicar",
+  "pending_draft": "Aún no publicado",
+  "overview_col_status": "Estado",
+  "pagestatus_draft": "Sin publicar",
+  "pagestatus_changed": "Modificada",
+  "pagestatus_live": "Publicada"
 }

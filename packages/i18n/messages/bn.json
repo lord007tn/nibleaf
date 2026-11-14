@@ -801,6 +801,8 @@
   "settings_unsaved_description": "আপনার পরিবর্তন সংরক্ষিত হয়নি।",
   "settings_unsaved_keep": "সম্পাদনা চালিয়ে যান",
   "settings_appearance_location": "সাইট সেটিংস → চেহারা এবং সম্পাদকের সেটিংস প্যানেলেও পাওয়া যায়।",
+  "settings_appearance_summary": "আপনার প্রকাশিত সাইট দেখতে কেমন: এর ব্র্যান্ড, থিম, ফন্ট, হেডার, ফুটার ও ব্যানার।",
+  "settings_appearance_sections": "চেহারার বিভাগ",
   "settings_domain_guide_step1": "ডোমেইন সরবরাহকারীর DNS সেটিংস খুলুন।",
   "settings_domain_guide_step2": "প্রতিটি রেকর্ডের ধরন, নাম/হোস্ট ও মান/লক্ষ্য দিন। CNAME সাইটে ঠিকানা নির্দেশ করে; TXT মালিকানা প্রমাণ করে। সাধারণত সংক্ষিপ্ত নাম লাগে; চাইলে নিচের পূর্ণ নাম দিন।",
   "settings_domain_guide_step3": "সংরক্ষণ করে আবার পরীক্ষা করুন।",
@@ -2292,6 +2294,10 @@
   "site_copysectionlink": "এই অংশের লিংক কপি করুন",
   "site_viewfullsize": "পূর্ণ আকারে দেখুন",
   "site_closeimage": "ছবি বন্ধ করুন",
+  "site_table": "সারণি",
+  "site_tableof": "সারণি: {name}",
+  "site_code": "কোড",
+  "site_codeof": "কোড: {name}",
   "site_viewmarkdown": "Markdown দেখুন",
   "site_copymarkdown": "Markdown কপি করুন",
   "site_markdowncopyfailed": "Markdown কপি করা যায়নি",
@@ -4834,7 +4840,9 @@
   "publish_checks_allclear": "সব যাচাই সফল হয়েছে",
   "publish_checks_allclearhint": "কোনো ভাঙা লিংক, বিকল্প টেক্সট ছাড়া ছবি, শিরোনামহীন পৃষ্ঠা বা বাড়তি অক্ষর নেই।",
   "publish_checks_fix": "ঠিক করুন",
-  "publish_checks_fixlabel": "এডিটরে {title} ঠিক করুন",
+  "publish_checks_fixproblem": "“{title}” ঠিক করুন: {problem}",
+  "publish_checks_show": "দেখান ({count})",
+  "publish_checks_hide": "লুকান",
   "publish_checks_blockedreason": "প্রকাশ করার আগে যাচাই অংশের ত্রুটিগুলো ঠিক করুন।",
   "publish_checks_error": "ত্রুটি",
   "publish_checks_warning": "সতর্কতা",
@@ -4980,5 +4988,23 @@
   "settings_aiassistants_watch_again": "আবার অপেক্ষা করুন",
   "settings_aiassistants_keysloaderror": "ব্যক্তিগত কী লোড করা যায়নি। সাইন ইন করা অ্যাপগুলো এখনও দেখানো হচ্ছে।",
   "settings_aiassistants_appsloaderror": "সাইন ইন করা অ্যাপ লোড করা যায়নি। ব্যক্তিগত কীগুলো এখনও দেখানো হচ্ছে।",
-  "oauth_consent_can_aiconversations": "সংরক্ষিত Ask AI প্রশ্ন ও উত্তর পড়া। ইমেল ঠিকানা, ফোন নম্বর ও কী মুছে ফেলা হয়, তবে নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্য থেকে যেতে পারে।"
+  "oauth_consent_can_aiconversations": "সংরক্ষিত Ask AI প্রশ্ন ও উত্তর পড়া। ইমেল ঠিকানা, ফোন নম্বর ও কী মুছে ফেলা হয়, তবে নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্য থেকে যেতে পারে।",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count}টি অপ্রকাশিত পরিবর্তন",
+        "form=*": "{count}টি অপ্রকাশিত পরিবর্তন"
+      }
+    }
+  ],
+  "pending_siteonly": "নেভিগেশন বা সেটিংসে অপ্রকাশিত পরিবর্তন",
+  "pending_readersstillsee": "পাঠকেরা এখনও সংস্করণ {version} দেখছেন।",
+  "pending_review": "পর্যালোচনা করে প্রকাশ করুন",
+  "pending_draft": "এখনও লাইভ নয়",
+  "overview_col_status": "অবস্থা",
+  "pagestatus_draft": "অপ্রকাশিত",
+  "pagestatus_changed": "পরিবর্তিত",
+  "pagestatus_live": "লাইভ"
 }

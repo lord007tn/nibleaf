@@ -1,9 +1,10 @@
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import type { AiChatOpenSource } from '@nibleaf/validators';
-import { type ComponentProps, createContext, type ReactNode, Suspense, useContext, useState } from 'react';
+import { type ComponentProps, createContext, type ReactNode, Suspense, useContext, useEffect, useState } from 'react';
 import { DocumentationReaderLayout } from '@/components/site/documentation-theme-provider';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { HydrationIsland, hydrationModule } from '@/lib/hydration-modules';
+import { isShortcutKey } from '@/lib/site-keyboard';
 
 // The chat's launcher, panel, state and strings load on demand from one module,
 // so the public docs bundle carries only this context (see load-chat-ui.ts).
@@ -25,6 +26,16 @@ function ChatRoot(props: ComponentProps<typeof import('./chat-ui').ChatRoot>) {
       {() => {
         const ui = siteChatUiModule.read();
         return <ui.ChatRoot {...props} />;
+      }}
+    </HydrationIsland>
+  );
+}
+function HeaderAction(props: ComponentProps<typeof import('./chat-ui').HeaderAction>) {
+  return (
+    <HydrationIsland className="contents" keepServerHtmlOnFailure={false} loadOnIntent modules={CHAT_MODULES}>
+      {() => {
+        const ui = siteChatUiModule.read();
+        return <ui.HeaderAction {...props} />;
       }}
     </HydrationIsland>
   );
@@ -63,11 +74,37 @@ export type ChatOptions = {
 /** The reader layout's chat settings, plus its `?ask=` deep link. */
 export type ChatRootOptions = ChatOptions & { ask?: string };
 
+/** Ctrl/⌘+I, the Ask AI shortcut, unless the reader is typing: in a text
+ *  field, a text area, a select or editable content the keys stay theirs
+ *  (italic, the browser's own). Never with Shift, Alt or AltGr, or an IME. */
+export const isAskAiShortcut = (event: KeyboardEvent): boolean => {
+  if (!(event.ctrlKey || event.metaKey) || event.shiftKey || !isShortcutKey(event, 'i', 'KeyI')) return false;
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'))
+  )
+    return false;
+  return true;
+};
+
 export function SiteChatProvider({ children, available, ...chat }: ChatRootOptions & { children: ReactNode; available: boolean }) {
   // The latest request. One made before the chat has loaded waits here for it.
   const [request, setRequest] = useState<ChatRequest>();
   const openChat: OpenChat = (next) =>
     setRequest({ ...next, id: Date.now(), trigger: document.activeElement instanceof HTMLElement ? document.activeElement : null });
+  // Ctrl/⌘+I opens Ask AI from anywhere on the page (PUB-021), before the chat's
+  // code has loaded too: the request waits here for it. Reported as a launcher open.
+  useEffect(() => {
+    if (!available) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isAskAiShortcut(event)) return;
+      event.preventDefault();
+      setRequest({ source: 'launcher', id: Date.now(), trigger: document.activeElement instanceof HTMLElement ? document.activeElement : null });
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [available]);
   return (
     <Context.Provider value={available ? openChat : null}>
       {children}
@@ -77,6 +114,16 @@ export function SiteChatProvider({ children, available, ...chat }: ChatRootOptio
         </Suspense>
       )}
     </Context.Provider>
+  );
+}
+/** "Ask AI" in the reader header. */
+export function SiteChatHeaderAction({ lang }: { lang?: string }) {
+  const openChat = useContext(Context);
+  if (!openChat) return null;
+  return (
+    <Suspense fallback={null}>
+      <HeaderAction lang={lang} onOpen={() => openChat({ source: 'launcher' })} />
+    </Suspense>
   );
 }
 /** The "Ask AI about this page" card at the end of an article. */

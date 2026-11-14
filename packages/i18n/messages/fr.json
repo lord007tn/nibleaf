@@ -838,6 +838,8 @@
   "settings_unsaved_description": "Vos modifications n’ont pas été enregistrées.",
   "settings_unsaved_keep": "Continuer à modifier",
   "settings_appearance_location": "Également disponible dans Paramètres du site → Apparence et dans le panneau des paramètres de l’éditeur.",
+  "settings_appearance_summary": "L’apparence de votre site publié : sa marque, son thème, sa typographie, son en-tête, son pied de page et sa bannière.",
+  "settings_appearance_sections": "Sections de l’apparence",
   "settings_domain_guide_step1": "Ouvrez les paramètres DNS de votre fournisseur de domaine.",
   "settings_domain_guide_step2": "Ajoutez chaque entrée : Type, Nom/Hôte, Valeur/Cible. CNAME dirige l’adresse vers ce site ; TXT prouve votre propriété. Utilisez généralement le nom court ; le nom complet dessous uniquement sur demande.",
   "settings_domain_guide_step3": "Enregistrez et vérifiez à nouveau.",
@@ -2358,6 +2360,10 @@
   "site_copysectionlink": "Copier le lien vers cette section",
   "site_viewfullsize": "Voir en taille réelle",
   "site_closeimage": "Fermer l’image",
+  "site_table": "Tableau",
+  "site_tableof": "Tableau : {name}",
+  "site_code": "Code",
+  "site_codeof": "Code : {name}",
   "site_viewmarkdown": "Voir le Markdown",
   "site_copymarkdown": "Copier le Markdown",
   "site_markdowncopyfailed": "Impossible de copier le Markdown",
@@ -4900,7 +4906,9 @@
   "publish_checks_allclear": "Toutes les vérifications sont réussies",
   "publish_checks_allclearhint": "Aucun lien cassé, aucune image sans texte alternatif, aucune page sans titre ni caractère résiduel.",
   "publish_checks_fix": "Corriger",
-  "publish_checks_fixlabel": "Corriger {title} dans l’éditeur",
+  "publish_checks_fixproblem": "Corriger « {title} » : {problem}",
+  "publish_checks_show": "Afficher ({count})",
+  "publish_checks_hide": "Masquer",
   "publish_checks_blockedreason": "Corrigez les erreurs listées dans Vérifications avant de publier.",
   "publish_checks_error": "Erreur",
   "publish_checks_warning": "Avertissement",
@@ -5046,5 +5054,23 @@
   "settings_aiassistants_watch_again": "Attendre à nouveau",
   "settings_aiassistants_keysloaderror": "Impossible de charger les clés personnelles. Les apps connectées restent affichées.",
   "settings_aiassistants_appsloaderror": "Impossible de charger les apps connectées. Les clés personnelles restent affichées.",
-  "oauth_consent_can_aiconversations": "Lire les questions et réponses Ask AI enregistrées. Les adresses e-mail, numéros de téléphone et clés sont retirés, mais des noms, des adresses et d’autres données personnelles peuvent subsister."
+  "oauth_consent_can_aiconversations": "Lire les questions et réponses Ask AI enregistrées. Les adresses e-mail, numéros de téléphone et clés sont retirés, mais des noms, des adresses et d’autres données personnelles peuvent subsister.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} modification non publiée",
+        "form=*": "{count} modifications non publiées"
+      }
+    }
+  ],
+  "pending_siteonly": "Modifications non publiées de la navigation ou des paramètres",
+  "pending_readersstillsee": "Les lecteurs voient toujours la version {version}.",
+  "pending_review": "Vérifier et publier",
+  "pending_draft": "Pas encore en ligne",
+  "overview_col_status": "Statut",
+  "pagestatus_draft": "Non publiée",
+  "pagestatus_changed": "Modifiée",
+  "pagestatus_live": "En ligne"
 }
