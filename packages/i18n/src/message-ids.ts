@@ -4892,6 +4892,8 @@ export const MESSAGE_IDS = {
   'overview.activity.viewAll': 'overview_activity_viewall',
   'publishes.tooLarge': 'publishes_toolarge',
   'publishes.noSnapshot': 'publishes_nosnapshot',
+  'settings.appearance.summary': 'settings_appearance_summary',
+  'settings.appearance.sections': 'settings_appearance_sections',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;
