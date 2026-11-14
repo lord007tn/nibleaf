@@ -1,6 +1,14 @@
 import { createHash } from 'node:crypto';
 import MarkdownIt from 'markdown-it';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
+import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
+import { unified } from 'unified';
+import { normalizeMdxBlocks } from '../reader-markdown';
+import { readerSanitizeSchema } from '../reader-sanitize';
 
 /** @public Used by `__fixtures__/markdown-export.guard.generate.mjs`, which knip.jsonc keeps out of analysis. */
 export const EXPORT_BASELINE_REVISION = '2cf12d3fe325057c586fd1f6abd05247a1af6813';
@@ -23,17 +31,43 @@ const exportSourcesHash = (cases: readonly ExportGuardCase[]) => exportHash(case
 
 const markdown = new MarkdownIt({ html: true });
 const activeTags = ['script', 'style', 'iframe', 'object', 'embed'];
+const dangerousUrl = (value: string): boolean => {
+  const normalized = Array.from(value.toLowerCase())
+    .filter((character) => character.charCodeAt(0) > 32 && character.charCodeAt(0) !== 127)
+    .join('');
+  return normalized.startsWith('javascript:') || normalized.startsWith('vbscript:') || normalized.startsWith('data:text/html');
+};
 const countElements = (node: DefaultTreeAdapterTypes.Node): number =>
   ('tagName' in node && activeTags.includes(node.tagName) ? 1 : 0) +
+  ('attrs' in node
+    ? node.attrs.filter(({ name, value }) => name.startsWith('on') || (['href', 'src', 'xlink:href'].includes(name) && dangerousUrl(value))).length
+    : 0) +
   ('childNodes' in node ? node.childNodes.reduce((sum, child) => sum + countElements(child), 0) : 0);
 
-/** Same rendered-Markdown check as Sol's probe. The default renderer cannot
- * synthesize these five tags; skip parsing only when none can occur in source.
- * Candidates are still fully rendered and parsed, including fenced literals. */
-export const renderedActiveHtml = (source: string): number => {
-  const lower = source.toLowerCase();
-  if (!activeTags.some((tag) => lower.includes(`<${tag}`))) return 0;
-  return countElements(parseFragment(markdown.render(source)));
+/** Render with raw HTML enabled, then count actual elements, handlers and URLs,
+ * including entity-encoded attribute values. Code literals are inert. */
+export const renderedActiveHtml = (source: string): number => countElements(parseFragment(markdown.render(source)));
+
+const reader = unified()
+  .use(remarkParse)
+  .use(remarkGfm)
+  .use(remarkRehype, { allowDangerousHtml: true })
+  .use(rehypeRaw)
+  .use(rehypeSanitize, readerSanitizeSchema);
+/** Independent reader oracle: the same normalization, HTML parser and schema as the rich reader. */
+export const readerSanitizedActiveHtml = (source: string): number => {
+  const tree = reader.runSync(reader.parse(normalizeMdxBlocks(source)));
+  const pending: unknown[] = [tree];
+  let active = 0;
+  while (pending.length) {
+    const node = pending.pop() as { tagName?: string; properties?: Record<string, unknown>; children?: unknown[] };
+    if (node.tagName && activeTags.includes(node.tagName)) active++;
+    for (const [name, value] of Object.entries(node.properties ?? {})) {
+      if (name.toLowerCase().startsWith('on') || (['href', 'src', 'xLinkHref'].includes(name) && dangerousUrl(String(value)))) active++;
+    }
+    pending.push(...(node.children ?? []));
+  }
+  return active;
 };
 
 /** @public Used by `__fixtures__/markdown-export.guard.generate.mjs`, which knip.jsonc keeps out of analysis. */
@@ -57,7 +91,7 @@ export const recordExportBaseline = (
 };
 
 export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline: ExportGuardBaseline, projectors: ExportProjectors) => {
-  const stats = [0, 1].map(() => ({ lost: 0, lossShapes: 0, duplicated: 0, reordered: 0, newlyActive: 0, differences: 0 }));
+  const stats = [0, 1].map(() => ({ lost: 0, lossShapes: 0, duplicated: 0, reordered: 0, newlyActive: 0, exceedsReader: 0, differences: 0 }));
   const failures: Array<{ index: number; target: number; reason: string }> = [];
   const metadata: string[] = [];
   if (baseline.revision !== EXPORT_BASELINE_REVISION) metadata.push('wrong main revision');
@@ -65,6 +99,7 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
   if ([baseline.kept.length, baseline.active.length, baseline.outputs.length].some((count) => count !== cases.length))
     metadata.push('missing baseline cases');
   for (const { index, source, markers } of cases) {
+    const readerActive = readerSanitizedActiveHtml(source);
     for (const target of [0, 1] as const) {
       const expected = baseline.kept[index]?.[target];
       const active = baseline.active[index]?.[target];
@@ -102,9 +137,14 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
         tally.reordered++;
         failures.push({ index, target, reason: 'reordered markers' });
       }
-      if (renderedActiveHtml(output) > active) {
+      const outputActive = renderedActiveHtml(output);
+      if (outputActive > active) {
         tally.newlyActive++;
         failures.push({ index, target, reason: 'newly active HTML' });
+      }
+      if (outputActive > readerActive) {
+        tally.exceedsReader++;
+        failures.push({ index, target, reason: 'active HTML exceeds sanitized reader' });
       }
       if (exportHash(output) !== hash) tally.differences++;
     }

@@ -130,3 +130,37 @@ export const seededExportCases = () => {
 
 /** The 13 portable outputs that round 4 newly activated relative to main. */
 export const PORTABLE_REGRESSION_IDS = [63, 597, 752, 824, 838, 874, 907, 1436, 1806, 2101, 3348, 3437, 3985] as const;
+
+/** #633: a fence-looking line inside HTML must not exempt a later tag from export safety. */
+export const activeHtmlExportCases = () => {
+  const payloads = [
+    '<script>SAFE</script>',
+    '<style>SAFE</style>',
+    '<iframe src="https://example.test">SAFE</iframe>',
+    '<object data="https://example.test">SAFE</object>',
+    '<embed src="https://example.test/SAFE">',
+    '<img src="/SAFE" onerror="run()">',
+    '<div onclick="run()">SAFE</div>',
+    '<a href="javascript:run()">SAFE</a>',
+    '<a href="data:text/html,SAFE">SAFE</a>',
+    '<img src="javascript:SAFE">',
+    '<img src="data:text/html,SAFE">',
+    '<a href="java&#x09;script&#58;run()">SAFE</a>',
+    '<script><img src="/SAFE" onerror="run()"></script>',
+    '<style><iframe src="https://example.test/SAFE"></iframe></style>',
+    '<textarea><img src="/SAFE" onerror="run()"></textarea>',
+    '<div title="a > b" onclick="run()">SAFE</div>',
+  ];
+  const containers = [
+    { name: 'top level', wrap: (payload: string) => payload },
+    { name: 'quote exit (#633)', wrap: (payload: string) => `> <div>\n> ~~~\n${payload}` },
+    { name: 'nested quote exit', wrap: (payload: string) => `> > <div>\n> > ~~~\n${payload}` },
+    { name: 'quote in list exit', wrap: (payload: string) => `- > <div>\n  > ~~~\n${payload}` },
+    { name: 'list in quote exit', wrap: (payload: string) => `> - <div>\n>   ~~~\n${payload}` },
+    { name: 'quoted HTML', wrap: (payload: string) => `> <div>\n> ~~~\n> ${payload}\n> </div>` },
+    { name: 'list HTML', wrap: (payload: string) => `- <div>\n  ~~~\n  ${payload}\n  </div>` },
+    { name: 'component quote exit', wrap: (payload: string) => `<Note>\n> <div>\n> ~~~\n${payload}\n</Note>` },
+    { name: 'nested components', wrap: (payload: string) => `<Tabs>\n<Tab title="Example">\n> <div>\n> ~~~\n${payload}\n</Tab>\n</Tabs>` },
+  ];
+  return containers.map(({ name, wrap }) => ({ name, sources: payloads.map(wrap) }));
+};

@@ -699,10 +699,10 @@
       "open": false
     },
     "CHANGELOG.md": {
-      "source": "2fdaf4ca4342653a",
-      "lines": "c8d8148ad3291538",
+      "source": "d81c33043014b6d1",
+      "lines": "348246c56fdfd19d",
       "headings": "ccd82938951b3dfd",
-      "sections": "9e3aa6975c2e26e9",
+      "sections": "08e7aec6334528a6",
       "open": false
     },
     "CODE_OF_CONDUCT.md": {
@@ -2162,7 +2162,7 @@
       "open": false
     },
     "packages/shared/src/__fixtures__/public-markdown/__golden__/component-tour.export.md": {
-      "source": "233787ffe516e63d",
+      "source": "4fdaa278f115e18a",
       "lines": "a0223caff62c4413",
       "headings": "01835bc2508b9e13",
       "sections": "a3e857eb0f7b1b24",

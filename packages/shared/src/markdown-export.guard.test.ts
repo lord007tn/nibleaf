@@ -16,7 +16,7 @@ const readBaseline = (count: number): ExportGuardBaseline =>
   ) as ExportGuardBaseline;
 
 it.each(matrices)(
-  'keeps main author text and adds no active HTML in both exports: $label',
+  'keeps main author text and emits no more active HTML than the sanitized reader: $label',
   (matrix) => {
     const start = performance.now();
     const baseline = readBaseline(matrix.count);

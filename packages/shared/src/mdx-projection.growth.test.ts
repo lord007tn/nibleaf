@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizePublicMarkdownContent as md, portablePublicMdxMarkdown as portable } from './public-markdown-content';
+import { renderedActiveHtml } from './testing/export-guard';
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growth';
 
 // Timing bounds, run on their own (pnpm test:growth; see testing/growth). Linear
@@ -15,12 +16,17 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
     ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 1500],
     ['deep quote markers', (n: number) => `${'> '.repeat(n)}x`, 50_000],
     ['deep nesting', (n: number) => `${'<Note>'.repeat(n)}x${'</Note>'.repeat(n)}`, 375],
+    ['export HTML safety', (n: number) => `> <div>\n> ~~~\n${'<div onclick="run()"><sup>2</sup><img src="javascript:x"></div>\n'.repeat(n)}`, 250],
   ] as const)(
     'scales linearly on %s',
-    (_label, build, n) => {
+    (label, build, n) => {
       const project = (source: string) => [md(source), portable(source)];
       const [small, large] = growthMs(project, build(n), build(4 * n), { minMs: 20 });
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+      if (label === 'export HTML safety') {
+        console.info(`Export safety growth n=${n}, 4n=${4 * n}: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
+        expect(project(build(n)).map(renderedActiveHtml)).toEqual([0, 0]);
+      }
     },
     60_000,
   );

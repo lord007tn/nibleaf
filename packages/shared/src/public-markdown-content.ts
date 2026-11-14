@@ -1,3 +1,4 @@
+import { escapeDisallowedExportHtml } from './export-html';
 import { markdownCodeSpans } from './markup-scan';
 import { buildMdxTree, type MdxNode, tokenizeMdx } from './mdx-tokens';
 
@@ -283,8 +284,12 @@ const renderNodes = (nodes: readonly MdxNode[], target: Target): Segment[] =>
       // sees an unpaired formatting tag.
       case 'stray':
         return target === 'markdown' ? [{ kind: 'text', value: node.value }] : [markup(node.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'))];
-      // `.md` drops what would run or import; the exports show it as source, escaped by `marked`.
+      // `.md` drops what would run or import; portable export keeps its text for
+      // the shared HTML safety pass below.
       case 'active':
+        // Removing an unclosed raw-text block must not join the preceding prose to
+        // the next fence opener: that would turn its literal sample into live HTML.
+        return target === 'markdown' ? (node.value.endsWith('\n') ? [markup('\n')] : []) : [{ kind: 'text', value: node.value }];
       case 'expression':
       case 'esm':
         return target === 'markdown' ? [] : [{ kind: 'text', value: node.value }];
@@ -300,12 +305,14 @@ const renderNodes = (nodes: readonly MdxNode[], target: Target): Segment[] =>
 
 const projectMdx = (source: string, target: Target): Segment[] => renderNodes(buildMdxTree(tokenizeMdx(source, COMPONENT_NAMES)), target);
 
-/** Convert supported authored MDX to inert Markdown for the HTML and PDF exports, with the same
- *  tokenizer and projection as `.md`. Code is never rewritten; `marked` escapes raw HTML. */
+/** Convert supported MDX for portable export, then escape HTML rejected by the reader.
+ * Real Markdown code and allowed HTML retain their bytes. */
 export const portablePublicMdxMarkdown = (source: string): string =>
-  projectMdx(source, 'export')
-    .map((segment) => segment.value)
-    .join('');
+  escapeDisallowedExportHtml(
+    projectMdx(source, 'export')
+      .map((segment) => segment.value)
+      .join(''),
+  );
 
 /** Authored MDX as public Markdown (`.md`, llms files): projected, with active markup, MDX
  *  expressions and ESM removed and prose escaped once. Code stays exactly as written. */
@@ -338,5 +345,5 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
         .join('\n'),
     );
   }
-  return parts.join('').trim();
+  return escapeDisallowedExportHtml(parts.join('').trim());
 };
