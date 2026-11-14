@@ -44,7 +44,7 @@
     "language": { "translation": "bahasa", "note": "Source language: bahasa sumber." },
     "ask-ai": { "translation": "Tanya AI" },
     "ai-assistant": { "translation": "asisten AI" },
-    "smart-ai": { "translation": "AI Pintar" },
+    "smart-ai": { "translation": "Jawaban AI", "note": "The English UI names this section AI answers." },
     "analytics": { "translation": "Analitik", "note": "Not «Analisis»." },
     "page-views": { "translation": "tayangan halaman", "short": "Tayangan", "note": "Not «tampilan», which is Appearance." },
     "visits": { "translation": "kunjungan" },

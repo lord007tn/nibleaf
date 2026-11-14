@@ -44,7 +44,7 @@
     "language": { "translation": "язык", "note": "Source language: исходный язык." },
     "ask-ai": { "translation": "Спросить ИИ" },
     "ai-assistant": { "translation": "ИИ-ассистент" },
-    "smart-ai": { "translation": "Умный ИИ" },
+    "smart-ai": { "translation": "Ответы ИИ", "note": "The English UI names this section AI answers." },
     "analytics": { "translation": "Аналитика" },
     "page-views": { "translation": "просмотры страниц", "short": "Просмотры" },
     "visits": { "translation": "посещения" },
