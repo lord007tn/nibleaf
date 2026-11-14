@@ -771,8 +771,9 @@ function SiteChrome() {
                   ) : null}
                   {showBadge ? (
                     <div className={cn('mx-auto max-w-[90rem] px-6', hasFooterContent ? 'pb-6' : 'py-5')}>
+                      {/* Only sites that ask for consent add "Privacy choices" (and its separator). */}
                       <MadeWithBadge lang={activeLanguage?.code}>
-                        <PrivacyChoicesLink projectId={projectId} config={config} lang={activeLanguage?.code} />
+                        {asksConsent ? <PrivacyChoicesLink projectId={projectId} config={config} lang={activeLanguage?.code} /> : null}
                       </MadeWithBadge>
                     </div>
                   ) : asksConsent ? (

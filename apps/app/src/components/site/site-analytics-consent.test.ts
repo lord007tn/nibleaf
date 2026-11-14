@@ -108,6 +108,12 @@ describe('SiteAnalyticsConsent', () => {
     expect(document.activeElement).toBe(manage);
   });
 
+  it('gives the footer control a 44px target on touch screens', () => {
+    const html = renderToString(createElement(PrivacyChoicesLink, { projectId: 'x', config: consentConfig, lang: 'en' }));
+    expect(html).toContain('pointer-coarse:min-h-11');
+    expect(html).toContain('min-h-6');
+  });
+
   it('shows no footer control on sites that do not ask for consent', () => {
     const html = renderToString(createElement(PrivacyChoicesLink, { projectId: 'none', config: {}, lang: 'en' }));
     expect(html).toBe('');
