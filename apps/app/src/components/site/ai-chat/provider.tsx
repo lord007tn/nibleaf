@@ -74,6 +74,20 @@ export type ChatOptions = {
 /** The reader layout's chat settings, plus its `?ask=` deep link. */
 export type ChatRootOptions = ChatOptions & { ask?: string };
 
+/** Ctrl/⌘+I, the Ask AI shortcut, unless the reader is typing: in a text
+ *  field, a text area, a select or editable content the keys stay theirs
+ *  (italic, the browser's own). Never with Shift, Alt or AltGr, or an IME. */
+export const isAskAiShortcut = (event: KeyboardEvent): boolean => {
+  if (!(event.ctrlKey || event.metaKey) || event.shiftKey || !isShortcutKey(event, 'i', 'KeyI')) return false;
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'))
+  )
+    return false;
+  return true;
+};
+
 export function SiteChatProvider({ children, available, ...chat }: ChatRootOptions & { children: ReactNode; available: boolean }) {
   // The latest request. One made before the chat has loaded waits here for it.
   const [request, setRequest] = useState<ChatRequest>();
@@ -84,8 +98,7 @@ export function SiteChatProvider({ children, available, ...chat }: ChatRootOptio
   useEffect(() => {
     if (!available) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.shiftKey || !isShortcutKey(event, 'i', 'KeyI')) return;
-      if (event.target instanceof HTMLElement && event.target.isContentEditable) return;
+      if (!isAskAiShortcut(event)) return;
       event.preventDefault();
       setRequest({ source: 'launcher', id: Date.now(), trigger: document.activeElement instanceof HTMLElement ? document.activeElement : null });
     };
