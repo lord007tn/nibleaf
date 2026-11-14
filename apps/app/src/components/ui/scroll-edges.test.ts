@@ -59,4 +59,15 @@ describe('revealOffset', () => {
   it('scrolls left (negative) to reveal an item cut off at the left', () => {
     expect(revealOffset({ left: -50, right: 40 }, row)).toBe(-74);
   });
+
+  it('reduces the production inset so nearly row-wide tabs stay fully visible', () => {
+    expect(revealOffset({ left: 20, right: 350 }, row, 40)).toBe(5);
+    expect(revealOffset({ left: 10, right: 340 }, row, 40)).toBe(-5);
+    expect(revealOffset({ left: 0, right: 360 }, row, 40)).toBe(0);
+  });
+
+  it('keeps the production inset when the tab has room on both sides', () => {
+    expect(revealOffset({ left: 320, right: 420 }, row, 40)).toBe(100);
+    expect(revealOffset({ left: -50, right: 40 }, row, 40)).toBe(-90);
+  });
 });

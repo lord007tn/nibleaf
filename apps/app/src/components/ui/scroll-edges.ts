@@ -38,16 +38,14 @@ export function edgeFadeMask(edges: ScrollEdges, fade = 24): string | undefined 
 
 /**
  * How far to scroll the row (physical pixels, as `scrollBy` takes them) so the
- * item is fully visible with `inset` to spare, or 0 when it already is, or
+ * item is fully visible with up to `inset` to spare, or 0 when it already is, or
  * when the row isn't laid out yet (no width).
  */
-export function revealOffset(
-  item: { left: number; right: number },
-  row: { left: number; right: number },
-  inset = 24,
-): number {
-  if (row.right - row.left <= 0) return 0;
-  if (item.left < row.left + inset) return item.left - row.left - inset;
-  if (item.right > row.right - inset) return item.right - row.right + inset;
+export function revealOffset(item: { left: number; right: number }, row: { left: number; right: number }, inset = 24): number {
+  const width = row.right - row.left;
+  if (width <= 0) return 0;
+  const availableInset = Math.min(inset, Math.max(0, (width - (item.right - item.left)) / 2));
+  if (item.left < row.left + availableInset) return item.left - row.left - availableInset;
+  if (item.right > row.right - availableInset) return item.right - row.right + availableInset;
   return 0;
 }
