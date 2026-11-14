@@ -56,11 +56,17 @@ describe('multi-word slash queries', () => {
     expect(titles('zzz')).toEqual([]);
     // Only a plain space separates words; a tab or no-break space ends a slash command, as on main.
     expect(titles('code\tblock')).toEqual([]);
-    expect(titles('code block')).toEqual([]);
+    expect(titles(`code${String.fromCodePoint(0xa0)}block`)).toEqual([]);
     // A mark that sits on no letter is kept, so it matches nothing instead of vanishing.
-    expect(titles('́')).toEqual([]);
-    expect(titles('code ́')).toEqual([]);
-    expect(titles('ـcode')).toEqual([]);
+    const acute = String.fromCodePoint(0x03_01);
+    expect(titles(acute)).toEqual([]);
+    expect(titles(`code ${acute}`)).toEqual([]);
+    expect(titles(`${String.fromCodePoint(0x06_40)}code`)).toEqual([]);
+    // Default-ignorable code points are never folded, even after a letter: CGJ is in the accent block but is not an accent.
+    const graphemeJoiner = String.fromCodePoint(0x03_4f);
+    expect(titles(`code${graphemeJoiner}`)).toEqual([]);
+    expect(titles(`co${graphemeJoiner}de`)).toEqual([]);
+    expect(titles(`code${String.fromCodePoint(0xfe_00)}`)).toEqual([]);
     // Words match from their start: "ock" is inside "block" but starts no word.
     expect(titles('ock')).toEqual([]);
     expect(titles('code lock')).toEqual([]);

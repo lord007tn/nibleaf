@@ -351,18 +351,24 @@ describe('closing the menu', () => {
     expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
   };
 
+  // Invisible characters and marks are built from code points, so none is written raw here.
+  const ch = (code: number) => String.fromCodePoint(code);
+  const ACUTE = ch(0x03_01);
+  const FATHA = ch(0x06_4e);
+  const TATWEEL = ch(0x06_40);
+
   // A mark that sits on no letter is kept, not folded away, so a word made only
   // of marks (or tatweel) can't vanish and leave a blank or shorter query.
   it.each([
-    ['a combining acute alone', '/́'],
-    ['a fatha alone', '/َ'],
-    ['a tatweel alone', '/ـ'],
-    ['two mark-only words', '/́ َ'],
-    ['"code" then an acute-only word', '/code ́'],
-    ['"code" then a fatha-only word', '/code َ'],
-    ['"code" then a tatweel-only word', '/code ـ'],
-    ['an acute before "code"', '/́code'],
-    ['a tatweel before "code"', '/ـcode'],
+    ['a combining acute alone', `/${ACUTE}`],
+    ['a fatha alone', `/${FATHA}`],
+    ['a tatweel alone', `/${TATWEEL}`],
+    ['two mark-only words', `/${ACUTE} ${FATHA}`],
+    ['"code" then an acute-only word', `/code ${ACUTE}`],
+    ['"code" then a fatha-only word', `/code ${FATHA}`],
+    ['"code" then a tatweel-only word', `/code ${TATWEEL}`],
+    ['an acute before "code"', `/${ACUTE}code`],
+    ['a tatweel before "code"', `/${TATWEEL}code`],
   ])('keeps %s exactly as typed: no menu, nothing inserted, and Enter only starts a paragraph', async (_name, text) => {
     await keepsAsText(text);
   });
@@ -370,24 +376,40 @@ describe('closing the menu', () => {
   // Only a plain space separates words. Other whitespace ended main's query, so
   // here it is not a command either: it neither splits words nor disappears.
   it.each([
-    ['a no-break space', '/code block'],
-    ['an em space', '/code block'],
-    ['a hair space', '/code block'],
-    ['an ideographic space', '/code　block'],
-    ['a tab', '/code\tblock'],
-  ])('keeps "code", %s, "block" exactly as typed: no menu, nothing inserted', async (_name, text) => {
-    await keepsAsText(text);
+    ['a no-break space', 0xa0],
+    ['an em space', 0x20_03],
+    ['a hair space', 0x20_0a],
+    ['an ideographic space', 0x30_00],
+    ['a tab', 0x09],
+  ])('keeps "code", %s, "block" exactly as typed: no menu, nothing inserted', async (_name, code) => {
+    await keepsAsText(`/code${ch(code)}block`);
   });
 
   // Zero-width and direction marks were already not commands at 19de7b53 (no
   // block name holds them); kept here so they stay that way.
   it.each([
-    ['a zero-width space', '/code​block'],
-    ['a zero-width non-joiner', '/code‌'],
-    ['a zero-width joiner', '/code‍'],
-    ['a left-to-right mark', '/‎code'],
-    ['a right-to-left mark', '/code‏'],
+    ['a zero-width space', `/code${ch(0x20_0b)}block`],
+    ['a zero-width non-joiner', `/code${ch(0x20_0c)}`],
+    ['a zero-width joiner', `/code${ch(0x20_0d)}`],
+    ['a left-to-right mark', `/${ch(0x20_0e)}code`],
+    ['a right-to-left mark', `/code${ch(0x20_0f)}`],
   ])('keeps "code" with %s exactly as typed: no menu, nothing inserted', async (_name, text) => {
+    await keepsAsText(text);
+  });
+
+  // Default-ignorable code points are never folded, even after a letter (the
+  // combining grapheme joiner sits inside the accent block but is not an
+  // accent), and never count as letters: the text after the slash is not a
+  // command, as on main.
+  it.each([
+    ['a combining grapheme joiner after "code"', `/code${ch(0x03_4f)}`],
+    ['a combining grapheme joiner inside "code"', `/co${ch(0x03_4f)}de`],
+    ['a combining grapheme joiner inside "code block"', `/co${ch(0x03_4f)}de block`],
+    ['a Mongolian variation selector after "code"', `/code${ch(0x18_0b)}`],
+    ['a word joiner after "code"', `/code${ch(0x20_60)}`],
+    ['a variation selector after "code"', `/code${ch(0xfe_00)}`],
+    ['a supplementary variation selector after "code"', `/code${ch(0xe_01_00)}`],
+  ])('keeps %s exactly as typed: no menu, nothing inserted, and Enter only starts a paragraph', async (_name, text) => {
     await keepsAsText(text);
   });
 });

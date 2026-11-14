@@ -34,16 +34,30 @@ const slashItemName = (item: SlashItem): string => item.titleKey.split('.')[2] ?
 
 // --- Text folding -----------------------------------------------------------
 
+/**
+ * Default-ignorable code points are never folded and never count as letters:
+ * the combining grapheme joiner (U+034F, inside the accent block), variation
+ * selectors, Mongolian free variation selectors, zero-width and direction
+ * marks, word joiners, tags and the rest. They stay literal, so a query holding
+ * one matches nothing (no block name holds them) and the menu closes.
+ *
+ * A real combining mark: General_Category Mn, Mc or Me, and not default-ignorable.
+ */
+const COMBINING_MARK = /^(?!\p{Default_Ignorable_Code_Point})\p{M}$/u;
 /** Latin combining accents, as NFD writes "é" (e + U+0301). */
-const isLatinAccent = (code: number): boolean => code >= 0x03_00 && code <= 0x03_6f;
-const isArabicMark = (code: number): boolean =>
-  (code >= 0x06_10 && code <= 0x06_1a) || // Arabic honorific signs
-  (code >= 0x06_4b && code <= 0x06_5f) || // Arabic harakat, shadda, sukun, hamza and madda marks
-  code === 0x06_70; // Arabic superscript alef
+const isLatinAccent = (char: string, code: number): boolean => code >= 0x03_00 && code <= 0x03_6f && COMBINING_MARK.test(char);
+const isArabicMark = (char: string, code: number): boolean =>
+  ((code >= 0x06_10 && code <= 0x06_1a) || // Arabic honorific signs
+    (code >= 0x06_4b && code <= 0x06_5f) || // Arabic harakat, shadda, sukun, hamza and madda marks
+    code === 0x06_70) && // Arabic superscript alef
+  COMBINING_MARK.test(char);
 const TATWEEL = 0x06_40;
-/** The characters folding may drop: accents, Arabic marks and tatweel. */
-const isFoldable = (code: number): boolean => isLatinAccent(code) || isArabicMark(code) || code === TATWEEL;
-const LETTER = /^\p{L}$/u;
+/** The characters folding may drop (where they sit on a letter): Latin accents, Arabic marks and tatweel. */
+const isFoldable = (char: string): boolean => {
+  const code = char.codePointAt(0) ?? 0;
+  return isLatinAccent(char, code) || isArabicMark(char, code) || code === TATWEEL;
+};
+const LETTER = /^(?!\p{Default_Ignorable_Code_Point})\p{L}$/u;
 const ARABIC_LETTER = /^\p{Script=Arabic}$/u;
 
 /** Letters a writer commonly types for one another. */
@@ -56,11 +70,16 @@ const LETTER_FOLDS: ReadonlyMap<string, string> = new Map([
 
 /**
  * Lower-case `text` and drop accents and Arabic diacritics where they sit on a
- * letter: "Étapes" → "etapes", "مرقّمة" → "مرقمه", "ملاحظـــة" → "ملاحظه". A Latin
- * accent is dropped after any letter; an Arabic mark or tatweel only after an
- * Arabic letter. A mark with no such letter before it (at the start of a word,
- * after a digit or punctuation, or a word made only of marks) is kept, so it
- * matches nothing instead of vanishing.
+ * letter: "Étapes" → "etapes", "مرقّمة" → "مرقمه", "ملاحظـــة" → "ملاحظه".
+ *
+ * What is dropped: a real combining mark (General_Category Mn, Mc or Me, never
+ * a default-ignorable code point) from the Latin accent block, after any
+ * letter; one of the Arabic marks, after an Arabic letter; and tatweel (the
+ * Arabic stretching letter), after an Arabic letter. Other marks (Devanagari
+ * and Bengali vowel signs, say) are part of their words and kept. A mark with
+ * no such letter before it (at the start of a word, after a digit or
+ * punctuation, or a word made only of marks) is kept, so it matches nothing
+ * instead of vanishing; so is every default-ignorable code point.
  */
 const foldSlashText = (text: string): string => {
   let folded = '';
@@ -68,9 +87,9 @@ const foldSlashText = (text: string): string => {
   let base: 'arabic' | 'letter' | null = null;
   for (const char of text.normalize('NFD').toLowerCase()) {
     const code = char.codePointAt(0) ?? 0;
-    if (isLatinAccent(code) && base) continue;
-    if ((isArabicMark(code) || code === TATWEEL) && base === 'arabic') continue;
-    if (!isFoldable(code)) base = LETTER.test(char) ? (ARABIC_LETTER.test(char) ? 'arabic' : 'letter') : null;
+    if (isLatinAccent(char, code) && base) continue;
+    if ((isArabicMark(char, code) || code === TATWEEL) && base === 'arabic') continue;
+    if (!isFoldable(char)) base = LETTER.test(char) ? (ARABIC_LETTER.test(char) ? 'arabic' : 'letter') : null;
     folded += LETTER_FOLDS.get(char) ?? char;
   }
   return folded;
@@ -79,13 +98,14 @@ const foldSlashText = (text: string): string => {
 /** A folded query word that can't be part of any block name: empty, holding whitespace other than a plain space, or a mark that sat on no letter. */
 const unmatchableWord = (folded: string): boolean => {
   if (folded === '') return true;
-  for (const char of folded) if (char.trim() === '' || isFoldable(char.codePointAt(0) ?? 0)) return true;
+  for (const char of folded) if (char.trim() === '' || isFoldable(char)) return true;
   return false;
 };
 
 // Letters, combining marks (Devanagari and Bengali vowel signs are part of a word) and digits.
 const NON_WORD = /[^\p{L}\p{M}\p{N}]+/u;
-const WORD_CHARACTER = /^[\p{L}\p{M}\p{N}]$/u;
+/** A letter, mark or digit that is not default-ignorable. */
+const WORD_CHARACTER = /^(?!\p{Default_Ignorable_Code_Point})[\p{L}\p{M}\p{N}]$/u;
 const WHITESPACE = /\s+/u;
 
 /** The whitespace-separated words of an already folded text, punctuation kept. */
