@@ -135,6 +135,8 @@ let container: HTMLDivElement;
 let root: Root;
 let mounted = false;
 let scrolled: Element[];
+/** Where the page's scroller was asked to scroll, and which element scrolled. */
+let scrolledTo: Array<{ scroller: Element; top: number }>;
 
 const pageNode = (id: string, path: string, overrides: Record<string, unknown> = {}) => ({
   id,
@@ -230,6 +232,12 @@ beforeEach(() => {
     },
   );
   scrolled = [];
+  scrolledTo = [];
+  // jsdom has no layout: record where the bar asks the page's scroller to go.
+  Element.prototype.scrollTo = function (this: Element, options?: ScrollToOptions | number) {
+    scrolled.push(this);
+    scrolledTo.push({ scroller: this, top: typeof options === 'object' ? (options.top ?? 0) : 0 });
+  } as Element['scrollTo'];
   Element.prototype.scrollIntoView = function (this: Element) {
     scrolled.push(this);
   };
@@ -258,6 +266,7 @@ afterEach(async () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
     delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    delete (Element.prototype as { scrollTo?: unknown }).scrollTo;
   }
 });
 
@@ -786,6 +795,62 @@ const blockSources = () => {
   });
   return sources;
 };
+
+describe('P1-ED-002: the bar on a narrow screen (390 px)', () => {
+  const LONG_LINK = '/configuration/advanced/networking/proxy-settings';
+  const content = `Read [the settings](${LONG_LINK}) first.`;
+
+  it('the evidence is one line, cut with an ellipsis, left to right, with its full value kept', async () => {
+    await open(content, { fix: 'broken-internal-link', fixTarget: LONG_LINK });
+    const evidence = container.querySelector<HTMLElement>('[data-testid="publish-fix-evidence"]');
+    expect(evidence?.getAttribute('dir')).toBe('ltr');
+    expect(evidence?.getAttribute('title')).toBe(LONG_LINK);
+    // The whole address is still its text (read out in full); only its display is cut.
+    expect(evidence?.textContent).toBe(LONG_LINK);
+    const classes = evidence?.className.split(/\s+/) ?? [];
+    expect(classes).toEqual(expect.arrayContaining(['truncate', 'inline-block', 'max-w-full']));
+    expect(classes).not.toContain('break-all');
+  });
+
+  it('the status takes its own row and the buttons wrap below it; their order is unchanged', async () => {
+    await open(content, { fix: 'broken-internal-link', fixTarget: LONG_LINK });
+    const status = container.querySelector<HTMLElement>('[data-testid="publish-fix-status"]');
+    // A 16rem basis: wider than what is left beside the buttons at 390 px, so it wraps onto a row of its own.
+    expect(status?.className.split(/\s+/)).toEqual(expect.arrayContaining(['flex-1', 'basis-64', 'min-w-0']));
+    expect(bar()?.className.split(/\s+/)).toContain('flex-wrap');
+    const actions = container.querySelector<HTMLElement>('[data-testid="publish-fix-actions"]');
+    expect(actions?.className.split(/\s+/)).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'max-w-full']));
+    expect(actions?.className.split(/\s+/)).not.toContain('shrink-0');
+    // Keyboard order: Previous, Next, Back to publish, Close.
+    expect([...(actions?.querySelectorAll('button') ?? [])].map((item) => item.textContent || item.getAttribute('aria-label'))).toEqual([
+      'editor.fix.previous',
+      'editor.fix.next',
+      'editor.fix.back',
+      'editor.fix.dismiss',
+    ]);
+  });
+
+  it('the landed link scrolls in below the bar, by the bar’s height plus a gap', async () => {
+    // Layout, as at 390 px: the bar is 96 px tall, the scroller starts 150 px down, the link sits 900 px down.
+    const rect = (top: number, height: number) =>
+      ({ top, height, bottom: top + height, left: 0, right: 390, width: 390, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+    const original = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      if (this.matches('[data-publish-fix]')) return rect(56, 96);
+      if (this.closest('.ProseMirror')) return rect(900, 20);
+      return rect(150, 600);
+    };
+    try {
+      await open(content, { fix: 'broken-internal-link', fixTarget: LONG_LINK });
+      const landing = scrolledTo.at(-1);
+      // 900 − 150 + scrollTop (0) − (96 + 16): the link sits 112 px under the scroller's top, clear of the bar, with the room below for the link field.
+      expect(landing?.top).toBe(900 - 150 - (96 + 16));
+      expect(landing?.scroller.contains(container.querySelector('.ProseMirror'))).toBe(true);
+    } finally {
+      Element.prototype.getBoundingClientRect = original;
+    }
+  });
+});
 
 describe('P1-ED-002: a finding inside a block the visual editor keeps as written', () => {
   it('covers every code, and every kind of block', () => {

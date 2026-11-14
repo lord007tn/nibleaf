@@ -41,7 +41,7 @@ type BarState =
  * (Delete would remove the whole component), so the writer's own selection and
  * focus stay where they were. Selection and decorations only, never an edit.
  */
-function goToMatch(editor: Editor, matches: FixMatch[], index: number, openLink: boolean): void {
+function goToMatch(editor: Editor, matches: FixMatch[], index: number, openLink: boolean, reveal: (element: Element | null) => void): void {
   const match = matches[index];
   if (!match) return;
   const { view } = editor;
@@ -49,8 +49,7 @@ function goToMatch(editor: Editor, matches: FixMatch[], index: number, openLink:
   if (match.inside) {
     view.dispatch(setFixHighlight(view.state.tr, matches, index));
     const block = view.nodeDOM(match.from);
-    if (block instanceof Element)
-      block.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    reveal(block instanceof Element ? block : null);
     return;
   }
   const node = match.node ? doc.nodeAt(match.from) : null;
@@ -64,14 +63,29 @@ function goToMatch(editor: Editor, matches: FixMatch[], index: number, openLink:
   if (openLink && !match.node && editor.isEditable) tr = requestLinkField(tr);
   view.dispatch(tr);
   const at = match.node ? view.nodeDOM(match.from) : view.domAtPos(match.from).node;
-  const element = at instanceof Element ? at : at?.parentElement;
-  element?.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  const element = at instanceof Element ? at : (at?.parentElement ?? null);
+  reveal(element);
   // A component's link (a Card's `href`) is edited in its own address field.
   const address = openLink && match.node && editor.isEditable ? element?.querySelector<HTMLInputElement>('input[data-attribute="href"]') : null;
   if (address) {
     address.focus({ preventScroll: true });
     address.select();
   }
+}
+
+/** Room left between the bar and a landed place, so it never sits against the bar's edge. */
+const REVEAL_GAP = 16;
+
+/**
+ * Scroll `element` near the top of the page's scrolling area, `offset` below
+ * its top edge: the place is fully visible, clear of the bar, with the space
+ * below it for the link field that opens under a link. The editor's DOM is
+ * never touched (ProseMirror watches it), only the scroller's position.
+ */
+function revealIn(scroller: HTMLElement | null, element: Element | null, offset: number): void {
+  if (!(scroller && element)) return;
+  const top = element.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - offset;
+  scroller.scrollTo?.({ top: Math.max(0, Math.round(top)), behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 }
 
 const clearHighlight = (editor: Editor | null) => {
@@ -153,17 +167,27 @@ export function PublishFixBar({
     };
   }, []);
 
-  /** Show place `index` of `matches`, of the check's `total`; or say none is on the page, or none can be shown. */
-  const show = useCallback((editor: Editor, total: number, matches: FixMatch[], index: number, openLink: boolean) => {
-    if (total === 0 || matches.length === 0) {
-      clearHighlight(editor);
-      setState(total === 0 ? { phase: 'notFound' } : { phase: 'unplaced', total });
-      return;
-    }
-    indexRef.current = index;
-    goToMatch(editor, matches, index, openLink);
-    setState({ phase: 'found', index, total, placed: matches.length, inside: matches[index]?.inside === true });
+  // A landed place scrolls into the page's scrolling area (the rich text document, or the canvas), the bar's height plus a gap below its top.
+  const reveal = useCallback((element: Element | null) => {
+    const root = callbacks.current.canvas();
+    const scroller = root?.querySelector<HTMLElement>('.pl-document-scroll') ?? root;
+    revealIn(scroller, element, Math.ceil(barRef.current?.getBoundingClientRect().height ?? 0) + REVEAL_GAP);
   }, []);
+
+  /** Show place `index` of `matches`, of the check's `total`; or say none is on the page, or none can be shown. */
+  const show = useCallback(
+    (editor: Editor, total: number, matches: FixMatch[], index: number, openLink: boolean) => {
+      if (total === 0 || matches.length === 0) {
+        clearHighlight(editor);
+        setState(total === 0 ? { phase: 'notFound' } : { phase: 'unplaced', total });
+        return;
+      }
+      indexRef.current = index;
+      goToMatch(editor, matches, index, openLink, reveal);
+      setState({ phase: 'found', index, total, placed: matches.length, inside: matches[index]?.inside === true });
+    },
+    [reveal],
+  );
   // On arrival at a finding inside a block kept as written, focus goes to the way to fix it (Edit as Markdown), not into the page.
   const focusEditSource = useRef(false);
   const editSourceRef = useRef<HTMLButtonElement>(null);
@@ -267,14 +291,21 @@ export function PublishFixBar({
     >
       <TriangleAlert aria-hidden className="size-4 shrink-0 text-amber-700 dark:text-amber-300" />
       {/* Filled once arrival is done, so the change is announced. */}
-      <p aria-atomic="true" aria-live="polite" className="min-w-0 flex-1 text-foreground leading-snug" data-testid="publish-fix-status">
+      {/* At least 16rem wide: on a narrow canvas it takes the row and the buttons wrap under it; on a wide one all of it fits on one row. */}
+      <p aria-atomic="true" aria-live="polite" className="min-w-0 flex-1 basis-64 text-foreground leading-snug" data-testid="publish-fix-status">
         {state.phase === 'pending' ? null : (
           <>
             <span className="font-medium">{t(FIX_LABELS[code])}</span>
             {evidence ? (
               <>
                 {' '}
-                <bdi className="break-all rounded bg-background/70 px-1 py-0.5 font-mono text-[12.5px]" dir="ltr">
+                {/* One line, cut with an ellipsis, never broken per character; the full value stays in the text and in `title`. An address reads left to right in every interface. */}
+                <bdi
+                  className="inline-block max-w-full truncate rounded bg-background/70 px-1 py-0.5 align-bottom font-mono text-[12.5px]"
+                  data-testid="publish-fix-evidence"
+                  dir="ltr"
+                  title={evidence}
+                >
                   {evidence}
                 </bdi>
               </>
@@ -294,7 +325,7 @@ export function PublishFixBar({
           </>
         )}
       </p>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="ms-auto flex max-w-full flex-wrap items-center justify-end gap-1" data-testid="publish-fix-actions">
         {state.phase === 'found' && state.inside && onEditSource ? (
           <Button ref={editSourceRef} className="cursor-pointer" onClick={onEditSource} size="sm" variant="secondary">
             {t('editor.editSource')}
