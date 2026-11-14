@@ -69,7 +69,9 @@ export const containsMath = (text: string): boolean => {
  *  Read conservatively, anywhere on a line, so a fence inside a blockquote or a
  *  list item (`> \`\`\`math`, `- \`\`\`math`) counts too: past the parser's bounds
  *  this scan alone decides, and a miss would leave raw TeX on a rich page. */
-const MATH_FENCE = /(?:`{3,}|~{3,})[ \t]*math\b/i;
+// Each backtick or tilde run starts at most one match (the lookbehinds), so a
+// long run that never says `math` is scanned once, not once per character.
+const MATH_FENCE = /(?:(?<!`)`{3,}|(?<!~)~{3,})[ \t]*math\b/i;
 
 /** The classes rehype-katex typesets in raw HTML (`language-math` as display math). */
 export const MATH_CLASS = /\b(?:math-(?:inline|display)|language-math)\b/;

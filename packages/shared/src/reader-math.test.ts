@@ -90,6 +90,15 @@ describe('math detection', () => {
     expect(readerRenderMode(`# Title\n\n${'word '.repeat(80_001)}`)).toMatchObject({ rich: false, math: false });
   });
 
+  it('scans a long backtick run in linear time', () => {
+    // Unanchored, each backtick started a fresh match over the rest of the run:
+    // about 1 s at 16,000 backticks, quadratic beyond.
+    const content = `<Note>Hi</Note>\n\n${'`'.repeat(100_000)}`;
+    const started = performance.now();
+    needsMathMarkdown(content);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it('a math fence alone keeps a page on the plain renderer, as before', () => {
     expect(readerRenderMode('```math\n\\sqrt{2}\n```').rich).toBe(false);
   });
