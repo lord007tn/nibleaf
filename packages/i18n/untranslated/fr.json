@@ -95,7 +95,22 @@
     "analytics_tab_performance",
     "analytics_delta_points",
     "analytics_pages_column_page",
-    "analytics_search_column_action"
+    "analytics_search_column_action",
+    "analytics_ai_column_pages",
+    "analytics_resource_page",
+    "admin_operations_gitkind_pull",
+    "admin_operations_gitkind_push",
+    "site_searchpages",
+    "site_searchversionlabel",
+    "settings_smartai",
+    "settings_ai_check_publisheddetail",
+    "dashboard_ai_conversations",
+    "dashboard_ai_count",
+    "dashboard_ai_sources",
+    "site_ai_sources",
+    "site_ai_source",
+    "site_ai_incorrect",
+    "dashboard_ai_engagement"
   ],
   "pending": [
     "brand_oss",

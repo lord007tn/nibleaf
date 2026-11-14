@@ -104,7 +104,20 @@
     "analytics_device_desktop",
     "analytics_device_tablet",
     "analytics_tab_feedback",
-    "analytics_search_column_problem"
+    "analytics_search_column_problem",
+    "analytics_ai_bots_title",
+    "analytics_ai_column_bot",
+    "analytics_ai_column_bots",
+    "analytics_resource_sitemap",
+    "admin_site_systemactor",
+    "admin_operations_gitkind_pull",
+    "admin_operations_gitkind_push",
+    "site_searchversionlabel",
+    "oauth_project_projectlabel",
+    "settings_smartai",
+    "settings_ai_check_publisheddetail",
+    "dashboard_ai_details",
+    "failures_details"
   ],
   "pending": [
     "brand_oss",
