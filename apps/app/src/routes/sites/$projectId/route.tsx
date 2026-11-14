@@ -3,6 +3,7 @@ import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
 import { isRtl as isRtlLocale, resolveLocale } from '@nibleaf/i18n/locales';
 import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
+import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { blockDirection } from '@nibleaf/shared/script-direction';
 import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
@@ -16,7 +17,7 @@ import { MadeWithBadge } from '@/components/site/made-with-badge';
 import { MobileNav, type MobileNavChoice } from '@/components/site/mobile-nav';
 import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/components/site/page-alternates-context';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
+import { PrivacyChoicesLink, SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } from '@/components/site/site-nav';
 import type { PrivateSiteGate } from '@/components/site/site-private-gate';
@@ -341,6 +342,8 @@ function SiteChrome() {
   // "Made with Nibleaf" attribution is on by default.
   const showBadge = footer?.madeWithBadge !== false;
   const hasFooterContent = Boolean(footer && (footer.copyright || footer.github || footer.x || footer.linkedin));
+  // Sites that ask for analytics consent keep "Privacy choices" in the footer.
+  const asksConsent = analyticsConsentPolicy(config) === 'required';
 
   // Branding can provide a theme-specific logo and an optional off-site link.
   const branding = config?.branding;
@@ -729,7 +732,7 @@ function SiteChrome() {
               </main>
             }
             footer={
-              hasFooterContent || showBadge || site.signedIn ? (
+              hasFooterContent || showBadge || site.signedIn || asksConsent ? (
                 <footer className="mt-auto border-border/60 border-t">
                   {hasFooterContent && footer ? (
                     <div
@@ -777,7 +780,19 @@ function SiteChrome() {
                   ) : null}
                   {showBadge ? (
                     <div className={cn('mx-auto max-w-[90rem] px-6', hasFooterContent ? 'pb-6' : 'py-5')}>
-                      <MadeWithBadge lang={activeLanguage?.code} />
+                      {/* Only sites that ask for consent add "Privacy choices" (and its separator). */}
+                      <MadeWithBadge lang={activeLanguage?.code}>
+                        {asksConsent ? <PrivacyChoicesLink projectId={projectId} config={config} lang={activeLanguage?.code} /> : null}
+                      </MadeWithBadge>
+                    </div>
+                  ) : asksConsent ? (
+                    <div
+                      className={cn(
+                        'mx-auto flex max-w-[90rem] justify-center px-6 text-[12px] text-[color:var(--theme-footer-muted,var(--muted-foreground))]',
+                        hasFooterContent ? 'pb-6' : 'py-5',
+                      )}
+                    >
+                      <PrivacyChoicesLink projectId={projectId} config={config} lang={activeLanguage?.code} />
                     </div>
                   ) : null}
                   {/* Signed in on the site itself (a reader, or a team member on a custom domain). */}

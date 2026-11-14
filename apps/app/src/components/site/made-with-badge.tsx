@@ -1,5 +1,6 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { siteT } from '@nibleaf/i18n/site';
+import type { ReactNode } from 'react';
 
 /**
  * "Made with Nibleaf" attribution + a low-key abuse-report contact, shown in the
@@ -10,7 +11,13 @@ import { siteT } from '@nibleaf/i18n/site';
  * Copy is served by the same Paraglide catalog as the rest of the public reader.
  * RTL-safe: flex + gap only, no directional margins.
  */
-export function MadeWithBadge({ lang }: { lang?: string }) {
+export function MadeWithBadge({
+  lang,
+  children,
+}: {
+  lang?: string /** More small print after the abuse contact (the privacy choices). */;
+  children?: ReactNode;
+}) {
   const t = siteT(lang);
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] text-[color:var(--theme-footer-muted,var(--muted-foreground))]">
@@ -32,6 +39,12 @@ export function MadeWithBadge({ lang }: { lang?: string }) {
       <a href="mailto:abuse@nibleaf.com" className="inline-flex min-h-6 items-center transition-colors hover:text-foreground">
         {t('reportAbuse')}
       </a>
+      {children ? (
+        <>
+          <span aria-hidden>·</span>
+          {children}
+        </>
+      ) : null}
     </div>
   );
 }
