@@ -11,6 +11,7 @@
     },
     ".": {
       "entry": [
+        ".github/assets/org-default-cloud-copy/capture.mjs",
         "tests/integration/editor-p2/browser.mjs",
         "tests/integration/import-fidelity/browser.mjs",
         "tests/integration/import-fidelity/local-only-node.mjs",
@@ -23,13 +24,19 @@
         "scripts/site-preview-shots.mjs",
         "scripts/split-ghost-by-language.mjs",
         "tests/integration/ai-answers/journey.mjs",
+        "tests/integration/dash-locale-screens/browser.mjs",
+        "tests/integration/dash-polish-p1/browser.mjs",
+        "tests/integration/dash-unknown-shell/browser.mjs",
         "tests/integration/delete-inbound-links/browser.mjs",
         "tests/integration/editor-paste-and-title/browser.mjs",
         "tests/integration/reader-video-embeds/capture.mjs",
         "tests/integration/editor-video-blocks/publish-worker.mjs",
         "tests/integration/overview-first-publish/browser.mjs",
+        "tests/integration/reader-search-latency/benchmark.ts",
+        "tests/integration/reader-search-latency/vitest.config.ts",
         "tests/integration/site-owner-addresses/browser.mjs",
-        "tests/integration/ssr-locale-direction/capture.mjs"
+        "tests/integration/ssr-locale-direction/capture.mjs",
+        "tests/integration/theme-contrast/browser.mjs"
       ]
     },
     "apps/server": {
@@ -38,10 +45,14 @@
     },
     "apps/app": {
       "entry": [
+        "scripts/dash-locale-screens.fixture.tsx",
+        "scripts/dash-polish-p1.fixture.tsx",
+        "scripts/dash-unknown-shell.fixture.tsx",
         "scripts/delete-inbound-links.fixture.tsx",
         "scripts/editor-paste-and-title.fixture.tsx",
         "scripts/overview-first-publish.fixture.tsx",
-        "scripts/site-owner-addresses.fixture.tsx"
+        "scripts/site-owner-addresses.fixture.tsx",
+        "scripts/theme-contrast.fixture.tsx"
       ]
     },
     "packages/database": {

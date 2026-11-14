@@ -12,6 +12,9 @@
  *   preview-legacy      no `theme` config (legacy palette branch)
  *   preview-answers     "harbor" with Ask AI available (the panel opens; no answer is requested)
  *   preview-private     "harbor", private, read by a signed-in reader
+ *   preview-brand       no `theme` config, brand colour #B96A3D (fails AA as text as authored, PUB-006)
+ *   preview-consent     "harbor" that asks for analytics consent (native, no third-party
+ *                       scripts) and offers Ask AI (the launcher; no answer is ever requested)
  *   preview-unset       "harbor" whose owner never picked light or dark (follows the reader's device)
  *
  * Endpoints (mirroring apps/server/src/modules/public/sites/handlers.ts):
@@ -437,6 +440,64 @@ ${FENCE}
 - [x] سُجّلت نقطة نهاية إشعارات الويب
 - [ ] نُقل مفتاح الإنتاج إلى الخزنة
 - [ ] حُدّث جدول المناوبة`,
+    },
+  },
+  {
+    // Wide blocks (PUB-001, PUB-005): a table with long prose cells that must
+    // wrap to the column, a many-column table that still has to scroll, and a
+    // code line longer than any column.
+    group: 'reference',
+    slug: 'configuration',
+    icon: 'settings',
+    en: {
+      title: 'Configuration',
+      description: 'Every environment variable the Tidewater agent reads, with defaults.',
+      content: `The agent reads its settings from the environment at start-up.
+
+## Block components
+
+| Component | Purpose | Attributes |
+| --- | --- | --- |
+| \`Tabs\` | Groups alternatives side by side, one tab per operating system or language, and remembers the reader's choice across pages. | \`items\`, \`defaultValue\`, \`sync\` |
+| \`Steps\` | Numbers a procedure so the reader can keep their place while they switch between the docs and a terminal. | \`titleSize\` |
+| \`Callout\` | Draws attention to a warning, a tip or a note without breaking the reading flow of the surrounding section. | \`type\`, \`title\`, \`icon\` |
+
+## Environment variables
+
+| Variable | Required | Default | Scope | Example | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| \`TIDEWATER_KEY\` | Yes | None | Agent and CLI | \`tw_live_9f3c\` | The [API key](/guides/authentication) the agent authenticates with. |
+| \`TIDEWATER_REGION\` | No | \`eu-west\` | Agent | \`me-central\` | Where shipment data is stored and processed. |
+| \`TIDEWATER_WEBHOOK_SECRET\` | No | Empty | Webhook receiver | \`whsec_51ab\` | Verifies the signature on every delivery. |
+
+${FENCE}bash title="start-agent.sh"
+TIDEWATER_KEY=tw_live_9f3c TIDEWATER_REGION=me-central TIDEWATER_WEBHOOK_SECRET=whsec_51ab npx @tidewater/agent start --port 8080 --log-level info
+${FENCE}`,
+    },
+    ar: {
+      title: 'الإعدادات',
+      description: 'كل متغيرات البيئة التي يقرؤها وكيل تايدووتر وقيمها الافتراضية.',
+      content: `يقرأ الوكيل إعداداته من البيئة عند بدء التشغيل.
+
+## مكوّنات الكتل
+
+| المكوّن | الغرض | الخصائص |
+| --- | --- | --- |
+| \`Tabs\` | يجمع البدائل جنبًا إلى جنب، تبويبًا لكل نظام تشغيل أو لغة، ويتذكر اختيار القارئ بين الصفحات. | \`items\`، \`defaultValue\`، \`sync\` |
+| \`Steps\` | يرقّم الإجراء ليحافظ القارئ على موضعه وهو ينتقل بين التوثيق والطرفية. | \`titleSize\` |
+| \`Callout\` | يلفت الانتباه إلى تحذير أو نصيحة أو ملاحظة دون أن يقطع تسلسل القراءة في القسم المحيط. | \`type\`، \`title\`، \`icon\` |
+
+## متغيرات البيئة
+
+| المتغير | إلزامي | الافتراضي | النطاق | مثال | الغرض |
+| --- | --- | --- | --- | --- | --- |
+| \`TIDEWATER_KEY\` | نعم | لا يوجد | الوكيل والأداة | \`tw_live_9f3c\` | [مفتاح الواجهة](/guides/authentication) الذي يصادق به الوكيل. |
+| \`TIDEWATER_REGION\` | لا | \`eu-west\` | الوكيل | \`me-central\` | مكان تخزين بيانات الشحنات ومعالجتها. |
+| \`TIDEWATER_WEBHOOK_SECRET\` | لا | فارغ | مستقبل الإشعارات | \`whsec_51ab\` | يتحقق من التوقيع على كل إرسال. |
+
+${FENCE}bash title="start-agent.sh"
+TIDEWATER_KEY=tw_live_9f3c TIDEWATER_REGION=me-central TIDEWATER_WEBHOOK_SECRET=whsec_51ab npx @tidewater/agent start --port 8080 --log-level info
+${FENCE}`,
     },
   },
   {
@@ -880,7 +941,7 @@ ${CURL_SHIPMENT}
     en: {
       title: 'Rate limits',
       description: 'Per-key request budgets and the headers that report them.',
-      content: `Limits are enforced per API key over a sliding sixty-second window.
+      content: `Limits are enforced per API key over a sliding sixty-second window. The bucket refills at $r = n / 60$ requests per second, where $n$ is the per-minute limit.
 
 | Key type | Requests per minute | Burst |
 | --- | --- | --- |
@@ -1055,6 +1116,8 @@ const PROJECTS = {
   'preview-answers': { preset: 'harbor', answers: true },
   // A private site whose reader is signed in; access can be revoked mid-session.
   'preview-private': { preset: 'harbor', visibility: 'private' },
+  'preview-brand': { preset: null, primaryColor: '#B96A3D' },
+  'preview-consent': { preset: 'harbor', consent: true, answers: true },
   // No styling.theme: the reader follows the visitor's device (PUB-004).
   'preview-unset': { preset: 'harbor', unsetAppearance: true },
 };
@@ -1227,6 +1290,12 @@ const findPage = (path) => {
 const projectPayload = (id, preset, language) => {
   const languageConfig = LANGUAGE_CONFIG[language.code];
   const config = projectConfig(preset, PROJECTS[id]?.visibility, PROJECTS[id]?.unsetAppearance);
+  if (PROJECTS[id]?.primaryColor) {
+    config.styling.primaryColor = PROJECTS[id].primaryColor;
+  }
+  if (PROJECTS[id]?.consent) {
+    config.analytics = { cookieConsent: true };
+  }
   return {
     id,
     name: SITE_NAME.en,

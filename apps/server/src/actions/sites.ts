@@ -839,7 +839,12 @@ export const searchSite = async (
     consentState: analytics.consentState ?? 'unknown',
     sessionId: analytics.sessionId,
     userAgent: headers.get('user-agent') ?? undefined,
-  }).catch(() => undefined);
+  }).catch((error) => {
+    logger.warn(
+      { projectId: snapshot.project.id, errorName: error instanceof Error ? error.name : 'UnknownError' },
+      'Reader search analytics failed',
+    );
+  });
   return {
     hits,
     searchId,

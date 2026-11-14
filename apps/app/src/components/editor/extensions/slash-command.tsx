@@ -1,6 +1,6 @@
-import { cn } from '@nibleaf/design-system/lib/utils';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { isRtl, type Locale, type MessageKey, resolveLocale } from '@nibleaf/i18n';
-import { translateFn, useLocale } from '@nibleaf/i18n/react';
+import { useLocale } from '@nibleaf/i18n/react';
 import type { Editor } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
@@ -8,9 +8,10 @@ import { type EditorState, PluginKey } from '@tiptap/pm/state';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
 import type { Ref } from 'react';
-import { Fragment, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { unsortedSlashItems } from './slash-items';
 import type { SlashItem, UploadFn } from './slash-items/types';
+import { groupSlashItems, searchSlashItems, slashMenuOrder, slashQueryCouldMatch, slashQueryKeepsMenuOpen, slashSectionOf } from './slash-search';
 
 /** The page language scaffolds are written in: an explicit extension option wins,
  *  then a `lang` on the editor's direction scope (the host's `dir` wrapper), then
@@ -26,68 +27,14 @@ export const scaffoldLocaleOf = (scope: { lang?: string; dir?: string } | null |
 export const slashPageLocale = (editor: Pick<Editor, 'view'>, explicit?: Locale): Locale =>
   scaffoldLocaleOf(editor.view.dom.closest<HTMLElement>('[dir]'), explicit);
 
-export const createSlashItems = (onUpload?: UploadFn): SlashItem[] => unsortedSlashItems(onUpload).sort((a, b) => slashOrder(a) - slashOrder(b));
+export const createSlashItems = (onUpload?: UploadFn): SlashItem[] =>
+  unsortedSlashItems(onUpload).sort((a, b) => slashMenuOrder(a) - slashMenuOrder(b));
 
-// Sections stay contiguous in the menu: the everyday writing blocks first, then
-// images/tables, then notes & warnings; everything else (to-dos, quotes, code,
-// cards…) is listed afterwards under "Advanced".
-const basic = ['text', 'h1', 'h2', 'h3', 'bulletList', 'numberedList'];
-const media = ['image', 'video', 'embed', 'table'];
-const callouts = ['note', 'tip', 'info', 'check', 'warning', 'danger'];
-const itemName = (item: SlashItem) => item.titleKey.split('.')[2] ?? '';
-export const slashSection = (item: SlashItem): MessageKey => {
-  const name = itemName(item);
-  if (basic.includes(name)) return 'editor.slash.basicBlocks';
-  if (media.includes(name)) return 'editor.slash.section.media';
-  if (callouts.includes(name)) return 'editor.slash.section.callouts';
-  return 'editor.slash.section.advanced';
-};
-const slashOrder = (item: SlashItem): number => {
-  const order = [...basic, ...media, ...callouts];
-  const index = order.indexOf(itemName(item));
-  return index < 0 ? order.length : index;
-};
-export const rankSlashItems = (items: SlashItem[], query: string, locale: Locale = 'en'): SlashItem[] => {
-  const q = query.trim().toLocaleLowerCase();
-  if (!q) return items;
-  const score = (item: SlashItem) => {
-    const labels = [
-      translateFn(item.titleKey, undefined, locale),
-      labelInFn(item.titleKey, 'en'),
-      labelInFn(item.titleKey, 'ar'),
-      itemName(item),
-    ].map((label) => label.toLocaleLowerCase());
-    const aliases = (item.keywords ?? []).map((label) => label.toLocaleLowerCase());
-    if (labels.some((label) => label === q)) return 0;
-    if (aliases.some((label) => label === q)) return 1;
-    if (labels.some((label) => label.startsWith(q))) return 2;
-    if (aliases.some((label) => label.startsWith(q))) return 3;
-    return 4;
-  };
-  return items
-    .filter((item) =>
-      [haystackOf(item), translateFn(item.titleKey, undefined, locale), translateFn(item.descKey, undefined, locale), itemName(item)].some((text) =>
-        text.toLocaleLowerCase().includes(q),
-      ),
-    )
-    .sort((a, b) => score(a) - score(b));
-};
+/** The heading of the menu section an item is listed under (Basic blocks, Notes & warnings, Media & tables…). */
+export const slashSection = (item: SlashItem): MessageKey => slashSectionOf(item).heading;
 
-/** Resolve a slash label in one canonical catalog for locale-independent search. */
-const labelInFn = (label: MessageKey, locale: 'en' | 'ar'): string => translateFn(label, undefined, locale);
-
-/** Search haystack across BOTH locales (+ keywords) so filtering works whatever
- *  language the menu is displayed in. */
-const haystackOf = (item: SlashItem): string =>
-  [
-    labelInFn(item.titleKey, 'en'),
-    labelInFn(item.titleKey, 'ar'),
-    labelInFn(item.descKey, 'en'),
-    labelInFn(item.descKey, 'ar'),
-    ...(item.keywords ?? []),
-  ]
-    .join(' ')
-    .toLowerCase();
+/** The items matching `query`, best first (rule and ranking in slash-search.ts). A blank query keeps menu order. */
+export const rankSlashItems = (items: SlashItem[], query: string, locale: Locale = 'en'): SlashItem[] => searchSlashItems(items, query, locale);
 
 interface SlashListHandle {
   onKeyDown: (event: KeyboardEvent) => boolean;
@@ -95,16 +42,29 @@ interface SlashListHandle {
 
 interface SlashListProps {
   items: SlashItem[];
+  /** The text typed after "/"; blank shows "Suggested" first (see groupSlashItems). */
+  query: string;
   command: (item: SlashItem) => void;
+  /** The editor's editable element: while the menu is open it names the active option for screen readers. */
+  editorDom?: HTMLElement;
   ref?: Ref<SlashListHandle>;
 }
 
-export const nextSlashSelection = (selected: number, count: number, key: string): number | null => {
+/**
+ * The next highlighted option for a navigation key, or null when the key is not
+ * one. Arrows wrap; Home/End go to the first/last option; PageDown goes to the
+ * first option of the next section (the last option from the last section) and
+ * PageUp to the start of the current section, or of the previous one when
+ * already there. `groupStarts` are the indexes where each section begins.
+ */
+export const nextSlashSelection = (selected: number, count: number, key: string, groupStarts: readonly number[] = [0]): number | null => {
   if (count <= 0) return null;
   if (key === 'ArrowUp') return (selected + count - 1) % count;
   if (key === 'ArrowDown') return (selected + 1) % count;
   if (key === 'Home') return 0;
   if (key === 'End') return count - 1;
+  if (key === 'PageDown') return groupStarts.find((start) => start > selected && start < count) ?? count - 1;
+  if (key === 'PageUp') return groupStarts.findLast((start) => start < selected) ?? 0;
   return null;
 };
 
@@ -141,39 +101,79 @@ export const resolveSlashAnchor = (
   }
 };
 
-const SlashList = ({ items, command, ref }: SlashListProps) => {
-  const { t, locale } = useLocale();
-  const label = (value: MessageKey): string => t(value);
-  const [selected, setSelected] = useState(0);
-  const listboxId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
+/** The option element cmdk rendered for `value` (cmdk owns the option ids). */
+const optionFor = (list: HTMLElement | null, value: string | undefined): HTMLElement | null => {
+  if (!list || value === undefined) return null;
+  for (const option of list.querySelectorAll<HTMLElement>('[cmdk-item]')) {
+    if (option.getAttribute('data-value') === value) return option;
+  }
+  return null;
+};
 
-  // Reset the highlight to the first item whenever the filtered list changes.
+const SlashList = ({ items, query, command, editorDom, ref }: SlashListProps) => {
+  const { t, locale } = useLocale();
+  const groups = useMemo(() => groupSlashItems(items, query), [items, query]);
+  // One flat list of options in display order, keyed by section and block.
+  const options = useMemo(() => groups.flatMap((group) => group.items.map((item) => ({ item, value: `${group.key}:${item.titleKey}` }))), [groups]);
+  const groupStarts = useMemo(() => {
+    const starts: number[] = [];
+    let index = 0;
+    for (const group of groups) {
+      starts.push(index);
+      index += group.items.length;
+    }
+    return starts;
+  }, [groups]);
+  const [selected, setSelected] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const active = options[Math.min(selected, options.length - 1)];
+
+  // Reset the highlight to the first (best) option whenever the list changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset-on-items-change
   useEffect(() => {
     setSelected(0);
-  }, [items]);
+  }, [options]);
 
-  // Keep the active item scrolled into view.
+  // Keep the active option in view (with its section heading when it is the
+  // section's first), and name it as the active descendant: on the listbox and
+  // on the editor, which keeps focus while the menu is open.
   useLayoutEffect(() => {
-    const node = containerRef.current?.querySelector<HTMLElement>(`[data-index="${selected}"]`);
-    node?.scrollIntoView({ block: 'nearest' });
-  }, [selected]);
+    const list = listRef.current;
+    const option = optionFor(list, active?.value);
+    if (option) {
+      const group = option.closest('[cmdk-group]');
+      if (group?.querySelector('[cmdk-item]') === option)
+        group.querySelector<HTMLElement>('[cmdk-group-heading]')?.scrollIntoView?.({ block: 'nearest' });
+      option.scrollIntoView?.({ block: 'nearest' });
+    }
+    for (const element of [list, editorDom]) {
+      if (!element) continue;
+      if (option?.id) element.setAttribute('aria-activedescendant', option.id);
+      else element.removeAttribute('aria-activedescendant');
+    }
+    if (editorDom && list?.id) editorDom.setAttribute('aria-controls', list.id);
+  });
+  useEffect(
+    () => () => {
+      editorDom?.removeAttribute('aria-activedescendant');
+      editorDom?.removeAttribute('aria-controls');
+    },
+    [editorDom],
+  );
 
   useImperativeHandle(ref, () => ({
     onKeyDown: (event) => {
-      if (items.length === 0) {
+      if (options.length === 0) {
         return false;
       }
-      const nextSelection = nextSlashSelection(selected, items.length, event.key);
+      const nextSelection = nextSlashSelection(selected, options.length, event.key, groupStarts);
       if (nextSelection !== null) {
         setSelected(nextSelection);
         return true;
       }
       if (event.key === 'Enter' || event.key === 'Tab') {
-        const item = items[selected];
-        if (item) {
-          command(item);
+        if (active) {
+          command(active.item);
         }
         return true;
       }
@@ -182,55 +182,48 @@ const SlashList = ({ items, command, ref }: SlashListProps) => {
   }));
 
   return (
-    <div
-      ref={containerRef}
-      role="listbox"
-      aria-label={t('editor.slash.basicBlocks')}
+    <Command
+      // Focus never leaves the editor: the editor's keys move the selection
+      // (above) and cmdk reports pointer hover here. The list is already ranked.
+      value={active?.value ?? ''}
+      onValueChange={(value) => {
+        const index = options.findIndex((option) => option.value === value);
+        if (index >= 0) setSelected(index);
+      }}
+      shouldFilter={false}
       // The menu is interface text: follow the dashboard language's direction, not
       // the page's (an English dashboard editing an Arabic page stays left-to-right).
       dir={isRtl(locale) ? 'rtl' : 'ltr'}
-      className="z-50 max-h-80 w-[304px] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-xl"
+      className="z-50 h-auto w-[320px] border border-border bg-card p-0 shadow-xl"
     >
-      {items.length === 0 ? (
-        <div className="px-3 py-3 text-muted-foreground text-sm">{t('editor.slash.empty')}</div>
-      ) : (
-        items.map((item, index) => {
-          const Icon = item.icon;
-          const previous = items[index - 1];
-          return (
-            <Fragment key={item.titleKey}>
-              {!previous || slashSection(previous) !== slashSection(item) ? (
-                <div className="px-2.5 py-1.5 text-xs text-muted-foreground" role="presentation">
-                  {t(slashSection(item))}
-                </div>
-              ) : null}
-              <button
-                type="button"
-                id={`${listboxId}-opt-${index}`}
-                role="option"
-                aria-selected={index === selected}
-                data-index={index}
-                onMouseEnter={() => setSelected(index)}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => command(item)}
-                className={cn(
-                  'flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1.5 text-start',
-                  index === selected ? 'bg-primary/10' : 'bg-transparent',
-                )}
-              >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[13px]">
-                  <Icon className="size-4 text-foreground/80" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-medium text-[13.5px] text-foreground">{label(item.titleKey)}</span>
-                  <span className="block truncate text-muted-foreground text-xs">{label(item.descKey)}</span>
-                </span>
-              </button>
-            </Fragment>
-          );
-        })
-      )}
-    </div>
+      <CommandList ref={listRef} label={t('editor.insertBlock')} className="max-h-[min(26rem,calc(100vh-6rem))] p-1">
+        {options.length === 0 ? <CommandEmpty className="px-3 py-3 text-start text-muted-foreground">{t('editor.slash.empty')}</CommandEmpty> : null}
+        {groups.map((group) => (
+          <CommandGroup key={group.key} heading={t(group.heading)} className="p-0.5">
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <CommandItem
+                  key={item.titleKey}
+                  value={`${group.key}:${item.titleKey}`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onSelect={() => command(item)}
+                  className="gap-3 rounded-lg px-2.5 py-1.5 text-start data-selected:text-foreground"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[13px]">
+                    <Icon className="size-4 text-foreground/80" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-medium text-[13.5px] text-foreground">{t(item.titleKey)}</span>
+                    <span className="block truncate text-muted-foreground text-xs">{t(item.descKey)}</span>
+                  </span>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        ))}
+      </CommandList>
+    </Command>
   );
 };
 
@@ -240,6 +233,18 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
     pluginKey: slashSuggestionKey,
     char: '/',
     startOfLine: false,
+    // Block names have spaces ("code block"); slashQueryKeepsMenuOpen closes the
+    // menu again on a double space, a leading space, or once the words typed
+    // can no longer match any block.
+    allowSpaces: true,
+    allow: ({ state, range }) => {
+      const query = state.doc.textBetween(range.from + 1, range.to);
+      // Cheap checks first (length, slashes, spaces), so a long paste is rejected before any folding.
+      // Text with a character no block name has ("/?", "/code\block", "/(code)") is not a command.
+      return (
+        slashQueryKeepsMenuOpen(query, (finished) => rankSlashItems(items, finished, locale).length > 0) && slashQueryCouldMatch(query, items, locale)
+      );
+    },
     initialItems: items,
     items: ({ query }) => rankSlashItems(items, query, locale),
     command: ({ editor, range, props }) => {
@@ -291,7 +296,9 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
             editor: props.editor,
             props: {
               items: props.items,
+              query: props.query,
               command: (item: SlashItem) => props.command(item),
+              editorDom: props.editor.view.dom,
             },
           });
           document.body.appendChild(component.element);
@@ -326,7 +333,9 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
           currentProps = props;
           component?.updateProps({
             items: props.items,
+            query: props.query,
             command: (item: SlashItem) => props.command(item),
+            editorDom: props.editor.view.dom,
           });
           if (positionFrame !== null) cancelAnimationFrame(positionFrame);
           positionFrame = requestAnimationFrame(position);
@@ -353,7 +362,7 @@ const slashSuggestionKey = new PluginKey('nibleaf-slash-command');
 /** True while the "/" block menu is open, so other floating menus can step aside. */
 export const isSlashMenuOpen = (state: EditorState): boolean => Boolean(slashSuggestionKey.getState(state)?.active);
 
-/** Slash-command extension: type `/` to open the Basic blocks menu. `locale` is
+/** Slash-command extension: type `/` to open the block menu. `locale` is
  *  the page language for inserted scaffold text; when omitted it is derived from
  *  the host's `dir` wrapper (see `slashPageLocale`). */
 export const SlashCommand = Extension.create<{ onUpload?: UploadFn; locale?: Locale }>({

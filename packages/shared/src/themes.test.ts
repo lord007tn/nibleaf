@@ -1,19 +1,39 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ACCENT_TEXT_CONTRAST,
+  accentTextAdjustments,
   applyThemeTemplateConfig,
   canonicalThemeTemplateJson,
   contrastRatio,
   inspectThemeTemplateInput,
   previewThemeConfigChanges,
+  readableAccentText,
+  readableCodeAccent,
+  readableOnAccent,
   readableOnBackground,
   resolveTheme,
   safeThemeFontFamily,
   safeThemeHex,
+  THEME_PRESET_IDS,
   THEME_PRESETS,
   themeContrastIssues,
   themeOwnedConfig,
   themeTemplateFromConfig,
 } from './themes';
+
+/** Contrast of `color` on a `weight` tint of itself over `background`, worked
+ * out here independently with unrounded channels (no hex rounding). */
+const onTint = (color: string, background: string, weight: number) => {
+  const rgb = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+  const linear = (value: number) => {
+    const n = value / 255;
+    return n <= 0.040_45 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = ([r = 0, g = 0, b = 0]: number[]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  const text = luminance(rgb(color));
+  const tint = luminance(rgb(background).map((value, index) => value * (1 - weight) + (rgb(color)[index] ?? 0) * weight));
+  return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
+};
 
 describe('readableOnBackground', () => {
   it('reaches the target on a mid-tone background by trying the other side too', () => {
@@ -81,11 +101,113 @@ describe('documentation themes', () => {
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
   });
 
+  it('draws an accent that fails as text in the nearest shade that passes AA, and leaves passing accents alone (PUB-006)', () => {
+    // docs.nibleaf.com's brand colour: 3.94:1 on the light canvas as authored.
+    const config = { theme: { preset: 'harbor' as const, colors: { light: { accent: '#B96A3D' } } } };
+    const { light } = resolveTheme(config).colors;
+    expect(contrastRatio(light.accent, light.canvas)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    // Also on its 10% tint (bg-primary/10), where the active nav item sits.
+    expect(onTint(light.accent, light.canvas, 0.1)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(light.accent).not.toBe('#b96a3d');
+    // The focus ring followed the accent, and the text on it reads.
+    expect(light.focus).toBe(light.accent);
+    expect(contrastRatio(light.accentForeground, light.accent)).toBeGreaterThanOrEqual(4.5);
+    // Still recognisably the brand: a darker shade, same hue family.
+    expect(light.accent).toMatch(/^#[89a][0-9a-f][4-6][0-9a-f][2-4][0-9a-f]$/);
+    expect(accentTextAdjustments(config)).toEqual([expect.objectContaining({ mode: 'light', from: '#b96a3d', to: light.accent })]);
+    // Presets already pass as authored and stay byte-identical.
+    for (const id of THEME_PRESET_IDS) {
+      expect(resolveTheme({ theme: { preset: id } }).colors).toEqual(THEME_PRESETS[id].colors);
+      expect(accentTextAdjustments({ theme: { preset: id } })).toEqual([]);
+    }
+  });
+
+  it('searches the other way on a mid-tone canvas, and never makes a passing accent worse', () => {
+    // 4.63:1 on the canvas as authored, but short on its own tint: towards white
+    // never gets there, towards black does.
+    const shade = readableAccentText('#303030', '#999999');
+    expect(contrastRatio(shade, '#999999')).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(contrastRatio(shade, '#999999')).toBeGreaterThanOrEqual(contrastRatio('#303030', '#999999'));
+    // Where nothing passes on canvas and tint, the canvas decides and never gets
+    // worse: black on #e61186 reads 4.79:1 as authored and stays as authored.
+    expect(readableAccentText('#000000', '#e61186')).toBe('#000000');
+  });
+
+  it('never lowers the canvas contrast below the authored accent or AA, across a grid of palettes', () => {
+    const levels = ['00', '33', '66', '99', 'cc', 'ff'];
+    const colours = levels.flatMap((r) => levels.flatMap((g) => levels.map((b) => `#${r}${g}${b}`)));
+    const canvases = ['#ffffff', '#fafafa', '#999999', '#777777', '#e61186', '#1f63c4', '#0b1120', '#000000'];
+    for (const canvas of canvases) {
+      for (const accent of colours) {
+        const result = readableAccentText(accent, canvas);
+        const floor = Math.min(contrastRatio(accent, canvas), ACCENT_TEXT_CONTRAST);
+        expect(contrastRatio(result, canvas), `${accent} on ${canvas} -> ${result}`).toBeGreaterThanOrEqual(floor - 1e-9);
+      }
+    }
+  });
+
+  it('draws the code accent from the authored colour, at AA on the code surface and the rail tint', () => {
+    // The rail's active item sits on a 14% tint of the accent over the code surface.
+    const tint = (accent: string, code: string) => onTint(accent, code, 0.14);
+    // Signal with #009966: main drew #009966 on the rail; starting from the
+    // canvas shade (#00774f) would have read 4.35:1 on the tint.
+    expect(readableCodeAccent('#009966', '#0e0f1a')).toBe('#009966');
+    // #387818 nudges to #609347 on the code surface, which reads 4.478:1 on its
+    // unrounded tint (rounded to #192120 it would look like 4.502:1): one more step.
+    expect(onTint('#609347', '#0e0f1a', 0.14)).toBeLessThan(ACCENT_TEXT_CONTRAST);
+    expect(readableCodeAccent('#387818', '#0e0f1a')).not.toBe('#609347');
+    expect(onTint(readableCodeAccent('#387818', '#0e0f1a'), '#0e0f1a', 0.14)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    const levels = ['00', '33', '66', '99', 'cc', 'ff'];
+    const colours = levels.flatMap((r) => levels.flatMap((g) => levels.map((b) => `#${r}${g}${b}`)));
+    let shaded = 0;
+    for (const code of ['#0f172a', '#070c16', '#2b2521', '#0f0d0b', '#0e0f1a', '#050609', '#1e293b']) {
+      for (const accent of colours) {
+        const result = readableCodeAccent(accent, code);
+        expect(contrastRatio(result, code), `${accent} on ${code}`).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+        expect(tint(result, code), `${accent} on the ${code} tint`).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+        // Where main's colour already passes on both, it is kept as is.
+        const before = readableOnBackground(accent, code);
+        if (tint(before, code) >= ACCENT_TEXT_CONTRAST) expect(result).toBe(before);
+        else shaded++;
+      }
+    }
+    expect(shaded).toBeGreaterThan(0);
+  });
+
+  it('keeps the text on a shaded accent at AA, across a grid of palettes', () => {
+    // #606060 on black is shaded to read as text; its button label must still pass.
+    const { dark } = resolveTheme({ theme: { preset: 'harbor', colors: { dark: { canvas: '#000000', accent: '#606060' } } } }).colors;
+    expect(contrastRatio(dark.accentForeground, dark.accent)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    const levels = ['00', '33', '66', '99', 'cc', 'ff'];
+    const colours = levels.flatMap((r) => levels.flatMap((g) => levels.map((b) => `#${r}${g}${b}`)));
+    let shadedCases = 0;
+    for (const canvas of ['#ffffff', '#fbfcfd', '#999999', '#777777', '#000000', '#0b1120']) {
+      for (const accent of colours) {
+        const { light } = resolveTheme({ theme: { preset: 'harbor', colors: { light: { canvas, accent } } } }).colors;
+        if (light.accent === accent) continue;
+        shadedCases++;
+        expect(contrastRatio(light.accentForeground, light.accent), `${accent} on ${canvas} -> ${light.accent}`).toBeGreaterThanOrEqual(
+          ACCENT_TEXT_CONTRAST,
+        );
+      }
+    }
+    expect(shadedCases).toBeGreaterThan(0);
+    expect(readableOnAccent('#1f63c4')).toBe('#ffffff');
+    expect(readableOnAccent('#7c7c7c')).toBe('#000000');
+  });
+
+  it('lightens a dark-mode accent that fails as text on the dark canvas', () => {
+    expect(readableAccentText('#2a2a6e', '#0b1120')).not.toBe('#2a2a6e');
+    expect(contrastRatio(readableAccentText('#2a2a6e', '#0b1120'), '#0b1120')).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(readableAccentText('#1f63c4', '#fbfcfd')).toBe('#1f63c4');
+    expect(readableAccentText('not-a-colour', '#ffffff')).toBe('not-a-colour');
+  });
+
   it('shares strict CSS interpolation sanitizers across renderers', () => {
     expect(safeThemeHex('#AABBCC', '#000000')).toBe('#aabbcc');
     expect(safeThemeHex('#AbC', '#000000')).toBe('#aabbcc');
     expect(safeThemeHex('red;}body{display:none', '#000000')).toBe('#000000');
-    expect(resolveTheme({ theme: { colors: { light: { accent: '#AbC' } } } }).colors.light).toMatchObject({
+    expect(resolveTheme({ theme: { colors: { light: { accent: '#AbC' } } } }, { authoredAccent: true }).colors.light).toMatchObject({
       accent: '#aabbcc',
       focus: '#aabbcc',
     });

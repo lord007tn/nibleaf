@@ -579,13 +579,13 @@ describe('adding a domain', () => {
     expect(hosts()).toEqual(['a.example.com', 'b.example.com']);
   });
 
-  it('says only "another workspace" when the domain belongs to someone else', async () => {
+  it('says only "another organization" when the domain belongs to someone else', async () => {
     expect(await failAdd(409, { code: 'domain:already_connected', details: { scope: 'other_workspace' } })).toBe(
       'settings.domain.error.connectedElsewhere',
     );
   });
 
-  it('falls back to "another workspace" if a same-workspace answer has no name', async () => {
+  it('falls back to "another organization" if a same-organization answer has no name', async () => {
     expect(await failAdd(409, { code: 'domain:already_connected', details: { scope: 'same_workspace' } })).toBe(
       'settings.domain.error.connectedElsewhere',
     );
