@@ -105,25 +105,30 @@ export function PricingView({ copy, lang }: { copy: PricingCopy; lang: Marketing
             </ul>
           </div>
           {/* A real table (plans as column headers, features as row headers), styled
-              as the grid it replaced. Fixed layout keeps the 1.6 : 1 : 1 columns and
-              lets long cells wrap, so it fits a phone without scrolling. The first and
-              last cells carry the row's side padding; the 1rem gap is split between
+              as the grid it replaced. Fixed layout shares one set of column widths
+              across rows and lets long cells wrap, so it fits a phone without
+              scrolling. The first and
+              last cells carry the row's side padding; the gap is split between
               neighbours. In Arabic the columns mirror with the page direction. */}
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
             <table className="w-full table-fixed border-collapse text-sm">
               <caption className="sr-only">{copy.included.title}</caption>
+              {/* Widths include each cell's padding. From sm up they give the old
+                  grid's 1.6 : 1 : 1 text widths. On a phone the padding is a little
+                  tighter and the feature column a little wider, so the longest words
+                  (OpenAI/OpenRouter, Infrastructure) fit whole instead of breaking. */}
               <colgroup>
-                <col className="w-[44.44%]" />
-                <col className="w-[27.78%]" />
-                <col className="w-[27.78%]" />
+                <col className="w-[46%] sm:w-[44%]" />
+                <col className="w-[24%] sm:w-[27%]" />
+                <col className="w-[30%] sm:w-[29%]" />
               </colgroup>
               <thead>
                 <tr className="border-border border-b bg-muted/40 font-medium">
-                  <td className="py-3 ps-6 pe-2" />
-                  <th scope="col" className="px-2 py-3 text-center font-medium">
+                  <td className="py-3 ps-4 pe-1.5 sm:ps-6 sm:pe-2" />
+                  <th scope="col" className="px-1.5 py-3 text-center font-medium sm:px-2">
                     {copy.cloud.name}
                   </th>
-                  <th scope="col" className="py-3 ps-2 pe-6 text-center font-medium">
+                  <th scope="col" className="py-3 ps-1.5 pe-4 text-center font-medium sm:ps-2 sm:pe-6">
                     {copy.selfHosted.name}
                   </th>
                 </tr>
@@ -134,20 +139,20 @@ export function PricingView({ copy, lang }: { copy: PricingCopy; lang: Marketing
                     <th
                       scope="rowgroup"
                       colSpan={3}
-                      className="px-6 py-2 text-start font-medium text-muted-foreground text-xs uppercase tracking-wider rtl:tracking-normal"
+                      className="px-4 py-2 text-start font-medium text-muted-foreground text-xs uppercase tracking-wider sm:px-6 rtl:tracking-normal"
                     >
                       {t(group.title)}
                     </th>
                   </tr>
                   {group.rows.map((row) => (
                     <tr key={row.label} className="border-border border-b group-last:last:border-b-0">
-                      <th scope="row" className="py-3.5 ps-6 pe-2 text-start align-middle font-normal">
+                      <th scope="row" className="py-3.5 ps-4 pe-1.5 text-start align-middle font-normal sm:ps-6 sm:pe-2">
                         {t(row.label)}
                       </th>
-                      <td className="px-2 py-3.5 align-middle">
+                      <td className="px-1.5 py-3.5 align-middle sm:px-2">
                         <CellValue value={row.cloud} includedLabel={copy.included.includedLabel} lang={lang} />
                       </td>
-                      <td className="py-3.5 ps-2 pe-6 align-middle">
+                      <td className="py-3.5 ps-1.5 pe-4 align-middle sm:ps-2 sm:pe-6">
                         <CellValue value={row.self} includedLabel={copy.included.includedLabel} lang={lang} />
                       </td>
                     </tr>
