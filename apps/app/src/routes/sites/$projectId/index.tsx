@@ -35,6 +35,7 @@ export const Route = createFileRoute('/sites/$projectId/')({
         throw redirect({
           href: siteHref(params.projectId, site.openapi.path, {
             lang: siteLanguageParam(deps.lang, site.languages.find((item) => item.isDefault)?.code),
+            languages: site.languages,
           }),
           statusCode: 302,
         });
