@@ -341,6 +341,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
       ) : null}
       <ArticleBody
         content={page.content}
+        imageDimensions={page.imageDimensions}
         language={readerLanguage}
         chromeLanguage={chromeLanguage}
         site={{ projectId, lang: readerLanguage, defaultLanguage, version: versionPrefix }}
