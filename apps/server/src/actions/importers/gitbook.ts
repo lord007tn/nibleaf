@@ -5,7 +5,7 @@ import { badRequest, ImportError } from '@/errors';
 import { captureImportDraft, createImportReplacementBranch, promoteImportReplacementBranch } from '../branches';
 import { assertProjectInOrg } from '../projects';
 import { MAX_IMPORT_FILES } from './content';
-import { ImportFinalPaths } from './final-paths';
+import { type ImportDestinations, ImportFinalPaths } from './final-paths';
 import { RemoteAssetMigrator } from './ghost-assets';
 import { encodeMarkdownUrl, resolveGitBookRepoPath, rewriteGitBookImages } from './gitbook-assets';
 import { GitBookImportBudget } from './gitbook-budget';
@@ -207,7 +207,7 @@ export const gitbookImporter: ImporterSource<GitbookImportBody> = {
 
 interface ImportContext {
   finalPaths: ImportFinalPaths;
-  destinations: Map<string, string>;
+  destinations: ImportDestinations;
   sourcesByRoute: ReadonlyMap<string, readonly string[]>;
   write: Array<() => Promise<void>>;
   languageCode: string;
@@ -310,7 +310,7 @@ const importNodes = async (
   for (const [position, { node, page, children }] of nodes.entries()) {
     if (!page) {
       const groupId = await ensureGroupPage(target, { parentId, title: node.title.slice(0, 200), slug: node.slug, position });
-      context.destinations.set(node.route.slice(1), groupId);
+      context.destinations.groups.set(node.route.slice(1), groupId);
       await importNodes(children, groupId, target, context);
       continue;
     }
@@ -357,7 +357,7 @@ const importNodes = async (
       hidden: meta.hidden === true,
       position,
     });
-    for (const source of context.sourcesByRoute.get(node.route) ?? []) context.destinations.set(source, id);
+    for (const source of context.sourcesByRoute.get(node.route) ?? []) context.destinations.documents.set(source, id);
     context.write.push(async () => {
       const linked = rewriteMintlifyInternalLinks(converted.content, path, context.routes, {
         languageCode: context.languageCode,

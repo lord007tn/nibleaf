@@ -96,6 +96,11 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
     ['case E', htmlToPlainText, (n: number) => '<script a'.repeat(n)],
     ['case F', htmlToPlainText, (n: number) => '<p a'.repeat(n)],
     ['case G', htmlToPlainText, (n: number) => `<p>${'\r'.repeat(n)}x</p>`],
+    [
+      'image and shared reference definition ownership',
+      (text: string) => rewriteMintlifyInternalLinks(text, 'intro', new Map([['next', '/guides-2/next-2']])),
+      (n: number) => '![Image][shot]\n\n[Shared][shot]\n\n[shot]: /next\n\n'.repeat(n),
+    ],
   ] as const)(
     'stays linear on %s',
     (_label, run, build) => {

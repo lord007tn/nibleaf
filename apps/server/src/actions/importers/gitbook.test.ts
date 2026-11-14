@@ -35,13 +35,13 @@ const mem = vi.hoisted(() => ({
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     page: {
-      findMany: async ({ where }: { where: { id: { in: string[] } } }) => {
+      findMany: async ({ where }: { where: { id?: { in: string[] } } }) => {
         const path = (id: string): string => {
           const row = mem.rows.find((page) => page.id === id);
           if (!row) throw new Error('Page missing from fixture');
           return `${row.parentId ? `${path(row.parentId)}/` : ''}${row.slug}`;
         };
-        return mem.rows.filter((row) => where.id.in.includes(row.id)).map((row) => ({ id: row.id, path: path(row.id) }));
+        return mem.rows.filter((row) => !where.id || where.id.in.includes(row.id)).map((row) => ({ id: row.id, path: path(row.id), kind: row.kind }));
       },
     },
     branch: { deleteMany: vi.fn(async () => ({ count: 1 })) },

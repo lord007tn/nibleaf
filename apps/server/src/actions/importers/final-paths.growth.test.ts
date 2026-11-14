@@ -2,10 +2,12 @@ import { growthMsAsync, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/s
 import { describe, expect, it, vi } from 'vitest';
 import { ImportFinalPaths } from './final-paths';
 
+const mem = vi.hoisted(() => ({ rows: [] as Array<{ id: string; path: string; kind: 'PAGE' }> }));
+
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     page: {
-      findMany: async ({ where }: { where: { id: { in: string[] } } }) => where.id.in.map((id) => ({ id, path: `guides-2/${id}-2` })),
+      findMany: async () => mem.rows,
     },
   },
 }));
@@ -16,7 +18,11 @@ describe.runIf(growthTestsEnabled)('final importer paths: growth', () => {
       const finalPaths = new ImportFinalPaths();
       const routes = new Map(Array.from({ length: count }, (_, index) => [`source-${index}`, `/guides/page-${index}`]));
       const ids = finalPaths.add({ projectId: 'project', branchId: 'staging', languageId: 'en' }, routes);
-      for (const source of routes.keys()) ids.set(source, source);
+      for (const source of routes.keys()) ids.documents.set(source, source);
+      mem.rows = [...routes.keys()].flatMap((id) => [
+        { id, path: `guides-2/${id}-2`, kind: 'PAGE' as const },
+        { id: `existing-${id}`, path: id, kind: 'PAGE' as const },
+      ]);
       await finalPaths.resolve();
       return routes;
     };

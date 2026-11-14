@@ -1,6 +1,7 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
 import { importSiteHref } from '@nibleaf/shared/site-links';
+import { fromMarkdown } from 'mdast-util-from-markdown';
 import { stableHash } from './content';
 import { safeDecodeUri as safeDecode } from './gitbook-markdown';
 import { decodeImportEntities } from './import-fidelity';
@@ -10,12 +11,35 @@ import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersion
 
 const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
 
+/** A shared image/link definition cannot change without also changing the image. */
+const imageDefinitionOffsets = (content: string): ReadonlySet<number> => {
+  const offsets = new Set<number>();
+  if (!content.includes('![')) return offsets;
+  const images = new Set<string>();
+  const definitions: Array<{ identifier: string; offset: number }> = [];
+  type Node = { type: string; identifier?: string; position?: { start: { offset?: number } }; children?: Node[] };
+  const pending: Node[] = [fromMarkdown(content)];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) continue;
+    if (node.type === 'imageReference' && node.identifier) images.add(node.identifier);
+    if (node.type === 'definition' && node.identifier && node.position?.start.offset !== undefined) {
+      definitions.push({ identifier: node.identifier, offset: node.position.start.offset });
+    }
+    if (node.children) for (const child of node.children) pending.push(child);
+  }
+  for (const definition of definitions) if (images.has(definition.identifier)) offsets.add(definition.offset);
+  return offsets;
+};
+
 const rewriteReferenceDefinitions = (content: string, rewrite: (reference: string) => string): string => {
+  const imageDefinitions = imageDefinitionOffsets(content);
   // Definitions may be shared by multiple reference links. Rewrite their
   // destination once, preserving the authored label, title and delimiters.
   return content.replace(
     /(^[ \t>]*(?:(?:[-+*]|\d+[.)])[ \t>]+)?\[(?:\\.|[^\]\\\r\n])+\]:[ \t]*(?:\r?\n[ \t>]*)?)(?:<([^<>\r\n]*)>|([^\s]+))/gm,
-    (match, before: string, angle: string | undefined, bare: string | undefined) => {
+    (match, before: string, angle: string | undefined, bare: string | undefined, offset: number) => {
+      if (imageDefinitions.has(offset + before.indexOf('['))) return match;
       const original = angle ?? bare ?? '';
       const destination = rewrite(original);
       return destination === original ? match : `${before}${angle !== undefined ? `<${destination}>` : destination}`;

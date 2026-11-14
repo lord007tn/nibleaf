@@ -1,6 +1,7 @@
 import { findBrokenInternalLinks, pageContentFacts } from '@nibleaf/shared/publish-checks';
 import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
 import { createLinkResolver } from '@nibleaf/shared/site-links';
+import MarkdownIt from 'markdown-it';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface Row {
@@ -298,7 +299,103 @@ describe('final imported destinations', () => {
       expect(page).toBeDefined();
       expect(page?.content).toContain(`[Top](/api-${suffix})`);
       expect(page?.content).toContain(`[start]: /guides-2/quickstart-${suffix}#section "Start"`);
-      expect(mem.rows.find((row) => row.path === `api-${suffix}`)?.content).toContain('[Group](/guides-2)');
+      expect(mem.rows.find((row) => row.path === `api-${suffix}`)?.content).toContain('[Group](/guides)');
     }
+  });
+});
+
+const rendered = (sourcePath: string, type: string, attribute: string): Array<string | null> => {
+  const source = mem.rows.find((row) => row.path === sourcePath);
+  expect(source).toBeDefined();
+  return new MarkdownIt()
+    .parse(source?.content ?? '', {})
+    .flatMap((token) => token.children ?? [])
+    .filter((token) => token.type === type)
+    .map((token) => token.attrGet(attribute));
+};
+
+const assertExactTarget = (sourcePath: string, href: string, targetPath: string) => {
+  const site = snapshot();
+  const source = site.pages.find((page) => page.path === sourcePath);
+  const target = site.pages.find((page) => page.path === targetPath);
+  if (!source || !target) throw new Error('Fixture source or target missing');
+  expect(target.kind).toBe('PAGE');
+  expect(createLinkResolver(site)(href, source)).toMatchObject({ id: target.id, path: targetPath, kind: 'PAGE' });
+  expect(findBrokenInternalLinks(site)).toEqual([]);
+};
+describe('independent adversarial probes', () => {
+  it('Mintlify: source document and group share an alias', async () => {
+    mem.files.set(
+      'docs.json',
+      JSON.stringify({ navigation: { pages: ['intro', 'getting-started', { group: 'Getting Started', pages: ['quickstart'] }] } }),
+    );
+    mem.files.set('intro.mdx', '[Original document](/getting-started)');
+    mem.files.set('getting-started.mdx', '# Original source document');
+    mem.files.set('quickstart.mdx', '# Quickstart');
+    await run(mintlifyImporter);
+    expect(mem.rows.find((row) => row.path === 'intro')?.content).toBe('[Original document](/getting-started)');
+    assertExactTarget('intro', '/getting-started', 'getting-started');
+  });
+  it.each(['mintlify', 'gitbook'])('%s: image reference definitions retain image destinations', async (kind) => {
+    const mintlify = kind === 'mintlify';
+    seed('getting-started', 'PAGE');
+    if (mintlify)
+      mem.files.set(
+        'docs.json',
+        JSON.stringify({ navigation: { pages: ['intro', { group: 'Getting Started', pages: ['getting-started/quickstart'] }] } }),
+      );
+    const body = '![Existing screenshot][shot]\n\n[shot]: /getting-started "Existing screenshot"';
+    mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, body);
+    mem.files.set(`getting-started/quickstart.${mintlify ? 'mdx' : 'md'}`, '# Quickstart');
+    await run(mintlify ? mintlifyImporter : gitbookImporter);
+    expect(mem.rows.find((row) => row.path === 'intro')?.content).toBe(body);
+    expect(rendered('intro', 'image', 'src')).toEqual(['/getting-started']);
+    assertExactTarget('intro', '/getting-started', 'getting-started');
+  });
+  it.each(['mintlify', 'gitbook'])('%s: existing site page outside imported sources stays the target', async (kind) => {
+    const mintlify = kind === 'mintlify';
+    seed('getting-started', 'PAGE');
+    if (mintlify)
+      mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['intro', { group: 'Getting Started', pages: ['quickstart'] }] } }));
+    mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, '[Existing site onboarding](/getting-started)');
+    mem.files.set(mintlify ? 'quickstart.mdx' : 'getting-started/quickstart.md', '# Imported quickstart');
+    await run(mintlify ? mintlifyImporter : gitbookImporter);
+    expect(mem.rows.find((row) => row.path === 'intro')?.content).toBe('[Existing site onboarding](/getting-started)');
+    assertExactTarget('intro', '/getting-started', 'getting-started');
+  });
+});
+
+describe('source identity and reference ownership', () => {
+  it('GitBook: the root readme source and an inferred Readme group keep separate identities', async () => {
+    mem.files.set('readme.md', '# Original source document');
+    mem.files.set('intro.md', '[Original document](/readme.md)\n\n[Relative](./readme.md)');
+    mem.files.set('readme/quickstart.md', '# Quickstart');
+    await run(gitbookImporter);
+    expect(rendered('intro', 'link_open', 'href')).toEqual(['/introduction', '/introduction']);
+    assertExactTarget('intro', '/introduction', 'introduction');
+    expect(mem.rows.find((row) => row.path === 'introduction')?.content).toBe('');
+  });
+
+  it.each([
+    ['mintlify', false],
+    ['mintlify', true],
+    ['gitbook', false],
+    ['gitbook', true],
+  ] as const)('%s: a definition used by an image (shared=%s) keeps its target', async (kind, shared) => {
+    const mintlify = kind === 'mintlify';
+    const parent = seed('getting-started', 'PAGE');
+    seed('quickstart', 'PAGE', 'en', mintlify ? undefined : parent);
+    if (mintlify)
+      mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['intro', { group: 'Getting Started', pages: ['quickstart'] }] } }));
+    const existingPath = mintlify ? 'quickstart' : 'getting-started/quickstart';
+    const sourceLink = mintlify ? './quickstart' : './getting-started/quickstart.md';
+    const body = `![Screenshot][shot]\n\n${shared ? '[Shared link][shot]\n\n' : ''}[Imported document](${sourceLink})\n\n[shot]: /${existingPath} "Screenshot"`;
+    mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, body);
+    mem.files.set(mintlify ? 'quickstart.mdx' : 'getting-started/quickstart.md', '# Imported quickstart');
+    await run(mintlify ? mintlifyImporter : gitbookImporter);
+    expect(rendered('intro', 'image', 'src')).toEqual([`/${existingPath}`]);
+    expect(rendered('intro', 'link_open', 'href')).toEqual([...(shared ? [`/${existingPath}`] : []), '/getting-started-2/quickstart']);
+    assertExactTarget('intro', `/${existingPath}`, existingPath);
+    assertExactTarget('intro', '/getting-started-2/quickstart', 'getting-started-2/quickstart');
   });
 });

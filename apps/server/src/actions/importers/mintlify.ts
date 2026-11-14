@@ -7,7 +7,7 @@ import { captureImportDraft, createImportReplacementBranch, promoteImportReplace
 import { createLanguage, updateLanguage } from '../languages';
 import { assertProjectInOrg } from '../projects';
 import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './content';
-import { ImportFinalPaths } from './final-paths';
+import { type ImportDestinations, ImportFinalPaths } from './final-paths';
 import { RemoteAssetMigrator } from './ghost-assets';
 import { getGitHubDefaultBranch, getGitHubSnapshot, getGitHubTextFile, githubRawUrl } from './github';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
@@ -449,7 +449,7 @@ const importNodes = async (
   state: ImportState,
   languageCode: string | undefined,
   languageRoutes: ReadonlyMap<string, ReadonlyMap<string, string>>,
-  destinations: Map<string, string>,
+  destinations: ImportDestinations,
   parentRoute: string,
 ): Promise<void> => {
   // Slug ledger (slug → nav path) for THIS parent's children; a fresh map per
@@ -484,7 +484,7 @@ const importNodes = async (
         position,
       });
       const groupRoute = `${parentRoute}/${groupSlug}`;
-      destinations.set(groupRoute.slice(1), groupId);
+      destinations.groups.set(groupRoute.slice(1), groupId);
       await importNodes(
         node.children,
         groupId,
@@ -563,7 +563,7 @@ const importNodes = async (
         : {}),
       position,
     });
-    destinations.set(normalizedSourcePath(node.path), id);
+    destinations.documents.set(normalizedSourcePath(node.path), id);
     state.write.push(async () => {
       const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap, {
         languageCode: languageCode ?? repo.defaultLanguageCode,
