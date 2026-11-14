@@ -19,6 +19,18 @@ import { type ImageUploader, uploadEditorImage } from './image-upload';
 
 beforeEach(() => {
   vi.stubGlobal('ClipboardEvent', class extends Event {});
+  // The slash menu is built on cmdk, whose list measures itself with ResizeObserver
+  // and scrolls the active item into view; jsdom implements neither (same stubs as
+  // the other cmdk-based tests, e.g. command-palette.test.tsx).
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    },
+  );
+  Element.prototype.scrollIntoView = vi.fn();
   Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
   Range.prototype.getBoundingClientRect = () => new DOMRect(0, 0, 1, 1);
 });
