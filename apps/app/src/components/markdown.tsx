@@ -245,7 +245,15 @@ function MarkdownContent(props: MarkdownProps) {
   );
 }
 
-function MarkdownBody({ content, imageDimensions, className, site, highlightGrammars, rich, math }: MarkdownProps & { rich: boolean; math: boolean }) {
+function MarkdownBody({
+  content,
+  imageDimensions,
+  className,
+  site,
+  highlightGrammars,
+  rich,
+  math,
+}: MarkdownProps & { rich: boolean; math: boolean }) {
   if (rich) {
     // The router loads the rich chunk before hydrating markup it rendered, and
     // the reader's loaders before navigating. Until it loads, hydrating keeps
