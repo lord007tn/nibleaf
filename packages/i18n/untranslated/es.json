@@ -34,7 +34,15 @@
     "settings_integrations_provider_backblazeb2",
     "settings_integrations_placeholder_slack",
     "settings_integrations_placeholder_discord",
-    "settings_integrations_placeholder_zapier"
+    "settings_integrations_placeholder_zapier",
+    "analytics_ai_bots_title",
+    "analytics_ai_column_bot",
+    "analytics_ai_column_bots",
+    "admin_status_error",
+    "admin_operations_gitkind_pull",
+    "admin_operations_gitkind_push",
+    "settings_smartai",
+    "dashboard_ai_failed"
   ],
   "pending": [
     "brand_oss",

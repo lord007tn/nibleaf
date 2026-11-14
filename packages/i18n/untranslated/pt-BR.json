@@ -48,7 +48,13 @@
     "settings_integrations_placeholder_zapier",
     "analytics_device_tablet",
     "analytics_tab_feedback",
-    "editor_slash_section_layout"
+    "analytics_ai_bots_title",
+    "analytics_ai_column_bot",
+    "analytics_ai_column_bots",
+    "editor_slash_section_layout",
+    "admin_operations_gitkind_pull",
+    "admin_operations_gitkind_push",
+    "settings_smartai"
   ],
   "pending": [
     "brand_oss",
