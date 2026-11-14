@@ -5,6 +5,7 @@ import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { useRouter } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import { lazy, type Ref, type RefObject, Suspense, useEffect, useRef, useState } from 'react';
+import { useAskAiShortcutLabel } from '@/lib/shortcut';
 import type { ChatRequest, ChatRootOptions, OpenChat } from './provider';
 
 /*
@@ -17,10 +18,10 @@ import type { ChatRequest, ChatRootOptions, OpenChat } from './provider';
 
 const Panel = lazy(() => import('./panel'));
 
-/** How far up from the bottom the launcher rests: above the consent "Manage"
- * button when the site asks for consent. Its 3rem height and the safe-area
+/** How far up from the bottom the launcher rests. Nothing else floats in its
+ * corner any more ("Privacy choices" lives in the footer). Its 3rem height and the safe-area
  * inset come on top; the page keeps that much room at its end. */
-const launcherOffset = (consentBanner: boolean) => (consentBanner ? '4.5rem' : '1rem');
+const LAUNCHER_OFFSET = '1rem';
 
 /** Opens the panel for each new request, follows the `?ask=` deep link, and
  * returns focus to where the reader was when the panel closes. */
@@ -55,11 +56,7 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
       {/* Room at the end of the page for the launcher: its offset, its 3rem and
           the safe-area inset, so it never covers the pager or the last line.
           Server-rendered with the launcher, so nothing shifts. */}
-      <div
-        aria-hidden
-        data-chat-launcher-space=""
-        style={{ height: `calc(${launcherOffset(requiresConsent)} + 3rem + env(safe-area-inset-bottom))` }}
-      />
+      <div aria-hidden data-chat-launcher-space="" style={{ height: `calc(${LAUNCHER_OFFSET} + 3rem + env(safe-area-inset-bottom))` }} />
       <Launcher ref={launcher} lang={options.lang} consentBanner={requiresConsent} onOpen={() => openChat({ source: 'launcher' })} />
       {request && (
         <Suspense fallback={null}>
@@ -232,7 +229,7 @@ function Launcher({
       ref={box}
       data-chat-launcher=""
       className="pointer-events-none fixed end-4 z-40 flex"
-      style={{ bottom: `calc(${launcherOffset(consentBanner)} + env(safe-area-inset-bottom))` }}
+      style={{ bottom: `calc(${LAUNCHER_OFFSET} + env(safe-area-inset-bottom))` }}
     >
       <Button
         ref={ref}
@@ -275,5 +272,29 @@ export function PageAction({ lang, onOpen }: { lang?: string; onOpen: () => void
         {t('aiPage')}
       </Button>
     </aside>
+  );
+}
+
+/** "Ask AI" beside search in the reader header, with its shortcut (PUB-021).
+ *  From 80rem, where the header has room for it beside the links; narrower
+ *  screens have the floating launcher. */
+export function HeaderAction({ lang, onOpen }: { lang?: string; onOpen: () => void }) {
+  const t = siteChatT(lang);
+  const shortcut = useAskAiShortcutLabel();
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-keyshortcuts="Control+I Meta+I"
+      data-theme-region="ask-ai-trigger"
+      className="hidden h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 xl:inline-flex"
+    >
+      <Sparkles aria-hidden className="size-4 text-primary" />
+      <span>{t('aiTitle')}</span>
+      {/* Keyboard shortcuts read left-to-right even inside an RTL header. */}
+      <kbd aria-hidden dir="ltr" className="hidden rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] xl:inline-flex">
+        {shortcut}
+      </kbd>
+    </button>
   );
 }

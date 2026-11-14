@@ -28,11 +28,30 @@ vi.mock('@nibleaf/i18n/react', async () => {
     );
   return { useT: () => t, useLocale: () => ({ t, locale: mocks.locale }) };
 });
+// The auth surfaces translate through AUTH_MESSAGES (MKT-001); give them the
+// same translator and locale as the @nibleaf/i18n/react mock above.
+vi.mock('@/lib/auth-messages', async () => {
+  const react = (await import('@nibleaf/i18n/react')) as unknown as {
+    useT?: () => (key: string, variables?: Record<string, string | number>) => string;
+    useLocale?: () => Record<string, unknown>;
+  };
+  // Plain names: the mocks are read per render, not called as hooks here. A
+  // mock without one of them throws on access, hence the `in` checks.
+  const readT = 'useT' in react ? react.useT : undefined;
+  const readLocale = 'useLocale' in react ? react.useLocale : undefined;
+  const authLocale = (): Record<string, unknown> => ({ locale: 'en', setLocale: () => undefined, ...(readLocale ? readLocale() : { t: readT?.() }) });
+  return { useAuthLocale: authLocale, useAuthT: () => (readT ? readT() : authLocale().t) };
+});
+
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}), useLoaderData: () => mocks.loaderData }),
   useNavigate: () => mocks.navigate,
   useRouter: () => ({ history: { push: mocks.navigate, replace: mocks.navigate } }),
-  Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  Link: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <span className={className} data-slot="router-link">
+      {children}
+    </span>
+  ),
 }));
 // The query never answers: whatever the page shows comes from the loader's copy.
 vi.mock('@/hooks/api/query-options', () => ({
@@ -313,6 +332,92 @@ describe('auth pages', () => {
       expect(described && document.getElementById(described.split(' ').at(-1) ?? '')?.textContent).toBeTruthy();
       expect(status('auth-form-status')).toContain('valid email');
       expect(mocks.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('P2-MKT-004: auth form details', () => {
+    const status = () => container.querySelector('[data-slot="auth-form-status"]');
+    const leave = (selector: string) =>
+      act(async () => container.querySelector(selector)?.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+    const describedBy = (selector: string) =>
+      document.getElementById(container.querySelector(selector)?.getAttribute('aria-describedby') ?? '')?.textContent;
+
+    it.each([
+      ['sign-in', signIn, '#email', 'Email is required'],
+      ['sign-up', signUp, '#name', 'Enter your name.'],
+    ] as const)('%s describes the field by its error and reads the error out as it appears', async (_name, Page, field, message) => {
+      await render(Page);
+      expect(status()?.textContent).toBe('');
+      await leave(field);
+      expect(container.querySelector(field)?.getAttribute('aria-invalid')).toBe('true');
+      expect(describedBy(field)).toBe(message);
+      // One polite region for the form, there from the first paint.
+      expect(status()?.getAttribute('role')).toBe('status');
+      expect(status()?.getAttribute('aria-live')).toBe('polite');
+      expect(status()?.textContent).toBe(message);
+    });
+
+    it('reads an error once when it appears, not as its wording changes or when the button is pressed next', async () => {
+      await render(signIn);
+      await leave('#email');
+      expect(status()?.textContent).toBe('Email is required');
+      await enter('#email', 'ada@');
+      expect(describedBy('#email')).toBe('Enter a valid email address');
+      expect(status()?.textContent).toBe('Email is required');
+      await enter('#email', '');
+      await leave('#email');
+      // Leaving the field, then pressing the button: the submit does not repeat what was just read.
+      await enter('#email', 'ada@');
+      await enter('#email', 'ada@example.test');
+      await enter('#email', 'ada@');
+      const appeared = status()?.textContent;
+      expect(appeared?.replace('\u200b', '')).toBe('Enter a valid email address');
+      await submit();
+      expect(status()?.textContent).toBe(appeared);
+      expect(document.activeElement?.id).toBe('email');
+      // A second refused submit reads it again.
+      await submit();
+      expect(status()?.textContent).not.toBe(appeared);
+      expect(status()?.textContent?.replace('\u200b', '')).toBe('Enter a valid email address');
+      expect(mocks.send).not.toHaveBeenCalled();
+    });
+
+    it.each(pages)('%s shows the terms once, right under the heading and before both ways in', async (_name, Page) => {
+      await render(Page);
+      expect(container.querySelectorAll('[data-slot="terms-notice"]')).toHaveLength(1);
+      const notice = container.querySelector('[data-slot="terms-notice"]') as HTMLElement;
+      expect(notice.textContent).toContain('By continuing, you agree to the');
+      expect(notice.parentElement?.previousElementSibling?.tagName).toBe('H1');
+      for (const action of [button('Log in with Google') ?? button('Create account with Google') ?? null, container.querySelector('form')]) {
+        expect(action).not.toBeNull();
+        expect(action && notice.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
+    it.each([
+      ['sign-in', signIn, 'No account?', 'Create account'],
+      ['sign-up', signUp, 'Already have an account?', 'Log in'],
+    ] as const)('%s underlines the link in its closing sentence, with a 24px target and a focus outline', async (_name, Page, sentence, label) => {
+      await render(Page);
+      const link = [...container.querySelectorAll('[data-slot="router-link"]')].find((item) => item.textContent === label);
+      expect(link?.parentElement?.textContent).toContain(sentence);
+      const classes = link?.className.split(' ') ?? [];
+      expect(classes).toContain('underline');
+      expect(classes).toContain('min-h-6');
+      expect(classes).toContain('focus-visible:outline-2');
+    });
+
+    it.each(pages)('%s renders the terms, the error and the closing link in Arabic', async (name, Page) => {
+      mocks.locale = 'ar';
+      await render(Page);
+      expect(container.querySelector('[data-slot="terms-notice"]')?.textContent).toContain('بالمتابعة، فإنك توافق على');
+      expect(container.querySelector('[data-slot="terms-notice"] a[href="/terms"]')?.textContent).toBe('شروط الخدمة');
+      await leave('#email');
+      expect(describedBy('#email')).toBe('البريد الإلكتروني مطلوب');
+      expect(status()?.textContent).toBe('البريد الإلكتروني مطلوب');
+      const link = container.querySelector('[data-slot="router-link"]');
+      expect(link?.textContent).toBe(name === 'sign-in' ? 'أنشئ حسابًا' : 'تسجيل الدخول');
+      expect(link?.className).toContain('underline');
     });
   });
 

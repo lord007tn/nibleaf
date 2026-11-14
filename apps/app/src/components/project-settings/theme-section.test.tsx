@@ -57,7 +57,11 @@ vi.mock('@/hooks/api', () => ({
   useImportProjectTheme: () => mutation,
   useExportProjectTheme: () => mutation,
 }));
-vi.mock('@/lib/site-theme', () => ({ projectThemeVariables: () => ({}), projectThemeStyle: () => ({}) }));
+vi.mock('@/lib/site-theme', () => ({
+  projectThemeVariables: () => ({}),
+  projectThemeStyle: () => ({}),
+  siteAppearance: (config?: { styling?: { theme?: string } } | null) => config?.styling?.theme ?? 'system',
+}));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
   DocumentationThemeProvider: ({
     children,

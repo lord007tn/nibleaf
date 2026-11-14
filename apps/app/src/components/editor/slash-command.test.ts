@@ -88,7 +88,7 @@ describe('slash command scaffolds', () => {
   const recordingEditor = () => {
     const inserted: unknown[] = [];
     const chain: Record<string, (...args: unknown[]) => unknown> = {};
-    for (const name of ['focus', 'deleteRange', 'setImage', 'setParagraph']) {
+    for (const name of ['focus', 'deleteRange', 'setImage', 'setParagraph', 'command']) {
       chain[name] = () => chain;
     }
     chain.insertContent = (content: unknown) => {
@@ -174,22 +174,31 @@ describe('slash command scaffolds', () => {
 });
 
 describe('writer block search', () => {
-  it('lists everyday blocks first, then media and tables, with each section shown once', () => {
+  it('lists the basic writing blocks first, then callouts and media, with each section shown once', () => {
     const items = createSlashItems();
-    expect(items.slice(0, 10).map((item) => item.titleKey)).toEqual([
+    expect(items.slice(0, 11).map((item) => item.titleKey)).toEqual([
       'editor.slash.text.title',
       'editor.slash.h1.title',
       'editor.slash.h2.title',
       'editor.slash.h3.title',
       'editor.slash.bulletList.title',
       'editor.slash.numberedList.title',
-      'editor.slash.image.title',
-      'editor.slash.video.title',
-      'editor.slash.embed.title',
-      'editor.slash.table.title',
+      'editor.slash.todo.title',
+      'editor.slash.quote.title',
+      'editor.slash.codeBlock.title',
+      'editor.slash.mermaid.title',
+      'editor.slash.divider.title',
     ]);
     const sections = items.map(slashSection).filter((section, index, all) => index === 0 || all[index - 1] !== section);
     expect(new Set(sections).size).toBe(sections.length);
+    expect(sections).toEqual([
+      'editor.slash.basicBlocks',
+      'editor.slash.section.callouts',
+      'editor.slash.section.media',
+      'editor.slash.section.layout',
+      'editor.slash.section.api',
+      'editor.slash.section.inline',
+    ]);
   });
   it('keeps the full menu order when items move between modules', () => {
     expect(createSlashItems().map((item) => item.titleKey)).toMatchInlineSnapshot(`
@@ -200,50 +209,50 @@ describe('writer block search', () => {
         "editor.slash.h3.title",
         "editor.slash.bulletList.title",
         "editor.slash.numberedList.title",
-        "editor.slash.image.title",
-        "editor.slash.video.title",
-        "editor.slash.embed.title",
-        "editor.slash.table.title",
+        "editor.slash.todo.title",
+        "editor.slash.quote.title",
+        "editor.slash.codeBlock.title",
+        "editor.slash.mermaid.title",
+        "editor.slash.divider.title",
         "editor.slash.note.title",
         "editor.slash.tip.title",
         "editor.slash.info.title",
         "editor.slash.check.title",
         "editor.slash.warning.title",
         "editor.slash.danger.title",
-        "editor.slash.todo.title",
-        "editor.slash.quote.title",
-        "editor.slash.codeBlock.title",
-        "editor.slash.mermaid.title",
+        "editor.slash.banner.title",
+        "editor.slash.image.title",
+        "editor.slash.video.title",
+        "editor.slash.embed.title",
+        "editor.slash.table.title",
+        "editor.slash.frame.title",
+        "editor.slash.tabs.title",
         "editor.slash.steps.title",
+        "editor.slash.accordion.title",
+        "editor.slash.expandable.title",
+        "editor.slash.columns2.title",
+        "editor.slash.columns3.title",
+        "editor.slash.columns4.title",
         "editor.slash.card.title",
         "editor.slash.cardGroup.title",
         "editor.slash.cardGrid3.title",
         "editor.slash.cardGrid4.title",
-        "editor.slash.tabs.title",
-        "editor.slash.accordion.title",
-        "editor.slash.frame.title",
-        "editor.slash.expandable.title",
-        "editor.slash.tooltip.title",
-        "editor.slash.icon.title",
+        "editor.slash.relatedContent.title",
+        "editor.slash.relatedCard.title",
         "editor.slash.update.title",
         "editor.slash.paramField.title",
         "editor.slash.responseField.title",
+        "editor.slash.apiExample.title",
+        "editor.slash.requestExample.title",
+        "editor.slash.responseExample.title",
         "editor.slash.codeGroup.title",
         "editor.slash.fileTree.title",
         "editor.slash.folder.title",
         "editor.slash.file.title",
-        "editor.slash.apiExample.title",
-        "editor.slash.requestExample.title",
-        "editor.slash.responseExample.title",
-        "editor.slash.relatedContent.title",
-        "editor.slash.relatedCard.title",
-        "editor.slash.columns2.title",
-        "editor.slash.columns3.title",
-        "editor.slash.columns4.title",
-        "editor.slash.banner.title",
+        "editor.slash.tooltip.title",
+        "editor.slash.icon.title",
         "editor.slash.badge.title",
         "editor.slash.button.title",
-        "editor.slash.divider.title",
       ]
     `);
   });

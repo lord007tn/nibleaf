@@ -1,11 +1,10 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
-import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { EmailCodeStep, ResendStatus, useEmailCode } from '@/components/auth-email-code';
-import { AuthFormStatus, AuthTextField, useAuthFieldErrors } from '@/components/auth-form';
+import { AUTH_INLINE_LINK_CLASS, AuthFormStatus, AuthTextField, useAuthFieldErrors } from '@/components/auth-form';
 import { GoogleIcon } from '@/components/icons/brand';
 import { TermsNotice } from '@/components/terms-notice';
 import { useGetPublicMeta } from '@/hooks/api/public';
@@ -13,6 +12,7 @@ import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
 import { loadRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError } from '@/lib/auth-errors';
+import { useAuthT } from '@/lib/auth-messages';
 import { email as validateEmail } from '@/lib/form';
 import { afterAuthDestination } from '@/lib/invitations';
 import { currentOAuthQuery } from '@/lib/mcp-oauth';
@@ -45,7 +45,7 @@ const isRedirect = (value: unknown) =>
   typeof (value as { url?: unknown }).url === 'string';
 
 function SignInPage() {
-  const t = useT();
+  const t = useAuthT();
   const navigate = useNavigate();
   const router = useRouter();
   const search = Route.useSearch();
@@ -98,13 +98,10 @@ function SignInPage() {
   }
 
   return (
-    <AuthLayout subtitle={t('auth.signIn.subtitle')}>
+    <AuthLayout notice={<TermsNotice className="text-center lg:text-start" />} subtitle={t('auth.signIn.subtitle')}>
       {connectingApp ? <p className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-sm">{t('auth.oauth.signInNotice')}</p> : null}
       {googleEnabled ? (
         <>
-          <div className="mb-2">
-            <TermsNotice />
-          </div>
           <Button
             className="mb-4 w-full gap-2"
             loading={isGoogleSubmitting}
@@ -153,7 +150,6 @@ function SignInPage() {
             {code.error}
           </p>
         ) : null}
-        <TermsNotice />
         <ResendStatus resendIn={code.resendIn} />
         <AuthFormStatus message={fields.announcement} />
         {/* A send-wait (after a code or a rate limit) shows on this step too, and holds the button. */}
@@ -169,7 +165,7 @@ function SignInPage() {
       </form>
       <p className="mt-5 text-center text-muted-foreground text-sm" hidden={connectingApp}>
         {t('auth.signIn.noAccount')}{' '}
-        <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-up">
+        <Link className={AUTH_INLINE_LINK_CLASS} search={search.next ? { next: search.next } : {}} to="/sign-up">
           {t('auth.signIn.createOne')}
         </Link>
       </p>
