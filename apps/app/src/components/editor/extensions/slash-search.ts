@@ -5,13 +5,21 @@ import type { SlashItem } from './slash-items/types';
 /**
  * Slash menu search, ranking and sections (UX audit P1-ED-003).
  *
- * Matching rule: the query is split into words. An item matches when EVERY
- * query word is the start of some word in the item's title (in the page
- * language, the interface language, English or Arabic), its keywords, or its
- * internal name, in any order. Letter case, Latin accents and Arabic
- * diacritics (harakat, shadda, hamza and madda marks, tatweel) are ignored, as
- * is a leading Arabic "ال" on a word. Words are runs of letters and digits, so
- * "To-do list" is "to", "do", "list".
+ * Matching rule: the query is split into words at whitespace, and only at
+ * whitespace. An item matches when EVERY query word is the start of one of the
+ * item's indexed words, in any order. The indexed words come from its title (in
+ * the page language, the interface language, English and Arabic), its keywords
+ * and its internal name: each whitespace-separated word as written ("to-do",
+ * "3-card"), the letter-and-digit parts inside it ("to", "do"), and Arabic
+ * words without a leading "ال". Letter case, Latin accents and Arabic
+ * diacritics (harakat, shadda, hamza and madda marks, tatweel) are ignored.
+ *
+ * Punctuation in a query word is therefore matched literally: "to-do" finds
+ * To-do list, but "code?", "(code)", "code\block" or "?" find nothing, because no
+ * block's words hold those characters. So, apart from words separated by
+ * spaces and the accent and diacritic folding, every query this matches is a
+ * substring of the text main's matcher searched; a single word main matched to
+ * nothing still matches nothing (slash-differential.test.ts).
  *
  * Ranking: an exact title, then a title that starts with the query, then items
  * whose title alone holds every word, then items that needed a keyword; ties
@@ -53,9 +61,18 @@ const foldSlashText = (text: string): string => {
 
 // Letters, combining marks (Devanagari and Bengali vowel signs are part of a word) and digits.
 const NON_WORD = /[^\p{L}\p{M}\p{N}]+/u;
+const WORD_CHARACTER = /^[\p{L}\p{M}\p{N}]$/u;
+const WHITESPACE = /\s+/u;
 
-/** The words of an already folded text. */
-const wordsOf = (folded: string): string[] => folded.split(NON_WORD).filter(Boolean);
+/** The whitespace-separated words of an already folded text, punctuation kept. */
+const wordsOf = (folded: string): string[] => folded.split(WHITESPACE).filter(Boolean);
+
+/** Each word, plus the letter-and-digit parts inside it: "to-do" → "to-do", "to", "do". */
+const withParts = (words: string[]): string[] =>
+  words.flatMap((word) => {
+    const parts = word.split(NON_WORD).filter(Boolean);
+    return parts.length === 1 && parts[0] === word ? [word] : [word, ...parts];
+  });
 
 const ARABIC_ARTICLE = 'ال';
 /** A word, plus the same word without a leading Arabic article ("الملفات" → "ملفات"). */
@@ -114,21 +131,21 @@ type SlashMatchTier = (typeof SlashMatch)[keyof typeof SlashMatch];
 interface PreparedQuery {
   /** Folded words joined by one space. */
   text: string;
-  /** Folded words with no separator, so "codeblock" still finds "Code block". */
-  compact: string;
   words: string[];
 }
 
 const prepareSlashQuery = (query: string): PreparedQuery => {
   const words = wordsOf(foldSlashText(query));
-  return { text: words.join(' '), compact: words.join(''), words };
+  return { text: words.join(' '), words };
 };
 
 interface SearchEntry {
+  /** Each title's folded words joined by one space. */
   titles: string[];
-  compactTitles: string[];
   titleWords: string[];
   keywordWords: string[];
+  /** Characters in the titles and keywords that are not letters, marks, digits or spaces ("-" in "To-do list"). */
+  punctuation: Set<string>;
 }
 
 const uniq = (values: string[]): string[] => [...new Set(values)];
@@ -149,11 +166,14 @@ const searchEntry = (item: SlashItem, locale: Locale): SearchEntry => {
   const hit = cached?.get(cacheKey);
   if (hit) return hit;
   const titleWordLists = rawTitles.map((title) => wordsOf(foldSlashText(title)));
+  const keywordWords = wordsOf(foldSlashText([...(item.keywords ?? []), slashItemName(item)].join(' ')));
+  const punctuation = new Set<string>();
+  for (const word of [...titleWordLists.flat(), ...keywordWords]) for (const char of word) if (!WORD_CHARACTER.test(char)) punctuation.add(char);
   const entry: SearchEntry = {
     titles: titleWordLists.map((words) => words.join(' ')),
-    compactTitles: titleWordLists.map((words) => words.join('')),
-    titleWords: withArticleFree(titleWordLists.flat()),
-    keywordWords: withArticleFree(wordsOf(foldSlashText([...(item.keywords ?? []), slashItemName(item)].join(' ')))),
+    titleWords: withArticleFree(withParts(titleWordLists.flat())),
+    keywordWords: withArticleFree(withParts(keywordWords)),
+    punctuation,
   };
   if (!cached) {
     cached = new Map();
@@ -167,9 +187,8 @@ const hasWordStartingWith = (words: string[], prefix: string): boolean => words.
 
 /** How `item` matches a prepared, non-empty query, or null when some word matches nothing. */
 const matchTier = (entry: SearchEntry, query: PreparedQuery): SlashMatchTier | null => {
-  if (entry.titles.includes(query.text) || entry.compactTitles.includes(query.compact)) return SlashMatch.exactTitle;
-  if (entry.titles.some((title) => title.startsWith(query.text)) || entry.compactTitles.some((title) => title.startsWith(query.compact)))
-    return SlashMatch.titlePrefix;
+  if (entry.titles.includes(query.text)) return SlashMatch.exactTitle;
+  if (entry.titles.some((title) => title.startsWith(query.text))) return SlashMatch.titlePrefix;
   let titleOnly = true;
   for (const word of query.words) {
     if (hasWordStartingWith(entry.titleWords, word)) continue;
@@ -189,6 +208,27 @@ export const searchSlashItems = (items: SlashItem[], query: string, locale: Loca
     if (tier !== null) scored.push({ item, tier, used: mostUsedIndex(item), order });
   });
   return scored.sort((a, b) => a.tier - b.tier || a.used - b.used || a.order - b.order).map((entry) => entry.item);
+};
+
+/**
+ * Whether every character of `query` can belong to a block name: a letter, a
+ * combining mark, a digit, whitespace, or a punctuation character that occurs
+ * in the title or keywords of one of `items` (in the languages searched). "/"
+ * and "\" never do (paths). Anything else ("?", "!", "#", "(", "؟", "،") means
+ * the text after the slash is not a slash command.
+ */
+export const slashQueryCharactersKnown = (query: string, items: SlashItem[], locale: Locale = 'en'): boolean => {
+  let known: Set<string> | null = null;
+  for (const char of foldSlashText(query)) {
+    if (WORD_CHARACTER.test(char) || char.trim() === '') continue;
+    if (char === '/' || char === '\\') return false;
+    if (!known) {
+      known = new Set();
+      for (const item of items) for (const mark of searchEntry(item, locale).punctuation) known.add(mark);
+    }
+    if (!known.has(char)) return false;
+  }
+  return true;
 };
 
 // --- Sections -----------------------------------------------------------------
@@ -305,14 +345,16 @@ export const groupSlashItems = (ranked: SlashItem[], query: string): SlashMenuGr
 
 /** No block name is this long; a longer "query" is ordinary text after a slash. */
 const MAX_SLASH_QUERY = 64;
-const SLASH = '/';
+/** A second slash or a backslash: a path or URL, never a block name. */
+const PATH_SEPARATORS = ['/', '\\'];
 const isSpace = (char: string | undefined): boolean => char !== undefined && char.trim() === '';
 
 /**
  * Whether the text typed after "/" should keep the menu open now that it may
- * contain spaces. It closes when the query holds another "/" (a path or URL such
- * as "/usr/local/bin" or "See /code/block": main's trigger ended the query at a
- * second slash, and only whitespace now continues it), starts with a space
+ * contain spaces. It closes when the query holds another "/" or a "\" (a path or
+ * URL such as "/usr/local/bin", "See /code/block" or "/code\block": main's
+ * trigger ended the query at a second slash, and only whitespace now continues
+ * it), starts with a space
  * ("a / b"), holds two spaces in a row, grows past any block name, or when a finished word
  * (one followed by a space) already rules out every block: words only narrow
  * the list, so nothing typed after it could match and the writer is simply
@@ -321,7 +363,7 @@ const isSpace = (char: string | undefined): boolean => char !== undefined && cha
 export const slashQueryKeepsMenuOpen = (query: string, hasMatches: (finishedWords: string) => boolean): boolean => {
   if (query.length > MAX_SLASH_QUERY) return false;
   if (query.length === 0) return true;
-  if (query.includes(SLASH)) return false;
+  if (PATH_SEPARATORS.some((separator) => query.includes(separator))) return false;
   if (isSpace(query[0])) return false;
   let lastSpace = -1;
   for (let index = 1; index < query.length; index += 1) {

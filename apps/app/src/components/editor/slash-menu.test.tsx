@@ -314,4 +314,24 @@ describe('closing the menu', () => {
       expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
     },
   );
+
+  // A character no block name holds means the text after the slash is not a
+  // command: punctuation is matched literally, never treated as a word break.
+  it.each(['/?', '/!', '/code\\block', '/a\\b c', '/code?', '/!code', '/*', '/#', '/@', '/(code)', '/؟', '/،'])(
+    'keeps "%s" exactly as typed: no menu, nothing inserted, and Enter only starts a paragraph',
+    async (text) => {
+      const editor = await make(doc(paragraph()));
+      await caretIn(editor);
+      await typeText(editor, text);
+      expect(isSlashMenuOpen(editor.state)).toBe(false);
+      expect(menu()).toBeNull();
+      await press(editor, 'Enter');
+      expect(editor.state.doc.childCount).toBe(2);
+      expect(editor.state.doc.child(0).type.name).toBe('paragraph');
+      expect(editor.state.doc.child(0).textContent).toBe(text);
+      expect(editor.state.doc.child(1).type.name).toBe('paragraph');
+      expect(editor.state.doc.child(1).textContent).toBe('');
+      expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
+    },
+  );
 });

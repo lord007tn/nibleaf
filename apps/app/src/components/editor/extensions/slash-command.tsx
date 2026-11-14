@@ -11,7 +11,14 @@ import type { Ref } from 'react';
 import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { unsortedSlashItems } from './slash-items';
 import type { SlashItem, UploadFn } from './slash-items/types';
-import { groupSlashItems, searchSlashItems, slashMenuOrder, slashQueryKeepsMenuOpen, slashSectionOf } from './slash-search';
+import {
+  groupSlashItems,
+  searchSlashItems,
+  slashMenuOrder,
+  slashQueryCharactersKnown,
+  slashQueryKeepsMenuOpen,
+  slashSectionOf,
+} from './slash-search';
 
 /** The page language scaffolds are written in: an explicit extension option wins,
  *  then a `lang` on the editor's direction scope (the host's `dir` wrapper), then
@@ -237,8 +244,14 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
     // menu again on a double space, a leading space, or once the words typed
     // can no longer match any block.
     allowSpaces: true,
-    allow: ({ state, range }) =>
-      slashQueryKeepsMenuOpen(state.doc.textBetween(range.from + 1, range.to), (finished) => rankSlashItems(items, finished, locale).length > 0),
+    allow: ({ state, range }) => {
+      const query = state.doc.textBetween(range.from + 1, range.to);
+      // Text with a character no block name has ("/?", "/code\block", "/(code)") is not a command.
+      return (
+        slashQueryCharactersKnown(query, items, locale) &&
+        slashQueryKeepsMenuOpen(query, (finished) => rankSlashItems(items, finished, locale).length > 0)
+      );
+    },
     initialItems: items,
     items: ({ query }) => rankSlashItems(items, query, locale),
     command: ({ editor, range, props }) => {
