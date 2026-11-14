@@ -65,23 +65,35 @@ export function PageActions({
   // or from an earlier click, is aborted, and even if its response still arrives
   // it can never write over a newer copy.
   const pending = useRef<AbortController | null>(null);
-  useEffect(() => () => pending.current?.abort(), []);
+  // Leaving the page (unmounting) cancels its copy and clears the slot, so a late
+  // response can never pass for the current request.
+  useEffect(
+    () => () => {
+      pending.current?.abort();
+      pending.current = null;
+    },
+    [],
+  );
   const copy = async () => {
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
+    // Still the newest copy, and not cancelled: checked before writing and again
+    // before any feedback, since the clipboard write is itself asynchronous.
+    const current = () => pending.current === request && !request.signal.aborted;
     try {
       const response = await fetch(markdownHref, { headers: { accept: 'text/markdown' }, signal: request.signal });
       if (!response.ok) throw new Error(String(response.status));
       const markdown = await response.text();
-      if (pending.current !== request) return;
+      if (!current()) return;
       await navigator.clipboard.writeText(markdown);
+      if (!current()) return;
       setCopied(true);
       announce(t('pageCopied'));
       setTimeout(() => setCopied(false), 1500);
     } catch {
       // A superseded request ends quietly; only the current one reports a failure.
-      if (request.signal.aborted || pending.current !== request) return;
+      if (!current()) return;
       announce(t('pageCopyFailed'));
     }
   };

@@ -109,6 +109,62 @@ describe('PageActions', () => {
     act(() => root.unmount());
   });
 
+  it("keeps a page left behind (unmounted) from writing over the next page's copy", async () => {
+    const responses = new Map<string, (body: string) => void>();
+    const fetch = vi.fn(
+      (url: string) =>
+        new Promise<Response>((resolve) => {
+          responses.set(url, (body) => resolve(new Response(body, { status: 200 })));
+        }),
+    );
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal('fetch', fetch);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const host = document.createElement('div');
+    document.body.append(host);
+    // Copy on page A, then a fresh component for page B (a remount), copy B.
+    let root = createRoot(host);
+    await act(async () => root.render(<PageActions pageHref="/guides/a" lang="en" />));
+    await act(async () => host.querySelector('button')?.click());
+    act(() => root.unmount());
+    root = createRoot(host);
+    await act(async () => root.render(<PageActions pageHref="/guides/b" lang="en" />));
+    await act(async () => host.querySelector('button')?.click());
+    await act(async () => responses.get('/guides/b.md')?.('# B\n'));
+    await act(async () => responses.get('/guides/a.md')?.('# A\n'));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith('# B\n');
+    act(() => root.unmount());
+  });
+
+  it('never lets a superseded copy announce success over the current one', async () => {
+    const fetch = vi.fn(async (url: string) => (url === '/guides/a.md' ? new Response('# A\n', { status: 200 }) : new Response('', { status: 404 })));
+    // A's clipboard write finishes only when the test says.
+    let finishA: () => void = () => undefined;
+    const writeText = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishA = resolve;
+        }),
+    );
+    vi.stubGlobal('fetch', fetch);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => root.render(<PageActions pageHref="/guides/a" lang="en" />));
+    await act(async () => host.querySelector('button')?.click());
+    // Page B's copy starts while A's clipboard write is pending, and fails.
+    await act(async () => root.render(<PageActions pageHref="/guides/b" lang="en" />));
+    await act(async () => host.querySelector('button')?.click());
+    await vi.waitFor(() => expect(document.querySelector('[data-reader-announcer]')?.textContent).toMatch(/^Couldn.t copy the page/));
+    // A's write completes late: no success message, no copied tick.
+    await act(async () => finishA());
+    expect(document.querySelector('[data-reader-announcer]')?.textContent).toMatch(/^Couldn.t copy the page/);
+    expect(host.querySelector('button')?.textContent).toBe('Copy page');
+    act(() => root.unmount());
+  });
+
   it('says when the page could not be copied', async () => {
     vi.stubGlobal(
       'fetch',
