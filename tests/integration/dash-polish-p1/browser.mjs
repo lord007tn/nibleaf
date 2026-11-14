@@ -30,8 +30,9 @@ const axeSource = await readFile(process.env.AXE_CORE ?? createRequire(resolve(r
 const origin = 'http://fixture.nibleaf.test';
 const AXE_RULES = ['color-contrast', 'button-name', 'link-name', 'landmark-one-main', 'region'];
 
-// "Before" = the baseline source of every app file this branch changed (that existed then).
-const changedFiles = git('diff', '--name-only', baseline, 'HEAD', '--', 'apps/app/src')
+// "Before" = the baseline source of every app file changed since the baseline,
+// in the working tree as captured (that existed then).
+const changedFiles = git('diff', '--name-only', baseline, '--', 'apps/app/src')
   .split('\n')
   .filter((file) => file && !/\.test\.tsx?$/.test(file))
   .filter((file) => git('ls-tree', '--name-only', baseline, '--', file).trim() === file);
@@ -225,7 +226,9 @@ function layoutChecks({ siteName, previewNames }) {
   };
   const header = document.querySelector('header');
   const name = [...(header?.querySelectorAll('span') ?? [])].find((span) => span.textContent === siteName);
-  const headerPreview = [...(header?.querySelectorAll('a') ?? [])].find((link) => previewNames.includes(link.getAttribute('aria-label')));
+  const headerPreview = [...(header?.querySelectorAll('a') ?? [])].find((link) =>
+    previewNames.includes(link.getAttribute('aria-label') ?? link.getAttribute('title')),
+  );
   const nav = document.querySelector('nav[data-slot="section-tabs"]');
   // Before: the nav itself scrolls. After: the div inside it.
   const row = [nav, nav?.firstElementChild].find((element) => element && getComputedStyle(element).overflowX === 'auto') ?? null;
@@ -457,7 +460,9 @@ Requests: ${requests.join(', ')}`);
                 await page.waitForTimeout(600);
                 entry.sheet = await sheet.evaluate(
                   (element, previewNames) => {
-                    const link = [...element.querySelectorAll('a')].find((a) => previewNames.includes(a.getAttribute('aria-label')));
+                    const link = [...element.querySelectorAll('a')].find((a) =>
+                      previewNames.includes(a.getAttribute('aria-label') ?? a.getAttribute('title')),
+                    );
                     const rect = link?.getBoundingClientRect();
                     return {
                       previewItem: link
@@ -615,6 +620,8 @@ Requests: ${requests.join(', ')}`);
         {
           baseline,
           head: git('rev-parse', 'HEAD').trim(),
+          // Uncommitted app changes the captures include (empty when HEAD is exactly what was captured).
+          uncommitted: git('status', '--porcelain', '--', 'apps/app/src').split(/\r?\n/).filter(Boolean),
           environment:
             'Isolated actual-route fixture (ProjectLayout + analytics routes); intercepted fictional HTTP; no server, database or real site',
           swappedForBefore: [...beforeSources.keys(), ...changedMessages.map((key) => `paraglide message ${key} (en, ar)`)],
