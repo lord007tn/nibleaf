@@ -146,6 +146,9 @@ const EditorRoute = Route.options.component as ComponentType;
 const ENGLISH = { id: 'lang-en', code: 'en', label: 'English', isDefault: true, direction: 'LTR' };
 const ARABIC = { id: 'lang-ar', code: 'ar', label: 'العربية', isDefault: false, direction: 'RTL' };
 const OPENED_AT = '2026-11-13T22:40:22.348Z';
+/** These tests drive the real route and TipTap through up to 30 s of fake time;
+ *  on a loaded CI runner that takes several real seconds. */
+const ROUTE_TEST_TIMEOUT = 30_000;
 
 /** The mocked API's copy of the page, and every PATCH it received. */
 let server: { content: string; updatedAt: string; patches: Array<{ content: string; expectedUpdatedAt?: string }> };
@@ -154,12 +157,38 @@ let container: HTMLDivElement;
 let root: Root;
 let mounted = false;
 
-const advance = (ms: number) =>
-  act(async () => {
-    await vi.advanceTimersByTimeAsync(ms);
-  });
+/*
+ * Each test is its own session. A test that times out is not stopped: vitest only
+ * stops waiting for it, and its body runs on. On a loaded CI runner one did, and
+ * its next keystrokes and timer steps landed in the following tests' route and
+ * editor (overlapping act() calls, "The editor did not mount"), failing all 12
+ * after it. Every helper below checks its session first, so a test that has ended
+ * stops at its next step, and afterEach waits for a step in flight before tearing
+ * down.
+ */
+let session = 0;
+let ended = true;
+let inFlight: Promise<unknown> = Promise.resolve();
+const live = () => {
+  if (ended) throw new Error('This test has ended; its remaining steps are skipped.');
+};
+
+const advance = async (ms: number) => {
+  live();
+  const mine = session;
+  // act() returns a thenable; a real promise can be waited on twice.
+  const step = Promise.resolve(
+    act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    }),
+  );
+  inFlight = step.catch(() => undefined);
+  await step;
+  if (mine !== session || ended) throw new Error('This test has ended; its remaining steps are skipped.');
+};
 
 async function open(content: string, language = ENGLISH) {
+  live();
   const page = {
     id: 'page-1',
     kind: 'PAGE',
@@ -187,7 +216,10 @@ async function open(content: string, language = ENGLISH) {
 }
 
 /** The page's TipTap editor (TipTap keeps it on the editable element). */
-const editor = () => (container.querySelector('.ProseMirror') as (HTMLElement & { editor?: TiptapCore }) | null)?.editor;
+const editor = () => {
+  live();
+  return (container.querySelector('.ProseMirror') as (HTMLElement & { editor?: TiptapCore }) | null)?.editor;
+};
 
 /** Type `text` at the end of the paragraph that starts with `start`, as keystrokes do. */
 function typeAfter(start: string, text: string) {
@@ -245,6 +277,14 @@ async function everyFlush() {
 }
 
 beforeEach(() => {
+  session += 1;
+  ended = false;
+  inFlight = Promise.resolve();
+  mounted = false;
+  server = { content: '', updatedAt: OPENED_AT, patches: [] };
+  mocks.page = undefined;
+  mocks.pages = [];
+  mocks.languages = [];
   vi.useFakeTimers({
     toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'requestAnimationFrame', 'cancelAnimationFrame'],
   });
@@ -276,14 +316,33 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  if (mounted) await act(async () => root.unmount());
-  mounted = false;
-  container?.remove();
-  vi.useRealTimers();
-  vi.restoreAllMocks();
+  // Stop this test's remaining steps (see `session`), and let a step in flight
+  // finish so no act() overlaps the teardown or the next test.
+  ended = true;
+  await inFlight;
+  try {
+    if (mounted) await act(async () => root.unmount());
+  } finally {
+    mounted = false;
+    container?.remove();
+    // Menus opened in a portal, and anything else a test left in the page.
+    document.body.replaceChildren();
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    // The route's save queue and throttle went with the unmount; the mocked API
+    // and the captured callbacks are reset here and again before the next test.
+    mocks.update.mockReset();
+    mocks.blocker = null;
+    mocks.ai = null;
+    mocks.conflictDialog = null;
+    mocks.history = null;
+    mocks.refetched = undefined;
+    conflict = false;
+  }
 });
 
-describe('opening a page never saves it (P1-ED-001)', () => {
+describe('opening a page never saves it (P1-ED-001)', { timeout: ROUTE_TEST_TIMEOUT }, () => {
   it.each<[string, string, typeof ENGLISH]>([
     ...STARTER_PAGE_CONTENTS.map(({ title, content }): [string, string, typeof ENGLISH] => [`starter page "${title}"`, content, ENGLISH]),
     ['a hard-wrapped page', HARD_WRAPPED_EN, ENGLISH],
@@ -300,7 +359,7 @@ describe('opening a page never saves it (P1-ED-001)', () => {
   });
 });
 
-describe('an edit keeps every untouched paragraph as written', () => {
+describe('an edit keeps every untouched paragraph as written', { timeout: ROUTE_TEST_TIMEOUT }, () => {
   it.each([
     ['English', HARD_WRAPPED_EN, ENGLISH, 'A short item.', 'A tiny item.'],
     ['Arabic', HARD_WRAPPED_AR, ARABIC, 'عنصر قصير.', 'عنصر صغير.'],
@@ -351,7 +410,7 @@ describe('an edit keeps every untouched paragraph as written', () => {
   });
 });
 
-describe('save pacing while typing (P2-JRN-001)', () => {
+describe('save pacing while typing (P2-JRN-001)', { timeout: ROUTE_TEST_TIMEOUT }, () => {
   it('one character a second for 12 s: 4 saves within the 12 s, 5 in all', async () => {
     await open(HARD_WRAPPED_EN);
     await typeSlowly(12, 1000);
@@ -371,7 +430,8 @@ describe('save pacing while typing (P2-JRN-001)', () => {
 
   it('typing without a pause for 25 s: saved every 10 s, then after it stops (3)', async () => {
     await open(HARD_WRAPPED_EN);
-    await typeSlowly(125, 200);
+    // A keystroke every 0.5 s never gives the 0.7 s pause: only the maximum wait saves.
+    await typeSlowly(50, 500);
     expect(server.patches).toHaveLength(2);
     await advance(15_000);
     expect(server.patches).toHaveLength(3);
@@ -444,7 +504,7 @@ describe('save pacing while typing (P2-JRN-001)', () => {
   });
 });
 
-describe('undo never goes back past a re-seed (#630)', () => {
+describe('undo never goes back past a re-seed (#630)', { timeout: ROUTE_TEST_TIMEOUT }, () => {
   const LATER = '2026-11-14T08:00:00.000Z';
   /** The page with its first paragraph changed, so each copy is recognisable. */
   const copy = (marker: string) => HARD_WRAPPED_EN.replaceAll('Opening it must not change a byte.', `Opening it must not change a byte. ${marker}`);
