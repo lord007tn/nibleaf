@@ -25,6 +25,28 @@ describe('math detection', () => {
     if (expected.math) expect(needsMathMarkdown(content)).toBe(true);
   });
 
+  it.each([
+    ['an entity-encoded math class', '<code class="math&#45;inline">\\frac{1}{2}</code>'],
+    ['a hex-encoded math class', '<code class="math&#x2d;display">x^2</code>'],
+    ['an entity-encoded language-math class', '<pre><code class="l&#97;nguage-math">x^2</code></pre>'],
+    ['an escaped backslash before math on an MDX page', '<Note>Hi</Note>\n\n\\\\$x$ is the variable.'],
+  ])('loads KaTeX for %s, which the renderer typesets', (_name, content) => {
+    const mode = readerRenderMode(content);
+    expect(mode).toMatchObject({ rich: true, math: true });
+    expect(needsMathMarkdown(content)).toBe(true);
+  });
+
+  it('does not load KaTeX for a math class named only in code', () => {
+    for (const content of ['Use `math-inline` in CSS.', '```css\n.math-display { margin: 0 }\n```']) {
+      expect(needsMathMarkdown(content), content).toBe(false);
+      expect(readerRenderMode(content).math, content).toBe(false);
+    }
+  });
+
+  it('keeps an escaped dollar escaped in the line scan', () => {
+    expect(needsMathMarkdown('Costs \\$5 and \\$10.')).toBe(false);
+  });
+
   it('a math fence alone keeps a page on the plain renderer, as before', () => {
     expect(readerRenderMode('```math\n\\sqrt{2}\n```').rich).toBe(false);
   });

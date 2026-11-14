@@ -68,10 +68,46 @@ export const containsMath = (text: string): boolean => {
 /** A fenced code block in the `math` language: display math for remark-math. */
 const MATH_FENCE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*math\b/im;
 
-/** Math outside code, by the line scan (the fallback past the parser's bounds):
- * only such pages load KaTeX (PUB-017). */
-export const needsMathMarkdown = (content: string): boolean =>
-  containsMath(withoutCode(content)) || MATH_FENCE.test(content) || /\bmath-(?:inline|display)\b/.test(content);
+/** The classes rehype-katex typesets in raw HTML (`language-math` as display math). */
+export const MATH_CLASS = /\b(?:math-(?:inline|display)|language-math)\b/;
+
+/** Numeric character references decoded (`&#45;`, `&#x2d;`, with or without
+ *  the semicolon), as the HTML parser reads an attribute before rehype-katex
+ *  sees its class. Named references don't matter here: no ASCII letter or `-`
+ *  has one. */
+export const decodeNumericReferences = (text: string): string =>
+  text.includes('&#')
+    ? text.replace(/&#(?:[xX]([0-9a-fA-F]{1,6})|(\d{1,7}));?/g, (reference, hex: string | undefined, decimal: string | undefined) => {
+        const code = hex ? Number.parseInt(hex, 16) : Number(decimal);
+        return code > 0 && code <= 0x10_ff_ff ? String.fromCodePoint(code) : reference;
+      })
+    : text;
+
+/** Whether a backslash escapes the character at `index`: an odd run of
+ *  backslashes before it (`\\$` is an escaped backslash, then a live `$`). */
+const escapedAt = (text: string, index: number): boolean => {
+  let run = 0;
+  while (index - run - 1 >= 0 && text.charCodeAt(index - run - 1) === BACKSLASH) run += 1;
+  return run % 2 === 1;
+};
+
+/** `containsMath`, reading backslash runs as Markdown does. */
+const containsUnescapedMath = (text: string): boolean => {
+  for (let index = text.indexOf('$'); index >= 0; index = text.indexOf('$', index + 1)) {
+    if (!escapedAt(text, index)) return text.indexOf('$', index + 1) >= 0;
+  }
+  return false;
+};
+
+/** Math outside code, by the line scan (the fallback past the parser's bounds,
+ * and the navigation preloader): only such pages load KaTeX (PUB-017). It errs
+ * towards loading: a miss would leave raw TeX on a rich page. Class names count
+ * only outside code spans and fences (`math-inline` in a CSS sample is not math),
+ * read after decoding character references (`math&#45;inline` is). */
+export const needsMathMarkdown = (content: string): boolean => {
+  const prose = withoutCode(content);
+  return containsUnescapedMath(prose) || MATH_FENCE.test(content) || MATH_CLASS.test(decodeNumericReferences(prose));
+};
 
 /** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
  * detection conservative—false positives only load the richer renderer, while

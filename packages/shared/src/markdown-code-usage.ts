@@ -16,7 +16,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { gfm } from 'micromark-extension-gfm';
 // The renderer's math delimiters, read as its line-based check reads them.
-import { containsMath } from './reader-rich';
+import { containsMath, decodeNumericReferences, MATH_CLASS } from './reader-rich';
 
 export interface MarkdownCodeUsage {
   /** Lower-cased code block languages, plus `language-*` classes in raw HTML. */
@@ -37,8 +37,6 @@ const MAX_MARKERS = 40_000;
 const MARKERS = new Set(['*', '_', '[', ']', '<', '>']);
 
 const CLASS_LANGUAGE = /\blang(?:uage)?-([^\s"'`>]+)/g;
-/** The classes rehype-katex renders as math. */
-const MATH_CLASS = /\bmath-(?:inline|display)\b/;
 
 /** Null when the document is too large or marker-dense to parse safely. */
 export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null => {
@@ -61,14 +59,24 @@ export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null =>
     if (node.type === 'inlineCode') return;
     if (node.type === 'html') {
       rich = true;
-      if (MATH_CLASS.test(node.value)) htmlMath = true;
-      for (const [, language] of node.value.matchAll(CLASS_LANGUAGE)) if (language) languages.add(language.toLowerCase());
+      // Class names as the HTML parser reads them: `math&#45;inline` is math.
+      const html = decodeNumericReferences(node.value);
+      if (MATH_CLASS.test(html)) htmlMath = true;
+      for (const [, language] of html.matchAll(CLASS_LANGUAGE)) if (language) languages.add(language.toLowerCase());
       return;
     }
     if (node.type === 'text') prose.push(node.value);
     if ('children' in node) for (const child of node.children as Nodes[]) visit(child);
   };
   visit(fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] }));
-  const inlineMath = containsMath(prose.join('\n'));
-  return { languages: [...languages].sort(), rich: rich || inlineMath, math: inlineMath || htmlMath || languages.has('math') };
+  const text = prose.join('\n');
+  const inlineMath = containsMath(text);
+  // Text nodes have their escapes resolved already: `\\$x$` (an escaped
+  // backslash, then math) arrives as `\$x$`, which containsMath reads as an
+  // escaped dollar. KaTeX loads on any two dollars in prose instead: a false
+  // positive only loads it, a miss would leave raw TeX on a rich page. Whether
+  // the page is rich is decided as before.
+  const first = text.indexOf('$');
+  const dollars = first >= 0 && text.indexOf('$', first + 1) >= 0;
+  return { languages: [...languages].sort(), rich: rich || inlineMath, math: dollars || htmlMath || languages.has('math') };
 };

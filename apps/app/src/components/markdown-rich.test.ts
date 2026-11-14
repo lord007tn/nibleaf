@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -34,6 +35,13 @@ describe('conditional Markdown renderer', () => {
     expect(html).toContain('style="height:');
     expect(html).not.toContain('position:fixed');
     expect(html).not.toContain('onclick');
+  });
+
+  it('typesets an entity-encoded math class, which the page detector now loads KaTeX for', () => {
+    const content = '<Note>Hi</Note>\n\n<code class="math&#45;inline">\\frac{1}{2}</code>';
+    expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
+    const html = renderToStaticMarkup(createElement(RichMarkdown, { content, math: mathPlugins }));
+    expect(html).toContain('<math xmlns="http://www.w3.org/1998/Math/MathML">');
   });
 
   it('renders fenced math as display math using the same sanitized pipeline', () => {
