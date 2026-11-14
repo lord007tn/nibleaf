@@ -6,7 +6,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { displayTitle } from '@nibleaf/shared/page-title';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, ChevronDown, Eye, FileText } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Eye } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { publishedVersionSlugFor } from '@/components/editor/docs-version';
@@ -14,10 +14,11 @@ import { Markdown } from '@/components/markdown';
 import { QueryErrorState } from '@/components/query-error-state';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { PageIcon } from '@/components/site/page-icon';
+import { PreviewNav } from '@/features/site-preview/components/preview-nav';
+import { previewHomeId, previewNavTree } from '@/features/site-preview/model/preview-nav';
 import { useBranches, useLanguages, usePage, usePages, useProject, useProjectMembers } from '@/hooks/api';
 import { pageQueryOptions } from '@/hooks/api/query-options';
 import { defaultScopeId, prefetchScopedPages } from '@/hooks/api/route-prefetch';
-import type { PageNode } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
@@ -41,8 +42,6 @@ export const Route = createFileRoute('/app/projects/$projectId/preview')({
   },
   component: ProjectPreview,
 });
-
-const firstPage = (pages: PageNode[] | undefined): PageNode | undefined => pages?.find((page) => page.kind === 'PAGE' && !page.hidden);
 
 interface PreviewSearch {
   branchId?: string;
@@ -73,7 +72,12 @@ function ProjectPreview() {
   const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
   const pagesQuery = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
   const { data: pages, isPending: pagesPending } = pagesQuery;
-  const selected = useMemo(() => pages?.find((page) => page.id === search.pageId) ?? firstPage(pages), [pages, search.pageId]);
+  // The same tree readers get once this is published, so the order matches the editor's.
+  const nav = useMemo(() => previewNavTree(pages, activeLanguage?.code), [pages, activeLanguage?.code]);
+  const selected = useMemo(() => {
+    const homeId = previewHomeId(pages, nav);
+    return pages?.find((page) => page.id === search.pageId) ?? pages?.find((page) => page.id === homeId);
+  }, [nav, pages, search.pageId]);
   // The content column stays mounted between pages; start each page at its top,
   // as the published site does (the router only restores the window's scroll).
   const contentRef = useRef<HTMLDivElement>(null);
@@ -236,27 +240,14 @@ function ProjectPreview() {
                   <p className="mb-3 text-muted-foreground text-xs">{t('preview.description')}</p>
                   <div className="mb-3 grid gap-2">{scopeSelects}</div>
                   {pagesPending ? <PageListSkeleton rows={2} /> : null}
-                  {(pages ?? []).map((item) => (
-                    <button
-                      className={cn(
-                        'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-start text-sm transition-colors',
-                        item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
-                        item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        item.hidden && 'opacity-55',
-                      )}
-                      disabled={item.kind === 'GROUP'}
-                      key={item.id}
-                      onClick={() => {
-                        updateSearch({ pageId: item.id });
-                        setMobileNavigationOpen(false);
-                      }}
-                      style={{ paddingInlineStart: `${8 + item.path.split('/').length * 8}px` }}
-                      type="button"
-                    >
-                      {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
-                      <span className="truncate">{shownTitle(item)}</span>
-                    </button>
-                  ))}
+                  <PreviewNav
+                    nodes={nav}
+                    onSelect={(pageId) => {
+                      updateSearch({ pageId });
+                      setMobileNavigationOpen(false);
+                    }}
+                    selectedId={selected?.id}
+                  />
                 </div>
               ) : null}
             </div>
@@ -274,24 +265,7 @@ function ProjectPreview() {
               <ScrollArea className="min-h-0 flex-1">
                 <div className="p-3" data-theme-region="sidebar-content">
                   {pagesPending ? <PageListSkeleton rows={3} /> : null}
-                  {(pages ?? []).map((item) => (
-                    <button
-                      className={cn(
-                        'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm transition-colors',
-                        item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
-                        item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        item.hidden && 'opacity-55',
-                      )}
-                      disabled={item.kind === 'GROUP'}
-                      key={item.id}
-                      onClick={() => updateSearch({ pageId: item.id })}
-                      style={{ paddingInlineStart: `${8 + item.path.split('/').length * 8}px` }}
-                      type="button"
-                    >
-                      {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
-                      <span className="truncate">{shownTitle(item)}</span>
-                    </button>
-                  ))}
+                  <PreviewNav nodes={nav} onSelect={(pageId) => updateSearch({ pageId })} selectedId={selected?.id} />
                 </div>
               </ScrollArea>
             </>

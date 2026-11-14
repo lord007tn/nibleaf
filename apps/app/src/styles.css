@@ -955,3 +955,39 @@
   outline: 2px solid var(--ring, currentColor);
   outline-offset: 2px;
 }
+
+/* Ask AI docked beside the article (PUB-003; ai-chat/panel.tsx, use-docked.ts).
+ * From 80rem the panel is a non-modal column at the inline end; while it is
+ * open (html[data-chat-docked]) the reader chrome makes room for it, and the
+ * "On this page" column gives way so the article keeps a readable measure.
+ * Unlayered, so it wins over the layouts' xl: grid utilities. */
+:root {
+  --chat-dock-width: clamp(22.5rem, 28vw, 27.5rem);
+}
+@media (min-width: 80rem) {
+  html[data-chat-docked] .nibleaf-site-chrome {
+    padding-inline-end: var(--chat-dock-width);
+  }
+  html[data-chat-docked] [data-theme-region="toc"],
+  html[data-chat-docked] [data-reader-toc-spacer] {
+    display: none;
+  }
+  html[data-chat-docked] [data-reader-article-grid] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The narrower header keeps the brand, search and the reader's controls: the
+     Ask AI entry is redundant while its panel is open, and the header links
+     come back when it closes. */
+  html[data-chat-docked] [data-theme-region="ask-ai-trigger"],
+  html[data-chat-docked] [data-theme-region="header"] > nav {
+    display: none;
+  }
+  [data-theme-surface="ai"][data-docked] {
+    border-inline-start: 1px solid var(--border);
+  }
+}
+@media (min-width: 80rem) and (prefers-reduced-motion: no-preference) {
+  .nibleaf-site-chrome {
+    transition: padding-inline-end 200ms ease-in-out;
+  }
+}

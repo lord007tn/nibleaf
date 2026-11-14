@@ -160,6 +160,17 @@ describe('SiteNav sections', () => {
     expect(basics?.getAttribute('aria-expanded')).toBe('false');
   });
 
+  // P1-DASH-002: groups and pages now keep the author's order, so a page can
+  // follow a section; it must not read as that section's last page.
+  it('starts an unlabelled block for top-level pages after a section, and only there', () => {
+    const nodes = [page('intro'), group('Basics', [page('setup')]), page('faq'), page('changelog'), group('Empty', []), page('about')];
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={nodes} projectId="docs" currentPath="intro" toggleLabel="Toggle" />);
+    const blockStarts = [...container.querySelectorAll('[data-nav-block-start]')].map((item) => item.querySelector('a')?.textContent);
+    expect(blockStarts).toEqual(['faq']);
+    expect(container.querySelector('[data-nav-block-start]')?.className).toContain('mt-7');
+  });
+
   it('names the page list so it is distinct from the header links', () => {
     const html = renderToString(
       <SiteNav nodes={sections} projectId="docs" currentPath="intro" toggleLabel="Toggle subpages" label="Documentation pages" />,

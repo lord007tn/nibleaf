@@ -119,6 +119,7 @@ const HarborTemplate: DocumentationThemeTemplate = {
   PageLayout: ({ article, tableOfContents, reserveTocColumn }) => (
     <div
       className={cn('grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12', (tableOfContents || reserveTocColumn) && 'xl:grid-cols-[minmax(0,1fr)_13rem]')}
+      data-reader-article-grid=""
       data-documentation-layout="harbor-reference-page"
       data-theme-region="page-shell"
     >
@@ -272,6 +273,7 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
         'grid min-w-0 grid-cols-1 justify-center gap-10 px-5 py-10 sm:px-8 lg:py-14',
         (tableOfContents || reserveTocColumn) && 'xl:grid-cols-[11rem_minmax(0,44rem)] xl:gap-14',
       )}
+      data-reader-article-grid=""
       data-documentation-layout="manuscript-editorial-page"
       data-theme-region="page-shell"
     >
@@ -281,7 +283,7 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
         </div>
       ) : reserveTocColumn ? (
         // The outline column stays, empty, so the article starts where it does on pages with one.
-        <div aria-hidden className="hidden xl:block" />
+        <div aria-hidden className="hidden xl:block" data-reader-toc-spacer="" />
       ) : null}
       {article}
     </div>

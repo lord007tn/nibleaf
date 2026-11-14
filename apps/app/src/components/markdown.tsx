@@ -23,6 +23,7 @@ import { MermaidBlock } from '@/components/site/mermaid-block';
 import { Pre } from '@/components/site/reader-code-block';
 import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
 import { CORE_HIGHLIGHT_GRAMMARS, rehypeReaderHighlight } from '@/components/site/reader-highlight';
+import { ScrollTable, TableCell, TableHeaderCell } from '@/components/site/scroll-region';
 import { lazyHighlightLanguages, lazyHighlightLanguagesNamed } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
 import { highlightLanguageModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
@@ -82,11 +83,6 @@ const htmlComponents: Components = {
   h2: ({ node: _node, ...props }) => <h2 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
   h3: ({ node: _node, ...props }) => <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
   h4: ({ node: _node, ...props }) => <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  table: ({ node: _node, ...props }) => (
-    <div className="typeset-scroll">
-      <table {...props} />
-    </div>
-  ),
   pre: Pre,
   li: TaskListItem,
   input: TaskCheckbox,
@@ -267,6 +263,9 @@ export function MarkdownRenderer({
           } satisfies Components)
         : {}),
       pre: (props: ComponentProps<'pre'>) => <Pre {...props} locale={site?.lang} />,
+      table: (props: ComponentProps<'table'>) => <ScrollTable {...props} locale={site?.lang} />,
+      td: TableCell,
+      th: TableHeaderCell,
       a: anchorRenderer(site),
       ...baseMdxComponents,
       ...mdxComponents,

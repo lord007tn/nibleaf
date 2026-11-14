@@ -9,7 +9,7 @@ import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { askSearchSchema } from '@/components/site/ai-chat/ask-search';
-import { ChatSearchBridge, SiteChatReaderLayout } from '@/components/site/ai-chat/provider';
+import { ChatSearchBridge, SiteChatHeaderAction, SiteChatReaderLayout } from '@/components/site/ai-chat/provider';
 import { DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MadeWithBadge } from '@/components/site/made-with-badge';
@@ -35,7 +35,7 @@ import { customDomainOrigin } from '@/lib/site-origin';
 import { safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
 import { readerFallbackHead, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
-import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
+import { projectThemeCss, projectThemeStyle, resolveProjectTheme, siteAppearance } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
 
 // Only visitors of a private site need this screen's copy.
@@ -196,7 +196,8 @@ function SiteChrome() {
   // The published site manages its OWN light/dark theme (a class on the chrome
   // below), independent of the dashboard's theme — so the site's config default
   // and a visitor's toggle never clobber the editor/dashboard theme.
-  const configTheme = config?.styling?.theme; // 'light' | 'dark' | 'system' | undefined
+  // Unset follows the reader's device (siteAppearance); 'light'/'dark' are the owner's pick.
+  const configTheme = siteAppearance(config);
   const [siteTheme, setSiteTheme] = useState<'light' | 'dark'>(configTheme === 'dark' ? 'dark' : 'light');
   const [siteThemeHydratedFor, setSiteThemeHydratedFor] = useState<string>();
   const hasExplicitThemeChoice = useRef(false);
@@ -558,7 +559,7 @@ function SiteChrome() {
                   )}
 
                   {/* Centered search (Mintlify-style); collapses to an icon on phones. */}
-                  <div className="hidden min-w-0 flex-1 justify-center px-2 sm:flex">
+                  <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-2 sm:flex">
                     {showSearch ? (
                       <button
                         className="hidden h-9 w-full max-w-md cursor-pointer items-center gap-2.5 rounded-full border border-border/80 bg-muted/50 px-4 text-muted-foreground text-sm transition-colors hover:border-foreground/25 hover:bg-muted pointer-coarse:h-11 sm:flex"
@@ -583,6 +584,7 @@ function SiteChrome() {
                         </kbd>
                       </button>
                     ) : null}
+                    <SiteChatHeaderAction lang={activeLanguage?.code} />
                   </div>
 
                   {showSearch ? (
