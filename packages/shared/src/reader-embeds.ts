@@ -211,7 +211,8 @@ export type ReaderEmbedSource = { kind: 'video'; video: VideoEmbed } | { kind: '
 
 export const readerEmbedSource = (value: string | undefined): ReaderEmbedSource | null => {
   const src = clip(value, MAX_TEXT_LENGTH);
-  const video = parseVideoUrl(src);
+  // Validate the original address: clipping must not hide controls or a long suffix.
+  const video = parseVideoUrl(value ?? '');
   if (video) return { kind: 'video', video };
   if (!src) return null;
   const url = parseWebUrl(src);

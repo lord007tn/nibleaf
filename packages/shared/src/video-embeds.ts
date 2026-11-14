@@ -4,8 +4,7 @@
  * reader's player, the publish checks and the importers all read embeds with it,
  * so they agree on what plays inline and what stays a link.
  *
- * Parsing uses `URL` and plain string checks. The only regular expressions are
- * the anchored, length-bounded id and start-time patterns below.
+ * Parsing uses `URL`, linear character checks and bounded id/start patterns.
  *
  * | Provider | Accepted input                                                  | Embedded as                               |
  * |----------|-----------------------------------------------------------------|-------------------------------------------|
@@ -58,6 +57,17 @@ const START = /^(?:([0-9]{1,2})h)?(?:([0-9]{1,4})m)?(?:([0-9]{1,6})s?)?$/;
 /** Longer input is not a video link. */
 const MAX_URL_LENGTH = 2048;
 
+/** Preserve surrounding ordinary spaces, but never let URL/trim erase unsafe bytes. */
+const mediaUrlValue = (input: string): string | null => {
+  const value = input.trim();
+  if (!value || value.length > MAX_URL_LENGTH) return null;
+  for (let index = 0; index < input.length; index++) {
+    const code = input.charCodeAt(index);
+    if (code < 0x20 || code === 0x7f || code === 0x5c || (code > 0x7f && /\s/u.test(input.charAt(index)))) return null;
+  }
+  return value.includes(' ') ? null : value;
+};
+
 const isProvider = (value: string): value is VideoProvider => Object.hasOwn(VIDEO_IDS, value);
 
 /** Whole seconds from a start parameter, or undefined when absent or invalid. */
@@ -102,47 +112,54 @@ const isWistiaAccountHost = (host: string): boolean => {
 const fragmentStart = (hash: string): string | null => (hash.startsWith('#t=') ? hash.slice(3) : null);
 
 /**
- * The provider video a URL points to, or null for anything else: another host
- * (look-alikes included: hosts are compared whole, after IDN conversion), a
- * malformed URL, credentials, a port, a non-http(s) scheme, an id outside the
- * provider's alphabet or length, or a path of another shape.
+ * The provider video a URL points to, or null for anything else: another origin
+ * (look-alikes included), a
+ * malformed URL, credentials, a port, a non-http(s) scheme, unsafe characters,
+ * a non-ASCII authority, an id outside the provider's alphabet or length, or a
+ * path of another shape. Surrounding ordinary spaces remain accepted.
  */
 export const parseVideoUrl = (input: string): VideoEmbed | null => {
-  const url = parseWebUrl(input);
+  const value = mediaUrlValue(input);
+  if (!value) return null;
+  // Refuse Unicode/encoded authorities before URL's IDN and percent decoding.
+  const authority = /^(?:https?:)?\/\/([^/?#]*)/i.exec(value)?.[1];
+  if (!authority || /[^\x21-\x7e]|%/.test(authority)) return null;
+  const url = parseWebUrl(value);
   if (!url || url.port) return null;
+  const fromOrigin = (host: string): boolean => url.origin === `https://${host}` || url.origin === `http://${host}`;
   const host = url.hostname;
   const path = segments(url.pathname);
   let provider: VideoProvider | null = null;
   let id: string | undefined;
   let start: string | null = null;
-  if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'm.youtube.com') {
+  if (fromOrigin('youtube.com') || fromOrigin('www.youtube.com') || fromOrigin('m.youtube.com')) {
     provider = 'youtube';
     if (path.length === 1 && path[0] === 'watch') id = url.searchParams.get('v') ?? undefined;
     else if (path.length === 2 && (path[0] === 'shorts' || path[0] === 'embed')) id = path[1];
     start = url.searchParams.get('t') ?? url.searchParams.get('start');
-  } else if (host === 'youtu.be') {
+  } else if (fromOrigin('youtu.be')) {
     provider = 'youtube';
     if (path.length === 1) id = path[0];
     start = url.searchParams.get('t') ?? url.searchParams.get('start');
-  } else if (host === 'youtube-nocookie.com' || host === 'www.youtube-nocookie.com') {
+  } else if (fromOrigin('youtube-nocookie.com') || fromOrigin('www.youtube-nocookie.com')) {
     provider = 'youtube';
     if (path.length === 2 && path[0] === 'embed') id = path[1];
     start = url.searchParams.get('start') ?? url.searchParams.get('t');
-  } else if (host === 'vimeo.com' || host === 'www.vimeo.com') {
+  } else if (fromOrigin('vimeo.com') || fromOrigin('www.vimeo.com')) {
     provider = 'vimeo';
     if (path.length === 1) id = path[0];
     start = fragmentStart(url.hash);
-  } else if (host === 'player.vimeo.com') {
+  } else if (fromOrigin('player.vimeo.com')) {
     provider = 'vimeo';
     if (path.length === 2 && path[0] === 'video') id = path[1];
     start = fragmentStart(url.hash);
-  } else if (host === 'loom.com' || host === 'www.loom.com') {
+  } else if (fromOrigin('loom.com') || fromOrigin('www.loom.com')) {
     provider = 'loom';
     if (path.length === 2 && (path[0] === 'share' || path[0] === 'embed')) id = path[1];
-  } else if (host === 'fast.wistia.net') {
+  } else if (fromOrigin('fast.wistia.net')) {
     provider = 'wistia';
     if (path.length === 3 && path[0] === 'embed' && path[1] === 'iframe') id = path[2];
-  } else if (isWistiaAccountHost(host)) {
+  } else if (isWistiaAccountHost(host) && fromOrigin(host)) {
     provider = 'wistia';
     if (path.length === 2 && path[0] === 'medias') id = path[1];
   }
@@ -188,18 +205,15 @@ const SITE_BASE = new URL('https://site.nibleaf.invalid');
  *
  * A browser removes tab and newline anywhere in a URL and reads `\` as `/`, so
  * `/<tab>/host/x` or `/\host/x` is another host to it. Any ASCII control
- * character, space or backslash is refused outright; a path must then still
+ * character or backslash is refused outright, as is whitespace inside an
+ * address (surrounding ordinary spaces are tolerated). A path must still
  * resolve to this site's origin. Percent-encoded bytes (`/%09/x`) are not
  * decoded while resolving, so they stay in the path on this site.
  */
 export const isAllowedMediaUrl = (value: unknown): value is string => {
   if (typeof value !== 'string') return false;
-  const url = value.trim();
-  if (!url || url.length > MAX_URL_LENGTH) return false;
-  for (let index = 0; index < url.length; index++) {
-    const code = url.charCodeAt(index);
-    if (code <= 0x20 || code === 0x7f || code === 0x5c) return false;
-  }
+  const url = mediaUrlValue(value);
+  if (!url) return false;
   if (url.startsWith('/')) {
     try {
       return new URL(url, SITE_BASE).origin === SITE_BASE.origin;
