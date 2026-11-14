@@ -3983,7 +3983,7 @@
   "dashboard_ai_disabled": "Conversation history is not available on this server yet",
   "dashboard_ai_unavailable": "Conversation history is temporarily unavailable. Please try again.",
   "dashboard_ai_captureoff": "Questions are not being saved. Turn on \"Save questions to improve your docs\" in Search settings.",
-  "dashboard_ai_captureinstance": "Questions are not being saved because this Nibleaf instance has no conversation encryption key. Ask your Nibleaf administrator to set one.",
+  "dashboard_ai_captureinstance": "Questions are not being saved because conversation history is not set up yet. Contact Nibleaf support on Cloud, or your server administrator if you self-host.",
   "dashboard_ai_settings": "Search settings",
   "dashboard_ai_empty": "No questions here yet. Readers can ask the AI assistant from your published docs. Try a wider date range or different filters.",
   "dashboard_ai_selfhosting": "Set up AI search",
