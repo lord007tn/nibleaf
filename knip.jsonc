@@ -31,6 +31,8 @@
         "tests/integration/reader-video-embeds/capture.mjs",
         "tests/integration/editor-video-blocks/publish-worker.mjs",
         "tests/integration/overview-first-publish/browser.mjs",
+        "tests/integration/reader-search-latency/benchmark.ts",
+        "tests/integration/reader-search-latency/vitest.config.ts",
         "tests/integration/site-owner-addresses/browser.mjs",
         "tests/integration/ssr-locale-direction/capture.mjs"
       ]

@@ -141,10 +141,13 @@ const app = new Hono<HonoEnv>()
     return ctx.json(data.document, 200);
   })
   .get('/:id/search', ...sitesRoutes.search, validator('query', siteSearchQuery), async (ctx) => {
+    const startedAt = performance.now();
     const { q, limit, lang, prefer, version, sessionId, consentState } = ctx.req.valid('query');
     ctx.header('Cache-Control', 'private, no-store');
     ctx.header('Vary', 'Cookie, Authorization');
-    return ctx.json({ data: await searchSite(ctx.req.param('id'), q, lang, limit, version, { sessionId, consentState }, prefer) }, 200);
+    const data = await searchSite(ctx.req.param('id'), q, lang, limit, version, { sessionId, consentState }, prefer);
+    ctx.header('Server-Timing', `search;dur=${(performance.now() - startedAt).toFixed(1)}`);
+    return ctx.json({ data }, 200);
   })
   .post('/:id/answer', ...sitesRoutes.answer, validator('json', searchAnswerBody), async (ctx) => {
     const { q, lang, version } = ctx.req.valid('json');
