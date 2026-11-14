@@ -60,7 +60,9 @@
         "unique": 0,
         "first": []
       },
-      "unexpectedRequests": [],
+      "unexpectedRequests": [
+        "PUT /api/app/me/last-organization"
+      ],
       "axeColorContrast": [],
       "axeColorContrastNodes": 0
     },
@@ -85,7 +87,7 @@
           "role": null,
           "truncated": null,
           "overflowsParent": {
-            "px": 32,
+            "px": 8,
             "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
           }
         },
@@ -95,7 +97,7 @@
           "role": null,
           "truncated": {
             "scrollWidth": 104,
-            "clientWidth": 26
+            "clientWidth": 75
           },
           "overflowsParent": null
         }
@@ -154,7 +156,7 @@
           "role": null,
           "truncated": null,
           "overflowsParent": {
-            "px": 32,
+            "px": 8,
             "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
           }
         },
@@ -164,7 +166,7 @@
           "role": null,
           "truncated": {
             "scrollWidth": 104,
-            "clientWidth": 26
+            "clientWidth": 75
           },
           "overflowsParent": null
         }
@@ -198,9 +200,7 @@
         "unique": 0,
         "first": []
       },
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ],
+      "unexpectedRequests": [],
       "axeColorContrast": [],
       "axeColorContrastNodes": 0
     },
@@ -248,9 +248,7 @@
         "unique": 0,
         "first": []
       },
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ],
+      "unexpectedRequests": [],
       "axeColorContrast": [
         {
           "target": ".text-emerald-600",
@@ -287,9 +285,7 @@
         "unique": 0,
         "first": []
       },
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ],
+      "unexpectedRequests": [],
       "axeColorContrast": [],
       "axeColorContrastNodes": 0
     },
@@ -313,9 +309,7 @@
         "unique": 0,
         "first": []
       },
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ],
+      "unexpectedRequests": [],
       "axeColorContrast": [],
       "axeColorContrastNodes": 0
     },
@@ -340,7 +334,7 @@
           "role": null,
           "truncated": null,
           "overflowsParent": {
-            "px": 32,
+            "px": 8,
             "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
           }
         },
@@ -350,7 +344,7 @@
           "role": null,
           "truncated": {
             "scrollWidth": 104,
-            "clientWidth": 26
+            "clientWidth": 75
           },
           "overflowsParent": null
         }
@@ -384,9 +378,7 @@
         "unique": 0,
         "first": []
       },
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ],
+      "unexpectedRequests": [],
       "axeColorContrast": [],
       "axeColorContrastNodes": 0
     },
@@ -411,7 +403,7 @@
           "role": null,
           "truncated": null,
           "overflowsParent": {
-            "px": 32,
+            "px": 8,
             "parent": "li.inline-flex.items-center.gap-1.5.min-w-0.shrink"
           }
         },
@@ -421,7 +413,7 @@
           "role": null,
           "truncated": {
             "scrollWidth": 104,
-            "clientWidth": 26
+            "clientWidth": 75
           },
           "overflowsParent": null
         }
@@ -431,9 +423,7 @@
         "unique": 0,
         "first": []
       },
-      "unexpectedRequests": [
-        "PUT /api/app/me/last-organization"
-      ],
+      "unexpectedRequests": [],
       "axeColorContrast": [],
       "axeColorContrastNodes": 0
     },
