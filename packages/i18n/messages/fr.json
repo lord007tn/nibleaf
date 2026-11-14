@@ -838,6 +838,8 @@
   "settings_unsaved_description": "Vos modifications n’ont pas été enregistrées.",
   "settings_unsaved_keep": "Continuer à modifier",
   "settings_appearance_location": "Également disponible dans Paramètres du site → Apparence et dans le panneau des paramètres de l’éditeur.",
+  "settings_appearance_summary": "L’apparence de votre site publié : sa marque, son thème, sa typographie, son en-tête, son pied de page et sa bannière.",
+  "settings_appearance_sections": "Sections de l’apparence",
   "settings_domain_guide_step1": "Ouvrez les paramètres DNS de votre fournisseur de domaine.",
   "settings_domain_guide_step2": "Ajoutez chaque entrée : Type, Nom/Hôte, Valeur/Cible. CNAME dirige l’adresse vers ce site ; TXT prouve votre propriété. Utilisez généralement le nom court ; le nom complet dessous uniquement sur demande.",
   "settings_domain_guide_step3": "Enregistrez et vérifiez à nouveau.",

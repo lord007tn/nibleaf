@@ -4894,6 +4894,8 @@ export const MESSAGE_IDS = {
   'overview.activity.viewAll': 'overview_activity_viewall',
   'publishes.tooLarge': 'publishes_toolarge',
   'publishes.noSnapshot': 'publishes_nosnapshot',
+  'settings.appearance.summary': 'settings_appearance_summary',
+  'settings.appearance.sections': 'settings_appearance_sections',
   'pending.count': 'pending_count',
   'pending.siteOnly': 'pending_siteonly',
   'pending.readersStillSee': 'pending_readersstillsee',
