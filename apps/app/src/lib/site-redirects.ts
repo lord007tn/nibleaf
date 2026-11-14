@@ -13,7 +13,7 @@ import { buildSiteRedirectHref } from '@/lib/site-redirect-href';
  * actual HTTP 308 (crawler-visible) and on the client a normal navigation.
  * Works for both app-origin (`/sites/:id/*`) and custom-domain (root) serving.
  */
-export async function redirectIfConfigured(projectId: string, path: string, lang?: string): Promise<void> {
+export async function redirectIfConfigured(projectId: string, path: string, lang?: string, fullPath?: string): Promise<void> {
   let from: string;
   try {
     from = normalizeRedirectPath(path);
@@ -29,7 +29,8 @@ export async function redirectIfConfigured(projectId: string, path: string, lang
   const validRedirects = redirects.filter(
     (rule): rule is { from: string; to: string } => typeof rule?.from === 'string' && typeof rule?.to === 'string',
   );
-  const to = resolveRedirectTarget(validRedirects, from);
+  const to =
+    resolveRedirectTarget(validRedirects, from) ?? (fullPath ? resolveRedirectTarget(validRedirects, normalizeRedirectPath(fullPath)) : null);
   if (!to) {
     return;
   }
@@ -39,7 +40,14 @@ export async function redirectIfConfigured(projectId: string, path: string, lang
   }
   let href: string;
   try {
-    href = buildSiteRedirectHref({ projectId, target: to, lang, customDomain: isCustomDomainSite(projectId) });
+    href = buildSiteRedirectHref({
+      projectId,
+      target: to,
+      lang,
+      customDomain: isCustomDomainSite(projectId),
+      defaultLanguage: shell.languages.find((item) => item.isDefault)?.code,
+      languages: shell.languages,
+    });
   } catch {
     return;
   }

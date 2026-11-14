@@ -1,0 +1,5 @@
+<html lang="ar" dir="rtl">
+<link rel="canonical" href="http://docs.localhost:4310/ar/getting-started/introduction" nonce="MYtT9/MlZE1AGxyZfSJxmHXP"/>
+<link rel="alternate" hrefLang="en" href="http://docs.localhost:4310/getting-started/introduction" nonce="MYtT9/MlZE1AGxyZfSJxmHXP"/>
+<link rel="alternate" hrefLang="ar" href="http://docs.localhost:4310/ar/getting-started/introduction" nonce="MYtT9/MlZE1AGxyZfSJxmHXP"/>
+<link rel="alternate" hrefLang="x-default" href="http://docs.localhost:4310/getting-started/introduction" nonce="MYtT9/MlZE1AGxyZfSJxmHXP"/>

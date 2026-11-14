@@ -18,7 +18,9 @@ import { articleStats } from '@/lib/article-stats';
 import { HydrationIsland } from '@/lib/hydration-modules';
 import { articleMarkdownModule } from '@/lib/reader-hydration-modules';
 import { formatUpdated } from '@/lib/reader-text';
+import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref } from '@/lib/site-paths';
+import { canonicalSiteBase } from '@/lib/site-seo';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
 const ARTICLE_MODULES = [articleMarkdownModule];
@@ -250,7 +252,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         <LanguageFallbackNotice
           requested={chromeLanguage.lang}
           shown={language}
-          href={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix })}
+          href={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix, languages: data.languages })}
           attributes={chromeLanguage}
           languages={reader?.languages}
           text={readerText}
@@ -275,7 +277,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
                   </span>
                 ) : (
                   <a
-                    href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+                    href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
                     className="transition-opacity hover:opacity-80"
                     dir={blockDirection(crumb.title)}
                     lang={contentLanguage.lang}
@@ -301,7 +303,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
             the reader's language and direction. */}
         {isPublicMarkdownPage(data) ? (
           <PageActions
-            pageHref={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix })}
+            pageHref={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix, languages: data.languages })}
             lang={readerLanguage}
             attributes={chromeLanguage}
             className="md:mt-1.5"
@@ -363,7 +365,17 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         imageDimensions={page.imageDimensions}
         language={readerLanguage}
         chromeLanguage={chromeLanguage}
-        site={{ projectId, lang: readerLanguage, defaultLanguage, version: versionPrefix }}
+        site={{
+          projectId,
+          lang: readerLanguage,
+          defaultLanguage,
+          version: versionPrefix,
+          path: page.path,
+          origin: new URL(
+            canonicalSiteBase(projectId, { primaryDomain: data.project.primaryDomain, slug: data.project.slug, requestOrigin: customDomainOrigin() }),
+          ).origin,
+          languages: data.languages,
+        }}
       />
 
       <SiteChatPageAction title={page.title} path={page.path} lang={language} />
@@ -390,7 +402,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         >
           {prev ? (
             <a
-              href={siteHref(projectId, prev.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+              href={siteHref(projectId, prev.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
               rel="prev"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
@@ -407,7 +419,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
           {next ? (
             <a
-              href={siteHref(projectId, next.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+              href={siteHref(projectId, next.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
               rel="next"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >

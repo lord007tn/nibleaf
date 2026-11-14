@@ -1,6 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
+import type { PathLanguage } from '@nibleaf/shared/site-language';
 import type { LanguageFn } from 'highlight.js';
 import { type ComponentProps, createContext, Suspense, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
@@ -27,7 +28,8 @@ import { ScrollTable, TableCell, TableHeaderCell } from '@/components/site/scrol
 import { lazyHighlightLanguages, lazyHighlightLanguagesNamed } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
 import { highlightLanguageModule, mathMarkdownModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
-import { siteHref, siteLanguageParam } from '@/lib/site-paths';
+import { authoredSiteHref } from '@/lib/site-authored-paths';
+import { isCustomDomainSite, siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
  *  root-relative doc links (`/guide`) to the site's base path so they don't
@@ -37,6 +39,9 @@ export interface SiteLinkContext {
   lang?: string;
   defaultLanguage?: string;
   version?: string;
+  path?: string;
+  origin?: string;
+  languages?: readonly PathLanguage[];
 }
 
 export interface MarkdownProps {
@@ -73,13 +78,30 @@ export function resolveDocHref(href: string | undefined, site: SiteLinkContext |
   if (!href || !site) {
     return href;
   }
-  if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || /^([a-z][\w+.-]*:)?\/\//i.test(href)) {
-    return href;
+  if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('//')) return href;
+  let internal = href;
+  const authored = /^[a-z][\w+.-]*:/i.test(href);
+  if (authored) {
+    try {
+      const url = new URL(href);
+      if (url.origin !== site.origin && (typeof window === 'undefined' || url.origin !== window.location.origin)) return href;
+      const platform = !isCustomDomainSite(site.projectId);
+      const project = /^\/sites\/([^/]+)(?:\/|$)/.exec(url.pathname)?.[1];
+      if (platform && project !== site.projectId) return href;
+      const pathname = platform ? url.pathname.slice(`/sites/${site.projectId}`.length) || '/' : url.pathname;
+      internal = `${pathname}${url.search}${url.hash}`;
+    } catch {
+      return href;
+    }
   }
-  if (href.startsWith('/')) {
-    return siteHref(site.projectId, href, { lang: siteLanguageParam(site.lang, site.defaultLanguage), version: site.version });
-  }
-  return href;
+  const basePath = site.path ?? '';
+  const url = new URL(internal, `https://site.invalid/${basePath}`);
+  return (authored ? authoredSiteHref : siteHref)(site.projectId, `${url.pathname}${url.search}${url.hash}`, {
+    lang: siteLanguageParam(site.lang, site.defaultLanguage),
+    version: site.version,
+    defaultLanguage: site.defaultLanguage,
+    languages: site.languages,
+  });
 }
 
 // Base document typography (sizes, spacing, rhythm) is owned by typeset.css —

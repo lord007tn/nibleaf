@@ -20,11 +20,11 @@ export interface TurnScope {
 /** Article link, opening the cited section when the source names one, in the
  * language and version the turn was answered in (the reader may have switched since). */
 const sourceHref = (
-  options: Pick<ChatOptions, 'projectId' | 'lang' | 'version'>,
+  options: Pick<ChatOptions, 'projectId' | 'lang' | 'version' | 'defaultLanguage' | 'languages'>,
   source: Pick<AiChatSource, 'path' | 'anchor' | 'language'>,
   scope: TurnScope,
 ) =>
-  `${siteHref(options.projectId, source.path, { lang: source.language ?? scope.lang ?? options.lang, version: scope.version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
+  `${siteHref(options.projectId, source.path, { lang: source.language ?? scope.lang ?? options.lang, version: scope.version, defaultLanguage: options.defaultLanguage, languages: options.languages })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
 
 export function ChatMessage({
   text,

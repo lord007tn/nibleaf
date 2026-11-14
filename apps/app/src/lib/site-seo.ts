@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
+import { publishedSitePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
 import { truncateText } from '@nibleaf/shared/utils';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
 import { hydratedCustomDomainProjectId } from '@/lib/custom-domain-rewrite';
@@ -167,9 +168,7 @@ function ogLocale(code?: string): string | undefined {
 /** Absolute URL of a page within a published site (used for canonical/OG/hreflang),
  *  built on the site's ONE canonical base (see canonicalSiteBase). */
 export function sitePageUrl(projectId: string, path: string, lang?: string, options?: SiteUrlOptions): string {
-  const clean = path ? `/${path.replace(/^\/+/, '')}` : '';
-  const query = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-  const url = `${canonicalSiteBase(projectId, options)}${clean}${query}`;
+  const url = `${canonicalSiteBase(projectId, options)}${publishedSitePath(path, lang)}`;
   return path ? new URL(url).href : url;
 }
 
@@ -179,6 +178,38 @@ export function changelogFeedUrl(pageUrl: string): string {
   const feedUrl = new URL(pageUrl);
   feedUrl.pathname = `${feedUrl.pathname.replace(/\/$/u, '')}/rss.xml`;
   return feedUrl.toString();
+}
+
+/** The changelog is version-independent, but follows the site's language paths. */
+export function siteChangelogHead(site: SiteShell, projectId: string, origin?: string): Head {
+  const language = site.activeLanguage;
+  const t = siteT(language);
+  const name = site.languageConfig?.seo?.metaTitle || site.project.config?.seo?.metaTitle || site.languageConfig?.name || site.project.name;
+  const description =
+    site.languageConfig?.seo?.metaDescription ||
+    site.project.config?.seo?.metaDescription ||
+    site.languageConfig?.description ||
+    site.project.description ||
+    t('changelogSubtitle');
+  const options = { primaryDomain: site.project.primaryDomain, slug: site.project.slug, requestOrigin: origin };
+  const url = sitePageUrl(
+    projectId,
+    'changelog',
+    site.languages.find((item) => item.code === language)?.isDefault ? undefined : siteLanguagePrefix(language, site.languages),
+    options,
+  );
+  const links: Tag[] = [
+    { rel: 'canonical', href: url },
+    { rel: 'alternate', type: 'application/rss+xml', title: `${t('changelog')} — ${name}`, href: changelogFeedUrl(url) },
+  ];
+  for (const item of site.languages)
+    links.push({
+      rel: 'alternate',
+      hrefLang: item.code,
+      href: sitePageUrl(projectId, 'changelog', item.isDefault ? undefined : siteLanguagePrefix(item.code, site.languages), options),
+    });
+  links.push({ rel: 'alternate', hrefLang: 'x-default', href: sitePageUrl(projectId, 'changelog', undefined, options) });
+  return { meta: [{ title: `${t('changelog')} — ${name}` }, { name: 'description', content: description }], links };
 }
 
 const seoConfig = (config: ProjectConfig | null) => config;
@@ -204,7 +235,7 @@ export const readerFallbackHead = (matches: ReadonlyArray<{ routeId: string; loa
 export const SITE_MARKDOWN_ALTERNATE_HEADER = 'x-nibleaf-markdown-alternate';
 
 /** Whether this page view has a public Markdown alternate. A page that fell
- *  back from the requested `?lang=` to another language has none: the
+ *  back from the requested language to another language has none: the
  *  Markdown endpoint serves only the requested language (it answers 404). */
 const hasMarkdownAlternate = (data: SitePage, requestedLanguage?: string): boolean =>
   isPublicMarkdownPage(data) && (!requestedLanguage || requestedLanguage === data.activeLanguage);
@@ -315,7 +346,7 @@ export function unavailableSiteHead(reason: UnavailableReason, lang?: string): H
  * the project: `page.config.seo` › `languageConfig.seo` › `project.config.seo`.
  * This mirrors Mintlify, where page frontmatter overrides the site defaults.
  *
- * `lang` is the requested `?lang=` for a page (a language fallback has no
+ * `lang` is the requested language for a page (a language fallback has no
  * Markdown alternate), and the reader's language for the not-found title.
  */
 export function pageHead(data: SitePage | null | undefined, projectId: string, lang?: string, origin?: string): Head {
@@ -336,8 +367,9 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // may have fallen back). The default language uses clean, param-less URLs so a
   // page has exactly one canonical (no /path vs /path?lang=en duplication).
   const activeLang = data.activeLanguage;
-  // Append ?lang only for a known non-default language.
+  // Prefix only a known non-default language.
   const canonicalLang = activeLang && defaultCode && activeLang !== defaultCode ? activeLang : undefined;
+  const canonicalPrefix = siteLanguagePrefix(canonicalLang, languages);
   const activeVersion = data.activeVersion;
   const activeVersionMeta = data.versions.find((version) => version.slug === activeVersion);
   const versionPrefix = activeVersionMeta && !activeVersionMeta.isDefault ? activeVersionMeta.slug : undefined;
@@ -368,7 +400,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
       data.project.description ||
       '',
   );
-  const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalLang, urlOptions);
+  const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalPrefix, urlOptions);
 
   const meta: Tag[] = [{ title }];
   if (description) {
@@ -391,7 +423,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   if (description) {
     meta.push({ property: 'og:description', content: description }, { name: 'twitter:description', content: description });
   }
-  const generatedImage = sitePageUrl(projectId, `og/${versionedPath(data.page.path)}.png`, canonicalLang, urlOptions);
+  const generatedImage = `${sitePageUrl(projectId, `og/${versionedPath(data.page.path)}.png`, undefined, urlOptions)}${canonicalLang ? `?lang=${encodeURIComponent(canonicalLang)}` : ''}`;
   const ogImage =
     config?.visibility === 'private' ? undefined : pageSeo?.ogImage || langSeo?.socialImage || config?.seo?.socialImage || generatedImage;
   if (ogImage) {
@@ -433,9 +465,9 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // real version (nothing to relate). They share the canonical base with the
   // canonical URL, so every origin advertises one consistent URL set.
   const realAlternates = noindex || pageSeo?.canonicalUrl?.trim() ? [] : languages.filter((l) => l.path != null);
-  if (realAlternates.length > 1) {
+  if (realAlternates.length > 0) {
     for (const language of realAlternates) {
-      const altLang = language.isDefault ? undefined : language.code;
+      const altLang = language.isDefault ? undefined : siteLanguagePrefix(language.code, languages);
       links.push({
         rel: 'alternate',
         hrefLang: language.code,
@@ -447,7 +479,12 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
       links.push({
         rel: 'alternate',
         hrefLang: 'x-default',
-        href: sitePageUrl(projectId, versionedPath(fallback.path as string), undefined, urlOptions),
+        href: sitePageUrl(
+          projectId,
+          versionedPath(fallback.path as string),
+          fallback.isDefault ? undefined : siteLanguagePrefix(fallback.code, languages),
+          urlOptions,
+        ),
       });
     }
   }
@@ -486,7 +523,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
           '@type': 'ListItem',
           position: index + 1,
           name: crumb.title,
-          item: sitePageUrl(projectId, versionedPath(crumb.path), canonicalLang, urlOptions),
+          item: sitePageUrl(projectId, versionedPath(crumb.path), canonicalPrefix, urlOptions),
         })),
       }),
     });

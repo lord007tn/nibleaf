@@ -2,6 +2,8 @@ import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { excerpt, pageDescription } from '@nibleaf/shared/markdown-text';
 import { displayTitle } from '@nibleaf/shared/page-title';
 import { defaultLanguage, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { publishedSitePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
+import { sitePathLanguages } from '@nibleaf/shared/site-language-policy';
 
 /**
  * Pure builders for a published site's llms.txt / llms-full.txt — the
@@ -43,18 +45,15 @@ export const llmsIndexablePages = (snapshot: SiteSnapshot, options: LlmsOptions 
 
 /** Absolute URL of a page's Markdown alternate. Its path mirrors the sitemap's
  * canonical HTML URL and appends `.md`; query parameters remain intact. */
-export const llmsPageUrl = (snapshot: SiteSnapshot, page: SnapshotPage, base: string): string => {
+export const llmsPageUrl = (snapshot: SiteSnapshot, page: SnapshotPage, base: string, pathLanguages = sitePathLanguages(snapshot)): string => {
   const defaultCode = defaultLanguage(snapshot.project).code;
   const pageVersion = snapshot.project.versions.find((version) => version.id === page.versionId);
   if (!pageVersion) {
     throw new Error(`Snapshot page ${page.id} references an unknown version.`);
   }
-  const versionPath = !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
-  // Slugs may be non-ASCII (Arabic titles keep Arabic slugs); encode each
-  // segment so the URL is a valid ASCII link in a Markdown list.
-  const pagePath = page.path ? `/${page.path.split('/').filter(Boolean).map(encodeURIComponent).join('/')}` : '';
-  const langQuery = page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
-  return markdownAlternateUrl(`${base}${versionPath}${pagePath}${langQuery}`);
+  return markdownAlternateUrl(
+    `${base}${publishedSitePath(page.path, page.languageCode === defaultCode ? undefined : siteLanguagePrefix(page.languageCode, pathLanguages), pageVersion.isDefault ? undefined : pageVersion.slug)}`,
+  );
 };
 
 /** Collapse a description to a single Markdown-safe line. */
@@ -72,6 +71,7 @@ const siteHeader = (snapshot: SiteSnapshot): string[] => {
 /** llms.txt: site title + description, then a Markdown link list of every
  *  indexable page (grouped per language when the site has more than one). */
 export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string, options: LlmsOptions = {}): string => {
+  const pathLanguages = sitePathLanguages(snapshot);
   const pages = llmsIndexablePages(snapshot, options);
   const lines = siteHeader(snapshot);
 
@@ -85,7 +85,7 @@ export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string, options: Llms
     lines.push('', languages.length > 1 ? `## Docs (${oneLine(language.label)})` : '## Docs', '');
     for (const page of langPages) {
       const description = oneLine(pageDescription(page));
-      lines.push(`- [${oneLine(displayTitle(page))}](${llmsPageUrl(snapshot, page, base)})${description ? `: ${description}` : ''}`);
+      lines.push(`- [${oneLine(displayTitle(page))}](${llmsPageUrl(snapshot, page, base, pathLanguages)})${description ? `: ${description}` : ''}`);
     }
   }
   return `${lines.join('\n')}\n`;
@@ -94,8 +94,9 @@ export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string, options: Llms
 /** llms-full.txt: the full Markdown of every indexable page, concatenated with
  *  a per-page header and source URL so consumers can attribute content. */
 export const buildLlmsFullTxt = (snapshot: SiteSnapshot, base: string, options: LlmsOptions = {}): string => {
+  const pathLanguages = sitePathLanguages(snapshot);
   const sections = llmsIndexablePages(snapshot, options).map((page) => {
-    const header = [`# ${oneLine(displayTitle(page))}`, '', `Source: ${llmsPageUrl(snapshot, page, base)}`];
+    const header = [`# ${oneLine(displayTitle(page))}`, '', `Source: ${llmsPageUrl(snapshot, page, base, pathLanguages)}`];
     const description = page.config?.seo?.metaDescription?.trim() || page.description?.trim();
     if (description) {
       header.push('', `> ${excerpt(description)}`);

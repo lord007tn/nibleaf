@@ -172,14 +172,15 @@ describe('reader theme across languages', () => {
 
     // Hold the Arabic shell back so the router shows the pending reader route.
     let releaseShell: () => void = () => undefined;
-    mocks.getSite.mockImplementation(
-      ({ data }: { data: { language?: string } }) =>
-        new Promise<SiteShell>((resolve) => {
-          releaseShell = () => resolve(shell(data.language ?? 'en'));
-        }),
+    mocks.getSite.mockImplementation(({ data }: { data: { language?: string } }) =>
+      data.language !== 'ar'
+        ? Promise.resolve(shell(data.language ?? 'en'))
+        : new Promise<SiteShell>((resolve) => {
+            releaseShell = () => resolve(shell(data.language ?? 'en'));
+          }),
     );
     await act(async () => container.querySelector<HTMLButtonElement>('[data-switch-language="ar"]')?.click());
-    await vi.waitFor(() => expect(container.querySelector('[data-pending]')).not.toBeNull());
+    await vi.waitFor(() => expect(container.querySelector('[data-site-article-skeleton]')).not.toBeNull());
     expect(documentTheme()).toBe('light');
     const rootDocument = container.querySelector('[data-root-document]');
     // Still the same site, already in the requested Arabic, while its shell
@@ -220,14 +221,15 @@ function stubOsTheme(initial: 'light' | 'dark') {
 /** Switches to Arabic with the Arabic shell held back; returns its release. */
 async function switchToArabicHeld(container: HTMLElement) {
   let releaseShell: () => void = () => undefined;
-  mocks.getSite.mockImplementation(
-    ({ data }: { data: { language?: string } }) =>
-      new Promise<SiteShell>((resolve) => {
-        releaseShell = () => resolve(shell(data.language ?? 'en'));
-      }),
+  mocks.getSite.mockImplementation(({ data }: { data: { language?: string } }) =>
+    data.language !== 'ar'
+      ? Promise.resolve(shell(data.language ?? 'en'))
+      : new Promise<SiteShell>((resolve) => {
+          releaseShell = () => resolve(shell(data.language ?? 'en'));
+        }),
   );
   await act(async () => container.querySelector<HTMLButtonElement>('[data-switch-language="ar"]')?.click());
-  await vi.waitFor(() => expect(container.querySelector('[data-pending]')).not.toBeNull());
+  await vi.waitFor(() => expect(container.querySelector('[data-site-article-skeleton]')).not.toBeNull());
   return async () => {
     await act(async () => releaseShell());
     await vi.waitFor(() => expect(container.querySelector('[role="note"]')).not.toBeNull(), { timeout: 15_000 });
@@ -299,4 +301,23 @@ describe('reader theme sources across a language switch', () => {
     expect(documentTheme()).toBe('dark');
     expect(themeToggle(container)?.getAttribute('aria-pressed')).toBe('true');
   }, 30_000);
+});
+
+it('uses Arabic document attributes for a resolved prefix with an unknown query language', async () => {
+  const container = await renderReader(`/sites/docs/ar/${PATH}?lang=unknown`);
+  expect(container.querySelector('[data-root-document]')?.getAttribute('data-lang')).toBe('ar');
+  expect(container.querySelector('[data-root-document]')?.getAttribute('data-dir')).toBe('rtl');
+});
+
+it('uses the escaped prefix for document attributes with an unknown query language', async () => {
+  mocks.getSite.mockImplementation(async ({ data }: { data: { language?: string } }) => {
+    const site = shell(data.language ?? 'en');
+    return {
+      ...site,
+      languages: site.languages.map((language) => ({ ...language, pathPrefix: language.code === 'ar' ? '~lang/ar' : language.code })),
+    };
+  });
+  const container = await renderReader(`/sites/docs/~lang/ar/${PATH}?lang=unknown`);
+  expect(container.querySelector('[data-root-document]')?.getAttribute('data-lang')).toBe('ar');
+  expect(container.querySelector('[data-root-document]')?.getAttribute('data-dir')).toBe('rtl');
 });
