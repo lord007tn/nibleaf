@@ -78,23 +78,9 @@
     animation: none;
   }
 }
-/* A link into the site that leads to no page (extensions/broken-link-flags.ts). */
-.pl-editor .ProseMirror a:has(> .pl-broken-link) {
-  text-decoration: none;
-}
-.pl-editor .ProseMirror .pl-broken-link {
-  text-decoration-line: underline;
-  text-decoration-style: dotted;
-  text-decoration-thickness: 2px;
-  text-decoration-color: var(--destructive);
-  text-underline-offset: 3px;
-}
 @media (forced-colors: active) {
   .pl-editor .ProseMirror .pl-fix-current {
     outline-color: Highlight;
-  }
-  .pl-editor .ProseMirror .pl-broken-link {
-    text-decoration-color: LinkText;
   }
 }
 .pl-editor.is-comment-mode .ProseMirror {

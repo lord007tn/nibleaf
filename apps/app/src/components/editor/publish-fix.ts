@@ -18,18 +18,23 @@ import type { Node as PMNode } from '@tiptap/pm/model';
  * - WHERE each one is, in document order (`findFixMatches`): the exact
  *   characters or node that make up the finding, and nothing around them, so
  *   replacing or deleting the selection removes only the finding. A finding
- *   inside a block the editor keeps whole (an MDX module, an unsupported
- *   component, raw HTML) selects that whole block. Code is never a place.
+ *   inside a block the editor keeps as written (an MDX module, an unsupported
+ *   component, raw HTML) is only marked and scrolled to, never selected: the
+ *   block holds other content. Code is never a place.
  * A finding that can't be placed is still counted: the bar says how many were
  * highlighted, never a smaller total.
  */
 
 /** One place in the document that carries the evidence: a text range (a link,
- *  stray text) or a whole node (an image, a video, an opaque block). */
+ *  stray text), a node that is the finding (an image, an embed, a Card), or a
+ *  block the editor keeps as written with the finding somewhere inside it. */
 export interface FixMatch {
   from: number;
   to: number;
   node: boolean;
+  /** Inside a block kept as written (an MDX module, an unsupported component,
+   *  raw HTML): never selected, since that would take its other content with it. */
+  inside: boolean;
 }
 
 /** Where a page-level check sends the writer. `null`: nowhere to focus, the bar explains. */
@@ -177,7 +182,7 @@ const providerVideo = (src: string) => {
  */
 function opaqueCount(code: LocatableCode, source: string, target: string, counter: FixCounter | undefined): number {
   const needle =
-    code === 'embed-untitled' ? (providerVideo(target)?.id ?? '') : code === 'stray-characters' ? '<p' : target === '<iframe>' ? '<iframe' : target;
+    code === 'embed-untitled' ? (providerVideo(target)?.id ?? '') : code === 'stray-characters' ? target : target === '<iframe>' ? '<iframe' : target;
   if (!(needle && source.includes(needle))) return 0;
   if (counter) return counter(source);
   return writtenCount(code, source, target);
@@ -244,7 +249,7 @@ function strayRange(paragraph: PMNode, pos: number, target: string): FixMatch | 
     let end = start + 1;
     while (stray.startsWith('-') && value.charAt(end) === '-') end += 1;
     const from = pos + 1 + offset + start;
-    found = { from, to: from + end - start, node: false };
+    found = { from, to: from + end - start, node: false, inside: false };
   });
   return found;
 }
@@ -272,7 +277,7 @@ export function findFixMatches(doc: PMNode, code: PublishCheckCode, rawTarget: s
         // One link written with formatting inside spans several text nodes with the same link mark.
         const last = matches.at(-1);
         if (last && !last.node && last.to === pos) last.to = pos + node.nodeSize;
-        else matches.push({ from: pos, to: pos + node.nodeSize, node: false });
+        else matches.push({ from: pos, to: pos + node.nodeSize, node: false, inside: false });
       }
       // An iframe without its closer can reach the editor as text: its opening tag.
       if (locatable === 'embed-unclosed') {
@@ -286,7 +291,7 @@ export function findFixMatches(doc: PMNode, code: PublishCheckCode, rawTarget: s
           const end = close >= 0 && (next < 0 || close < next) ? close + 1 : next < 0 ? value.length : next;
           const tag = value.slice(at, end);
           if (target === '<iframe>' ? !/\ssrc\s*=/.test(tag) : countIn(tag, target, false) > 0) {
-            matches.push({ from: pos + at, to: pos + end, node: false });
+            matches.push({ from: pos + at, to: pos + end, node: false, inside: false });
           }
           at = next;
         }
@@ -296,7 +301,7 @@ export function findFixMatches(doc: PMNode, code: PublishCheckCode, rawTarget: s
     if (OPAQUE.has(node.type.name)) {
       if (!UNREAD_OPAQUE.has(String(node.attrs.name ?? ''))) {
         const count = opaqueCount(locatable, String(node.attrs.source ?? ''), target, counter);
-        for (let index = 0; index < count; index += 1) matches.push({ from: pos, to: pos + node.nodeSize, node: true });
+        for (let index = 0; index < count; index += 1) matches.push({ from: pos, to: pos + node.nodeSize, node: true, inside: true });
       }
       return false;
     }
@@ -309,7 +314,7 @@ export function findFixMatches(doc: PMNode, code: PublishCheckCode, rawTarget: s
       return false;
     }
     if (nodeIsFinding(locatable, node, target)) {
-      matches.push({ from: pos, to: pos + node.nodeSize, node: true });
+      matches.push({ from: pos, to: pos + node.nodeSize, node: true, inside: false });
       return false;
     }
     return true;

@@ -5097,6 +5097,7 @@
   "editor_fix_explain_unreadableslug": "Use um endereço curto feito de palavras. Altere-o nas Configurações da página.",
   "editor_fix_explain_homeuntranslated": "Leitores de outro idioma chegam a uma página diferente. Dê a esta página e à sua tradução a mesma chave de tradução nas Configurações da página.",
   "editor_fix_explain_blogrootgroup": "Os leitores veem este nome no topo da barra lateral. Renomeie a seção de acordo com o que suas páginas tratam, como Guias.",
-  "editor_link_pagenotfound": "Página não encontrada: {href}",
-  "editor_fix_placed": "{placed} de {total} destacados"
+  "editor_fix_placed": "{placed} de {total} destacados",
+  "editor_fix_previous": "Anterior",
+  "editor_fix_insideblock": "Este está dentro de um bloco que o editor visual mantém como foi escrito. Edite a página como Markdown para corrigi-lo."
 }

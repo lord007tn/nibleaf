@@ -5096,6 +5096,7 @@
   "editor_fix_explain_unreadableslug": "Use a short address made of words. Change it in Page settings.",
   "editor_fix_explain_homeuntranslated": "Readers in another language land on a different page. Give this page and its translation the same Translation key in Page settings.",
   "editor_fix_explain_blogrootgroup": "Readers see this name at the top of the sidebar. Rename the section to what its pages are, such as Guides.",
-  "editor_link_pagenotfound": "Page not found: {href}",
-  "editor_fix_placed": "Highlighted {placed} of {total}"
+  "editor_fix_placed": "Highlighted {placed} of {total}",
+  "editor_fix_previous": "Previous",
+  "editor_fix_insideblock": "This one is inside a block the visual editor keeps as written. Edit the page as Markdown to fix it."
 }

@@ -5165,6 +5165,7 @@
   "editor_fix_explain_unreadableslug": "استخدم عنوانًا قصيرًا من كلمات. غيّره من إعدادات الصفحة.",
   "editor_fix_explain_homeuntranslated": "يصل القرّاء بلغة أخرى إلى صفحة مختلفة. أعطِ هذه الصفحة وترجمتها مفتاح الترجمة نفسه من إعدادات الصفحة.",
   "editor_fix_explain_blogrootgroup": "يرى القرّاء هذا الاسم أعلى الشريط الجانبي. أعد تسمية القسم بما تحتويه صفحاته، مثل «الأدلة».",
-  "editor_link_pagenotfound": "الصفحة غير موجودة: {href}",
-  "editor_fix_placed": "تم تمييز {placed} من {total}"
+  "editor_fix_placed": "تم تمييز {placed} من {total}",
+  "editor_fix_previous": "السابق",
+  "editor_fix_insideblock": "هذه داخل كتلة يحتفظ بها المحرر المرئي كما كُتبت. حرّر الصفحة بصيغة Markdown لإصلاحها."
 }

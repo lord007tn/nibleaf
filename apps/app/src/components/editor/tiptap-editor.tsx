@@ -55,7 +55,6 @@ import { type EditorLinks, useEditorLinks } from './editor-links';
 import { seedPageContent } from './editor-sections';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
 import { BlockImage, LegacyImage } from './extensions/block-image';
-import { BrokenLinkFlags, refreshBrokenLinks } from './extensions/broken-link-flags';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CleanPaste } from './extensions/clean-paste';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
@@ -385,7 +384,6 @@ export function buildEditorExtensions({
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
     SelectionShortcuts,
     InternalLinkClicks.configure({ getLinks }),
-    BrokenLinkFlags.configure({ getLinks, locale }),
     FixHighlight,
     SectionTarget,
   ];
@@ -736,6 +734,7 @@ export function TiptapEditor({
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
   const onUploadRef = useRef(onUpload);
+  const editorRef = useRef<Editor | null>(null);
   // Comment state read by the CommentDecorations plugin + the click handler.
   const commentsRef = useRef<CommentMarker[]>(comments ?? []);
   const activeCommentRef = useRef<string | null>(activeCommentId ?? null);
@@ -745,15 +744,8 @@ export function TiptapEditor({
   // Read by the link click handler, so it always resolves against the current site.
   const links = useEditorLinks();
   const linksRef = useRef(links);
-  const editorRef = useRef<Editor | null>(null);
   useEffect(() => {
     linksRef.current = links;
-    // The site's pages changed (they loaded, a page was added or moved): flag the links again.
-    const current = editorRef.current;
-    if (!current) return;
-    queueMicrotask(() => {
-      if (!current.isDestroyed) current.view.dispatch(refreshBrokenLinks(redrawTransaction(current.state.tr)));
-    });
   }, [links]);
   useEffect(() => {
     valueRef.current = value;

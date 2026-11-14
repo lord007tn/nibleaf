@@ -4932,8 +4932,9 @@ export const MESSAGE_IDS = {
   'editor.fix.explain.unreadableSlug': 'editor_fix_explain_unreadableslug',
   'editor.fix.explain.homeUntranslated': 'editor_fix_explain_homeuntranslated',
   'editor.fix.explain.blogRootGroup': 'editor_fix_explain_blogrootgroup',
-  'editor.link.pageNotFound': 'editor_link_pagenotfound',
   'editor.fix.placed': 'editor_fix_placed',
+  'editor.fix.previous': 'editor_fix_previous',
+  'editor.fix.insideBlock': 'editor_fix_insideblock',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

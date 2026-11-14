@@ -25,8 +25,8 @@ const ARRIVAL_WAIT_FRAMES = 120;
 type BarState =
   /** Looking for the page's content: nothing is announced yet. */
   | { phase: 'pending' }
-  /** On place `index` of the `placed` ones the editor found, of the check's `total`. */
-  | { phase: 'found'; index: number; total: number; placed: number }
+  /** On place `index` of the `placed` ones the editor found, of the check's `total`; `inside` when it is in a block kept as written. */
+  | { phase: 'found'; index: number; total: number; placed: number; inside: boolean }
   /** The check finds `total`, none of which the editor can show. */
   | { phase: 'unplaced'; total: number }
   /** The evidence isn't on the page (any more): most likely already fixed. */
@@ -34,12 +34,25 @@ type BarState =
   /** A page-level check, or one whose evidence couldn't be sent: the bar explains. */
   | { phase: 'page' };
 
-/** Select match `index`, mark every match, scroll it into view and focus the editor. Selection and decorations only. */
+/**
+ * Go to match `index`: mark every match, scroll it into view, and select it
+ * and focus the editor. A finding inside a block kept as written is only marked
+ * and scrolled to: selecting the block would take its other content with it
+ * (Delete would remove the whole component), so the writer's own selection and
+ * focus stay where they were. Selection and decorations only, never an edit.
+ */
 function goToMatch(editor: Editor, matches: FixMatch[], index: number, openLink: boolean): void {
   const match = matches[index];
   if (!match) return;
   const { view } = editor;
   const { doc } = view.state;
+  if (match.inside) {
+    view.dispatch(setFixHighlight(view.state.tr, matches, index));
+    const block = view.nodeDOM(match.from);
+    if (block instanceof Element)
+      block.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    return;
+  }
   const node = match.node ? doc.nodeAt(match.from) : null;
   const selection =
     node && NodeSelection.isSelectable(node)
@@ -80,10 +93,12 @@ async function locate(editor: Editor, code: PublishCheckCode, target: string, ma
 /**
  * The bar above the canvas after a publish check's Fix (P1-ED-002): it names
  * the problem and its evidence, counts the places it was found ("1 of 3"),
- * moves between them (Next), and leads back to the publish sheet.
+ * moves between them (Previous, Next), and leads back to the publish sheet.
  *
  * On arrival a problem found by its evidence is selected, marked and scrolled
- * to (a link also opens its link field); a page-level one focuses its field:
+ * to (a link also opens its link field); one inside a block kept as written
+ * is marked and scrolled to, with Edit as Markdown offered to fix it; a
+ * page-level one focuses its field:
  * the title, the body, or the address in Page settings. Nothing found is said
  * plainly, never as an error. Arriving changes no content and saves nothing:
  * selection, focus and decorations only. `onHandled` runs once arrival is
@@ -97,6 +112,7 @@ export function PublishFixBar({
   group,
   canvas,
   markdown,
+  onEditSource,
   onFocusTitle,
   onOpenSettings,
   onHandled,
@@ -110,6 +126,8 @@ export function PublishFixBar({
   canvas: () => HTMLElement | null;
   /** The page's current Markdown (what is saved and published), for the check's count. */
   markdown: () => string;
+  /** Open the page's Markdown source, where a block the visual editor keeps as written can be changed. Absent for Viewers. */
+  onEditSource?: () => void;
   onFocusTitle: () => void;
   /** Open Page settings with `field` focused. */
   onOpenSettings: (field: 'title' | 'slug') => void;
@@ -144,8 +162,16 @@ export function PublishFixBar({
     }
     indexRef.current = index;
     goToMatch(editor, matches, index, openLink);
-    setState({ phase: 'found', index, total, placed: matches.length });
+    setState({ phase: 'found', index, total, placed: matches.length, inside: matches[index]?.inside === true });
   }, []);
+  // On arrival at a finding inside a block kept as written, focus goes to the way to fix it (Edit as Markdown), not into the page.
+  const focusEditSource = useRef(false);
+  const editSourceRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!focusEditSource.current || state.phase === 'pending') return;
+    focusEditSource.current = false;
+    if (state.phase === 'found' && state.inside) editSourceRef.current?.focus();
+  }, [state]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: arrival runs once, when the bar mounts for its page.
   useEffect(() => {
@@ -170,6 +196,7 @@ export function PublishFixBar({
         }
         void locate(editor, code, target, callbacks.current.markdown()).then(({ total, matches }) => {
           if (cancelled || editor.isDestroyed) return;
+          focusEditSource.current = true;
           show(editor, total, matches, 0, code === 'broken-internal-link');
           handled();
         });
@@ -196,15 +223,18 @@ export function PublishFixBar({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  // Next reads the page again: a place the writer has fixed drops out, and the count follows the check.
-  const next = useCallback(() => {
-    const editor = editorIn(callbacks.current.canvas());
-    if (!(target && editor)) return;
-    void locate(editor, code, target, callbacks.current.markdown()).then(({ total, matches }) => {
-      if (!mounted.current || editor.isDestroyed) return;
-      show(editor, total, matches, matches.length ? (indexRef.current + 1) % matches.length : 0, false);
-    });
-  }, [code, target, show]);
+  // Previous and Next read the page again: a place the writer has fixed drops out, and the count follows the check.
+  const step = useCallback(
+    (by: 1 | -1) => {
+      const editor = editorIn(callbacks.current.canvas());
+      if (!(target && editor)) return;
+      void locate(editor, code, target, callbacks.current.markdown()).then(({ total, matches }) => {
+        if (!mounted.current || editor.isDestroyed) return;
+        show(editor, total, matches, matches.length ? (indexRef.current + by + matches.length) % matches.length : 0, false);
+      });
+    },
+    [code, target, show],
+  );
 
   const dismiss = useCallback(() => {
     const editor = editorIn(callbacks.current.canvas());
@@ -250,6 +280,7 @@ export function PublishFixBar({
               </>
             ) : null}
             {state.phase === 'found' ? <span> · {t('editor.fix.count', { current: state.index + 1, total: state.total })}</span> : null}
+            {state.phase === 'found' && state.inside ? <span className="text-muted-foreground"> · {t('editor.fix.insideBlock')}</span> : null}
             {(state.phase === 'found' && state.placed < state.total) || state.phase === 'unplaced' ? (
               <span className="text-muted-foreground">
                 {' '}
@@ -264,10 +295,20 @@ export function PublishFixBar({
         )}
       </p>
       <div className="flex shrink-0 items-center gap-1">
-        {state.phase === 'found' ? (
-          <Button className="cursor-pointer" onClick={next} size="sm" variant="outline">
-            {t('editor.fix.next')}
+        {state.phase === 'found' && state.inside && onEditSource ? (
+          <Button ref={editSourceRef} className="cursor-pointer" onClick={onEditSource} size="sm" variant="secondary">
+            {t('editor.editSource')}
           </Button>
+        ) : null}
+        {state.phase === 'found' ? (
+          <>
+            <Button className="cursor-pointer" onClick={() => step(-1)} size="sm" variant="outline">
+              {t('editor.fix.previous')}
+            </Button>
+            <Button className="cursor-pointer" onClick={() => step(1)} size="sm" variant="outline">
+              {t('editor.fix.next')}
+            </Button>
+          </>
         ) : null}
         <Button className="cursor-pointer" onClick={onBackToPublish} size="sm" variant="ghost">
           {t('editor.fix.back')}

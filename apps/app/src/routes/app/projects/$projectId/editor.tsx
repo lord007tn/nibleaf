@@ -1814,6 +1814,14 @@ function EditorPage() {
               canvas={() => canvasRef.current}
               group={Boolean(selectedGroup)}
               markdown={() => draftRef.current.draft.content}
+              onEditSource={
+                canEditContent
+                  ? () => {
+                      if (commentMode) toggleCommentMode();
+                      setEditorMode('markdown');
+                    }
+                  : undefined
+              }
               onBackToPublish={() => rewriteSearch((previous) => ({ ...previous, publish: true }))}
               onDismiss={() => setFixArrival(null)}
               onFocusTitle={() => {
