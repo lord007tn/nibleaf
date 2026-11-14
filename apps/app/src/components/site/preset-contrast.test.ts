@@ -20,16 +20,18 @@ describe('preset contrast (PUB-019)', () => {
     expect(rule).toContain('--muted-foreground: var(--theme-code-muted)');
   });
 
-  it('gives a page surface nested in a solid callout (a card) its page text colours back', () => {
+  it('gives every component placed in a solid callout its page text colours back, keeping prose on the code surface', () => {
     const css = read('../../styles.css');
-    const start = css.indexOf('.bg-card,');
+    const start = css.indexOf(':not(p, ul, ol, dl, blockquote, h1, h2, h3, h4, h5, h6, hr)');
     expect(start).toBeGreaterThan(-1);
     const rule = css.slice(start, css.indexOf('}', start));
     expect(rule).toContain('--foreground: var(--theme-foreground)');
     expect(rule).toContain('--muted-foreground: var(--theme-muted-foreground)');
     expect(rule).toContain('color: var(--theme-foreground)');
-    // The boundary is scoped to solid callouts only.
-    expect(css.slice(css.lastIndexOf('.nibleaf-site-chrome', start), start)).toContain('[data-theme-callouts="solid"]');
+    // Scoped to the body of solid callouts only.
+    const selector = css.slice(css.lastIndexOf('.nibleaf-site-chrome', start), start);
+    expect(selector).toContain('[data-theme-callouts="solid"]');
+    expect(selector).toContain('[data-theme-component="callout"]');
   });
 
   it("draws the code block's language label at a contrast that reads on the dark chrome", () => {
