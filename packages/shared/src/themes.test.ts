@@ -8,6 +8,7 @@ import {
   inspectThemeTemplateInput,
   previewThemeConfigChanges,
   readableAccentText,
+  readableCodeAccent,
   readableOnAccent,
   readableOnBackground,
   resolveTheme,
@@ -139,21 +140,54 @@ describe('documentation themes', () => {
     }
   });
 
+  it('draws the code accent from the authored colour, at AA on the code surface and the rail tint', () => {
+    // The rail's active item sits on a 14% tint of the accent over the code surface.
+    const tint = (accent: string, code: string) =>
+      `#${[1, 3, 5]
+        .map((i) =>
+          Math.round(Number.parseInt(code.slice(i, i + 2), 16) * 0.86 + Number.parseInt(accent.slice(i, i + 2), 16) * 0.14)
+            .toString(16)
+            .padStart(2, '0'),
+        )
+        .join('')}`;
+    // Signal with #009966: main drew #009966 on the rail; starting from the
+    // canvas shade (#00774f) would have read 4.35:1 on the tint.
+    expect(readableCodeAccent('#009966', '#0e0f1a')).toBe('#009966');
+    const levels = ['00', '33', '66', '99', 'cc', 'ff'];
+    const colours = levels.flatMap((r) => levels.flatMap((g) => levels.map((b) => `#${r}${g}${b}`)));
+    let shaded = 0;
+    for (const code of ['#0f172a', '#070c16', '#2b2521', '#0f0d0b', '#0e0f1a', '#050609', '#1e293b']) {
+      for (const accent of colours) {
+        const result = readableCodeAccent(accent, code);
+        expect(contrastRatio(result, code), `${accent} on ${code}`).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+        expect(contrastRatio(result, tint(result, code)), `${accent} on the ${code} tint`).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+        // Where main's colour already passes on both, it is kept as is.
+        const before = readableOnBackground(accent, code);
+        if (contrastRatio(before, tint(before, code)) >= ACCENT_TEXT_CONTRAST) expect(result).toBe(before);
+        else shaded++;
+      }
+    }
+    expect(shaded).toBeGreaterThan(0);
+  });
+
   it('keeps the text on a shaded accent at AA, across a grid of palettes', () => {
     // #606060 on black is shaded to read as text; its button label must still pass.
     const { dark } = resolveTheme({ theme: { preset: 'harbor', colors: { dark: { canvas: '#000000', accent: '#606060' } } } }).colors;
     expect(contrastRatio(dark.accentForeground, dark.accent)).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
     const levels = ['00', '33', '66', '99', 'cc', 'ff'];
     const colours = levels.flatMap((r) => levels.flatMap((g) => levels.map((b) => `#${r}${g}${b}`)));
+    let shadedCases = 0;
     for (const canvas of ['#ffffff', '#fbfcfd', '#999999', '#777777', '#000000', '#0b1120']) {
       for (const accent of colours) {
         const { light } = resolveTheme({ theme: { preset: 'harbor', colors: { light: { canvas, accent } } } }).colors;
         if (light.accent === accent) continue;
+        shadedCases++;
         expect(contrastRatio(light.accentForeground, light.accent), `${accent} on ${canvas} -> ${light.accent}`).toBeGreaterThanOrEqual(
           ACCENT_TEXT_CONTRAST,
         );
       }
     }
+    expect(shadedCases).toBeGreaterThan(0);
     expect(readableOnAccent('#1f63c4')).toBe('#ffffff');
     expect(readableOnAccent('#7c7c7c')).toBe('#000000');
   });

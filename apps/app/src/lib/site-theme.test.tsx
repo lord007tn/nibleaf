@@ -102,6 +102,31 @@ describe('published theme projection', () => {
     expect(String(projectThemeStyle({ typography: { bodyFont: 'Inter' } }).fontFamily)).toMatch(/^'Inter','Noto Sans Arabic Variable',/);
   });
 
+  it('keeps the rail accent at AA on Signal with a custom accent, in the CSS and the dashboard preview', () => {
+    const config = { theme: { preset: 'signal', colors: { light: { accent: '#009966' } } } } as never;
+    const code = resolveProjectTheme(config).colors.light.code;
+    const tint = (accent: string, code: string) =>
+      `#${[1, 3, 5]
+        .map((i) =>
+          Math.round(Number.parseInt(code.slice(i, i + 2), 16) * 0.86 + Number.parseInt(accent.slice(i, i + 2), 16) * 0.14)
+            .toString(16)
+            .padStart(2, '0'),
+        )
+        .join('')}`;
+    const css = projectThemeCss(config);
+    const fromCss = css.match(/:root,\.nibleaf-site-chrome\{[^}]*--theme-code-accent:(#[0-9a-f]{6})/)?.[1] as string;
+    const fromPreview = projectThemeVariables(config, 'light')['--theme-code-accent' as never] as string;
+    expect(fromCss).toBe(fromPreview);
+    // Main drew the authored #009966 here; the canvas shade would have read 4.35:1 on the tint.
+    expect(fromCss).toBe('#009966');
+    expect(contrastRatio(fromCss, tint(fromCss, code))).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(fromCss, code)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("draws a pre-v1 site's code accent from its brand, as before", () => {
+    expect(projectThemeCss({ styling: { primaryColor: '#5546e8' } } as never)).toContain('--theme-code-accent:color-mix(in oklab,#5546e8 55%,white)');
+  });
+
   it('keeps pre-v1 projects on their existing design-system palette', () => {
     const css = projectThemeCss({ styling: { primaryColor: '#c2410c' } });
     expect(css).toContain('--theme-canvas:var(--background)');

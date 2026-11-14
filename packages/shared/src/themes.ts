@@ -442,6 +442,36 @@ export const readableOnAccent = (accent: string): string => {
   return contrastRatio('#ffffff', accent) >= contrastRatio('#000000', accent) ? '#ffffff' : '#000000';
 };
 
+/** The tint under the active item of a rail sidebar, which is drawn on the code
+ * surface: `color-mix(in oklab, var(--primary) 14%, transparent)` (styles.css,
+ * compact navigation). Mixing with transparent keeps the accent's own colour at
+ * 14% alpha, which the browser composites in sRGB: mixHex(code, accent, 0.14). */
+const RAIL_ACTIVE_TINT = 0.14;
+
+/** The accent as text on the always-dark code surface (Signal's rail, solid
+ * callouts, code chrome) and on the rail's active-item tint. It starts from the
+ * owner's authored accent, never the canvas shade (readableAccentText darkens a
+ * light-mode accent, which only reads worse on a dark surface), nudged until it
+ * reads on the code surface as before; when that colour falls short on the
+ * tint, the nearest shade of it that reaches AA on both. */
+export const readableCodeAccent = (accent: string, code: string): string => {
+  const passes = (candidate: string) =>
+    contrastRatio(candidate, code) >= ACCENT_TEXT_CONTRAST &&
+    contrastRatio(candidate, mixHex(code, candidate, RAIL_ACTIVE_TINT)) >= ACCENT_TEXT_CONTRAST;
+  const base = readableOnBackground(accent, code);
+  if (passes(base)) return base;
+  const target = relativeLuminance(code) < 0.35 ? '#ffffff' : '#000000';
+  const alternate = target === '#ffffff' ? '#000000' : '#ffffff';
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(base, endpoint, step / 40);
+      if (passes(shade)) return shade;
+    }
+  }
+  // A code surface no shade reaches AA on with its tint: keep what reads on the surface.
+  return base;
+};
+
 /** Make a resolved palette's accent safe as text, keeping what follows it (the
  * focus ring when it was the accent, the text drawn on the accent) in step. */
 const textSafeAccent = (colors: ThemeColorTokens): void => {
