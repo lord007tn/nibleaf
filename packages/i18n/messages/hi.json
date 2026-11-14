@@ -3454,7 +3454,7 @@
   "analytics_resource_rss": "RSS फ़ीड",
   "analytics_resource_other": "दूसरी फ़ाइलें",
   "analytics_perf_title": "आपके पेज कितने तेज़ लगते हैं",
-  "analytics_perf_description": "असली पाठकों के डिवाइस पर मापा गया। हम वह मान दिखाते हैं जिसके बराबर या उससे तेज़ 75% पेज लोड रहे।",
+  "analytics_perf_description": "असली पाठकों के डिवाइस पर मापा गया। 75% पेज लोड इस मान के बराबर या उससे कम समय में होते हैं।",
   "analytics_perf_distribution": "कुल रेटिंग के हिसाब से पेज लोड",
   "analytics_perf_samples": "मापे गए पेज लोड: {count}",
   "analytics_perf_secondary": "पहला कंटेंट {fcp} · सर्वर का जवाब {ttfb}",

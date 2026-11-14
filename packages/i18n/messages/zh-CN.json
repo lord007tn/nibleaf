@@ -3453,7 +3453,7 @@
   "analytics_resource_rss": "RSS 订阅",
   "analytics_resource_other": "其他文件",
   "analytics_perf_title": "你的页面体验有多快",
-  "analytics_perf_description": "在真实读者的设备上测量。显示的数值是 75% 的页面加载都不超过的用时（即这些加载等于或快于该值）。",
+  "analytics_perf_description": "在真实读者的设备上测量。75% 的页面加载用时不超过此值。",
   "analytics_perf_distribution": "按总体评级划分的页面加载",
   "analytics_perf_samples": "已测量的页面加载：{count}",
   "analytics_perf_secondary": "首次内容 {fcp} · 服务器响应 {ttfb}",
