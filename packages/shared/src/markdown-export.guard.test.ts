@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { expect, it } from 'vitest';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
-import { checkExportBaseline, type ExportGuardBaseline, renderedActiveHtml } from './testing/export-guard';
+import {
+  checkExportBaseline,
+  EXPORT_BASELINE_REVISION,
+  type ExportGuardBaseline,
+  recordExportBaseline,
+  renderedActiveHtml,
+} from './testing/export-guard';
 import { EXPORT_GUARD_SEED, htmlExportBoundaryCases, PORTABLE_REGRESSION_IDS, seededExportCases } from './testing/export-guard-cases';
 
 const projectors = [normalizePublicMarkdownContent, portablePublicMdxMarkdown] as const;
@@ -48,3 +54,25 @@ it('adds zero active elements in the 13 portable outputs caught by the round-4 r
   }
   expect(failures).toEqual([]);
 }, 60_000);
+
+it('rejects preserved fence bytes hidden inside an HTML comment', () => {
+  const source = '<script>ACTIVE</script>\n\n~~~html\nSAMPLE\n~~~';
+  const cases = [{ index: 0, source, markers: ['SAMPLE'] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const corrupt = () => '&lt;script>ACTIVE&lt;/script>\n\n<!--\n~~~html\nSAMPLE\n~~~\n-->';
+  const report = checkExportBaseline(cases, baseline, [corrupt, corrupt]);
+  expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it.each([
+  { name: 'order', code: '~~~\nONE\n~~~\n\n~~~\nTWO\n~~~\n', changed: '~~~\nTWO\n~~~\n\n~~~\nONE\n~~~\n' },
+  { name: 'occurrences', code: '~~~\nSAME\n~~~\n\n~~~\nSAME\n~~~\n', changed: '~~~\nSAME\n~~~\n' },
+  { name: 'role', code: '`SAMPLE`', changed: '~~~\n`SAMPLE`\n~~~' },
+])('rejects changed code $name even when every sample occurs in the source', ({ code, changed }) => {
+  const source = `<script>ACTIVE</script>\n\n${code}`;
+  const cases = [{ index: 0, source, markers: [] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const corrupt = () => `&lt;script>ACTIVE&lt;/script>\n\n${changed}`;
+  const report = checkExportBaseline(cases, baseline, [corrupt, corrupt]);
+  expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});

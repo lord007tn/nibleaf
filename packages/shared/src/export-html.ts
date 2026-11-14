@@ -21,6 +21,28 @@ markdown.inline.State = class extends BaseInlineState {
     return token;
   }
 };
+/** Compare parsed roles/content, never the occurrence of code bytes in prose.
+ * Lists have the explicitly approved newly-live-element exception. */
+const codeSnapshot = (tokens: Token[], includeLists = false): string => {
+  const pending = [...tokens].reverse();
+  const samples: string[] = [];
+  let listDepth = 0;
+  while (pending.length) {
+    const token = pending.pop();
+    if (!token) continue;
+    if (token.type === 'list_item_open') listDepth++;
+    if (token.type === 'list_item_close') listDepth--;
+    if ((includeLists || !listDepth) && ['code_block', 'fence', 'code_inline'].includes(token.type))
+      samples.push(JSON.stringify([token.type, token.content, token.markup, token.info]));
+    if (token.children)
+      for (let at = token.children.length - 1; at >= 0; at--) {
+        const child = token.children[at];
+        if (child) pending.push(child);
+      }
+  }
+  return JSON.stringify(samples);
+};
+
 interface HtmlSpan {
   token: Token;
   from: number;
@@ -202,8 +224,7 @@ const neutralize = (source: string, remaining = false): { output: string; active
     }
     if (token.type === 'fence' || token.type === 'code_block') {
       if (token.map) code.fill(1, originalOffset(lineStarts[token.map[0]] ?? input.length), originalOffset(lineStarts[token.map[1]] ?? input.length));
-      if (token.type === 'code_block' && previousHtml?.token.map && token.map?.[0] === previousHtml.token.map[1])
-        followingCode.push({ html: previousHtml, token });
+      if (previousHtml?.token.map && token.map) followingCode.push({ html: previousHtml, token });
       previousHtml = undefined;
     }
     if (token.type === 'code_inline') protectInlineCode(token, frame.positions);
@@ -295,59 +316,95 @@ const neutralize = (source: string, remaining = false): { output: string; active
   for (let at = 0; at < source.length; at++) if (inRange[at] && '<[]`~\\*_{'.includes(source[at] ?? '')) escaped[at] = 1;
   for (const at of leaders) if (inRange[at]) escaped[at] = 1;
   const boundaries = new Map<number, string>();
-  for (const { html: span, token: following } of followingCode) {
-    if (!span.token.content.endsWith('\n')) continue;
-    const first = span.token.content.indexOf('<');
-    if (!escaped[span.positions[first] ?? source.length]) continue;
-    if (span.inList) {
-      if (remaining && following.map) {
-        // The final fallback can expose the first stretch of an indented list
-        // block. Model that lazy paragraph once, preserving inline code, and
-        // escape only the elements that actually become live there. This is
-        // one bounded subparse, not a recursive tree walk or retry loop.
-        const positions = positionsFor(following.content, following.map);
-        const pieces = ['FALLBACK\n'];
-        const originals: number[] = Array.from({ length: 9 }, () => -1);
-        let at = 0;
-        for (const line of following.content.split('\n')) {
-          if (Array.from(line).every((character) => character === ' ' || character === '\t')) break;
-          pieces.push('    ', line, '\n');
-          originals.push(-1, -1, -1, -1);
-          for (let column = 0; column <= line.length; column++) originals.push(positions[at + column] ?? -1);
-          at += line.length + 1;
-        }
-        const exposed = neutralize(pieces.join(''));
-        if (exposed.escaped)
-          for (let at = 0; at < exposed.escaped.length; at++) {
-            const original = originals[at] ?? -1;
-            if (original >= 0 && exposed.escaped[at]) escaped[original] = 1;
-          }
+  if (remaining)
+    for (const { html: span, token: following } of followingCode) {
+      if (!span.inList || !following.map || !span.token.content.endsWith('\n') || !span.positions.some((at) => escaped[at])) continue;
+      // The final fallback can expose the first stretch of an indented list
+      // block. Model that lazy paragraph once, preserving inline code, and
+      // escape only the elements that actually become live there. This is
+      // one bounded subparse, not a recursive tree walk or retry loop.
+      const positions = positionsFor(following.content, following.map);
+      const pieces = ['FALLBACK\n'];
+      const originals: number[] = Array.from({ length: 9 }, () => -1);
+      let at = 0;
+      for (const line of following.content.split('\n')) {
+        if (Array.from(line).every((character) => character === ' ' || character === '\t')) break;
+        pieces.push('    ', line, '\n');
+        originals.push(-1, -1, -1, -1);
+        for (let column = 0; column <= line.length; column++) originals.push(positions[at + column] ?? -1);
+        at += line.length + 1;
       }
-      continue;
+      const exposed = neutralize(pieces.join(''));
+      if (exposed.escaped)
+        for (let at = 0; at < exposed.escaped.length; at++) {
+          const original = originals[at] ?? -1;
+          if (original >= 0 && exposed.escaped[at]) escaped[original] = 1;
+        }
     }
+  const preserveBoundary = (span: HtmlSpan) => {
     const newline = span.positions[span.token.content.length - 1];
     const lastLine = span.token.content.lastIndexOf('\n', span.token.content.length - 2) + 1;
     const start = span.positions[lastLine];
-    if (newline === undefined || start === undefined) continue;
+    if (newline === undefined || start === undefined) return;
     const prefix = source.slice(source.lastIndexOf('\n', start - 1) + 1, start);
     const ending = source[newline] === '\r' && source[newline + 1] === '\n' ? '\r\n' : source[newline];
     if (ending) boundaries.set(newline + ending.length, prefix + ending);
-  }
-  const output: string[] = [];
-  let cursor = 0;
-  for (let at = 0; at < source.length; at++) {
-    const boundary = boundaries.get(at);
-    if (boundary !== undefined) {
-      output.push(source.slice(cursor, at), boundary);
-      cursor = at;
+  };
+  const splice = () => {
+    const output: string[] = [];
+    let cursor = 0;
+    for (let at = 0; at < source.length; at++) {
+      const boundary = boundaries.get(at);
+      if (boundary !== undefined) {
+        output.push(source.slice(cursor, at), boundary);
+        cursor = at;
+      }
+      if (escaped[at]) {
+        output.push(source.slice(cursor, at), source[at] === '<' ? '&lt;' : `&#${source.charCodeAt(at)};`);
+        cursor = at + 1;
+      }
     }
-    if (escaped[at]) {
-      output.push(source.slice(cursor, at), source[at] === '<' ? '&lt;' : `&#${source.charCodeAt(at)};`);
-      cursor = at + 1;
-    }
+    output.push(source.slice(cursor));
+    return output.join('');
+  };
+  let output = splice();
+  const expectedCode = codeSnapshot(tokens);
+  const preservesCode = () => codeSnapshot(markdown.parse(output, {})) === expectedCode;
+  if (expectedCode !== '[]' && !preservesCode()) {
+    // Decide from the edited HTML token and its actual following code block,
+    // including fences. The first '<' may belong to an untouched benign tag.
+    for (const { html: span, token: following } of followingCode)
+      if (!span.inList && following.map?.[0] === span.token.map?.[1] && span.positions.some((at) => escaped[at])) preserveBoundary(span);
+    output = splice();
   }
-  output.push(source.slice(cursor));
-  return { output: output.join(''), active, escaped };
+  const expectedAllCode = codeSnapshot(tokens, true);
+  if (expectedAllCode !== '[]' && codeSnapshot(markdown.parse(output, {}), true) !== expectedAllCode) {
+    // Type-1 HTML blocks (<pre>/<textarea>) ignore blank lines. Retain the
+    // inert closing delimiter that originally ended that parsed block; an
+    // orphan closing tag cannot create an executable element. This also keeps
+    // fences in lists without inserting a separator that would loosen them.
+    for (const span of spans) {
+      if (span.token.type !== 'html_block') continue;
+      const content = span.token.content;
+      const lastLine = content.lastIndexOf('\n', content.length - 2) + 1;
+      // markdown-it's type-1 HTML blocks end at any of these literal closing
+      // sequences, even when it belongs to a different element. Keep the
+      // actual last-line terminator, not merely parse5's matched end tag.
+      let at = content.indexOf('</', lastLine);
+      while (at >= 0) {
+        // Lowercase only a bounded candidate, preserving original offsets
+        // when earlier author text contains expanding Unicode case mappings.
+        const closing = content.slice(at, at + 11).toLowerCase();
+        if (['</script>', '</pre>', '</style>', '</textarea>'].some((end) => closing.startsWith(end))) {
+          const original = span.positions[at];
+          if (original !== undefined) escaped[original] = 0;
+        }
+        at = content.indexOf('</', at + 2);
+      }
+    }
+    output = splice();
+  }
+  return { output, active, escaped };
 };
 
 /** Neutralize only script/style/iframe/object/embed; URL/handler hardening is #664.

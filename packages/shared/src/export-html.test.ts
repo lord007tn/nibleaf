@@ -74,8 +74,10 @@ it.each(followingBaseline.cases)('keeps adjacent author text: $name', ({ source,
     expect(renderedActiveHtml(output)).toBe(0);
     if (renderedActiveHtml(main) === 0) expect(output).toBe(main);
     if (main.includes('FOLLOW')) expect(output).toContain('FOLLOW');
-    for (const sample of exportCodeSamples(main))
-      expect(output.includes(sample) || exportCodeSamples(output).some((value) => value.includes(sample))).toBe(true);
+    if (exportCodeSamples(main).length && !new MarkdownIt({ html: true }).parse(main, {}).some((token) => token.type === 'list_item_open')) {
+      expect(exportCodeSamples(output)).toEqual(exportCodeSamples(main));
+      expect(codeTokens(output)).toEqual(codeTokens(main));
+    }
   }
 });
 it('pins adjacent-block sources to main', () => {
@@ -172,4 +174,84 @@ it('keeps a link-closing delimiter inside the element body literal', () => {
   const output = safe('[prefix <script>](url)</script>');
   expect(output).toContain('&#93;(url)');
   expect(renderedActiveHtml(output)).toBe(0);
+});
+
+const codeTokens = (source: string) => {
+  const pending = [...new MarkdownIt({ html: true }).parse(source, {})].reverse();
+  const code: string[] = [];
+  while (pending.length) {
+    const token = pending.pop();
+    if (!token) continue;
+    if (['code_block', 'fence', 'code_inline'].includes(token.type)) code.push(JSON.stringify([token.type, token.content, token.markup, token.info]));
+    if (token.children) pending.push(...[...token.children].reverse());
+  }
+  return code;
+};
+
+const codeBoundaryCases = ['pre', 'textarea', 'div'].flatMap((opener) =>
+  ['    <object>', '~~~html\n<object>CODE</object>\n~~~'].flatMap((code) =>
+    ['root', 'quote', 'list', 'component'].flatMap((container) => ['', '\n'].map((gap) => ({ opener, code, container, gap }))),
+  ),
+);
+it.each(codeBoundaryCases)(
+  'preserves parsed code after a later element: $opener / $container / gap=$gap / $code',
+  ({ opener, code, container, gap }) => {
+    const body = `<${opener}><script></script>\n${gap}${code}`;
+    const source =
+      container === 'quote'
+        ? body
+            .split('\n')
+            .map((line) => `> ${line}`)
+            .join('\n')
+        : container === 'list'
+          ? body
+              .split('\n')
+              .map((line, at) => (at ? '  ' : '- ') + line)
+              .join('\n')
+          : container === 'component'
+            ? `<Note>\n\n${body}\n\n</Note>`
+            : body;
+    const output = container === 'component' ? portablePublicMdxMarkdown(source) : safe(source);
+    expect(renderedActiveHtml(output)).toBe(0);
+    // Component content becomes a quote. Lists retain the approved narrow
+    // exception for newly exposed elements, but real fences must remain fences.
+    if (container !== 'list' || code.startsWith('~~~')) {
+      expect(codeTokens(output), source).toEqual(codeTokens(container === 'component' ? body : source));
+      if (container !== 'component') expect(exportCodeSamples(output)).toEqual(exportCodeSamples(source));
+    }
+    if (container === 'list') {
+      const md = new MarkdownIt({ html: true });
+      expect(md.render(`${output}\n- NEXT`).includes('<p>NEXT</p>')).toBe(md.render(`${source}\n- NEXT`).includes('<p>NEXT</p>'));
+    }
+    if (container === 'root') expect(codeTokens(portablePublicMdxMarkdown(source))).toEqual(codeTokens(source));
+  },
+);
+
+it.each(['script', 'pre', 'style', 'textarea'])('preserves the actual HTML-block terminator </%s> rather than a matched element end', (closing) => {
+  for (const code of ['    <object>CODE</object>', '~~~html\n<object>CODE</object>\n~~~']) {
+    const source = `<pre><object></${closing}></object>\n${code}`;
+    const output = safe(source);
+    expect(renderedActiveHtml(output)).toBe(0);
+    expect(codeTokens(output)).toEqual(codeTokens(source));
+    expect(exportCodeSamples(output)).toEqual(exportCodeSamples(source));
+  }
+});
+
+it.each(['Use `CODE` here.', 'PROSE\n\n    <object>CODE</object>', 'PROSE\n\n~~~html\n<object>CODE</object>\n~~~'])(
+  'preserves later code even across intervening prose: %s',
+  (following) => {
+    const source = `<pre><script></script>\n\n${following}`;
+    const output = safe(source);
+    expect(renderedActiveHtml(output)).toBe(0);
+    expect(codeTokens(output)).toEqual(codeTokens(source));
+    expect(exportCodeSamples(output)).toEqual(exportCodeSamples(source));
+  },
+);
+
+it('keeps source offsets across Unicode case expansion before the terminator', () => {
+  const source = '<pre>\u0130<script></script>\n    <object>CODE</object>';
+  const output = safe(source);
+  expect(renderedActiveHtml(output)).toBe(0);
+  expect(codeTokens(output)).toEqual(codeTokens(source));
+  expect(exportCodeSamples(output)).toEqual(exportCodeSamples(source));
 });

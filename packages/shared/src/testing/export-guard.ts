@@ -27,6 +27,8 @@ export interface ExportGuardBaseline {
   active: [number, number][];
   outputs: [string, string][];
   code: [string[], string[]][];
+  /** Hashes of ordered [role, content, markup, info] token tuples. */
+  codeTokens: [string, string][];
 }
 export type ExportProjectors = readonly [(source: string) => string, (source: string) => string];
 const exportHash = (source: string) => createHash('sha256').update(source).digest('hex');
@@ -49,11 +51,14 @@ const analyzeExport = (source: string, render: boolean) => {
   const tokens = parser.parse(source, env);
   const lines = source.split('\n');
   const code: string[] = [];
+  const codeTokens: string[] = [];
   const pending = [...tokens].reverse();
   while (pending.length) {
     const token = pending.pop();
     if (!token) continue;
     if ((token.type === 'fence' || token.type === 'code_block') && token.map) code.push(lines.slice(...token.map).join('\n'));
+    if (['fence', 'code_block', 'code_inline'].includes(token.type))
+      codeTokens.push(JSON.stringify([token.type, token.content, token.markup, token.info]));
     const span = codeSpans.get(token);
     if (span) {
       let at = span.start + token.markup.length;
@@ -74,6 +79,7 @@ const analyzeExport = (source: string, render: boolean) => {
   }
   return {
     code,
+    codeTokens,
     active: render ? countElements(parseFragment(parser.renderer.render(tokens, parser.options, env))) : 0,
     literal: parser.utils.unescapeAll(source),
   };
@@ -134,6 +140,7 @@ export const recordExportBaseline = (
     active: outputs.map((pair) => pair.map(renderedActiveHtml) as [number, number]),
     outputs: outputs.map((pair) => pair.map(exportHash) as [string, string]),
     code: outputs.map((pair) => pair.map(exportCodeSamples) as [string[], string[]]),
+    codeTokens: outputs.map((pair) => pair.map((output) => exportHash(JSON.stringify(analyzeExport(output, false).codeTokens))) as [string, string]),
   };
 };
 
@@ -156,7 +163,11 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
   const metadata: string[] = [];
   if (baseline.revision !== EXPORT_BASELINE_REVISION) metadata.push('wrong main revision');
   if (baseline.sources !== exportSourcesHash(cases)) metadata.push('generated sources changed');
-  if ([baseline.kept.length, baseline.active.length, baseline.outputs.length, baseline.code?.length].some((count) => count !== cases.length))
+  if (
+    [baseline.kept.length, baseline.active.length, baseline.outputs.length, baseline.code?.length, baseline.codeTokens?.length].some(
+      (count) => count !== cases.length,
+    )
+  )
     metadata.push('missing baseline cases');
   for (const { index, source, markers } of cases) {
     for (const target of [0, 1] as const) {
@@ -177,13 +188,13 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       // and activity assertion. No Markdown or reader parse is needed.
       if (unchanged && active === 0) continue;
       const mayBeActive = mayHaveActiveExportHtml(output);
-      const needsCode = code.some((sample) => !output.includes(sample));
-      const analysis = mayBeActive || needsCode ? analyzeExport(output, mayBeActive) : undefined;
+      const analysis = mayBeActive || code.length ? analyzeExport(output, mayBeActive) : undefined;
       const outputCode = analysis?.code ?? [];
-      for (const sample of code) {
-        if (output.includes(sample) || outputCode.some((candidate) => candidate.includes(sample))) continue;
+      const expectedTokens = baseline.codeTokens[index]?.[target];
+      const actualTokens = analysis?.codeTokens ?? [];
+      if (JSON.stringify(outputCode) !== JSON.stringify(code) || exportHash(JSON.stringify(actualTokens)) !== expectedTokens) {
         tally.changedCode++;
-        failures.push({ index, target, reason: `code bytes changed: ${JSON.stringify(sample.slice(0, 160))}` });
+        failures.push({ index, target, reason: 'code tokens changed (bytes, role, content, order or occurrences)' });
       }
       // Literalizing an unsafe HTML span may entity-escape punctuation in a
       // marker. Decode escapes only for prose preservation; code stays exact.

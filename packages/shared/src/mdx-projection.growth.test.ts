@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizePublicMarkdownContent as md, portablePublicMdxMarkdown as portable } from './public-markdown-content';
-import { renderedActiveHtml } from './testing/export-guard';
+import { exportCodeSamples, renderedActiveHtml } from './testing/export-guard';
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growth';
 
 // Timing bounds, run on their own (pnpm test:growth; see testing/growth). Linear
@@ -11,6 +11,7 @@ import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growt
 describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () => {
   it.each([
     ['ordinary code-heavy text (round 4)', (n: number) => 'a ` b '.repeat(n), 10_000],
+    ['HTML/code boundary invariants', (n: number) => '<pre><script></script>\n    <object>CODE</object>\n\n</pre>\n\n'.repeat(n), 100],
     ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 100],
     ['unclosed quotes', (n: number) => '<Card title="'.repeat(n), 300],
     ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 1500],
@@ -44,6 +45,11 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
       const project = (source: string) => [md(source), portable(source)];
       const [small, large] = growthMs(project, build(n), build(4 * n), { minMs: 20 });
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+      if (label === 'HTML/code boundary invariants') {
+        console.info(`HTML/code boundary growth: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
+        expect(exportCodeSamples(portable(build(n)))).toEqual(exportCodeSamples(build(n)));
+        expect(project(build(n)).map(renderedActiveHtml)).toEqual([0, 0]);
+      }
       if (label === 'ordinary code-heavy text (round 4)') {
         console.info(`Code-heavy growth: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
         expect(project(build(4 * n))).toEqual([build(4 * n).trim(), build(4 * n)]);
