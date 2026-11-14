@@ -44,7 +44,9 @@
     "settings_smartai",
     "dashboard_ai_failed",
     "roles_editor",
-    "organization_settings_general"
+    "organization_settings_general",
+    "publish_checks_error",
+    "editor_history_bytes"
   ],
   "pending": [
     "brand_oss",

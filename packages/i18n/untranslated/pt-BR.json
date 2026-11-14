@@ -57,7 +57,9 @@
     "settings_smartai",
     "roles_editor",
     "people_site",
-    "dashboard_col_status"
+    "dashboard_col_status",
+    "editor_history_bytes",
+    "overview_col_status"
   ],
   "pending": [
     "brand_oss",
