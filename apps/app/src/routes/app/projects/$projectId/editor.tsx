@@ -17,7 +17,6 @@ import { isRtl } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
 import { PUBLISH_CHECK_CODES } from '@nibleaf/shared/publish-check-codes';
 import { canAdminister } from '@nibleaf/shared/rbac';
-import { useDebouncer } from '@tanstack/react-pacer';
 import { type QueryClient, type UseQueryResult, useQueries, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
 import {
@@ -64,7 +63,8 @@ import {
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
-import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
+import { createEditorSaveQueue, type PageDraft, samePageDraft } from '@/components/editor/editor-save-queue';
+import { useSaveThrottle } from '@/components/editor/editor-save-throttle';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { useLinkedPageHistory } from '@/components/editor/linked-page-history';
@@ -606,13 +606,11 @@ function EditorPage() {
     () => (isPageTooLarge(saveError) ? friendlyErrorMessage(t, saveError, 'editor.saveError') : t('editor.saveError')),
     [saveError, t],
   );
-  const saveDraft = useDebouncer(
-    (draft: PageDraft) => {
-      // The queue settles status for every write, including flushes on unmount.
-      void saveQueue.save(draft).catch(() => undefined);
-    },
-    { wait: 700, onUnmount: (debouncer) => debouncer.flush() },
-  );
+  // Saved after a pause, at most every few seconds while typing goes on, and at
+  // once when the window loses focus, the tab is hidden or the editor unmounts.
+  // The queue settles status for every write, including flushes on unmount; the
+  // throttle handles a failed write's rejection.
+  const saveDraft = useSaveThrottle((draft: PageDraft) => saveQueue.save(draft), samePageDraft);
 
   // Hydration pins every draft to its page, including intentional empty bodies.
   useEffect(() => {

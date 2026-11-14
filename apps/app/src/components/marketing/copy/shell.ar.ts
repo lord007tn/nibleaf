@@ -25,7 +25,7 @@ export const shellAr: ShellCopy = {
   login: { label: 'تسجيل الدخول', href: '/sign-in' },
   start: { label: 'ابدأ مجانًا', href: '/sign-up' },
   languageSwitch: { label: 'English', ariaLabel: 'Read this page in English', hrefLang: 'en' },
-  theme: { toDark: 'التبديل إلى الوضع الداكن', toLight: 'التبديل إلى الوضع الفاتح' },
+  theme: { darkMode: 'الوضع الداكن', toDark: 'التبديل إلى الوضع الداكن', toLight: 'التبديل إلى الوضع الفاتح' },
   menu: { open: 'افتح القائمة', close: 'أغلق القائمة', title: 'القائمة' },
   github: {
     label: 'GitHub',
