@@ -199,7 +199,9 @@ describe('an unterminated raw-text element, read (#576)', () => {
     load(source);
     // The editor adds an empty paragraph after a last block that isn't one.
     const names: string[] = [];
-    editor.state.doc.forEach((node) => names.push(node.type.name));
+    editor.state.doc.forEach((node) => {
+      names.push(node.type.name);
+    });
     expect(names).toEqual(['paragraph', 'codeBlock', 'callout', 'paragraph']);
     expect(getMarkdown(editor)).toBe(`Intro.\n\n${T}\n<${tag}>example\n${T}\n\n<Note>\n\nText\n\n</Note>`);
   });
