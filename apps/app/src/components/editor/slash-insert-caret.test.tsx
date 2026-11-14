@@ -29,7 +29,7 @@ vi.mock('@tanstack/react-router', () => ({ useParams: () => ({ projectId: 'proje
 vi.mock('./active-branch-context', () => ({ useActiveBranchId: () => 'main' }));
 vi.mock('@/hooks/api', () => ({ useLanguages: () => ({ data: [{ id: 'en', code: 'en' }] }), usePages: () => ({ data: [] }) }));
 
-import { isSlashMenuOpen } from './extensions/slash-command';
+import { createSlashItems, isSlashMenuOpen } from './extensions/slash-command';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -113,11 +113,16 @@ const nodesOf = (editor: Editor, type: string) => {
   return found;
 };
 
-/** Open the slash menu with the block's own name and pick it, as a writer would. */
-const insertFromSlashMenu = async (editor: Editor, titleKey: MessageKey) => {
+/** Type `/` and the block's own name, as a writer would; returns the name. */
+const openSlashMenuFor = async (editor: Editor, titleKey: MessageKey) => {
   const title = translateFn(titleKey, undefined, uiLocale);
   await typeText(editor, `/${title}`);
   expect(isSlashMenuOpen(editor.state)).toBe(true);
+  return title;
+};
+
+/** Click the option called `title` in the open slash menu. */
+const chooseFromSlashMenu = async (editor: Editor, title: string) => {
   const option = Array.from(document.querySelectorAll<HTMLElement>('[cmdk-item]')).find(
     (candidate) => candidate.querySelector('.font-medium')?.textContent === title,
   );
@@ -125,6 +130,9 @@ const insertFromSlashMenu = async (editor: Editor, titleKey: MessageKey) => {
   await act(async () => option.click());
   expect(isSlashMenuOpen(editor.state)).toBe(false);
 };
+
+/** Open the slash menu with the block's own name and pick it. */
+const insertFromSlashMenu = async (editor: Editor, titleKey: MessageKey) => chooseFromSlashMenu(editor, await openSlashMenuFor(editor, titleKey));
 
 /** `open`/`close` delimit the first item in the saved Markdown. */
 type BlockCase = { name: string; titleKey: MessageKey; block: string; items: number; open: string; close: string };
@@ -237,5 +245,128 @@ describe('typing right after inserting a multi-item block (P2-ED-004)', () => {
 describe('single-item blocks keep the caret in their only item', () => {
   it.each(SINGLE_ITEM_BLOCKS)('$name', async (block) => {
     await insertTypeAndUndo(block, doc(paragraph()), undefined, 'hello', 'ltr');
+  });
+});
+
+/** The block a slash item inserts, read from its command through a recording chain. */
+const scaffoldOf = (titleKey: MessageKey): JSONContent => {
+  let inserted: JSONContent | undefined;
+  const chain: Record<string, (...args: unknown[]) => unknown> = {};
+  for (const name of ['focus', 'deleteRange', 'command']) chain[name] = () => chain;
+  chain.insertContent = (content: unknown) => {
+    inserted = content as JSONContent;
+    return chain;
+  };
+  chain.run = () => true;
+  const item = createSlashItems().find((candidate) => candidate.titleKey === titleKey);
+  item?.command({ editor: { chain: () => chain } as unknown as Editor, range: { from: 1, to: 1 }, locale: 'en' });
+  if (!inserted) throw new Error(`No scaffold for ${titleKey}`);
+  return structuredClone(inserted);
+};
+
+/** A block of the same kind already on the page: item 1 says "KEEP FIRST", item 2 holds `secondItem`. */
+const existingBlock = (block: BlockCase, secondItem = 'OLD 2'): JSONContent => {
+  const value = scaffoldOf(block.titleKey);
+  value.content = value.content?.map((item, index) => ({
+    ...item,
+    content: [paragraph(index === 0 ? 'KEEP FIRST' : index === 1 ? secondItem : `OLD ${index + 1}`)],
+  }));
+  return value;
+};
+
+/** Put the caret `offset` characters into the text node that reads exactly `text`. */
+const caretInText = async (editor: Editor, text: string, offset: number) => {
+  let target = -1;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.isText && node.text === text) target = pos + offset;
+  });
+  if (target < 0) throw new Error(`No text "${text}"`);
+  await act(async () => {
+    editor.view.focus();
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, target)));
+  });
+};
+
+/**
+ * With a block of the same kind already on the page, insert `block` from the
+ * slash menu and type straight away (review of #669). The text must land in
+ * the NEW block's first item, nothing that was there before may change, and
+ * once the typing is undone one more undo must restore the page exactly.
+ */
+const insertNextToExisting = async (block: BlockCase, content: JSONContent, placeCaret: (editor: Editor) => Promise<void>, dir: 'ltr' | 'rtl') => {
+  const typed = 'HELLO';
+  const editor = await make(content, dir);
+  const textBefore = editor.state.doc.textContent;
+  const existing = nodesOf(editor, block.block).length;
+  await placeCaret(editor);
+  const title = await openSlashMenuFor(editor, block.titleKey);
+  const beforeInsert = editor.state.doc.toJSON();
+  const markdownBeforeInsert = getMarkdown(editor);
+
+  await chooseFromSlashMenu(editor, title);
+  expect(nodesOf(editor, block.block)).toHaveLength(existing + 1);
+  await typeText(editor, typed);
+
+  // The typing is the first item of exactly one block: a new one, holding nothing that was there before.
+  const fresh = nodesOf(editor, block.block).filter(({ node }) => node.child(0).textContent === typed);
+  expect(fresh).toHaveLength(1);
+  const [{ node, pos }] = fresh as [{ node: PMNode; pos: number }];
+  expect(node.textContent).not.toMatch(/KEEP|OLD|before|after|Existing/);
+  // Everything else on the page reads as it did before the slash command.
+  expect(editor.state.tr.delete(pos, pos + node.nodeSize).doc.textContent).toBe(textBefore);
+  expect(nodesOf(editor, block.block).filter(({ node: other }) => other.child(0).textContent === 'KEEP FIRST')).toHaveLength(existing);
+
+  // Undo the typing, then one undo removes the new block and restores the page exactly.
+  for (let guard = 0; guard < typed.length && editor.state.doc.textContent.includes(typed); guard += 1) editor.commands.undo();
+  expect(editor.state.doc.textContent).not.toContain(typed);
+  expect(nodesOf(editor, block.block)).toHaveLength(existing + 1);
+  editor.commands.undo();
+  expect(editor.state.doc.toJSON()).toEqual(beforeInsert);
+  expect(getMarkdown(editor)).toBe(markdownBeforeInsert);
+};
+
+describe('inserting next to a block of the same kind keeps the old one intact', () => {
+  // Tabs, Steps and 2 columns in both directions are the review's six repro cases.
+  for (const dir of ['ltr', 'rtl'] as const) {
+    describe(`inside its second item, mid-paragraph (${dir})`, () => {
+      it.each(MULTI_ITEM_BLOCKS)('$name', async (block) => {
+        uiLocale = dir === 'rtl' ? 'ar' : 'en';
+        await insertNextToExisting(
+          block,
+          doc(existingBlock(block, 'before  after'), paragraph('AFTER')),
+          (editor) => caretInText(editor, 'before  after', 'before '.length),
+          dir,
+        );
+      });
+    });
+  }
+
+  describe('with the old block directly before the insert point', () => {
+    it.each(MULTI_ITEM_BLOCKS)('$name', async (block) => {
+      await insertNextToExisting(block, doc(existingBlock(block), paragraph()), (editor) => caretIn(editor), 'ltr');
+    });
+  });
+
+  describe('with the old block directly after the insert point', () => {
+    it.each(MULTI_ITEM_BLOCKS)('$name', async (block) => {
+      await insertNextToExisting(block, doc(paragraph(), existingBlock(block)), (editor) => caretIn(editor), 'ltr');
+    });
+  });
+
+  describe('at the very start of a paragraph with text, inside the old block', () => {
+    it.each(MULTI_ITEM_BLOCKS)('$name', async (block) => {
+      await insertNextToExisting(block, doc(existingBlock(block, 'Existing text')), (editor) => caretInText(editor, 'Existing text', 0), 'ltr');
+    });
+  });
+
+  describe('at the very end of a paragraph with text, inside the old block', () => {
+    it.each(MULTI_ITEM_BLOCKS)('$name', async (block) => {
+      await insertNextToExisting(
+        block,
+        doc(existingBlock(block, 'Existing text ')),
+        (editor) => caretInText(editor, 'Existing text ', 'Existing text '.length),
+        'ltr',
+      );
+    });
   });
 });
