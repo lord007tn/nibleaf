@@ -3453,7 +3453,7 @@
   "analytics_resource_rss": "Feed RSS",
   "analytics_resource_other": "File lain",
   "analytics_perf_title": "Seberapa cepat halaman Anda terasa",
-  "analytics_perf_description": "Diukur di perangkat pembaca sungguhan. Kami menampilkan nilai yang dicapai 75% pemuatan halaman.",
+  "analytics_perf_description": "Diukur di perangkat pembaca sungguhan. 75% pemuatan halaman berada pada atau di bawah nilai ini.",
   "analytics_perf_distribution": "Pemuatan halaman menurut peringkat keseluruhan",
   "analytics_perf_samples": "Pemuatan halaman yang diukur: {count}",
   "analytics_perf_secondary": "Konten pertama {fcp} · respons server {ttfb}",
