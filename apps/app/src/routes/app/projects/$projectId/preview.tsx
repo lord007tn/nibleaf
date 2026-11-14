@@ -10,7 +10,7 @@ import { ArrowLeft, ChevronDown, Eye } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { publishedVersionSlugFor } from '@/components/editor/docs-version';
-import { Markdown } from '@/components/markdown';
+import { Markdown, useMathReady } from '@/components/markdown';
 import { QueryErrorState } from '@/components/query-error-state';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { PageIcon } from '@/components/site/page-icon';
@@ -88,7 +88,10 @@ function ProjectPreview() {
   }, [selectedId]);
   const pageQuery = usePage(previewEnabled ? projectId : undefined, selected?.id);
   const { data: page, isPending: pagePending } = pageQuery;
-  const contentPending = pagesPending || (Boolean(selected) && pagePending);
+  // A page with math waits for KaTeX behind the skeleton too, so it never
+  // appears with raw TeX (it mounts fresh after each uncached fetch).
+  const mathReady = useMathReady(page?.content);
+  const contentPending = pagesPending || (Boolean(selected) && (pagePending || !mathReady));
   // A failed request must not read as "no draft pages": offer a retry of whichever one failed.
   const failedQuery = pagesQuery.isError && !pages ? pagesQuery : selected && pageQuery.isError && !page ? pageQuery : undefined;
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
