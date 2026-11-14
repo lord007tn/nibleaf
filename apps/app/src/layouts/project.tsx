@@ -243,6 +243,9 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             <ShellSearchButton />
             <NotificationsPopover />
             <Button
+              // Phones have room for one action beside search and notifications:
+              // Publish, when it shows. Overview keeps its own Preview.
+              className={headerPublish ? 'hidden sm:inline-flex' : undefined}
               nativeButton={false}
               render={
                 previewEnabled ? (
