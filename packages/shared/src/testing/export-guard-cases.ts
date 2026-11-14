@@ -164,3 +164,31 @@ export const activeHtmlExportCases = () => {
   ];
   return containers.map(({ name, wrap }) => ({ name, sources: payloads.map(wrap) }));
 };
+
+/** Adjacent blocks whose role must survive neutralizing preceding HTML. */
+export const exportFollowingBlockCases = () => {
+  const containers = [
+    ['root', (lines: string[]) => lines],
+    ['quote', (lines: string[]) => lines.map((line) => `> ${line}`)],
+    ['list', (lines: string[]) => lines.map((line, at) => `${at ? '  ' : '- '}${line}`)],
+    ['quote-in-list', (lines: string[]) => lines.map((line, at) => `${at ? '  > ' : '- > '}${line}`)],
+    ['component', (lines: string[]) => ['<Note>', '', ...lines, '', '</Note>']],
+  ] as const;
+  const followers = [
+    ['indented code', ['    <img onerror="FOLLOW()">']],
+    ['fence', ['~~~html', '<img onerror="FOLLOW()">', '~~~']],
+    ['paragraph', ['FOLLOW paragraph']],
+    ['list item', ['- FOLLOW item']],
+    ['ordered item', ['2. FOLLOW item']],
+    ['heading', ['# FOLLOW heading']],
+    ['setext heading', ['FOLLOW heading', '---']],
+  ] as const;
+  return ['<script>BODY</script>', '<style>BODY</style>', '<iframe>BODY</iframe>', '<div onclick="run()">BODY</div>'].flatMap((html) =>
+    containers.flatMap(([container, wrap]) =>
+      followers.map(([following, lines]) => ({
+        name: `${html} / ${container} / ${following}`,
+        source: wrap(['BEFORE', '', html, ...lines]).join('\n'),
+      })),
+    ),
+  );
+};

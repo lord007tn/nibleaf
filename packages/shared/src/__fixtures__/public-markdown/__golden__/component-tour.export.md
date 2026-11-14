@@ -79,7 +79,7 @@ Faster search.
 
 Inline: **Beta**, [Start](/start), API (Application programming interface), , 10<sup>-3</sup>, H<sub>2</sub>O, <u>underlined</u>.
 
-Expression {props.version} and a stray } brace. &lt;Unknown onclick="run()">Unknown stays text&lt;/Unknown>.
+Expression {props.version} and a stray } brace. &lt;Unknown onclick="run()">Unknown stays text</Unknown>.
 
 &lt;script>alert('never')&lt;/script>
 

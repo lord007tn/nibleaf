@@ -74,12 +74,10 @@
     "test:growth": "vitest run --mode growth --no-file-parallelism --maxWorkers=1 growth"
   },
   "dependencies": {
-    "@lezer/markdown": "1.8.1",
     "@nibleaf/i18n": "workspace:*",
     "github-slugger": "^2.0.0",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm": "^3.1.0",
-    "micromark": "4.0.2",
     "micromark-extension-gfm": "^3.0.0",
     "nanoid": "^6.0.2",
     "zod": "^4.6.7",
@@ -93,15 +91,14 @@
     "unified": "11.0.5",
     "rehype-katex": "7.0.1",
     "rehype-sanitize": "6.0.0",
-    "remark-math": "6.0.0"
+    "remark-math": "6.0.0",
+    "markdown-it": "14.3.3"
   },
   "devDependencies": {
-    "@types/hast": "3.0.5",
     "@types/markdown-it": "14.1.2",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/mdast": "^4.0.4",
     "@types/node": "^26.6.6",
-    "typescript": "^7.0.2",
-    "markdown-it": "14.3.3"
+    "typescript": "^7.0.2"
   }
 }

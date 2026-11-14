@@ -1,5 +1,6 @@
 import { performance } from 'node:perf_hooks';
 import { expect, it } from 'vitest';
+import { escapeDisallowedExportHtml } from './export-html';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 import { exportCodeSamples, readerSanitizedActiveHtml, renderedActiveHtml } from './testing/export-guard';
 import { activeHtmlExportCases } from './testing/export-guard-cases';
@@ -83,15 +84,15 @@ it.each(['quotes', 'lists', 'components'])('preserves deep %s with HTML without 
     const output = project(source);
     expect(output).toContain('SAFE');
     expect(output.indexOf('SAFE')).toBe(output.lastIndexOf('SAFE'));
-    expect(output).not.toContain('<');
-    if (kind !== 'components') expect(output).toBe(source.replaceAll('<', '&lt;'));
+    expect(renderedActiveHtml(output)).toBe(0);
+    if (kind !== 'components') expect(output).toBe(source);
   }
 });
 
-it('preserves all content as inert source when the parser work budget is exceeded', () => {
+it('changes only the dangerous destination in a large document', () => {
   const source = `${'AUTHOR '.repeat(40_000)}<sup>SAFE</sup> ![image](data:image/png;base64,AAAA)`;
   const output = portablePublicMdxMarkdown(source);
-  expect(output).toBe(source.replaceAll('<', '&lt;').replaceAll('[', '&#91;'));
+  expect(output).toBe(source.replaceAll('data:image/png;base64,AAAA', '#'));
   expect(renderedActiveHtml(output)).toBe(0);
 });
 
@@ -134,27 +135,24 @@ it.each([
     source: `> ${'> '.repeat(129)}<sup>DEEP</sup>\n\nUse \`<b>SAFE</b> [LABEL](url)\`.`,
     expected: '`<b>SAFE</b> [LABEL](url)`',
   },
-])('keeps code bytes through the parser budget: $name', ({ source, expected }) => {
-  for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) {
-    const output = project(source);
-    expect(output).toContain(expected);
-    for (const sample of exportCodeSamples(source)) expect(exportCodeSamples(output)).toContainEqual(sample);
-  }
+])('final safety pass keeps code bytes: $name', ({ source, expected }) => {
+  const output = escapeDisallowedExportHtml(source);
+  const codeExpected = expected.includes('> ~~~html') && source.startsWith('<Note>') ? fencedCode : expected;
+  expect(output).toContain(codeExpected);
+  for (const sample of exportCodeSamples(source)) expect(exportCodeSamples(output)).toContainEqual(sample);
 });
 
-it('limits a long block without changing code or allowed markup elsewhere', () => {
+it('keeps code and allowed markup in a long document', () => {
   const source = `${'AUTHOR '.repeat(40_000)}<sup>LIMIT</sup>\n\n${fencedCode}\n\n    <i>INDENT</i> [LABEL](url)\n\nUse \`<u>SPAN</u> [LABEL](url)\`.\n\n<sub>NORMAL</sub>`;
-  for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) {
-    const output = project(source);
-    expect(output).toContain(fencedCode);
-    expect(output).toContain('    <i>INDENT</i> [LABEL](url)');
-    expect(output).toContain('`<u>SPAN</u> [LABEL](url)`');
-    expect(output).toContain('<sub>NORMAL</sub>');
-    for (const sample of exportCodeSamples(source)) expect(exportCodeSamples(output)).toContainEqual(sample);
-  }
+  const output = escapeDisallowedExportHtml(source);
+  expect(output).toContain(fencedCode);
+  expect(output).toContain('    <i>INDENT</i> [LABEL](url)');
+  expect(output).toContain('`<u>SPAN</u> [LABEL](url)`');
+  expect(output).toContain('<sub>NORMAL</sub>');
+  for (const sample of exportCodeSamples(source)) expect(exportCodeSamples(output)).toContainEqual(sample);
 });
 
-it('does not charge a long code block to the prose work budget', () => {
+it('keeps a large code block unchanged', () => {
   const source = `~~~html\n${'<b>SAFE</b> [LABEL](url)\n'.repeat(12_000)}~~~`;
   for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) expect(project(source)).toBe(source);
 });
@@ -165,11 +163,28 @@ it('escapes rejected markup without losing its text or changing allowed siblings
     const output = project(source);
     expect(renderedActiveHtml(output)).toBe(0);
     expect(output).toContain('AUTHOR');
-    expect(output).toContain('<sup>2</sup>');
+    expect(output).toContain('&lt;sup>2&lt;/sup>');
     expect(output).toContain('`<img onerror="run()">`');
   }
   const allowed =
     '<video src="https://example.test/v.mp4" poster="/cover.png"><source src="/v.mp4" type="video/mp4"><track kind="captions" src="/v.vtt" srclang="en"></video>\n\n<sub>lo</sub><sup>hi</sup><u>under</u>';
   expect(portablePublicMdxMarkdown(allowed)).toBe(allowed);
-  expect(portablePublicMdxMarkdown('<Unknown onclick="run()">AUTHOR</Unknown>')).toBe('&lt;Unknown onclick="run()">AUTHOR&lt;/Unknown>');
+  expect(portablePublicMdxMarkdown('<Unknown onclick="run()">AUTHOR</Unknown>')).toBe('&lt;Unknown onclick="run()">AUTHOR</Unknown>');
+});
+
+// Round 4: main's output is authoritative, including its MDX filtering policy.
+it.each(['script', 'style', 'iframe', 'object', 'embed'])('keeps main filtering and code with %s after indentation', (tag) => {
+  const source = `    x\n\nBefore <${tag}>SECRET</${tag}> after.`;
+  expect(normalizePublicMarkdownContent(source)).toBe('x\n\nBefore  after.');
+  expect(portablePublicMdxMarkdown(source)).toBe(`    x\n\nBefore &lt;${tag}>SECRET${tag === 'embed' ? '</embed>' : `&lt;/${tag}>`} after.`);
+});
+it('keeps the main expression policy in each export', () => {
+  const source = '    x\n\nBefore {secret} after.';
+  expect(normalizePublicMarkdownContent(source)).toBe('x\n\nBefore  after.');
+  expect(portablePublicMdxMarkdown(source)).toBe(source);
+});
+it('keeps real fence delimiters at quote depth 65', () => {
+  const source = ['<x>', '', '~~~', 'X', '~~~'].map((line) => '> '.repeat(65) + line).join('\n');
+  expect(portablePublicMdxMarkdown(source)).toBe(source);
+  expect(normalizePublicMarkdownContent(source)).toBe(source.replaceAll('<x>', '&lt;x&gt;'));
 });

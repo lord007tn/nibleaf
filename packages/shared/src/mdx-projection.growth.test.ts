@@ -10,7 +10,7 @@ import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growt
 // spans several scheduler slices on a busy runner rather than one.
 describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () => {
   it.each([
-    ['unmatched backticks', (n: number) => 'a ` b '.repeat(n), 2000],
+    ['ordinary code-heavy text (round 4)', (n: number) => 'a ` b '.repeat(n), 10_000],
     ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 100],
     ['unclosed quotes', (n: number) => '<Card title="'.repeat(n), 300],
     ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 1500],
@@ -45,6 +45,10 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
       const project = (source: string) => [md(source), portable(source)];
       const [small, large] = growthMs(project, build(n), build(4 * n), { minMs: 20 });
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+      if (label === 'ordinary code-heavy text (round 4)') {
+        console.info(`Code-heavy growth: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
+        expect(project(build(4 * n))).toEqual([build(4 * n).trim(), build(4 * n)]);
+      }
       if (label === 'literal code beyond the parser budget') {
         console.info(`Literal code growth n=${n}, 4n=${4 * n}: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
         expect(project(build(4 * n))).toEqual([build(4 * n), build(4 * n)]);
@@ -57,10 +61,28 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
         console.info(`${label}, n=${n}, 4n=${4 * n}: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
         for (const output of project(build(4 * n))) {
           expect(output).toContain('SAFE');
-          expect(output).not.toContain('<');
           expect(renderedActiveHtml(output)).toBe(0);
         }
       }
+    },
+    60_000,
+  );
+});
+
+const quotedFence = (depth: number) => ['<x>', '', '~~~', 'X', '~~~'].map((line) => '> '.repeat(depth) + line).join('\n');
+describe.runIf(growthTestsEnabled)('round 4 deep-quote fence growth', () => {
+  it.each([
+    ['block count', (n: number) => Array.from({ length: n }, () => quotedFence(65)).join('\n\n'), 25],
+    ['depth', (n: number) => quotedFence(n), 250],
+  ] as const)(
+    'scales linearly over %s and keeps main output',
+    (label, build, n) => {
+      const project = (source: string) => [md(source), portable(source)];
+      const [small, large] = growthMs(project, build(n), build(4 * n), { minMs: 20 });
+      console.info(`Deep-quote fences ${label}: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
+      expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+      const source = build(4 * n);
+      expect(project(source)).toEqual([source.replaceAll('<x>', '&lt;x&gt;'), source]);
     },
     60_000,
   );

@@ -1193,24 +1193,21 @@ importers:
 
   packages/shared:
     dependencies:
-      '@lezer/markdown':
-        specifier: 1.8.1
-        version: 1.8.1
       '@nibleaf/i18n':
         specifier: workspace:*
         version: link:../i18n
       github-slugger:
         specifier: ^2.0.0
         version: 2.0.0
+      markdown-it:
+        specifier: 14.3.3
+        version: 14.3.3
       mdast-util-from-markdown:
         specifier: ^2.0.3
         version: 2.0.3
       mdast-util-gfm:
         specifier: ^3.1.0
         version: 3.1.0
-      micromark:
-        specifier: 4.0.2
-        version: 4.0.2
       micromark-extension-gfm:
         specifier: ^3.0.0
         version: 3.0.0
@@ -1260,18 +1257,12 @@ importers:
       '@types/markdown-it':
         specifier: 14.1.2
         version: 14.1.2
-      '@types/hast':
-        specifier: 3.0.5
-        version: 3.0.5
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
-      markdown-it:
-        specifier: 14.3.3
-        version: 14.3.3
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -2644,9 +2635,6 @@ packages:
 
   '@lezer/lr@1.4.12':
     resolution: {integrity: sha512-On9HU4oMMiHPMkQDgoTnGahjgG5n/MkN38CgG77sMraKLL+3JBbeQNi1FcCXV9QRqwF9/BUXP3caHyJC1fBOTQ==}
-
-  '@lezer/markdown@1.8.1':
-    resolution: {integrity: sha512-M5YmEcKWO4mJ45Y1hECwqyu8cLv25EiXOK554PVOvDOWOP0olwelHHQUWr9sjF+d1bENVhy0nfJ8E57XZUTiXg==}
 
   '@lezer/xml@1.0.6':
     resolution: {integrity: sha512-CdDwirL0OEaStFue/66ZmFSeppuL6Dwjlk8qk153mSQwiSH/Dlri4GNymrNWnUmPl2Um7QfV1FO9KFUyX3Twww==}
@@ -11928,11 +11916,6 @@ snapshots:
   '@lezer/lr@1.4.12':
     dependencies:
       '@lezer/common': 1.5.5
-
-  '@lezer/markdown@1.8.1':
-    dependencies:
-      '@lezer/common': 1.5.5
-      '@lezer/highlight': 1.2.5
 
   '@lezer/xml@1.0.6':
     dependencies:

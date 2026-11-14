@@ -1,7 +1,6 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import MarkdownIt from 'markdown-it';
-import { parse, postprocess, preprocess } from 'micromark';
-import { gfm } from 'micromark-extension-gfm';
+import type Token from 'markdown-it/lib/token.mjs';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
@@ -26,23 +25,53 @@ export interface ExportGuardBaseline {
   kept: [number, number][];
   active: [number, number][];
   outputs: [string, string][];
+  code: [string[], string[]][];
 }
 export type ExportProjectors = readonly [(source: string) => string, (source: string) => string];
 const exportHash = (source: string) => createHash('sha256').update(source).digest('hex');
 const exportSourcesHash = (cases: readonly ExportGuardCase[]) => exportHash(cases.map(({ source }) => source).join('\0'));
 
-/** Independent CommonMark token oracle. The tokenizer's serialization removes
- * container markup, retaining code bytes (including fences and span delimiters). */
-export const exportCodeSamples = (source: string): string[] =>
-  postprocess(
-    parse({ extensions: [gfm()] })
-      .document()
-      .write(preprocess()(source, undefined, true)),
-  )
-    .filter(([kind, token]) => kind === 'enter' && ['codeFenced', 'codeIndented', 'codeText'].includes(token.type))
-    .map(([, token, context]) => context.sliceSerialize(token));
+/** Literal code tokens in the same Markdown dialect as the activity oracle.
+ * Blocks include their original prefixes/delimiters; spans keep their raw bytes. */
+export const exportCodeSamples = (source: string): string[] => {
+  const parser = new MarkdownIt({ html: true });
+  const spans = new WeakMap<Token, { source: string; start: number }>();
+  const Base = parser.inline.State;
+  parser.inline.State = class extends Base {
+    override push(type: string, tag: string, nesting: Token['nesting']): Token {
+      const token = super.push(type, tag, nesting);
+      if (type === 'code_inline') spans.set(token, { source: this.src, start: this.pos });
+      return token;
+    }
+  };
+  const lines = source.split('\n');
+  const samples: string[] = [];
+  const pending = [...parser.parse(source, {})].reverse();
+  while (pending.length) {
+    const token = pending.pop();
+    if (!token) continue;
+    if ((token.type === 'fence' || token.type === 'code_block') && token.map) samples.push(lines.slice(...token.map).join('\n'));
+    const span = spans.get(token);
+    if (span) {
+      let at = span.start + token.markup.length;
+      for (;;) {
+        const next = span.source.indexOf('`', at);
+        if (next < 0) throw new Error('Missing closing code delimiter');
+        at = next;
+        while (span.source[at] === '`') at++;
+        if (at - next === token.markup.length) break;
+      }
+      samples.push(span.source.slice(span.start, at));
+    }
+    if (token.children)
+      for (let at = token.children.length - 1; at >= 0; at--) {
+        const child = token.children[at];
+        if (child) pending.push(child);
+      }
+  }
+  return samples;
+};
 
-const markdown = new MarkdownIt({ html: true });
 const activeTags = ['script', 'style', 'iframe', 'object', 'embed'];
 const dangerousUrl = (value: string): boolean => {
   const normalized = Array.from(value.toLowerCase())
@@ -52,7 +81,20 @@ const dangerousUrl = (value: string): boolean => {
   // including raster images. There is no img-src exception in the reader.
   return normalized.startsWith('javascript:') || normalized.startsWith('vbscript:') || normalized.startsWith('data:');
 };
-const countElements = (root: DefaultTreeAdapterTypes.Node): number => {
+const readerDropsUrl = (value: string, property: string): boolean => {
+  const protocols = readerSanitizeSchema.protocols?.[property];
+  const colon = value.indexOf(':');
+  return (
+    !!protocols?.length &&
+    colon >= 0 &&
+    !['/', '?', '#'].some((delimiter) => {
+      const at = value.indexOf(delimiter);
+      return at >= 0 && at < colon;
+    }) &&
+    !protocols.includes(value.slice(0, colon))
+  );
+};
+const countElements = (root: DefaultTreeAdapterTypes.Node, marker: string): number => {
   const pending = [root];
   let count = 0;
   while (pending.length) {
@@ -60,8 +102,11 @@ const countElements = (root: DefaultTreeAdapterTypes.Node): number => {
     if (!node) continue;
     if ('tagName' in node && activeTags.includes(node.tagName)) count++;
     if ('attrs' in node) {
+      const isMarkdown = node.attrs.some(({ name }) => name === marker);
       count += node.attrs.filter(
-        ({ name, value }) => name.startsWith('on') || (['href', 'src', 'xlink:href'].includes(name) && dangerousUrl(value)),
+        ({ name, value }) =>
+          name.startsWith('on') ||
+          (['href', 'src', 'xlink:href'].includes(name) && (dangerousUrl(value) || (isMarkdown && readerDropsUrl(value, name)))),
       ).length;
     }
     if ('childNodes' in node) for (const child of node.childNodes) pending.push(child);
@@ -71,7 +116,21 @@ const countElements = (root: DefaultTreeAdapterTypes.Node): number => {
 
 /** Render with raw HTML enabled, then count actual elements, handlers and URLs,
  * including entity-encoded attribute values. Code literals are inert. */
-export const renderedActiveHtml = (source: string): number => countElements(parseFragment(markdown.render(source)));
+export const renderedActiveHtml = (source: string): number => {
+  // Mark generated links/images only, so the reader-URL rule does not mistake
+  // literal Markdown inside an HTML raw-text element for a rendered URL.
+  let marker = `data-export-${randomUUID()}`;
+  while (source.includes(marker)) marker = `data-export-${randomUUID()}`;
+  const parser = new MarkdownIt({ html: true });
+  for (const kind of ['link_open', 'image'] as const) {
+    const original = parser.renderer.rules[kind];
+    parser.renderer.rules[kind] = (tokens, at, options, env, self) => {
+      tokens[at]?.attrSet(marker, '');
+      return original ? original(tokens, at, options, env, self) : self.renderToken(tokens, at, options);
+    };
+  }
+  return countElements(parseFragment(parser.render(source)), marker);
+};
 
 const reader = unified()
   .use(remarkParse)
@@ -112,6 +171,7 @@ export const recordExportBaseline = (
     ),
     active: outputs.map((pair) => pair.map(renderedActiveHtml) as [number, number]),
     outputs: outputs.map((pair) => pair.map(exportHash) as [string, string]),
+    code: outputs.map((pair) => pair.map(exportCodeSamples) as [string[], string[]]),
   };
 };
 
@@ -122,6 +182,9 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
     duplicated: 0,
     reordered: 0,
     changedCode: 0,
+    inactiveChanged: 0,
+    inactiveChecks: 0,
+    active: 0,
     codeSamples: 0,
     newlyActive: 0,
     exceedsReader: 0,
@@ -131,11 +194,10 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
   const metadata: string[] = [];
   if (baseline.revision !== EXPORT_BASELINE_REVISION) metadata.push('wrong main revision');
   if (baseline.sources !== exportSourcesHash(cases)) metadata.push('generated sources changed');
-  if ([baseline.kept.length, baseline.active.length, baseline.outputs.length].some((count) => count !== cases.length))
+  if ([baseline.kept.length, baseline.active.length, baseline.outputs.length, baseline.code?.length].some((count) => count !== cases.length))
     metadata.push('missing baseline cases');
   for (const { index, source, markers } of cases) {
     const readerActive = readerSanitizedActiveHtml(source);
-    const code = exportCodeSamples(source);
     for (const target of [0, 1] as const) {
       const expected = baseline.kept[index]?.[target];
       const active = baseline.active[index]?.[target];
@@ -146,6 +208,7 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       }
       const output = projectors[target](source);
       const tally = stats[target] as (typeof stats)[number];
+      const code = baseline.code?.[index]?.[target] ?? [];
       const outputCode = exportCodeSamples(output);
       tally.codeSamples += code.length;
       for (const sample of code) {
@@ -153,16 +216,19 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
         tally.changedCode++;
         failures.push({ index, target, reason: `code bytes changed: ${JSON.stringify(sample.slice(0, 160))}` });
       }
+      // Literalizing an unsafe HTML span may entity-escape punctuation in a
+      // marker. Decode escapes only for prose preservation; code stays exact.
+      const literalOutput = new MarkdownIt().utils.unescapeAll(output);
       let lost = 0;
       let previous = -1;
       let duplicated = false;
       let reordered = false;
       for (const [bit, marker] of markers.entries()) {
         if ((expected & (1 << bit)) === 0) continue;
-        const at = output.indexOf(marker);
+        const at = literalOutput.indexOf(marker);
         if (at === -1) lost++;
         else {
-          if (output.indexOf(marker, at + marker.length) !== -1) duplicated = true;
+          if (literalOutput.indexOf(marker, at + marker.length) !== -1) duplicated = true;
           if (at <= previous) reordered = true;
           previous = at;
         }
@@ -181,6 +247,9 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
         failures.push({ index, target, reason: 'reordered markers' });
       }
       const outputActive = renderedActiveHtml(output);
+      tally.active += outputActive;
+      if (outputActive !== 0) failures.push({ index, target, reason: 'active HTML remains' });
+      if (active === 0) tally.inactiveChecks++;
       if (outputActive > active) {
         tally.newlyActive++;
         failures.push({ index, target, reason: 'newly active HTML' });
@@ -189,7 +258,13 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
         tally.exceedsReader++;
         failures.push({ index, target, reason: 'active HTML exceeds sanitized reader' });
       }
-      if (exportHash(output) !== hash) tally.differences++;
+      if (exportHash(output) !== hash) {
+        tally.differences++;
+        if (active === 0) {
+          tally.inactiveChanged++;
+          failures.push({ index, target, reason: 'inactive main output changed' });
+        }
+      }
     }
   }
   return { metadata, stats, failures };

@@ -1,278 +1,381 @@
-import type { Element, Root, RootContent } from 'hast';
-import { fromMarkdown } from 'mdast-util-from-markdown';
-import { gfmFromMarkdown } from 'mdast-util-gfm';
-import { gfm } from 'micromark-extension-gfm';
-import { Tokenizer } from 'parse5';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkRehype from 'remark-rehype';
-import { unified } from 'unified';
-import { exportMarkdownStructure } from './export-markdown-structure';
+import MarkdownIt from 'markdown-it';
+import type StateInline from 'markdown-it/lib/rules_inline/state_inline.mjs';
+import type Token from 'markdown-it/lib/token.mjs';
+import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import { readerSanitizeSchema } from './reader-sanitize';
 
-const sanitize = rehypeSanitize(readerSanitizeSchema);
-const htmlParser = unified().use(remarkRehype, { allowDangerousHtml: true }).use(rehypeRaw);
-const MAX_HTML_DEPTH = 64;
-// Structural accounting only; the reader schema remains the HTML allow-list.
-const VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
-const elementsByOffset = (root: Root): Map<number, Element> => {
-  const elements = new Map<number, Element>();
-  const pending: (Root | RootContent)[] = [root];
+const ACTIVE_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed']);
+const RAW_TEXT_TAGS = new Set(['textarea', 'title', 'xmp', 'noembed', 'noframes', 'plaintext', 'noscript']);
+const dangerousUrl = (value: string): boolean => {
+  const address = Array.from(value.toLowerCase())
+    .filter((character) => character.charCodeAt(0) > 32 && character.charCodeAt(0) !== 127)
+    .join('');
+  return address.startsWith('javascript:') || address.startsWith('vbscript:') || address.startsWith('data:');
+};
+
+// The reader's hast-util-sanitize protocol check, using its actual schema.
+const readerAllowsUrl = (value: string, property: string): boolean => {
+  const protocols = readerSanitizeSchema.protocols?.[property];
+  if (!protocols?.length) return true;
+  const colon = value.indexOf(':');
+  if (
+    colon < 0 ||
+    ['/', '?', '#'].some((delimiter) => {
+      const at = value.indexOf(delimiter);
+      return at >= 0 && at < colon;
+    })
+  )
+    return true;
+  return protocols.some((protocol) => value.slice(0, colon) === protocol);
+};
+
+interface Destination {
+  source: string;
+  from: number;
+  to: number;
+  wholeSource: boolean;
+}
+interface InlineLocation {
+  state: StateInline;
+  pos: number;
+  labelEnd: number;
+}
+interface RenderSpan {
+  token: Token;
+  from: number;
+  to: number;
+  positions: number[];
+}
+
+/** One Markdown parse, using the guard's renderer. Only unsafe rendered spans
+ * are edited; original prose, MDX policy and all code tokens stay untouched. */
+export const escapeDisallowedExportHtml = (source: string): string => {
+  const lower = source.toLowerCase();
+  // References also need inspection: their schemes can contain character references.
+  if (!source.includes('<') && !source.includes('](') && !source.includes(']:') && !lower.includes('data:') && !lower.includes('javascript:'))
+    return source;
+  const offsets: number[] = [];
+  const normalized: string[] = [];
+  for (let at = 0; at < source.length; at++) {
+    offsets.push(at);
+    const character = source[at];
+    normalized.push(character === '\r' ? '\n' : character === '\0' ? '\uFFFD' : (character ?? ''));
+    if (character === '\r' && source[at + 1] === '\n') at++;
+  }
+  offsets.push(source.length);
+  const input = normalized.join('');
+  const lines = input.split('\n');
+  const lineStarts = [0];
+  for (const line of lines) lineStarts.push((lineStarts.at(-1) ?? 0) + line.length + 1);
+  const lineCursors = new Uint32Array(lines.length);
+  let tableDepth = 0;
+  const tableLines = new Map<number, { text: string; positions: number[] }>();
+  const positionsFor = (content: string, map: [number, number]): number[] => {
+    const positions: number[] = [];
+    let lineAt = map[0];
+    for (const line of content.split('\n')) {
+      const raw = lines[lineAt] ?? '';
+      let row = tableLines.get(lineAt);
+      if (tableDepth && !row && raw.includes('\\|')) {
+        const text: string[] = [];
+        const positions: number[] = [];
+        for (let at = 0; at < raw.length; at++) {
+          if (raw[at] === '\\' && raw[at + 1] === '|') continue;
+          text.push(raw[at] ?? '');
+          positions.push((lineStarts[lineAt] ?? 0) + at);
+        }
+        positions.push((lineStarts[lineAt] ?? 0) + raw.length);
+        row = { text: text.join(''), positions };
+        tableLines.set(lineAt, row);
+      }
+      const original = tableDepth && row ? row.text : raw;
+      const sourceAt = (at: number) =>
+        offsets[tableDepth && row ? (row.positions[at] ?? input.length) : (lineStarts[lineAt] ?? 0) + at] ?? source.length;
+      let leading = 0;
+      while (line[leading] === ' ' || line[leading] === '\t') leading++;
+      let cursor = original.indexOf(line, lineCursors[lineAt] ?? 0);
+      if (cursor >= 0) {
+        for (let at = 0; at < line.length; at++) positions.push(sourceAt(cursor + at));
+        cursor += line.length;
+      } else {
+        cursor = lineCursors[lineAt] ?? 0;
+        const tail = original.indexOf(line.slice(leading), cursor);
+        let leadingAt = tail >= 0 ? tail : cursor;
+        let columns = leading;
+        while (leadingAt > cursor && columns > 0 && [' ', '\t'].includes(original[leadingAt - 1] ?? '')) {
+          columns -= original[leadingAt - 1] === '\t' ? 4 : 1;
+          leadingAt--;
+        }
+        if (tail >= 0) cursor = tail;
+        for (let at = 0; at < line.length; at++) {
+          if (at < leading) {
+            positions.push(sourceAt(leadingAt));
+            continue;
+          }
+          const found = original.indexOf(line[at] ?? '', cursor);
+          if (found >= 0) cursor = found;
+          positions.push(sourceAt(cursor));
+          if (found >= 0) cursor++;
+        }
+      }
+      lineCursors[lineAt] = cursor;
+      positions.push(sourceAt(original.length));
+      lineAt++;
+    }
+    positions.length = content.length;
+    return positions;
+  };
+
+  const urlDecisions = new Map<string, Map<string, boolean>>();
+  const allowsUrl = (value: string, property: string) => {
+    let decisions = urlDecisions.get(property);
+    if (!decisions) {
+      decisions = new Map();
+      urlDecisions.set(property, decisions);
+    }
+    let allowed = decisions.get(value);
+    if (allowed === undefined) {
+      allowed = readerAllowsUrl(value, property);
+      decisions.set(value, allowed);
+    }
+    return allowed;
+  };
+  const markdown = new MarkdownIt({ html: true });
+  let wholeSource = true;
+  markdown.core.ruler.after('block', 'export_url_positions', () => {
+    wholeSource = false;
+  });
+  const boundaryTokens = new WeakSet<Token>();
+  const BaseBlockState = markdown.block.State;
+  markdown.block.State = class extends BaseBlockState {
+    override push(type: string, tag: string, nesting: Token['nesting']): Token {
+      const token = super.push(type, tag, nesting);
+      if (type !== 'html_block' || this.line >= this.lineMax || this.isEmpty(this.line)) return token;
+      // html_block has advanced line, but its container state is still in
+      // scope. Ask the paragraph rules whether the next block interrupts text.
+      const parent = this.parentType;
+      this.parentType = 'paragraph';
+      const indented = (this.sCount[this.line] ?? 0) - this.blkIndent > 3;
+      const terminates = !indented && this.md.block.ruler.getRules('paragraph').some((rule) => rule(this, this.line, this.lineMax, true));
+      this.parentType = parent;
+      const next = this.src.slice((this.bMarks[this.line] ?? 0) + (this.tShift[this.line] ?? 0), this.eMarks[this.line]).trim();
+      // A dash-only rule would become a setext underline after HTML is text.
+      const setext = next.length > 0 && Array.from(next).every((character) => character === '-');
+      if (!terminates || setext) boundaryTokens.add(token);
+      return token;
+    }
+  };
+  const locations = new WeakMap<Token, InlineLocation>();
+  const BaseState = markdown.inline.State;
+  markdown.inline.State = class extends BaseState {
+    override push(type: string, tag: string, nesting: Token['nesting']): Token {
+      const token = super.push(type, tag, nesting);
+      if (type === 'html_inline' || type === 'link_open' || type === 'image')
+        locations.set(token, { state: this, pos: this.pos, labelEnd: this.posMax });
+      return token;
+    }
+  };
+  const destinations = new Map<string, Map<number, Destination>>();
+  let latest: Destination | undefined;
+  const parseDestination = markdown.helpers.parseLinkDestination;
+  markdown.helpers.parseLinkDestination = (text: string, from: number, max: number) => {
+    const result = parseDestination(text, from, max);
+    if (result.ok) {
+      latest = { source: text, from, to: result.pos, wholeSource };
+      let entries = destinations.get(text);
+      if (!entries) {
+        entries = new Map();
+        destinations.set(text, entries);
+      }
+      entries.set(from, latest);
+    }
+    return result;
+  };
+  const referenceDestinations = new Map<string, Destination>();
+  const references = new Proxy<Record<string, { href: string; title: string }>>(
+    {},
+    {
+      set(target, key, value: { href: string; title: string }) {
+        if (typeof key !== 'string') return false;
+        target[key] = value;
+        if (latest) referenceDestinations.set(key, latest);
+        return true;
+      },
+    },
+  );
+  const env = { references };
+  const tokens = markdown.parse(input, env);
+  const chunks: string[] = [];
+  const spans: RenderSpan[] = [];
+  let length = 0;
+  let map: [number, number] = [0, lines.length];
+  // This is markdown-it's render/renderInline loop with output offsets recorded.
+  const frames = [{ tokens, at: 0, positions: [] as number[] }];
+  while (frames.length) {
+    const frame = frames.at(-1);
+    if (!frame) break;
+    const token = frame.tokens[frame.at++];
+    if (!token) {
+      frames.pop();
+      continue;
+    }
+    if (token.type === 'table_open') tableDepth++;
+    if (token.type === 'table_close') tableDepth--;
+    if (token.map) map = token.map;
+    if (token.type === 'inline') {
+      frames.push({ tokens: token.children ?? [], at: 0, positions: positionsFor(token.content, token.map ?? map) });
+      continue;
+    }
+    const rule = markdown.renderer.rules[token.type];
+    const attributes = token.attrs;
+    // Reference destinations/titles may be shared by many links. Their values
+    // cannot change HTML parsing, so do not expand them in the analysis render.
+    if (token.type === 'link_open' || token.type === 'image')
+      token.attrs = attributes?.map(([name, value]) => [name, name === 'href' || name === 'src' ? '#' : name === 'title' ? '' : value]) ?? null;
+    const value = rule
+      ? rule(frame.tokens, frame.at - 1, markdown.options, env, markdown.renderer)
+      : markdown.renderer.renderToken(frame.tokens, frame.at - 1, markdown.options);
+    token.attrs = attributes;
+    let positions = frame.positions;
+    if (token.type === 'html_block') positions = positionsFor(token.content, token.map ?? map);
+    if (token.type === 'html_block' || token.type === 'html_inline' || token.type === 'link_open' || token.type === 'image')
+      spans.push({ token, from: length, to: length + value.length, positions });
+    chunks.push(value);
+    length += value.length;
+  }
+  const html = chunks.join('');
+  const owners = new Int32Array(html.length);
+  for (const [index, span] of spans.entries()) owners.fill(index + 1, span.from, span.to);
+  const unsafe = new Int32Array(html.length + 1);
+  const mark = (from: number, to: number) => {
+    unsafe[from] = (unsafe[from] ?? 0) + 1;
+    unsafe[to] = (unsafe[to] ?? 0) - 1;
+  };
+  const pending: DefaultTreeAdapterTypes.Node[] = [parseFragment(html, { sourceCodeLocationInfo: true })];
   while (pending.length) {
     const node = pending.pop();
     if (!node) continue;
-    const offset = node.position?.start?.offset;
-    if (node.type === 'element' && offset !== undefined) elements.set(offset, node);
-    if ('children' in node) for (const child of node.children) pending.push(child);
-  }
-  return elements;
-};
-
-const keepsElement = (original: Element, clean: Element | undefined): boolean =>
-  original.tagName === clean?.tagName &&
-  Object.entries(original.properties).every(([name, value]) => {
-    const kept = clean.properties[name];
-    // The reader prefixes IDs/names to prevent DOM clobbering; that keeps the attribute.
-    if (readerSanitizeSchema.clobber?.includes(name) && kept === `${readerSanitizeSchema.clobberPrefix}${value}`) return true;
-    return JSON.stringify(value) === JSON.stringify(kept);
-  });
-
-/** Check the *projected* Markdown, not the MDX tokenizer's code guesses. Its quote/list
- * fence can end before the tokenizer thinks it does (#633). CommonMark identifies the
- * HTML a downstream renderer sees; parse5 and the reader schema decide what is allowed.
- * Escape only rejected delimiters (and raw-text contents), never discard author text or
- * serialize the document. Allowed sibling/child tags and real code retain their bytes.
- *
- * A malformed MDX container can move source code into HTML or prose. If a
- * projection cannot retain those code bytes, preserve the authored Markdown
- * and apply the same HTML safety boundary to it instead. Ordered searches advance
- * past each match; they do not rescan the document for every code sample. */
-export const escapeDisallowedExportHtml = (projected: string, authored = projected): string => {
-  const structures = new Map<string, ReturnType<typeof exportMarkdownStructure>>();
-  const structure = (source: string) => {
-    let parsed = structures.get(source);
-    if (!parsed) {
-      parsed = exportMarkdownStructure(source);
-      structures.set(source, parsed);
-    }
-    return parsed;
-  };
-  const output = escapeProjectedHtml(projected, structure);
-  if (authored === projected) return output;
-  const expected = structure(authored).code;
-  if (!expected.length) return output;
-  const actual = structure(output)
-    .code.map((code) => code.value)
-    .join('\0');
-  let cursor = 0;
-  for (const code of expected) {
-    const found = actual.indexOf(code.value, cursor);
-    if (found < 0) return escapeProjectedHtml(authored, structure);
-    cursor = found + code.value.length;
-  }
-  return output;
-};
-
-const escapeProjectedHtml = (source: string, parseStructure: typeof exportMarkdownStructure): string => {
-  if (!source.includes('<') && !source.includes('[')) return source;
-  const structure = parseStructure(source);
-  const escaped = new Uint8Array(source.length);
-  const blockEnds = new Set<number>();
-  const fallback = new Set<number>();
-  for (const [index, block] of structure.blocks.entries()) {
-    if (block.limited) fallback.add(index);
-  }
-  // HTML can nest across Markdown blocks. Track its actual HTML tokens only,
-  // with O(1) matching lookups and amortized O(n) pops; code is never tokenized here.
-  const stack: string[] = [];
-  const byName = new Map<string, number[]>();
-  let tooDeep = false;
-  let groupStart = 0;
-  const markGroup = (end: number) => {
-    if (tooDeep) for (let at = groupStart; at <= end; at++) fallback.add(at);
-    tooDeep = false;
-  };
-  for (const [index, block] of structure.blocks.entries())
-    for (const range of block.html) {
-      const tokens = new Tokenizer(
-        {},
-        {
-          onStartTag: ({ tagName, selfClosing }) => {
-            if (selfClosing || VOID_ELEMENTS.has(tagName)) return;
-            if (!stack.length) groupStart = index;
-            const matches = byName.get(tagName) ?? [];
-            matches.push(stack.length);
-            byName.set(tagName, matches);
-            stack.push(tagName);
-            if (stack.length > MAX_HTML_DEPTH) tooDeep = true;
-          },
-          onEndTag: ({ tagName }) => {
-            const match = byName.get(tagName)?.at(-1);
-            if (match === undefined) return;
-            while (stack.length > match) {
-              const entry = stack.pop();
-              if (entry) byName.get(entry)?.pop();
-            }
-            if (!stack.length) markGroup(index);
-          },
-          onComment: () => undefined,
-          onDoctype: () => undefined,
-          onEof: () => undefined,
-          onCharacter: () => undefined,
-          onNullCharacter: () => undefined,
-          onWhitespaceCharacter: () => undefined,
-        },
+    if ('tagName' in node && node.sourceCodeLocation) {
+      const location = node.sourceCodeLocation;
+      const span = spans[(owners[location.startOffset] ?? 0) - 1];
+      const unsafeAttributes = node.attrs.some(
+        ({ name, value }) => name.startsWith('on') || (['href', 'src', 'xlink:href'].includes(name) && dangerousUrl(value)),
       );
-      tokens.write(source.slice(range.from, range.to), true);
-    }
-  if (tooDeep) markGroup(structure.blocks.length - 1);
-  const markFallback = (index: number) => {
-    const block = structure.blocks[index];
-    if (!block) return;
-    for (const range of block.html) {
-      for (let at = range.from; at < range.to; at++) {
-        if (structure.protectedCode[at]) continue;
-        if (source[at] === '<') escaped[at] = 1;
-        if (source[at] === '[') escaped[at] = 3;
-        if (source[at] === '`' || source[at] === '~') escaped[at] = 2;
-      }
-      if (range.block && range.to < source.length && !source.startsWith('\n\n', range.to) && !source.startsWith('\r\n\r\n', range.to))
-        blockEnds.add(range.to);
-    }
-    for (const range of block.links)
-      for (let at = range.from; at < range.to; at++) {
-        if (structure.protectedCode[at]) continue;
-        if (source[at] === '<') escaped[at] = 1;
-        if (source[at] === '[') escaped[at] = 3;
-      }
-  };
-  const input = source.split('');
-  for (const index of fallback) {
-    markFallback(index);
-    const block = structure.blocks[index];
-    if (block) for (let at = block.from; at < block.to; at++) if (source[at] !== '\n' && source[at] !== '\r') input[at] = ' ';
-  }
-  try {
-    escapeParsedHtml(source, input.join(''), structure.protectedCode, escaped, blockEnds);
-  } catch (error) {
-    if (!(error instanceof RangeError)) throw error;
-    // Unexpected library recursion still uses parsed source ranges, never a
-    // whole-document character replacement that could corrupt literal code.
-    for (const [index] of structure.blocks.entries()) markFallback(index);
-  }
-  const parts: string[] = [];
-  let cursor = 0;
-  for (let at = 0; at < source.length; at++) {
-    if (blockEnds.has(at)) {
-      parts.push(source.slice(cursor, at), '\n');
-      cursor = at;
-    }
-    if (!escaped[at] || structure.protectedCode[at]) continue;
-    parts.push(source.slice(cursor, at), escaped[at] === 1 ? '&lt;' : escaped[at] === 3 ? '&#91;' : source[at] === '`' ? '&#96;' : '&#126;');
-    cursor = at + 1;
-  }
-  parts.push(source.slice(cursor));
-  return parts.join('');
-};
-
-const escapeParsedHtml = (source: string, input: string, protectedCode: Uint8Array, escaped: Uint8Array, blockEnds: Set<number>): void => {
-  const markdown = fromMarkdown(input, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
-  const tree = htmlParser.runSync(markdown, input);
-  const original = elementsByOffset(tree);
-  const clean = elementsByOffset(sanitize(tree));
-  const markAngles = (from: number, to: number): boolean => {
-    let changed = false;
-    for (let at = from; at < to; at++) {
-      if (source[at] !== '<' || protectedCode[at]) continue;
-      escaped[at] = 1;
-      changed = true;
-    }
-    return changed;
-  };
-  for (const [offset, element] of original) {
-    if (keepsElement(element, clean.get(offset))) continue;
-    // Escaping a raw-text opener exposes its literal contents to HTML parsing.
-    for (const child of element.children) {
-      if (child.type === 'text' && child.position?.start?.offset !== undefined && child.position.end?.offset !== undefined) {
-        markAngles(child.position.start.offset, child.position.end.offset);
+      if (ACTIVE_TAGS.has(node.tagName) || (RAW_TEXT_TAGS.has(node.tagName) && unsafeAttributes))
+        mark(location.startOffset, location.endOffset > location.startOffset ? location.endOffset : html.length);
+      else if (unsafeAttributes) mark(location.startOffset, location.startTag?.endOffset ?? location.endOffset);
+      else if (span && ['link_open', 'image'].includes(span.token.type)) {
+        const property = span.token.type === 'image' ? 'src' : 'href';
+        if (!allowsUrl(span.token.attrGet(property) ?? '', property)) mark(location.startOffset, location.startTag?.endOffset ?? location.endOffset);
       }
     }
+    if ('childNodes' in node) for (const child of node.childNodes) pending.push(child);
   }
-  const pending = markdown.children.map((node) => ({ node, inline: false }));
-  while (pending.length) {
-    const entry = pending.pop();
-    if (!entry) continue;
-    const { node, inline } = entry;
-    if ('children' in node) {
-      for (const child of node.children) pending.push({ node: child, inline: ['paragraph', 'heading', 'tableCell'].includes(node.type) });
-    }
-    const start = node.position?.start.offset;
-    const end = node.position?.end.offset;
-    if (start === undefined || end === undefined) continue;
-    // Use the reader's actual data-URL decision for inline and reference links/images.
-    // This also covers destinations exposed by a projected container. Rejected
-    // URLs stay as literal source, with their labels and destinations preserved.
-    if (['link', 'image', 'linkReference', 'imageReference'].includes(node.type)) {
-      const element = original.get(start);
-      const property = element?.tagName === 'img' ? 'src' : 'href';
-      const address = Array.from(String(element?.properties[property] ?? '').toLowerCase())
-        .filter((character) => character.charCodeAt(0) > 32 && character.charCodeAt(0) !== 127)
-        .join('');
-      if (address.startsWith('data:') && clean.get(start)?.properties[property] === undefined) {
-        markAngles(start, end);
-        for (let at = start; at < end; at++) if (source[at] === '[' && !protectedCode[at]) escaped[at] = 3;
+  let depth = 0;
+  let count = 0;
+  for (let at = 0; at < unsafe.length; at++) {
+    depth += unsafe[at] ?? 0;
+    unsafe[at] = count;
+    if (depth > 0) count++;
+  }
+  if (!count) return source;
+  const escaped = new Uint8Array(source.length);
+  const replacements = new Map<number, number>();
+  const boundaries = new Map<number, string>();
+  for (const span of spans) {
+    if (unsafe[span.from] === unsafe[span.to]) continue;
+    const { token, positions } = span;
+    const info = locations.get(token);
+    if (token.type === 'html_block' || token.type === 'html_inline') {
+      const start = token.type === 'html_block' ? 0 : (info?.pos ?? 0);
+      const markLiteral = (at: number) => {
+        const from = positions[start + at];
+        if (from !== undefined) escaped[from] = source[from] === '<' ? 1 : source.charCodeAt(from);
+      };
+      // An HTML token was literal on main. Keep it literal after its opener
+      // becomes text: do not expose links, code, MDX or new block containers.
+      let lineStart = 0;
+      for (let at = 0; at < token.content.length; at++) {
+        const character = token.content[at] ?? '';
+        if ('<[`~\\*_{'.includes(character)) markLiteral(at);
+        if (at !== lineStart) continue;
+        let first = at;
+        let indent = 0;
+        while (token.content[first] === ' ' || token.content[first] === '\t') {
+          indent += token.content[first] === '\t' ? 4 : 1;
+          first++;
+        }
+        if (indent >= 4) markLiteral(at);
+        const marker = token.content[first];
+        if (marker && '>+-#='.includes(marker)) markLiteral(first);
+        let end = first;
+        while (end < first + 9 && (token.content[end] ?? '') >= '0' && (token.content[end] ?? '') <= '9') end++;
+        if (end > first && (token.content[end] === '.' || token.content[end] === ')') && [' ', '\t', '\n', ''].includes(token.content[end + 1] ?? ''))
+          markLiteral(end);
+        const newline = token.content.indexOf('\n', at);
+        lineStart = newline < 0 ? token.content.length : newline + 1;
+      }
+      if (boundaryTokens.has(token) && token.content.endsWith('\n')) {
+        const newline = positions[token.content.length - 1];
+        const lastLine = token.content.lastIndexOf('\n', token.content.length - 2) + 1;
+        const first = positions[lastLine];
+        if (newline !== undefined && first !== undefined) {
+          const physicalStart = source.lastIndexOf('\n', first - 1) + 1;
+          const prefix = Array.from(source.slice(physicalStart, first), (character) =>
+            character === '>' || character === ' ' || character === '\t' ? character : ' ',
+          ).join('');
+          const ending = source[newline] === '\r' && source[newline + 1] === '\n' ? '\r\n' : source[newline];
+          if (ending) boundaries.set(newline + ending.length, prefix + ending);
+        }
       }
       continue;
     }
-    if (node.type !== 'html') continue;
-    let changed = false;
-    const mark = (from: number, to: number) => {
-      changed = markAngles(from, to) || changed;
-    };
-    // Slice source rather than node.value: container prefixes must keep their offsets.
-    const value = source.slice(start, end);
-    // The tree builder ignores unmatched closing tags and declarations. They still
-    // need escaping when the reader does not allow them; use HTML tokens, not a tag regex.
-    const tags = new Tokenizer(
-      { sourceCodeLocationInfo: true },
-      {
-        onStartTag: (token) => {
-          if (!token.location) return;
-          const before = original.get(start + token.location.startOffset);
-          if (!before || !keepsElement(before, clean.get(start + token.location.startOffset))) {
-            mark(start + token.location.startOffset, start + token.location.endOffset);
-          }
-        },
-        onEndTag: (token) => {
-          if (!readerSanitizeSchema.tagNames?.includes(token.tagName) && token.location) {
-            mark(start + token.location.startOffset, start + token.location.endOffset);
-          }
-        },
-        onDoctype: (token) => {
-          if (token.location) mark(start + token.location.startOffset, start + token.location.endOffset);
-        },
-        onComment: (token) => {
-          if (token.location) mark(start + token.location.startOffset, start + token.location.endOffset);
-        },
-        onEof: () => undefined,
-        onCharacter: () => undefined,
-        onNullCharacter: () => undefined,
-        onWhitespaceCharacter: () => undefined,
-      },
-    );
-    tags.write(value, true);
-    // Markdown inside an HTML node was literal text. Once its opener is escaped,
-    // keep fences and link/image brackets literal: they must not expose later HTML
-    // or turn a previously inert data: destination into a live href/src.
-    if (changed) {
-      // HTML blocks cannot lazily continue a surrounding list/quote paragraph.
-      // Keep that boundary when the escaped opener becomes ordinary prose.
-      if (!inline && end < source.length && !source.startsWith('\n\n', end) && !source.startsWith('\r\n\r\n', end)) blockEnds.add(end);
-      for (let at = start; at < end; at++) {
-        if (protectedCode[at]) continue;
-        if (source[at] === '`' || source[at] === '~') escaped[at] = 2;
-        if (source[at] === '[') escaped[at] = 3;
+    const property = token.type === 'image' ? 'src' : 'href';
+    if (!info || allowsUrl(token.attrGet(property) ?? '', property)) continue;
+    if (token.markup === 'autolink') {
+      escaped[positions[info.pos] ?? source.length] = 1;
+      continue;
+    }
+    const start = token.type === 'image' ? info.pos : info.pos - 1;
+    const labelEnd = token.type === 'image' ? markdown.helpers.parseLinkLabel(info.state, start + 1, false) : info.labelEnd;
+    let at = labelEnd + 1;
+    let destination: Destination | undefined;
+    if (info.state.src[at] === '(') {
+      at++;
+      while ([' ', '\t', '\n'].includes(info.state.src[at] ?? '')) at++;
+      destination = destinations.get(info.state.src)?.get(at);
+    } else {
+      const labelStart = start + (token.type === 'image' ? 2 : 1);
+      let label = info.state.src.slice(labelStart, labelEnd);
+      if (info.state.src[at] === '[') {
+        const end = markdown.helpers.parseLinkLabel(info.state, at, false);
+        if (end >= 0) label = info.state.src.slice(at + 1, end) || label;
       }
+      destination = referenceDestinations.get(markdown.utils.normalizeReference(label));
+    }
+    if (!destination) throw new Error('Missing parsed export link destination');
+    const from = destination.wholeSource ? offsets[destination.from] : positions[destination.from];
+    const last = destination.wholeSource ? offsets[destination.to - 1] : positions[destination.to - 1];
+    if (from !== undefined && last !== undefined) replacements.set(from, last + 1);
+  }
+  const output: string[] = [];
+  let cursor = 0;
+  for (let at = 0; at < source.length; at++) {
+    const boundary = boundaries.get(at);
+    if (boundary !== undefined) {
+      output.push(source.slice(cursor, at), boundary);
+      cursor = at;
+    }
+    const end = replacements.get(at);
+    if (end !== undefined) {
+      output.push(source.slice(cursor, at), '#');
+      cursor = end;
+      at = end - 1;
+    } else if (escaped[at]) {
+      output.push(source.slice(cursor, at), escaped[at] === 1 ? '&lt;' : `&#${source.charCodeAt(at)};`);
+      cursor = at + 1;
     }
   }
+  output.push(source.slice(cursor));
+  return output.join('');
 };

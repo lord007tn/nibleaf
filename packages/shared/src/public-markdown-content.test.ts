@@ -93,12 +93,13 @@ describe('projected link destinations', () => {
     expect(output).toContain('Related');
   });
 
-  it.each(['/guide', 'guide/setup', '#install', 'https://example.com/a?b=1', 'mailto:team@example.com', 'tel:+15550100'])(
-    'keeps the safe destination %j',
-    (href) => {
-      expect(portablePublicMdxMarkdown(`<Button href="${href}">Go</Button>`)).toBe(`[Go](${href})`);
-    },
-  );
+  it.each(['/guide', 'guide/setup', '#install', 'https://example.com/a?b=1', 'mailto:team@example.com'])('keeps the safe destination %j', (href) => {
+    expect(portablePublicMdxMarkdown(`<Button href="${href}">Go</Button>`)).toBe(`[Go](${href})`);
+  });
+
+  it('neutralizes a tel destination that the reader strips, keeping its label', () => {
+    expect(portablePublicMdxMarkdown('<Button href="tel:+15550100">Go</Button>')).toBe('[Go](#)');
+  });
 
   it('keeps a destination that tries to close its link and open another inside one link', () => {
     const output = portablePublicMdxMarkdown('<Button href="/) [Injected](javascript:alert%281%29">Go</Button>');
@@ -196,9 +197,9 @@ describe('public Markdown projection safety (#341)', () => {
     expect(output).toContain('continues');
   });
 
-  it('lets an unclosed <style> hide at most its own stretch of prose, never later code', () => {
+  it('neutralizes live HTML when main joins an inline unclosed style to a fence', () => {
     const output = md(`Text <style>\nhidden\n\n${fence}\n\nAfter`);
-    expect(output).toContain(fence);
+    expect(output).toBe(`Text ${fence.replaceAll('<', '&lt;')}\n\nAfter`);
     expect(output).not.toMatch(/<\/?style/i);
   });
 

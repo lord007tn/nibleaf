@@ -284,12 +284,8 @@ const renderNodes = (nodes: readonly MdxNode[], target: Target): Segment[] =>
       // sees an unpaired formatting tag.
       case 'stray':
         return target === 'markdown' ? [{ kind: 'text', value: node.value }] : [markup(node.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'))];
-      // `.md` drops what would run or import; portable export keeps its text for
-      // the shared HTML safety pass below.
+      // `.md` drops what would run or import; the exports show it as source, escaped by `marked`.
       case 'active':
-        // Removing an unclosed raw-text block must not join the preceding prose to
-        // the next fence opener: that would turn its literal sample into live HTML.
-        return target === 'markdown' ? (node.value.endsWith('\n') ? [markup('\n')] : []) : [{ kind: 'text', value: node.value }];
       case 'expression':
       case 'esm':
         return target === 'markdown' ? [] : [{ kind: 'text', value: node.value }];
@@ -305,14 +301,13 @@ const renderNodes = (nodes: readonly MdxNode[], target: Target): Segment[] =>
 
 const projectMdx = (source: string, target: Target): Segment[] => renderNodes(buildMdxTree(tokenizeMdx(source, COMPONENT_NAMES)), target);
 
-/** Convert supported MDX for portable export, then escape HTML rejected by the reader.
- * Real Markdown code and allowed HTML retain their bytes. */
+/** Convert supported authored MDX to inert Markdown for the HTML and PDF exports, with the same
+ *  tokenizer and projection as `.md`. Code is never rewritten; `marked` escapes raw HTML. */
 export const portablePublicMdxMarkdown = (source: string): string =>
   escapeDisallowedExportHtml(
     projectMdx(source, 'export')
       .map((segment) => segment.value)
       .join(''),
-    source,
   );
 
 /** Authored MDX as public Markdown (`.md`, llms files): projected, with active markup, MDX
@@ -328,7 +323,7 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
     const newline = value.lastIndexOf('\n');
     atLineStart = newline < 0 ? atLineStart && onlyMarkers(value) : onlyMarkers(value.slice(newline + 1));
   };
-  for (const segment of trimSegments(projectMdx(markdown, 'markdown'))) {
+  for (const segment of projectMdx(markdown, 'markdown')) {
     if (segment.kind === 'code' || segment.kind === 'markup') {
       append(segment.value);
       continue;
@@ -346,5 +341,5 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
         .join('\n'),
     );
   }
-  return escapeDisallowedExportHtml(parts.join(''), markdown);
+  return escapeDisallowedExportHtml(parts.join('').trim());
 };
