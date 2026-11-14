@@ -586,7 +586,7 @@ describe('Feedback, AI visibility and performance', () => {
     };
     mocks.ai.mockReturnValue(ready(data));
     const view = await render(<AiSection />);
-    expect(text(view)).toContain(locale === 'en' ? 'Workspace key' : 'مفتاح مساحة العمل');
+    expect(text(view)).toContain(locale === 'en' ? 'Organization key' : 'مفتاح المؤسسة');
     expect(text(view)).toContain(locale === 'en' ? 'Instance (Nibleaf) key' : 'مفتاح المثيل (Nibleaf)');
     expect(text(view)).toContain('openai / fictional-model');
     expect(text(view)).toContain('openrouter / fictional-fallback');

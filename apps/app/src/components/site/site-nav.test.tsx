@@ -58,6 +58,23 @@ describe('SiteNav page subtrees', () => {
     expect(quickstart?.closest('ul')?.parentElement?.tagName).toBe('NAV');
   });
 
+  it('names the list each section toggle controls, while it is shown (P3-PUB-029)', async () => {
+    const section = (id: string, children: NavNode[]): NavNode => ({ id, kind: 'GROUP', title: id, path: '', icon: null, tag: null, children });
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const tree = [section('Guides', [page('start'), section('Advanced', [page('tuning')])])];
+    await act(async () => root.render(<SiteNav nodes={tree} projectId="docs" currentPath="start" toggleLabel="Toggle subpages" />));
+    const toggles = Array.from(container.querySelectorAll<HTMLButtonElement>('li > button[aria-expanded="true"]'));
+    expect(toggles.length).toBeGreaterThan(0);
+    for (const toggle of toggles) {
+      const controlled = toggle.getAttribute('aria-controls');
+      expect(controlled).toBeTruthy();
+      expect(container.querySelector(`[id="${controlled}"]`)).not.toBeNull();
+    }
+  });
+
   it('collapses pages with subpages unless the current page is inside them', async () => {
     const { container } = await renderNav('faq');
     expect(visibleTitles(container)).toEqual(['guide', 'faq']);
