@@ -1,0 +1,1525 @@
+{
+  "attempted": 0,
+  "results": [
+    {
+      "name": "after-empty-en-1440-light.png",
+      "phase": "after",
+      "state": "empty",
+      "query": "/",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 803,
+        "bottom": 692
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "TextPlain paragraph text.",
+        "Heading 1Large section heading.",
+        "Heading 2Medium section heading.",
+        "Heading 3Small section heading.",
+        "Bullet listA simple bulleted list.",
+        "Numbered listAn ordered, numbered list.",
+        "To-do listTrack tasks with checkboxes.",
+        "QuoteCapture a quotation."
+      ],
+      "selected": "TextPlain paragraph text.",
+      "headings": [
+        "SuggestedTextPlain paragraph text.Heading 1Large section heading.Heading 2Medium section heading.Heading 3Small section heading.Bullet listA simple bulleted list.Numbered listAn ordered, numbered list.",
+        "Suggested",
+        "Basic blocksTo-do listTrack tasks with checkboxes.QuoteCapture a quotation.Code blockSyntax-highlighted code.Mermaid diagramA flowchart or sequence diagram.DividerA horizontal rule.",
+        "Basic blocks",
+        "Notes & warningsNoteA neutral informational note.TipA practical recommendation.InfoHelpful context for the reader.CheckA successful or verified outcome.WarningSomething the reader should avoid.DangerA destructive or high-risk action.BannerA prominent announcement block.",
+        "Notes & warnings",
+        "Media & tablesImageUpload or embed an image.VideoEmbed a YouTube, Vimeo, Loom or Wistia video, or a video file.EmbedShow a page from another site by its https address.TableInsert a 3×3 table.FrameA framed image with a caption.",
+        "Media & tables",
+        "LayoutTabsTabbed content panes.StepsA numbered step-by-step guide.AccordionCollapsible sections.ExpandableA collapsible disclosure section.2 columnsA responsive two-column layout.3 columnsA responsive three-column layout.4 columnsA responsive four-column layout.CardA linkable card for a related resource.Card groupA grid of linkable cards.3-card gridA responsive grid with 3 cards.4-card gridA responsive grid with 4 cards.Related contentA group of links for continued reading.Related cardA link to a related documentation page.UpdateA changelog entry with a version label.",
+        "Layout",
+        "API & codeParam fieldAn API request parameter (name, type, required).Response fieldAn API response field (name, type).API exampleA paired request and response example.Request exampleAn authored API request example.Response exampleAn authored API response example.Code groupTabbed code blocks in multiple languages.File treeAn authored hierarchy of files and folders.FolderA folder entry for a file tree.FileA file entry for a file tree.",
+        "API & code",
+        "InlineTooltipInline text with a hover tooltip.IconAn inline icon by name.BadgeA compact inline status label.ButtonAn inline action linking to another page.",
+        "Inline"
+      ],
+      "empty": "SuggestedTextPlain paragraph text.Heading 1Large section heading.Heading 2Medium",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-code-en-1440-light.png",
+      "phase": "after",
+      "state": "code",
+      "query": "/code",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 803,
+        "bottom": 522
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "Code blockSyntax-highlighted code.",
+        "Code groupTabbed code blocks in multiple languages.",
+        "EmbedShow a page from another site by its https address."
+      ],
+      "selected": "Code blockSyntax-highlighted code.",
+      "headings": [
+        "Basic blocksCode blockSyntax-highlighted code.",
+        "Basic blocks",
+        "API & codeCode groupTabbed code blocks in multiple languages.",
+        "API & code",
+        "Media & tablesEmbedShow a page from another site by its https address.",
+        "Media & tables"
+      ],
+      "empty": "Basic blocksCode blockSyntax-highlighted code.API & codeCode groupTabbed code bl",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-code-block-en-1440-light.png",
+      "phase": "after",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code block",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 803,
+        "bottom": 363
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 1,
+      "firstOptions": [
+        "Code blockSyntax-highlighted code."
+      ],
+      "selected": "Code blockSyntax-highlighted code.",
+      "headings": [
+        "Basic blocksCode blockSyntax-highlighted code.",
+        "Basic blocks"
+      ],
+      "empty": "Basic blocksCode blockSyntax-highlighted code.",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-call-en-1440-light.png",
+      "phase": "after",
+      "state": "call",
+      "query": "/call",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 803,
+        "bottom": 599
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 6,
+      "firstOptions": [
+        "NoteA neutral informational note.",
+        "TipA practical recommendation.",
+        "InfoHelpful context for the reader.",
+        "CheckA successful or verified outcome.",
+        "WarningSomething the reader should avoid.",
+        "DangerA destructive or high-risk action."
+      ],
+      "selected": "NoteA neutral informational note.",
+      "headings": [
+        "Notes & warningsNoteA neutral informational note.TipA practical recommendation.InfoHelpful context for the reader.CheckA successful or verified outcome.WarningSomething the reader should avoid.DangerA destructive or high-risk action.",
+        "Notes & warnings"
+      ],
+      "empty": "Notes & warningsNoteA neutral informational note.TipA practical recommendation.I",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-empty-en-1440-dark.png",
+      "phase": "after",
+      "state": "empty",
+      "query": "/",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 803,
+        "bottom": 692
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "TextPlain paragraph text.",
+        "Heading 1Large section heading.",
+        "Heading 2Medium section heading.",
+        "Heading 3Small section heading.",
+        "Bullet listA simple bulleted list.",
+        "Numbered listAn ordered, numbered list.",
+        "To-do listTrack tasks with checkboxes.",
+        "QuoteCapture a quotation."
+      ],
+      "selected": "TextPlain paragraph text.",
+      "headings": [
+        "SuggestedTextPlain paragraph text.Heading 1Large section heading.Heading 2Medium section heading.Heading 3Small section heading.Bullet listA simple bulleted list.Numbered listAn ordered, numbered list.",
+        "Suggested",
+        "Basic blocksTo-do listTrack tasks with checkboxes.QuoteCapture a quotation.Code blockSyntax-highlighted code.Mermaid diagramA flowchart or sequence diagram.DividerA horizontal rule.",
+        "Basic blocks",
+        "Notes & warningsNoteA neutral informational note.TipA practical recommendation.InfoHelpful context for the reader.CheckA successful or verified outcome.WarningSomething the reader should avoid.DangerA destructive or high-risk action.BannerA prominent announcement block.",
+        "Notes & warnings",
+        "Media & tablesImageUpload or embed an image.VideoEmbed a YouTube, Vimeo, Loom or Wistia video, or a video file.EmbedShow a page from another site by its https address.TableInsert a 3×3 table.FrameA framed image with a caption.",
+        "Media & tables",
+        "LayoutTabsTabbed content panes.StepsA numbered step-by-step guide.AccordionCollapsible sections.ExpandableA collapsible disclosure section.2 columnsA responsive two-column layout.3 columnsA responsive three-column layout.4 columnsA responsive four-column layout.CardA linkable card for a related resource.Card groupA grid of linkable cards.3-card gridA responsive grid with 3 cards.4-card gridA responsive grid with 4 cards.Related contentA group of links for continued reading.Related cardA link to a related documentation page.UpdateA changelog entry with a version label.",
+        "Layout",
+        "API & codeParam fieldAn API request parameter (name, type, required).Response fieldAn API response field (name, type).API exampleA paired request and response example.Request exampleAn authored API request example.Response exampleAn authored API response example.Code groupTabbed code blocks in multiple languages.File treeAn authored hierarchy of files and folders.FolderA folder entry for a file tree.FileA file entry for a file tree.",
+        "API & code",
+        "InlineTooltipInline text with a hover tooltip.IconAn inline icon by name.BadgeA compact inline status label.ButtonAn inline action linking to another page.",
+        "Inline"
+      ],
+      "empty": "SuggestedTextPlain paragraph text.Heading 1Large section heading.Heading 2Medium",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-code-en-1440-dark.png",
+      "phase": "after",
+      "state": "code",
+      "query": "/code",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 803,
+        "bottom": 522
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "Code blockSyntax-highlighted code.",
+        "Code groupTabbed code blocks in multiple languages.",
+        "EmbedShow a page from another site by its https address."
+      ],
+      "selected": "Code blockSyntax-highlighted code.",
+      "headings": [
+        "Basic blocksCode blockSyntax-highlighted code.",
+        "Basic blocks",
+        "API & codeCode groupTabbed code blocks in multiple languages.",
+        "API & code",
+        "Media & tablesEmbedShow a page from another site by its https address.",
+        "Media & tables"
+      ],
+      "empty": "Basic blocksCode blockSyntax-highlighted code.API & codeCode groupTabbed code bl",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-code-block-en-1440-dark.png",
+      "phase": "after",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code block",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 803,
+        "bottom": 363
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 1,
+      "firstOptions": [
+        "Code blockSyntax-highlighted code."
+      ],
+      "selected": "Code blockSyntax-highlighted code.",
+      "headings": [
+        "Basic blocksCode blockSyntax-highlighted code.",
+        "Basic blocks"
+      ],
+      "empty": "Basic blocksCode blockSyntax-highlighted code.",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-call-en-1440-dark.png",
+      "phase": "after",
+      "state": "call",
+      "query": "/call",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 803,
+        "bottom": 599
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 6,
+      "firstOptions": [
+        "NoteA neutral informational note.",
+        "TipA practical recommendation.",
+        "InfoHelpful context for the reader.",
+        "CheckA successful or verified outcome.",
+        "WarningSomething the reader should avoid.",
+        "DangerA destructive or high-risk action."
+      ],
+      "selected": "NoteA neutral informational note.",
+      "headings": [
+        "Notes & warningsNoteA neutral informational note.TipA practical recommendation.InfoHelpful context for the reader.CheckA successful or verified outcome.WarningSomething the reader should avoid.DangerA destructive or high-risk action.",
+        "Notes & warnings"
+      ],
+      "empty": "Notes & warningsNoteA neutral informational note.TipA practical recommendation.I",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-empty-en-390-light.png",
+      "phase": "after",
+      "state": "empty",
+      "query": "/",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 336,
+        "bottom": 746
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "TextPlain paragraph text.",
+        "Heading 1Large section heading.",
+        "Heading 2Medium section heading.",
+        "Heading 3Small section heading.",
+        "Bullet listA simple bulleted list.",
+        "Numbered listAn ordered, numbered list.",
+        "To-do listTrack tasks with checkboxes.",
+        "QuoteCapture a quotation."
+      ],
+      "selected": "TextPlain paragraph text.",
+      "headings": [
+        "SuggestedTextPlain paragraph text.Heading 1Large section heading.Heading 2Medium section heading.Heading 3Small section heading.Bullet listA simple bulleted list.Numbered listAn ordered, numbered list.",
+        "Suggested",
+        "Basic blocksTo-do listTrack tasks with checkboxes.QuoteCapture a quotation.Code blockSyntax-highlighted code.Mermaid diagramA flowchart or sequence diagram.DividerA horizontal rule.",
+        "Basic blocks",
+        "Notes & warningsNoteA neutral informational note.TipA practical recommendation.InfoHelpful context for the reader.CheckA successful or verified outcome.WarningSomething the reader should avoid.DangerA destructive or high-risk action.BannerA prominent announcement block.",
+        "Notes & warnings",
+        "Media & tablesImageUpload or embed an image.VideoEmbed a YouTube, Vimeo, Loom or Wistia video, or a video file.EmbedShow a page from another site by its https address.TableInsert a 3×3 table.FrameA framed image with a caption.",
+        "Media & tables",
+        "LayoutTabsTabbed content panes.StepsA numbered step-by-step guide.AccordionCollapsible sections.ExpandableA collapsible disclosure section.2 columnsA responsive two-column layout.3 columnsA responsive three-column layout.4 columnsA responsive four-column layout.CardA linkable card for a related resource.Card groupA grid of linkable cards.3-card gridA responsive grid with 3 cards.4-card gridA responsive grid with 4 cards.Related contentA group of links for continued reading.Related cardA link to a related documentation page.UpdateA changelog entry with a version label.",
+        "Layout",
+        "API & codeParam fieldAn API request parameter (name, type, required).Response fieldAn API response field (name, type).API exampleA paired request and response example.Request exampleAn authored API request example.Response exampleAn authored API response example.Code groupTabbed code blocks in multiple languages.File treeAn authored hierarchy of files and folders.FolderA folder entry for a file tree.FileA file entry for a file tree.",
+        "API & code",
+        "InlineTooltipInline text with a hover tooltip.IconAn inline icon by name.BadgeA compact inline status label.ButtonAn inline action linking to another page.",
+        "Inline"
+      ],
+      "empty": "SuggestedTextPlain paragraph text.Heading 1Large section heading.Heading 2Medium",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-code-en-390-light.png",
+      "phase": "after",
+      "state": "code",
+      "query": "/code",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 336,
+        "bottom": 576
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "Code blockSyntax-highlighted code.",
+        "Code groupTabbed code blocks in multiple languages.",
+        "EmbedShow a page from another site by its https address."
+      ],
+      "selected": "Code blockSyntax-highlighted code.",
+      "headings": [
+        "Basic blocksCode blockSyntax-highlighted code.",
+        "Basic blocks",
+        "API & codeCode groupTabbed code blocks in multiple languages.",
+        "API & code",
+        "Media & tablesEmbedShow a page from another site by its https address.",
+        "Media & tables"
+      ],
+      "empty": "Basic blocksCode blockSyntax-highlighted code.API & codeCode groupTabbed code bl",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-code-block-en-390-light.png",
+      "phase": "after",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code block",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 336,
+        "bottom": 418
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 1,
+      "firstOptions": [
+        "Code blockSyntax-highlighted code."
+      ],
+      "selected": "Code blockSyntax-highlighted code.",
+      "headings": [
+        "Basic blocksCode blockSyntax-highlighted code.",
+        "Basic blocks"
+      ],
+      "empty": "Basic blocksCode blockSyntax-highlighted code.",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-call-en-390-light.png",
+      "phase": "after",
+      "state": "call",
+      "query": "/call",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 336,
+        "bottom": 654
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 6,
+      "firstOptions": [
+        "NoteA neutral informational note.",
+        "TipA practical recommendation.",
+        "InfoHelpful context for the reader.",
+        "CheckA successful or verified outcome.",
+        "WarningSomething the reader should avoid.",
+        "DangerA destructive or high-risk action."
+      ],
+      "selected": "NoteA neutral informational note.",
+      "headings": [
+        "Notes & warningsNoteA neutral informational note.TipA practical recommendation.InfoHelpful context for the reader.CheckA successful or verified outcome.WarningSomething the reader should avoid.DangerA destructive or high-risk action.",
+        "Notes & warnings"
+      ],
+      "empty": "Notes & warningsNoteA neutral informational note.TipA practical recommendation.I",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-empty-en-390-dark.png",
+      "phase": "after",
+      "state": "empty",
+      "query": "/",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 336,
+        "bottom": 746
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "TextPlain paragraph text.",
+        "Heading 1Large section heading.",
+        "Heading 2Medium section heading.",
+        "Heading 3Small section heading.",
+        "Bullet listA simple bulleted list.",
+        "Numbered listAn ordered, numbered list.",
+        "To-do listTrack tasks with checkboxes.",
+        "QuoteCapture a quotation."
+      ],
+      "selected": "TextPlain paragraph text.",
+      "headings": [
+        "SuggestedTextPlain paragraph text.Heading 1Large section heading.Heading 2Medium section heading.Heading 3Small section heading.Bullet listA simple bulleted list.Numbered listAn ordered, numbered list.",
+        "Suggested",
+        "Basic blocksTo-do listTrack tasks with checkboxes.QuoteCapture a quotation.Code blockSyntax-highlighted code.Mermaid diagramA flowchart or sequence diagram.DividerA horizontal rule.",
+        "Basic blocks",
+        "Notes & warningsNoteA neutral informational note.TipA practical recommendation.InfoHelpful context for the reader.CheckA successful or verified outcome.WarningSomething the reader should avoid.DangerA destructive or high-risk action.BannerA prominent announcement block.",
+        "Notes & warnings",
+        "Media & tablesImageUpload or embed an image.VideoEmbed a YouTube, Vimeo, Loom or Wistia video, or a video file.EmbedShow a page from another site by its https address.TableInsert a 3×3 table.FrameA framed image with a caption.",
+        "Media & tables",
+        "LayoutTabsTabbed content panes.StepsA numbered step-by-step guide.AccordionCollapsible sections.ExpandableA collapsible disclosure section.2 columnsA responsive two-column layout.3 columnsA responsive three-column layout.4 columnsA responsive four-column layout.CardA linkable card for a related resource.Card groupA grid of linkable cards.3-card gridA responsive grid with 3 cards.4-card gridA responsive grid with 4 cards.Related contentA group of links for continued reading.Related cardA link to a related documentation page.UpdateA changelog entry with a version label.",
+        "Layout",
+        "API & codeParam fieldAn API request parameter (name, type, required).Response fieldAn API response field (name, type).API exampleA paired request and response example.Request exampleAn authored API request example.Response exampleAn authored API response example.Code groupTabbed code blocks in multiple languages.File treeAn authored hierarchy of files and folders.FolderA folder entry for a file tree.FileA file entry for a file tree.",
+        "API & code",
+        "InlineTooltipInline text with a hover tooltip.IconAn inline icon by name.BadgeA compact inline status label.ButtonAn inline action linking to another page.",
+        "Inline"
+      ],
+      "empty": "SuggestedTextPlain paragraph text.Heading 1Large section heading.Heading 2Medium",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-code-en-390-dark.png",
+      "phase": "after",
+      "state": "code",
+      "query": "/code",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 336,
+        "bottom": 576
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "Code blockSyntax-highlighted code.",
+        "Code groupTabbed code blocks in multiple languages.",
+        "EmbedShow a page from another site by its https address."
+      ],
+      "selected": "Code blockSyntax-highlighted code.",
+      "headings": [
+        "Basic blocksCode blockSyntax-highlighted code.",
+        "Basic blocks",
+        "API & codeCode groupTabbed code blocks in multiple languages.",
+        "API & code",
+        "Media & tablesEmbedShow a page from another site by its https address.",
+        "Media & tables"
+      ],
+      "empty": "Basic blocksCode blockSyntax-highlighted code.API & codeCode groupTabbed code bl",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-code-block-en-390-dark.png",
+      "phase": "after",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code block",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 336,
+        "bottom": 418
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 1,
+      "firstOptions": [
+        "Code blockSyntax-highlighted code."
+      ],
+      "selected": "Code blockSyntax-highlighted code.",
+      "headings": [
+        "Basic blocksCode blockSyntax-highlighted code.",
+        "Basic blocks"
+      ],
+      "empty": "Basic blocksCode blockSyntax-highlighted code.",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-call-en-390-dark.png",
+      "phase": "after",
+      "state": "call",
+      "query": "/call",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 336,
+        "bottom": 654
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 6,
+      "firstOptions": [
+        "NoteA neutral informational note.",
+        "TipA practical recommendation.",
+        "InfoHelpful context for the reader.",
+        "CheckA successful or verified outcome.",
+        "WarningSomething the reader should avoid.",
+        "DangerA destructive or high-risk action."
+      ],
+      "selected": "NoteA neutral informational note.",
+      "headings": [
+        "Notes & warningsNoteA neutral informational note.TipA practical recommendation.InfoHelpful context for the reader.CheckA successful or verified outcome.WarningSomething the reader should avoid.DangerA destructive or high-risk action.",
+        "Notes & warnings"
+      ],
+      "empty": "Notes & warningsNoteA neutral informational note.TipA practical recommendation.I",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-empty-ar-1440-light.png",
+      "phase": "after",
+      "state": "empty",
+      "query": "/",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 543,
+        "bottom": 712
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "نصنص فقرة عادي.",
+        "عنوان 1عنوان قسم كبير.",
+        "عنوان 2عنوان قسم متوسط.",
+        "عنوان 3عنوان قسم صغير.",
+        "قائمة نقطيةقائمة نقطية بسيطة.",
+        "قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "قائمة مهامتتبّع المهام بمربّعات اختيار.",
+        "اقتباسإدراج اقتباس."
+      ],
+      "selected": "نصنص فقرة عادي.",
+      "headings": [
+        "مقترحةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان 3عنوان قسم صغير.قائمة نقطيةقائمة نقطية بسيطة.قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "مقترحة",
+        "الكتل الأساسيةقائمة مهامتتبّع المهام بمربّعات اختيار.اقتباسإدراج اقتباس.كتلة شيفرةشيفرة بإبراز التركيب.مخطط Mermaidمخطط انسيابي أو تسلسلي.فاصلخط أفقي فاصل.",
+        "الكتل الأساسية",
+        "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التحقق منها.تحذيرأمر ينبغي للقارئ تجنبه.خطرإجراء مدمر أو عالي المخاطر.شريط إعلانكتلة إعلان بارزة.",
+        "ملاحظات وتنبيهات",
+        "وسائط وجداولصورةرفع صورة أو تضمينها.فيديوتضمين فيديو من YouTube أو Vimeo أو Loom أو Wistia، أو ملف فيديو.تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها.جدولإدراج جدول 3×3.إطارصورة مؤطّرة مع تعليق.",
+        "وسائط وجداول",
+        "التخطيطتبويباتألواح محتوى بتبويبات.خطواتدليل مرقّم خطوة بخطوة.أكورديونأقسام قابلة للطي.قابل للتوسيعقسم قابل للطي والتوسيع.عمودانتخطيط متجاوب من عمودين.3 أعمدةتخطيط متجاوب من 3 أعمدة.4 أعمدةتخطيط متجاوب من 4 أعمدة.بطاقةبطاقة قابلة للربط بمورد ذي صلة.مجموعة بطاقاتشبكة من البطاقات القابلة للربط.شبكة من 3 بطاقاتشبكة متجاوبة تضم 3 بطاقات.شبكة من 4 بطاقاتشبكة متجاوبة تضم 4 بطاقات.محتوى ذو صلةمجموعة روابط لمتابعة القراءة.بطاقة ذات صلةرابط إلى صفحة توثيق ذات صلة.تحديثمُدخل سجل تغييرات مع وسم إصدار.",
+        "التخطيط",
+        "API والشيفرةحقل معاملمعامل طلب API (الاسم، النوع، مطلوب).حقل استجابةحقل استجابة API (الاسم، النوع).مثال APIمثال يجمع الطلب والاستجابة.مثال الطلبمثال مؤلف لطلب API.مثال الاستجابةمثال مؤلف لاستجابة API.مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.شجرة الملفاتهيكل مؤلف من الملفات والمجلدات.مجلدعنصر مجلد ضمن شجرة الملفات.ملفعنصر ملف ضمن شجرة الملفات.",
+        "API والشيفرة",
+        "ضمن السطرتلميحنص مضمّن مع تلميح عند التمرير.أيقونةأيقونة مضمّنة بالاسم.شارةتسمية حالة مضمّنة.زرإجراء مضمّن يربط بصفحة أخرى.",
+        "ضمن السطر"
+      ],
+      "empty": "مقترحةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان 3عنوان ق",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-code-ar-1440-light.png",
+      "phase": "after",
+      "state": "code",
+      "query": "/code",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 543,
+        "bottom": 542
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "كتلة شيفرةشيفرة بإبراز التركيب.",
+        "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها."
+      ],
+      "selected": "كتلة شيفرةشيفرة بإبراز التركيب.",
+      "headings": [
+        "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+        "الكتل الأساسية",
+        "API والشيفرةمجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "API والشيفرة",
+        "وسائط وجداولتضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها.",
+        "وسائط وجداول"
+      ],
+      "empty": "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.API والشيفرةمجموعة شيفراتكتل شيفرة ",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-code-block-ar-1440-light.png",
+      "phase": "after",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code block",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 543,
+        "bottom": 383
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 1,
+      "firstOptions": [
+        "كتلة شيفرةشيفرة بإبراز التركيب."
+      ],
+      "selected": "كتلة شيفرةشيفرة بإبراز التركيب.",
+      "headings": [
+        "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+        "الكتل الأساسية"
+      ],
+      "empty": "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-call-ar-1440-light.png",
+      "phase": "after",
+      "state": "call",
+      "query": "/call",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 543,
+        "bottom": 619
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 6,
+      "firstOptions": [
+        "ملاحظةملاحظة معلوماتية محايدة.",
+        "نصيحةتوصية عملية.",
+        "معلومةسياق مفيد للقارئ.",
+        "تمنتيجة ناجحة أو تم التحقق منها.",
+        "تحذيرأمر ينبغي للقارئ تجنبه.",
+        "خطرإجراء مدمر أو عالي المخاطر."
+      ],
+      "selected": "ملاحظةملاحظة معلوماتية محايدة.",
+      "headings": [
+        "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التحقق منها.تحذيرأمر ينبغي للقارئ تجنبه.خطرإجراء مدمر أو عالي المخاطر.",
+        "ملاحظات وتنبيهات"
+      ],
+      "empty": "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد ل",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-empty-ar-1440-dark.png",
+      "phase": "after",
+      "state": "empty",
+      "query": "/",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 543,
+        "bottom": 712
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "نصنص فقرة عادي.",
+        "عنوان 1عنوان قسم كبير.",
+        "عنوان 2عنوان قسم متوسط.",
+        "عنوان 3عنوان قسم صغير.",
+        "قائمة نقطيةقائمة نقطية بسيطة.",
+        "قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "قائمة مهامتتبّع المهام بمربّعات اختيار.",
+        "اقتباسإدراج اقتباس."
+      ],
+      "selected": "نصنص فقرة عادي.",
+      "headings": [
+        "مقترحةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان 3عنوان قسم صغير.قائمة نقطيةقائمة نقطية بسيطة.قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "مقترحة",
+        "الكتل الأساسيةقائمة مهامتتبّع المهام بمربّعات اختيار.اقتباسإدراج اقتباس.كتلة شيفرةشيفرة بإبراز التركيب.مخطط Mermaidمخطط انسيابي أو تسلسلي.فاصلخط أفقي فاصل.",
+        "الكتل الأساسية",
+        "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التحقق منها.تحذيرأمر ينبغي للقارئ تجنبه.خطرإجراء مدمر أو عالي المخاطر.شريط إعلانكتلة إعلان بارزة.",
+        "ملاحظات وتنبيهات",
+        "وسائط وجداولصورةرفع صورة أو تضمينها.فيديوتضمين فيديو من YouTube أو Vimeo أو Loom أو Wistia، أو ملف فيديو.تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها.جدولإدراج جدول 3×3.إطارصورة مؤطّرة مع تعليق.",
+        "وسائط وجداول",
+        "التخطيطتبويباتألواح محتوى بتبويبات.خطواتدليل مرقّم خطوة بخطوة.أكورديونأقسام قابلة للطي.قابل للتوسيعقسم قابل للطي والتوسيع.عمودانتخطيط متجاوب من عمودين.3 أعمدةتخطيط متجاوب من 3 أعمدة.4 أعمدةتخطيط متجاوب من 4 أعمدة.بطاقةبطاقة قابلة للربط بمورد ذي صلة.مجموعة بطاقاتشبكة من البطاقات القابلة للربط.شبكة من 3 بطاقاتشبكة متجاوبة تضم 3 بطاقات.شبكة من 4 بطاقاتشبكة متجاوبة تضم 4 بطاقات.محتوى ذو صلةمجموعة روابط لمتابعة القراءة.بطاقة ذات صلةرابط إلى صفحة توثيق ذات صلة.تحديثمُدخل سجل تغييرات مع وسم إصدار.",
+        "التخطيط",
+        "API والشيفرةحقل معاملمعامل طلب API (الاسم، النوع، مطلوب).حقل استجابةحقل استجابة API (الاسم، النوع).مثال APIمثال يجمع الطلب والاستجابة.مثال الطلبمثال مؤلف لطلب API.مثال الاستجابةمثال مؤلف لاستجابة API.مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.شجرة الملفاتهيكل مؤلف من الملفات والمجلدات.مجلدعنصر مجلد ضمن شجرة الملفات.ملفعنصر ملف ضمن شجرة الملفات.",
+        "API والشيفرة",
+        "ضمن السطرتلميحنص مضمّن مع تلميح عند التمرير.أيقونةأيقونة مضمّنة بالاسم.شارةتسمية حالة مضمّنة.زرإجراء مضمّن يربط بصفحة أخرى.",
+        "ضمن السطر"
+      ],
+      "empty": "مقترحةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان 3عنوان ق",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-code-ar-1440-dark.png",
+      "phase": "after",
+      "state": "code",
+      "query": "/code",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 543,
+        "bottom": 542
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "كتلة شيفرةشيفرة بإبراز التركيب.",
+        "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها."
+      ],
+      "selected": "كتلة شيفرةشيفرة بإبراز التركيب.",
+      "headings": [
+        "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+        "الكتل الأساسية",
+        "API والشيفرةمجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "API والشيفرة",
+        "وسائط وجداولتضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها.",
+        "وسائط وجداول"
+      ],
+      "empty": "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.API والشيفرةمجموعة شيفراتكتل شيفرة ",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-code-block-ar-1440-dark.png",
+      "phase": "after",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code block",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 543,
+        "bottom": 383
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 1,
+      "firstOptions": [
+        "كتلة شيفرةشيفرة بإبراز التركيب."
+      ],
+      "selected": "كتلة شيفرةشيفرة بإبراز التركيب.",
+      "headings": [
+        "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+        "الكتل الأساسية"
+      ],
+      "empty": "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-call-ar-1440-dark.png",
+      "phase": "after",
+      "state": "call",
+      "query": "/call",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 543,
+        "bottom": 619
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 6,
+      "firstOptions": [
+        "ملاحظةملاحظة معلوماتية محايدة.",
+        "نصيحةتوصية عملية.",
+        "معلومةسياق مفيد للقارئ.",
+        "تمنتيجة ناجحة أو تم التحقق منها.",
+        "تحذيرأمر ينبغي للقارئ تجنبه.",
+        "خطرإجراء مدمر أو عالي المخاطر."
+      ],
+      "selected": "ملاحظةملاحظة معلوماتية محايدة.",
+      "headings": [
+        "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التحقق منها.تحذيرأمر ينبغي للقارئ تجنبه.خطرإجراء مدمر أو عالي المخاطر.",
+        "ملاحظات وتنبيهات"
+      ],
+      "empty": "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد ل",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-empty-ar-390-light.png",
+      "phase": "after",
+      "state": "empty",
+      "query": "/",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 336,
+        "bottom": 766
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "نصنص فقرة عادي.",
+        "عنوان 1عنوان قسم كبير.",
+        "عنوان 2عنوان قسم متوسط.",
+        "عنوان 3عنوان قسم صغير.",
+        "قائمة نقطيةقائمة نقطية بسيطة.",
+        "قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "قائمة مهامتتبّع المهام بمربّعات اختيار.",
+        "اقتباسإدراج اقتباس."
+      ],
+      "selected": "نصنص فقرة عادي.",
+      "headings": [
+        "مقترحةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان 3عنوان قسم صغير.قائمة نقطيةقائمة نقطية بسيطة.قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "مقترحة",
+        "الكتل الأساسيةقائمة مهامتتبّع المهام بمربّعات اختيار.اقتباسإدراج اقتباس.كتلة شيفرةشيفرة بإبراز التركيب.مخطط Mermaidمخطط انسيابي أو تسلسلي.فاصلخط أفقي فاصل.",
+        "الكتل الأساسية",
+        "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التحقق منها.تحذيرأمر ينبغي للقارئ تجنبه.خطرإجراء مدمر أو عالي المخاطر.شريط إعلانكتلة إعلان بارزة.",
+        "ملاحظات وتنبيهات",
+        "وسائط وجداولصورةرفع صورة أو تضمينها.فيديوتضمين فيديو من YouTube أو Vimeo أو Loom أو Wistia، أو ملف فيديو.تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها.جدولإدراج جدول 3×3.إطارصورة مؤطّرة مع تعليق.",
+        "وسائط وجداول",
+        "التخطيطتبويباتألواح محتوى بتبويبات.خطواتدليل مرقّم خطوة بخطوة.أكورديونأقسام قابلة للطي.قابل للتوسيعقسم قابل للطي والتوسيع.عمودانتخطيط متجاوب من عمودين.3 أعمدةتخطيط متجاوب من 3 أعمدة.4 أعمدةتخطيط متجاوب من 4 أعمدة.بطاقةبطاقة قابلة للربط بمورد ذي صلة.مجموعة بطاقاتشبكة من البطاقات القابلة للربط.شبكة من 3 بطاقاتشبكة متجاوبة تضم 3 بطاقات.شبكة من 4 بطاقاتشبكة متجاوبة تضم 4 بطاقات.محتوى ذو صلةمجموعة روابط لمتابعة القراءة.بطاقة ذات صلةرابط إلى صفحة توثيق ذات صلة.تحديثمُدخل سجل تغييرات مع وسم إصدار.",
+        "التخطيط",
+        "API والشيفرةحقل معاملمعامل طلب API (الاسم، النوع، مطلوب).حقل استجابةحقل استجابة API (الاسم، النوع).مثال APIمثال يجمع الطلب والاستجابة.مثال الطلبمثال مؤلف لطلب API.مثال الاستجابةمثال مؤلف لاستجابة API.مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.شجرة الملفاتهيكل مؤلف من الملفات والمجلدات.مجلدعنصر مجلد ضمن شجرة الملفات.ملفعنصر ملف ضمن شجرة الملفات.",
+        "API والشيفرة",
+        "ضمن السطرتلميحنص مضمّن مع تلميح عند التمرير.أيقونةأيقونة مضمّنة بالاسم.شارةتسمية حالة مضمّنة.زرإجراء مضمّن يربط بصفحة أخرى.",
+        "ضمن السطر"
+      ],
+      "empty": "مقترحةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان 3عنوان ق",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-code-ar-390-light.png",
+      "phase": "after",
+      "state": "code",
+      "query": "/code",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 336,
+        "bottom": 596
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "كتلة شيفرةشيفرة بإبراز التركيب.",
+        "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها."
+      ],
+      "selected": "كتلة شيفرةشيفرة بإبراز التركيب.",
+      "headings": [
+        "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+        "الكتل الأساسية",
+        "API والشيفرةمجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "API والشيفرة",
+        "وسائط وجداولتضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها.",
+        "وسائط وجداول"
+      ],
+      "empty": "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.API والشيفرةمجموعة شيفراتكتل شيفرة ",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-code-block-ar-390-light.png",
+      "phase": "after",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code block",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 336,
+        "bottom": 438
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 1,
+      "firstOptions": [
+        "كتلة شيفرةشيفرة بإبراز التركيب."
+      ],
+      "selected": "كتلة شيفرةشيفرة بإبراز التركيب.",
+      "headings": [
+        "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+        "الكتل الأساسية"
+      ],
+      "empty": "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-call-ar-390-light.png",
+      "phase": "after",
+      "state": "call",
+      "query": "/call",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 336,
+        "bottom": 674
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 6,
+      "firstOptions": [
+        "ملاحظةملاحظة معلوماتية محايدة.",
+        "نصيحةتوصية عملية.",
+        "معلومةسياق مفيد للقارئ.",
+        "تمنتيجة ناجحة أو تم التحقق منها.",
+        "تحذيرأمر ينبغي للقارئ تجنبه.",
+        "خطرإجراء مدمر أو عالي المخاطر."
+      ],
+      "selected": "ملاحظةملاحظة معلوماتية محايدة.",
+      "headings": [
+        "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التحقق منها.تحذيرأمر ينبغي للقارئ تجنبه.خطرإجراء مدمر أو عالي المخاطر.",
+        "ملاحظات وتنبيهات"
+      ],
+      "empty": "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد ل",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "after-empty-ar-390-dark.png",
+      "phase": "after",
+      "state": "empty",
+      "query": "/",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 336,
+        "bottom": 766
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "نصنص فقرة عادي.",
+        "عنوان 1عنوان قسم كبير.",
+        "عنوان 2عنوان قسم متوسط.",
+        "عنوان 3عنوان قسم صغير.",
+        "قائمة نقطيةقائمة نقطية بسيطة.",
+        "قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "قائمة مهامتتبّع المهام بمربّعات اختيار.",
+        "اقتباسإدراج اقتباس."
+      ],
+      "selected": "نصنص فقرة عادي.",
+      "headings": [
+        "مقترحةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان 3عنوان قسم صغير.قائمة نقطيةقائمة نقطية بسيطة.قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "مقترحة",
+        "الكتل الأساسيةقائمة مهامتتبّع المهام بمربّعات اختيار.اقتباسإدراج اقتباس.كتلة شيفرةشيفرة بإبراز التركيب.مخطط Mermaidمخطط انسيابي أو تسلسلي.فاصلخط أفقي فاصل.",
+        "الكتل الأساسية",
+        "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التحقق منها.تحذيرأمر ينبغي للقارئ تجنبه.خطرإجراء مدمر أو عالي المخاطر.شريط إعلانكتلة إعلان بارزة.",
+        "ملاحظات وتنبيهات",
+        "وسائط وجداولصورةرفع صورة أو تضمينها.فيديوتضمين فيديو من YouTube أو Vimeo أو Loom أو Wistia، أو ملف فيديو.تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها.جدولإدراج جدول 3×3.إطارصورة مؤطّرة مع تعليق.",
+        "وسائط وجداول",
+        "التخطيطتبويباتألواح محتوى بتبويبات.خطواتدليل مرقّم خطوة بخطوة.أكورديونأقسام قابلة للطي.قابل للتوسيعقسم قابل للطي والتوسيع.عمودانتخطيط متجاوب من عمودين.3 أعمدةتخطيط متجاوب من 3 أعمدة.4 أعمدةتخطيط متجاوب من 4 أعمدة.بطاقةبطاقة قابلة للربط بمورد ذي صلة.مجموعة بطاقاتشبكة من البطاقات القابلة للربط.شبكة من 3 بطاقاتشبكة متجاوبة تضم 3 بطاقات.شبكة من 4 بطاقاتشبكة متجاوبة تضم 4 بطاقات.محتوى ذو صلةمجموعة روابط لمتابعة القراءة.بطاقة ذات صلةرابط إلى صفحة توثيق ذات صلة.تحديثمُدخل سجل تغييرات مع وسم إصدار.",
+        "التخطيط",
+        "API والشيفرةحقل معاملمعامل طلب API (الاسم، النوع، مطلوب).حقل استجابةحقل استجابة API (الاسم، النوع).مثال APIمثال يجمع الطلب والاستجابة.مثال الطلبمثال مؤلف لطلب API.مثال الاستجابةمثال مؤلف لاستجابة API.مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.شجرة الملفاتهيكل مؤلف من الملفات والمجلدات.مجلدعنصر مجلد ضمن شجرة الملفات.ملفعنصر ملف ضمن شجرة الملفات.",
+        "API والشيفرة",
+        "ضمن السطرتلميحنص مضمّن مع تلميح عند التمرير.أيقونةأيقونة مضمّنة بالاسم.شارةتسمية حالة مضمّنة.زرإجراء مضمّن يربط بصفحة أخرى.",
+        "ضمن السطر"
+      ],
+      "empty": "مقترحةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان 3عنوان ق",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-code-ar-390-dark.png",
+      "phase": "after",
+      "state": "code",
+      "query": "/code",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 336,
+        "bottom": 596
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "كتلة شيفرةشيفرة بإبراز التركيب.",
+        "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها."
+      ],
+      "selected": "كتلة شيفرةشيفرة بإبراز التركيب.",
+      "headings": [
+        "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+        "الكتل الأساسية",
+        "API والشيفرةمجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "API والشيفرة",
+        "وسائط وجداولتضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها.",
+        "وسائط وجداول"
+      ],
+      "empty": "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.API والشيفرةمجموعة شيفراتكتل شيفرة ",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-code-block-ar-390-dark.png",
+      "phase": "after",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code block",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 336,
+        "bottom": 438
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 1,
+      "firstOptions": [
+        "كتلة شيفرةشيفرة بإبراز التركيب."
+      ],
+      "selected": "كتلة شيفرةشيفرة بإبراز التركيب.",
+      "headings": [
+        "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+        "الكتل الأساسية"
+      ],
+      "empty": "الكتل الأساسيةكتلة شيفرةشيفرة بإبراز التركيب.",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "after-call-ar-390-dark.png",
+      "phase": "after",
+      "state": "call",
+      "query": "/call",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 336,
+        "bottom": 674
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 6,
+      "firstOptions": [
+        "ملاحظةملاحظة معلوماتية محايدة.",
+        "نصيحةتوصية عملية.",
+        "معلومةسياق مفيد للقارئ.",
+        "تمنتيجة ناجحة أو تم التحقق منها.",
+        "تحذيرأمر ينبغي للقارئ تجنبه.",
+        "خطرإجراء مدمر أو عالي المخاطر."
+      ],
+      "selected": "ملاحظةملاحظة معلوماتية محايدة.",
+      "headings": [
+        "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التحقق منها.تحذيرأمر ينبغي للقارئ تجنبه.خطرإجراء مدمر أو عالي المخاطر.",
+        "ملاحظات وتنبيهات"
+      ],
+      "empty": "ملاحظات وتنبيهاتملاحظةملاحظة معلوماتية محايدة.نصيحةتوصية عملية.معلومةسياق مفيد ل",
+      "bg": "rgb(23, 23, 23)"
+    }
+  ]
+}

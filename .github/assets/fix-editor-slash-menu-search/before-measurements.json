@@ -1,0 +1,1213 @@
+{
+  "attempted": 0,
+  "results": [
+    {
+      "name": "before-empty-en-1440-light.png",
+      "phase": "before",
+      "state": "empty",
+      "query": "/",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 787,
+        "bottom": 594
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "TextPlain paragraph text.",
+        "Heading 1Large section heading.",
+        "Heading 2Medium section heading.",
+        "Heading 3Small section heading.",
+        "Bullet listA simple bulleted list.",
+        "Numbered listAn ordered, numbered list.",
+        "ImageUpload or embed an image.",
+        "VideoEmbed a YouTube, Vimeo, Loom or Wistia video, or a vide"
+      ],
+      "selected": "TextPlain paragraph text.",
+      "headings": [
+        "Basic blocks",
+        "Media & tables",
+        "Notes & warnings",
+        "Advanced"
+      ],
+      "empty": "Basic blocksTextPlain paragraph text.Heading 1Large section heading.Heading 2Med",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-code-en-1440-light.png",
+      "phase": "before",
+      "state": "code",
+      "query": "/code",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 787,
+        "bottom": 489
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "Code groupTabbed code blocks in multiple languages.",
+        "Code blockSyntax-highlighted code.",
+        "EmbedShow a page from another site by its https address."
+      ],
+      "selected": "Code groupTabbed code blocks in multiple languages.",
+      "headings": [
+        "Advanced",
+        "Media & tables"
+      ],
+      "empty": "AdvancedCode groupTabbed code blocks in multiple languages.Code blockSyntax-high",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-code-block-en-1440-light.png",
+      "phase": "before",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": false,
+      "paraText": "/code block"
+    },
+    {
+      "name": "before-call-en-1440-light.png",
+      "phase": "before",
+      "state": "call",
+      "query": "/call",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 787,
+        "bottom": 557
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 5,
+      "firstOptions": [
+        "TipA practical recommendation.",
+        "InfoHelpful context for the reader.",
+        "CheckA successful or verified outcome.",
+        "WarningSomething the reader should avoid.",
+        "DangerA destructive or high-risk action."
+      ],
+      "selected": "TipA practical recommendation.",
+      "headings": [
+        "Notes & warnings"
+      ],
+      "empty": "Notes & warningsTipA practical recommendation.InfoHelpful context for the reader",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-empty-en-1440-dark.png",
+      "phase": "before",
+      "state": "empty",
+      "query": "/",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 787,
+        "bottom": 594
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "TextPlain paragraph text.",
+        "Heading 1Large section heading.",
+        "Heading 2Medium section heading.",
+        "Heading 3Small section heading.",
+        "Bullet listA simple bulleted list.",
+        "Numbered listAn ordered, numbered list.",
+        "ImageUpload or embed an image.",
+        "VideoEmbed a YouTube, Vimeo, Loom or Wistia video, or a vide"
+      ],
+      "selected": "TextPlain paragraph text.",
+      "headings": [
+        "Basic blocks",
+        "Media & tables",
+        "Notes & warnings",
+        "Advanced"
+      ],
+      "empty": "Basic blocksTextPlain paragraph text.Heading 1Large section heading.Heading 2Med",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-code-en-1440-dark.png",
+      "phase": "before",
+      "state": "code",
+      "query": "/code",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 787,
+        "bottom": 489
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "Code groupTabbed code blocks in multiple languages.",
+        "Code blockSyntax-highlighted code.",
+        "EmbedShow a page from another site by its https address."
+      ],
+      "selected": "Code groupTabbed code blocks in multiple languages.",
+      "headings": [
+        "Advanced",
+        "Media & tables"
+      ],
+      "empty": "AdvancedCode groupTabbed code blocks in multiple languages.Code blockSyntax-high",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-code-block-en-1440-dark.png",
+      "phase": "before",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": false,
+      "paraText": "/code block"
+    },
+    {
+      "name": "before-call-en-1440-dark.png",
+      "phase": "before",
+      "state": "call",
+      "query": "/call",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "ltr",
+      "box": {
+        "left": 483,
+        "top": 274,
+        "right": 787,
+        "bottom": 557
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 5,
+      "firstOptions": [
+        "TipA practical recommendation.",
+        "InfoHelpful context for the reader.",
+        "CheckA successful or verified outcome.",
+        "WarningSomething the reader should avoid.",
+        "DangerA destructive or high-risk action."
+      ],
+      "selected": "TipA practical recommendation.",
+      "headings": [
+        "Notes & warnings"
+      ],
+      "empty": "Notes & warningsTipA practical recommendation.InfoHelpful context for the reader",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-empty-en-390-light.png",
+      "phase": "before",
+      "state": "empty",
+      "query": "/",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 320,
+        "bottom": 648
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "TextPlain paragraph text.",
+        "Heading 1Large section heading.",
+        "Heading 2Medium section heading.",
+        "Heading 3Small section heading.",
+        "Bullet listA simple bulleted list.",
+        "Numbered listAn ordered, numbered list.",
+        "ImageUpload or embed an image.",
+        "VideoEmbed a YouTube, Vimeo, Loom or Wistia video, or a vide"
+      ],
+      "selected": "TextPlain paragraph text.",
+      "headings": [
+        "Basic blocks",
+        "Media & tables",
+        "Notes & warnings",
+        "Advanced"
+      ],
+      "empty": "Basic blocksTextPlain paragraph text.Heading 1Large section heading.Heading 2Med",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-code-en-390-light.png",
+      "phase": "before",
+      "state": "code",
+      "query": "/code",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 320,
+        "bottom": 543
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "Code groupTabbed code blocks in multiple languages.",
+        "Code blockSyntax-highlighted code.",
+        "EmbedShow a page from another site by its https address."
+      ],
+      "selected": "Code groupTabbed code blocks in multiple languages.",
+      "headings": [
+        "Advanced",
+        "Media & tables"
+      ],
+      "empty": "AdvancedCode groupTabbed code blocks in multiple languages.Code blockSyntax-high",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-code-block-en-390-light.png",
+      "phase": "before",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": false,
+      "paraText": "/code block"
+    },
+    {
+      "name": "before-call-en-390-light.png",
+      "phase": "before",
+      "state": "call",
+      "query": "/call",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 320,
+        "bottom": 612
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 5,
+      "firstOptions": [
+        "TipA practical recommendation.",
+        "InfoHelpful context for the reader.",
+        "CheckA successful or verified outcome.",
+        "WarningSomething the reader should avoid.",
+        "DangerA destructive or high-risk action."
+      ],
+      "selected": "TipA practical recommendation.",
+      "headings": [
+        "Notes & warnings"
+      ],
+      "empty": "Notes & warningsTipA practical recommendation.InfoHelpful context for the reader",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-empty-en-390-dark.png",
+      "phase": "before",
+      "state": "empty",
+      "query": "/",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 320,
+        "bottom": 648
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "TextPlain paragraph text.",
+        "Heading 1Large section heading.",
+        "Heading 2Medium section heading.",
+        "Heading 3Small section heading.",
+        "Bullet listA simple bulleted list.",
+        "Numbered listAn ordered, numbered list.",
+        "ImageUpload or embed an image.",
+        "VideoEmbed a YouTube, Vimeo, Loom or Wistia video, or a vide"
+      ],
+      "selected": "TextPlain paragraph text.",
+      "headings": [
+        "Basic blocks",
+        "Media & tables",
+        "Notes & warnings",
+        "Advanced"
+      ],
+      "empty": "Basic blocksTextPlain paragraph text.Heading 1Large section heading.Heading 2Med",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-code-en-390-dark.png",
+      "phase": "before",
+      "state": "code",
+      "query": "/code",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 320,
+        "bottom": 543
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "Code groupTabbed code blocks in multiple languages.",
+        "Code blockSyntax-highlighted code.",
+        "EmbedShow a page from another site by its https address."
+      ],
+      "selected": "Code groupTabbed code blocks in multiple languages.",
+      "headings": [
+        "Advanced",
+        "Media & tables"
+      ],
+      "empty": "AdvancedCode groupTabbed code blocks in multiple languages.Code blockSyntax-high",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-code-block-en-390-dark.png",
+      "phase": "before",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": false,
+      "paraText": "/code block"
+    },
+    {
+      "name": "before-call-en-390-dark.png",
+      "phase": "before",
+      "state": "call",
+      "query": "/call",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "ltr",
+        "lang": "en",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "ltr",
+      "box": {
+        "left": 16,
+        "top": 328,
+        "right": 320,
+        "bottom": 612
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 5,
+      "firstOptions": [
+        "TipA practical recommendation.",
+        "InfoHelpful context for the reader.",
+        "CheckA successful or verified outcome.",
+        "WarningSomething the reader should avoid.",
+        "DangerA destructive or high-risk action."
+      ],
+      "selected": "TipA practical recommendation.",
+      "headings": [
+        "Notes & warnings"
+      ],
+      "empty": "Notes & warningsTipA practical recommendation.InfoHelpful context for the reader",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-empty-ar-1440-light.png",
+      "phase": "before",
+      "state": "empty",
+      "query": "/",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 527,
+        "bottom": 614
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "نصنص فقرة عادي.",
+        "عنوان 1عنوان قسم كبير.",
+        "عنوان 2عنوان قسم متوسط.",
+        "عنوان 3عنوان قسم صغير.",
+        "قائمة نقطيةقائمة نقطية بسيطة.",
+        "قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "صورةرفع صورة أو تضمينها.",
+        "فيديوتضمين فيديو من YouTube أو Vimeo أو Loom أو Wistia، أو م"
+      ],
+      "selected": "نصنص فقرة عادي.",
+      "headings": [
+        "الكتل الأساسية",
+        "وسائط وجداول",
+        "ملاحظات وتنبيهات",
+        "متقدم"
+      ],
+      "empty": "الكتل الأساسيةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان ",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-code-ar-1440-light.png",
+      "phase": "before",
+      "state": "code",
+      "query": "/code",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 527,
+        "bottom": 509
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "كتلة شيفرةشيفرة بإبراز التركيب.",
+        "تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها."
+      ],
+      "selected": "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+      "headings": [
+        "متقدم",
+        "وسائط وجداول"
+      ],
+      "empty": "متقدممجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.كتلة شيفرةشيفرة بإبراز ال",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-code-block-ar-1440-light.png",
+      "phase": "before",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": false,
+      "paraText": "/code block"
+    },
+    {
+      "name": "before-call-ar-1440-light.png",
+      "phase": "before",
+      "state": "call",
+      "query": "/call",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 527,
+        "bottom": 577
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 5,
+      "firstOptions": [
+        "نصيحةتوصية عملية.",
+        "معلومةسياق مفيد للقارئ.",
+        "تمنتيجة ناجحة أو تم التحقق منها.",
+        "تحذيرأمر ينبغي للقارئ تجنبه.",
+        "خطرإجراء مدمر أو عالي المخاطر."
+      ],
+      "selected": "نصيحةتوصية عملية.",
+      "headings": [
+        "ملاحظات وتنبيهات"
+      ],
+      "empty": "ملاحظات وتنبيهاتنصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التح",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-empty-ar-1440-dark.png",
+      "phase": "before",
+      "state": "empty",
+      "query": "/",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 527,
+        "bottom": 614
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "نصنص فقرة عادي.",
+        "عنوان 1عنوان قسم كبير.",
+        "عنوان 2عنوان قسم متوسط.",
+        "عنوان 3عنوان قسم صغير.",
+        "قائمة نقطيةقائمة نقطية بسيطة.",
+        "قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "صورةرفع صورة أو تضمينها.",
+        "فيديوتضمين فيديو من YouTube أو Vimeo أو Loom أو Wistia، أو م"
+      ],
+      "selected": "نصنص فقرة عادي.",
+      "headings": [
+        "الكتل الأساسية",
+        "وسائط وجداول",
+        "ملاحظات وتنبيهات",
+        "متقدم"
+      ],
+      "empty": "الكتل الأساسيةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان ",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-code-ar-1440-dark.png",
+      "phase": "before",
+      "state": "code",
+      "query": "/code",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 527,
+        "bottom": 509
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "كتلة شيفرةشيفرة بإبراز التركيب.",
+        "تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها."
+      ],
+      "selected": "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+      "headings": [
+        "متقدم",
+        "وسائط وجداول"
+      ],
+      "empty": "متقدممجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.كتلة شيفرةشيفرة بإبراز ال",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-code-block-ar-1440-dark.png",
+      "phase": "before",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": false,
+      "paraText": "/code block"
+    },
+    {
+      "name": "before-call-ar-1440-dark.png",
+      "phase": "before",
+      "state": "call",
+      "query": "/call",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "rtl",
+      "box": {
+        "left": 223,
+        "top": 294,
+        "right": 527,
+        "bottom": 577
+      },
+      "viewport": {
+        "w": 1440,
+        "h": 900
+      },
+      "clipped": false,
+      "optionCount": 5,
+      "firstOptions": [
+        "نصيحةتوصية عملية.",
+        "معلومةسياق مفيد للقارئ.",
+        "تمنتيجة ناجحة أو تم التحقق منها.",
+        "تحذيرأمر ينبغي للقارئ تجنبه.",
+        "خطرإجراء مدمر أو عالي المخاطر."
+      ],
+      "selected": "نصيحةتوصية عملية.",
+      "headings": [
+        "ملاحظات وتنبيهات"
+      ],
+      "empty": "ملاحظات وتنبيهاتنصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التح",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-empty-ar-390-light.png",
+      "phase": "before",
+      "state": "empty",
+      "query": "/",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 320,
+        "bottom": 668
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "نصنص فقرة عادي.",
+        "عنوان 1عنوان قسم كبير.",
+        "عنوان 2عنوان قسم متوسط.",
+        "عنوان 3عنوان قسم صغير.",
+        "قائمة نقطيةقائمة نقطية بسيطة.",
+        "قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "صورةرفع صورة أو تضمينها.",
+        "فيديوتضمين فيديو من YouTube أو Vimeo أو Loom أو Wistia، أو م"
+      ],
+      "selected": "نصنص فقرة عادي.",
+      "headings": [
+        "الكتل الأساسية",
+        "وسائط وجداول",
+        "ملاحظات وتنبيهات",
+        "متقدم"
+      ],
+      "empty": "الكتل الأساسيةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان ",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-code-ar-390-light.png",
+      "phase": "before",
+      "state": "code",
+      "query": "/code",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 320,
+        "bottom": 563
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "كتلة شيفرةشيفرة بإبراز التركيب.",
+        "تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها."
+      ],
+      "selected": "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+      "headings": [
+        "متقدم",
+        "وسائط وجداول"
+      ],
+      "empty": "متقدممجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.كتلة شيفرةشيفرة بإبراز ال",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-code-block-ar-390-light.png",
+      "phase": "before",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": false,
+      "paraText": "/code block"
+    },
+    {
+      "name": "before-call-ar-390-light.png",
+      "phase": "before",
+      "state": "call",
+      "query": "/call",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": false
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 320,
+        "bottom": 632
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 5,
+      "firstOptions": [
+        "نصيحةتوصية عملية.",
+        "معلومةسياق مفيد للقارئ.",
+        "تمنتيجة ناجحة أو تم التحقق منها.",
+        "تحذيرأمر ينبغي للقارئ تجنبه.",
+        "خطرإجراء مدمر أو عالي المخاطر."
+      ],
+      "selected": "نصيحةتوصية عملية.",
+      "headings": [
+        "ملاحظات وتنبيهات"
+      ],
+      "empty": "ملاحظات وتنبيهاتنصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التح",
+      "bg": "rgb(255, 255, 255)"
+    },
+    {
+      "name": "before-empty-ar-390-dark.png",
+      "phase": "before",
+      "state": "empty",
+      "query": "/",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 320,
+        "bottom": 668
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 50,
+      "firstOptions": [
+        "نصنص فقرة عادي.",
+        "عنوان 1عنوان قسم كبير.",
+        "عنوان 2عنوان قسم متوسط.",
+        "عنوان 3عنوان قسم صغير.",
+        "قائمة نقطيةقائمة نقطية بسيطة.",
+        "قائمة مرقّمةقائمة مرتّبة ومرقّمة.",
+        "صورةرفع صورة أو تضمينها.",
+        "فيديوتضمين فيديو من YouTube أو Vimeo أو Loom أو Wistia، أو م"
+      ],
+      "selected": "نصنص فقرة عادي.",
+      "headings": [
+        "الكتل الأساسية",
+        "وسائط وجداول",
+        "ملاحظات وتنبيهات",
+        "متقدم"
+      ],
+      "empty": "الكتل الأساسيةنصنص فقرة عادي.عنوان 1عنوان قسم كبير.عنوان 2عنوان قسم متوسط.عنوان ",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-code-ar-390-dark.png",
+      "phase": "before",
+      "state": "code",
+      "query": "/code",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/code",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 320,
+        "bottom": 563
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 3,
+      "firstOptions": [
+        "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+        "كتلة شيفرةشيفرة بإبراز التركيب.",
+        "تضمينعرض صفحة من موقع آخر عبر رابط https الخاص بها."
+      ],
+      "selected": "مجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.",
+      "headings": [
+        "متقدم",
+        "وسائط وجداول"
+      ],
+      "empty": "متقدممجموعة شيفراتكتل شيفرة بعلامات تبويب بلغات متعددة.كتلة شيفرةشيفرة بإبراز ال",
+      "bg": "rgb(23, 23, 23)"
+    },
+    {
+      "name": "before-code-block-ar-390-dark.png",
+      "phase": "before",
+      "state": "code-block",
+      "query": "/code block",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": false,
+      "paraText": "/code block"
+    },
+    {
+      "name": "before-call-ar-390-dark.png",
+      "phase": "before",
+      "state": "call",
+      "query": "/call",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "docInfo": {
+        "dir": "rtl",
+        "lang": "ar",
+        "dark": true
+      },
+      "placed": "tiptap",
+      "open": true,
+      "paraText": "/call",
+      "dir": "rtl",
+      "box": {
+        "left": 16,
+        "top": 348,
+        "right": 320,
+        "bottom": 632
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "clipped": false,
+      "optionCount": 5,
+      "firstOptions": [
+        "نصيحةتوصية عملية.",
+        "معلومةسياق مفيد للقارئ.",
+        "تمنتيجة ناجحة أو تم التحقق منها.",
+        "تحذيرأمر ينبغي للقارئ تجنبه.",
+        "خطرإجراء مدمر أو عالي المخاطر."
+      ],
+      "selected": "نصيحةتوصية عملية.",
+      "headings": [
+        "ملاحظات وتنبيهات"
+      ],
+      "empty": "ملاحظات وتنبيهاتنصيحةتوصية عملية.معلومةسياق مفيد للقارئ.تمنتيجة ناجحة أو تم التح",
+      "bg": "rgb(23, 23, 23)"
+    }
+  ]
+}
