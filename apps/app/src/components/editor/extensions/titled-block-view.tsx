@@ -64,6 +64,7 @@ export function TitledBlockView({ node, updateAttributes, extension, editor }: N
           {extraAttributes.map((extraAttribute) => (
             <input
               className="pl-card-meta-input"
+              data-attribute={extraAttribute}
               dir={extraAttribute === 'icon' || extraAttribute === 'href' || extraAttribute === 'status' ? 'ltr' : undefined}
               key={extraAttribute}
               value={editorAttribute.parse(node.attrs[extraAttribute])}
