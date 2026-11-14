@@ -47,24 +47,27 @@ export function ProjectSidebar({ projectId, orgSlug }: { projectId: string; orgS
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            {nav.map((item) => (
-              <SidebarMenuItem key={item.labelKey}>
-                <SidebarMenuButton
-                  onClick={() => setOpenMobile(false)}
-                  isActive={item.isActive}
-                  render={<Link params={{ projectId }} to={item.to} />}
-                  size="lg"
-                  tooltip={t(item.labelKey)}
-                >
-                  <item.icon className="size-5" />
-                  <span>{t(item.labelKey)}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+        {/* The sidebar's links are the site's main navigation landmark. */}
+        <nav aria-label={t('nav.main')} className="contents">
+          <SidebarGroup>
+            <SidebarMenu>
+              {nav.map((item) => (
+                <SidebarMenuItem key={item.labelKey}>
+                  <SidebarMenuButton
+                    onClick={() => setOpenMobile(false)}
+                    isActive={item.isActive}
+                    render={<Link params={{ projectId }} to={item.to} />}
+                    size="lg"
+                    tooltip={t(item.labelKey)}
+                  >
+                    <item.icon className="size-5" />
+                    <span>{t(item.labelKey)}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        </nav>
       </SidebarContent>
 
       <SidebarAccountFooter />

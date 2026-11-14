@@ -24,6 +24,9 @@ const profiles = {
   // The dashboard home is an organization's Websites page (/app lands there).
   'dashboard-home': ['__root__', '/app', '/app/o/$orgSlug', '/app/o/$orgSlug/websites'],
   'dashboard-analytics': ['__root__', '/app', '/app/o/$orgSlug', '/app/o/$orgSlug/analytics'],
+  // The first step of the first-run journey (and where /app sends a signed-out visitor).
+  'auth-sign-in': ['__root__', '/(auth)', '/(auth)/sign-in'],
+  'auth-sign-up': ['__root__', '/(auth)', '/(auth)/sign-up'],
 };
 
 // These values are intentionally applied to gzip transfer size, not raw file
@@ -48,10 +51,21 @@ const profiles = {
 // chunks in the router's eager preload table; the dashboard preloads them on
 // intent from its own manifest instead. About 2.8 KiB less; the margin is ~2 KiB
 // over the 343,096 bytes measured.
+// auth-sign-in / auth-sign-up (MKT-001): 1,210 KiB before, when every product
+// message in every locale shipped with the sign-in form (translateFn's catalog
+// import). The auth pages translate through @nibleaf/i18n/scoped now; measured
+// 398,182 and 399,872 bytes, with ~2 KiB of margin.
 const gzipBudgets = {
   'public-docs': 345_100,
   'public-docs-index': 345_100,
+  'auth-sign-in': 402_000,
+  'auth-sign-up': 402_000,
 };
+
+/** The published-docs profiles: the dashboard, auth and marketing boundaries
+ *  below apply to these. The auth profiles only have a size budget (they are
+ *  product pages and legitimately load the auth client and providers). */
+const publicProfiles = ['public-docs', 'public-docs-index'];
 
 // A size budget catches overall growth; these signatures make accidental
 // provider-boundary regressions actionable even when another chunk shrinks.
@@ -206,7 +220,9 @@ if (process.argv.includes('--check')) {
       );
       invalid = true;
     }
+  }
 
+  for (const profile of publicProfiles) {
     const forbiddenAssets = reports[profile]?.assets.filter((asset) => forbiddenPublicAssetPatterns.some((pattern) => pattern.test(asset.url)));
     if (forbiddenAssets?.length) {
       console.error(`\nBUNDLE BOUNDARY FAILED: ${profile} includes dashboard/auth assets:`);
@@ -230,10 +246,10 @@ if (process.argv.includes('--check')) {
   }
 
   // A report from an older build would vouch for chunks it never saw.
-  const publicAssets = Object.keys(gzipBudgets).flatMap((profile) => reports[profile]?.assets ?? []);
+  const publicAssets = publicProfiles.flatMap((profile) => reports[profile]?.assets ?? []);
   const reportIsCurrent = moduleReport !== null && publicAssets.every((asset) => moduleReport.has(asset.url.replace(/^\//, '')));
   if (reportIsCurrent) {
-    for (const profile of Object.keys(gzipBudgets)) {
+    for (const profile of publicProfiles) {
       for (const asset of reports[profile]?.assets ?? []) {
         const moduleIds = moduleReport.get(asset.url.replace(/^\//, '')).map((module) => module.id);
         for (const moduleId of forbiddenModuleIds(moduleIds)) {
