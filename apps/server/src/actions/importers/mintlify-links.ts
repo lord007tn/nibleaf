@@ -179,7 +179,7 @@ export const rewriteMintlifyInternalLinks = (
   } = {},
 ): string => {
   const maps = [routes, ...(options.languageRoutes?.values() ?? [])];
-  if (!maps.some((map) => map.size)) return content;
+  if (!maps.some((map) => map.size) && !options.onUnresolved) return content;
   if (!content.includes('](') && !content.includes(']:') && !/href/i.test(content)) return content;
   // Basenames also cover relative links and Nibleaf /pages/ aliases. Encoded
   // text and directory-only relative destinations are conservatively parsed.
@@ -195,7 +195,9 @@ export const rewriteMintlifyInternalLinks = (
         }),
       ),
     );
-  if (!candidate) return content;
+  // Validation and fidelity reporting must still read real destinations even
+  // when the rewrite-only fast path cannot match an imported source.
+  if (!candidate && !options.onUnresolved) return content;
   const protectedCode = protectImportCode(content);
   const appPageTarget = createAppPageLookup();
   const rewrite = (original: string): string => {

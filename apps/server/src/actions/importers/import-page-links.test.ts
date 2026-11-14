@@ -9,6 +9,11 @@ import { convertGitBookMarkdown } from './gitbook-markdown';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
+// These corpus comparisons and seeded properties do linear work over hundreds of
+// documents. As in #658, busy CI runners can exceed Vitest's five-second default.
+// Growth tests pin the cost separately; give this file time to finish its assertions.
+vi.setConfig({ testTimeout: 60_000 });
+
 vi.mock('mdast-util-from-markdown', async (original) => {
   const module = await original<typeof import('mdast-util-from-markdown')>();
   return { ...module, fromMarkdown: vi.fn(module.fromMarkdown) };
@@ -51,9 +56,13 @@ describe('component-aware destination spans', () => {
     expect(fromMarkdown).not.toHaveBeenCalled();
   });
 
-  it('does not parse documents without an imported target candidate', () => {
-    expect(rewriteMintlifyInternalLinks('[Other](/elsewhere)', 'intro', routes, { onUnresolved: vi.fn() })).toBe('[Other](/elsewhere)');
+  it('skips rewrite-only parsing but retains reporting without an imported candidate', () => {
+    expect(rewriteMintlifyInternalLinks('[Other](/elsewhere)', 'intro', routes)).toBe('[Other](/elsewhere)');
     expect(fromMarkdown).not.toHaveBeenCalled();
+    const report = vi.fn();
+    expect(rewriteMintlifyInternalLinks('[Other](/elsewhere)', 'intro', routes, { onUnresolved: report })).toBe('[Other](/elsewhere)');
+    expect(report).toHaveBeenCalledWith('/elsewhere');
+    expect(fromMarkdown).toHaveBeenCalledTimes(1);
   });
 
   it('does not manufacture link syntax by removing inline component-shaped text', () => {
@@ -93,4 +102,122 @@ it.each(['mintlify', 'gitbook'] as const)('%s: main differential covers 291 repo
   console.info(
     `${kind} differential: ${docs.length} repo docs, ${changedDocuments} with rewritten destinations, ${componentLinkFixtures.length} component fixtures`,
   );
+});
+
+// The independent reviewer's seeded wrapper/URL matrix, pinned for repeatability.
+it('seed 0x663618: 512 documents retain every main rewrite and all code bytes', () => {
+  let seed = 0x66_36_18;
+  const rand = () => {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    return seed >>> 0;
+  };
+  const bodies = [
+    '[Go](/next?x=1#part)',
+    '[Relative](../next#part)',
+    '[Other](/other/next)',
+    '[External](https://example.com/next)',
+    '[Anchor](#next)',
+    '[Go](</next>)',
+    '[Go][ref]\n\n[ref]: /next "Title"',
+  ];
+  const wrappers: Array<readonly [string, string]> = [
+    ['', ''],
+    ['<Steps><Step>', '</Step></Steps>'],
+    ['<Steps>\n<Step>\n', '\n</Step>\n</Steps>'],
+    ['<Note>\n', '\n</Note>'],
+    ['<Card href="/next">\n', '\n</Card>'],
+    ['<div>\n', '\n</div>'],
+    ['<section>\n', '\n</section>'],
+    ['> ', ''],
+    ['- ', ''],
+    ['| Text |\n| --- |\n| ', ' |'],
+    ['<Unknown.Widget>\n', '\n</Unknown.Widget>'],
+    ['<Columns>\n  <Note>\n    ', '\n  </Note>\n</Columns>'],
+    ['<Note\n title="Hello"\n>\n', '\n</Note>'],
+    ['<Card href="/next" />\n<Note>\n', '\n</Note>'],
+  ];
+  const failures: Array<{ i: number; source: string; main: string; head: string }> = [];
+  let codeChanges = 0;
+  const routes = new Map([
+    ['next', '/topic-2/next'],
+    ['other/next', '/other-2/next'],
+    ['intro', '/intro-2'],
+  ]);
+  for (let i = 0; i < 512; i++) {
+    const [a, b] = wrappers[rand() % wrappers.length] ?? ['', ''];
+    const body = bodies[rand() % bodies.length];
+    const source = `${a + body + b}\n\n\`[Code](/next)\`\n\n~~~md\n[Code](/next)\n~~~\n\n[Sentinel](/next)`;
+    const expected = rewriteMainInternalLinks(source, 'docs/intro', routes);
+    const actual = rewriteMintlifyInternalLinks(source, 'docs/intro', routes, { rewriteDefinitions: false });
+    if (!actual.includes('`[Code](/next)`') || !actual.includes('~~~md\n[Code](/next)\n~~~')) codeChanges++;
+    if (actual !== expected) failures.push({ i, source, main: expected, head: actual });
+  }
+  console.info('seeded document differential', { seed: '0x663618', cases: 512, misses: failures.length, codeChanges });
+  expect(failures.slice(0, 1)).toEqual([]);
+  expect(codeChanges).toBe(0);
+});
+
+it('seed 0x618663: fidelity reports are a superset of main with and without rewrite candidates', () => {
+  let state = 0x61_86_63;
+  const random = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return state >>> 0;
+  };
+  const urls = [
+    'https://help.test//evil.test/next',
+    'https://nibleaf.com/pages//evil.test/next',
+    String.raw`https://help.test/\evil.test/next`,
+    String.raw`https://nibleaf.com/pages/\evil.test/next`,
+    String.raw`/\evil.test`,
+    '/unmapped',
+    '../missing.md',
+    '/missing?lang=ar',
+    'https://help.test/custom/hidden',
+    'https://help.test/custom/hidden?lang=ar',
+    '/next?lang=en&lang=ar',
+    '/next?lang=',
+    '/next',
+    '#part',
+    'https://example.test/external',
+  ];
+  const wrappers: Array<readonly [string, string]> = [
+    ['', ''],
+    ['<Note>\n<div>\n', '\n</div>\n</Note>'],
+    ['<section>\n', '\n</section>'],
+    ['> ', ''],
+    ['<Steps>\n<Step>\n', '\n</Step>\n</Steps>'],
+  ];
+  const mappings = [new Map<string, string>(), new Map([['unrelated', '/guides/unrelated']]), routes];
+  const failures: Array<{ index: number; source: string; missing: string[] }> = [];
+  let mainReports = 0;
+  let headReports = 0;
+  for (let index = 0; index < 1024; index++) {
+    const url = urls[random() % urls.length] ?? '/unmapped';
+    const [open, close] = wrappers[random() % wrappers.length] ?? ['', ''];
+    const source = `${open}[Target](${url})${close}\n\n<Card href="${url}" />\n\n[Real](/next)`;
+    const mapping = mappings[random() % mappings.length] ?? routes;
+    const baseline: string[] = [];
+    const actual: string[] = [];
+    const options = { sourceUrl: 'https://help.test', languageCode: 'en' };
+    rewriteMainInternalLinks(source, 'docs/intro', mapping, { ...options, onUnresolved: (href) => baseline.push(href) });
+    rewriteMintlifyInternalLinks(source, 'docs/intro', mapping, { ...options, onUnresolved: (href) => actual.push(href) });
+    const missing = [...new Set(baseline)].filter((href) => !actual.includes(href));
+    mainReports += baseline.length;
+    headReports += actual.length;
+    if (missing.length) failures.push({ index, source, missing });
+  }
+  console.info('fidelity differential', { seed: '0x618663', cases: 1024, mainReports, headReports, misses: failures.length });
+  expect(mainReports).toBeGreaterThan(0);
+  expect(failures.slice(0, 1)).toEqual([]);
+});
+
+it('exposes lowercase prose while retaining opaque HTML, comments, attributes and code', () => {
+  const literal =
+    '<script>\n[Script](/next)\n</script>\n\n<style>\n[Style](/next)\n</style>\n\n<textarea>\n[Text](/next)\n</textarea>\n\n<title>\n[Title](/next)\n</title>\n\n<pre>\n<a href="/next">Code</a>\n</pre>\n\n<code>[Code](/next)</code-sample>[Still code](/next)</code>\n\n<!-- [Comment](/next) -->\n\n<div title="[Attribute](/next)">\n~~~md\n[Code](/next)\n~~~\n</div>';
+  const prose = '<Note>\n<div>\n[Go](/next?x=1#part)\n</div>\n</Note>';
+  expect(rewriteMintlifyInternalLinks(`${literal}\n\n${prose}`, 'intro', routes)).toBe(`${literal}\n\n${prose.replace('(/next?', '(/topic/next?')}`);
 });

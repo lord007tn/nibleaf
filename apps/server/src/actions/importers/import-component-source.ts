@@ -14,6 +14,7 @@ interface ComponentTag {
 /** The converter's tolerant MDX tokenizer, with a source map for one Markdown parse. */
 export const componentMarkdownSource = (source: string, resources: readonly ImportReference[]) => {
   const tags: ComponentTag[] = [];
+  const opaque: Array<{ start: number; end: number }> = [];
   const removed: Array<{ start: number; end: number }> = [];
   const remove = (start: number, end: number) => {
     if (end <= start) return;
@@ -53,14 +54,18 @@ export const componentMarkdownSource = (source: string, resources: readonly Impo
     const resource = resources[resourceIndex];
     if (resource && resource.start < end && resource.end > start) continue;
     const element = name[2];
-    if (['script', 'style', 'textarea', 'title'].includes(element.toLowerCase())) {
+    if (['script', 'style', 'textarea', 'title', 'pre', 'code'].includes(element.toLowerCase())) {
       // Opaque HTML content is not MDX children.
       lowerSource ??= source.toLowerCase();
-      const closing = lowerSource.indexOf(`</${element.toLowerCase()}`, cursor);
+      const closer = `</${element.toLowerCase()}`;
+      let closing = lowerSource.indexOf(closer, cursor);
+      while (closing >= 0 && !/[\s>]/.test(source[closing + closer.length] ?? '')) {
+        closing = lowerSource.indexOf(closer, closing + closer.length);
+      }
+      opaque.push({ start: tag.end, end: closing < 0 ? source.length : closing });
       cursor = closing < 0 ? source.length : readImportComponentTag(source, closing).end;
       continue;
     }
-    if (!/^[A-Z]/.test(element) && !element.includes('.') && !element.includes('-')) continue;
     let preceding = start;
     while (preceding > 0 && /[\s>]/.test(source[preceding - 1] ?? '')) preceding--;
     if (source.slice(preceding - 2, preceding) === ']:') continue;
@@ -68,7 +73,15 @@ export const componentMarkdownSource = (source: string, resources: readonly Impo
     while (prefix > 0 && /[\t >]/.test(source[prefix - 1] ?? '')) prefix--;
     const previous = tags.at(-1);
     const block = prefix === 0 || /[\r\n]/.test(source[prefix - 1] ?? '') || (previous?.block === true && previous.end === start);
-    tags.push({ start, end, name: element, closing: Boolean(name[1]), selfClosing: tag.selfClosing, complete: tag.complete, block });
+    tags.push({
+      start,
+      end,
+      name: element,
+      closing: Boolean(name[1]),
+      selfClosing: tag.selfClosing || /^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i.test(element),
+      complete: tag.complete,
+      block,
+    });
   }
 
   const stack: Array<{ name: string; indent: number }> = [];
@@ -107,8 +120,8 @@ export const componentMarkdownSource = (source: string, resources: readonly Impo
   };
   for (const blank of source.matchAll(/\r?\n[\t ]*\r?\n/g)) inspect(blank.index + blank[0].length);
   inspect(source.length);
-  // Merge the two already ordered streams of deletions.
-  const edits = [...removed, ...huge].sort((left, right) => left.start - right.start);
+  // Opaque bodies also stay out of the parse, including inline <code> content.
+  const edits = [...removed, ...huge, ...opaque].sort((left, right) => left.start - right.start);
   if (!edits.length) return { content: source, tags, originalOffset: (offset: number) => offset };
   const offsets = new Int32Array(source.length + 1);
   const chunks: string[] = [];

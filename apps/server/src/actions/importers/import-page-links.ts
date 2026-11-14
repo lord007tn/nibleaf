@@ -20,6 +20,8 @@ const rawTextClosers = new Map([
   ['style', /<\/style\s*>/gi],
   ['textarea', /<\/textarea\s*>/gi],
   ['title', /<\/title\s*>/gi],
+  ['pre', /<\/pre\s*>/gi],
+  ['code', /<\/code\s*>/gi],
 ]);
 
 /** Read actual attributes inside a parser-recognized HTML node, never quoted attribute text. */

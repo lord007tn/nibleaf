@@ -502,3 +502,115 @@ describe('component children retain main link destinations', () => {
     });
   }
 });
+
+// Seed and wrapper matrix from the independent round-5 review.
+it('independent generated collision imports across all containers', async () => {
+  let state = 0x66_36_18;
+  const next = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return state >>> 0;
+  };
+  const wrappers: Array<readonly [string, string]> = [
+    ['', ''],
+    ['<Steps><Step>', '</Step></Steps>'],
+    ['<Steps>\n<Step>\n', '\n</Step>\n</Steps>'],
+    ['<Note>\n', '\n</Note>'],
+    ['<Card\n href="/next"\n>\n', '\n</Card>'],
+    ['<Note>\n<div>\n', '\n</div>\n</Note>'],
+    ['<Note>\n<section>\n', '\n</section>\n</Note>'],
+    ['> ', ''],
+    ['- ', ''],
+    ['| Text |\n| --- |\n| ', ' |'],
+    ['<Unknown.Widget>\n', '\n</Unknown.Widget>'],
+    ['<Columns>\n  <Note>\n    ', '\n  </Note>\n</Columns>'],
+    ['<Note\n title="Hello"\n>\n', '\n</Note>'],
+    ['<Card href="/next" />\n<Note>\n', '\n</Note>'],
+  ];
+  const failures: Array<{
+    kind: string;
+    i: number;
+    collision: boolean;
+    aTarget: string;
+    bTarget: string;
+    source: string;
+    expected: string;
+    stored: string;
+  }> = [];
+  let codeChanges = 0;
+  let cases = 0;
+  for (const kind of ['mintlify', 'gitbook'] as const)
+    for (let i = 0; i < 128; i++) {
+      mem.rows = [];
+      mem.files.clear();
+      mem.next = 0;
+      mem.language = 'en';
+      const mintlify = kind === 'mintlify';
+      const collision = i % 2 === 1;
+      if (collision) seed('topic', mintlify ? 'PAGE' : 'GROUP');
+      if (mintlify)
+        mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['docs/intro', { group: 'Topic', pages: ['next', 'other/next'] }] } }));
+      else {
+        mem.files.set('SUMMARY.md', '* [Intro](docs/intro.md)\n* [Topic](topic.md)\n  * [A](next.md)\n  * [B](other/next.md)');
+        mem.files.set('topic.md', 'Topic.');
+      }
+      const [a, b] = wrappers[next() % wrappers.length] ?? ['', ''];
+      const suffix = ['', '#part', '?x=1#part'][next() % 3];
+      const source =
+        a +
+        `[Go](/next${suffix}) [Other](/other/next${suffix}) [Up](../next${suffix}) [External](https://example.test/next) [Anchor](#part)` +
+        b +
+        '\n\n[Reference][ref]\n\n[ref]: /next "Title"\n\n`[Code](/next)`\n\n~~~md\n[Code](/next)\n~~~\n\n<Note>\n~~~md\n[Code](/other/next)\n~~~\n</Note>\n\nExample:\n\n    [Code](/next)';
+      mem.files.set(`docs/intro.${mintlify ? 'mdx' : 'md'}`, source);
+      mem.files.set(`next.${mintlify ? 'mdx' : 'md'}`, 'TARGET_A.');
+      mem.files.set(`other/next.${mintlify ? 'mdx' : 'md'}`, 'TARGET_B.');
+      await run(mintlify ? mintlifyImporter : gitbookImporter);
+      const stored = mem.rows.find((row) => row.path === 'intro')?.content;
+      const aTarget = mem.rows.find((row) => row.content === 'TARGET_A.');
+      const bTarget = mem.rows.find((row) => row.content === 'TARGET_B.');
+      if (!aTarget || !bTarget || stored === undefined) throw new Error('Missing generated fixture pages');
+      const routes = new Map([
+        ['next', `/${aTarget.path}`],
+        ['other/next', `/${bTarget.path}`],
+      ]);
+      const converted = mintlify ? source : convertGitBookMarkdown(source, { resolveFile: () => undefined }).content;
+      let expected = rewriteMainInternalLinks(converted, 'docs/intro', routes);
+      if (collision) expected = expected.replace('[ref]: /next "Title"', `[ref]: /${aTarget.path} "Title"`);
+      if (mintlify) expected = normalizeMintlifyMdx(expected);
+      if (stored !== expected) failures.push({ kind, i, collision, aTarget: aTarget.path, bTarget: bTarget.path, source, expected, stored });
+      if (
+        !stored.includes('`[Code](/next)`') ||
+        !stored.includes('~~~md\n[Code](/next)\n~~~') ||
+        !stored.includes('~~~md\n[Code](/other/next)\n~~~') ||
+        !stored.includes('    [Code](/next)')
+      )
+        codeChanges++;
+      cases++;
+    }
+  console.info('seeded full imports', { seed: '0x663618', cases, misses: failures.length, codeChanges });
+  expect(failures.slice(0, 1)).toEqual([]);
+  expect(codeChanges).toBe(0);
+}, 60_000);
+
+describe('lowercase HTML children through both importers', () => {
+  for (const kind of ['mintlify', 'gitbook'] as const) {
+    it.each([false, true])(`${kind}: lowercase wrappers, collision=%s`, async (collision) => {
+      const mintlify = kind === 'mintlify';
+      if (collision) seed('topic', mintlify ? 'PAGE' : 'GROUP');
+      if (mintlify) mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['intro', { group: 'Topic', pages: ['next'] }] } }));
+      else {
+        mem.files.set('SUMMARY.md', '* [Intro](intro.md)\n* [Topic](topic.md)\n  * [Next](next.md)');
+        mem.files.set('topic.md', 'Topic.');
+      }
+      const content = '<Note>\n<div>\n[Go](/next?x=1#part)\n</div>\n</Note>';
+      mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, content);
+      mem.files.set(`next.${mintlify ? 'mdx' : 'md'}`, '## Part');
+      await run(mintlify ? mintlifyImporter : gitbookImporter);
+      const destination = `${collision ? 'topic-2' : 'topic'}/next`;
+      expect(mem.rows.find((row) => row.path === 'intro')?.content).toContain(`[Go](/${destination}?x=1#part)`);
+      assertExactTarget('intro', `/${destination}?x=1#part`, destination);
+      expect(findBrokenInternalLinks(snapshot())).toEqual([]);
+    });
+  }
+});
