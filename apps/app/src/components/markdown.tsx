@@ -1,6 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
+import type { PathLanguage } from '@nibleaf/shared/site-language';
 import type { LanguageFn } from 'highlight.js';
 import { type ComponentProps, Suspense, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
@@ -37,6 +38,9 @@ export interface SiteLinkContext {
   lang?: string;
   defaultLanguage?: string;
   version?: string;
+  path?: string;
+  origin?: string;
+  languages?: readonly PathLanguage[];
 }
 
 export interface MarkdownProps {
@@ -58,13 +62,27 @@ export function resolveDocHref(href: string | undefined, site: SiteLinkContext |
   if (!href || !site) {
     return href;
   }
-  if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || /^([a-z][\w+.-]*:)?\/\//i.test(href)) {
-    return href;
+  if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('//')) return href;
+  let internal = href;
+  if (/^[a-z][\w+.-]*:/i.test(href)) {
+    try {
+      const url = new URL(href);
+      if (url.origin !== site.origin && (typeof window === 'undefined' || url.origin !== window.location.origin)) return href;
+      internal = `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return href;
+    }
   }
-  if (href.startsWith('/')) {
-    return siteHref(site.projectId, href, { lang: siteLanguageParam(site.lang, site.defaultLanguage), version: site.version });
-  }
-  return href;
+  const platformBase = `/sites/${site.projectId}`;
+  if (internal === platformBase || internal.startsWith(`${platformBase}/`)) internal = internal.slice(platformBase.length) || '/';
+  const basePath = site.path ?? '';
+  const url = new URL(internal, `https://site.invalid/${basePath}`);
+  return siteHref(site.projectId, `${url.pathname}${url.search}${url.hash}`, {
+    lang: siteLanguageParam(site.lang, site.defaultLanguage),
+    version: site.version,
+    defaultLanguage: site.defaultLanguage,
+    languages: site.languages,
+  });
 }
 
 // Base document typography (sizes, spacing, rhythm) is owned by typeset.css —

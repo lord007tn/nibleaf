@@ -1366,6 +1366,11 @@ const server = createServer((req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   const { pathname, searchParams } = url;
 
+  if (pathname === '/api/public/domains/resolve' && searchParams.get('host') === 'docs.localhost') {
+    json(res, 200, { data: { projectId: 'preview-harbor' } });
+    return;
+  }
+
   if (pathname.startsWith('/api/public/assets/')) {
     res.writeHead(200, { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'no-store' });
     res.end(DIAGRAM_SVG);
@@ -1414,6 +1419,12 @@ const server = createServer((req, res) => {
         return;
       }
       json(res, 200, { data: page });
+      return;
+    }
+    if (rest === 'markdown') {
+      const page = sitePage(id, project.preset, searchParams);
+      res.writeHead(page ? 200 : 404, { 'content-type': 'text/markdown; charset=utf-8' });
+      res.end(page ? `# ${page.page.title}\n\n${page.page.content}\n` : 'Not found');
       return;
     }
     if (rest === 'search') {

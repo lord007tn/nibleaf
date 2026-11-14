@@ -6,6 +6,18 @@ manifest remains the authority for the latest published artifact.
 
 ## Unreleased
 
+### Published documentation language URLs
+
+Non-default languages now use a path prefix: `/ar/guides/start` (or
+`/sites/<project>/ar/guides/start` on the platform). The default language stays
+unprefixed. For versioned docs, the order is language, non-default version, page:
+`/ar/v2/guides/start`. Readers can share these URLs directly; navigation, search,
+canonical/hreflang tags, sitemaps and Markdown discovery use the same paths.
+Site owners do not need to republish or update old links: existing `?lang=ar`
+URLs permanently redirect (308), retaining other query parameters and fragments.
+Explicit default-language queries redirect to the unprefixed URL. Published
+language codes reserve the first path segment.
+
 ### Changed
 
 - **Live sites list navigation in the author's order.** The reader used to put

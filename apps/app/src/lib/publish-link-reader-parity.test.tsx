@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { findBrokenInternalLinks } from '@nibleaf/shared/publish-checks';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language';
 import { resolveSitePage } from '@nibleaf/shared/site-route';
 import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators/redirects';
 import { createElement } from 'react';
@@ -87,15 +88,18 @@ const readerLang = (url: URL): string | undefined => {
 const readerServes = (snapshot: SiteSnapshot, start: URL): 'page' | 'openapi' | 'external' | 'not-found' => {
   let url = start;
   for (let hop = 0; hop <= 10; hop++) {
-    const splat = decodeURIComponent(url.pathname).replace(/^\/+|\/+$/g, '');
-    const lang = readerLang(url);
+    const parsed = parseSiteLanguagePath(decodeURIComponent(url.pathname), publicLanguages(snapshot.project.languages));
+    const splat = parsed.path;
+    const lang = parsed.language?.code ?? readerLang(url);
     // 1. The page API (getSitePage): the first segment is passed as the version.
     if (resolveSitePage(snapshot, splat, lang, splat ? splat.split('/')[0] : undefined)) return 'page';
     // 2. The API reference.
     if (snapshot.openapi && splat === snapshot.openapi.path) return 'openapi';
     // 3. A configured redirect (redirectIfConfigured).
     const redirects = (snapshot.project.config as { redirects: { from: string; to: string }[] }).redirects;
-    const to = resolveRedirectTarget(redirects, normalizeRedirectPath(splat));
+    const to =
+      resolveRedirectTarget(redirects, normalizeRedirectPath(splat)) ??
+      resolveRedirectTarget(redirects, normalizeRedirectPath(decodeURIComponent(url.pathname)));
     if (to) {
       if (/^https?:\/\//i.test(to)) return 'external';
       url = new URL(buildSiteRedirectHref({ projectId: snapshot.project.id, target: to, lang, customDomain: true }), ORIGIN);
@@ -129,7 +133,14 @@ const renderedLinks = (snapshot: SiteSnapshot, linking: SnapshotPage): URL[] => 
   const html = renderToStaticMarkup(
     createElement(RichMarkdown, {
       content: linking.content,
-      site: { projectId: snapshot.project.id, lang: linking.languageCode, defaultLanguage: 'en', version: versionPrefix },
+      site: {
+        projectId: snapshot.project.id,
+        lang: linking.languageCode,
+        defaultLanguage: 'en',
+        version: versionPrefix,
+        path: linking.path,
+        languages: snapshot.project.languages,
+      },
     }),
   );
   const document = new DOMParser().parseFromString(html, 'text/html');
@@ -144,11 +155,11 @@ describe('pre-publish link check vs the reader', () => {
   it.each<[string, Partial<SnapshotPage>, string, 'reached' | 'broken']>([
     // Versions and languages combined (the reader only reads a language prefix in the first segment).
     ['a language prefix after a version prefix', {}, '/v2/ar/guide', 'broken'],
-    ['a language prefix, through its ?lang= redirect', {}, '/ar/guide', 'reached'],
+    ['a language prefix', {}, '/ar/guide', 'reached'],
     ['a version prefix', {}, '/v2/guide', 'reached'],
     ['a group prefix', {}, '/reference', 'reached'],
     ['an unknown ?lang=, through the default language', {}, '/guide?lang=zz', 'reached'],
-    ['a configured redirect, which beats the language prefix', {}, '/ar/old', 'reached'],
+    ['a configured redirect for a full language-prefixed path', {}, '/ar/old', 'reached'],
     ['the default-language prefix', {}, '/en/setup', 'reached'],
     ['the API reference', {}, '/api', 'reached'],
     ['the site root', {}, '/', 'reached'],

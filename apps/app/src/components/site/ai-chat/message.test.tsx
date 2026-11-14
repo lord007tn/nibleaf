@@ -9,7 +9,7 @@ import { ChatMessage } from './message';
 
 const mocks = vi.hoisted(() => ({ feedback: vi.fn() }));
 vi.mock('@/functions/site-chat', () => ({ submitChatFeedbackFn: mocks.feedback }));
-const options = { projectId: 'project', lang: 'en', direction: 'ltr' as const, config: null };
+const options = { projectId: 'project', lang: 'en', defaultLanguage: 'en', direction: 'ltr' as const, config: null };
 const final: AiChatFinalEvent = {
   conversationId: '00000000-0000-4000-8000-000000000001',
   turnId: '00000000-0000-4000-8000-000000000002',
@@ -78,7 +78,8 @@ describe('reader chat messages', () => {
     // The reader has since switched to English.
     await render(<ChatMessage text="" final={arabic} options={options} busy={false} consent="granted" close={vi.fn()} scope={{ version: 'v1' }} />);
     const href = document.getElementById('00000000-0000-4000-8000-000000000002-source-1')?.getAttribute('href') ?? '';
-    expect(href).toContain('lang=en');
+    expect(href).toContain('/v1/guide#');
+    expect(href).not.toContain('?lang=');
     expect(href).toContain('v1');
     expect(decodeURIComponent(href)).toContain('#انتهاء-صلاحية-الرمز');
     await unmount();
@@ -123,10 +124,7 @@ describe('reader chat messages', () => {
     };
     await render(<ChatMessage text="" final={cited} options={options} busy={false} consent="granted" close={vi.fn()} />);
     expect([...container.querySelectorAll('li[dir] > p')].map((page) => page.textContent)).toEqual(['Getting started']);
-    expect([...container.querySelectorAll('li[dir] a')].map((section) => section.getAttribute('href'))).toEqual([
-      '/guide?lang=en#install',
-      '/guide?lang=en#sign-in',
-    ]);
+    expect([...container.querySelectorAll('li[dir] a')].map((section) => section.getAttribute('href'))).toEqual(['/guide#install', '/guide#sign-in']);
     expect([...container.querySelectorAll('button[data-citation]')].map((chip) => chip.textContent)).toEqual(['1', '2', '1']);
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Copy answer"]')?.click());
     expect(writeText).toHaveBeenCalledWith(
@@ -139,9 +137,9 @@ describe('reader chat messages', () => {
         '',
         'Sources',
         '[1] Getting started › Install',
-        `${window.location.origin}/guide?lang=en#install`,
+        `${window.location.origin}/guide#install`,
         '[2] Getting started › Sign in',
-        `${window.location.origin}/guide?lang=en#sign-in`,
+        `${window.location.origin}/guide#sign-in`,
       ].join('\n'),
     );
     await unmount();
@@ -187,7 +185,7 @@ describe('reader chat messages', () => {
       />,
     );
     const card = document.getElementById('00000000-0000-4000-8000-000000000002-source-1');
-    expect(card?.getAttribute('href')).toBe('/guide?lang=en#install');
+    expect(card?.getAttribute('href')).toBe('/guide#install');
     card?.addEventListener('click', (event) => event.preventDefault(), { once: true });
     card?.click();
     expect(onSourceOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'S1' }), 1);

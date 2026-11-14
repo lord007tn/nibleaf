@@ -2,6 +2,7 @@ import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { excerpt, pageDescription } from '@nibleaf/shared/markdown-text';
 import { displayTitle } from '@nibleaf/shared/page-title';
 import { defaultLanguage, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { publishedSitePath } from '@nibleaf/shared/site-language';
 
 /**
  * Pure builders for a published site's llms.txt / llms-full.txt — the
@@ -49,12 +50,9 @@ export const llmsPageUrl = (snapshot: SiteSnapshot, page: SnapshotPage, base: st
   if (!pageVersion) {
     throw new Error(`Snapshot page ${page.id} references an unknown version.`);
   }
-  const versionPath = !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
-  // Slugs may be non-ASCII (Arabic titles keep Arabic slugs); encode each
-  // segment so the URL is a valid ASCII link in a Markdown list.
-  const pagePath = page.path ? `/${page.path.split('/').filter(Boolean).map(encodeURIComponent).join('/')}` : '';
-  const langQuery = page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
-  return markdownAlternateUrl(`${base}${versionPath}${pagePath}${langQuery}`);
+  return markdownAlternateUrl(
+    `${base}${publishedSitePath(page.path, page.languageCode === defaultCode ? undefined : page.languageCode, pageVersion.isDefault ? undefined : pageVersion.slug)}`,
+  );
 };
 
 /** Collapse a description to a single Markdown-safe line. */

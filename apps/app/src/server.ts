@@ -7,9 +7,11 @@ import {
   canonicalPathFromMarkdownAlias,
   decodePublishedPathname,
   documentUrlForBase,
+  markdownAliasPath,
   markdownAlternateUrl,
   markdownDiscoveryLinkHeader,
 } from '@nibleaf/shared/markdown-discovery';
+import { legacySiteLanguageTarget, type PathLanguage, parseSiteLanguagePath } from '@nibleaf/shared/site-language';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { createServerEntry } from '@tanstack/react-start/server-entry';
@@ -306,6 +308,7 @@ interface SiteMeta {
   /** Verified primary custom domain, when configured. */
   primaryDomain: string | null;
   isPrivate: boolean;
+  languages: PathLanguage[];
 }
 
 const siteMetaCache = new Map<string, { meta: SiteMeta | null; at: number }>();
@@ -350,6 +353,7 @@ async function loadSiteMeta(projectId: string, requestHasCredentials: boolean): 
         .object({
           data: z
             .object({
+              languages: z.array(z.object({ code: z.string(), isDefault: z.boolean() })).optional(),
               project: z
                 .object({
                   config: z.looseObject({ visibility: z.string().optional() }).nullable().optional(),
@@ -364,6 +368,7 @@ async function loadSiteMeta(projectId: string, requestHasCredentials: boolean): 
       if (project) {
         const primary = project.primaryDomain?.trim().toLowerCase() ?? '';
         meta = {
+          languages: parsed.success ? (parsed.data.data?.languages ?? []) : [],
           primaryDomain: primary || null,
           isPrivate: (project.config as { visibility?: string } | null)?.visibility === 'private',
         };
@@ -798,7 +803,10 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
             ? requestOrigin
             : `${documentUrl.origin}/sites/${projectId}`;
         if (publicPath === null) return siteMarkdownUnavailableResponse(base);
-        const proxied = await proxyPublishedMarkdown(projectId, publicPath, documentUrl.searchParams);
+        const parsed = parseSiteLanguagePath(publicPath, meta?.languages ?? []);
+        const search = new URLSearchParams(documentUrl.searchParams);
+        if (parsed.language) search.set('lang', parsed.language.code);
+        const proxied = await proxyPublishedMarkdown(projectId, parsed.path, search);
         if (!proxied?.ok) return siteMarkdownUnavailableResponse(base);
         const canonicalUrl = documentUrlForBase(base, routedPath, documentUrl.search);
         return withoutHeadBody(addMarkdownDiscovery(proxied.response, canonicalUrl, llmsUrlForBase(base)), documentRequest.method);
@@ -863,6 +871,32 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
   };
 
   const serve = async (): Promise<Response> => {
+    if (isGetLike) {
+      const match = /^\/sites\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
+      const projectId = isCustomDomain && !isAppOwnedPath(url.pathname) ? await resolveHost(bare) : match?.[1];
+      if (projectId && (isDocumentPath(url.pathname) || url.pathname.endsWith('/changelog/rss.xml'))) {
+        const meta = await resolveSiteMeta(projectId);
+        const path = isCustomDomain ? url.pathname.slice(1) : (match?.[2] ?? '');
+        const target = legacySiteLanguageTarget({
+          path,
+          languages: meta?.languages ?? [],
+          basePath: isCustomDomain ? '' : `/sites/${projectId}`,
+          search: url.search,
+        });
+        if (target) {
+          const migrated = new URL(target, url.origin);
+          const location = markdownAliasCanonical ? `${markdownAliasPath(migrated.pathname)}${migrated.search}` : target;
+          return new Response(null, { status: 308, headers: { location } });
+        }
+        const parsed = parseSiteLanguagePath(path, meta?.languages ?? []);
+        if (parsed.language && parsed.path === 'changelog/rss.xml') {
+          const base = isCustomDomain ? `${url.protocol}//${host}` : `${url.origin}/sites/${projectId}`;
+          const proxied = await proxySeoDocument(projectId, 'changelog/rss.xml', `${base}/${encodeURIComponent(parsed.language.code)}`);
+          return proxied?.ok ? withoutHeadBody(proxied.response, request.method) : seoUnavailableResponse('changelog/rss.xml');
+        }
+      }
+    }
+
     // Binary OG cards share the API's public-only gate on both URL surfaces.
     if (isGetLike) {
       const card = (isCustomDomain ? /^\/og\/(.*\.png)$/u : /^\/sites\/([^/]+)\/og\/(.*\.png)$/u).exec(url.pathname);

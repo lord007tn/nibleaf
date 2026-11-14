@@ -205,13 +205,13 @@ describe('pageHead SEO cascade', () => {
     expect(meta(head, 'description')).toBe('Custom desc');
     expect(meta(head, 'og:image')).toBe('https://cdn/page-og.png');
     expect(canonical(head)).toBe('https://example.com/canonical');
-    expect(Object.keys(hreflangs(head))).toHaveLength(0);
+    expect(hreflangs(head)).toEqual({});
   });
 
   it('emits noindex when the page sets noindex, even if the site allows indexing', () => {
     const head = pageHead(base({ page: { ...base().page, config: { seo: { noindex: true } } } }), 'p1');
     expect(meta(head, 'robots')).toBe('noindex,nofollow');
-    expect(Object.keys(hreflangs(head))).toHaveLength(0);
+    expect(hreflangs(head)).toEqual({});
   });
 
   it('emits noindex when the language disallows indexing', () => {
@@ -276,14 +276,14 @@ describe('pageHead canonical + hreflang', () => {
     );
     const alts = hreflangs(head);
     expect(alts.en).toBe('http://localhost:4310/sites/p1/quickstart');
-    expect(alts.ar).toBe('http://localhost:4310/sites/p1/quickstart?lang=ar');
+    expect(alts.ar).toBe('http://localhost:4310/sites/p1/ar/quickstart');
     expect(alts['x-default']).toBe('http://localhost:4310/sites/p1/quickstart');
     expect(alts.fr).toBeUndefined();
     // Non-default active language canonicalizes WITH its ?lang param.
-    expect(canonical(head)).toBe('http://localhost:4310/sites/p1/quickstart?lang=ar');
+    expect(canonical(head)).toBe('http://localhost:4310/sites/p1/ar/quickstart');
   });
 
-  it('omits hreflang entirely when only one language has the page', () => {
+  it('emits the available language and x-default when only one language has the page', () => {
     const head = pageHead(
       base({
         languages: [
@@ -293,7 +293,7 @@ describe('pageHead canonical + hreflang', () => {
       }),
       'p1',
     );
-    expect(Object.keys(hreflangs(head))).toHaveLength(0);
+    expect(hreflangs(head)).toEqual({ en: 'http://localhost:4310/sites/p1/quickstart', 'x-default': 'http://localhost:4310/sites/p1/quickstart' });
   });
 });
 
@@ -333,7 +333,7 @@ describe('canonical consolidation across origins', () => {
     );
     const alts = hreflangs(head);
     expect(alts.en).toBe('https://docs.acme.com/quickstart');
-    expect(alts.ar).toBe('https://docs.acme.com/quickstart?lang=ar');
+    expect(alts.ar).toBe('https://docs.acme.com/ar/quickstart');
     expect(alts['x-default']).toBe('https://docs.acme.com/quickstart');
   });
 
@@ -377,7 +377,7 @@ describe('canonicalSiteBase priority', () => {
 
 describe('changelogFeedUrl', () => {
   it('appends rss.xml before a localized page query string', () => {
-    expect(changelogFeedUrl('https://docs.example.com/changelog?lang=fr')).toBe('https://docs.example.com/changelog/rss.xml?lang=fr');
+    expect(changelogFeedUrl('https://docs.example.com/fr/changelog')).toBe('https://docs.example.com/fr/changelog/rss.xml');
   });
 });
 

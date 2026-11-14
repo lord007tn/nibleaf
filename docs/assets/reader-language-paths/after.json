@@ -1,0 +1,40 @@
+[
+  {
+    "language": "en",
+    "requestedUrl": "http://localhost:4310/sites/preview-harbor/getting-started/introduction",
+    "browserUrl": "http://localhost:4310/sites/preview-harbor/getting-started/introduction",
+    "status": 200,
+    "tags": [
+      "<html lang=\"en\" dir=\"ltr\">",
+      "<link rel=\"canonical\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"9yUSYbDveb+eQWFYGtU+aRPH\"/>",
+      "<link rel=\"alternate\" hrefLang=\"en\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"9yUSYbDveb+eQWFYGtU+aRPH\"/>",
+      "<link rel=\"alternate\" hrefLang=\"ar\" href=\"http://localhost:4310/sites/preview-harbor/ar/getting-started/introduction\" nonce=\"9yUSYbDveb+eQWFYGtU+aRPH\"/>",
+      "<link rel=\"alternate\" hrefLang=\"x-default\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"9yUSYbDveb+eQWFYGtU+aRPH\"/>"
+    ]
+  },
+  {
+    "language": "ar",
+    "requestedUrl": "http://localhost:4310/sites/preview-harbor/ar/getting-started/introduction",
+    "browserUrl": "http://localhost:4310/sites/preview-harbor/ar/getting-started/introduction",
+    "status": 200,
+    "tags": [
+      "<html lang=\"ar\" dir=\"rtl\">",
+      "<link rel=\"canonical\" href=\"http://localhost:4310/sites/preview-harbor/ar/getting-started/introduction\" nonce=\"jBTzFr5EY6AO+aBDKvcAy8Lw\"/>",
+      "<link rel=\"alternate\" hrefLang=\"en\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"jBTzFr5EY6AO+aBDKvcAy8Lw\"/>",
+      "<link rel=\"alternate\" hrefLang=\"ar\" href=\"http://localhost:4310/sites/preview-harbor/ar/getting-started/introduction\" nonce=\"jBTzFr5EY6AO+aBDKvcAy8Lw\"/>",
+      "<link rel=\"alternate\" hrefLang=\"x-default\" href=\"http://localhost:4310/sites/preview-harbor/getting-started/introduction\" nonce=\"jBTzFr5EY6AO+aBDKvcAy8Lw\"/>"
+    ]
+  },
+  {
+    "check": "HTTP 308 fragment inheritance",
+    "browserUrl": "http://localhost:4310/sites/preview-harbor/ar/getting-started/introduction?tab=cli#what-you-can-build"
+  },
+  {
+    "check": "client pager retains language",
+    "browserUrl": "http://localhost:4310/sites/preview-harbor/ar/getting-started/installation",
+    "documentRequests": 0
+  },
+  {
+    "outsideNetworkAttempts": 0
+  }
+]

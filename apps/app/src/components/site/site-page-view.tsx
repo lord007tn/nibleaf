@@ -16,7 +16,9 @@ import { articleStats } from '@/lib/article-stats';
 import { HydrationIsland } from '@/lib/hydration-modules';
 import { articleMarkdownModule } from '@/lib/reader-hydration-modules';
 import { formatUpdated } from '@/lib/reader-text';
+import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref } from '@/lib/site-paths';
+import { canonicalSiteBase } from '@/lib/site-seo';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
 const ARTICLE_MODULES = [articleMarkdownModule];
@@ -343,7 +345,17 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         content={page.content}
         language={readerLanguage}
         chromeLanguage={chromeLanguage}
-        site={{ projectId, lang: readerLanguage, defaultLanguage, version: versionPrefix }}
+        site={{
+          projectId,
+          lang: readerLanguage,
+          defaultLanguage,
+          version: versionPrefix,
+          path: page.path,
+          origin: new URL(
+            canonicalSiteBase(projectId, { primaryDomain: data.project.primaryDomain, slug: data.project.slug, requestOrigin: customDomainOrigin() }),
+          ).origin,
+          languages: data.languages,
+        }}
       />
 
       <SiteChatPageAction title={page.title} path={page.path} lang={language} />

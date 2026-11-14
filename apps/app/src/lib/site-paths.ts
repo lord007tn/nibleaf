@@ -1,3 +1,4 @@
+import { type PathLanguage, parseSiteLanguagePath, publishedSitePath } from '@nibleaf/shared/site-language';
 import { customDomainOrigin } from '@/lib/site-origin';
 
 const cleanPath = (path = ''): string => path.replace(/^\/+|\/+$/g, '');
@@ -12,11 +13,6 @@ export const safeDecode = (value: string): string => {
     return value;
   }
 };
-
-/** Percent-encode one path segment exactly once: a raw Arabic slug from the
- *  snapshot and an already-encoded segment from an authored link both come out
- *  encoded a single time, so the route's decoded splat matches `page.path`. */
-const encodeSegment = (segment: string): string => encodeURIComponent(safeDecode(segment));
 
 /** Split an authored path into its pathname and the `?query#fragment` tail so
  *  only the pathname is encoded and anchors/queries survive untouched. */
@@ -58,17 +54,27 @@ export function siteRoutePath(pathname: string): string {
   return pathname.replace(/^\/sites\/[^/]+(?:\/|$)/, '');
 }
 
-/** Omit only a known default language; explicit authored query strings stay intact. */
+/** Omit only a known default language from the public path. */
 export function siteLanguageParam(code?: string, defaultCode?: string): string | undefined {
   return code === defaultCode ? undefined : code;
 }
 
-export function siteHref(projectId: string, path = '', options?: { lang?: string; version?: string }): string {
+export function siteHref(
+  projectId: string,
+  path = '',
+  options?: { lang?: string; version?: string; defaultLanguage?: string; languages?: readonly PathLanguage[] },
+): string {
   const { pathname, query, fragment } = splitPath(path);
-  const fullPath = [options?.version, cleanPath(pathname)].filter(Boolean).join('/').split('/').filter(Boolean).map(encodeSegment).join('/');
+  const params = new URLSearchParams(query);
+  const queryLanguage = params.get('lang');
+  const unknownLanguage = queryLanguage && options?.languages && !options.languages.some((item) => item.code === queryLanguage);
+  const parsed = parseSiteLanguagePath(cleanPath(pathname), options?.languages ?? []);
+  const language = parsed.language?.code ?? (unknownLanguage ? undefined : (queryLanguage ?? options?.lang));
+  if (!unknownLanguage) params.delete('lang');
+  const version =
+    options?.version && (parsed.path === options.version || parsed.path.startsWith(`${options.version}/`)) ? undefined : options?.version;
+  const fullPath = publishedSitePath(parsed.path, siteLanguageParam(language || undefined, options?.defaultLanguage), version);
   const prefix = siteBasePath(projectId, isCustomDomainSite(projectId));
-  const langParam = options?.lang && !new URLSearchParams(query).has('lang') ? `lang=${encodeURIComponent(options.lang)}` : '';
-  const search = langParam ? `${query ? `${query}&` : '?'}${langParam}` : query;
-  const href = `${prefix}${fullPath ? `/${fullPath}` : ''}` || '/';
-  return `${href}${search}${fragment}`;
+  const search = params.toString();
+  return `${prefix}${fullPath || (prefix ? '' : '/')}${search ? `?${search}` : ''}${fragment}`;
 }

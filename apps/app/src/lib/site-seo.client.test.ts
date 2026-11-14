@@ -36,6 +36,6 @@ it('preserves explicit primary-domain, subdomain, and SSR-origin precedence', ()
 it('serializes Arabic canonical paths once for custom domains', () => {
   const raw = 'reference/\u0627\u0644\u0628\u062f\u0627\u064a\u0629';
   const encoded = 'reference/%D8%A7%D9%84%D8%A8%D8%AF%D8%A7%D9%8A%D8%A9';
-  expect(sitePageUrl('p1', raw, 'ar')).toBe(`${window.location.origin}/${encoded}?lang=ar`);
-  expect(sitePageUrl('p1', encoded, 'ar')).toBe(`${window.location.origin}/${encoded}?lang=ar`);
+  expect(sitePageUrl('p1', raw, 'ar')).toBe(`${window.location.origin}/ar/${encoded}`);
+  expect(sitePageUrl('p1', encoded, 'ar')).toBe(`${window.location.origin}/ar/${encoded}`);
 });

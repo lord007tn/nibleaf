@@ -32,6 +32,7 @@ import {
   type SnapshotProject,
   withOpenApiNav,
 } from '@nibleaf/shared/site';
+import { publishedSitePath } from '@nibleaf/shared/site-language';
 import {
   activeLanguageCode,
   activeVersion,
@@ -1083,10 +1084,7 @@ export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocume
       if (!pageVersion) {
         throw new Error(`Snapshot page ${page.id} references an unknown version.`);
       }
-      const versionPath = !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
-      const pagePath = page.path ? `/${page.path}` : '';
-      const langQuery = page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
-      const loc = `${base}${versionPath}${pagePath}${langQuery}`;
+      const loc = `${base}${publishedSitePath(page.path, page.languageCode === defaultCode ? undefined : page.languageCode, pageVersion.isDefault ? undefined : pageVersion.slug)}`;
       const lastmod = isoTimestamp(page.updatedAt, 'page updatedAt');
       return `  <url><loc>${escapeXml(loc)}</loc><lastmod>${escapeXml(lastmod)}</lastmod></url>`;
     });

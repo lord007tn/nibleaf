@@ -1,20 +1,30 @@
 import { siteT } from '@nibleaf/i18n/site';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
 import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
 import { SiteNotFound } from '@/components/site/site-not-found';
 import { SitePageView } from '@/components/site/site-page-view';
 import { useSiteReader } from '@/components/site/site-reader-context';
-import { getSiteFn } from '@/functions/site';
+import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
 import type { SitePage } from '@/hooks/api/types';
 import { isPublicReaderSite } from '@/lib/reader-site-access';
-import { resolveLanguagePathRedirect } from '@/lib/site-language-path';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { isCustomDomainSite } from '@/lib/site-paths';
+import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
-import { pageHead, pageMarkdownHeaders, readerFallbackHead, siteLanguageFromMatches, unavailableSiteHeadFromMatches } from '@/lib/site-seo';
+import {
+  pageHead,
+  pageMarkdownHeaders,
+  readerFallbackHead,
+  siteChangelogHead,
+  siteLanguageFromMatches,
+  sitePageUrl,
+  unavailableSiteHeadFromMatches,
+} from '@/lib/site-seo';
+
+const ChangelogView = lazy(() => import('@/components/site/site-changelog').then((module) => ({ default: module.SiteChangelogView })));
 
 const OpenApiReferenceView = lazy(() =>
   import('@/components/site/openapi-reference-view').then((module) => ({ default: module.OpenApiReferenceView })),
@@ -38,16 +48,23 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   staleTime: 30_000,
   shouldReload: ({ params }) => (isPublicReaderSite(params.projectId) ? undefined : true),
   // Server-fetch the page so its content + per-page SEO tags are in the HTML.
-  loader: async ({ params, deps, location, context: { queryClient } }) => {
-    const path = params._splat ?? '';
+  loader: async ({ params, deps, location, parentMatchPromise, context: { queryClient } }) => {
+    const parent = await parentMatchPromise;
+    if (parent?.status === 'error') throw parent.error;
+    const site = parent?.loaderData?.site;
+    const parsed = parseSiteLanguagePath(params._splat ?? '', site?.languages ?? []);
+    const lang = parsed.language?.code ?? deps.lang;
+    const path = parsed.path;
+    if (path === 'changelog' && site) {
+      const entries = await listSiteChangelogFn({ data: { projectId: params.projectId } });
+      return { kind: 'changelog' as const, entries, site, lang, siteOrigin: customDomainOrigin() };
+    }
     const version = path ? path.split('/')[0] : undefined;
     let page: SitePage;
     try {
       // A page preloaded on link hover (or read moments ago) comes from the query
       // cache; once it is stale, the loader waits for the published version again.
-      page = await queryClient.query(
-        sitePageQueryOptions(params.projectId, path, deps.lang, version, { fresh: isPublicReaderSite(params.projectId) }),
-      );
+      page = await queryClient.query(sitePageQueryOptions(params.projectId, path, lang, version, { fresh: isPublicReaderSite(params.projectId) }));
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
         throw error;
@@ -55,23 +72,12 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       // The API Reference is a published snapshot resource rather than an MDX
       // page, so it intentionally has no Page row. Resolve its configured path
       // from the access-gated site shell before treating the page miss as 404.
-      const requested = (params._splat ?? '').replace(/^\/+|\/+$/g, '');
-      let languageRedirect: string | null = null;
+      const requested = path;
       try {
-        const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } });
+        const site = await getSiteFn({ data: { projectId: params.projectId, language: lang } });
         if (site.openapi && requested === site.openapi.path) {
-          return { kind: 'openapi' as const, openapi: site.openapi, site, lang: deps.lang, siteOrigin: customDomainOrigin() };
+          return { kind: 'openapi' as const, openapi: site.openapi, site, lang, siteOrigin: customDomainOrigin() };
         }
-        // `/ar` or `/ar/guides` is a common guess on a multilingual site, but
-        // the language lives in `?lang=`. Resolve the equivalent URL here and
-        // throw it below, outside this try, so the redirect isn't swallowed.
-        languageRedirect = resolveLanguagePathRedirect({
-          splat: path,
-          languages: site.languages,
-          projectId: params.projectId,
-          isCustomDomain: isCustomDomainSite(params.projectId),
-          search: location.searchStr,
-        });
       } catch {
         // Preserve the original page-not-found behavior (and privacy-hiding 404)
         // when the shell is unavailable or the reference is not published.
@@ -79,12 +85,12 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       // Page didn't resolve — honor a configured redirect (throws a 308) before
       // falling back to the not-found state. Mark the SSR response 404 so this
       // soft-404 returns the right status (the head also carries robots noindex).
-      await redirectIfConfigured(params.projectId, params._splat ?? '', deps.lang);
-      // A language-prefixed URL permanently redirects to the `?lang=` form (the
-      // default language's clean URL) once no configured redirect claimed it.
-      if (languageRedirect) {
-        throw redirect({ href: languageRedirect, statusCode: 308 });
-      }
+      await redirectIfConfigured(
+        params.projectId,
+        path,
+        siteLanguageParam(lang, site?.languages.find((item) => item.isDefault)?.code),
+        params._splat,
+      );
       // The router's not-found sentinel sets the final streamed response status.
       // The earlier response-context mutation was proven to return HTTP 200 in
       // production even though the page rendered a noindex not-found shell.
@@ -108,15 +114,16 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       }
     };
     if (requestedContent && safeDecode(requestedContent) !== page.page.path) {
-      const target = [prefix, page.page.path].filter(Boolean).join('/');
-      const query = deps.lang ? `?lang=${encodeURIComponent(deps.lang)}` : '';
-      const href = isCustomDomainSite(params.projectId) ? `/${target}${query}` : `/sites/${params.projectId}/${target}${query}`;
+      const href = siteHref(params.projectId, `${page.page.path}${location.searchStr}${location.hash ? `#${location.hash.replace(/^#/, '')}` : ''}`, {
+        lang: siteLanguageParam(lang, page.languages.find((item) => item.isDefault)?.code),
+        version: prefix,
+      });
       throw redirect({ href, statusCode: 302 });
     }
     // The article renders in one pass, never a fallback first. Imported here,
     // not at the top: this loader is in every route's first load.
     await import('@/lib/reader-hydration-modules').then((module) => module.loadArticleRenderer(page.page.content));
-    return { kind: 'page' as const, page, lang: deps.lang, version, siteOrigin: customDomainOrigin() };
+    return { kind: 'page' as const, page, lang, version, siteOrigin: customDomainOrigin() };
   },
   // Lets the server entry add the Markdown `Link` header from this already
   // loaded page instead of rendering the page a second time to find out.
@@ -126,24 +133,37 @@ export const Route = createFileRoute('/sites/$projectId/$')({
     if (match.status === 'error') return readerFallbackHead(matches, siteLanguageFromMatches(matches));
     const unavailable = unavailableSiteHeadFromMatches(matches);
     if (unavailable) return unavailable;
+    if (loaderData?.kind === 'changelog') return siteChangelogHead(loaderData.site, params.projectId, loaderData.siteOrigin);
     if (loaderData?.kind === 'openapi') {
       const siteName = loaderData.site.languageConfig?.name || loaderData.site.project.name;
       const title = `${loaderData.openapi.title} — ${siteName}`;
       // The site's own (localized) description; never a fixed English sentence.
       const description = loaderData.site.languageConfig?.description || loaderData.site.project.description;
       const noindex = loaderData.site.project.config?.visibility === 'private';
+      const site = loaderData.site;
+      const options = { primaryDomain: site.project.primaryDomain, slug: site.project.slug, requestOrigin: loaderData.siteOrigin };
+      const resourceUrl = (language?: string) => sitePageUrl(params.projectId, loaderData.openapi.path, language, options);
+      const defaultCode = site.languages.find((item) => item.isDefault)?.code;
+
       return {
         meta: [
           { title },
           ...(description ? [{ name: 'description', content: description }] : []),
           ...(noindex ? [{ name: 'robots', content: 'noindex,nofollow' }] : []),
         ],
+        links: [
+          { rel: 'canonical', href: resourceUrl(siteLanguageParam(site.activeLanguage, defaultCode)) },
+          ...(!noindex
+            ? site.languages.map((item) => ({ rel: 'alternate', hrefLang: item.code, href: resourceUrl(item.isDefault ? undefined : item.code) }))
+            : []),
+          ...(!noindex ? [{ rel: 'alternate', hrefLang: 'x-default', href: resourceUrl() }] : []),
+        ],
       };
     }
     return pageHead(
       loaderData?.kind === 'page' ? loaderData.page : null,
       params.projectId,
-      // A loaded page needs the requested `?lang=`; a not-found page, the reader's language.
+      // A loaded page needs the requested language; a not-found page, the reader's language.
       loaderData ? loaderData.lang : siteLanguageFromMatches(matches),
       loaderData?.siteOrigin,
     );
@@ -152,10 +172,16 @@ export const Route = createFileRoute('/sites/$projectId/$')({
 
 function SitePath() {
   const { projectId } = Route.useParams();
-  // Active language comes from the parent route's ?lang= search param.
-  const { lang } = Route.useSearch();
+  // Active language comes from the resolved language prefix.
   const data = Route.useLoaderData();
+  const lang = data.lang;
   const readerLang = useSiteReader()?.lang;
+  if (data.kind === 'changelog')
+    return (
+      <Suspense fallback={<SiteArticleSkeleton />}>
+        <ChangelogView site={data.site} entries={data.entries} />
+      </Suspense>
+    );
   if (data.kind === 'openapi') {
     return (
       <Suspense fallback={<div className="py-12 text-center text-muted-foreground">{siteT(readerLang ?? lang)('loadingApiReference')}</div>}>

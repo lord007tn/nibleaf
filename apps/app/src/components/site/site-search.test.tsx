@@ -649,7 +649,7 @@ it('routes a selected search result with its language and selected version', asy
   const result = document.querySelector<HTMLElement>('[role="option"]');
   if (!result) throw new Error('Missing search result');
   await act(async () => result.click());
-  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/v2/setup?lang=ar' });
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/ar/v2/setup' });
   window.history.replaceState(null, '', '/');
 });
 

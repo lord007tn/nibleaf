@@ -10,6 +10,7 @@
  */
 import { MAX_REDIRECT_CHAIN_LENGTH } from './redirects';
 import { publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
+import { parseSiteLanguagePath } from './site-language';
 import { resolveSiteRoute } from './site-route';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
@@ -121,7 +122,7 @@ const reaches = (snapshot: SiteSnapshot, startPath: string, startLang: string | 
  * Rendering follows the reader (`resolveDocHref`): a root-relative link gets
  * the page's version prefix (non-default versions) and, unless it names one,
  * the page's language (non-default languages); a relative link resolves
- * against the page URL and carries only its own `?lang=`.
+ * against the page path and retains its language.
  */
 export const createLinkResolver = (snapshot: SiteSnapshot) => {
   const resolve = createLinkTargetResolver(snapshot);
@@ -152,20 +153,21 @@ export const createLinkTargetResolver = (snapshot: SiteSnapshot) => {
     if (!pathname) return null;
     const absolute = pathname.startsWith('/');
     const version = versionById.get(page.versionId);
-    const versionPrefix = !siteAbsolute && version && !version.isDefault ? [version.slug] : [];
+    const parsed = parseSiteLanguagePath(pathname, publicLanguages(snapshot.project.languages));
+    const documentPath = absolute ? parsed.path : pathname;
+    const alreadyVersioned = absolute && version && (documentPath === version.slug || documentPath.startsWith(`${version.slug}/`));
+    const versionPrefix = !siteAbsolute && !alreadyVersioned && version && !version.isDefault ? [version.slug] : [];
     const base = absolute ? versionPrefix : [...versionPrefix, ...page.path.split('/').filter(Boolean).slice(0, -1)];
-    const segments = resolveSegments(absolute ? pathname.slice(1) : pathname, base);
+    const segments = resolveSegments(documentPath, base);
     const last = segments.at(-1) ?? '';
     if (PAGE_EXTENSION.test(last)) segments[segments.length - 1] = last.replace(PAGE_EXTENSION, '');
     else if (FILE_EXTENSION.test(last)) return null;
 
     const params = new URLSearchParams(query);
-    const lang = params.has('lang')
-      ? searchLanguage(params)
-      : !siteAbsolute && absolute && page.languageCode !== defaultCode
-        ? page.languageCode
-        : undefined;
-    const path = segments.join('/');
+    const lang =
+      parsed.language?.code ??
+      (params.has('lang') ? searchLanguage(params) : !siteAbsolute && page.languageCode !== defaultCode ? page.languageCode : undefined);
+    const path = [parsed.language?.code, ...segments].filter(Boolean).join('/');
     const key = JSON.stringify([path, lang]);
     const cached = destinations.get(key);
     if (cached !== undefined) return withFragment(cached);
