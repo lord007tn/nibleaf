@@ -71,6 +71,10 @@ it.each(['en', 'ar', 'de'])('labels both mobile dialogs with app-supplied %s tex
     const description = document.getElementById(dialog?.getAttribute('aria-describedby') ?? '');
     expect(title?.textContent).toBe(`${locale}:nav.sidebarTitle`);
     expect(description?.textContent).toBe(`${locale}:${descriptionKey}`);
+    // P2-DASH-010: the sidebar's links sit in a named navigation landmark.
+    const nav = dialog?.querySelector('nav');
+    expect(nav?.getAttribute('aria-label')).toBe(`${locale}:nav.main`);
+    expect(nav?.querySelectorAll('a').length).toBeGreaterThan(0);
   }
 });
 

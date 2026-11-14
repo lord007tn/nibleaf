@@ -4898,6 +4898,8 @@ export const MESSAGE_IDS = {
   'overview.activity.viewAll': 'overview_activity_viewall',
   'publishes.tooLarge': 'publishes_toolarge',
   'publishes.noSnapshot': 'publishes_nosnapshot',
+  'newSite.reason.name': 'newsite_reason_name',
+  'nav.main': 'nav_main',
   'settings.appearance.summary': 'settings_appearance_summary',
   'settings.appearance.sections': 'settings_appearance_sections',
   'pending.count': 'pending_count',

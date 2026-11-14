@@ -53,32 +53,35 @@ export function ProjectSidebar({ projectId, orgSlug, previewDraft = false }: { p
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            {nav.map((item) => (
-              <SidebarMenuItem key={item.labelKey}>
-                <SidebarMenuButton
-                  onClick={() => setOpenMobile(false)}
-                  isActive={item.isActive}
-                  render={<Link params={{ projectId }} to={item.to} />}
-                  size="lg"
-                  tooltip={t(item.labelKey)}
-                >
-                  <item.icon className="size-5" />
-                  <span>{t(item.labelKey)}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-            {isMobile ? (
-              <SidebarMenuItem className="sm:hidden">
-                <SidebarMenuButton onClick={() => setOpenMobile(false)} render={previewLink} size="lg">
-                  <Eye className="size-5" />
-                  <span>{t('project.preview')}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ) : null}
-          </SidebarMenu>
-        </SidebarGroup>
+        {/* The sidebar's links are the site's main navigation landmark. */}
+        <nav aria-label={t('nav.main')} className="contents">
+          <SidebarGroup>
+            <SidebarMenu>
+              {nav.map((item) => (
+                <SidebarMenuItem key={item.labelKey}>
+                  <SidebarMenuButton
+                    onClick={() => setOpenMobile(false)}
+                    isActive={item.isActive}
+                    render={<Link params={{ projectId }} to={item.to} />}
+                    size="lg"
+                    tooltip={t(item.labelKey)}
+                  >
+                    <item.icon className="size-5" />
+                    <span>{t(item.labelKey)}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              {isMobile ? (
+                <SidebarMenuItem className="sm:hidden">
+                  <SidebarMenuButton onClick={() => setOpenMobile(false)} render={previewLink} size="lg">
+                    <Eye className="size-5" />
+                    <span>{t('project.preview')}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
+            </SidebarMenu>
+          </SidebarGroup>
+        </nav>
       </SidebarContent>
 
       <SidebarAccountFooter />
