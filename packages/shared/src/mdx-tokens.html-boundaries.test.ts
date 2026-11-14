@@ -48,31 +48,39 @@ it('preserves whole-page markers in the exact 2,640 review shapes, without newly
   ).toBe(baseline.sources);
   expect(baseline.kept).toHaveLength(cases.length);
   expect(baseline.active).toHaveLength(cases.length);
+  // Problems are collected and asserted once: an expect() per marker made this
+  // test take 16 s on a loaded CI runner (it takes under 1 s locally).
   const losses: Array<{ index: number; target: number; marker: string }> = [];
+  const misplaced: Array<{ index: number; target: number; marker: string }> = [];
+  const missingBaseline: number[] = [];
   const newlyActive: Array<{ index: number; target: number }> = [];
   for (const { index, source, markers } of cases) {
     for (const [target, output] of [md(source), portable(source)].entries()) {
       const expected = baseline.kept[index]?.[target];
       const active = baseline.active[index]?.[target];
-      expect(expected).toBeTypeOf('number');
-      expect(active).toBeTypeOf('number');
+      if (typeof expected !== 'number' || typeof active !== 'number') {
+        missingBaseline.push(index);
+        continue;
+      }
       let previous = -1;
       for (const [bit, marker] of markers.entries()) {
-        if (((expected as number) & (1 << bit)) === 0) continue;
-        if (!output.includes(marker)) losses.push({ index, target, marker });
-        else {
-          expect(output.split(marker)).toHaveLength(2);
-          expect(output.indexOf(marker)).toBeGreaterThan(previous);
-          previous = output.indexOf(marker);
-        }
+        if ((expected & (1 << bit)) === 0) continue;
+        const at = output.indexOf(marker);
+        if (at === -1) losses.push({ index, target, marker });
+        // Each kept marker appears once, in source order.
+        else if (at <= previous || output.indexOf(marker, at + marker.length) !== -1) misplaced.push({ index, target, marker });
+        else previous = at;
       }
-      if (activeExportHtml(output) > (active as number)) newlyActive.push({ index, target });
+      if (activeExportHtml(output) > active) newlyActive.push({ index, target });
     }
   }
   const shapes = new Set(losses.map(({ index }) => index)).size;
   console.info(
     `Whole-page HTML preservation: ${cases.length} cases, two targets, ${(performance.now() - start).toFixed(1)} ms; ${losses.length} lost markers in ${shapes} shapes; ${newlyActive.length} newly active`,
   );
+  expect(missingBaseline).toEqual([]);
   expect(losses.slice(0, 12), `${losses.length} lost markers in ${shapes} shapes`).toEqual([]);
+  expect(misplaced.slice(0, 12), `${misplaced.length} duplicated or reordered markers`).toEqual([]);
   expect(newlyActive).toEqual([]);
-});
+  // A loaded CI runner can be several times slower than a laptop; the cases themselves stay linear (growth tests cover that).
+}, 60_000);
