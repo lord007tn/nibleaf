@@ -53,6 +53,13 @@ describe('theme template schema', () => {
     if (!future.success) expect(future.message).toContain('supports versions 0 and 1');
   });
 
+  it('validates the authored accent, not the shade the reader draws it in (PUB-006)', () => {
+    // An accent the reader would shade into a passing colour is still rejected
+    // when the owner's own pair fails: white text on #eeeeee.
+    const authored = { preset: 'harbor' as const, colors: { light: { accent: '#eeeeee', accentForeground: '#ffffff', focus: '#1f63c4' } } };
+    expect(themeConfigSchema.safeParse(authored).success).toBe(false);
+  });
+
   it('rejects custom semantic colors that fail contrast', () => {
     expect(
       themeConfigSchema.safeParse({

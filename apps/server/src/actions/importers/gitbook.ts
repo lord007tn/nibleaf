@@ -5,6 +5,7 @@ import { badRequest, ImportError } from '@/errors';
 import { captureImportDraft, createImportReplacementBranch, promoteImportReplacementBranch } from '../branches';
 import { assertProjectInOrg } from '../projects';
 import { MAX_IMPORT_FILES } from './content';
+import { type ImportDestinations, ImportFinalPaths } from './final-paths';
 import { RemoteAssetMigrator } from './ghost-assets';
 import { encodeMarkdownUrl, resolveGitBookRepoPath, rewriteGitBookImages } from './gitbook-assets';
 import { GitBookImportBudget } from './gitbook-budget';
@@ -29,7 +30,14 @@ import {
 } from './gitbook-markdown';
 import { getGitHubDefaultBranch, getGitHubSnapshot, getGitHubTextFile, githubRawUrl } from './github';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
-import { defaultImportTarget, ensureGroupPage, type ImportTarget, removeImportPlaceholders, upsertPage } from './persistence';
+import {
+  defaultImportTarget,
+  ensureGroupPage,
+  type ImportTarget,
+  removeImportPlaceholders,
+  reserveImportPage,
+  writeImportPageContent,
+} from './persistence';
 import { emptySummary, type ImporterSource, type ImportSummary } from './types';
 
 /**
@@ -126,7 +134,19 @@ export const gitbookImporter: ImporterSource<GitbookImportBody> = {
         summary.warnings.push(`Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}.`);
       }
       const assets = new RemoteAssetMigrator(projectId, 'gitbook', undefined, () => budget.check());
+      const finalPaths = new ImportFinalPaths();
+      const destinations = finalPaths.add(target, routes);
+      const sourcesByRoute = new Map<string, string[]>();
+      for (const [source, route] of routes) {
+        const sources = sourcesByRoute.get(route) ?? [];
+        sources.push(source);
+        sourcesByRoute.set(route, sources);
+      }
       const context: ImportContext = {
+        finalPaths,
+        sourcesByRoute,
+        destinations,
+        write: [],
         repo: { owner, name, branch, loadText },
         blobs,
         root: config.root,
@@ -139,6 +159,8 @@ export const gitbookImporter: ImporterSource<GitbookImportBody> = {
         budget,
       };
       await importNodes(nodes, null, target, context);
+      await finalPaths.resolve();
+      for (const write of context.write) await write();
 
       summary.assetsImported = assets.migrated;
       summary.assetsSkipped = assets.skipped;
@@ -184,6 +206,10 @@ export const gitbookImporter: ImporterSource<GitbookImportBody> = {
 };
 
 interface ImportContext {
+  finalPaths: ImportFinalPaths;
+  destinations: ImportDestinations;
+  sourcesByRoute: ReadonlyMap<string, readonly string[]>;
+  write: Array<() => Promise<void>>;
   languageCode: string;
   sourceUrl?: string;
   budget: GitBookImportBudget;
@@ -253,7 +279,7 @@ const importedRoutes = (routes: ReadonlyMap<string, string>, nodes: readonly Loa
   const kept = new Set<string>();
   const visit = (items: readonly LoadedGitBookNode[]) => {
     for (const item of items) {
-      if (item.page) kept.add(item.node.route);
+      kept.add(item.node.route);
       visit(item.children);
     }
   };
@@ -284,6 +310,7 @@ const importNodes = async (
   for (const [position, { node, page, children }] of nodes.entries()) {
     if (!page) {
       const groupId = await ensureGroupPage(target, { parentId, title: node.title.slice(0, 200), slug: node.slug, position });
+      context.destinations.groups.set(node.route.slice(1), groupId);
       await importNodes(children, groupId, target, context);
       continue;
     }
@@ -310,29 +337,6 @@ const importNodes = async (
       summary.fidelityIssues ??= [];
       summary.fidelityIssues.push(...converted.issues.map((issue) => ({ ...issue, page: path })));
     }
-    const linked = rewriteMintlifyInternalLinks(converted.content, path, context.routes, {
-      languageCode: context.languageCode,
-      sourceUrl: context.sourceUrl,
-      appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
-      onUnresolved: (reference) => {
-        summary.fidelityIssues ??= [];
-        summary.fidelityIssues.push({ kind: 'link', page: path, reference });
-      },
-    });
-    const spaceLinks = findGitBookSpaceLinks(linked);
-    if (spaceLinks.length > 0) {
-      summary.warnings.push(
-        `Page "${path}" links to another GitBook space (${spaceLinks.length} link${spaceLinks.length === 1 ? '' : 's'}) — kept as-is, point ${spaceLinks.length === 1 ? 'it' : 'them'} at the published page: ${spaceLinks.slice(0, 3).join(', ')}.`,
-      );
-    }
-    const images = rewriteGitBookImages(linked, filePath, context.blobs, context.root, rawUrl);
-    if (images.missing.length > 0) {
-      summary.warnings.push(
-        `Page "${path}" references ${images.missing.length} image${images.missing.length === 1 ? '' : 's'} not found in the repository: ${images.missing.slice(0, 3).join(', ')}.`,
-      );
-    }
-    const content = await context.assets.rewrite(images.content);
-
     // GitBook's page title is the file's H1; the SUMMARY text (or its explicit
     // link title) is the sidebar label when it differs.
     const title = (heading ?? node.title).slice(0, 200);
@@ -343,16 +347,42 @@ const importNodes = async (
       ...(meta.mode ? { mode: meta.mode } : {}),
       ...(meta.hideToc ? { hideToc: true } : {}),
     };
-    const { outcome, id } = await upsertPage(target, {
+    const { outcome, id } = await reserveImportPage(target, {
       parentId,
       slug: node.slug,
       title,
-      content,
       ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
       ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
       ...(Object.keys(config).length > 0 ? { config } : {}),
       hidden: meta.hidden === true,
       position,
+    });
+    for (const source of context.sourcesByRoute.get(node.route) ?? []) context.destinations.documents.set(source, id);
+    context.write.push(async () => {
+      const linked = rewriteMintlifyInternalLinks(converted.content, path, context.routes, {
+        languageCode: context.languageCode,
+        sourceUrl: context.sourceUrl,
+        appOrigins: ['https://nibleaf.com', new URL(process.env.APP_URL ?? 'http://localhost:4310').origin],
+        onUnresolved: (reference) => {
+          summary.fidelityIssues ??= [];
+          summary.fidelityIssues.push({ kind: 'link', page: path, reference });
+        },
+      });
+      const spaceLinks = findGitBookSpaceLinks(linked);
+      if (spaceLinks.length > 0) {
+        summary.warnings.push(
+          `Page "${path}" links to another GitBook space (${spaceLinks.length} link${spaceLinks.length === 1 ? '' : 's'}) — kept as-is, point ${spaceLinks.length === 1 ? 'it' : 'them'} at the published page: ${spaceLinks.slice(0, 3).join(', ')}.`,
+        );
+      }
+      const images = rewriteGitBookImages(linked, filePath, context.blobs, context.root, rawUrl);
+      if (images.missing.length > 0) {
+        summary.warnings.push(
+          `Page "${path}" references ${images.missing.length} image${images.missing.length === 1 ? '' : 's'} not found in the repository: ${images.missing.slice(0, 3).join(', ')}.`,
+        );
+      }
+      const content = await context.assets.rewrite(images.content);
+
+      await writeImportPageContent(target, id, content);
     });
     summary[outcome === 'imported' ? 'imported' : 'updated']++;
     await importNodes(children, id, target, context);
