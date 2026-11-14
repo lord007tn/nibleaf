@@ -702,6 +702,7 @@
   "settings_general_customdomain_hint": "Want readers to use your own domain?",
   "settings_general_customdomain_link": "Set up a custom domain",
   "settings_general_url_taken": "Another site already uses this address. Try a different one.",
+  "settings_general_url_reserved": "This address is reserved by the system. Choose a different one.",
   "settings_branding_title": "Branding",
   "settings_branding_upload": "Upload",
   "settings_branding_uploaded": "Uploaded",
@@ -887,6 +888,8 @@
   "settings_unsaved_description": "Your changes have not been saved.",
   "settings_unsaved_keep": "Keep editing",
   "settings_appearance_location": "Also available in Site settings → Appearance and in the editor’s Settings panel.",
+  "settings_appearance_summary": "How your published site looks: its brand, theme, type, header, footer and banner.",
+  "settings_appearance_sections": "Appearance sections",
   "settings_domain_guide_step1": "Sign in where you manage your domain (the company you bought it from, or your IT team) and open its DNS settings.",
   "settings_domain_guide_step2": "Create a new record for each one shown below and copy in its Type, Name and Value. Leave any other fields, like TTL, as they are.",
   "settings_domain_guide_step3": "Save, come back here and click Check again. Most changes show up within minutes, but some take up to 24 hours.",
@@ -4899,7 +4902,9 @@
   "publish_checks_allclear": "All checks passed",
   "publish_checks_allclearhint": "No broken links, images without alt text, untitled pages or leftover characters.",
   "publish_checks_fix": "Fix",
-  "publish_checks_fixlabel": "Fix {title} in the editor",
+  "publish_checks_fixproblem": "Fix “{title}”: {problem}",
+  "publish_checks_show": "Show ({count})",
+  "publish_checks_hide": "Hide",
   "publish_checks_blockedreason": "Fix the errors under Checks before publishing.",
   "publish_checks_error": "Error",
   "publish_checks_warning": "Warning",
@@ -5045,5 +5050,23 @@
   "settings_aiassistants_watch_again": "Watch again",
   "settings_aiassistants_keysloaderror": "Couldn’t load personal keys. Apps that signed in are still listed.",
   "settings_aiassistants_appsloaderror": "Couldn’t load apps that signed in. Personal keys are still listed.",
-  "oauth_consent_can_aiconversations": "Read saved Ask AI questions and answers. Email addresses, phone numbers and keys are removed, but names, addresses and other personal details may remain."
+  "oauth_consent_can_aiconversations": "Read saved Ask AI questions and answers. Email addresses, phone numbers and keys are removed, but names, addresses and other personal details may remain.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} unpublished change",
+        "form=*": "{count} unpublished changes"
+      }
+    }
+  ],
+  "pending_siteonly": "Unpublished navigation or settings changes",
+  "pending_readersstillsee": "Readers still see version {version}.",
+  "pending_review": "Review and publish",
+  "pending_draft": "Not live yet",
+  "overview_col_status": "Status",
+  "pagestatus_draft": "Not published",
+  "pagestatus_changed": "Changed",
+  "pagestatus_live": "Live"
 }

@@ -643,6 +643,7 @@
   "settings_general_customdomain_hint": "क्या आप चाहते हैं कि पाठक आपका अपना डोमेन इस्तेमाल करें?",
   "settings_general_customdomain_link": "कस्टम डोमेन सेट करें",
   "settings_general_url_taken": "यह पता पहले से किसी दूसरी साइट का है। कोई दूसरा पता आज़माएँ।",
+  "settings_general_url_reserved": "यह पता सिस्टम के लिए आरक्षित है। कोई दूसरा चुनें।",
   "settings_branding_title": "ब्रांडिंग",
   "settings_branding_upload": "अपलोड करें",
   "settings_branding_uploaded": "अपलोड किया गया",
@@ -801,6 +802,8 @@
   "settings_unsaved_description": "आपके बदलाव सहेजे नहीं गए हैं।",
   "settings_unsaved_keep": "संपादन जारी रखें",
   "settings_appearance_location": "साइट सेटिंग्स → रूप और संपादक के सेटिंग्स पैनल में भी उपलब्ध है।",
+  "settings_appearance_summary": "आपकी प्रकाशित साइट कैसी दिखती है: उसका ब्रांड, थीम, टाइपोग्राफ़ी, हेडर, फ़ुटर और बैनर।",
+  "settings_appearance_sections": "रूप-रंग के अनुभाग",
   "settings_domain_guide_step1": "अपने डोमेन प्रदाता की DNS सेटिंग्स खोलें।",
   "settings_domain_guide_step2": "प्रत्येक रिकॉर्ड का प्रकार, नाम/होस्ट, मान/लक्ष्य भरें। CNAME पते को साइट से जोड़ता है; TXT स्वामित्व प्रमाणित करता है। सामान्यतः छोटा नाम दें; नीचे का पूरा नाम केवल माँगे जाने पर दें।",
   "settings_domain_guide_step3": "सहेजें, फिर दोबारा जाँचें।",
@@ -4834,7 +4837,9 @@
   "publish_checks_allclear": "सभी जाँचें पास हो गईं",
   "publish_checks_allclearhint": "कोई टूटा लिंक, बिना वैकल्पिक टेक्स्ट वाली इमेज, बिना शीर्षक वाला पेज या बचे हुए अक्षर नहीं हैं।",
   "publish_checks_fix": "ठीक करें",
-  "publish_checks_fixlabel": "एडिटर में {title} ठीक करें",
+  "publish_checks_fixproblem": "“{title}” ठीक करें: {problem}",
+  "publish_checks_show": "दिखाएँ ({count})",
+  "publish_checks_hide": "छिपाएँ",
   "publish_checks_blockedreason": "प्रकाशित करने से पहले जाँचें में दी गई त्रुटियाँ ठीक करें।",
   "publish_checks_error": "त्रुटि",
   "publish_checks_warning": "चेतावनी",
@@ -4980,5 +4985,23 @@
   "settings_aiassistants_watch_again": "फिर से इंतज़ार करें",
   "settings_aiassistants_keysloaderror": "निजी कुंजियाँ लोड नहीं हो सकीं। साइन इन किए ऐप अब भी दिख रहे हैं।",
   "settings_aiassistants_appsloaderror": "साइन इन किए ऐप लोड नहीं हो सके। निजी कुंजियाँ अब भी दिख रही हैं।",
-  "oauth_consent_can_aiconversations": "सहेजे गए Ask AI सवाल और जवाब पढ़ना। ईमेल पते, फ़ोन नंबर और कुंजियाँ हटा दी जाती हैं, लेकिन नाम, पते और अन्य निजी जानकारी रह सकती है।"
+  "oauth_consent_can_aiconversations": "सहेजे गए Ask AI सवाल और जवाब पढ़ना। ईमेल पते, फ़ोन नंबर और कुंजियाँ हटा दी जाती हैं, लेकिन नाम, पते और अन्य निजी जानकारी रह सकती है।",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} अप्रकाशित बदलाव",
+        "form=*": "{count} अप्रकाशित बदलाव"
+      }
+    }
+  ],
+  "pending_siteonly": "नेविगेशन या सेटिंग्स में अप्रकाशित बदलाव",
+  "pending_readersstillsee": "पाठक अभी भी संस्करण {version} देख रहे हैं।",
+  "pending_review": "समीक्षा करें और प्रकाशित करें",
+  "pending_draft": "अभी लाइव नहीं",
+  "overview_col_status": "स्थिति",
+  "pagestatus_draft": "अप्रकाशित",
+  "pagestatus_changed": "बदला गया",
+  "pagestatus_live": "लाइव"
 }

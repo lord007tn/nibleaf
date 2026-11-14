@@ -1,6 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
-import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
@@ -13,6 +12,7 @@ import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
 import { loadRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError } from '@/lib/auth-errors';
+import { useAuthT } from '@/lib/auth-messages';
 import { email as validateEmail } from '@/lib/form';
 import { afterAuthDestination } from '@/lib/invitations';
 import { currentOAuthQuery } from '@/lib/mcp-oauth';
@@ -45,7 +45,7 @@ const isRedirect = (value: unknown) =>
   typeof (value as { url?: unknown }).url === 'string';
 
 function SignInPage() {
-  const t = useT();
+  const t = useAuthT();
   const navigate = useNavigate();
   const router = useRouter();
   const search = Route.useSearch();

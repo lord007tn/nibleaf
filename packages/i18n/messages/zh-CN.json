@@ -642,6 +642,7 @@
   "settings_general_customdomain_hint": "想让读者使用你自己的域名？",
   "settings_general_customdomain_link": "设置自定义域名",
   "settings_general_url_taken": "其他站点已在使用此地址，请换一个。",
+  "settings_general_url_reserved": "此地址为系统保留地址，请选择其他地址。",
   "settings_branding_title": "品牌推广",
   "settings_branding_upload": "上传",
   "settings_branding_uploaded": "已上传",
@@ -800,6 +801,8 @@
   "settings_unsaved_description": "你的更改尚未保存。",
   "settings_unsaved_keep": "继续编辑",
   "settings_appearance_location": "也可在站点设置 → 外观以及编辑器的设置面板中找到。",
+  "settings_appearance_summary": "已发布网站的外观：品牌、主题、字体、页眉、页脚和横幅。",
+  "settings_appearance_sections": "外观分区",
   "settings_domain_guide_step1": "打开域名提供商的 DNS 设置。",
   "settings_domain_guide_step2": "逐条添加记录：类型、名称/主机、值/目标。CNAME 将地址指向本站；TXT 证明所有权。通常填写下方的短名称；仅在要求时使用其下方的完整名称。",
   "settings_domain_guide_step3": "保存后再次检查。",
@@ -4831,7 +4834,9 @@
   "publish_checks_allclear": "所有检查均已通过",
   "publish_checks_allclearhint": "没有损坏的链接、缺少替代文本的图片、无标题页面或残留字符。",
   "publish_checks_fix": "修复",
-  "publish_checks_fixlabel": "在编辑器中修复“{title}”",
+  "publish_checks_fixproblem": "修复“{title}”：{problem}",
+  "publish_checks_show": "显示（{count}）",
+  "publish_checks_hide": "收起",
   "publish_checks_blockedreason": "发布前请先修复“检查”中列出的错误。",
   "publish_checks_error": "错误",
   "publish_checks_warning": "警告",
@@ -4977,5 +4982,22 @@
   "settings_aiassistants_watch_again": "重新等待",
   "settings_aiassistants_keysloaderror": "无法加载个人密钥。已登录的应用仍会显示。",
   "settings_aiassistants_appsloaderror": "无法加载已登录的应用。个人密钥仍会显示。",
-  "oauth_consent_can_aiconversations": "读取已保存的 Ask AI 问题和回答。其中的电子邮件地址、电话号码和密钥会被删除，但姓名、地址和其他个人信息可能仍会保留。"
+  "oauth_consent_can_aiconversations": "读取已保存的 Ask AI 问题和回答。其中的电子邮件地址、电话号码和密钥会被删除，但姓名、地址和其他个人信息可能仍会保留。",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 项未发布的更改"
+      }
+    }
+  ],
+  "pending_siteonly": "导航或设置有未发布的更改",
+  "pending_readersstillsee": "读者看到的仍是版本 {version}。",
+  "pending_review": "检查并发布",
+  "pending_draft": "尚未上线",
+  "overview_col_status": "状态",
+  "pagestatus_draft": "未发布",
+  "pagestatus_changed": "已更改",
+  "pagestatus_live": "已上线"
 }

@@ -10,9 +10,11 @@
  *   preview-manuscript  theme preset "manuscript"
  *   preview-signal      theme preset "signal"
  *   preview-legacy      no `theme` config (legacy palette branch)
+ *   preview-answers     "harbor" with Ask AI available (the panel opens; no answer is requested)
  *   preview-private     "harbor", private, read by a signed-in reader
  *   preview-consent     "harbor" that asks for analytics consent (native, no third-party
  *                       scripts) and offers Ask AI (the launcher; no answer is ever requested)
+ *   preview-unset       "harbor" whose owner never picked light or dark (follows the reader's device)
  *
  * Endpoints (mirroring apps/server/src/modules/public/sites/handlers.ts):
  *   GET  /api/public/sites/:id?lang=&version=            -> { data: SiteShell }
@@ -1052,16 +1054,22 @@ const PROJECTS = {
   'preview-manuscript': { preset: 'manuscript' },
   'preview-signal': { preset: 'signal' },
   'preview-legacy': { preset: null },
+  'preview-answers': { preset: 'harbor', answers: true },
   // A private site whose reader is signed in; access can be revoked mid-session.
   'preview-private': { preset: 'harbor', visibility: 'private' },
-  'preview-consent': { preset: 'harbor', consent: true, answer: true },
+  'preview-consent': { preset: 'harbor', consent: true, answers: true },
+  // No styling.theme: the reader follows the visitor's device (PUB-004).
+  'preview-unset': { preset: 'harbor', unsetAppearance: true },
 };
 
 /** Mutable test state, set through POST /__mock/control. */
 const control = { revoked: false };
 
-const projectConfig = (preset, visibility = 'public') => {
+const projectConfig = (preset, visibility = 'public', unsetAppearance = false) => {
   const config = { ...baseConfig(), visibility };
+  if (unsetAppearance) {
+    config.styling = {};
+  }
   if (preset) {
     config.theme = { version: 1, preset, metadata: THEME_META[preset] };
   } else {
@@ -1221,7 +1229,7 @@ const findPage = (path) => {
 
 const projectPayload = (id, preset, language) => {
   const languageConfig = LANGUAGE_CONFIG[language.code];
-  const config = projectConfig(preset, PROJECTS[id]?.visibility);
+  const config = projectConfig(preset, PROJECTS[id]?.visibility, PROJECTS[id]?.unsetAppearance);
   if (PROJECTS[id]?.consent) {
     config.analytics = { cookieConsent: true };
   }
@@ -1250,7 +1258,7 @@ const siteShell = (id, preset, query) => {
     generatedAt: GENERATED_AT,
     openapi: null,
     ...(PROJECTS[id]?.visibility === 'private' ? { signedIn: true } : {}),
-    ...(PROJECTS[id]?.answer ? { capabilities: { answer: true } } : {}),
+    ...(PROJECTS[id]?.answers ? { capabilities: { answer: true } } : {}),
   };
 };
 

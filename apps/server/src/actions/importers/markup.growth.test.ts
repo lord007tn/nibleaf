@@ -6,8 +6,10 @@ import { rewriteMintlifyAssetReferences } from './mintlify-assets';
 import { mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
-// Timing bounds, run on their own (pnpm test:growth). Imported files can be
-// large; the importers read them in time linear in their length.
+// growthMs warms both inputs and interleaves three samples of n and 4n.
+// A 50 ms minimum keeps brief scheduling pauses from dominating the ratio;
+// linearGrowthLimit still rejects quadratic growth (about 16x for 4x input).
+// Run on their own with pnpm test:growth.
 describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
   const rewrite = (content: string) => rewriteMintlifyAssetReferences(content, 'docs/page.mdx', new Set(), (path) => `https://raw.example/${path}`);
   it.each([
@@ -87,8 +89,12 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
   ] as const)(
     'stays linear on %s',
     (_label, run, build) => {
-      const [small, large] = growthMs(run as (text: string) => unknown, build(2000), build(8000), { vary: (text, rep) => `${text} ${rep}` });
-      expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+      const [small, large] = growthMs(run as (text: string) => unknown, build(2000), build(8000), {
+        minMs: 50,
+        budgetMs: 10_000,
+        vary: (text, rep) => `${text} ${rep}`,
+      });
+      expect(large / small, `n=${small.toFixed(2)} ms, 4n=${large.toFixed(2)} ms`).toBeLessThanOrEqual(linearGrowthLimit(small) / small);
     },
     60_000,
   );

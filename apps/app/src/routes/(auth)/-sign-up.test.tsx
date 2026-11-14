@@ -9,6 +9,21 @@ vi.mock('@nibleaf/i18n/react', () => {
   const t = (key: string) => key;
   return { useT: () => t, useLocale: () => ({ t, locale: 'en' }) };
 });
+// The auth surfaces translate through AUTH_MESSAGES (MKT-001); give them the
+// same translator and locale as the @nibleaf/i18n/react mock above.
+vi.mock('@/lib/auth-messages', async () => {
+  const react = (await import('@nibleaf/i18n/react')) as unknown as {
+    useT?: () => (key: string, variables?: Record<string, string | number>) => string;
+    useLocale?: () => Record<string, unknown>;
+  };
+  // Plain names: the mocks are read per render, not called as hooks here. A
+  // mock without one of them throws on access, hence the `in` checks.
+  const readT = 'useT' in react ? react.useT : undefined;
+  const readLocale = 'useLocale' in react ? react.useLocale : undefined;
+  const authLocale = (): Record<string, unknown> => ({ locale: 'en', setLocale: () => undefined, ...(readLocale ? readLocale() : { t: readT?.() }) });
+  return { useAuthLocale: authLocale, useAuthT: () => (readT ? readT() : authLocale().t) };
+});
+
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}), useLoaderData: () => null }),
   useNavigate: () => mocks.navigate,
