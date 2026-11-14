@@ -269,7 +269,7 @@ describe('Overview', () => {
   it('explains that reports are off without rendering unknown figures as zero', async () => {
     mocks.overview.mockReturnValue(ready(emptyOverview('reads_disabled')));
     const view = await render(<OverviewSection />);
-    expect(text(view)).toContain("Reports aren't switched on yet");
+    expect(text(view)).toContain("Reports aren't switched on for this server yet");
     // P2-DASH-017: site owners get plain words, never an environment variable.
     expect(text(view)).toContain('Whoever runs this server can turn them on');
     // Collection depends on the hash salt and raw retention, so promise neither.
