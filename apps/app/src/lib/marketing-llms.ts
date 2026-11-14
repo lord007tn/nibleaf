@@ -37,7 +37,9 @@ ${operations}
 - [Home](${origin}/_index.md)
 - [Arabic home](${origin}/ar.md)
 - [Pricing](${origin}/pricing.md)
+- [Arabic pricing](${origin}/ar/pricing.md)
 - [Self-hosting](${origin}/self-hosting.md)
+- [Arabic self-hosting](${origin}/ar/self-hosting.md)
 - [English guides](${origin}/guides.md)
 - [Arabic guides](${origin}/ar/guides.md)
 - [Platform comparison](${origin}/documentation-platforms.md)
@@ -114,7 +116,7 @@ ${capabilities}
 
 ## العربية
 
-Nibleaf Cloud مجاني خلال المرحلة التجريبية، ولا يتطلب التسجيل بطاقة دفع. لا تتوفر خطة سحابية مدفوعة اليوم. تتوفر الاستضافة الذاتية بترخيص AGPL-3.0، ويتحمل المشغّل تكاليف البنية التحتية والخدمات الخارجية وصيانتها.
+Nibleaf Cloud مجاني خلال المرحلة التجريبية، ولا يتطلب التسجيل بطاقة دفع. لا تتوفر خطة سحابية مدفوعة اليوم. تتوفر الاستضافة الذاتية بترخيص AGPL-3.0، ويتحمل المشغّل تكاليف البنية التحتية والخدمات الخارجية وصيانتها. مقارنة الخيارين بالعربية: ${origin}/ar/pricing
 
 For the human-readable plan comparison, see ${origin}/pricing. Sign up at ${origin}/sign-up or review ${origin}/self-hosting before deploying your own instance.
 `;

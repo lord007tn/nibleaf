@@ -1,0 +1,262 @@
+{
+  "terms": {
+    "site": {
+      "translation": "sitio",
+      "note": "Always \"sitio\", never \"sitio web\" or \"proyecto\"."
+    },
+    "organization": {
+      "translation": "organización",
+      "note": "Never \"espacio de trabajo\"."
+    },
+    "page": {
+      "translation": "página"
+    },
+    "group": {
+      "translation": "grupo"
+    },
+    "page-tree": {
+      "translation": "árbol de páginas"
+    },
+    "publish": {
+      "translation": "publicar; publicación (noun)",
+      "short": "Publicar"
+    },
+    "draft": {
+      "translation": "borrador"
+    },
+    "unpublished-changes": {
+      "translation": "cambios sin publicar"
+    },
+    "preview": {
+      "translation": "vista previa; previsualizar (verb)",
+      "short": "Vista previa"
+    },
+    "live-site": {
+      "translation": "sitio publicado"
+    },
+    "reader": {
+      "translation": "lector",
+      "note": "Plural \"lectores\". Analytics talk about readers."
+    },
+    "member": {
+      "translation": "miembro"
+    },
+    "people": {
+      "translation": "Personas"
+    },
+    "invitation": {
+      "translation": "invitación",
+      "short": "Invitar"
+    },
+    "join-link": {
+      "translation": "enlace para unirse",
+      "short": "enlace"
+    },
+    "role": {
+      "translation": "rol"
+    },
+    "role-owner": {
+      "translation": "Propietario",
+      "note": "Role names are capitalised."
+    },
+    "role-admin": {
+      "translation": "Administrador",
+      "short": "Admin"
+    },
+    "role-editor": {
+      "translation": "Editor",
+      "note": "The screen is \"el editor\" (lowercase)."
+    },
+    "role-viewer": {
+      "translation": "Lector",
+      "note": "As in Google Drive. Capitalised as a role; the site's readers are \"lectores\"."
+    },
+    "server-admin": {
+      "translation": "administrador del servidor",
+      "note": "Not the Admin role."
+    },
+    "account": {
+      "translation": "cuenta"
+    },
+    "sign-in": {
+      "translation": "iniciar sesión, registrarse, cerrar sesión",
+      "short": "Iniciar sesión"
+    },
+    "settings": {
+      "translation": "configuración",
+      "short": "Configuración",
+      "note": "The section is \"Configuración\"; \"ajustes\" only for one set of options (ajustes de la página)."
+    },
+    "general": {
+      "translation": "General"
+    },
+    "appearance": {
+      "translation": "Apariencia"
+    },
+    "theme": {
+      "translation": "tema"
+    },
+    "custom-domain": {
+      "translation": "dominio personalizado"
+    },
+    "domain": {
+      "translation": "dominio; dirección"
+    },
+    "redirect": {
+      "translation": "redirección"
+    },
+    "visibility": {
+      "translation": "visibilidad, acceso"
+    },
+    "add-on": {
+      "translation": "complemento"
+    },
+    "integration": {
+      "translation": "integración"
+    },
+    "webhook": {
+      "translation": "webhook",
+      "note": "Loanword, masculine (el webhook)."
+    },
+    "api-key": {
+      "translation": "clave de API"
+    },
+    "token": {
+      "translation": "token"
+    },
+    "branch": {
+      "translation": "rama",
+      "note": "Where English says \"version\" for a branch, say \"versión\"."
+    },
+    "sync": {
+      "translation": "sincronizar; sincronización"
+    },
+    "import": {
+      "translation": "importar; importación"
+    },
+    "export": {
+      "translation": "exportar; exportación"
+    },
+    "language": {
+      "translation": "idioma",
+      "note": "Source language = idioma de origen."
+    },
+    "ask-ai": {
+      "translation": "Preguntar a la IA",
+      "note": "Feature name, identical everywhere."
+    },
+    "ai-assistant": {
+      "translation": "asistente de IA"
+    },
+    "smart-ai": {
+      "translation": "Smart AI",
+      "note": "Feature name kept as is."
+    },
+    "analytics": {
+      "translation": "Analítica"
+    },
+    "page-views": {
+      "translation": "vistas de página"
+    },
+    "visits": {
+      "translation": "visitas"
+    },
+    "searches": {
+      "translation": "búsquedas"
+    },
+    "feedback": {
+      "translation": "comentarios",
+      "note": "Readers' \"¿Te resultó útil?\" answers and comments."
+    },
+    "period": {
+      "translation": "periodo, intervalo"
+    },
+    "compare": {
+      "translation": "comparar con el periodo anterior"
+    },
+    "web-vitals": {
+      "translation": "Web Vitals (Aparece el contenido principal, Responde a los clics, El diseño no se mueve)",
+      "note": "LCP, INP and CLS stay in English."
+    },
+    "ai-crawlers": {
+      "translation": "rastreadores de IA, visibilidad en IA"
+    },
+    "plan": {
+      "translation": "plan"
+    },
+    "usage": {
+      "translation": "uso"
+    },
+    "billing": {
+      "translation": "facturación"
+    },
+    "notifications": {
+      "translation": "notificaciones"
+    },
+    "history": {
+      "translation": "historial"
+    },
+    "version": {
+      "translation": "versión"
+    },
+    "restore": {
+      "translation": "restaurar"
+    },
+    "promote": {
+      "translation": "promover a la principal",
+      "note": "Merging a branch into main; never \"publicar\"."
+    },
+    "rollback": {
+      "translation": "revertir"
+    },
+    "checks": {
+      "translation": "comprobaciones de publicación",
+      "short": "Corregir"
+    },
+    "danger-zone": {
+      "translation": "Zona de peligro"
+    },
+    "delete": {
+      "translation": "eliminar; mover a la papelera",
+      "short": "Eliminar"
+    },
+    "trash": {
+      "translation": "Papelera"
+    },
+    "delete-permanently": {
+      "translation": "eliminar definitivamente"
+    },
+    "remove": {
+      "translation": "quitar"
+    },
+    "save": {
+      "translation": "guardar, guardado, cambios sin guardar",
+      "short": "Guardar"
+    },
+    "cancel": {
+      "translation": "cancelar",
+      "short": "Cancelar"
+    },
+    "copy": {
+      "translation": "copiar, copiado",
+      "short": "Copiar"
+    },
+    "self-hosted": {
+      "translation": "autoalojado"
+    },
+    "dashboard": {
+      "translation": "panel"
+    },
+    "editor-screen": {
+      "translation": "editor"
+    },
+    "component": {
+      "translation": "componente, bloque"
+    },
+    "callout": {
+      "translation": "aviso",
+      "note": "Note = Nota, Tip = Consejo, Warning = Advertencia."
+    }
+  },
+  "style": "Neutral Spanish with informal \"tú\" (Crea, Elige, tu sitio), never \"usted\" or \"vosotros\". Sentence case. Buttons use the infinitive, as the catalog already does (Guardar, Publicar, Invitar); instructions use the tú imperative (Añade, Elige). Names and titles in «comillas latinas». Opening ¿ and ¡. A space between a number and its unit (10 MB, 30 días). Decimal comma in prose."
+}
