@@ -656,6 +656,7 @@
   "settings_general_customdomain_hint": "Хотите, чтобы читатели заходили на ваш собственный домен?",
   "settings_general_customdomain_link": "Настроить свой домен",
   "settings_general_url_taken": "Этот адрес уже занят другим сайтом. Попробуйте другой.",
+  "settings_general_url_reserved": "Этот адрес зарезервирован системой. Выберите другой.",
   "settings_branding_title": "Брендинг",
   "settings_branding_upload": "Загрузить",
   "settings_branding_uploaded": "Загружено",

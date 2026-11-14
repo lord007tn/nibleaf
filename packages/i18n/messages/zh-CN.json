@@ -642,6 +642,7 @@
   "settings_general_customdomain_hint": "想让读者使用你自己的域名？",
   "settings_general_customdomain_link": "设置自定义域名",
   "settings_general_url_taken": "其他站点已在使用此地址，请换一个。",
+  "settings_general_url_reserved": "此地址为系统保留地址，请选择其他地址。",
   "settings_branding_title": "品牌推广",
   "settings_branding_upload": "上传",
   "settings_branding_uploaded": "已上传",

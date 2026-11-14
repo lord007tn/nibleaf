@@ -710,6 +710,7 @@
   "settings_general_customdomain_hint": "هل تريد أن يستخدم القرّاء نطاقك الخاص؟",
   "settings_general_customdomain_link": "إعداد نطاق مخصص",
   "settings_general_url_taken": "يستخدم موقع آخر هذا العنوان بالفعل. جرّب عنوانًا مختلفًا.",
+  "settings_general_url_reserved": "هذا العنوان محجوز للنظام. اختر عنوانًا مختلفًا.",
   "settings_branding_title": "العلامة التجارية",
   "settings_branding_upload": "رفع",
   "settings_branding_uploaded": "تم الرفع",

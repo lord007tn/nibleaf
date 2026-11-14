@@ -652,6 +652,7 @@
   "settings_general_customdomain_hint": "Quer que os leitores usem seu próprio domínio?",
   "settings_general_customdomain_link": "Configurar um domínio personalizado",
   "settings_general_url_taken": "Outro site já usa este endereço. Tente outro.",
+  "settings_general_url_reserved": "Este endereço é reservado ao sistema. Escolha outro.",
   "settings_branding_title": "Marca",
   "settings_branding_upload": "Carregar",
   "settings_branding_uploaded": "Enviado",
