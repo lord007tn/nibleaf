@@ -160,6 +160,12 @@ describe('AUTH-16 editor save lifecycle', () => {
       await new Promise((resolve) => setTimeout(resolve, 800));
     });
   }
+  /** Saves start at least 3 s apart (editor-save-throttle.ts). */
+  async function pace() {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 3100));
+    });
+  }
   it('closes the page drawer after creating a page from it, so the focused title is visible', async () => {
     const showPages = container.querySelector<HTMLButtonElement>('button[aria-label="editor.showPages"]');
     if (!showPages) throw new Error('Missing the page drawer button');
@@ -263,14 +269,14 @@ describe('AUTH-16 editor save lifecycle', () => {
     // where the same text may fit (here the server accepts it): it is sent.
     mocks.update.mockResolvedValue({ ...page, content: 'Huge', updatedAt: 'revision-3' });
     await edit('Huge');
-    await debounce();
+    await pace();
     expect(mocks.update).toHaveBeenCalledTimes(3);
     expect(mocks.update).toHaveBeenLastCalledWith(
       expect.objectContaining({ body: expect.objectContaining({ content: 'Huge', expectedUpdatedAt: 'revision-2' }) }),
     );
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(container.textContent).toContain('editor.savedShort');
-  });
+  }, 15_000);
   it('settles a cancelled debounced draft when undo restores the server copy', async () => {
     await edit('Unsaved');
     expect(container.textContent).toContain('editor.savingShort');
