@@ -654,7 +654,7 @@ const HTML_NAME = /[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*/y;
  * inside an attribute is never read as markup. An unterminated comment runs to
  * the end of the page, as HTML reads it.
  */
-function scanTags(source: string, mask = codeMask(source), comments?: Span[]): TagToken[] {
+function scanTags(source: string, mask = codeMask(source), comments?: Array<Span & { runsToEnd: boolean }>, indented?: Uint8Array): TagToken[] {
   const tokens: TagToken[] = [];
   const html = Boolean(comments);
   let lower: string | undefined;
@@ -678,7 +678,7 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
     if (comments && source.startsWith('<!--', i)) {
       const close = source.indexOf('-->', i + 4);
       const end = close < 0 ? source.length : close + 3;
-      comments.push({ start: i, end });
+      comments.push({ start: i, end, runsToEnd: close < 0 });
       i = end - 1;
       continue;
     }
@@ -748,7 +748,8 @@ function scanTags(source: string, mask = codeMask(source), comments?: Span[]): T
     const token: TagToken = { start: i, end: cursor + 1, name, raw, closing, selfClosing, html: isHtml };
     tokens.push(token);
     i = cursor;
-    if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name)) {
+    // In indented code a `<script>` is code, so its text runs nowhere.
+    if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name) && indented?.[token.start] !== 1) {
       // A script's or style's content is text up to its closing tag.
       // A search that found no closer means none after any later tag either.
       lower ??= source.toLowerCase();
@@ -880,12 +881,10 @@ function openComponentsRange(
   tokens: TagToken[],
   pairs: Map<number, number>,
   opaque: SourceRange[],
-  readerFences: Span[],
+  runsToEnd: readonly number[],
 ): SourceRange | null {
-  let start = layout.unclosedFence;
-  for (const range of [...opaque, ...readerFences])
-    if (blank(layout, range.end, source.length) && (start < 0 || range.start < start)) start = range.start;
-  if (start < 0) return null;
+  if (runsToEnd.length === 0) return null;
+  let start = Math.min(...runsToEnd);
   const covered = spanIndex(opaque);
   let opener: TagToken | undefined;
   for (let index = tokens.length - 1; index >= 0; index--) {
@@ -1071,8 +1070,8 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
   // parser reads it, inside blockquotes and list items too.
   const layout = markdownLayout(source, blockTokens);
   for (const fence of layout.fenced) maskFence(source, layout, mask, readerCode, fence);
-  const comments: Span[] = [];
-  const scanned = scanTags(source, mask, comments);
+  const comments: Array<Span & { runsToEnd: boolean }> = [];
+  const scanned = scanTags(source, mask, comments, layout.indented);
   for (const comment of comments) mask.fill(1, comment.start, comment.end);
   // Raw HTML read as indented code stays code, unless a component holds it.
   const inIndentedCode = (at: number) => layout.indented[at] === 1;
@@ -1090,7 +1089,14 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
       .filter((token) => !STRUCTURED_HTML.has(token.name) && !TABLE_HTML.has(token.name) && !COMPONENT_HTML.has(token.name) && !isEditorMarkup(token))
       .map((token) => ({ start: token.start, end: token.end, inCode: true, name: token.name })),
   ]);
-  const openComponents = openComponentsRange(source, layout, tokens, pairs, opaque, readerFences);
+  // Where text that runs to the end of the page starts: see openComponentsRange.
+  const runsToEnd = [
+    layout.unclosedFence,
+    ...comments.filter((comment) => comment.runsToEnd && !inIndentedCode(comment.start)).map((comment) => comment.start),
+    ...tokens.filter((token) => token.runsToEnd).map((token) => token.start),
+    ...readerFences.filter((span) => blank(layout, span.end, source.length)).map((span) => span.start),
+  ].filter((start) => start >= 0);
+  const openComponents = openComponentsRange(source, layout, tokens, pairs, opaque, runsToEnd);
   if (openComponents) opaque = outermostRanges([...opaque, openComponents]);
 
   // MDX ESM and standalone expressions are also explicit opaque nodes. Braces
