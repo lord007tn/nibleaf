@@ -48,7 +48,8 @@ describe.runIf(growthTestsEnabled)('paragraph source lines growth', () => {
       small.destroy();
       large.destroy();
     }
-  });
+    // Loading the two pages takes seconds on a loaded runner, before any timing.
+  }, 120_000);
 
   it('writes a page of untouched wrapped paragraphs back in one pass', () => {
     const at = (n: number) => {

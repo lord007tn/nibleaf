@@ -131,13 +131,18 @@ describe.runIf(growthTestsEnabled)('saving pages of fences, growth (#612)', () =
     ['list item fences', itemFences, 2000],
     ['fences under 32 quote levels', deeplyQuotedFences, 500],
     ['sibling fences', siblingFences, 2000],
-  ] as const)('saves a page of %s in one pass', (_name, shape, n) => {
-    const small = loaded(shape(n));
-    const large = loaded(shape(4 * n));
-    // Main: 39.7 → 1,868 ms, 24.1 → 997 ms and 6.8 → 130 ms per call (#612).
-    const [smallMs, largeMs] = growthMs(getMarkdown, small, large, { budgetMs: 60_000 });
-    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
-  });
+  ] as const)(
+    'saves a page of %s in one pass',
+    (_name, shape, n) => {
+      const small = loaded(shape(n));
+      const large = loaded(shape(4 * n));
+      // Main: 39.7 → 1,868 ms, 24.1 → 997 ms and 6.8 → 130 ms per call (#612).
+      const [smallMs, largeMs] = growthMs(getMarkdown, small, large, { budgetMs: 60_000 });
+      expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+      // Loading the two pages takes seconds on a loaded runner, before any timing.
+    },
+    120_000,
+  );
 });
 
 /** `n` fences, then one with no closing line, which runs to the end of the page (#602). */
