@@ -39,6 +39,7 @@ import {
   STARTER_GETTING_STARTED_ICON,
   STARTER_GETTING_STARTED_TITLE,
 } from './starter-content';
+import { starterOrganizationName } from './starter-organization';
 import { pickStarterSlug, starterFallbackSlug } from './starter-slug';
 
 const env = keys();
@@ -406,11 +407,10 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
     if (await arrivingThroughJoinLink(user.email, headers)) {
       return;
     }
-    const firstName = user.name?.split(' ')[0]?.trim();
     const org = await prisma.$transaction(async (tx) => {
       const organization = await tx.organization.create({
         data: {
-          name: firstName ? `${firstName}'s workspace` : 'My workspace',
+          name: starterOrganizationName(user.name, locale),
           slug: `${slugify(user.email.split('@')[0] ?? 'workspace')}-${Date.now().toString(36)}`,
         },
       });
