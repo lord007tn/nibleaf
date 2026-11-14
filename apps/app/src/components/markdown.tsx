@@ -95,10 +95,14 @@ const htmlComponents: Components = {
   img: ({ node: _node, ...props }) => <img {...props} alt={props.alt ?? ''} className={cn('rounded-xl border border-border', props.className)} />,
 };
 
-/** Text of a hast node, without nested lists (a sub-task names its own box). */
-function itemText(node: { type: string; value?: string; tagName?: string; children?: unknown[] } | undefined): string {
+/** Text of a hast node, without nested lists (a sub-task names its own box).
+ *  An image counts as its alt text, so an image-only task is named too. */
+function itemText(
+  node: { type: string; value?: string; tagName?: string; properties?: { alt?: unknown }; children?: unknown[] } | undefined,
+): string {
   if (!node) return '';
   if (node.type === 'text') return node.value ?? '';
+  if (node.tagName === 'img') return typeof node.properties?.alt === 'string' ? ` ${node.properties.alt} ` : '';
   if (node.tagName === 'ul' || node.tagName === 'ol' || node.tagName === 'input') return '';
   return ((node.children ?? []) as (typeof node)[]).map(itemText).join('');
 }
@@ -125,10 +129,13 @@ function TaskListItem({ node, children, ...props }: ComponentProps<'li'> & { nod
 }
 
 /** A task item's checkbox, wherever it sits in the item: a tight list puts it
- *  directly in the <li>, a loose one inside the item's first paragraph. */
+ *  directly in the <li>, a loose one inside the item's first paragraph. A box
+ *  that already has a name of its own (an authored `title`, `aria-label` or
+ *  `aria-labelledby` in raw HTML) keeps it. */
 function TaskCheckbox({ node: _node, ...props }: ComponentProps<'input'> & { node?: unknown }) {
   const label = useContext(TaskItemLabel);
-  return <input {...props} aria-label={props['aria-label'] ?? (props.type === 'checkbox' ? label : undefined)} />;
+  const named = Boolean(props['aria-label'] || props['aria-labelledby'] || props.title);
+  return <input {...props} aria-label={named || props.type !== 'checkbox' ? props['aria-label'] : label} />;
 }
 
 /** Anchor renderer, built per site-context. Heading self-links (added by

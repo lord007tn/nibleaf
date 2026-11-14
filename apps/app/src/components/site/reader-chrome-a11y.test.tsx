@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownRenderer } from '@/components/markdown';
+import RichMarkdown from '@/components/markdown-rich';
 import { LanguageMenu } from '@/components/site/header-menus';
 
 const languages = [
@@ -61,6 +62,22 @@ describe('task lists', () => {
     const boxes = Array.from(host.querySelectorAll('input[type="checkbox"]'));
     expect(boxes[0]?.closest('p')).not.toBeNull();
     expect(boxes.map((box) => box.getAttribute('aria-label'))).toEqual(['Alpha', 'Beta', 'Gamma']);
+  });
+
+  it('names an image-only task after the image', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(<MarkdownRenderer content="- [ ] ![Shipment booked](/shipment.png)" />);
+    expect(host.querySelector('input[type="checkbox"]')?.getAttribute('aria-label')).toBe('Shipment booked');
+  });
+
+  it('keeps the name an authored checkbox already has (raw HTML, the rich renderer)', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(
+      <RichMarkdown content={'<ul><li class="task-list-item">Parent<div><input type="checkbox" title="Approval recorded"></div></li></ul>'} />,
+    );
+    const box = host.querySelector('input[type="checkbox"]');
+    expect(box?.getAttribute('title')).toBe('Approval recorded');
+    expect(box?.hasAttribute('aria-label')).toBe(false);
   });
 
   it('leaves a checkbox in a plain item inside a task item unnamed, never borrowing the task name', () => {
