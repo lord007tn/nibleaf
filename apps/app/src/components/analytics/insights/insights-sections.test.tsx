@@ -266,11 +266,15 @@ describe('Overview', () => {
     expect(view.querySelectorAll('[data-slot="card-title"]')).toHaveLength(0);
   });
 
-  it('explains dual-write collection without rendering unknown figures as zero', async () => {
+  it('explains that reports are off without rendering unknown figures as zero', async () => {
     mocks.overview.mockReturnValue(ready(emptyOverview('reads_disabled')));
     const view = await render(<OverviewSection />);
-    expect(text(view)).toContain('Analytics is being collected');
-    expect(text(view)).toContain('ANALYTICS_MODE=clickhouse');
+    expect(text(view)).toContain("Reports aren't switched on for this server yet");
+    // P2-DASH-017: site owners get plain words, never an environment variable.
+    expect(text(view)).toContain('Whoever runs this server can turn them on');
+    // Collection depends on the hash salt and raw retention, so promise neither.
+    expect(text(view)).not.toMatch(/being collected|nothing is lost/);
+    expect(text(view)).not.toContain('ANALYTICS_MODE');
     expect(view.querySelector('a[target="_blank"]')).not.toBeNull();
     expect(view.querySelectorAll('[data-slot="card-title"]')).toHaveLength(0);
   });
