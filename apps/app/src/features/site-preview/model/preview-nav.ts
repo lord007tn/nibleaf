@@ -21,7 +21,7 @@ export interface DraftNavPage {
 }
 
 /** A draft page in the shape navigation is built from. */
-export const navSourcePage = (page: DraftNavPage, languageCode: string): NavSourcePage => ({
+const navSourcePage = (page: DraftNavPage, languageCode: string): NavSourcePage => ({
   id: page.id,
   parentId: page.parentId,
   // The preview lists one language at a time; its code picks the "Untitled"
