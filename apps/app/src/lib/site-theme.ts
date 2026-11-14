@@ -1,5 +1,8 @@
 import {
   type ResolvedTheme,
+  readableAccentText,
+  readableCodeAccent,
+  readableOnAccent,
   readableOnBackground,
   resolveTheme,
   safeThemeFontFamily,
@@ -39,15 +42,17 @@ const designSystemAliases = (tokens: ThemeColorTokens): Record<string, string> =
 
 // Derived (non-contract) variables: the accent as drawn on the always-dark
 // code surface (Signal's rail, code-block chrome) is nudged towards white until
-// it passes AA there, since a light-mode accent rarely reads on near-black.
+// it passes AA there and on the rail's active-item tint, since a light-mode
+// accent rarely reads on near-black. It starts from the authored accent, not the
+// canvas shade, which is darker in light mode (readableCodeAccent).
 // The footer's small print ("Made with Nibleaf · Report abuse") uses the muted
 // token nudged until it clears AA with room to spare on the page canvas: a
 // palette accepted at 4.5:1 would otherwise put 12px text right at the limit.
 const FOOTER_TEXT_CONTRAST = 4.7;
 const footerMuted = (tokens: ThemeColorTokens): string => readableOnBackground(tokens.mutedForeground, tokens.canvas, FOOTER_TEXT_CONTRAST);
 
-const derivedDeclarations = (tokens: ThemeColorTokens): string =>
-  `--theme-code-accent:${readableOnBackground(tokens.accent, tokens.code)};--theme-code-muted:${readableOnBackground(tokens.mutedForeground, tokens.code)};--theme-footer-muted:${footerMuted(tokens)}`;
+const derivedDeclarations = (tokens: ThemeColorTokens, authoredAccent: string): string =>
+  `--theme-code-accent:${readableCodeAccent(authoredAccent, tokens.code)};--theme-code-muted:${readableOnBackground(tokens.mutedForeground, tokens.code)};--theme-footer-muted:${footerMuted(tokens)}`;
 
 // The token contract names multi-word variables after their camelCase keys
 // (`--theme-mutedForeground`), while reader styles read the kebab-case names
@@ -61,14 +66,14 @@ const kebabTokenAliases = (tokens: ThemeColorTokens): Record<string, string> =>
       .map(([key, value]) => [`--theme-${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`, value]),
   );
 
-const tokenDeclarations = (tokens: ThemeColorTokens): string => {
+const tokenDeclarations = (tokens: ThemeColorTokens, authoredAccent: string): string => {
   const semantic = Object.entries(tokens)
     .map(([key, value]) => `${THEME_TOKEN_CSS_VARIABLES[key as keyof ThemeColorTokens]}:${value}`)
     .join(';');
   return [
     semantic,
     ...Object.entries(kebabTokenAliases(tokens)).map(([name, value]) => `${name}:${value}`),
-    derivedDeclarations(tokens),
+    derivedDeclarations(tokens, authoredAccent),
     ...Object.entries(designSystemAliases(tokens)).map(([name, value]) => `${name}:${value}`),
   ].join(';');
 };
@@ -77,7 +82,7 @@ const tokenDeclarations = (tokens: ThemeColorTokens): string => {
 // already shipped. Semantic aliases make the new component contract available
 // without silently recoloring an existing published site; selecting or importing
 // a theme opts the project into the complete token projection below.
-const legacyTokenDeclarations = (accent: string): string =>
+const legacyTokenDeclarations = (accent: string, brand: string): string =>
   [
     '--theme-canvas:var(--background)',
     '--theme-foreground:var(--foreground)',
@@ -95,16 +100,31 @@ const legacyTokenDeclarations = (accent: string): string =>
     '--theme-success:#15803d',
     '--theme-warning:#d97706',
     '--theme-danger:var(--destructive)',
-    `--theme-code-accent:color-mix(in oklab,${accent} 55%,white)`,
+    // From the brand, as before: the light canvas shade is darker and reads worse on code.
+    `--theme-code-accent:color-mix(in oklab,${brand} 55%,white)`,
     '--theme-code-muted:#a3aab8',
     // The legacy light palette's muted grey is 4.54:1 on its #fafafa canvas; this is 4.74:1.
     '--theme-footer-muted:#707070',
   ].join(';');
 
+/** The design system's light canvas (packages/design-system globals.css), which pre-v1 sites draw on. */
+const LEGACY_LIGHT_CANVAS = '#fafafa';
+/** The design system's dark on-primary text, which dark pre-v1 sites have always used. */
+const LEGACY_DARK_ON_ACCENT = '#171717';
+
 const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
   radius === 'sharp' ? '0.125rem' : radius === 'pill' ? '1rem' : '0.625rem';
 
 export const resolveProjectTheme = (config?: ProjectConfig | null): ResolvedTheme => resolveTheme(config as ThemeOwnedProjectConfig | null);
+
+/** The owner's accent per mode, before it is shaded to read on the canvas. */
+const authoredAccents = (config: ProjectConfig | null | undefined, preset: ResolvedTheme) => {
+  const authored = resolveTheme(config as ThemeOwnedProjectConfig | null, { authoredAccent: true });
+  return {
+    light: safeTokens(authored.colors.light, preset.colors.light).accent,
+    dark: safeTokens(authored.colors.dark, preset.colors.dark).accent,
+  };
+};
 
 const inlineScriptJson = (value: string): string =>
   JSON.stringify(value)
@@ -133,24 +153,31 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const preset = resolveTheme({ theme: { preset: theme.id } });
   const light = safeTokens(theme.colors.light, preset.colors.light);
   const dark = safeTokens(theme.colors.dark, preset.colors.dark);
+  const authored = authoredAccents(config, preset);
   const headingFont = safeThemeFontFamily(config?.typography?.headingFont);
   const codeFont = safeThemeFontFamily(config?.typography?.codeFont);
-  const legacyAccent = safeThemeHex(config?.styling?.primaryColor, '#5546e8');
-  const legacyDarkAccent = `color-mix(in oklab,${legacyAccent} 72%,white)`;
+  // Pre-v1 sites draw on the design-system canvas (#fafafa in light). Their
+  // accent is text too (links, the active nav item), so it gets the same AA
+  // shade as a themed site's (PUB-006); the text on it is picked by contrast.
+  const legacyBrand = safeThemeHex(config?.styling?.primaryColor, '#5546e8');
+  const legacyAccent = readableAccentText(legacyBrand, LEGACY_LIGHT_CANVAS);
+  const legacyAccentForeground = readableOnAccent(legacyAccent);
+  // Dark mixes the brand itself towards white, as it always has (it passes there).
+  const legacyDarkAccent = `color-mix(in oklab,${legacyBrand} 72%,white)`;
   const colorRules = config?.theme
     ? [
-        `:root,.nibleaf-site-chrome{${tokenDeclarations(light)};--radius:${radiusValue(theme.layout.radius)}}`,
-        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{${tokenDeclarations(dark)}}`,
+        `:root,.nibleaf-site-chrome{${tokenDeclarations(light, authored.light)};--radius:${radiusValue(theme.layout.radius)}}`,
+        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{${tokenDeclarations(dark, authored.dark)}}`,
         // A solid callout is a console panel on the code surface in both modes, so
         // everything inside it uses the dark palette: its text, muted text and any
         // card, table, step or tab nested in it read as they do in dark mode,
         // where every surface is checked (PUB-019). Its links keep the code accent,
         // as before. Without this, light mode drew page text on the dark fill.
-        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark)};--primary:var(--theme-code-accent)}`,
+        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:var(--theme-code-accent)}`,
       ]
     : [
-        `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent)};--primary:${legacyAccent};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
-        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--ring:${legacyDarkAccent};--theme-footer-muted:var(--muted-foreground)}`,
+        `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent, legacyBrand)};--primary:${legacyAccent};--primary-foreground:${legacyAccentForeground};--theme-accent-foreground:${legacyAccentForeground};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
+        `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--primary-foreground:${LEGACY_DARK_ON_ACCENT};--theme-accent-foreground:${LEGACY_DARK_ON_ACCENT};--ring:${legacyDarkAccent};--theme-footer-muted:var(--muted-foreground)}`,
       ];
   return [
     ...colorRules,
@@ -170,7 +197,7 @@ export const projectThemeVariables = (config?: ProjectConfig | null, mode: 'ligh
   return {
     ...Object.fromEntries(Object.entries(tokens).map(([key, value]) => [THEME_TOKEN_CSS_VARIABLES[key as keyof ThemeColorTokens], value])),
     ...kebabTokenAliases(tokens),
-    '--theme-code-accent': readableOnBackground(tokens.accent, tokens.code),
+    '--theme-code-accent': readableCodeAccent(authoredAccents(config, preset)[mode], tokens.code),
     '--theme-code-muted': readableOnBackground(tokens.mutedForeground, tokens.code),
     '--theme-footer-muted': footerMuted(tokens),
     ...designSystemAliases(tokens),

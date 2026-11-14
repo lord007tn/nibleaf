@@ -478,6 +478,78 @@ describe('the writer always wins over a pending landing (#553 council)', () => {
   });
 });
 
+describe('Back and Forward after a publish check’s Fix rewrote the address (P1-ED-002)', () => {
+  const PAGE_A = '/app/projects/project-1/editor?page=page-a';
+  /** What the editor route does once a Fix has landed: drop its parameters with a replace that keeps the page in place. */
+  const dropFix = (router: Awaited<ReturnType<typeof renderEditor>>['router']) =>
+    act(async () => {
+      await router.navigate({
+        to: '/app/projects/$projectId/editor',
+        params: { projectId: 'project-1' },
+        search: { page: 'page-a' },
+        hash: true,
+        replace: true,
+        state: (previous) => ({ ...previous, editorKeepScroll: true }),
+      });
+    });
+
+  it('the rewrite itself leaves the page where the Fix put it', async () => {
+    const { router, canvas, scroll } = await renderEditor(PAGE_A);
+    await scroll(300);
+    await dropFix(router);
+    await until(quiet, 'the rewrite settled');
+    expect(canvas().scrollTop).toBe(300);
+  });
+
+  it('Back after a same-page section link returns to where the page was, not where the section left it', async () => {
+    const { history, router, canvas, scroll } = await renderEditor(PAGE_A);
+    await dropFix(router);
+    await until(quiet, 'the rewrite settled');
+    await scroll(420);
+    await act(async () => harness.pages?.open('page-a', 'usage'));
+    await until(() => router.state.location.hash === 'usage' && scrolled.length > 0, 'the landing on Usage');
+    await scroll(1500);
+    await act(async () => history.back());
+    await until(() => router.state.location.hash === '' && quiet(), 'the entry before the jump');
+    expect(canvas().scrollTop).toBe(420);
+    await act(async () => history.forward());
+    await until(() => router.state.location.hash === 'usage' && quiet(), 'the section again');
+    expect(canvas().scrollTop).toBe(1500);
+  });
+
+  it('Back and Forward across pages after a Fix restore each page', async () => {
+    const { history, router, canvas, scroll } = await renderEditor(PAGE_A);
+    await dropFix(router);
+    await until(quiet, 'the rewrite settled');
+    await scroll(420);
+    await act(async () => harness.pages?.open('page-b', 'install'));
+    await until(() => shows('page-b') && scrolled.length > 0, 'the landing on page B');
+    await scroll(640);
+    await act(async () => history.back());
+    await until(() => shows('page-a') && quiet(), 'page A again');
+    expect(canvas().scrollTop).toBe(420);
+    await act(async () => history.forward());
+    await until(() => shows('page-b') && quiet(), 'page B again');
+    expect(canvas().scrollTop).toBe(640);
+  });
+
+  it('returning to the rewritten entry later restores it like any other entry', async () => {
+    const { history, router, canvas, scroll } = await renderEditor(PAGE_A);
+    await dropFix(router);
+    await until(quiet, 'the rewrite settled');
+    await scroll(420);
+    // A new entry pushed straight on top (not through a link, so the rewritten entry is left as it is).
+    await act(async () => {
+      await router.navigate({ to: '/app/projects/$projectId/editor', params: { projectId: 'project-1' }, search: { page: 'page-a' }, hash: 'usage' });
+    });
+    await until(() => router.state.location.hash === 'usage' && scrolled.length > 0, 'the landing on Usage');
+    await scroll(1500);
+    await act(async () => history.back());
+    await until(() => router.state.location.hash === '' && quiet(), 'the rewritten entry');
+    expect(canvas().scrollTop).toBe(420);
+  });
+});
+
 describe('a new tab carries the section (#553)', () => {
   it('builds the linked page’s editor address with its section', async () => {
     await renderEditor();

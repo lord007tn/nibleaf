@@ -224,7 +224,10 @@ const repositoryVersions = (snapshot: SiteSnapshot): SnapshotVersion[] => {
 
 const resolvedRepositoryTheme = (snapshot: SiteSnapshot, templateId: ThemePresetId): ResolvedTheme => {
   const owned = themeOwnedConfig(record(snapshot.project.config));
-  return resolveTheme({ ...owned, theme: { ...owned.theme, preset: templateId } });
+  // The repository is the site's source: it keeps the owner's authored accent,
+  // not the shade the reader draws it in (readableAccentText), so a round trip
+  // never rewrites their colours.
+  return resolveTheme({ ...owned, theme: { ...owned.theme, preset: templateId } }, { authoredAccent: true });
 };
 
 const repositoryAppearance = (snapshot: SiteSnapshot): 'light' | 'dark' | 'system' => {
