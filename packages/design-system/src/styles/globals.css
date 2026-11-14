@@ -15,10 +15,24 @@
    (packages/design-system/src/styles/), so `../` is the package `src`. */
 @source "../**/*.{ts,tsx}";
 
+/* Geist loads with font-display: swap. Until it arrives, text draws in this
+   local face scaled to Geist's metrics (the values Next.js's font tooling derives
+   for Geist over Arial), so the swap doesn't re-wrap lines: on published docs the
+   sidebar used to jump a line about 0.8s after load (PUB-016, CLS 0.107). */
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial"), local("Helvetica Neue"), local("Helvetica");
+  ascent-override: 95.94%;
+  descent-override: 28.16%;
+  line-gap-override: 0%;
+  size-adjust: 104.76%;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    "Geist Variable", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
   --font-arabic:
     "Noto Sans Arabic Variable", "Noto Sans Arabic", Tahoma, Arial, sans-serif;

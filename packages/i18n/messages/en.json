@@ -5046,23 +5046,5 @@
   "settings_aiassistants_watch_again": "Watch again",
   "settings_aiassistants_keysloaderror": "Couldn’t load personal keys. Apps that signed in are still listed.",
   "settings_aiassistants_appsloaderror": "Couldn’t load apps that signed in. Personal keys are still listed.",
-  "oauth_consent_can_aiconversations": "Read saved Ask AI questions and answers. Email addresses, phone numbers and keys are removed, but names, addresses and other personal details may remain.",
-  "pending_count": [
-    {
-      "declarations": ["input count", "input form"],
-      "selectors": ["form"],
-      "match": {
-        "form=one": "{count} unpublished change",
-        "form=*": "{count} unpublished changes"
-      }
-    }
-  ],
-  "pending_siteonly": "Unpublished navigation or settings changes",
-  "pending_readersstillsee": "Readers still see version {version}.",
-  "pending_review": "Review and publish",
-  "pending_draft": "Not live yet",
-  "overview_col_status": "Status",
-  "pagestatus_draft": "Not published",
-  "pagestatus_changed": "Changed",
-  "pagestatus_live": "Live"
+  "oauth_consent_can_aiconversations": "Read saved Ask AI questions and answers. Email addresses, phone numbers and keys are removed, but names, addresses and other personal details may remain."
 }
