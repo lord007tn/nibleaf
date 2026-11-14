@@ -39,6 +39,7 @@ import {
   STARTER_GETTING_STARTED_ICON,
   STARTER_GETTING_STARTED_TITLE,
 } from './starter-content';
+import { pickStarterSlug, starterFallbackSlug } from './starter-slug';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
@@ -115,21 +116,10 @@ async function userNotificationEnabled(userId: string, id: string): Promise<bool
 // the publish-time broken-link check runs against the starter too.
 // The pages' contents are in starter-content.ts.
 
-/** A globally-unique project slug for the starter site. `project.slug` has a
- *  global unique constraint, so a hard-coded `docs` collides for every signup
- *  after the first — leaving new users with an empty workspace. Fall back to
- *  `docs-2`, `docs-3`, … and finally a timestamp suffix so provisioning never
- *  fails on the slug. */
-async function uniqueStarterSlug(): Promise<string> {
-  for (let i = 0; i < 100; i++) {
-    const candidate = i === 0 ? 'docs' : `docs-${i + 1}`;
-    const clash = await prisma.project.findFirst({ where: { slug: candidate }, select: { id: true } });
-    if (!clash) {
-      return candidate;
-    }
-  }
-  return `docs-${Date.now().toString(36)}`;
-}
+/** A globally-unique, non-reserved project slug for the starter site.
+ *  `project.slug` has a global unique constraint, so every signup after the
+ *  first falls through to a numbered or random address (see `./starter-slug`). */
+const uniqueStarterSlug = () => pickStarterSlug(async (slug) => (await prisma.project.findFirst({ where: { slug }, select: { id: true } })) !== null);
 
 /** Create the starter docs site (a customer-product docs template) for a freshly
  *  created workspace. Returns the project so the caller can auto-publish it, or
@@ -145,7 +135,7 @@ async function createStarterProject(organizationId: string, actorUserId: string)
   // time, and fall back to a timestamped slug so provisioning never fails here.
   const createProjectWithInvariants = async () => {
     for (let attempt = 0; attempt < 5; attempt++) {
-      const slug = attempt < 4 ? await uniqueStarterSlug() : `docs-${Date.now().toString(36)}`;
+      const slug = attempt < 4 ? await uniqueStarterSlug() : starterFallbackSlug();
       try {
         return await prisma.$transaction(async (tx) => {
           // Project.dataTenantId gets an independent cuid from the Prisma default (§3).
