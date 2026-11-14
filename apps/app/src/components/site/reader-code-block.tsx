@@ -43,7 +43,9 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
         // [direction:ltr] keeps `end-2` physical-right even inside an RTL page,
         // matching the force-LTR code content (else it collides with the badge).
         'reader-code-copy reader-control grid size-7 cursor-pointer place-items-center rounded-md text-white/50 transition-colors [direction:ltr] hover:bg-white/10 hover:text-white/90',
-        title ? '' : 'absolute end-2 top-2 z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
+        // Always visible (P3-PUB-023): white/50 on the code panel is about 5:1,
+        // and hover brightens it.
+        title ? '' : 'absolute end-2 top-2 z-10',
       )}
     >
       {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
