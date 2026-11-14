@@ -73,3 +73,26 @@ it.each(['en', 'ar', 'de'])('labels both mobile dialogs with app-supplied %s tex
     expect(description?.textContent).toBe(`${locale}:${descriptionKey}`);
   }
 });
+
+// Phones have no room for Preview in the site header, so the sheet carries it.
+it.each([
+  { draft: true, href: '/app/projects/$projectId/preview', name: 'en:project.previewDraftAria' },
+  { draft: false, href: '/sites/fixture', name: 'en:project.previewLiveAria' },
+])('offers Preview in the phone sheet (draft: $draft)', async ({ draft, href, name }) => {
+  mocks.locale = 'en';
+  const host = document.createElement('div');
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <SidebarProvider>
+        <ProjectSidebar previewDraft={draft} projectId="fixture" />
+        <SidebarTrigger />
+      </SidebarProvider>,
+    ),
+  );
+  await act(async () => document.querySelector<HTMLButtonElement>('[data-slot="sidebar-trigger"]')?.click());
+  const link = document.querySelector<HTMLAnchorElement>(`[role="dialog"] a[aria-label="${name}"]`);
+  expect(link?.getAttribute('href')).toBe(href);
+  expect(link?.textContent).toBe('en:project.preview');
+});

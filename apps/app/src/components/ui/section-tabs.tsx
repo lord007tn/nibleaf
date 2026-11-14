@@ -1,16 +1,68 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { edgeFadeMask, revealOffset, type ScrollEdges, scrollEdges } from './scroll-edges';
 
 /**
  * Sibling views of one page as links, each with its own URL (Analytics'
  * sections, Appearance's sub-pages), styled like the design-system line tabs.
  * A `nav` of links, not an ARIA tablist: each view is a page you can link to,
- * reload and go back to. Scrolls sideways on narrow screens instead of wrapping.
+ * reload and go back to.
+ *
+ * On narrow screens the row scrolls sideways instead of wrapping. The sides
+ * with more tabs past them fade out, so a clipped tab reads as "more this way",
+ * and the current tab is scrolled into view whenever it changes.
  */
 export function SectionTabs({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  const row = useRef<HTMLDivElement>(null);
+  const revealed = useRef<string | null>(null);
+  const [edges, setEdges] = useState<ScrollEdges>({ left: false, right: false });
+
+  useEffect(() => {
+    const element = row.current;
+    if (!element) return;
+    const update = () => {
+      const next = scrollEdges({
+        scrollLeft: element.scrollLeft,
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        rtl: getComputedStyle(element).direction === 'rtl',
+      });
+      setEdges((previous) => (previous.left === next.left && previous.right === next.right ? previous : next));
+    };
+    update();
+    element.addEventListener('scroll', update, { passive: true });
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(update);
+    observer?.observe(element);
+    if (element.firstElementChild) observer?.observe(element.firstElementChild);
+    return () => {
+      element.removeEventListener('scroll', update);
+      observer?.disconnect();
+    };
+  }, []);
+
+  // Only when the current tab changes, so a row the reader scrolled stays put.
+  useLayoutEffect(() => {
+    const element = row.current;
+    const current = element?.querySelector<HTMLElement>('[aria-current="page"]');
+    const key = current?.getAttribute('href') ?? null;
+    if (!element || !current || key === revealed.current) return;
+    revealed.current = key;
+    const offset = revealOffset(current.getBoundingClientRect(), element.getBoundingClientRect());
+    if (offset !== 0) element.scrollBy({ left: offset });
+  });
+
+  const mask = edgeFadeMask(edges);
   return (
-    <nav aria-label={label} className={cn('-mx-1 overflow-x-auto border-border border-b', className)} data-slot="section-tabs">
-      <ul className="flex min-w-max items-center gap-1 px-1">{children}</ul>
+    <nav aria-label={label} className={cn('-mx-1 border-border border-b', className)} data-slot="section-tabs">
+      <div
+        className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        data-overflow-left={edges.left || undefined}
+        data-overflow-right={edges.right || undefined}
+        ref={row}
+        style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
+      >
+        <ul className="flex min-w-max items-center gap-1 px-1">{children}</ul>
+      </div>
     </nav>
   );
 }

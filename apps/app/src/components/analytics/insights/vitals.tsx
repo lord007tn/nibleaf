@@ -31,10 +31,43 @@ export function RatingBadge({ rating }: { rating: VitalRating | null }) {
   );
 }
 
-const VITALS: ReadonlyArray<{ metric: VitalMetric; field: 'lcpP75Ms' | 'inpP75Ms' | 'clsP75'; label: MessageKey; hint: MessageKey }> = [
-  { metric: 'lcp', field: 'lcpP75Ms', label: 'analytics.vitals.lcp', hint: 'analytics.vitals.lcp.hint' },
-  { metric: 'inp', field: 'inpP75Ms', label: 'analytics.vitals.inp', hint: 'analytics.vitals.inp.hint' },
-  { metric: 'cls', field: 'clsP75', label: 'analytics.vitals.cls', hint: 'analytics.vitals.cls.hint' },
+/**
+ * The metric's standard name is a proper noun, the same in every language, so
+ * it isn't in the catalogs: the card shows its abbreviation as an isolated
+ * English term with the full name, and the translated hint explains it.
+ */
+const VITALS: ReadonlyArray<{
+  metric: VitalMetric;
+  field: 'lcpP75Ms' | 'inpP75Ms' | 'clsP75';
+  label: MessageKey;
+  hint: MessageKey;
+  abbreviation: string;
+  name: string;
+}> = [
+  {
+    metric: 'lcp',
+    field: 'lcpP75Ms',
+    label: 'analytics.vitals.lcp',
+    hint: 'analytics.vitals.lcp.hint',
+    abbreviation: 'LCP',
+    name: 'Largest Contentful Paint',
+  },
+  {
+    metric: 'inp',
+    field: 'inpP75Ms',
+    label: 'analytics.vitals.inp',
+    hint: 'analytics.vitals.inp.hint',
+    abbreviation: 'INP',
+    name: 'Interaction to Next Paint',
+  },
+  {
+    metric: 'cls',
+    field: 'clsP75',
+    label: 'analytics.vitals.cls',
+    hint: 'analytics.vitals.cls.hint',
+    abbreviation: 'CLS',
+    name: 'Cumulative Layout Shift',
+  },
 ];
 
 /** The three Core Web Vitals at p75 with a rating and what each one means for a reader. */
@@ -49,7 +82,12 @@ export function VitalsCards({ summary, loading, unknown }: { summary: WebVitalsS
         return (
           <Card className="@container/card gap-3" key={vital.metric}>
             <CardHeader>
-              <CardDescription>{t(vital.label)}</CardDescription>
+              <CardDescription className="flex flex-wrap items-baseline gap-x-2">
+                {t(vital.label)}
+                <abbr className="font-mono text-[11px] no-underline" dir="ltr" lang="en" title={vital.name}>
+                  {vital.abbreviation}
+                </abbr>
+              </CardDescription>
               {loading ? (
                 <Skeleton aria-hidden className="mt-1 h-8 w-20" />
               ) : (
