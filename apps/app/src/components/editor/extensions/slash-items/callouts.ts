@@ -11,7 +11,8 @@ export const calloutSlashItems: SlashItem[] = [
     descKey: 'editor.slash.note.desc',
     icon: Lightbulb,
     glyph: '!',
-    keywords: [...CALLOUT_KEYWORDS, 'remark', 'aside'],
+    // Main's aliases stay ("/warning" and "/info" still offer Note, below the exact Warning and Info).
+    keywords: [...CALLOUT_KEYWORDS, 'note', 'warning', 'info', 'remark', 'aside'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'note' }).run(),
   },
   {

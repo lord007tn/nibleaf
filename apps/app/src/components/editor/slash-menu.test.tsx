@@ -295,4 +295,23 @@ describe('closing the menu', () => {
     expect(editor.state.doc.childCount).toBe(2);
     expect(editor.state.doc.textContent).toBe('/xyz and more');
   });
+
+  // A second "/" ends a slash command, as on main: paths and URLs stay text.
+  it.each(['See /code/block ', '/code/block', '/api/example', 'a /b/c d', '/usr/local/bin', '/docs/getting-started'])(
+    'keeps "%s" exactly as typed: the menu closes and Enter only starts a paragraph',
+    async (text) => {
+      const editor = await make(doc(paragraph()));
+      await caretIn(editor);
+      await typeText(editor, text);
+      expect(isSlashMenuOpen(editor.state)).toBe(false);
+      expect(menu()).toBeNull();
+      await press(editor, 'Enter');
+      expect(editor.state.doc.childCount).toBe(2);
+      expect(editor.state.doc.child(0).type.name).toBe('paragraph');
+      expect(editor.state.doc.child(0).textContent).toBe(text);
+      expect(editor.state.doc.child(1).type.name).toBe('paragraph');
+      expect(editor.state.doc.child(1).textContent).toBe('');
+      expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
+    },
+  );
 });

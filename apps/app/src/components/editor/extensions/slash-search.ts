@@ -133,20 +133,34 @@ interface SearchEntry {
 
 const uniq = (values: string[]): string[] => [...new Set(values)];
 
+/** Prepared entries per item, keyed by the titles they were built from (so a language change rebuilds them). */
+const entryCache = new WeakMap<SlashItem, Map<string, SearchEntry>>();
+
 const searchEntry = (item: SlashItem, locale: Locale): SearchEntry => {
-  const titleWordLists = uniq([
+  const rawTitles = uniq([
     translateFn(item.titleKey, undefined, locale),
     // The interface language (the runtime locale), which can differ from the page's.
     translateFn(item.titleKey),
     translateFn(item.titleKey, undefined, 'en'),
     translateFn(item.titleKey, undefined, 'ar'),
-  ]).map((title) => wordsOf(foldSlashText(title)));
-  return {
+  ]);
+  const cacheKey = rawTitles.join('\u0000');
+  let cached = entryCache.get(item);
+  const hit = cached?.get(cacheKey);
+  if (hit) return hit;
+  const titleWordLists = rawTitles.map((title) => wordsOf(foldSlashText(title)));
+  const entry: SearchEntry = {
     titles: titleWordLists.map((words) => words.join(' ')),
     compactTitles: titleWordLists.map((words) => words.join('')),
     titleWords: withArticleFree(titleWordLists.flat()),
     keywordWords: withArticleFree(wordsOf(foldSlashText([...(item.keywords ?? []), slashItemName(item)].join(' ')))),
   };
+  if (!cached) {
+    cached = new Map();
+    entryCache.set(item, cached);
+  }
+  cached.set(cacheKey, entry);
+  return entry;
 };
 
 const hasWordStartingWith = (words: string[], prefix: string): boolean => words.some((word) => word.startsWith(prefix));
@@ -291,12 +305,15 @@ export const groupSlashItems = (ranked: SlashItem[], query: string): SlashMenuGr
 
 /** No block name is this long; a longer "query" is ordinary text after a slash. */
 const MAX_SLASH_QUERY = 64;
+const SLASH = '/';
 const isSpace = (char: string | undefined): boolean => char !== undefined && char.trim() === '';
 
 /**
  * Whether the text typed after "/" should keep the menu open now that it may
- * contain spaces. It closes when the query starts with a space ("a / b"), holds
- * two spaces in a row, grows past any block name, or when a finished word
+ * contain spaces. It closes when the query holds another "/" (a path or URL such
+ * as "/usr/local/bin" or "See /code/block": main's trigger ended the query at a
+ * second slash, and only whitespace now continues it), starts with a space
+ * ("a / b"), holds two spaces in a row, grows past any block name, or when a finished word
  * (one followed by a space) already rules out every block: words only narrow
  * the list, so nothing typed after it could match and the writer is simply
  * writing prose. `hasMatches` reports whether the finished words match anything.
@@ -304,6 +321,7 @@ const isSpace = (char: string | undefined): boolean => char !== undefined && cha
 export const slashQueryKeepsMenuOpen = (query: string, hasMatches: (finishedWords: string) => boolean): boolean => {
   if (query.length > MAX_SLASH_QUERY) return false;
   if (query.length === 0) return true;
+  if (query.includes(SLASH)) return false;
   if (isSpace(query[0])) return false;
   let lastSpace = -1;
   for (let index = 1; index < query.length; index += 1) {
