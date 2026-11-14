@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { sitePageActionsT } from '@nibleaf/i18n/site-page-actions';
 import { markdownAliasPath } from '@nibleaf/shared/markdown-discovery';
 import { Check, ChevronDown, Copy } from 'lucide-react';
-import { type ComponentProps, useState } from 'react';
+import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import type { ContentLanguageAttributes } from '@/components/site/content-language';
 import { headerMenusModule } from '@/components/site/header-menus-module';
 import { announce } from '@/components/site/reader-content-controls';
@@ -61,15 +61,27 @@ export function PageActions({
   const markdownHref = pageMarkdownHref(pageHref);
   const [copied, setCopied] = useState(false);
   const { loaded, start, trigger, failed } = useIntentModule(headerMenusModule);
+  // The newest copy wins. A slower request for a page the reader has since left,
+  // or from an earlier click, is aborted, and even if its response still arrives
+  // it can never write over a newer copy.
+  const pending = useRef<AbortController | null>(null);
+  useEffect(() => () => pending.current?.abort(), []);
   const copy = async () => {
+    pending.current?.abort();
+    const request = new AbortController();
+    pending.current = request;
     try {
-      const response = await fetch(markdownHref, { headers: { accept: 'text/markdown' } });
+      const response = await fetch(markdownHref, { headers: { accept: 'text/markdown' }, signal: request.signal });
       if (!response.ok) throw new Error(String(response.status));
-      await navigator.clipboard.writeText(await response.text());
+      const markdown = await response.text();
+      if (pending.current !== request) return;
+      await navigator.clipboard.writeText(markdown);
       setCopied(true);
       announce(t('pageCopied'));
       setTimeout(() => setCopied(false), 1500);
     } catch {
+      // A superseded request ends quietly; only the current one reports a failure.
+      if (request.signal.aborted || pending.current !== request) return;
       announce(t('pageCopyFailed'));
     }
   };

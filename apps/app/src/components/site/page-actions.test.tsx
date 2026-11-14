@@ -71,9 +71,41 @@ describe('PageActions', () => {
     const root = createRoot(host);
     await act(async () => root.render(<PageActions pageHref="/guides/webhooks?lang=en" lang="en" />));
     await act(async () => host.querySelector('button')?.click());
-    expect(fetch).toHaveBeenCalledWith('/guides/webhooks.md?lang=en', { headers: { accept: 'text/markdown' } });
+    expect(fetch).toHaveBeenCalledWith('/guides/webhooks.md?lang=en', expect.objectContaining({ headers: { accept: 'text/markdown' } }));
     expect(writeText).toHaveBeenCalledWith('# Webhooks\n');
     await vi.waitFor(() => expect(document.querySelector('[data-reader-announcer]')?.textContent).toBe('Page copied as Markdown'));
+    act(() => root.unmount());
+  });
+
+  it('lets the newest copy win: an earlier, slower copy never overwrites it', async () => {
+    // Responses arrive when the test says, and this fetch ignores abort, so the
+    // guard after the response is what keeps page A off the clipboard.
+    const responses = new Map<string, (body: string) => void>();
+    const fetch = vi.fn(
+      (url: string) =>
+        new Promise<Response>((resolve) => {
+          responses.set(url, (body) => resolve(new Response(body, { status: 200 })));
+        }),
+    );
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal('fetch', fetch);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    // Copy page A, move to page B (the same component, a new href), copy B.
+    await act(async () => root.render(<PageActions pageHref="/guides/a" lang="en" />));
+    await act(async () => host.querySelector('button')?.click());
+    await act(async () => root.render(<PageActions pageHref="/guides/b" lang="en" />));
+    await act(async () => host.querySelector('button')?.click());
+    // A's request was aborted when B's began.
+    const [, firstInit] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(firstInit.signal?.aborted).toBe(true);
+    // B answers first, then A's stale response arrives anyway.
+    await act(async () => responses.get('/guides/b.md')?.('# B\n'));
+    await act(async () => responses.get('/guides/a.md')?.('# A\n'));
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith('# B\n');
     act(() => root.unmount());
   });
 
