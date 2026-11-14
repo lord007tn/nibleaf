@@ -77,7 +77,9 @@ export const Route = createFileRoute('/sites/$projectId')({
           : null;
       if (target) throw redirect({ href: target, statusCode: 308, replace: true });
       const language = parsed.language?.code ?? deps.lang;
-      const version = parsed.path.split('/')[0];
+      // A language homepage (`/ar`, `/~lang/ar`) has no path after the prefix, so
+      // no version segment: send none rather than an empty slug the API rejects.
+      const version = parsed.path.split('/')[0] || undefined;
       const requestedVersion = site.versions.find((item) => item.slug === version) ?? site.versions.find((item) => item.isDefault);
       if (parsed.language && (site.activeLanguage !== language || site.activeVersion !== requestedVersion?.slug)) {
         site = await getSiteFn({ data: { projectId: params.projectId, language, version } });
