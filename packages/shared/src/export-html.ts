@@ -7,61 +7,14 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
+import { exportMarkdownStructure } from './export-markdown-structure';
 import { readerSanitizeSchema } from './reader-sanitize';
 
 const sanitize = rehypeSanitize(readerSanitizeSchema);
 const htmlParser = unified().use(remarkRehype, { allowDangerousHtml: true }).use(rehypeRaw);
-const MAX_PARSE_CHARACTERS = 262_144;
-const MAX_CONTAINER_PREFIX = 128;
 const MAX_HTML_DEPTH = 64;
 // Structural accounting only; the reader schema remains the HTML allow-list.
 const VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
-const escapeUnparsed = (source: string): string => source.replaceAll('<', '&lt;').replaceAll('[', '&#91;');
-
-/** Bound parser input before any recursive library traversal. A conservative
- * prefix/depth count may escape more text, but can never discard it or let it run. */
-const exceedsParserBudget = (source: string): boolean => {
-  if (source.length > MAX_PARSE_CHARACTERS) return true;
-  let prefix = 0;
-  let atPrefix = true;
-  for (const character of source) {
-    if (character === '\n') {
-      prefix = 0;
-      atPrefix = true;
-    } else if (atPrefix) {
-      if (' >\t-*+0123456789.)'.includes(character)) {
-        if (++prefix > MAX_CONTAINER_PREFIX) return true;
-      } else atPrefix = false;
-    }
-  }
-  const stack: string[] = [];
-  let exceeded = false;
-  const tokens = new Tokenizer(
-    {},
-    {
-      onStartTag: ({ tagName, selfClosing }) => {
-        if (selfClosing || VOID_ELEMENTS.has(tagName)) return;
-        stack.push(tagName);
-        if (stack.length > MAX_HTML_DEPTH) {
-          exceeded = true;
-          tokens.pause();
-        }
-      },
-      onEndTag: ({ tagName }) => {
-        const index = stack.lastIndexOf(tagName);
-        if (index >= 0) stack.length = index;
-      },
-      onComment: () => undefined,
-      onDoctype: () => undefined,
-      onEof: () => undefined,
-      onCharacter: () => undefined,
-      onNullCharacter: () => undefined,
-      onWhitespaceCharacter: () => undefined,
-    },
-  );
-  tokens.write(source, true);
-  return exceeded;
-};
 const elementsByOffset = (root: Root): Map<number, Element> => {
   const elements = new Map<number, Element>();
   const pending: (Root | RootContent)[] = [root];
@@ -88,31 +41,149 @@ const keepsElement = (original: Element, clean: Element | undefined): boolean =>
  * fence can end before the tokenizer thinks it does (#633). CommonMark identifies the
  * HTML a downstream renderer sees; parse5 and the reader schema decide what is allowed.
  * Escape only rejected delimiters (and raw-text contents), never discard author text or
- * serialize the document. Allowed sibling/child tags and real code retain their bytes. */
-export const escapeDisallowedExportHtml = (source: string): string => {
-  if (!source.includes('<') && !source.includes('[')) return source;
-  if (exceedsParserBudget(source)) return escapeUnparsed(source);
-  try {
-    return escapeParsedHtml(source);
-  } catch (error) {
-    // A library may encounter a recursive shape beyond the conservative preflight.
-    // Preserve it as inert source; other errors must remain visible.
-    if (error instanceof RangeError) return escapeUnparsed(source);
-    throw error;
+ * serialize the document. Allowed sibling/child tags and real code retain their bytes.
+ *
+ * A malformed MDX container can move source code into HTML or prose. If a
+ * projection cannot retain those code bytes, preserve the authored Markdown
+ * and apply the same HTML safety boundary to it instead. Ordered searches advance
+ * past each match; they do not rescan the document for every code sample. */
+export const escapeDisallowedExportHtml = (projected: string, authored = projected): string => {
+  const structures = new Map<string, ReturnType<typeof exportMarkdownStructure>>();
+  const structure = (source: string) => {
+    let parsed = structures.get(source);
+    if (!parsed) {
+      parsed = exportMarkdownStructure(source);
+      structures.set(source, parsed);
+    }
+    return parsed;
+  };
+  const output = escapeProjectedHtml(projected, structure);
+  if (authored === projected) return output;
+  const expected = structure(authored).code;
+  if (!expected.length) return output;
+  const actual = structure(output)
+    .code.map((code) => code.value)
+    .join('\0');
+  let cursor = 0;
+  for (const code of expected) {
+    const found = actual.indexOf(code.value, cursor);
+    if (found < 0) return escapeProjectedHtml(authored, structure);
+    cursor = found + code.value.length;
   }
+  return output;
 };
 
-const escapeParsedHtml = (source: string): string => {
-  const markdown = fromMarkdown(source, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
-  const tree = htmlParser.runSync(markdown, source);
-  const original = elementsByOffset(tree);
-  const clean = elementsByOffset(sanitize(tree));
+const escapeProjectedHtml = (source: string, parseStructure: typeof exportMarkdownStructure): string => {
+  if (!source.includes('<') && !source.includes('[')) return source;
+  const structure = parseStructure(source);
   const escaped = new Uint8Array(source.length);
   const blockEnds = new Set<number>();
+  const fallback = new Set<number>();
+  for (const [index, block] of structure.blocks.entries()) {
+    if (block.limited) fallback.add(index);
+  }
+  // HTML can nest across Markdown blocks. Track its actual HTML tokens only,
+  // with O(1) matching lookups and amortized O(n) pops; code is never tokenized here.
+  const stack: string[] = [];
+  const byName = new Map<string, number[]>();
+  let tooDeep = false;
+  let groupStart = 0;
+  const markGroup = (end: number) => {
+    if (tooDeep) for (let at = groupStart; at <= end; at++) fallback.add(at);
+    tooDeep = false;
+  };
+  for (const [index, block] of structure.blocks.entries())
+    for (const range of block.html) {
+      const tokens = new Tokenizer(
+        {},
+        {
+          onStartTag: ({ tagName, selfClosing }) => {
+            if (selfClosing || VOID_ELEMENTS.has(tagName)) return;
+            if (!stack.length) groupStart = index;
+            const matches = byName.get(tagName) ?? [];
+            matches.push(stack.length);
+            byName.set(tagName, matches);
+            stack.push(tagName);
+            if (stack.length > MAX_HTML_DEPTH) tooDeep = true;
+          },
+          onEndTag: ({ tagName }) => {
+            const match = byName.get(tagName)?.at(-1);
+            if (match === undefined) return;
+            while (stack.length > match) {
+              const entry = stack.pop();
+              if (entry) byName.get(entry)?.pop();
+            }
+            if (!stack.length) markGroup(index);
+          },
+          onComment: () => undefined,
+          onDoctype: () => undefined,
+          onEof: () => undefined,
+          onCharacter: () => undefined,
+          onNullCharacter: () => undefined,
+          onWhitespaceCharacter: () => undefined,
+        },
+      );
+      tokens.write(source.slice(range.from, range.to), true);
+    }
+  if (tooDeep) markGroup(structure.blocks.length - 1);
+  const markFallback = (index: number) => {
+    const block = structure.blocks[index];
+    if (!block) return;
+    for (const range of block.html) {
+      for (let at = range.from; at < range.to; at++) {
+        if (structure.protectedCode[at]) continue;
+        if (source[at] === '<') escaped[at] = 1;
+        if (source[at] === '[') escaped[at] = 3;
+        if (source[at] === '`' || source[at] === '~') escaped[at] = 2;
+      }
+      if (range.block && range.to < source.length && !source.startsWith('\n\n', range.to) && !source.startsWith('\r\n\r\n', range.to))
+        blockEnds.add(range.to);
+    }
+    for (const range of block.links)
+      for (let at = range.from; at < range.to; at++) {
+        if (structure.protectedCode[at]) continue;
+        if (source[at] === '<') escaped[at] = 1;
+        if (source[at] === '[') escaped[at] = 3;
+      }
+  };
+  const input = source.split('');
+  for (const index of fallback) {
+    markFallback(index);
+    const block = structure.blocks[index];
+    if (block) for (let at = block.from; at < block.to; at++) if (source[at] !== '\n' && source[at] !== '\r') input[at] = ' ';
+  }
+  try {
+    escapeParsedHtml(source, input.join(''), structure.protectedCode, escaped, blockEnds);
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error;
+    // Unexpected library recursion still uses parsed source ranges, never a
+    // whole-document character replacement that could corrupt literal code.
+    for (const [index] of structure.blocks.entries()) markFallback(index);
+  }
+  const parts: string[] = [];
+  let cursor = 0;
+  for (let at = 0; at < source.length; at++) {
+    if (blockEnds.has(at)) {
+      parts.push(source.slice(cursor, at), '\n');
+      cursor = at;
+    }
+    if (!escaped[at] || structure.protectedCode[at]) continue;
+    parts.push(source.slice(cursor, at), escaped[at] === 1 ? '&lt;' : escaped[at] === 3 ? '&#91;' : source[at] === '`' ? '&#96;' : '&#126;');
+    cursor = at + 1;
+  }
+  parts.push(source.slice(cursor));
+  return parts.join('');
+};
+
+const escapeParsedHtml = (source: string, input: string, protectedCode: Uint8Array, escaped: Uint8Array, blockEnds: Set<number>): void => {
+  const markdown = fromMarkdown(input, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
+  const tree = htmlParser.runSync(markdown, input);
+  const original = elementsByOffset(tree);
+  const clean = elementsByOffset(sanitize(tree));
   const markAngles = (from: number, to: number): boolean => {
     let changed = false;
     for (let at = from; at < to; at++) {
-      if (source[at] !== '<') continue;
+      if (source[at] !== '<' || protectedCode[at]) continue;
       escaped[at] = 1;
       changed = true;
     }
@@ -149,7 +220,7 @@ const escapeParsedHtml = (source: string): string => {
         .join('');
       if (address.startsWith('data:') && clean.get(start)?.properties[property] === undefined) {
         markAngles(start, end);
-        for (let at = start; at < end; at++) if (source[at] === '[') escaped[at] = 3;
+        for (let at = start; at < end; at++) if (source[at] === '[' && !protectedCode[at]) escaped[at] = 3;
       }
       continue;
     }
@@ -198,22 +269,10 @@ const escapeParsedHtml = (source: string): string => {
       // Keep that boundary when the escaped opener becomes ordinary prose.
       if (!inline && end < source.length && !source.startsWith('\n\n', end) && !source.startsWith('\r\n\r\n', end)) blockEnds.add(end);
       for (let at = start; at < end; at++) {
+        if (protectedCode[at]) continue;
         if (source[at] === '`' || source[at] === '~') escaped[at] = 2;
         if (source[at] === '[') escaped[at] = 3;
       }
     }
   }
-  const parts: string[] = [];
-  let cursor = 0;
-  for (let at = 0; at < source.length; at++) {
-    if (blockEnds.has(at)) {
-      parts.push(source.slice(cursor, at), '\n');
-      cursor = at;
-    }
-    if (!escaped[at]) continue;
-    parts.push(source.slice(cursor, at), escaped[at] === 1 ? '&lt;' : escaped[at] === 3 ? '&#91;' : source[at] === '`' ? '&#96;' : '&#126;');
-    cursor = at + 1;
-  }
-  parts.push(source.slice(cursor));
-  return parts.join('');
 };

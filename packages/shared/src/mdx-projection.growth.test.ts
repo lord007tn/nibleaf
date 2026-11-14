@@ -32,6 +32,7 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
           1000,
         ] as const,
     ),
+    ['literal code beyond the parser budget', (n: number) => `~~~html\n${`${'>'.repeat(129)}<b>SAFE</b> [LABEL](url)\n`.repeat(n)}~~~`, 1000],
     [
       'export HTML safety',
       (n: number) =>
@@ -44,6 +45,10 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
       const project = (source: string) => [md(source), portable(source)];
       const [small, large] = growthMs(project, build(n), build(4 * n), { minMs: 20 });
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+      if (label === 'literal code beyond the parser budget') {
+        console.info(`Literal code growth n=${n}, 4n=${4 * n}: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
+        expect(project(build(4 * n))).toEqual([build(4 * n), build(4 * n)]);
+      }
       if (label === 'export HTML safety') {
         console.info(`Export safety growth n=${n}, 4n=${4 * n}: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
         expect(project(build(n)).map(renderedActiveHtml)).toEqual([0, 0]);

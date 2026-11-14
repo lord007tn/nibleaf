@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks';
 import { expect, it } from 'vitest';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
-import { readerSanitizedActiveHtml, renderedActiveHtml } from './testing/export-guard';
+import { exportCodeSamples, readerSanitizedActiveHtml, renderedActiveHtml } from './testing/export-guard';
 import { activeHtmlExportCases } from './testing/export-guard-cases';
 
 it.each(activeHtmlExportCases())('exports no reader-rejected active HTML: $name', ({ name, sources }) => {
@@ -93,6 +93,70 @@ it('preserves all content as inert source when the parser work budget is exceede
   const output = portablePublicMdxMarkdown(source);
   expect(output).toBe(source.replaceAll('<', '&lt;').replaceAll('[', '&#91;'));
   expect(renderedActiveHtml(output)).toBe(0);
+});
+
+const codeBody = `${'>'.repeat(129)}<b>SAFE</b> [LABEL](url)`;
+const fencedCode = `~~~html\n${codeBody}\n~~~`;
+const deepBlock = `${'> '.repeat(129)}<sup>DEEP</sup>`;
+const codeSpan = `\`${codeBody}\``;
+it.each([
+  { name: 'the lead repro', source: fencedCode, expected: fencedCode },
+  { name: 'long fences', source: `~~~~~~~~~html\n${codeBody}\n~~~~~~~~~`, expected: `~~~~~~~~~html\n${codeBody}\n~~~~~~~~~` },
+  { name: 'indented code', source: `    ${codeBody}`, expected: `    ${codeBody}` },
+  { name: 'indented code in a quote', source: `>     ${codeBody}`, expected: `>     ${codeBody}` },
+  { name: 'indented code in a list', source: `- item\n\n      ${codeBody}`, expected: `      ${codeBody}` },
+  { name: 'indented code in a component', source: `<Note>\n\n    ${codeBody}\n\n</Note>`, expected: `    ${codeBody}` },
+  { name: 'code span in a quote', source: `${deepBlock}\n\n> Use ${codeSpan}.`, expected: codeSpan },
+  { name: 'code span in a list', source: `${deepBlock}\n\n- Use ${codeSpan}.`, expected: codeSpan },
+  { name: 'code span in a component', source: `${deepBlock}\n\n<Note>\n\nUse ${codeSpan}.\n\n</Note>`, expected: codeSpan },
+  {
+    name: 'quoted code',
+    source: fencedCode
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n'),
+    expected: fencedCode
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n'),
+  },
+  { name: 'listed code', source: `- ~~~html\n  ${codeBody}\n  ~~~`, expected: `- ~~~html\n  ${codeBody}\n  ~~~` },
+  {
+    name: 'component code',
+    source: `<Note>\n\n${fencedCode}\n\n</Note>`,
+    expected: fencedCode
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n'),
+  },
+  {
+    name: 'code spans beside a deep block',
+    source: `> ${'> '.repeat(129)}<sup>DEEP</sup>\n\nUse \`<b>SAFE</b> [LABEL](url)\`.`,
+    expected: '`<b>SAFE</b> [LABEL](url)`',
+  },
+])('keeps code bytes through the parser budget: $name', ({ source, expected }) => {
+  for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) {
+    const output = project(source);
+    expect(output).toContain(expected);
+    for (const sample of exportCodeSamples(source)) expect(exportCodeSamples(output)).toContainEqual(sample);
+  }
+});
+
+it('limits a long block without changing code or allowed markup elsewhere', () => {
+  const source = `${'AUTHOR '.repeat(40_000)}<sup>LIMIT</sup>\n\n${fencedCode}\n\n    <i>INDENT</i> [LABEL](url)\n\nUse \`<u>SPAN</u> [LABEL](url)\`.\n\n<sub>NORMAL</sub>`;
+  for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) {
+    const output = project(source);
+    expect(output).toContain(fencedCode);
+    expect(output).toContain('    <i>INDENT</i> [LABEL](url)');
+    expect(output).toContain('`<u>SPAN</u> [LABEL](url)`');
+    expect(output).toContain('<sub>NORMAL</sub>');
+    for (const sample of exportCodeSamples(source)) expect(exportCodeSamples(output)).toContainEqual(sample);
+  }
+});
+
+it('does not charge a long code block to the prose work budget', () => {
+  const source = `~~~html\n${'<b>SAFE</b> [LABEL](url)\n'.repeat(12_000)}~~~`;
+  for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) expect(project(source)).toBe(source);
 });
 
 it('escapes rejected markup without losing its text or changing allowed siblings and code', () => {

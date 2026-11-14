@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 import MarkdownIt from 'markdown-it';
+import { parse, postprocess, preprocess } from 'micromark';
+import { gfm } from 'micromark-extension-gfm';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
@@ -28,6 +30,17 @@ export interface ExportGuardBaseline {
 export type ExportProjectors = readonly [(source: string) => string, (source: string) => string];
 const exportHash = (source: string) => createHash('sha256').update(source).digest('hex');
 const exportSourcesHash = (cases: readonly ExportGuardCase[]) => exportHash(cases.map(({ source }) => source).join('\0'));
+
+/** Independent CommonMark token oracle. The tokenizer's serialization removes
+ * container markup, retaining code bytes (including fences and span delimiters). */
+export const exportCodeSamples = (source: string): string[] =>
+  postprocess(
+    parse({ extensions: [gfm()] })
+      .document()
+      .write(preprocess()(source, undefined, true)),
+  )
+    .filter(([kind, token]) => kind === 'enter' && ['codeFenced', 'codeIndented', 'codeText'].includes(token.type))
+    .map(([, token, context]) => context.sliceSerialize(token));
 
 const markdown = new MarkdownIt({ html: true });
 const activeTags = ['script', 'style', 'iframe', 'object', 'embed'];
@@ -103,7 +116,17 @@ export const recordExportBaseline = (
 };
 
 export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline: ExportGuardBaseline, projectors: ExportProjectors) => {
-  const stats = [0, 1].map(() => ({ lost: 0, lossShapes: 0, duplicated: 0, reordered: 0, newlyActive: 0, exceedsReader: 0, differences: 0 }));
+  const stats = [0, 1].map(() => ({
+    lost: 0,
+    lossShapes: 0,
+    duplicated: 0,
+    reordered: 0,
+    changedCode: 0,
+    codeSamples: 0,
+    newlyActive: 0,
+    exceedsReader: 0,
+    differences: 0,
+  }));
   const failures: Array<{ index: number; target: number; reason: string }> = [];
   const metadata: string[] = [];
   if (baseline.revision !== EXPORT_BASELINE_REVISION) metadata.push('wrong main revision');
@@ -112,6 +135,7 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
     metadata.push('missing baseline cases');
   for (const { index, source, markers } of cases) {
     const readerActive = readerSanitizedActiveHtml(source);
+    const code = exportCodeSamples(source);
     for (const target of [0, 1] as const) {
       const expected = baseline.kept[index]?.[target];
       const active = baseline.active[index]?.[target];
@@ -122,6 +146,13 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       }
       const output = projectors[target](source);
       const tally = stats[target] as (typeof stats)[number];
+      const outputCode = exportCodeSamples(output);
+      tally.codeSamples += code.length;
+      for (const sample of code) {
+        if (output.includes(sample) || outputCode.some((candidate) => candidate.includes(sample))) continue;
+        tally.changedCode++;
+        failures.push({ index, target, reason: `code bytes changed: ${JSON.stringify(sample.slice(0, 160))}` });
+      }
       let lost = 0;
       let previous = -1;
       let duplicated = false;

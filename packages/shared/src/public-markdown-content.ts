@@ -312,6 +312,7 @@ export const portablePublicMdxMarkdown = (source: string): string =>
     projectMdx(source, 'export')
       .map((segment) => segment.value)
       .join(''),
+    source,
   );
 
 /** Authored MDX as public Markdown (`.md`, llms files): projected, with active markup, MDX
@@ -327,7 +328,7 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
     const newline = value.lastIndexOf('\n');
     atLineStart = newline < 0 ? atLineStart && onlyMarkers(value) : onlyMarkers(value.slice(newline + 1));
   };
-  for (const segment of projectMdx(markdown, 'markdown')) {
+  for (const segment of trimSegments(projectMdx(markdown, 'markdown'))) {
     if (segment.kind === 'code' || segment.kind === 'markup') {
       append(segment.value);
       continue;
@@ -345,5 +346,5 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
         .join('\n'),
     );
   }
-  return escapeDisallowedExportHtml(parts.join('').trim());
+  return escapeDisallowedExportHtml(parts.join(''), markdown);
 };
