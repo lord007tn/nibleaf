@@ -168,6 +168,15 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
     ? [
         `:root,.nibleaf-site-chrome{${tokenDeclarations(light, authored.light)};--radius:${radiusValue(theme.layout.radius)}}`,
         `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{${tokenDeclarations(dark, authored.dark)}}`,
+        // A solid callout is a console panel on the code surface in both modes, so
+        // everything inside it uses the dark palette: its text, muted text and any
+        // card, table, step or tab nested in it read as they do in dark mode,
+        // where every surface is checked (PUB-019). Its links keep the code accent,
+        // as before. Without this, light mode drew page text on the dark fill.
+        // The outer .typeset derives --typeset-muted and --typeset-rule from the
+        // light palette and descendants inherit those values, so they are bound
+        // again here (h5/h6 and rules use them).
+        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:var(--theme-code-accent);--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
       ]
     : [
         `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent, legacyBrand)};--primary:${legacyAccent};--primary-foreground:${legacyAccentForeground};--theme-accent-foreground:${legacyAccentForeground};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
