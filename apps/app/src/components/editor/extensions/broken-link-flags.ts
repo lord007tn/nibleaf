@@ -51,31 +51,65 @@ export const brokenLinkDecorations = (doc: PMNode, resolve: ResolveLink | null, 
   return DecorationSet.create(doc, flags);
 };
 
+/** The range a step names itself (`from`/`to` before it), and those of the steps it is made of (undo's `MarkSetStep`). */
+const ownRanges = (step: unknown): Array<[number, number]> => {
+  const { from, to, steps } = step as { from?: unknown; to?: unknown; steps?: unknown };
+  const own: Array<[number, number]> = typeof from === 'number' && typeof to === 'number' ? [[from, to]] : [];
+  return Array.isArray(steps) ? [...own, ...steps.flatMap(ownRanges)] : own;
+};
+
 /**
  * Keep the flags current after an edit without walking the whole page: map the
  * previous flags, then look again only at the textblocks the edit's steps
- * touched (as `updateBlockDirections` does). Typing on a long page costs the
- * same as on a short one.
+ * touched. Typing on a long page costs the same as on a short one.
+ *
+ * A step's position map says where it inserted or deleted content, but a step
+ * that only adds or removes a mark (pointing a link at another page) moves
+ * nothing, so its map is empty. Every step's own range counts too.
  */
 export const updateBrokenLinks = (previous: DecorationSet, tr: Transaction, resolve: ResolveLink | null, locale: Locale): DecorationSet => {
   if (!resolve) return DecorationSet.empty;
   if (tr.getMeta(REFRESH)) return brokenLinkDecorations(tr.doc, resolve, locale);
   if (!tr.docChanged) return previous;
   const { doc } = tr;
-  let next = previous.map(tr.mapping, doc);
-  tr.mapping.maps.forEach((stepMap, index) => {
+  // The changed ranges, in the final document.
+  const ranges: Array<[number, number]> = [];
+  tr.steps.forEach((step, index) => {
     const after = tr.mapping.slice(index + 1);
-    stepMap.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
-      const from = Math.max(0, after.map(newStart, -1));
-      const to = Math.min(doc.content.size, after.map(newEnd, 1));
-      doc.nodesBetween(from, to, (node, pos) => {
-        if (!node.isTextblock) return true;
-        const end = pos + node.nodeSize;
-        next = next.remove(next.find(pos, end, (spec) => spec.brokenLink === true)).add(doc, blockFlags(node, pos, resolve, locale));
-        return false;
-      });
+    let found = false;
+    tr.mapping.maps[index]?.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      found = true;
+      ranges.push([after.map(newStart, -1), after.map(newEnd, 1)]);
     });
+    // A mark step's range is the same before and after it (it moves nothing).
+    const through = tr.mapping.slice(index);
+    for (const [from, to] of ownRanges(step)) {
+      found = true;
+      ranges.push([through.map(from, -1), through.map(to, 1)]);
+    }
+    // Any other step that moved nothing: where the document before and after it differ.
+    const before = tr.docs[index];
+    const stepDoc = tr.docs[index + 1] ?? doc;
+    if (!found && before) {
+      const start = before.content.findDiffStart(stepDoc.content);
+      const end = before.content.findDiffEnd(stepDoc.content);
+      if (start !== null && end) ranges.push([after.map(start, -1), after.map(Math.max(start, end.b), 1)]);
+    }
   });
+  let next = previous.map(tr.mapping, doc);
+  const seen = new Set<number>();
+  for (const [start, end] of ranges) {
+    const from = Math.max(0, Math.min(start, end));
+    const to = Math.min(doc.content.size, Math.max(start, end));
+    doc.nodesBetween(from, to, (node, pos) => {
+      if (!node.isTextblock) return true;
+      if (seen.has(pos)) return false;
+      seen.add(pos);
+      const blockEnd = pos + node.nodeSize;
+      next = next.remove(next.find(pos, blockEnd, (spec) => spec.brokenLink === true)).add(doc, blockFlags(node, pos, resolve, locale));
+      return false;
+    });
+  }
   return next;
 };
 

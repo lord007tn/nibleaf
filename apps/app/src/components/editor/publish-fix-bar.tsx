@@ -51,6 +51,12 @@ function goToMatch(editor: Editor, matches: FixMatch[], index: number, openLink:
   const at = match.node ? view.nodeDOM(match.from) : view.domAtPos(match.from).node;
   const element = at instanceof Element ? at : at?.parentElement;
   element?.scrollIntoView?.({ block: 'center', inline: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  // A component's link (a Card's `href`) is edited in its own address field.
+  const address = openLink && match.node && editor.isEditable ? element?.querySelector<HTMLInputElement>('input[data-attribute="href"]') : null;
+  if (address) {
+    address.focus({ preventScroll: true });
+    address.select();
+  }
 }
 
 const clearHighlight = (editor: Editor | null) => {

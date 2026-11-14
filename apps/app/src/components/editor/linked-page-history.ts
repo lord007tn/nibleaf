@@ -99,12 +99,18 @@ export function useLinkedPageHistory({
   const restored = useRef<string | null>(null);
   // The page the last restored entry showed: an in-page section keeps the scroll it starts from.
   const shown = useRef<string | undefined>(undefined);
+  // Entries already kept in place: `editorKeepScroll` holds for the rewrite itself, never for a later
+  // visit (Back or Forward to that entry restores it like any other).
+  const kept = useRef(new Set<string>());
   useEffect(() => {
     if (!pageId || pageId !== named || restored.current === entry) return;
     restored.current = entry;
     const samePage = shown.current === pageId;
     shown.current = pageId;
-    if (keep && samePage) return;
+    if (keep && samePage && !kept.current.has(entry)) {
+      kept.current.add(entry);
+      return;
+    }
     const left = positions.current.get(entry) ?? saved;
     let frames = 0;
     let frame = 0;
@@ -142,7 +148,8 @@ export function useLinkedPageHistory({
         params: { projectId },
         search: { page: pageId },
         hash: true,
-        state: (previous) => ({ ...previous, editorScroll: top }),
+        // The entry is left now: Back restores it, so a Fix's keep-in-place no longer applies.
+        state: (previous) => ({ ...previous, editorKeepScroll: undefined, editorScroll: top }),
         replace: true,
         ignoreBlocker: true,
         hashScrollIntoView: false,

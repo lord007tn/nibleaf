@@ -14,6 +14,8 @@
  */
 
 import type { PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
+// The publish checks' own reading of a page (server-side; here only as the oracle for the count).
+import { type PageContentFacts, pageContentFacts } from '@nibleaf/shared/publish-checks';
 import type { Editor as TiptapCore } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { act, type ComponentType, type ReactNode } from 'react';
@@ -28,6 +30,11 @@ const mocks = vi.hoisted(() => ({
   page: undefined as Record<string, unknown> | undefined,
   pages: [] as Array<Record<string, unknown>>,
   settings: null as null | { initialField?: string; page: { id: string } },
+  // Stable across renders, as in the app: a resolver rebuilt on every render would hide a stale flag.
+  queryClient: { getQueryData: () => undefined },
+  noVersions: { pages: [], complete: true },
+  linked: { open: () => Promise.resolve(), href: () => '' },
+  resolvers: 0,
 }));
 // Messages with their variables, so "1 of 2" can be read back.
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -50,13 +57,25 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ getQueryData: () => undefined }),
-  useQueries: ({ combine }: { combine: (results: unknown[]) => unknown }) => combine([]),
+  useQueryClient: () => mocks.queryClient,
+  useQueries: () => mocks.noVersions,
 }));
-vi.mock('@/components/editor/linked-page-history', () => ({ useLinkedPageHistory: () => ({ open: vi.fn(), href: () => '' }) }));
+vi.mock('@/components/editor/linked-page-history', () => ({ useLinkedPageHistory: () => mocks.linked }));
+// The real link resolution, counting how often the route builds a resolver.
+vi.mock('@/components/editor/editor-links', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/components/editor/editor-links')>();
+  return {
+    ...real,
+    editorLinkResolver: (...args: Parameters<typeof real.editorLinkResolver>) => {
+      mocks.resolvers += 1;
+      return real.editorLinkResolver(...args);
+    },
+  };
+});
 const PROJECT = { id: 'project-1', name: 'Test site', slug: 'test-site', description: null, icon: null, config: {} };
 const BRANCHES = [{ id: 'main', name: 'main', isDefault: true, createdAt: '2026-01-01T00:00:00.000Z' }];
 const ENGLISH = { id: 'lang-en', code: 'en', label: 'English', isDefault: true, direction: 'LTR', position: 0, config: null };
+const LANGUAGES = [ENGLISH];
 vi.mock('@/hooks/api', async () => ({
   useProject: () => ({ data: PROJECT }),
   useProjectMembers: () => ({ data: { members: [{ role: 'member', user: { id: 'user-1' } }] }, isPending: false }),
@@ -69,7 +88,7 @@ vi.mock('@/hooks/api', async () => ({
   // The page's version is known, so links resolve against the site as the publish checks do.
   useBranches: () => ({ data: BRANCHES }),
   useOpenApiConfiguration: () => ({}),
-  useLanguages: () => ({ data: [ENGLISH] }),
+  useLanguages: () => ({ data: LANGUAGES }),
   usePages: () => ({ data: mocks.pages, isPending: false }),
   usePage: () => ({ data: mocks.page, refetch: async () => ({ data: mocks.page }) }),
   usePendingChanges: () => ({}),
@@ -308,10 +327,87 @@ const LOCATABLE: Array<{ code: PublishCheckCode; content: string; target: string
   },
 ];
 
+/** Where each locatable check's evidence comes from in the checks' reading of a page. */
+const FACTS: Record<string, keyof PageContentFacts> = {
+  'broken-internal-link': 'links',
+  'missing-alt': 'imagesWithoutAlt',
+  'video-poster-hidden': 'hiddenPosters',
+  'video-not-https': 'insecureVideos',
+  'embed-as-link': 'embedsAsLinks',
+  'embed-untitled': 'untitledEmbeds',
+  'embed-unclosed': 'unclosedEmbeds',
+  'stray-characters': 'strayText',
+};
+/** How many places the publish check itself finds `target` on a page with `content`. */
+const checkCount = (code: PublishCheckCode, content: string, target: string): number =>
+  pageContentFacts(content, false)[FACTS[code] as keyof PageContentFacts].filter((detail) => detail === target).length;
+
+/**
+ * The evidence where the check doesn't look (a code block, inline code), then
+ * once where it does. Only the prose place counts, as in the check.
+ */
+const IN_CODE_AND_PROSE: Array<{ code: PublishCheckCode; content: string; target: string; first: string }> = [
+  {
+    code: 'broken-internal-link',
+    content: '```md\n[the configuration](/configuration)\n```\n\nInline `[x](/configuration)` code.\n\nRead [the configuration](/configuration).',
+    target: '/configuration',
+    first: 'the configuration',
+  },
+  {
+    code: 'missing-alt',
+    content:
+      '```md\n![](/images/diagram.png)\n<img src="/images/diagram.png">\n```\n\nInline `![](/images/diagram.png)`.\n\n![](/images/diagram.png)',
+    target: '/images/diagram.png',
+    first: 'node:image',
+  },
+  {
+    code: 'video-poster-hidden',
+    content:
+      '```html\n<video controls src="/a.mp4" poster="https://cdn.example.com/poster.png"></video>\n```\n\nInline `<video poster="https://cdn.example.com/poster.png">`.\n\n<video controls src="/demo.mp4" poster="https://cdn.example.com/poster.png"></video>',
+    target: 'https://cdn.example.com/poster.png',
+    first: 'node:videoEmbed',
+  },
+  {
+    code: 'video-not-https',
+    content:
+      '```html\n<video controls src="http://cdn.example.com/demo.mp4"></video>\n```\n\nInline `<video src="http://cdn.example.com/demo.mp4">`.\n\n<video controls src="http://cdn.example.com/demo.mp4"></video>',
+    target: 'http://cdn.example.com/demo.mp4',
+    first: 'node:videoEmbed',
+  },
+  {
+    code: 'embed-as-link',
+    content:
+      '```html\n<iframe src="https://maps.example.com/embed?q=1" title="Map"></iframe>\n```\n\nInline `<iframe src="https://maps.example.com/embed?q=1"></iframe>`.\n\n<iframe src="https://maps.example.com/embed?q=1" title="Map"></iframe>',
+    target: 'https://maps.example.com/embed?q=1',
+    first: 'node:videoEmbed',
+  },
+  {
+    code: 'embed-untitled',
+    content: `\`\`\`html\n<iframe src="${VIDEO}"></iframe>\n\`\`\`\n\nInline \`<iframe src="${VIDEO}"></iframe>\`.\n\n<iframe src="${VIDEO}"></iframe>`,
+    target: 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    first: 'node:videoEmbed',
+  },
+  {
+    code: 'embed-unclosed',
+    content:
+      '```html\n<iframe src="https://maps.example.com/embed?q=2">\n```\n\nInline `<iframe src="https://maps.example.com/embed?q=2">`.\n\n<iframe src="https://maps.example.com/embed?q=2">\n\nThe end.',
+    target: 'https://maps.example.com/embed?q=2',
+    first: 'node:mdxOpaqueBlock',
+  },
+  {
+    code: 'stray-characters',
+    content: '```\n/\n```\n\n`/`\n\n## /\n\nIntro.\n\n/\n\nThe end.',
+    target: '/',
+    first: '/',
+  },
+];
+
 describe('P1-ED-002: a publish check’s Fix lands on the problem', () => {
   it.each(LOCATABLE)(
     '$code: selects the first place, says 1 of 2, Next moves on, drops the Fix with a replace, saves nothing',
     async ({ code, content, target, first }) => {
+      // The publish check finds it twice too.
+      expect(checkCount(code, content, target)).toBe(2);
       await open(content, { fix: code, fixTarget: target });
       expect(bar()).not.toBeNull();
       expect(status()).toContain('editor.fix.label.');
@@ -344,6 +440,41 @@ describe('P1-ED-002: a publish check’s Fix lands on the problem', () => {
     },
     ROUTE_TEST_TIMEOUT,
   );
+
+  it.each(IN_CODE_AND_PROSE)(
+    '$code: evidence inside code is not a place to fix; only the prose one counts, as in the check',
+    async ({ code, content, target, first }) => {
+      expect(checkCount(code, content, target)).toBe(1);
+      await open(content, { fix: code, fixTarget: target });
+      expect(status()).toContain(count(1, 1));
+      expect(selected()).toBe(first);
+      const current = editor();
+      if (!current) throw new Error('No editor');
+      // The selection is in the prose, never in the code block or inline code.
+      const { $from } = current.state.selection;
+      expect($from.parent.type.name).not.toBe('codeBlock');
+      expect(current.state.doc.textBetween(current.state.selection.from, current.state.selection.to, ' ')).not.toContain('`');
+      for (const mark of $from.marks()) expect(mark.type.name).not.toBe('code');
+      expect(container.querySelectorAll('.pl-fix-match')).toHaveLength(1);
+      expect(container.querySelector('pre .pl-fix-match, code .pl-fix-match')).toBeNull();
+      await advance(20_000);
+      expect(mocks.update).not.toHaveBeenCalled();
+    },
+    ROUTE_TEST_TIMEOUT,
+  );
+
+  it('a broken link on a Card focuses the Card’s own address field', async () => {
+    const content = 'Intro.\n\n<CardGroup>\n  <Card title="Configure" href="/configuration">\n    Set it up.\n  </Card>\n</CardGroup>';
+    expect(checkCount('broken-internal-link', content, '/configuration')).toBe(1);
+    await open(content, { fix: 'broken-internal-link', fixTarget: '/configuration' });
+    expect(status()).toContain(count(1, 1));
+    expect(selected()).toBe('node:mdxCard');
+    const address = document.activeElement as HTMLInputElement | null;
+    expect(address?.dataset.attribute).toBe('href');
+    expect(address?.value).toBe('/configuration');
+    await advance(20_000);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
 
   it('opens the link field on a broken link, ready to pick the page it should lead to', async () => {
     await open(LOCATABLE[0]?.content ?? '', { fix: 'broken-internal-link', fixTarget: '/configuration' });
@@ -441,45 +572,113 @@ describe('P1-ED-002: a publish check’s Fix lands on the problem', () => {
 });
 
 describe('P1-ED-002: links to a missing page are flagged while writing', () => {
+  const CONTENT = 'See [the configuration](/configuration) and [the guide](/guide).';
+  /** The hrefs flagged in the canvas, in order. */
+  const flags = () => [...container.querySelectorAll<HTMLElement>('.pl-broken-link')].map((element) => element.dataset.brokenLink);
+  /** Select the text of the first link to `href`. */
+  const selectLink = (current: TiptapCore, href: string) => {
+    let range: { from: number; to: number } | null = null;
+    current.state.doc.descendants((node, pos) => {
+      if (!range && node.isText && node.marks.some((mark) => mark.attrs.href === href)) range = { from: pos, to: pos + node.nodeSize };
+      return !range;
+    });
+    if (!range) throw new Error(`No link to ${href}`);
+    current.commands.setTextSelection(range);
+  };
+  const setHref = (current: TiptapCore, from: string, to: string) =>
+    act(async () => {
+      selectLink(current, from);
+      current.chain().extendMarkRange('link').setLink({ href: to }).run();
+    });
+
   it('flags a link whose page does not exist, not one that does, and never saves the flag', async () => {
-    const content = 'See [the configuration](/configuration) and [the guide](/guide).';
-    await open(content, {});
+    await open(CONTENT, {});
     const flagged = container.querySelector<HTMLElement>('.pl-broken-link');
     expect(flagged?.textContent).toBe('the configuration');
-    expect(flagged?.dataset.brokenLink).toBe('/configuration');
     expect(flagged?.getAttribute('title')).toBe('Page not found: /configuration');
-    expect(container.querySelectorAll('.pl-broken-link')).toHaveLength(1);
+    expect(flags()).toEqual(['/configuration']);
     const current = editor();
     if (!current) throw new Error('No editor');
     // A decoration only: the Markdown is the page's own.
-    expect(getMarkdown(current)).toBe(content);
+    expect(getMarkdown(current)).toBe(CONTENT);
     expect(getMarkdown(current)).not.toContain('Page not found');
-
-    // Pointing the link at a page that exists clears the flag; the save carries no trace of it.
-    const { doc } = current.state;
-    let from = -1;
-    doc.descendants((node, pos) => {
-      if (from < 0 && node.isText && node.marks.some((mark) => mark.attrs.href === '/configuration')) from = pos;
-      return from < 0;
-    });
-    await act(async () => {
-      current
-        .chain()
-        .setTextSelection({ from, to: from + 'the configuration'.length })
-        .extendMarkRange('link')
-        .setLink({ href: '/guide' })
-        .run();
-    });
-    expect(container.querySelector('.pl-broken-link')).toBeNull();
-    await advance(5000);
-    expect(mocks.update).toHaveBeenCalled();
-    const saved = mocks.update.mock.calls.at(-1)?.[0]?.body?.content as string;
-    expect(saved).toBe('See [the configuration](/guide) and [the guide](/guide).');
-
     // Writing a new link to a missing page flags it as it is written.
     await act(async () => {
       current.chain().focus('end').insertContent(' <a href="/nowhere">Nowhere</a>').run();
     });
-    expect(container.querySelector('.pl-broken-link')?.getAttribute('data-broken-link')).toBe('/nowhere');
+    expect(flags()).toEqual(['/configuration', '/nowhere']);
+  });
+
+  it('the route resolves links with a stable resolver: re-renders build none', async () => {
+    await open(CONTENT, {});
+    const built = mocks.resolvers;
+    const current = editor();
+    if (!current) throw new Error('No editor');
+    // Typing re-renders the route (the draft changes) several times.
+    await act(async () => {
+      current.chain().focus('end').insertContent(' More.').run();
+    });
+    await advance(5000);
+    expect(mocks.resolvers).toBe(built);
+  });
+
+  it('changing a link’s page clears or raises its flag (a mark-only edit), and the save carries no trace of it', async () => {
+    await open(CONTENT, {});
+    const current = editor();
+    if (!current) throw new Error('No editor');
+    await setHref(current, '/configuration', '/guide');
+    expect(flags()).toEqual([]);
+    await setHref(current, '/guide', '/missing-page');
+    expect(flags()).toEqual(['/missing-page']);
+    await advance(5000);
+    const saved = mocks.update.mock.calls.at(-1)?.[0]?.body?.content as string;
+    expect(saved).toBe('See [the configuration](/missing-page) and [the guide](/guide).');
+  });
+
+  it('through the link field, undo and redo', async () => {
+    await open(CONTENT, { fix: 'broken-internal-link', fixTarget: '/configuration' });
+    await advance(500);
+    // Arrival opened the link field on the broken link; pick a page that exists.
+    const field = document.querySelector<HTMLInputElement>('[data-editor-bubble-menu] input[role="combobox"]');
+    if (!field) throw new Error('No link field');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, '/guide');
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => {
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    });
+    const current = editor();
+    if (!current) throw new Error('No editor');
+    expect(getMarkdown(current)).toBe('See [the configuration](/guide) and [the guide](/guide).');
+    expect(flags()).toEqual([]);
+    await act(async () => {
+      current.commands.undo();
+    });
+    expect(getMarkdown(current)).toBe(CONTENT);
+    expect(flags()).toEqual(['/configuration']);
+    await act(async () => {
+      current.commands.redo();
+    });
+    expect(flags()).toEqual([]);
+  });
+
+  it('pasting a link over a link flags the pasted one when its page is missing', async () => {
+    // jsdom has no ClipboardEvent: a plain paste event carries the HTML instead.
+    const paste = () => new Event('paste') as ClipboardEvent;
+    await open(CONTENT, {});
+    const current = editor();
+    if (!current) throw new Error('No editor');
+    await act(async () => {
+      selectLink(current, '/guide');
+      current.view.pasteHTML('<a href="/elsewhere">elsewhere</a>', paste());
+    });
+    expect(getMarkdown(current)).toContain('[elsewhere](/elsewhere)');
+    expect(flags()).toEqual(['/configuration', '/elsewhere']);
+    await act(async () => {
+      selectLink(current, '/configuration');
+      current.view.pasteHTML('<a href="/guide">the guide again</a>', paste());
+    });
+    expect(flags()).toEqual(['/elsewhere']);
   });
 });
