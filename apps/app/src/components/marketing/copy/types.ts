@@ -76,7 +76,8 @@ export interface ShellCopy {
   start: Cta;
   /** Link to the same page in the other language. `href` is filled per page by the shell. */
   languageSwitch: { label: string; ariaLabel: string; hrefLang: MarketingLang };
-  theme: { toDark: string; toLight: string };
+  /** `darkMode` names the toggle (pressed while dark), as the docs reader does; the others are its tooltip. */
+  theme: { darkMode: string; toDark: string; toLight: string };
   menu: { open: string; close: string; title: string };
   github: { label: string; starsLabel: (count: number) => string };
   footer: {
@@ -148,7 +149,11 @@ export interface LandingCopy {
   };
   paths: { eyebrow: string; title: string; body: string; cloud: PathCard; selfHost: PathCard; detailsLink: Cta };
   compare: { eyebrow: string; title: string; body: string; links: (Cta & { description: string })[] };
-  faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
+  /**
+   * The landing page shows only the `featured` questions (P2-MKT-005); `moreLinks` point to where the
+   * rest are answered.
+   */
+  faq: { eyebrow: string; title: string; items: { q: string; a: string; featured?: true }[]; moreLinks: Cta[] };
   blog: { eyebrow: string; title: string; allLink: Cta; readingTime: (minutes: number) => string };
   finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
 }

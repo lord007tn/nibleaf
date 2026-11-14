@@ -22,11 +22,17 @@ import { ShellSearchButton } from '@/components/app/shell-search-button';
 import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
 import { PublishLauncherContext } from '@/features/publish/components/publish-launcher';
+import { sitePreviewLink } from '@/features/site-preview/components/site-preview-link';
+import { previewsDraft } from '@/features/site-preview/model/preview-target';
+import { isSectionId } from '@/features/site-settings/model/ids';
+import { sectionLabelKey } from '@/features/site-settings/model/sections';
 import { useDeployments, useOrganizationOfProject, usePendingChanges, useProject } from '@/hooks/api';
 import type { Project } from '@/hooks/api/types';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { useRecordVisitEffect } from '@/hooks/use-record-visit';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
+import { pageTitle } from '@/lib/page-title';
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow.
  *  `initialPublishOpen` opens the publish modal on mount (deep link: editor?publish=true). */
@@ -176,6 +182,14 @@ function sectionKeysFromPathname(pathname: string): MessageKey[] {
   return [];
 }
 
+/** The tab title's first part for a site page: the settings section, the
+ *  analytics tab, the page, or Overview. */
+function pageTitleKey(pathname: string, sectionKeys: readonly MessageKey[], settingsSection: unknown): MessageKey {
+  if (/\/editor\/?$/.test(pathname)) return 'project.editor';
+  if (/\/settings\/?$/.test(pathname) && isSectionId(settingsSection)) return sectionLabelKey(settingsSection);
+  return sectionKeys.at(-1) ?? 'project.overview';
+}
+
 /** The per-site shell: a left sidebar (switcher + sections + account) with a slim
  *  content header. The header offers Preview and Publish on every site page
  *  (P1-DASH-005): unpublished changes are never only visible in the editor.
@@ -186,11 +200,14 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   // The website implies its org (§5.4.2): the switcher shows it and it becomes the last org.
   const { organization } = useOrganizationOfProject(project?.organizationId);
   useRecordVisitEffect({ projectId: project ? projectId : undefined });
-  const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
+  const previewDraft = previewsDraft(project);
+  const previewLink = sitePreviewLink(projectId, previewDraft, t);
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const settingsSection = useRouterState({ select: (s) => (s.location.search as { section?: unknown } | undefined)?.section });
   const sectionKeys = sectionKeysFromPathname(pathname);
+  usePageTitle(pageTitle(t(pageTitleKey(pathname, sectionKeys, settingsSection)), project?.name));
   // The draft preview marks its own article area as the skip target, past its page list.
   const pageOwnsSkipTarget = /\/preview\/?$/.test(pathname);
   const [publishRequest, setPublishRequest] = useState(0);
@@ -203,7 +220,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
 
   return (
     <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
-      <ProjectSidebar orgSlug={organization?.slug} projectId={projectId} />
+      <ProjectSidebar orgSlug={organization?.slug} previewDraft={previewDraft} projectId={projectId} />
       <SidebarInset as="div">
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
@@ -239,23 +256,12 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               })}
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ms-auto flex shrink-0 items-center gap-2">
+          <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <ShellSearchButton />
             <NotificationsPopover />
-            <Button
-              nativeButton={false}
-              render={
-                previewEnabled ? (
-                  <Link aria-label={t('project.previewDraftAria')} params={{ projectId }} to="/app/projects/$projectId/preview" />
-                ) : (
-                  // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
-                  <a aria-label={t('project.previewLiveAria')} href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
-                )
-              }
-              size="sm"
-              variant="outline"
-            >
-              <Eye aria-hidden className="size-3.5" /> <span className="hidden sm:inline">{t('project.preview')}</span>
+            {/* Phones give the site name the room: Preview moves into the sidebar there. */}
+            <Button className="hidden sm:inline-flex" nativeButton={false} render={previewLink} size="sm" variant="outline">
+              <Eye aria-hidden className="size-3.5" /> <span>{t('project.preview')}</span>
             </Button>
             {headerPublish ? <PublishControl compact openRequest={publishRequest} project={project} /> : null}
           </div>

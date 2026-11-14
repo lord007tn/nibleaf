@@ -179,12 +179,19 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <div className="flex flex-col items-center text-center">
             <Eyebrow>What's included</Eyebrow>
             <h2 className="mt-4 font-semibold text-3xl tracking-tight">Same core product, different operations</h2>
+            {/* One lead sentence, then the availability notes as a short list rather than one dense paragraph (P3-MKT-007). Same words. */}
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              Writing, publishing, built-in search, custom domains, and Arabic/RTL are core capabilities in both. The AI and support rows are
-              available on Nibleaf Cloud and in self-hosted v0.2.1. Reader themes, the newer search features, and hybrid retrieval are available the
-              same way. MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview, with OAuth sign-in or
-              expiring personal keys. The editor writing assistant uses the instance key.
+              Writing, publishing, built-in search, custom domains, and Arabic/RTL are core capabilities in both.
             </p>
+            <ul className="mx-auto mt-4 grid max-w-xl list-disc gap-1.5 ps-5 text-start text-muted-foreground text-sm leading-relaxed">
+              <li>The AI and support rows are available on Nibleaf Cloud and in self-hosted v0.2.1.</li>
+              <li>Reader themes, the newer search features, and hybrid retrieval are available the same way.</li>
+              <li>
+                MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview, with OAuth sign-in or expiring
+                personal keys.
+              </li>
+              <li>The editor writing assistant uses the instance key.</li>
+            </ul>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
             <div className="grid grid-cols-[1.6fr_1fr_1fr] items-center gap-4 border-border border-b bg-muted/40 px-6 py-3 font-medium text-sm">

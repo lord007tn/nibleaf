@@ -68,6 +68,9 @@ importers:
       '@nibleaf/database':
         specifier: workspace:*
         version: link:packages/database
+      hono:
+        specifier: ^4.13.18
+        version: 4.13.18
       knip:
         specifier: 6.44.1
         version: 6.44.1
@@ -268,6 +271,9 @@ importers:
         specifier: 3.33.0
         version: 3.33.0(@tiptap/core@3.33.0(@tiptap/pm@3.33.0))
       '@tiptap/extension-image':
+        specifier: 3.33.0
+        version: 3.33.0(@tiptap/core@3.33.0(@tiptap/pm@3.33.0))
+      '@tiptap/extension-paragraph':
         specifier: 3.33.0
         version: 3.33.0(@tiptap/core@3.33.0(@tiptap/pm@3.33.0))
       '@tiptap/extension-placeholder':

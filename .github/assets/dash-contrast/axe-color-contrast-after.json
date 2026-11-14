@@ -1,0 +1,20 @@
+{
+  "light /sites/:site": [],
+  "light /app/projects/:site": [],
+  "light /app/projects/:site/publishes": [],
+  "light /app/projects/:site/settings?section=general": [],
+  "light /app/projects/:site/settings?section=addons": [],
+  "light /app/projects/:site/settings?section=languages": [],
+  "light /app/o/:org/websites": [],
+  "light /app/o/:org/members": [],
+  "light /app/o/:org/billing": [],
+  "dark /sites/:site": [],
+  "dark /app/projects/:site": [],
+  "dark /app/projects/:site/publishes": [],
+  "dark /app/projects/:site/settings?section=general": [],
+  "dark /app/projects/:site/settings?section=addons": [],
+  "dark /app/projects/:site/settings?section=languages": [],
+  "dark /app/o/:org/websites": [],
+  "dark /app/o/:org/members": [],
+  "dark /app/o/:org/billing": []
+}

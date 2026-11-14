@@ -171,7 +171,13 @@ function PricingTableView({ table }: { table: PricingTable }) {
   return (
     <div className="min-w-0">
       <h3 className="font-semibold text-lg tracking-tight">{table.productName}</h3>
-      <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
+      {/* A scrollable region a keyboard can reach, named after its table (MKT-006). */}
+      <section
+        className="mt-4 overflow-x-auto rounded-xl border border-border bg-card shadow-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard (WCAG 2.1.1, axe scrollable-region-focusable).
+        tabIndex={0}
+        aria-label={table.productName}
+      >
         <table className="w-full table-fixed text-start text-sm sm:min-w-[26rem] sm:table-auto">
           <caption className="sr-only">
             {table.productName} plans and pricing as of {table.asOf}
@@ -193,7 +199,7 @@ function PricingTableView({ table }: { table: PricingTable }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
       {table.note ? <p className="mt-3 text-muted-foreground text-xs leading-relaxed">{table.note}</p> : null}
       <p className="mt-2 text-muted-foreground text-xs">
         Source:{' '}
@@ -217,7 +223,13 @@ function FeatureMatrix({ competitorName, rows }: { competitorName: string; rows:
         <Eyebrow>Feature matrix</Eyebrow>
         <h2 className="mt-4 font-semibold text-3xl tracking-tight">Nibleaf vs {competitorName}, feature by feature</h2>
       </div>
-      <div className="mt-10 overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
+      {/* A scrollable region a keyboard can reach, named after its table (MKT-006). */}
+      <section
+        className="mt-10 overflow-x-auto rounded-xl border border-border bg-card shadow-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard (WCAG 2.1.1, axe scrollable-region-focusable).
+        tabIndex={0}
+        aria-label={`Nibleaf vs ${competitorName}, feature by feature`}
+      >
         <table className="w-full table-fixed text-sm sm:min-w-[34rem] sm:table-auto">
           <caption className="sr-only">Nibleaf and {competitorName} feature comparison</caption>
           <thead>
@@ -245,7 +257,7 @@ function FeatureMatrix({ competitorName, rows }: { competitorName: string; rows:
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
       <p className="mt-4 text-muted-foreground text-xs leading-relaxed">
         Items marked “Not yet” are documented gaps without a committed delivery date. Review the current{' '}
         <a className="underline underline-offset-2 hover:text-foreground" href="/self-hosting">
@@ -284,7 +296,8 @@ function FeatureCellView({ cell, muted = false }: { cell: FeatureCell; muted?: b
       ) : (
         <span className={`font-medium text-xs ${cell.value === 'planned' ? 'text-foreground' : 'text-muted-foreground'}`}>{label[cell.value]}</span>
       )}
-      {cell.note ? <span className="text-muted-foreground text-xs leading-snug">{cell.note}</span> : null}
+      {/* Small print on the tinted rows needs full-strength text to pass AA (MKT-006). */}
+      {cell.note ? <span className="text-foreground/85 text-xs leading-snug">{cell.note}</span> : null}
     </div>
   );
 }
