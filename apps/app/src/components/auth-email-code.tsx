@@ -2,11 +2,11 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
-import { useLocale } from '@nibleaf/i18n/react';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { TermsNotice } from '@/components/terms-notice';
 import { formatWait, friendlyAuthError, otpFailure, rateLimitWait } from '@/lib/auth-errors';
+import { useAuthLocale } from '@/lib/auth-messages';
 import { authClient } from '@/services/auth-client';
 
 const CODE_LENGTH = 6;
@@ -44,7 +44,7 @@ export function useEmailCode({
   verify: (otp: string, fetchOptions: FetchOptions) => Promise<AuthResult>;
   onVerified: (data: unknown) => Promise<void> | void;
 }) {
-  const { t, locale } = useLocale();
+  const { t, locale } = useAuthLocale();
   const [otp, setOtp] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   // Which request is running, so only the button that started it shows a spinner.
@@ -174,7 +174,7 @@ type EmailCode = ReturnType<typeof useEmailCode>;
  * is never read out every second.
  */
 export function ResendStatus({ resendIn }: { resendIn: number }) {
-  const { t, locale } = useLocale();
+  const { t, locale } = useAuthLocale();
   const [message, setMessage] = useState('');
   const waiting = resendIn > 0;
   const wasWaiting = useRef(false);
@@ -194,7 +194,7 @@ export function ResendStatus({ resendIn }: { resendIn: number }) {
 
 /** "We sent a 6-digit code to", then the address on its own line: left-to-right, isolated, and broken only when it can't fit. */
 function CodeSentTo({ email, className }: { email: string; className?: string }) {
-  const { t } = useLocale();
+  const { t } = useAuthLocale();
   const webmail = webmailFor(email);
   return (
     <div className={className ?? 'mb-6 text-center text-muted-foreground text-sm lg:text-start'}>
@@ -290,7 +290,7 @@ export function EmailCodeStep({
   submitLabel: string;
   backLabel: ReactNode;
 }) {
-  const { t } = useLocale();
+  const { t } = useAuthLocale();
   const resendLabel = code.resendIn > 0 ? t('auth.otp.resendIn', { seconds: code.resendIn }) : t('auth.otp.resend');
   const resendProps = {
     disabled: code.busy !== null || code.resendIn > 0,

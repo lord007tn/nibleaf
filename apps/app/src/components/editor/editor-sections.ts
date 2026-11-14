@@ -1,6 +1,7 @@
 import type { Editor, TiptapEditorHTMLElement } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { NodeSelection, type Selection, TextSelection, type Transaction } from '@tiptap/pm/state';
+import { clearUndoHistory } from './editor-history';
 import { markSectionTarget } from './extensions/section-target';
 
 /*
@@ -50,12 +51,14 @@ const seeding = new WeakSet<Editor>();
  * Seed `editor` with its page's Markdown (`seed` replaces the document), and
  * remember that Markdown: it is what the reader renders, so the section
  * anchors come from it. Seeding also moves the caret, so a section is looked
- * for only once it has run.
+ * for only once it has run. A seed leaves no undo history (#630): undo never
+ * goes back past the content the page was last loaded with.
  */
 export function seedPageContent(editor: Editor, markdown: string, seed: () => void): void {
   seeding.add(editor);
   try {
     seed();
+    clearUndoHistory(editor);
   } finally {
     seeding.delete(editor);
   }
