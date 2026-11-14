@@ -178,3 +178,14 @@ it.each(['accepted', 'declined'])('does not render the pending banner on the hyd
   expect(html).not.toContain('<section');
   expect(html).not.toContain('Accept analytics');
 });
+
+it.each(['accepted', 'declined', null])('server-renders the footer control the same way whatever is stored (%s)', (choice) => {
+  // The footer's "Privacy choices" depends on the site config only, never on
+  // storage, so the server's HTML and the first client render always agree.
+  if (choice) window.localStorage.setItem('nibleaf.analytics.consent.hydration-footer', choice);
+  else window.localStorage.removeItem('nibleaf.analytics.consent.hydration-footer');
+  const html = renderToString(createElement(PrivacyChoicesLink, { projectId: 'hydration-footer', config: consentConfig, lang: 'en' }));
+  expect(html).toContain('Privacy choices');
+  expect(html).toContain('type="button"');
+  window.localStorage.removeItem('nibleaf.analytics.consent.hydration-footer');
+});
