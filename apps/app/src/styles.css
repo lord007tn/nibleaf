@@ -500,16 +500,35 @@
     border-inline-start: 3px solid var(--callout-color);
   }
 
-  /* Only the callout's own prose takes the code-surface colours. Every other
-   * element placed directly in its body (a card, tabs, an API example, a code
-   * block: any component root, however its surface is drawn) gets the page's
-   * text colours back, exactly as on main. --theme-foreground and
-   * --theme-muted-foreground hold the page values, because custom properties
-   * inherit their computed value. Bare text and prose keep the fix. */
+  /* A solid callout's prose (at any depth: lists, quotes, steps) reads in the
+   * code-surface colours above. Any element nested in it that paints its own
+   * page surface, at any depth, gets the page's text colours back, exactly as on
+   * main. That covers the components this stylesheet gives a surface (each
+   * `data-theme-component` with a background here, kept in step by
+   * preset-contrast.test.ts) and the page-surface utilities. Code blocks keep
+   * their own code colours. --theme-foreground and --theme-muted-foreground
+   * hold the page values, because custom properties inherit computed values. */
   .nibleaf-site-chrome[data-theme-callouts="solid"]
     [data-theme-component="callout"]
-    > div
-    > :not(p, ul, ol, dl, blockquote, h1, h2, h3, h4, h5, h6, hr) {
+    :is(
+      [data-theme-component="card"],
+      [data-theme-component="tabs-list"],
+      [data-theme-component="tab-panel"],
+      [data-theme-component="step-marker"],
+      [data-theme-component="accordion-group"],
+      [data-theme-component="accordion-trigger"],
+      [data-theme-component="api-example"],
+      [data-theme-component="file-tree"],
+      [data-theme-component="frame"],
+      .bg-card,
+      .bg-background,
+      .bg-popover,
+      .bg-muted,
+      [class*="bg-card/"],
+      [class*="bg-background/"],
+      [class*="bg-popover/"],
+      [class*="bg-muted/"]
+    ) {
     --foreground: var(--theme-foreground);
     --muted-foreground: var(--theme-muted-foreground);
     color: var(--theme-foreground);

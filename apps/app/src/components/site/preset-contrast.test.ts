@@ -20,18 +20,26 @@ describe('preset contrast (PUB-019)', () => {
     expect(rule).toContain('--muted-foreground: var(--theme-code-muted)');
   });
 
-  it('gives every component placed in a solid callout its page text colours back, keeping prose on the code surface', () => {
+  it('gives every surfaced component nested in a solid callout, at any depth, its page text colours back', () => {
     const css = read('../../styles.css');
-    const start = css.indexOf(':not(p, ul, ol, dl, blockquote, h1, h2, h3, h4, h5, h6, hr)');
+    const start = css.indexOf('[data-theme-component="card"],');
     expect(start).toBeGreaterThan(-1);
-    const rule = css.slice(start, css.indexOf('}', start));
-    expect(rule).toContain('--foreground: var(--theme-foreground)');
-    expect(rule).toContain('--muted-foreground: var(--theme-muted-foreground)');
-    expect(rule).toContain('color: var(--theme-foreground)');
-    // Scoped to the body of solid callouts only.
-    const selector = css.slice(css.lastIndexOf('.nibleaf-site-chrome', start), start);
-    expect(selector).toContain('[data-theme-callouts="solid"]');
-    expect(selector).toContain('[data-theme-component="callout"]');
+    const block = css.slice(css.lastIndexOf('.nibleaf-site-chrome', start), css.indexOf('}', start));
+    // Scoped to solid callouts, and a descendant (not child) match, so nesting in lists, quotes or steps is covered.
+    expect(block).toContain('[data-theme-callouts="solid"]');
+    expect(block).toMatch(/\[data-theme-component="callout"\]\s+:is\(/);
+    expect(block).toContain('--foreground: var(--theme-foreground)');
+    expect(block).toContain('--muted-foreground: var(--theme-muted-foreground)');
+    expect(block).toContain('color: var(--theme-foreground)');
+    // Every component this stylesheet paints a background on (apart from the
+    // callout itself and code, which keeps code colours) must be in the boundary.
+    const surfaced = new Set<string>();
+    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!/\bbackground(?:-color)?\s*:/.test(body ?? '')) continue;
+      for (const [, name] of (selector ?? '').matchAll(/data-theme-component="([^"]+)"/g)) surfaced.add(name ?? '');
+    }
+    for (const name of ['callout', 'code', 'tab']) surfaced.delete(name);
+    for (const name of surfaced) expect(block, name).toContain(`[data-theme-component="${name}"]`);
   });
 
   it("draws the code block's language label at a contrast that reads on the dark chrome", () => {
