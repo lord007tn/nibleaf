@@ -43,7 +43,9 @@ export function WebsiteSwitcher({
           <Button
             aria-haspopup="dialog"
             aria-label={project ? t('switcher.websiteTrigger', { name: project.name }) : t('common.loading')}
-            className="h-8 min-w-0 max-w-48 gap-1.5 px-1.5 font-medium data-[popup-open]:bg-muted"
+            // `shrink` overrides the button's `shrink-0`: on a phone the name truncates
+            // inside the breadcrumb instead of running under the top bar's actions.
+            className="h-8 min-w-0 max-w-48 shrink gap-1.5 px-1.5 font-medium data-[popup-open]:bg-muted"
             variant="ghost"
           >
             {project ? (
