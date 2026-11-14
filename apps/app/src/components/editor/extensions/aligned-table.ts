@@ -7,6 +7,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { CellSelection, TableMap } from '@tiptap/pm/tables';
 import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
+import type { MarkdownOutput } from '../markdown-output';
 
 export type ColumnAlignment = 'left' | 'center' | 'right' | null;
 
@@ -160,16 +161,20 @@ export const AlignedTable = Table.extend({
             state.closeBlock(node);
             return;
           }
-          const tableState = state as typeof state & { inTable: boolean; out: string };
+          // The editor saves with LinearMarkdownSerializerState (markdown-output.ts).
+          const tableState = state as typeof state & { inTable: boolean; output: MarkdownOutput };
+          const { output } = tableState;
           tableState.inTable = true;
           node.forEach((row, _offset, index) => {
             state.write('| ');
             row.forEach((cell, _cellOffset, column) => {
               if (column) state.write(' | ');
               if (cell.firstChild) {
-                const start = tableState.out.length;
+                const start = output.length;
                 state.renderInline(cell.firstChild);
-                tableState.out = tableState.out.slice(0, start) + escapeCellPipes(tableState.out.slice(start));
+                const cellText = output.sliceFrom(start);
+                output.truncate(start);
+                output.append(escapeCellPipes(cellText));
               }
             });
             state.write(' |');

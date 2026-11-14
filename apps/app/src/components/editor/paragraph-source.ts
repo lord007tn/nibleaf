@@ -2,6 +2,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
+import type { MarkdownOutput } from './markdown-output';
 
 /*
  * A paragraph wrapped across several lines in the source keeps those lines, so a
@@ -140,7 +141,7 @@ function softBreaksAsSpaces<T extends MarkdownToken>(state: MarkdownCoreState<T>
 
 /** The parts of prosemirror-markdown's serializer state a paragraph is written with. */
 interface ParagraphSerializeState {
-  out: string;
+  output: MarkdownOutput;
   write: (content?: string) => void;
   text: (text: string, escapeText?: boolean) => void;
   renderInline: (node: PMNode) => void;
@@ -162,10 +163,11 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode): void {
   // Write what comes before the paragraph (closing blank lines, container
   // prefixes) first, so only the paragraph's own text is compared.
   state.write();
-  const start = state.out.length;
+  const { output } = state;
+  const start = output.length;
   state.renderInline(node);
-  if (state.out.length - start === joined.length && state.out.endsWith(joined)) {
-    state.out = state.out.slice(0, start);
+  if (output.length - start === joined.length && output.sliceFrom(start) === joined) {
+    output.truncate(start);
     // Unescaped: these lines are the source, already valid Markdown here.
     state.text(source, false);
   }
@@ -194,7 +196,7 @@ export const SourceParagraph = Paragraph.extend({
     return {
       markdown: {
         serialize(state, node) {
-          // `out` is a prosemirror-markdown internal its typings leave out.
+          // The editor saves with LinearMarkdownSerializerState (markdown-output.ts).
           writeParagraph(state as unknown as ParagraphSerializeState, node);
         },
         parse: {

@@ -1,5 +1,6 @@
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import { encodeMdxSource, fenceClosed, fenceContentLines } from './extensions/mdx-roundtrip';
+import type { MarkdownOutput } from './markdown-output';
 
 /*
  * A fenced code block keeps the source lines it was read from, so a save writes
@@ -237,7 +238,7 @@ function leadParagraph<T extends MarkdownToken>(state: MarkdownCoreState<T>, fen
 
 /** The parts of prosemirror-markdown's serializer state a fence is written with. */
 export interface FenceSerializeState {
-  out: string;
+  output: MarkdownOutput;
   delim: string;
   closed: PMNode | null;
   write: (text?: string) => void;
@@ -362,18 +363,18 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
   if (index === 1 && lead?.type.name === 'paragraph' && lead.content.size === 0 && state.closed === lead) state.closed = null;
   // On a container's first line (a quote's, or an item's after its lead), what the
   // containers already wrote of it: `> `, `- `, `1. `.
-  const atLineStart = state.out === '' || state.out.endsWith('\n');
-  const first = state.closed || atLineStart ? '' : state.out.slice(state.out.lastIndexOf('\n') + 1);
+  const { output } = state;
+  const first = state.closed || output.atLineStart() ? '' : output.sliceFrom(output.lineStart());
   const unchanged = open !== '' && open === String(node.attrs.sourceFenceOpen ?? '');
   const endsHere = endsWithContainer(node, parent, index);
   const lines = unchanged ? sourceLinesFor(node, open, state.delim, first, endsHere) : null;
   if (lines) {
     state.flushClose();
     // The source's first line has its own markers in place of the ones written.
-    if (first) state.out = state.out.slice(0, state.out.length - first.length);
+    if (first) output.truncate(output.length - first.length);
     // An unclosed fence's whitespace after it at the end of the page (see
     // `annotateFence`) goes with it while it still ends its container.
-    state.out += lines.join('\n') + (endsHere ? String(node.attrs.sourceFenceTail ?? '') : '');
+    output.append(lines.join('\n') + (endsHere ? String(node.attrs.sourceFenceTail ?? '') : ''));
     state.closeBlock(node);
     return;
   }
