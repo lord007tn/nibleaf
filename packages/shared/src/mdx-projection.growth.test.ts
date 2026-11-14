@@ -11,6 +11,8 @@ import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growt
 describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () => {
   it.each([
     ['ordinary code-heavy text (round 4)', (n: number) => 'a ` b '.repeat(n), 10_000],
+    ['bounded tight-list export', (n: number) => '- <script></script>\n      CODE\n- NEXT\n'.repeat(n), 100],
+    ['unclosed raw-text content', (n: number) => `<script>\n${'<img onerror="INERT()"> [LINK](data:text/html,INERT)\n'.repeat(n)}`, 200],
     ['HTML/code boundary invariants', (n: number) => '<pre><script></script>\n    <object>CODE</object>\n\n</pre>\n\n'.repeat(n), 100],
     ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 100],
     ['unclosed quotes', (n: number) => '<Card title="'.repeat(n), 300],
@@ -45,6 +47,14 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
       const project = (source: string) => [md(source), portable(source)];
       const [small, large] = growthMs(project, build(n), build(4 * n), { minMs: 20 });
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+      if (label === 'bounded tight-list export') {
+        expect(exportCodeSamples(portable(build(n)))).toHaveLength(n);
+        console.info(`Bounded export growth: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
+      }
+      if (label === 'unclosed raw-text content') {
+        expect(project(build(n)).map(renderedActiveHtml)).toEqual([0, 0]);
+        console.info(`Unclosed raw-text growth: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
+      }
       if (label === 'HTML/code boundary invariants') {
         console.info(`HTML/code boundary growth: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
         expect(exportCodeSamples(portable(build(n)))).toEqual(exportCodeSamples(build(n)));

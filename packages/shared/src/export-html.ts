@@ -1,6 +1,7 @@
 import MarkdownIt from 'markdown-it';
 import type Token from 'markdown-it/lib/token.mjs';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
+import { captureExportStructure, compareExportStructure, type ExportHtmlRun, type ExportStructure, exportSourceLines } from './export-structure';
 
 const ACTIVE_TAGS = ['script', 'style', 'iframe', 'object', 'embed'];
 /** HTML element names are contiguous after `<`. This is only a sound prefilter;
@@ -21,39 +22,16 @@ markdown.inline.State = class extends BaseInlineState {
     return token;
   }
 };
-/** Compare parsed roles/content, never the occurrence of code bytes in prose.
- * Lists have the explicitly approved newly-live-element exception. */
-const codeSnapshot = (tokens: Token[], includeLists = false): string => {
-  const pending = [...tokens].reverse();
-  const samples: string[] = [];
-  let listDepth = 0;
-  while (pending.length) {
-    const token = pending.pop();
-    if (!token) continue;
-    if (token.type === 'list_item_open') listDepth++;
-    if (token.type === 'list_item_close') listDepth--;
-    if ((includeLists || !listDepth) && ['code_block', 'fence', 'code_inline'].includes(token.type))
-      samples.push(JSON.stringify([token.type, token.content, token.markup, token.info]));
-    if (token.children)
-      for (let at = token.children.length - 1; at >= 0; at--) {
-        const child = token.children[at];
-        if (child) pending.push(child);
-      }
-  }
-  return JSON.stringify(samples);
-};
-
 interface HtmlSpan {
   token: Token;
   from: number;
   to: number;
   positions: number[];
-  inList: boolean;
 }
 
 /** One bounded neutralization pass. Source intervals come from live parse5
  * elements; Markdown container prefixes and actual code remain opaque. */
-const neutralize = (source: string, remaining = false): { output: string; active: number; escaped?: Uint8Array } => {
+const neutralize = (source: string, remaining = false): { output: string; active: number; escaped?: Uint8Array; tokens?: Token[] } => {
   if (!mayHaveActiveExportHtml(source)) return { output: source, active: 0 };
   const input = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD');
   const env = {};
@@ -172,9 +150,6 @@ const neutralize = (source: string, remaining = false): { output: string; active
   const chunks: string[] = [];
   const spans: HtmlSpan[] = [];
   const renderedBounds: Array<{ from: number; to: number; end: number }> = [];
-  const followingCode: Array<{ html: HtmlSpan; token: Token }> = [];
-  let previousHtml: HtmlSpan | undefined;
-  let listDepth = 0;
   let length = 0;
   let map: [number, number] = [0, lines.length];
   const protectInlineCode = (token: Token, positions: number[]) => {
@@ -210,8 +185,6 @@ const neutralize = (source: string, remaining = false): { output: string; active
       frames.pop();
       continue;
     }
-    if (token.type === 'list_item_open') listDepth++;
-    if (token.type === 'list_item_close') listDepth--;
     if (token.type === 'table_open') tableDepth++;
     if (token.type === 'table_close') tableDepth--;
     if (token.map) map = token.map;
@@ -219,14 +192,10 @@ const neutralize = (source: string, remaining = false): { output: string; active
       const positions = positionsFor(token.content, token.map ?? map);
       allow(token.content, positions);
       frames.push({ tokens: token.children ?? [], at: 0, positions });
-      previousHtml = undefined;
       continue;
     }
-    if (token.type === 'fence' || token.type === 'code_block') {
-      if (token.map) code.fill(1, originalOffset(lineStarts[token.map[0]] ?? input.length), originalOffset(lineStarts[token.map[1]] ?? input.length));
-      if (previousHtml?.token.map && token.map) followingCode.push({ html: previousHtml, token });
-      previousHtml = undefined;
-    }
+    if ((token.type === 'fence' || token.type === 'code_block') && token.map)
+      code.fill(1, originalOffset(lineStarts[token.map[0]] ?? input.length), originalOffset(lineStarts[token.map[1]] ?? input.length));
     if (token.type === 'code_inline') protectInlineCode(token, frame.positions);
     if (token.type === 'image' && token.children) {
       // Alt text has its own inline parser state, but its code spans still
@@ -262,9 +231,8 @@ const neutralize = (source: string, remaining = false): { output: string; active
           ? positionsFor(token.content, token.map ?? map)
           : frame.positions.slice(inlineStarts.get(token) ?? 0, (inlineStarts.get(token) ?? 0) + token.content.length);
       allow(token.content, positions);
-      const span = { token, from: length, to: length + value.length, positions, inList: listDepth > 0 };
+      const span = { token, from: length, to: length + value.length, positions };
       spans.push(span);
-      if (token.type === 'html_block') previousHtml = span;
     }
     chunks.push(value);
     length += value.length;
@@ -294,6 +262,7 @@ const neutralize = (source: string, remaining = false): { output: string; active
       else if (end && (originalAt[end - 1] ?? -1) >= 0) to = (originalAt[end - 1] ?? source.length) + 1;
       else if (end && end < html.length) to = endAt[end - 1] ?? source.length;
       if (from < 0) throw new Error('Missing active export element source');
+      if (!loc.endTag && ['script', 'style', 'iframe'].includes(node.tagName)) to = source.length;
       mark(from, Math.max(from + 1, to));
     }
     if ('childNodes' in node) for (const child of node.childNodes) pending.push(child);
@@ -313,110 +282,108 @@ const neutralize = (source: string, remaining = false): { output: string; active
     if (depth > 0 && editable[at] && !code[at]) inRange[at] = 1;
   }
   const escaped = new Uint8Array(source.length);
-  for (let at = 0; at < source.length; at++) if (inRange[at] && '<[]`~\\*_{'.includes(source[at] ?? '')) escaped[at] = 1;
-  for (const at of leaders) if (inRange[at]) escaped[at] = 1;
-  const boundaries = new Map<number, string>();
-  if (remaining)
-    for (const { html: span, token: following } of followingCode) {
-      if (!span.inList || !following.map || !span.token.content.endsWith('\n') || !span.positions.some((at) => escaped[at])) continue;
-      // The final fallback can expose the first stretch of an indented list
-      // block. Model that lazy paragraph once, preserving inline code, and
-      // escape only the elements that actually become live there. This is
-      // one bounded subparse, not a recursive tree walk or retry loop.
-      const positions = positionsFor(following.content, following.map);
-      const pieces = ['FALLBACK\n'];
-      const originals: number[] = Array.from({ length: 9 }, () => -1);
-      let at = 0;
-      for (const line of following.content.split('\n')) {
-        if (Array.from(line).every((character) => character === ' ' || character === '\t')) break;
-        pieces.push('    ', line, '\n');
-        originals.push(-1, -1, -1, -1);
-        for (let column = 0; column <= line.length; column++) originals.push(positions[at + column] ?? -1);
-        at += line.length + 1;
-      }
-      const exposed = neutralize(pieces.join(''));
-      if (exposed.escaped)
-        for (let at = 0; at < exposed.escaped.length; at++) {
-          const original = originals[at] ?? -1;
-          if (original >= 0 && exposed.escaped[at]) escaped[original] = 1;
-        }
+  const literal = inRange.slice();
+  // An edited HTML block was literal Markdown in its entirety. Preserve that
+  // interpretation after escaping an element, including text after its closer.
+  // Allowed HTML stays raw; only Markdown delimiters/leaders gain escapes.
+  for (const span of spans)
+    if (span.token.type === 'html_block' && span.positions.some((at) => inRange[at])) for (const at of span.positions) if (!code[at]) literal[at] = 1;
+  for (let at = 0; at < source.length; at++)
+    if ((source[at] === '<' ? inRange[at] : literal[at]) && '<[]`~\\*_{'.includes(source[at] ?? '')) escaped[at] = 1;
+  for (const at of leaders) if (literal[at]) escaped[at] = 1;
+  const output: string[] = [];
+  let cursor = 0;
+  for (let at = 0; at < source.length; at++)
+    if (escaped[at]) {
+      output.push(source.slice(cursor, at), source[at] === '<' ? '&lt;' : `&#${source.charCodeAt(at)};`);
+      cursor = at + 1;
     }
-  const preserveBoundary = (span: HtmlSpan) => {
-    const newline = span.positions[span.token.content.length - 1];
-    const lastLine = span.token.content.lastIndexOf('\n', span.token.content.length - 2) + 1;
-    const start = span.positions[lastLine];
-    if (newline === undefined || start === undefined) return;
-    const prefix = source.slice(source.lastIndexOf('\n', start - 1) + 1, start);
-    const ending = source[newline] === '\r' && source[newline + 1] === '\n' ? '\r\n' : source[newline];
-    if (ending) boundaries.set(newline + ending.length, prefix + ending);
-  };
-  const splice = () => {
-    const output: string[] = [];
-    let cursor = 0;
-    for (let at = 0; at < source.length; at++) {
-      const boundary = boundaries.get(at);
-      if (boundary !== undefined) {
-        output.push(source.slice(cursor, at), boundary);
-        cursor = at;
-      }
-      if (escaped[at]) {
-        output.push(source.slice(cursor, at), source[at] === '<' ? '&lt;' : `&#${source.charCodeAt(at)};`);
-        cursor = at + 1;
-      }
-    }
-    output.push(source.slice(cursor));
-    return output.join('');
-  };
-  let output = splice();
-  const expectedCode = codeSnapshot(tokens);
-  const preservesCode = () => codeSnapshot(markdown.parse(output, {})) === expectedCode;
-  if (expectedCode !== '[]' && !preservesCode()) {
-    // Decide from the edited HTML token and its actual following code block,
-    // including fences. The first '<' may belong to an untouched benign tag.
-    for (const { html: span, token: following } of followingCode)
-      if (!span.inList && following.map?.[0] === span.token.map?.[1] && span.positions.some((at) => escaped[at])) preserveBoundary(span);
-    output = splice();
-  }
-  const expectedAllCode = codeSnapshot(tokens, true);
-  if (expectedAllCode !== '[]' && codeSnapshot(markdown.parse(output, {}), true) !== expectedAllCode) {
-    // Type-1 HTML blocks (<pre>/<textarea>) ignore blank lines. Retain the
-    // inert closing delimiter that originally ended that parsed block; an
-    // orphan closing tag cannot create an executable element. This also keeps
-    // fences in lists without inserting a separator that would loosen them.
-    for (const span of spans) {
-      if (span.token.type !== 'html_block') continue;
-      const content = span.token.content;
-      const lastLine = content.lastIndexOf('\n', content.length - 2) + 1;
-      // markdown-it's type-1 HTML blocks end at any of these literal closing
-      // sequences, even when it belongs to a different element. Keep the
-      // actual last-line terminator, not merely parse5's matched end tag.
-      let at = content.indexOf('</', lastLine);
-      while (at >= 0) {
-        // Lowercase only a bounded candidate, preserving original offsets
-        // when earlier author text contains expanding Unicode case mappings.
-        const closing = content.slice(at, at + 11).toLowerCase();
-        if (['</script>', '</pre>', '</style>', '</textarea>'].some((end) => closing.startsWith(end))) {
-          const original = span.positions[at];
-          if (original !== undefined) escaped[original] = 0;
-        }
-        at = content.indexOf('</', at + 2);
-      }
-    }
-    output = splice();
-  }
-  return { output, active, escaped };
+  output.push(source.slice(cursor));
+  return { output: output.join(''), active, escaped, tokens };
 };
 
 /** Neutralize only script/style/iframe/object/embed; URL/handler hardening is #664.
  * Main's projection remains authoritative. At most two targeted passes handle
  * newly exposed elements; the final bounded fallback escapes remaining HTML. */
-export const escapeDisallowedExportHtml = (source: string): string => {
-  if (!mayHaveActiveExportHtml(source)) return source;
-  let output = source;
+const settle = (first: string): string => {
+  let output = first;
   for (let pass = 0; pass < 2; pass++) {
-    const result = neutralize(output);
+    const result = neutralize(output, pass === 1);
     if (!result.active) return output;
     output = result.output;
   }
-  return neutralize(output, true).output;
+  return output;
+};
+
+/** B's only added formatting is at most one separator on either side
+ * of an edited raw-HTML run (blank outside lists, thematic inside), plus
+ * whitespace padding on its own blank lines.
+ * Container prefixes move to the separator; author/code bytes are retained. */
+const boundedLiteralization = (model: ExportStructure, tokens: Token[], initial: Uint8Array, regions: ExportHtmlRun[]): string => {
+  const source = model.source;
+  const records = exportSourceLines(source);
+  const lines = records.map((line) => line.text);
+  const starts = records.map((line) => line.start);
+  const flags = initial.slice();
+  for (const run of regions)
+    for (let index = run.first; index <= run.last; index++) {
+      const row = (tokens[index]?.map?.[1] ?? 1) - 1;
+      const line = lines[row] ?? '';
+      for (let at = line.indexOf('</'); at >= 0; at = line.indexOf('</', at + 2)) {
+        const close = line.slice(at, at + 11).toLowerCase();
+        if (['</script>', '</style>', '</pre>', '</textarea>'].some((ending) => close.startsWith(ending))) flags[(starts[row] ?? 0) + at] = 0;
+      }
+    }
+  const escapeLine = (line: string, row: number) => {
+    const output: string[] = [];
+    for (let at = 0; at < line.length; at++)
+      output.push(flags[(starts[row] ?? 0) + at] ? (line[at] === '<' ? '&lt;' : `&#${line.charCodeAt(at)};`) : (line[at] ?? ''));
+    return output.join('');
+  };
+  let output = settle(lines.map((line, row) => escapeLine(line, row) + (records[row]?.ending ?? '')).join(''));
+  if (compareExportStructure(model, output, markdown.parse(output, {})).equal) return output;
+  const before = new Map(regions.map((run) => [run.start, run]));
+  const after = new Map(regions.map((run) => [run.end, run]));
+  const body: string[] = [];
+  const origins: Array<number | null> = [];
+  for (const [row, line] of lines.entries()) {
+    const ending = after.get(row);
+    if (ending) {
+      body.push(ending.continuation + (ending.inList ? '***' : '') + (records[row - 1]?.ending || records[row]?.ending || '\n'));
+      origins.push(null);
+    }
+    const opening = before.get(row);
+    if (opening) {
+      body.push(opening.prefix + (opening.inList ? '***' : '') + (records[row]?.ending || records[row - 1]?.ending || '\n'));
+      origins.push(null);
+      body.push(opening.continuation + escapeLine(line, row).slice(opening.prefix.length) + (records[row]?.ending ?? ''));
+    } else body.push(escapeLine(line, row) + (records[row]?.ending ?? ''));
+    origins.push(row);
+  }
+  output = settle(body.join(''));
+  if (compareExportStructure(model, output, markdown.parse(output, {})).equal) return output;
+  const blanks = new Set(regions.flatMap((run) => run.blanks));
+  for (let row = 0; row < body.length; row++) {
+    const original = origins[row];
+    if (original != null && blanks.has(original)) {
+      const ending = records[original]?.ending ?? '';
+      const line = body[row] ?? '';
+      body[row] = `${ending ? line.slice(0, -ending.length) : line}&#32;${ending}`;
+    }
+  }
+  const bounded = settle(body.join(''));
+  if (!compareExportStructure(model, bounded, markdown.parse(bounded, {})).equal)
+    throw new Error('Cannot preserve Markdown structure within the bounded HTML fallback');
+  return bounded;
+};
+
+export const escapeDisallowedExportHtml = (source: string): string => {
+  if (!mayHaveActiveExportHtml(source)) return source;
+  const first = neutralize(source);
+  if (!first.active || !first.tokens || !first.escaped) return source;
+  const model = captureExportStructure(source, first.tokens);
+  const output = settle(first.output);
+  const comparison = compareExportStructure(model, output, markdown.parse(output, {}));
+  if (comparison.equal) return output;
+  return boundedLiteralization(model, first.tokens, first.escaped, comparison.regions);
 };

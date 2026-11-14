@@ -112,11 +112,12 @@ it('preserves component code through the portable export', () => {
   expect(output).toContain('>     <script>CODE</script>');
   expect(new MarkdownIt({ html: true }).parse(output, {}).find((token) => token.type === 'code_block')?.content).toBe('<script>CODE</script>\n');
 });
-it('escapes newly live code elements inside a tight list', () => {
+it('preserves following code and list tightness with bounded separators', () => {
   const source = '- <script>x</script>\n      <script>CODE</script>\n- NEXT';
   const output = safe(source);
   expect(renderedActiveHtml(output)).toBe(0);
-  expect(output).toContain('&lt;script>CODE&lt;/script>');
+  expect(output).toContain('      <script>CODE</script>');
+  expect(codeTokens(output)).toEqual(codeTokens(source));
   const html = new MarkdownIt({ html: true }).render(output);
   expect(html).toContain('<li>NEXT</li>');
   expect(html).not.toContain('<p>NEXT</p>');

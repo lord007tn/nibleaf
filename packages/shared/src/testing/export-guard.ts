@@ -9,6 +9,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { mayHaveActiveExportHtml } from '../export-html';
+import { captureExportStructure, compareExportStructure, type ExportStructure, exportSourceLines } from '../export-structure';
 import { normalizeMdxBlocks } from '../reader-markdown';
 import { readerSanitizeSchema } from '../reader-sanitize';
 
@@ -29,6 +30,7 @@ export interface ExportGuardBaseline {
   code: [string[], string[]][];
   /** Hashes of ordered [role, content, markup, info] token tuples. */
   codeTokens: [string, string][];
+  structure: [string | null, string | null][];
 }
 export type ExportProjectors = readonly [(source: string) => string, (source: string) => string];
 const exportHash = (source: string) => createHash('sha256').update(source).digest('hex');
@@ -49,14 +51,17 @@ parser.inline.State = class extends BaseInlineState {
 const analyzeExport = (source: string, render: boolean) => {
   const env = {};
   const tokens = parser.parse(source, env);
-  const lines = source.split('\n');
+  const lines = exportSourceLines(source);
   const code: string[] = [];
   const codeTokens: string[] = [];
   const pending = [...tokens].reverse();
   while (pending.length) {
     const token = pending.pop();
     if (!token) continue;
-    if ((token.type === 'fence' || token.type === 'code_block') && token.map) code.push(lines.slice(...token.map).join('\n'));
+    if ((token.type === 'fence' || token.type === 'code_block') && token.map) {
+      const raw = source.slice(lines[token.map[0]]?.start ?? source.length, lines[token.map[1]]?.start ?? source.length);
+      code.push(raw.endsWith('\n') || raw.endsWith('\r') ? raw.slice(0, -1) : raw);
+    }
     if (['fence', 'code_block', 'code_inline'].includes(token.type))
       codeTokens.push(JSON.stringify([token.type, token.content, token.markup, token.info]));
     const span = codeSpans.get(token);
@@ -78,6 +83,7 @@ const analyzeExport = (source: string, render: boolean) => {
       }
   }
   return {
+    tokens,
     code,
     codeTokens,
     active: render ? countElements(parseFragment(parser.renderer.render(tokens, parser.options, env))) : 0,
@@ -128,6 +134,7 @@ export const recordExportBaseline = (
   projectors: ExportProjectors,
 ): Omit<ExportGuardBaseline, 'revision' | 'seed'> => {
   const outputs = cases.map(({ source }) => projectors.map((project) => project(source)) as [string, string]);
+  const analyses = outputs.map((pair) => pair.map((output) => analyzeExport(output, true)));
   return {
     sources: exportSourcesHash(cases),
     kept: cases.map(
@@ -137,23 +144,49 @@ export const recordExportBaseline = (
           number,
         ],
     ),
-    active: outputs.map((pair) => pair.map(renderedActiveHtml) as [number, number]),
+    active: analyses.map((pair) => pair.map((analysis) => analysis.active) as [number, number]),
     outputs: outputs.map((pair) => pair.map(exportHash) as [string, string]),
-    code: outputs.map((pair) => pair.map(exportCodeSamples) as [string[], string[]]),
-    codeTokens: outputs.map((pair) => pair.map((output) => exportHash(JSON.stringify(analyzeExport(output, false).codeTokens))) as [string, string]),
+    code: analyses.map((pair) => pair.map((analysis) => analysis.code) as [string[], string[]]),
+    codeTokens: analyses.map((pair) => pair.map((analysis) => exportHash(JSON.stringify(analysis.codeTokens))) as [string, string]),
+    structure: analyses.map(
+      (pair, index) =>
+        pair.map((analysis, target) =>
+          analysis.active ? JSON.stringify(captureExportStructure(outputs[index]?.[target] ?? '', analysis.tokens)) : null,
+        ) as [string | null, string | null],
+    ),
   };
 };
 
-const unquoted = (text: string) => text.split('\n').map((line) => line.replace(/^(?:[ \t]*>[ \t]?)*/, ''));
 const isSourceText = (samples: readonly string[], source: string): boolean => {
-  const lines = unquoted(source);
-  let at = 0;
-  for (const sample of samples)
-    for (const line of unquoted(sample)) {
-      while (at < lines.length && lines[at] !== line) at++;
-      if (at === lines.length) return false;
-      at++;
+  let cursor = 0;
+  for (const sample of samples) {
+    let found = source.indexOf(sample, cursor);
+    let length = sample.length;
+    const parts = exportSourceLines(sample);
+    if (parts.length > 1 && parts.at(-1)?.text === '' && parts.at(-1)?.ending === '') parts.pop();
+    const lines = parts.map((line) => line.text);
+    const first = lines[0] ?? '';
+    // A parsed container consumes at most four spaces and a marker per level.
+    // Bound candidate prefixes by the parser's nesting limit, not code length.
+    const nesting = 'maxNesting' in parser.options && typeof parser.options.maxNesting === 'number' ? parser.options.maxNesting : 100;
+    const limit = Math.min(first.length, nesting * 5 + 4);
+    for (let end = 1; end <= limit; end++) {
+      if (first[end - 1] !== '>' && first[end - 1] !== ' ') break;
+      const prefix = first.slice(0, end);
+      const blank = prefix.trimEnd();
+      if (!lines.every((line) => line.startsWith(prefix) || line === blank)) continue;
+      const literal = parts
+        .map(({ text, ending }) => (text.startsWith(prefix) ? text.slice(prefix.length) : text.slice(blank.length)) + ending)
+        .join('');
+      const at = source.indexOf(literal, cursor);
+      if (at >= 0 && (found < 0 || at < found)) {
+        found = at;
+        length = literal.length;
+      }
     }
+    if (found < 0) return false;
+    cursor = found + length;
+  }
   return true;
 };
 export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline: ExportGuardBaseline, projectors: ExportProjectors) => {
@@ -163,6 +196,8 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
     duplicated: 0,
     reordered: 0,
     changedCode: 0,
+    structuralChanges: 0,
+    exceptions: 0,
     inactiveChanged: 0,
     inactiveChecks: 0,
     active: 0,
@@ -176,9 +211,14 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
   if (baseline.revision !== EXPORT_BASELINE_REVISION) metadata.push('wrong main revision');
   if (baseline.sources !== exportSourcesHash(cases)) metadata.push('generated sources changed');
   if (
-    [baseline.kept.length, baseline.active.length, baseline.outputs.length, baseline.code?.length, baseline.codeTokens?.length].some(
-      (count) => count !== cases.length,
-    )
+    [
+      baseline.kept.length,
+      baseline.active.length,
+      baseline.outputs.length,
+      baseline.code?.length,
+      baseline.codeTokens?.length,
+      baseline.structure?.length,
+    ].some((count) => count !== cases.length)
   )
     metadata.push('missing baseline cases');
   for (const { index, source, markers } of cases) {
@@ -190,8 +230,15 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
         failures.push({ index, target, reason: 'missing baseline' });
         continue;
       }
-      const output = projectors[target](source);
       const tally = stats[target] as (typeof stats)[number];
+      let output: string;
+      try {
+        output = projectors[target](source);
+      } catch (error) {
+        tally.exceptions++;
+        failures.push({ index, target, reason: `export threw: ${String(error)}` });
+        continue;
+      }
       const code = baseline.code?.[index]?.[target] ?? [];
       tally.codeSamples += code.length;
       const unchanged = exportHash(output) === hash;
@@ -206,12 +253,20 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       const outputCode = analysis?.code ?? [];
       const expectedTokens = baseline.codeTokens[index]?.[target];
       const actualTokens = analysis?.codeTokens ?? [];
-      // Where main had no code but an active element, neutralizing that element
-      // can reveal code that main swallowed into raw HTML (an unclosed <style>
-      // in a quote turns the source's own fence into a code block). Production
-      // only pins code when main had some; the guard allows revealed code only
-      // as source lines in source order (ignoring the quote prefix portable
-      // components gain), so fabricated code still fails.
+      const recordedStructure = baseline.structure?.[index]?.[target];
+      const structure = recordedStructure ? (JSON.parse(recordedStructure) as ExportStructure) : undefined;
+      if (active > 0 && !structure) {
+        tally.structuralChanges++;
+        failures.push({ index, target, reason: 'missing structural baseline' });
+      }
+      if (structure && analysis && !compareExportStructure(structure, output, analysis.tokens).equal) {
+        tally.structuralChanges++;
+        failures.push({ index, target, reason: 'formatting changed outside the HTML run and its bounded separators' });
+      }
+      // An edited HTML run may reveal a fence that main swallowed into raw
+      // HTML. The structural comparison still pins all outside tokens. When
+      // main had no code, accept revealed samples only as contiguous source
+      // spans in order, removing at most one uniform container prefix.
       const revealed = code.length === 0 && active > 0 && isSourceText(outputCode, source);
       if (!revealed && (JSON.stringify(outputCode) !== JSON.stringify(code) || exportHash(JSON.stringify(actualTokens)) !== expectedTokens)) {
         tally.changedCode++;

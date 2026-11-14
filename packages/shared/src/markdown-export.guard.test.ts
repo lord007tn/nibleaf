@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { performance } from 'node:perf_hooks';
 import { expect, it } from 'vitest';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 import {
@@ -24,12 +23,11 @@ const readBaseline = (count: number): ExportGuardBaseline =>
 it.each(matrices)(
   'keeps element-inactive main output byte-identical, preserves main code and emits zero active elements: $label',
   (matrix) => {
-    const start = performance.now();
     const baseline = readBaseline(matrix.count);
     const report = checkExportBaseline(matrix.cases, baseline, projectors);
     if (matrix.cases.length !== matrix.count) report.metadata.push('wrong case count');
     if (baseline.seed !== matrix.seed) report.metadata.push('wrong seed');
-    console.info(`Export guard ${matrix.count}: ${(performance.now() - start).toFixed(1)} ms`, {
+    console.info(`Export guard ${matrix.count} correctness`, {
       public: report.stats[0],
       portable: report.stats[1],
     });
@@ -94,4 +92,27 @@ it('accepts source code revealed by neutralizing an unclosed active element, in 
   const reordered = () => '> &lt;style>\n> ~~~\n> TEXT\n> ~~~\n\nKEPT';
   expect(checkExportBaseline(cases, baseline, [revealed, revealed]).stats.map((stats) => stats.changedCode)).toEqual([0, 0]);
   expect(checkExportBaseline(cases, baseline, [reordered, reordered]).stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it.each([
+  { source: '<style>\n~~~\n> KEPT\n~~~\n</style>', output: '&lt;style>\n~~~\nKEPT\n~~~\n&lt;/style>' },
+  { source: '<style>\n~~~\nONE\nSKIPPED\nTWO\n~~~\n</style>', output: '&lt;style>\n~~~\nONE\nTWO\n~~~\nSKIPPED\n&lt;/style>' },
+])('rejects corruption of revealed source spans: $source', ({ source, output }) => {
+  const cases = [{ index: 0, source, markers: [] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const report = checkExportBaseline(cases, baseline, [() => output, () => output]);
+  expect(report.stats.map((stats) => stats.changedCode)).toEqual([1, 1]);
+});
+
+it('retains CRLF and literal quote characters when removing one uniform revealed-code prefix', () => {
+  const source = '<style>\r\n~~~\r\n\r\n> KEPT\r\n~~~\r\n</style>';
+  const quoted = source
+    .split('\n')
+    .map((line) => (line === '\r' ? '>\r' : `> ${line}`))
+    .join('\n');
+  const cases = [{ index: 0, source, markers: ['KEPT'] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [() => quoted, () => quoted]) };
+  const output = quoted.replaceAll('<style>', '&lt;style>').replaceAll('</style>', '&lt;/style>');
+  const report = checkExportBaseline(cases, baseline, [() => output, () => output]);
+  expect(report.failures).toEqual([]);
 });
