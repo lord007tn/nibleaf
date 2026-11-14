@@ -197,7 +197,7 @@ export function AcceptInvitationView({ invitationId }: { invitationId: string })
   useEffect(() => {
     if (state.kind === 'invalid' || state.kind === 'expired' || state.kind === 'used') {
       if (readPendingInvitation() === invitationId) clearPendingInvitation();
-      forgetAcceptIntent();
+      forgetAcceptIntent(invitationId);
     } else if (state.kind === 'signedOut') setPendingInvitation(invitationId);
   }, [state.kind, invitationId]);
 
@@ -342,7 +342,20 @@ export function AcceptInvitationView({ invitationId }: { invitationId: string })
           <Button className="w-full" loading={switching} onClick={() => void switchAccount()} type="button">
             {t('people.admission.switchAccount')}
           </Button>
-          <Button className="w-full" nativeButton={false} render={<Link onClick={clearPendingInvitation} to="/app" />} variant="ghost">
+          <Button
+            className="w-full"
+            nativeButton={false}
+            render={
+              <Link
+                onClick={() => {
+                  clearPendingInvitation();
+                  forgetAcceptIntent(invitationId);
+                }}
+                to="/app"
+              />
+            }
+            variant="ghost"
+          >
             {t('people.admission.notNow')}
           </Button>
         </div>
@@ -374,7 +387,7 @@ export function AcceptInvitationView({ invitationId }: { invitationId: string })
             <Link
               onClick={() => {
                 clearPendingInvitation();
-                forgetAcceptIntent();
+                forgetAcceptIntent(invitationId);
               }}
               to="/app"
             />

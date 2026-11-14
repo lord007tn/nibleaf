@@ -114,36 +114,49 @@ export function clearPendingInvitation(): void {
   clearPendingDestination();
 }
 
-/** sessionStorage: this tab chose "Create an account to accept" or "Log in to accept". */
+/** sessionStorage: the visitor chose "Create an account to accept" or "Log in to accept". */
 const ACCEPT_INTENT_KEY = 'nibleaf.acceptInvitationAfterAuth';
+/** Long enough to sign up with an emailed code; a stale choice never accepts. */
+export const ACCEPT_INTENT_TTL_MS = 30 * 60 * 1000;
+
+const readAcceptIntent = (): { id: string; at: number } | null => {
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(ACCEPT_INTENT_KEY) ?? 'null') as { id?: unknown; at?: unknown } | null;
+    return parsed && typeof parsed.id === 'string' && typeof parsed.at === 'number' ? { id: parsed.id, at: parsed.at } : null;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Remember that the visitor asked to accept this invitation once they are
  * signed in, so they are not asked a second time on their way back (P3-JRN-003).
- * Only an action on the accept page sets it, and only for this tab: a link
- * alone can never accept an invitation for someone.
+ * Only an action on the accept page sets it, so a link alone can never accept
+ * an invitation for someone. It lives in sessionStorage: it stays with this tab
+ * (a tab this one opens gets a copy, as the browser copies session storage to
+ * it) and lapses after `ACCEPT_INTENT_TTL_MS`.
  */
-export function rememberAcceptIntent(invitationId: string): void {
+export function rememberAcceptIntent(invitationId: string, now = Date.now()): void {
   try {
-    window.sessionStorage.setItem(ACCEPT_INTENT_KEY, invitationId);
+    window.sessionStorage.setItem(ACCEPT_INTENT_KEY, JSON.stringify({ id: invitationId, at: now }));
   } catch {
     // Without storage they press Accept once more, as before.
   }
 }
 
-/** True once, when this tab asked to accept this invitation; the intent is used up. */
-export function takeAcceptIntent(invitationId: string): boolean {
-  try {
-    if (window.sessionStorage.getItem(ACCEPT_INTENT_KEY) !== invitationId) return false;
-    window.sessionStorage.removeItem(ACCEPT_INTENT_KEY);
-    return true;
-  } catch {
-    return false;
-  }
+/** True once, when the visitor asked to accept this invitation in the last
+ *  `ACCEPT_INTENT_TTL_MS`; the intent is used up either way. */
+export function takeAcceptIntent(invitationId: string, now = Date.now()): boolean {
+  const intent = readAcceptIntent();
+  if (!intent || intent.id !== invitationId) return false;
+  forgetAcceptIntent(invitationId);
+  return now - intent.at >= 0 && now - intent.at <= ACCEPT_INTENT_TTL_MS;
 }
 
-export function forgetAcceptIntent(): void {
+/** Forget the intent: for one invitation only when `invitationId` is given. */
+export function forgetAcceptIntent(invitationId?: string): void {
   try {
+    if (invitationId !== undefined && readAcceptIntent()?.id !== invitationId) return;
     window.sessionStorage.removeItem(ACCEPT_INTENT_KEY);
   } catch {
     // ignore storage failures

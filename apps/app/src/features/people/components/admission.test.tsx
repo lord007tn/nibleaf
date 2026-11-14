@@ -73,6 +73,7 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
+import { ACCEPT_INTENT_TTL_MS, rememberAcceptIntent } from '@/lib/invitations';
 import { Route as DashboardRoute } from '@/routes/app/route';
 import { AcceptInvitationView, JoinLinkView } from './admission';
 
@@ -210,10 +211,40 @@ describe('invitee journey: invitation, sign-up, then into the site', () => {
   });
 
   it('ignores an intent recorded for another invitation', async () => {
-    window.sessionStorage.setItem('nibleaf.acceptInvitationAfterAuth', 'inv-other');
+    rememberAcceptIntent('inv-other');
     signedIn();
     await render(<AcceptInvitationView invitationId="inv-1" />);
     expect(mocks.accept).not.toHaveBeenCalled();
+  });
+
+  it('never accepts on a choice older than the sign-up window', async () => {
+    rememberAcceptIntent('inv-1', Date.now() - ACCEPT_INTENT_TTL_MS - 1000);
+    signedIn();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    expect(mocks.accept).not.toHaveBeenCalled();
+  });
+
+  // Sol review of #621: "Not now" on the wrong account kept the earlier yes.
+  it('forgets the choice when the wrong account says "Not now"', async () => {
+    signedOut();
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    await act(async () => [...host.querySelectorAll('a')].find((link) => link.textContent === 'people.admission.logInToAccept')?.click());
+    await act(async () => root.unmount());
+    document.body.replaceChildren();
+    signedIn('other@example.test');
+    await render(<AcceptInvitationView invitationId="inv-1" />);
+    await act(async () => [...host.querySelectorAll('a')].find((link) => link.textContent === 'people.admission.notNow')?.click());
+    await backFromAuth();
+    expect(mocks.accept).not.toHaveBeenCalled();
+  });
+
+  it('keeps the choice for this invitation when another, unusable invitation is opened', async () => {
+    rememberAcceptIntent('inv-1');
+    signedIn();
+    mocks.invitation.mockRejectedValueOnce(new ApiResponseError('missing', 404));
+    await render(<AcceptInvitationView invitationId="inv-gone" />);
+    await backFromAuth();
+    expect(mocks.accept).toHaveBeenCalledWith('inv-1');
   });
 
   it('says why when the automatic acceptance fails, and offers Accept without retrying on its own', async () => {
