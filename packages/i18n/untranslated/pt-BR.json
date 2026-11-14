@@ -54,7 +54,10 @@
     "editor_slash_section_layout",
     "admin_operations_gitkind_pull",
     "admin_operations_gitkind_push",
-    "settings_smartai"
+    "settings_smartai",
+    "roles_editor",
+    "people_site",
+    "dashboard_col_status"
   ],
   "pending": [
     "brand_oss",

@@ -42,7 +42,9 @@
     "admin_operations_gitkind_pull",
     "admin_operations_gitkind_push",
     "settings_smartai",
-    "dashboard_ai_failed"
+    "dashboard_ai_failed",
+    "roles_editor",
+    "organization_settings_general"
   ],
   "pending": [
     "brand_oss",
