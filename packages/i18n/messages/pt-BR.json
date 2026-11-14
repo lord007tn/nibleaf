@@ -840,6 +840,8 @@
   "settings_unsaved_description": "Suas alterações não foram salvas.",
   "settings_unsaved_keep": "Continuar editando",
   "settings_appearance_location": "Também disponível em Configurações do site → Aparência e no painel de configurações do editor.",
+  "settings_appearance_summary": "Como o seu site publicado aparece: marca, tema, tipografia, cabeçalho, rodapé e banner.",
+  "settings_appearance_sections": "Seções de aparência",
   "settings_domain_guide_step1": "Abra as configurações DNS do seu provedor de domínio.",
   "settings_domain_guide_step2": "Adicione cada registro: Tipo, Nome/Host, Valor/Destino. CNAME aponta o endereço para este site; TXT comprova a propriedade. Normalmente use o nome curto; use o nome completo abaixo apenas se solicitado.",
   "settings_domain_guide_step3": "Salve e verifique novamente.",

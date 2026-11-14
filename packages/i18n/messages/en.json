@@ -890,6 +890,8 @@
   "settings_unsaved_description": "Your changes have not been saved.",
   "settings_unsaved_keep": "Keep editing",
   "settings_appearance_location": "Also available in Site settings → Appearance and in the editor’s Settings panel.",
+  "settings_appearance_summary": "How your published site looks: its brand, theme, type, header, footer and banner.",
+  "settings_appearance_sections": "Appearance sections",
   "settings_domain_guide_step1": "Sign in where you manage your domain (the company you bought it from, or your IT team) and open its DNS settings.",
   "settings_domain_guide_step2": "Create a new record for each one shown below and copy in its Type, Name and Value. Leave any other fields, like TTL, as they are.",
   "settings_domain_guide_step3": "Save, come back here and click Check again. Most changes show up within minutes, but some take up to 24 hours.",

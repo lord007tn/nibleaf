@@ -840,6 +840,8 @@
   "settings_unsaved_description": "آپ کی تبدیلیاں محفوظ نہیں ہوئیں۔",
   "settings_unsaved_keep": "ترمیم جاری رکھیں",
   "settings_appearance_location": "سائٹ کی ترتیبات ← ظاہری شکل اور ایڈیٹر کے ترتیبات پینل میں بھی دستیاب ہے۔",
+  "settings_appearance_summary": "آپ کی شائع شدہ سائٹ کیسی دکھتی ہے: اس کا برانڈ، تھیم، ٹائپوگرافی، ہیڈر، فوٹر اور بینر۔",
+  "settings_appearance_sections": "ظاہری شکل کے حصے",
   "settings_domain_guide_step1": "ڈومین فراہم کنندہ کی DNS ترتیبات کھولیں۔",
   "settings_domain_guide_step2": "ہر ریکارڈ کی قسم، نام/ہوسٹ اور قدر/ہدف درج کریں۔ CNAME پتے کو سائٹ سے جوڑتا ہے؛ TXT ملکیت ثابت کرتا ہے۔ عموماً مختصر نام دیں؛ نیچے مکمل نام صرف مانگے جانے پر دیں۔",
   "settings_domain_guide_step3": "محفوظ کریں اور دوبارہ جانچیں۔",

@@ -26,7 +26,7 @@ import { type ChangeEvent, type CSSProperties, useId, useMemo, useRef, useState 
 import { toast } from 'sonner';
 import { DocumentationStudioPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { type Project, type ProjectThemeImportResult, useExportProjectTheme, useImportProjectTheme, useUpdateProjectConfig } from '@/hooks/api';
-import { projectThemeStyle, projectThemeVariables } from '@/lib/site-theme';
+import { projectThemeStyle, projectThemeVariables, siteAppearance } from '@/lib/site-theme';
 import { Field, SaveBar, SectionHeader, Segmented } from './shared';
 
 type Appearance = 'light' | 'dark' | 'system';
@@ -54,7 +54,7 @@ const initialDraft = (project: Project): ThemeDraft => {
   const resolved = resolveTheme(project.config);
   return {
     theme: project.config?.theme ?? { version: THEME_SCHEMA_VERSION, preset: resolved.id, metadata: resolved.metadata },
-    appearance: project.config?.styling?.theme ?? 'light',
+    appearance: siteAppearance(project.config),
   };
 };
 
@@ -323,7 +323,7 @@ export function ThemeSection({ project }: { project: Project }) {
           if (apply) {
             setDraft({
               theme: result.template.config.theme ?? fullPresetTheme(result.theme.id),
-              appearance: result.template.config.styling?.theme ?? 'light',
+              appearance: siteAppearance(result.template.config),
             });
             setHistory([]);
             toast.success(t('settings.theme.import.applied'));

@@ -8,6 +8,8 @@ import { ORG_NAV, OrgSidebar } from '@/components/app/org-sidebar';
 import { OrganizationSwitcher } from '@/components/app/org-switcher/organization-switcher';
 import { ShellSearchButton } from '@/components/app/shell-search-button';
 import type { OrganizationDetail } from '@/hooks/api/organization-query-options';
+import { usePageTitle } from '@/hooks/use-page-title';
+import { pageTitle } from '@/lib/page-title';
 
 /** Organization shell (§5.1): org sidebar, and a header that starts with `[Org ▾]` then the page title. */
 export function OrganizationLayout({
@@ -22,6 +24,7 @@ export function OrganizationLayout({
   const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const section = ORG_NAV.find((item) => pathname.startsWith(`/app/o/${orgSlug}/${item.section}`));
+  usePageTitle(pageTitle(section ? t(section.labelKey) : undefined, organization?.name));
   const isAdmin = organization ? organization.orgRole !== 'member' : false;
 
   return (

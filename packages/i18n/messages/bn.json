@@ -803,6 +803,8 @@
   "settings_unsaved_description": "আপনার পরিবর্তন সংরক্ষিত হয়নি।",
   "settings_unsaved_keep": "সম্পাদনা চালিয়ে যান",
   "settings_appearance_location": "সাইট সেটিংস → চেহারা এবং সম্পাদকের সেটিংস প্যানেলেও পাওয়া যায়।",
+  "settings_appearance_summary": "আপনার প্রকাশিত সাইট দেখতে কেমন: এর ব্র্যান্ড, থিম, ফন্ট, হেডার, ফুটার ও ব্যানার।",
+  "settings_appearance_sections": "চেহারার বিভাগ",
   "settings_domain_guide_step1": "ডোমেইন সরবরাহকারীর DNS সেটিংস খুলুন।",
   "settings_domain_guide_step2": "প্রতিটি রেকর্ডের ধরন, নাম/হোস্ট ও মান/লক্ষ্য দিন। CNAME সাইটে ঠিকানা নির্দেশ করে; TXT মালিকানা প্রমাণ করে। সাধারণত সংক্ষিপ্ত নাম লাগে; চাইলে নিচের পূর্ণ নাম দিন।",
   "settings_domain_guide_step3": "সংরক্ষণ করে আবার পরীক্ষা করুন।",

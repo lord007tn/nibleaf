@@ -840,6 +840,8 @@
   "settings_unsaved_description": "Tus cambios no se han guardado.",
   "settings_unsaved_keep": "Seguir editando",
   "settings_appearance_location": "También disponible en Ajustes del sitio → Apariencia y en el panel de ajustes del editor.",
+  "settings_appearance_summary": "Cómo se ve tu sitio publicado: su marca, tema, tipografía, encabezado, pie de página y banner.",
+  "settings_appearance_sections": "Secciones de apariencia",
   "settings_domain_guide_step1": "Abre los ajustes DNS de tu proveedor de dominio.",
   "settings_domain_guide_step2": "Añade cada registro: Tipo, Nombre/Host, Valor/Destino. CNAME dirige la dirección a este sitio; TXT acredita la propiedad. Normalmente se usa el nombre corto; usa el nombre completo de abajo solo si se solicita.",
   "settings_domain_guide_step3": "Guarda y comprueba de nuevo.",
