@@ -167,7 +167,17 @@ describe('SiteAnalyticsConsent', () => {
     expect(document.head.querySelectorAll('script')).toHaveLength(0);
     const decline = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Decline');
     await act(async () => decline?.click());
-    expect(container.textContent).toContain('Privacy choices');
+    expect(container.querySelector('section')).toBeNull();
+    expect(document.head.querySelectorAll('script')).toHaveLength(0);
+
+    // Reopening through the footer still works with storage blocked.
+    const manage = [...container.querySelectorAll<HTMLButtonElement>('footer button')].find((button) => button.textContent === 'Privacy choices');
+    expect(manage).toBeDefined();
+    await act(async () => manage?.click());
+    expect(container.querySelector('section')).not.toBeNull();
+    const declineAgain = [...container.querySelectorAll('section button')].find((button) => button.textContent === 'Decline') as HTMLButtonElement;
+    await act(async () => declineAgain.click());
+    expect(container.querySelector('section')).toBeNull();
     expect(document.head.querySelectorAll('script')).toHaveLength(0);
   });
 });
