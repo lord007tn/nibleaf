@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { LanguageFn } from 'highlight.js';
-import { Children, type ComponentProps, cloneElement, isValidElement, Suspense, useMemo } from 'react';
+import { type ComponentProps, createContext, Suspense, useContext, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
@@ -89,6 +89,7 @@ const htmlComponents: Components = {
   ),
   pre: Pre,
   li: TaskListItem,
+  input: TaskCheckbox,
   // Authored classes (light/dark image pairs) add to the default frame, and an
   // image without alt text is marked decorative instead of losing the attribute.
   img: ({ node: _node, ...props }) => <img {...props} alt={props.alt ?? ''} className={cn('rounded-xl border border-border', props.className)} />,
@@ -102,23 +103,32 @@ function itemText(node: { type: string; value?: string; tagName?: string; childr
   return ((node.children ?? []) as (typeof node)[]).map(itemText).join('');
 }
 
+/** The name for the checkbox of the nearest task item. Every list item sets it
+ *  (a plain item to nothing), so a sub-item never borrows its parent's name. */
+const TaskItemLabel = createContext<string | undefined>(undefined);
+
 /** GFM task items: the read-only checkbox is named by the item's text, so a
  *  screen reader says "Sandbox shipment booked, checkbox, checked" rather than
  *  an unnamed checkbox (P3-PUB-025; axe `label`). Other items pass through. */
 function TaskListItem({ node, children, ...props }: ComponentProps<'li'> & { node?: { children?: unknown[] } }) {
-  if (!props.className?.split(/\s+/).includes('task-list-item')) return <li {...props}>{children}</li>;
-  const label = itemText(node as Parameters<typeof itemText>[0])
-    .replace(/\s+/g, ' ')
-    .trim();
+  const isTask = props.className?.split(/\s+/).includes('task-list-item');
+  const label = isTask
+    ? itemText(node as Parameters<typeof itemText>[0])
+        .replace(/\s+/g, ' ')
+        .trim() || undefined
+    : undefined;
   return (
     <li {...props}>
-      {Children.map(children, (child) =>
-        isValidElement<ComponentProps<'input'>>(child) && child.props.type === 'checkbox'
-          ? cloneElement(child, { 'aria-label': label || undefined })
-          : child,
-      )}
+      <TaskItemLabel.Provider value={label}>{children}</TaskItemLabel.Provider>
     </li>
   );
+}
+
+/** A task item's checkbox, wherever it sits in the item: a tight list puts it
+ *  directly in the <li>, a loose one inside the item's first paragraph. */
+function TaskCheckbox({ node: _node, ...props }: ComponentProps<'input'> & { node?: unknown }) {
+  const label = useContext(TaskItemLabel);
+  return <input {...props} aria-label={props['aria-label'] ?? (props.type === 'checkbox' ? label : undefined)} />;
 }
 
 /** Anchor renderer, built per site-context. Heading self-links (added by

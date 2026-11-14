@@ -684,24 +684,28 @@ function SiteChrome() {
             navigationLabels={{ showAll: t('navShowAll'), showLess: t('navShowLess') }}
             navigation={
               <>
+                {/* Its own named landmark: the sidebar box around it is a plain
+                    div, so these links would otherwise sit outside every landmark. */}
                 {navAnchors.length > 0 ? (
-                  <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
-                    {navAnchors.map((anchor) => (
-                      <li key={`${anchor.label}-${anchor.href}`}>
-                        <a
-                          href={resolveNavHref(anchor.href)}
-                          target={anchor.external ? '_blank' : undefined}
-                          rel={anchor.external ? 'noreferrer' : undefined}
-                          className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
-                        >
-                          <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
-                            {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
-                          </span>
-                          <span className="truncate">{anchor.label}</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+                  <nav aria-label={t('quickLinks')}>
+                    <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
+                      {navAnchors.map((anchor) => (
+                        <li key={`${anchor.label}-${anchor.href}`}>
+                          <a
+                            href={resolveNavHref(anchor.href)}
+                            target={anchor.external ? '_blank' : undefined}
+                            rel={anchor.external ? 'noreferrer' : undefined}
+                            className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
+                          >
+                            <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
+                              {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
+                            </span>
+                            <span className="truncate">{anchor.label}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
                 ) : null}
                 <SiteNav
                   nodes={site.nav ?? []}

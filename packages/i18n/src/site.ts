@@ -64,6 +64,7 @@ import { site_openmenu } from './paraglide/messages/site_openmenu.js';
 import { site_pageunavailable } from './paraglide/messages/site_pageunavailable.js';
 import { site_previous } from './paraglide/messages/site_previous.js';
 import { site_privatetitle } from './paraglide/messages/site_privatetitle.js';
+import { site_quicklinks } from './paraglide/messages/site_quicklinks.js';
 import { site_raiseissue } from './paraglide/messages/site_raiseissue.js';
 import { site_reportabuse } from './paraglide/messages/site_reportabuse.js';
 import { site_screenshotcount } from './paraglide/messages/site_screenshotcount.js';
@@ -177,6 +178,7 @@ const siteMessages = {
   language: site_language,
   version: site_version,
   siteLinks: site_sitelinks,
+  quickLinks: site_quicklinks,
   docsSections: site_docssections,
   docsPages: site_docspages,
   notFoundTitle: site_notfoundtitle,

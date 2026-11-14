@@ -2313,6 +2313,7 @@
   "site_languagecurrent": "भाषा: {language}",
   "site_versioncurrent": "संस्करण: {version}",
   "site_sitelinks": "साइट के लिंक",
+  "site_quicklinks": "त्वरित लिंक",
   "site_docssections": "दस्तावेज़ों के अनुभाग",
   "site_docspages": "दस्तावेज़ों के पेज",
   "site_notfoundtitle": "हमें यह पेज नहीं मिला",

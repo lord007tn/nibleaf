@@ -54,11 +54,30 @@ describe('task lists', () => {
     const boxes = Array.from(host.querySelectorAll('input[type="checkbox"]'));
     expect(boxes.map((box) => box.getAttribute('aria-label'))).toEqual(['Sandbox shipment booked', 'Live key rotated', 'Vault updated']);
   });
+
+  it('names checkboxes in a loose list too, where each sits inside a paragraph', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(<MarkdownRenderer content={['- [ ] Alpha', '', '- [x] Beta', '', '  - [ ] Gamma'].join('\n')} />);
+    const boxes = Array.from(host.querySelectorAll('input[type="checkbox"]'));
+    expect(boxes[0]?.closest('p')).not.toBeNull();
+    expect(boxes.map((box) => box.getAttribute('aria-label'))).toEqual(['Alpha', 'Beta', 'Gamma']);
+  });
+
+  it('leaves a checkbox in a plain item inside a task item unnamed, never borrowing the task name', () => {
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(<MarkdownRenderer content={['- [ ] Parent task', '  - plain note'].join('\n')} />);
+    expect(Array.from(host.querySelectorAll('input')).map((box) => box.getAttribute('aria-label'))).toEqual(['Parent task']);
+  });
 });
 
 describe('layout landmarks', () => {
   it('wraps the sidebar and the outline in plain boxes: their navigation is the named landmark', () => {
     const source = readFileSync(resolve(import.meta.dirname, 'documentation-theme-provider.tsx'), 'utf8');
     expect(source).not.toMatch(/<aside\b/);
+  });
+
+  it('keeps the sidebar quick links inside a named navigation landmark', () => {
+    const source = readFileSync(resolve(import.meta.dirname, '../../routes/sites/$projectId/route.tsx'), 'utf8');
+    expect(source).toMatch(/<nav aria-label=\{t\('quickLinks'\)\}>\s*<ul[^>]*>\s*\{navAnchors\.map/);
   });
 });

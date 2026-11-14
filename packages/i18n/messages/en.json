@@ -2418,6 +2418,7 @@
   "site_languagecurrent": "Language: {language}",
   "site_versioncurrent": "Version: {version}",
   "site_sitelinks": "Site links",
+  "site_quicklinks": "Quick links",
   "site_docssections": "Documentation sections",
   "site_docspages": "Documentation pages",
   "site_notfoundtitle": "We couldn’t find that page",

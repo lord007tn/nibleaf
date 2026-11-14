@@ -2369,6 +2369,7 @@
   "site_languagecurrent": "زبان: {language}",
   "site_versioncurrent": "ورژن: {version}",
   "site_sitelinks": "سائٹ کے لنکس",
+  "site_quicklinks": "فوری لنکس",
   "site_docssections": "دستاویزات کے حصے",
   "site_docspages": "دستاویزات کے صفحات",
   "site_notfoundtitle": "ہمیں یہ صفحہ نہیں ملا",
