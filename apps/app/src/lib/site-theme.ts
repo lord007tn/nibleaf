@@ -173,7 +173,10 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
         // card, table, step or tab nested in it read as they do in dark mode,
         // where every surface is checked (PUB-019). Its links keep the code accent,
         // as before. Without this, light mode drew page text on the dark fill.
-        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:var(--theme-code-accent)}`,
+        // The outer .typeset derives --typeset-muted and --typeset-rule from the
+        // light palette and descendants inherit those values, so they are bound
+        // again here (h5/h6 and rules use them).
+        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:var(--theme-code-accent);--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
       ]
     : [
         `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent, legacyBrand)};--primary:${legacyAccent};--primary-foreground:${legacyAccentForeground};--theme-accent-foreground:${legacyAccentForeground};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,

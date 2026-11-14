@@ -18,9 +18,20 @@ describe('preset contrast (PUB-019)', () => {
     const island = css.match(/\.nibleaf-site-chrome\[data-theme-callouts="solid"\] \[data-theme-component="callout"\]\{([^}]*)\}/)?.[1] ?? '';
     const darkTokens = css.match(/:root\.dark,:root\.dark \.nibleaf-site-chrome,\.nibleaf-site-chrome\.dark\{([^}]*)\}/)?.[1] ?? '';
     expect(island).not.toBe('');
+    expect(darkTokens).not.toBe('');
     // The same tokens dark mode uses (foreground, muted, card, background, …), then the code accent for links.
     expect(island.startsWith(darkTokens)).toBe(true);
-    expect(island.endsWith(';--primary:var(--theme-code-accent)')).toBe(true);
+    // Links keep the code accent, and the typeset values the outer .typeset derived
+    // from the light palette (h5/h6 colour, rules) are derived again inside.
+    expect(island.endsWith(';--primary:var(--theme-code-accent);--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)')).toBe(true);
+    // Every typeset variable derived from a palette alias must be rebound here.
+    const derived = [
+      ...read('../../typeset.css').matchAll(
+        /(--typeset-[a-z-]+):\s*var\(\s*--(?:foreground|muted-foreground|border|muted|primary|background|card)\b/g,
+      ),
+    ].map((m) => m[1]);
+    expect(derived.length).toBeGreaterThan(0);
+    for (const name of derived) expect(island).toContain(`${name}:`);
     // The stylesheet's solid-callout rule doesn't remap the aliases itself.
     const styles = read('../../styles.css');
     const start = styles.indexOf('[data-theme-callouts="solid"]');
