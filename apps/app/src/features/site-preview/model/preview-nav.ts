@@ -5,10 +5,23 @@
  * `components/preview-nav.tsx`; tested in `preview-nav.test.ts`.
  */
 import { buildNavTree, type NavNode, type NavSourcePage } from '@nibleaf/shared/site';
-import type { PageNode } from '@/hooks/api/types';
+
+/** The draft page fields the preview's navigation reads (a dashboard `PageNode`). */
+export interface DraftNavPage {
+  id: string;
+  parentId: string | null;
+  kind: 'PAGE' | 'GROUP';
+  title: string;
+  slug: string;
+  path: string;
+  icon: string | null;
+  position: number;
+  hidden: boolean;
+  config?: { sidebarTitle?: string; tag?: string; category?: string; categoryIcon?: string; categoryOrder?: number } | null;
+}
 
 /** A draft page in the shape navigation is built from. */
-export const navSourcePage = (page: PageNode, languageCode: string): NavSourcePage => ({
+export const navSourcePage = (page: DraftNavPage, languageCode: string): NavSourcePage => ({
   id: page.id,
   parentId: page.parentId,
   // The preview lists one language at a time; its code picks the "Untitled"
@@ -35,7 +48,7 @@ export const navSourcePage = (page: PageNode, languageCode: string): NavSourcePa
 /** The previewed language's navigation, as readers will get it once published.
  *  Empty until the language is known: its pages are scoped to it, and an
  *  imported collection's category names are worded in it. */
-export const previewNavTree = (pages: readonly PageNode[] | undefined, languageCode: string | undefined): NavNode[] =>
+export const previewNavTree = (pages: readonly DraftNavPage[] | undefined, languageCode: string | undefined): NavNode[] =>
   languageCode ? buildNavTree((pages ?? []).map((page) => navSourcePage(page, languageCode))) : [];
 
 const firstNavPage = (nodes: readonly NavNode[]): string | undefined => {
@@ -53,7 +66,7 @@ const firstNavPage = (nodes: readonly NavNode[]): string | undefined => {
  * wins, otherwise the first page in nav order. Not covered: a translated site
  * root that sends readers to the default home's translation.
  */
-export function previewHomeId(pages: readonly PageNode[] | undefined, nodes: readonly NavNode[]): string | undefined {
+export function previewHomeId(pages: readonly DraftNavPage[] | undefined, nodes: readonly NavNode[]): string | undefined {
   const visible = new Set(navOrderIds(nodes));
   const root = pages?.find((page) => page.kind === 'PAGE' && page.path === '' && visible.has(page.id));
   return root?.id ?? firstNavPage(nodes);
