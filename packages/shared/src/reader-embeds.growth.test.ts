@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { offsetInRanges, pageContentFacts } from './publish-checks';
+import { offsetInRanges } from './page-content-facts';
+import { pageContentFacts } from './publish-checks';
 import { rewriteReaderEmbeds, scanAuthoredEmbeds } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growth';
