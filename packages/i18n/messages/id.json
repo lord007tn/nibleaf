@@ -4222,7 +4222,7 @@
   "gitpreview_retry": "Coba lagi",
   "gitpreview_close": "Tutup",
   "analytics_status_readsdisabled_title": "Data analitik sedang dikumpulkan",
-  "analytics_status_readsdisabled_body": "Server sedang mengumpulkan data analitik. Setelah migrasi siap, administrator server dapat mengaktifkan laporan dengan ANALYTICS_MODE=clickhouse.",
+  "analytics_status_readsdisabled_body": "Laporan belum diaktifkan di server ini. Kunjungan sudah dikumpulkan, jadi tidak ada yang hilang: pengelola server ini bisa mengaktifkan laporan dengan panduan penyiapan.",
   "publish_reviewchanged": "Situs Anda berubah sejak ditinjau. Tinjau kembali perubahan sebelum menerbitkan.",
   "publish_busy": "Perubahan lain sedang disimpan. Coba terbitkan lagi sebentar lagi.",
   "admin_pagination_first": "Halaman pertama",

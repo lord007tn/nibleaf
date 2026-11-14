@@ -4288,7 +4288,7 @@
   "gitpreview_retry": "Erneut versuchen",
   "gitpreview_close": "Schließen",
   "analytics_status_readsdisabled_title": "Analysedaten werden erfasst",
-  "analytics_status_readsdisabled_body": "Der Server erfasst Analysedaten. Sobald die Migration bereit ist, kann die Serververwaltung Berichte mit ANALYTICS_MODE=clickhouse aktivieren.",
+  "analytics_status_readsdisabled_body": "Berichte sind auf diesem Server noch nicht eingeschaltet. Besuche werden bereits erfasst, es geht also nichts verloren: Wer diesen Server betreibt, kann Berichte mit der Einrichtungsanleitung einschalten.",
   "publish_reviewchanged": "Ihre Website hat sich seit der Prüfung geändert. Prüfen Sie die Änderungen vor dem Veröffentlichen erneut.",
   "publish_busy": "Gerade wird eine andere Änderung gespeichert. Versuchen Sie es gleich noch einmal mit dem Veröffentlichen.",
   "admin_pagination_first": "Erste Seite",

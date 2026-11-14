@@ -270,7 +270,9 @@ describe('Overview', () => {
     mocks.overview.mockReturnValue(ready(emptyOverview('reads_disabled')));
     const view = await render(<OverviewSection />);
     expect(text(view)).toContain('Analytics is being collected');
-    expect(text(view)).toContain('ANALYTICS_MODE=clickhouse');
+    // P2-DASH-017: site owners get plain words, never an environment variable.
+    expect(text(view)).toContain('nothing is lost');
+    expect(text(view)).not.toContain('ANALYTICS_MODE');
     expect(view.querySelector('a[target="_blank"]')).not.toBeNull();
     expect(view.querySelectorAll('[data-slot="card-title"]')).toHaveLength(0);
   });

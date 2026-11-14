@@ -4288,7 +4288,7 @@
   "gitpreview_retry": "Reintentar",
   "gitpreview_close": "Cerrar",
   "analytics_status_readsdisabled_title": "Se están recopilando analíticas",
-  "analytics_status_readsdisabled_body": "El servidor está recopilando analíticas. Cuando la migración esté lista, el administrador puede activar los informes con ANALYTICS_MODE=clickhouse.",
+  "analytics_status_readsdisabled_body": "Los informes aún no están activados en este servidor. Las visitas ya se están registrando, así que no se pierde nada: quien administra este servidor puede activarlos con la guía de configuración.",
   "publish_reviewchanged": "Tu sitio ha cambiado desde que lo revisaste. Revisa los cambios antes de publicar.",
   "publish_busy": "Se está guardando otro cambio. Vuelve a intentar publicar en un momento.",
   "admin_pagination_first": "Primera página",

@@ -45,7 +45,13 @@ vi.mock('@/components/organization/use-access-loss', async (importOriginal) => (
   ...(await importOriginal<typeof import('@/components/organization/use-access-loss')>()),
   useAccessLoss: () => ({ lostOrganization: mocks.lostOrganization, lostWebsite: vi.fn() }),
 }));
-vi.mock('@/components/not-found', () => ({ NotFound: () => <h1 data-testid="not-found">not found</h1> }));
+vi.mock('@/components/app/dashboard-problem', () => ({
+  DashboardProblem: () => (
+    <main>
+      <h1 data-testid="not-found">not found</h1>
+    </main>
+  ),
+}));
 vi.mock('@/hooks/use-record-visit', () => ({ useRecordVisitEffect: mocks.recordVisit }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/layouts/organization', () => ({
@@ -144,7 +150,8 @@ describe('/app/o/$orgSlug route', () => {
     const host = await render();
     expect(host.querySelector('[data-testid="not-found"]')).not.toBeNull();
     expect(mocks.lostOrganization).not.toHaveBeenCalled();
-    expect(host.querySelector('main')).toBeNull();
+    // P2-DASH-026: inside the app shell, with its main landmark (DashboardProblem).
+    expect(host.querySelector('main [data-testid="not-found"]')).not.toBeNull();
   });
 
   it('another failure shows a retryable error instead of not-found', async () => {

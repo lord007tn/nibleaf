@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useEffect, useRef, useSyncExternalStore } from 'react';
-import { NotFound } from '@/components/not-found';
+import { DashboardProblem } from '@/components/app/dashboard-problem';
 import { OrganizationContext } from '@/components/organization/organization-context';
 import { isAccessLoss, useAccessLoss } from '@/components/organization/use-access-loss';
 import { QueryErrorState } from '@/components/query-error-state';
@@ -86,7 +86,7 @@ function OrganizationRoute() {
     if (lost && cachedName && pathname.startsWith(`/app/o/${orgSlug}`)) lostOrganization(cachedName);
   }, [lost, cachedName, lostOrganization, pathname, orgSlug]);
 
-  if (lost && !cachedName) return <NotFound />;
+  if (lost && !cachedName) return <DashboardProblem />;
   if (organization.isError && !lost && !data) {
     return (
       <div className="grid min-h-screen place-items-center p-6">

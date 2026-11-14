@@ -4222,7 +4222,7 @@
   "gitpreview_retry": "重试",
   "gitpreview_close": "关闭",
   "analytics_status_readsdisabled_title": "正在收集分析数据",
-  "analytics_status_readsdisabled_body": "服务器正在收集分析数据。迁移准备就绪后，管理员可通过 ANALYTICS_MODE=clickhouse 启用报告。",
+  "analytics_status_readsdisabled_body": "此服务器尚未开启报告。访问数据已在收集，因此不会丢失：服务器管理员可以按照设置指南开启报告。",
   "publish_reviewchanged": "网站自审核以来已发生变化。发布前请重新审核更改。",
   "publish_busy": "正在保存另一项更改。请稍后再试发布。",
   "admin_pagination_first": "第一页",
