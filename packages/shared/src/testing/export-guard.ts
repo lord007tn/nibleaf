@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import MarkdownIt from 'markdown-it';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 
+/** @public Used by `__fixtures__/markdown-export.guard.generate.mjs`, which knip.jsonc keeps out of analysis. */
 export const EXPORT_BASELINE_REVISION = '2cf12d3fe325057c586fd1f6abd05247a1af6813';
 export interface ExportGuardCase {
   index: number;
@@ -17,8 +18,8 @@ export interface ExportGuardBaseline {
   outputs: [string, string][];
 }
 export type ExportProjectors = readonly [(source: string) => string, (source: string) => string];
-export const exportHash = (source: string) => createHash('sha256').update(source).digest('hex');
-export const exportSourcesHash = (cases: readonly ExportGuardCase[]) => exportHash(cases.map(({ source }) => source).join('\0'));
+const exportHash = (source: string) => createHash('sha256').update(source).digest('hex');
+const exportSourcesHash = (cases: readonly ExportGuardCase[]) => exportHash(cases.map(({ source }) => source).join('\0'));
 
 const markdown = new MarkdownIt({ html: true });
 const activeTags = ['script', 'style', 'iframe', 'object', 'embed'];
@@ -35,6 +36,7 @@ export const renderedActiveHtml = (source: string): number => {
   return countElements(parseFragment(markdown.render(source)));
 };
 
+/** @public Used by `__fixtures__/markdown-export.guard.generate.mjs`, which knip.jsonc keeps out of analysis. */
 export const recordExportBaseline = (
   cases: readonly ExportGuardCase[],
   projectors: ExportProjectors,
