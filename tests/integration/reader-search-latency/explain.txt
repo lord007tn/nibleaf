@@ -1,0 +1,14 @@
+QUERY PLAN
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.14..8.16 rows=1 width=36) (actual time=0.015..0.015 rows=1.00 loops=1)
+   Buffers: shared hit=2
+   ->  Index Scan Backward using "deployment_projectId_version_key" on deployment  (cost=0.14..8.16 rows=1 width=36) (actual time=0.014..0.014 rows=1.00 loops=1)
+         Index Cond: ("projectId" = 'reader-search-latency-fixture'::text)
+         Filter: (status = 'READY'::"DeploymentStatus")
+         Index Searches: 1
+         Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=203
+ Planning Time: 1.146 ms
+ Execution Time: 0.050 ms
+(11 rows)
