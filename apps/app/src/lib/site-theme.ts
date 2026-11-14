@@ -141,6 +141,12 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
     ? [
         `:root,.nibleaf-site-chrome{${tokenDeclarations(light)};--radius:${radiusValue(theme.layout.radius)}}`,
         `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{${tokenDeclarations(dark)}}`,
+        // A solid callout is a console panel on the code surface in both modes, so
+        // everything inside it uses the dark palette: its text, muted text and any
+        // card, table, step or tab nested in it read as they do in dark mode,
+        // where every surface is checked (PUB-019). Its links keep the code accent,
+        // as before. Without this, light mode drew page text on the dark fill.
+        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark)};--primary:var(--theme-code-accent)}`,
       ]
     : [
         `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent)};--primary:${legacyAccent};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,

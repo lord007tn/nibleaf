@@ -7,39 +7,28 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { projectThemeCss } from '@/lib/site-theme';
 
 const read = (path: string) => readFileSync(resolve(import.meta.dirname, path), 'utf8');
 
 describe('preset contrast (PUB-019)', () => {
-  it('solid callouts move the foreground aliases to the code surface their fill is drawn on', () => {
-    const css = read('../../styles.css');
-    const start = css.indexOf('[data-theme-callouts="solid"]');
-    const rule = css.slice(start, css.indexOf('}', start));
-    // The callout's text-foreground utility outranks this layer, so the alias itself must move.
-    expect(rule).toContain('--foreground: var(--theme-code-foreground)');
-    expect(rule).toContain('--muted-foreground: var(--theme-code-muted)');
+  it('renders a solid callout in the dark palette, so its text and anything nested in it read as in dark mode', () => {
+    const config = { theme: { preset: 'signal' } } as never;
+    const css = projectThemeCss(config);
+    const island = css.match(/\.nibleaf-site-chrome\[data-theme-callouts="solid"\] \[data-theme-component="callout"\]\{([^}]*)\}/)?.[1] ?? '';
+    const darkTokens = css.match(/:root\.dark,:root\.dark \.nibleaf-site-chrome,\.nibleaf-site-chrome\.dark\{([^}]*)\}/)?.[1] ?? '';
+    expect(island).not.toBe('');
+    // The same tokens dark mode uses (foreground, muted, card, background, …), then the code accent for links.
+    expect(island.startsWith(darkTokens)).toBe(true);
+    expect(island.endsWith(';--primary:var(--theme-code-accent)')).toBe(true);
+    // The stylesheet's solid-callout rule doesn't remap the aliases itself.
+    const styles = read('../../styles.css');
+    const start = styles.indexOf('[data-theme-callouts="solid"]');
+    expect(styles.slice(start, styles.indexOf('}', start))).not.toContain('--foreground:');
   });
 
-  it('gives every surfaced component nested in a solid callout, at any depth, its page text colours back', () => {
-    const css = read('../../styles.css');
-    const start = css.indexOf('[data-theme-component="card"],');
-    expect(start).toBeGreaterThan(-1);
-    const block = css.slice(css.lastIndexOf('.nibleaf-site-chrome', start), css.indexOf('}', start));
-    // Scoped to solid callouts, and a descendant (not child) match, so nesting in lists, quotes or steps is covered.
-    expect(block).toContain('[data-theme-callouts="solid"]');
-    expect(block).toMatch(/\[data-theme-component="callout"\]\s+:is\(/);
-    expect(block).toContain('--foreground: var(--theme-foreground)');
-    expect(block).toContain('--muted-foreground: var(--theme-muted-foreground)');
-    expect(block).toContain('color: var(--theme-foreground)');
-    // Every component this stylesheet paints a background on (apart from the
-    // callout itself and code, which keeps code colours) must be in the boundary.
-    const surfaced = new Set<string>();
-    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      if (!/\bbackground(?:-color)?\s*:/.test(body ?? '')) continue;
-      for (const [, name] of (selector ?? '').matchAll(/data-theme-component="([^"]+)"/g)) surfaced.add(name ?? '');
-    }
-    for (const name of ['callout', 'code', 'tab']) surfaced.delete(name);
-    for (const name of surfaced) expect(block, name).toContain(`[data-theme-component="${name}"]`);
+  it('leaves pre-v1 sites, which have no theme or solid callouts, without the rule', () => {
+    expect(projectThemeCss({ styling: { primaryColor: '#5546e8' } } as never)).not.toContain('[data-theme-callouts="solid"]');
   });
 
   it("draws the code block's language label at a contrast that reads on the dark chrome", () => {
