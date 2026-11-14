@@ -169,6 +169,48 @@ describe('scroll regions', () => {
     unmount();
   });
 
+  it('measures again when the web font loads and widens the code, which no observed box reports', async () => {
+    // A font set the test drives: `ready` settles when the test says, and
+    // `loadingdone` fires for a font that finishes later.
+    let fontsReady: () => void = () => undefined;
+    const fonts = Object.assign(new EventTarget(), {
+      ready: new Promise<void>((settle) => {
+        fontsReady = settle;
+      }),
+    });
+    Object.defineProperty(document, 'fonts', { configurable: true, value: fonts });
+    try {
+      // The fallback font fits.
+      layout.scrollWidth = 600;
+      layout.clientWidth = 600;
+      const { host, unmount } = mount();
+      const pre = () => host.querySelector('pre') as HTMLElement;
+      expect(pre().hasAttribute('role')).toBe(false);
+      // Geist Mono is wider: the text overflows, but the <pre> keeps its size.
+      layout.scrollWidth = 900;
+      await act(async () => {
+        fontsReady();
+        await fonts.ready;
+      });
+      flushFrames();
+      expect(pre().getAttribute('role')).toBe('region');
+      expect(pre().getAttribute('tabindex')).toBe('0');
+      expect(pre().getAttribute('aria-label')).toBe('Code: install.sh, Install');
+      expect(pre().hasAttribute('data-fade-end')).toBe(true);
+      // A font that loads later (and narrows things back) is measured too.
+      layout.scrollWidth = 600;
+      fonts.dispatchEvent(new Event('loadingdone'));
+      flushFrames();
+      expect(pre().hasAttribute('role')).toBe(false);
+      // Once unmounted, a font event schedules nothing.
+      unmount();
+      fonts.dispatchEvent(new Event('loadingdone'));
+      expect(frames).toHaveLength(0);
+    } finally {
+      Reflect.deleteProperty(document, 'fonts');
+    }
+  });
+
   it('numbers regions that would otherwise share a name, so landmarks stay distinguishable', () => {
     layout.scrollWidth = 1000;
     layout.clientWidth = 500;

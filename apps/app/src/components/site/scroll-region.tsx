@@ -52,7 +52,21 @@ export function useScrollOverflow(ref: RefObject<HTMLElement | null>): ScrollOve
       window.addEventListener('resize', schedule);
     }
     element.addEventListener('scroll', schedule, { passive: true });
+    // A web font (Geist Mono) can widen the text after the first measure
+    // without resizing any observed box: a <pre>'s <code> is inline, and
+    // ResizeObserver never reports inline boxes. Measure again once the fonts
+    // in use have loaded, and whenever a later one finishes.
+    const fonts = 'fonts' in document ? document.fonts : undefined;
+    let mounted = true;
+    fonts?.ready.then(() => {
+      if (mounted) {
+        schedule();
+      }
+    });
+    fonts?.addEventListener('loadingdone', schedule);
     return () => {
+      mounted = false;
+      fonts?.removeEventListener('loadingdone', schedule);
       observer?.disconnect();
       window.removeEventListener('resize', schedule);
       element.removeEventListener('scroll', schedule);
