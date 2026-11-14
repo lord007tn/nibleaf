@@ -1,6 +1,8 @@
 import { resolveLocale } from './locales';
 import type { MessageFn, MessageVariables } from './message-types';
 import { site_closeimage } from './paraglide/messages/site_closeimage.js';
+import { site_code } from './paraglide/messages/site_code.js';
+import { site_codeof } from './paraglide/messages/site_codeof.js';
 import { site_copied } from './paraglide/messages/site_copied.js';
 import { site_copycode } from './paraglide/messages/site_copycode.js';
 import { site_copyfailed } from './paraglide/messages/site_copyfailed.js';
@@ -11,6 +13,8 @@ import { site_details } from './paraglide/messages/site_details.js';
 import { site_required } from './paraglide/messages/site_required.js';
 import { site_showproperties } from './paraglide/messages/site_showproperties.js';
 import { site_tab } from './paraglide/messages/site_tab.js';
+import { site_table } from './paraglide/messages/site_table.js';
+import { site_tableof } from './paraglide/messages/site_tableof.js';
 import { site_videoloadsonplay } from './paraglide/messages/site_videoloadsonplay.js';
 import { site_videoplay } from './paraglide/messages/site_videoplay.js';
 import { site_videountitled } from './paraglide/messages/site_videountitled.js';
@@ -30,10 +34,13 @@ const contentVariableMessages = {
   viewFullSizeOf: site_viewfullsizeof,
   videoPlay: site_videoplay,
   videoWatch: site_videowatch,
+  tableOf: site_tableof,
+  codeOf: site_codeof,
 };
 
 const contentMessages = {
   closeImage: site_closeimage,
+  code: site_code,
   copied: site_copied,
   copyCode: site_copycode,
   copyFailed: site_copyfailed,
@@ -44,6 +51,7 @@ const contentMessages = {
   required: site_required,
   showProperties: site_showproperties,
   tab: site_tab,
+  table: site_table,
   videoLoadsOnPlay: site_videoloadsonplay,
   videoUntitled: site_videountitled,
   viewFullSize: site_viewfullsize,

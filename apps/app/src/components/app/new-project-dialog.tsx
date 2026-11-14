@@ -115,6 +115,8 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   const nameTaken =
     projects.data?.some((site) => site.name.trim().normalize('NFC').toLocaleLowerCase() === name.normalize('NFC').toLocaleLowerCase()) ?? false;
   const ready = Boolean(name && validSlug && result && !nameTaken && !taken && !availability.isFetching && !availability.isError);
+  // Why Continue can't be pressed yet. An empty name is the one case with no message of its own on the form.
+  const continueReason = !ready && !pending && !name ? t('newSite.reason.name') : undefined;
 
   const createSite = async () => {
     if ((await draft.submit()) !== 'saved') throw new Error('Site creation was not saved');
@@ -372,7 +374,14 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
             >
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={!ready || pending} loading={pending} loadingText={t('newSite.creating')} focusableWhenDisabled>
+            <Button
+              disabled={!ready || pending}
+              disabledReason={continueReason}
+              focusableWhenDisabled
+              loading={pending}
+              loadingText={t('newSite.creating')}
+              type="submit"
+            >
               {t('newSite.continue')}
             </Button>
           </DialogFooter>
