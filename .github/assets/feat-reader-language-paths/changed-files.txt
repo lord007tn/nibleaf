@@ -26,6 +26,7 @@ apps/app/src/components/site/ai-chat/message.tsx
 apps/app/src/components/site/ai-chat/panel.test.tsx
 apps/app/src/components/site/ai-chat/provider.tsx
 apps/app/src/components/site/language-fallback.test.tsx
+apps/app/src/components/site/page-actions.test.tsx
 apps/app/src/components/site/site-changelog.tsx
 apps/app/src/components/site/site-nav.test.tsx
 apps/app/src/components/site/site-nav.tsx

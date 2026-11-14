@@ -303,7 +303,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
             the reader's language and direction. */}
         {isPublicMarkdownPage(data) ? (
           <PageActions
-            pageHref={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix })}
+            pageHref={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix, languages: data.languages })}
             lang={readerLanguage}
             attributes={chromeLanguage}
             className="md:mt-1.5"
