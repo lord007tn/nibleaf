@@ -182,6 +182,17 @@ describe('create site dialog', () => {
     await type(nameField(), 'Another');
     expect(isDisabled(button('newSite.continue'))).toBe(true);
   });
+  // P2-DASH-013: with an empty name Continue was aria-disabled but looked enabled.
+  it('looks disabled and says why while the site has no name', async () => {
+    await render();
+    const continueButton = button('newSite.continue');
+    expect(isDisabled(continueButton)).toBe(true);
+    expect(continueButton.className).toContain('aria-disabled:opacity-50');
+    const reasonId = continueButton.getAttribute('aria-describedby')?.split(' ').at(-1);
+    expect(reasonId && document.getElementById(reasonId)?.textContent).toBe('newSite.reason.name');
+    await nameSite();
+    expect(isDisabled(button('newSite.continue'))).toBe(false);
+  });
   it('shows an inline duplicate-name warning and blocks advancing', async () => {
     mocks.sites = [{ name: '  ACME Docs ' }];
     await render();

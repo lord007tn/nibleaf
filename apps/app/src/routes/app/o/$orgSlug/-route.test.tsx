@@ -45,7 +45,22 @@ vi.mock('@/components/organization/use-access-loss', async (importOriginal) => (
   ...(await importOriginal<typeof import('@/components/organization/use-access-loss')>()),
   useAccessLoss: () => ({ lostOrganization: mocks.lostOrganization, lostWebsite: vi.fn() }),
 }));
-vi.mock('@/components/not-found', () => ({ NotFound: () => <h1 data-testid="not-found">not found</h1> }));
+vi.mock('@/components/app/dashboard-problem', () => ({
+  DashboardProblem: ({ kind = 'notFound', retry }: { kind?: 'notFound' | 'error'; retry?: { onRetry: () => void } }) => (
+    <main>
+      {kind === 'notFound' ? (
+        <h1 data-testid="not-found">not found</h1>
+      ) : (
+        <div role="alert">
+          <h1>error.title</h1>
+          <button onClick={retry?.onRetry} type="button">
+            error.tryAgain
+          </button>
+        </div>
+      )}
+    </main>
+  ),
+}));
 vi.mock('@/hooks/use-record-visit', () => ({ useRecordVisitEffect: mocks.recordVisit }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/layouts/organization', () => ({
@@ -144,13 +159,15 @@ describe('/app/o/$orgSlug route', () => {
     const host = await render();
     expect(host.querySelector('[data-testid="not-found"]')).not.toBeNull();
     expect(mocks.lostOrganization).not.toHaveBeenCalled();
-    expect(host.querySelector('main')).toBeNull();
+    // P2-DASH-026: inside the app shell, with its main landmark (DashboardProblem).
+    expect(host.querySelector('main [data-testid="not-found"]')).not.toBeNull();
   });
 
   it('another failure shows a retryable error instead of not-found', async () => {
     mocks.bySlug.mockRejectedValue(new ApiResponseError('Server error', 500));
     const host = await render();
-    expect(host.querySelector('[role="alert"]')).not.toBeNull();
+    // Inside the app shell too (DashboardProblem's error kind), with retry.
+    expect(host.querySelector('main [role="alert"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="not-found"]')).toBeNull();
     expect(mocks.lostOrganization).not.toHaveBeenCalled();
     mocks.bySlug.mockResolvedValue(detail('acme'));

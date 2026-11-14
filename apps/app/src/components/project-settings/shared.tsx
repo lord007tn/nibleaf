@@ -112,9 +112,21 @@ export function saveConfigSection(update: ConfigMutation, config: ProjectConfigU
  * label + helper-text field wrapper, segmented controls and toggle rows).
  */
 
+/** True inside a page whose tabs already name each section (Settings →
+ *  Appearance): the section keeps its heading for screen readers and outline
+ *  navigation, but doesn't repeat the tab's name on screen. */
+export const SectionNamedByTabs = createContext(false);
+
 /** The header at the top of every section pane: a muted glyph + the title, with
  *  an optional one-line description under it. */
 export function SectionHeader({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
+  if (useContext(SectionNamedByTabs))
+    return (
+      <div className="mb-6">
+        <h2 className="sr-only">{title}</h2>
+        {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
+      </div>
+    );
   return (
     <div className="mb-6 border-border border-b pb-3">
       <div className="flex items-center gap-2.5">

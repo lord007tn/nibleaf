@@ -16,12 +16,15 @@ const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:rin
 function ThemeToggle({ copy }: { copy: ShellCopy['theme'] }) {
   const { resolvedTheme, setTheme } = useTheme();
   const dark = resolvedTheme === 'dark';
-  const label = dark ? copy.toLight : copy.toDark;
+  // One toggle pattern across Nibleaf's public sites (P3-MKT-009): a constant
+  // name, pressed while dark, as the docs reader's toggle; the tooltip says
+  // what a click does.
   return (
     <button
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={copy.darkMode}
+      aria-pressed={dark}
+      title={dark ? copy.toLight : copy.toDark}
       onClick={() => setTheme(dark ? 'light' : 'dark')}
       className={`grid size-11 shrink-0 place-items-center rounded-md border border-border bg-background hover:bg-muted ${focus}`}
     >
@@ -70,7 +73,8 @@ export function MarketingSiteShell({
         <div className="mx-auto flex min-h-20 max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6">
           <a href={lang === 'ar' ? '/ar' : '/'} aria-label={copy.homeLabel} className="flex min-h-11 shrink-0 items-center gap-2">
             <NibleafMark aria-hidden="true" className="size-8" />
-            <NibleafWordmark aria-hidden="true" className="w-24" />
+            {/* Sized by its text: a fixed-width box left a gap beside the mark in RTL (P3-MKT-008). */}
+            <NibleafWordmark aria-hidden="true" />
           </a>
           <nav aria-label={copy.primaryNavLabel} className="ms-2 hidden items-center gap-3 text-muted-foreground text-sm lg:flex xl:ms-6 xl:gap-5">
             {copy.nav.slice(0, 5).map((link) => (
