@@ -1,0 +1,220 @@
+{
+  "attempted": 0,
+  "results": [
+    {
+      "name": "after-sheet-en-1440-light.png",
+      "state": "sheet",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light"
+    },
+    {
+      "name": "after-broken-link-landing-en-1440-light.png",
+      "state": "broken-link-landing",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "url": "?page=cmwgd8qmq000o4gyolsebe88l",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "/configuration",
+      "active": "input[Search pages or paste a link]=/configuration",
+      "bar": "Broken link /configuration · 1 of 2PreviousNextBack to publish",
+      "barDir": "ltr",
+      "barRect": {
+        "left": 260,
+        "right": 1425,
+        "top": 56,
+        "bottom": 105
+      },
+      "highlights": 2,
+      "vw": 1440,
+      "dir": "ltr"
+    },
+    {
+      "name": "after-opaque-block-en-1440-light.png",
+      "state": "opaque-block",
+      "lang": "en",
+      "width": 1440,
+      "theme": "light",
+      "url": "?page=cmwgd8qn9000r4gyoysfapv5j",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "",
+      "active": "button",
+      "bar": "Broken link /legacy-keys · 1 of 1 · This one is inside a block the visual editor keeps as written. Edit the page as Markdown to fix it.Edit as Markdown (advanced)PreviousNextBack to publish",
+      "barDir": "ltr",
+      "barRect": {
+        "left": 260,
+        "right": 1425,
+        "top": 56,
+        "bottom": 112
+      },
+      "highlights": 1,
+      "vw": 1440,
+      "dir": "ltr"
+    },
+    {
+      "name": "after-broken-link-landing-en-1440-dark.png",
+      "state": "broken-link-landing",
+      "lang": "en",
+      "width": 1440,
+      "theme": "dark",
+      "url": "?page=cmwgd8qmq000o4gyolsebe88l",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "/configuration",
+      "active": "input[Search pages or paste a link]=/configuration",
+      "bar": "Broken link /configuration · 1 of 2PreviousNextBack to publish",
+      "barDir": "ltr",
+      "barRect": {
+        "left": 260,
+        "right": 1425,
+        "top": 56,
+        "bottom": 105
+      },
+      "highlights": 2,
+      "vw": 1440,
+      "dir": "ltr"
+    },
+    {
+      "name": "after-broken-link-landing-en-390-light.png",
+      "state": "broken-link-landing",
+      "lang": "en",
+      "width": 390,
+      "theme": "light",
+      "url": "?page=cmwgd8qmq000o4gyolsebe88l",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "/configuration",
+      "active": "input[Search pages or paste a link]=/configuration",
+      "bar": "Broken link /configuration · 1 of 2PreviousNextBack to publish",
+      "barDir": "ltr",
+      "barRect": {
+        "left": 0,
+        "right": 390,
+        "top": 85,
+        "bottom": 487
+      },
+      "highlights": 2,
+      "vw": 390,
+      "dir": "ltr"
+    },
+    {
+      "name": "after-broken-link-landing-en-390-dark.png",
+      "state": "broken-link-landing",
+      "lang": "en",
+      "width": 390,
+      "theme": "dark",
+      "url": "?page=cmwgd8qmq000o4gyolsebe88l",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "/configuration",
+      "active": "input[Search pages or paste a link]=/configuration",
+      "bar": "Broken link /configuration · 1 of 2PreviousNextBack to publish",
+      "barDir": "ltr",
+      "barRect": {
+        "left": 0,
+        "right": 390,
+        "top": 85,
+        "bottom": 487
+      },
+      "highlights": 2,
+      "vw": 390,
+      "dir": "ltr"
+    },
+    {
+      "name": "after-broken-link-landing-ar-1440-light.png",
+      "state": "broken-link-landing",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "light",
+      "url": "?page=cmwgd8qmq000o4gyolsebe88l",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "/configuration",
+      "active": "input[ابحث في الصفحات أو الصق رابطًا]=/configuration",
+      "bar": "رابط معطّل /configuration · 1 من 2السابقالتاليالعودة إلى النشر",
+      "barDir": "rtl",
+      "barRect": {
+        "left": 0,
+        "right": 1165,
+        "top": 56,
+        "bottom": 105
+      },
+      "highlights": 2,
+      "vw": 1440,
+      "dir": "rtl"
+    },
+    {
+      "name": "after-broken-link-landing-ar-1440-dark.png",
+      "state": "broken-link-landing",
+      "lang": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "url": "?page=cmwgd8qmq000o4gyolsebe88l",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "/configuration",
+      "active": "input[ابحث في الصفحات أو الصق رابطًا]=/configuration",
+      "bar": "رابط معطّل /configuration · 1 من 2السابقالتاليالعودة إلى النشر",
+      "barDir": "rtl",
+      "barRect": {
+        "left": 0,
+        "right": 1165,
+        "top": 56,
+        "bottom": 105
+      },
+      "highlights": 2,
+      "vw": 1440,
+      "dir": "rtl"
+    },
+    {
+      "name": "after-broken-link-landing-ar-390-light.png",
+      "state": "broken-link-landing",
+      "lang": "ar",
+      "width": 390,
+      "theme": "light",
+      "url": "?page=cmwgd8qmq000o4gyolsebe88l",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "/configuration",
+      "active": "input[ابحث في الصفحات أو الصق رابطًا]=/configuration",
+      "bar": "رابط معطّل /configuration · 1 من 2السابقالتاليالعودة إلى النشر",
+      "barDir": "rtl",
+      "barRect": {
+        "left": 0,
+        "right": 390,
+        "top": 85,
+        "bottom": 256
+      },
+      "highlights": 2,
+      "vw": 390,
+      "dir": "rtl"
+    },
+    {
+      "name": "after-broken-link-landing-ar-390-dark.png",
+      "state": "broken-link-landing",
+      "lang": "ar",
+      "width": 390,
+      "theme": "dark",
+      "url": "?page=cmwgd8qmq000o4gyolsebe88l",
+      "scrollTop": 0,
+      "winScroll": 0,
+      "selection": "/configuration",
+      "active": "input[ابحث في الصفحات أو الصق رابطًا]=/configuration",
+      "bar": "رابط معطّل /configuration · 1 من 2السابقالتاليالعودة إلى النشر",
+      "barDir": "rtl",
+      "barRect": {
+        "left": 0,
+        "right": 390,
+        "top": 85,
+        "bottom": 256
+      },
+      "highlights": 2,
+      "vw": 390,
+      "dir": "rtl"
+    }
+  ],
+  "note": "en-1440-light shots retaken in a second run that waits for arrival to finish (the first run's cold dev-mode load had not finished at 5 s); attempted is summed over both runs."
+}
