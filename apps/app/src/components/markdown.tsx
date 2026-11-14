@@ -172,6 +172,36 @@ function useShownContent(content: string): string {
   return waitsForMath ? shown : content;
 }
 
+/** Whether content can mount without waiting on KaTeX: false only while a
+ *  rich page with math waits for the math module on the client. A view that
+ *  mounts a freshly fetched page (the dashboard preview, between its loading
+ *  skeleton and the page) keeps its own loading state meanwhile, so the article
+ *  never appears with raw TeX. A failed download counts as settled: the
+ *  island then retries and says so, as everywhere else. */
+export function useMathReady(content: string | undefined): boolean {
+  const needsMath = useMemo(() => {
+    if (typeof content !== 'string') return false;
+    const { rich, math } = readerRenderMode(content);
+    return rich && math;
+  }, [content]);
+  const loaded = mathMarkdownModule.status() === 'loaded';
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!needsMath || loaded) return;
+    let current = true;
+    mathMarkdownModule
+      .load()
+      .catch(() => undefined)
+      .finally(() => {
+        if (current) setSettled(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [needsMath, loaded]);
+  return !needsMath || loaded || settled;
+}
+
 /** Render Markdown + MDX-style components (Cards, Tabs, Steps, Callouts…) with
  *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting.
  *  Pass `site` on a published site so internal links resolve to the site base. */

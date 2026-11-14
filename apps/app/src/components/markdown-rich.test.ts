@@ -144,4 +144,35 @@ describe('preview page switches', () => {
     act(() => root.unmount());
     host.remove();
   });
+
+  it('holds a freshly mounted math page until KaTeX is in (the preview between its skeleton and the page)', async () => {
+    vi.resetModules();
+    const { act } = await import('react');
+    const { createRoot } = await import('react-dom/client');
+    const { useMathReady } = await import('./markdown');
+    const modules = await import('@/lib/reader-hydration-modules');
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    await modules.richMarkdownModule.load();
+    expect(modules.mathMarkdownModule.status()).toBe('idle');
+    const seen: boolean[] = [];
+    const Probe = ({ content }: { content: string }) => {
+      seen.push(useMathReady(content));
+      return null;
+    };
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    // A rich page without math, then (after the skeleton) a fresh mount of one with math.
+    act(() => root.render(createElement(Probe, { content: '<Note>No math</Note>' })));
+    expect(seen.at(-1)).toBe(true);
+    act(() => root.render(null));
+    seen.length = 0;
+    act(() => root.render(createElement(Probe, { content: '<Note>Hi</Note>\n\nThe area is $x^2$.' })));
+    expect(seen[0]).toBe(false);
+    await act(async () => {
+      await modules.mathMarkdownModule.load();
+    });
+    await act(async () => undefined);
+    expect(seen.at(-1)).toBe(true);
+    act(() => root.unmount());
+  });
 });
