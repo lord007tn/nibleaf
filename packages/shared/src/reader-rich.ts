@@ -71,15 +71,17 @@ const MATH_FENCE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*math\b/im;
 /** The classes rehype-katex typesets in raw HTML (`language-math` as display math). */
 export const MATH_CLASS = /\b(?:math-(?:inline|display)|language-math)\b/;
 
-/** Numeric character references decoded (`&#45;`, `&#x2d;`, with or without
- *  the semicolon), as the HTML parser reads an attribute before rehype-katex
- *  sees its class. Named references don't matter here: no ASCII letter or `-`
- *  has one. */
+/** Numeric character references decoded (`&#45;`, `&#x2d;`, `&#0000045;`,
+ *  with or without the semicolon), as the HTML parser reads an attribute before
+ *  rehype-katex sees its class: every digit is consumed, leading zeroes
+ *  included, and a value outside Unicode becomes U+FFFD. Named references don't
+ *  matter here: no ASCII letter or `-` has one. */
 export const decodeNumericReferences = (text: string): string =>
   text.includes('&#')
-    ? text.replace(/&#(?:[xX]([0-9a-fA-F]{1,6})|(\d{1,7}));?/g, (reference, hex: string | undefined, decimal: string | undefined) => {
-        const code = hex ? Number.parseInt(hex, 16) : Number(decimal);
-        return code > 0 && code <= 0x10_ff_ff ? String.fromCodePoint(code) : reference;
+    ? text.replace(/&#(?:[xX]([0-9a-fA-F]+)|(\d+));?/g, (_reference, hex: string | undefined, decimal: string | undefined) => {
+        const code = hex ? Number.parseInt(hex, 16) : Number.parseInt(decimal ?? '', 10);
+        const valid = code > 0 && code <= 0x10_ff_ff && !(code >= 0xd8_00 && code <= 0xdf_ff);
+        return valid ? String.fromCodePoint(code) : '\uFFFD';
       })
     : text;
 
@@ -99,15 +101,16 @@ const containsUnescapedMath = (text: string): boolean => {
   return false;
 };
 
-/** Math outside code, by the line scan (the fallback past the parser's bounds,
- * and the navigation preloader): only such pages load KaTeX (PUB-017). It errs
- * towards loading: a miss would leave raw TeX on a rich page. Class names count
- * only outside code spans and fences (`math-inline` in a CSS sample is not math),
- * read after decoding character references (`math&#45;inline` is). */
-export const needsMathMarkdown = (content: string): boolean => {
-  const prose = withoutCode(content);
-  return containsUnescapedMath(prose) || MATH_FENCE.test(content) || MATH_CLASS.test(decodeNumericReferences(prose));
-};
+/** Whether a page may hold math, by the line scan (the fallback past the
+ * parser's bounds, and the navigation preloader). It errs towards loading: a
+ * miss would leave raw TeX on a rich page. Dollars count anywhere, code
+ * included, since remark-math can read a delimiter where plain Markdown sees a
+ * code span (`$\`x$\``). Class names count outside code spans and fences, read
+ * after decoding character references (`math&#45;inline` is math). It only
+ * matters on a rich page: the plain renderer has no math syntax, and the
+ * preloader fetches KaTeX only with the rich renderer. */
+export const needsMathMarkdown = (content: string): boolean =>
+  containsUnescapedMath(content) || MATH_FENCE.test(content) || MATH_CLASS.test(decodeNumericReferences(withoutCode(content)));
 
 /** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
  * detection conservative—false positives only load the richer renderer, while

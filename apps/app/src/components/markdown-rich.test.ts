@@ -4,7 +4,7 @@ import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { needsRichMarkdown } from '@/lib/reader-hydration-modules';
+import { articleRendererModules, mathMarkdownModule, needsRichMarkdown, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { mathPlugins } from './markdown-math';
 import RichMarkdown from './markdown-rich';
 
@@ -17,6 +17,22 @@ describe('conditional Markdown renderer', () => {
     'uses the SSR-capable rich renderer for %s',
     (content) => expect(needsRichMarkdown(content)).toBe(true),
   );
+
+  it.each([
+    '<Note>Hi</Note>\n\n$`x$`',
+    '<Note>Hi</Note>\n\n$[x](https://example.com/$)',
+    '<Note>Hi</Note>\n\n$<span title="$">',
+    '<code class="math&#0000000045;inline">x^2</code>',
+  ])('detects math wherever the rich renderer typesets it: %s', (content) => {
+    expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
+    expect(renderToStaticMarkup(createElement(RichMarkdown, { content, math: mathPlugins }))).toContain('class="katex"');
+  });
+
+  it('preloads KaTeX only with the rich renderer, never for a code-only page', () => {
+    expect(articleRendererModules('Run `echo $HOME and $PATH`.\n\nUse `math-inline` in CSS.')).toEqual([]);
+    expect(articleRendererModules('<Note>Hi</Note>\n\n$`x$`')).toEqual([richMarkdownModule, mathMarkdownModule]);
+    expect(articleRendererModules('<Note>Hi</Note>')).toEqual([richMarkdownModule]);
+  });
 
   it('does not mistake escaped dollar signs for math', () => {
     expect(needsRichMarkdown('The plan costs \\$5 per month.')).toBe(false);

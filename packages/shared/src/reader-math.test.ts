@@ -30,6 +30,12 @@ describe('math detection', () => {
     ['a hex-encoded math class', '<code class="math&#x2d;display">x^2</code>'],
     ['an entity-encoded language-math class', '<pre><code class="l&#97;nguage-math">x^2</code></pre>'],
     ['an escaped backslash before math on an MDX page', '<Note>Hi</Note>\n\n\\\\$x$ is the variable.'],
+    ['a delimiter plain Markdown reads as a code span', '<Note>Hi</Note>\n\n$`x$`'],
+    ['a delimiter in a link destination', '<Note>Hi</Note>\n\n$[x](https://example.com/$)'],
+    ['a delimiter in an HTML attribute', '<Note>Hi</Note>\n\n$<span title="$">'],
+    ['math in link text', '<Note>Hi</Note>\n\n[the $x$ axis](https://example.com)'],
+    ['a math class with leading-zero decimal digits', '<code class="math&#0000000045;inline">x^2</code>'],
+    ['a math class with leading-zero hex digits', '<code class="math&#x00000002d;inline">x^2</code>'],
   ])('loads KaTeX for %s, which the renderer typesets', (_name, content) => {
     const mode = readerRenderMode(content);
     expect(mode).toMatchObject({ rich: true, math: true });
@@ -40,6 +46,12 @@ describe('math detection', () => {
     for (const content of ['Use `math-inline` in CSS.', '```css\n.math-display { margin: 0 }\n```']) {
       expect(needsMathMarkdown(content), content).toBe(false);
       expect(readerRenderMode(content).math, content).toBe(false);
+    }
+  });
+
+  it('reads math on a rich page exactly as remark-math does: escaped and unpaired dollars are not math', () => {
+    for (const content of ['<Note>Hi</Note>\n\nCosts \\$5 and \\$10.', '<Note>Hi</Note>\n\nPrices: $5.\n\nAnd $10 later.']) {
+      expect(readerRenderMode(content), content).toMatchObject({ rich: true, math: false });
     }
   });
 

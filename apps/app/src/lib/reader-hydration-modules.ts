@@ -44,6 +44,12 @@ export const highlightLanguageModule = (name: LazyHighlightLanguage): HydrationM
   return module;
 };
 
+/** The renderer modules beyond the article's own that a page needs: the rich
+ *  renderer for raw HTML/MDX or math, and KaTeX only with it (the plain
+ *  renderer has no math syntax, so a code-only page never fetches KaTeX). */
+export const articleRendererModules = (content: string) =>
+  needsRichMarkdown(content) ? [richMarkdownModule, ...(needsMathMarkdown(content) ? [mathMarkdownModule] : [])] : [];
+
 /** Loads the renderers an article needs before it renders, so navigating to it
  *  never shows a fallback first. Never rejects: a failed download is left to
  *  the article's island, which retries and says so inline (not the route's
@@ -52,14 +58,7 @@ export const loadArticleRenderer = async (content: string): Promise<void> => {
   const grammars = import('@/lib/highlight-languages')
     .then((languages) => Promise.all(languages.lazyHighlightLanguages(content).map((name) => highlightLanguageModule(name).load())))
     .catch(() => undefined);
-  await Promise.all([
-    ...[
-      articleMarkdownModule,
-      ...(needsRichMarkdown(content) ? [richMarkdownModule] : []),
-      ...(needsMathMarkdown(content) ? [mathMarkdownModule] : []),
-    ].map((module) => module.load().catch(() => undefined)),
-    grammars,
-  ]);
+  await Promise.all([...[articleMarkdownModule, ...articleRendererModules(content)].map((module) => module.load().catch(() => undefined)), grammars]);
 };
 
 /** Loads the reader modules whose markup is in the server HTML under `root`

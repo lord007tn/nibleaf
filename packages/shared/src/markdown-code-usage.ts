@@ -15,6 +15,7 @@ import type { Nodes } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { gfm } from 'micromark-extension-gfm';
+import remarkMath from 'remark-math';
 // The renderer's math delimiters, read as its line-based check reads them.
 import { containsMath, decodeNumericReferences, MATH_CLASS } from './reader-rich';
 
@@ -37,6 +38,21 @@ const MAX_MARKERS = 40_000;
 const MARKERS = new Set(['*', '_', '[', ']', '<', '>']);
 
 const CLASS_LANGUAGE = /\blang(?:uage)?-([^\s"'`>]+)/g;
+
+type ParseOptions = NonNullable<Parameters<typeof fromMarkdown>[1]>;
+
+/** The math syntax the rich renderer parses with, taken from its own plugin:
+ *  remark-math only registers its micromark and mdast extensions on the
+ *  processor's data, so calling it on a data store yields exactly those. */
+const MATH_SYNTAX = (() => {
+  const data: { micromarkExtensions?: ParseOptions['extensions']; fromMarkdownExtensions?: ParseOptions['mdastExtensions'] } = {};
+  (remarkMath as unknown as (this: { data: () => typeof data }) => void).call({ data: () => data });
+  return { extensions: data.micromarkExtensions ?? [], mdastExtensions: data.fromMarkdownExtensions ?? [] };
+})();
+
+/** Whether a tree parsed with the math syntax holds inline or display math. */
+const hasMathNode = (node: { type: string; children?: unknown[] }): boolean =>
+  node.type === 'inlineMath' || node.type === 'math' || (node.children ?? []).some((child) => hasMathNode(child as typeof node));
 
 /** Null when the document is too large or marker-dense to parse safely. */
 export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null => {
@@ -69,14 +85,20 @@ export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null =>
     if ('children' in node) for (const child of node.children as Nodes[]) visit(child);
   };
   visit(fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] }));
-  const text = prose.join('\n');
-  const inlineMath = containsMath(text);
-  // Text nodes have their escapes resolved already: `\\$x$` (an escaped
-  // backslash, then math) arrives as `\$x$`, which containsMath reads as an
-  // escaped dollar. KaTeX loads on any two dollars in prose instead: a false
-  // positive only loads it, a miss would leave raw TeX on a rich page. Whether
-  // the page is rich is decided as before.
-  const first = text.indexOf('$');
-  const dollars = first >= 0 && text.indexOf('$', first + 1) >= 0;
-  return { languages: [...languages].sort(), rich: rich || inlineMath, math: dollars || htmlMath || languages.has('math') };
+  const isRich = rich || containsMath(prose.join('\n'));
+  // Whether the page is rich is decided as before. Math only matters on a rich
+  // page (the plain renderer has no math syntax), and there it is read with
+  // remark-math's own syntax, as the rich renderer parses: plain Markdown can
+  // hide a delimiter in what it reads as a code span, a link destination or an
+  // attribute (`$\`x$\``), and resolves escapes (`\\$x$` is math).
+  const syntaxMath =
+    isRich &&
+    markdown.includes('$') &&
+    hasMathNode(
+      fromMarkdown(markdown, {
+        extensions: [gfm(), ...MATH_SYNTAX.extensions],
+        mdastExtensions: [gfmFromMarkdown(), ...MATH_SYNTAX.mdastExtensions],
+      }),
+    );
+  return { languages: [...languages].sort(), rich: isRich, math: syntaxMath || htmlMath || languages.has('math') };
 };
