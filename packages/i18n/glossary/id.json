@@ -1,0 +1,128 @@
+{
+  "style": "Formal address with «Anda» (always capitalised), as in the existing reader and marketing strings; never kamu. Buttons and tabs: a short imperative without -lah (Simpan, Terbitkan, Hapus), no final period. Quote marks “…”, nested ‘…’. A space between a number and its unit (30 hari, 5 MB). Decimal comma (1,5) and dot thousands (1.000). Prefer native words where a SaaS product uses them (tautan, unggah, unduh, pengaturan) and keep established loanwords (webhook, token, Admin, Editor, live). Plural messages may use one form: Indonesian has no grammatical plural.",
+  "terms": {
+    "site": {
+      "translation": "situs",
+      "note": "Never «proyek»; «situs web» only where English stresses website."
+    },
+    "organization": {
+      "translation": "organisasi",
+      "note": "Never «ruang kerja»."
+    },
+    "page": { "translation": "halaman" },
+    "group": { "translation": "grup" },
+    "page-tree": { "translation": "pohon halaman" },
+    "publish": {
+      "translation": "terbitkan; diterbitkan; publikasi",
+      "short": "Terbitkan",
+      "note": "Noun «publikasi» for one entry in the publish history."
+    },
+    "draft": { "translation": "draf" },
+    "unpublished-changes": {
+      "translation": "perubahan yang belum diterbitkan"
+    },
+    "preview": { "translation": "pratinjau", "short": "Pratinjau" },
+    "live-site": {
+      "translation": "situs live",
+      "note": "The version readers see now."
+    },
+    "reader": { "translation": "pembaca" },
+    "member": { "translation": "anggota" },
+    "people": { "translation": "Orang" },
+    "invitation": { "translation": "undangan", "short": "Undang" },
+    "join-link": { "translation": "tautan bergabung" },
+    "role": { "translation": "peran" },
+    "role-owner": { "translation": "Pemilik" },
+    "role-admin": {
+      "translation": "Admin",
+      "note": "Loanword used as is; listed under sameAsEnglish where the whole string is the role name."
+    },
+    "role-editor": {
+      "translation": "Editor",
+      "note": "Loanword used as is, like the editing screen."
+    },
+    "role-viewer": { "translation": "Pelihat" },
+    "server-admin": { "translation": "administrator server" },
+    "account": { "translation": "akun" },
+    "sign-in": { "translation": "masuk; daftar; keluar" },
+    "settings": { "translation": "pengaturan" },
+    "general": { "translation": "Umum" },
+    "appearance": { "translation": "Tampilan" },
+    "theme": { "translation": "tema" },
+    "custom-domain": { "translation": "domain khusus" },
+    "domain": { "translation": "domain; alamat" },
+    "redirect": { "translation": "pengalihan" },
+    "visibility": { "translation": "akses; visibilitas" },
+    "add-on": { "translation": "pengaya" },
+    "integration": { "translation": "integrasi" },
+    "webhook": { "translation": "webhook" },
+    "api-key": { "translation": "kunci API" },
+    "token": { "translation": "token" },
+    "branch": { "translation": "cabang" },
+    "sync": { "translation": "sinkronisasi; sinkronkan" },
+    "import": { "translation": "impor" },
+    "export": { "translation": "ekspor" },
+    "language": {
+      "translation": "bahasa",
+      "note": "Source language: bahasa sumber."
+    },
+    "ask-ai": { "translation": "Tanya AI" },
+    "ai-assistant": { "translation": "asisten AI" },
+    "smart-ai": {
+      "translation": "Jawaban AI",
+      "note": "The English UI names this section AI answers."
+    },
+    "analytics": { "translation": "Analitik", "note": "Not «Analisis»." },
+    "page-views": {
+      "translation": "tayangan halaman",
+      "short": "Tayangan",
+      "note": "Not «tampilan», which is Appearance."
+    },
+    "visits": { "translation": "kunjungan" },
+    "searches": { "translation": "pencarian" },
+    "feedback": { "translation": "masukan" },
+    "period": { "translation": "periode; rentang" },
+    "compare": {
+      "translation": "bandingkan dengan periode sebelumnya",
+      "short": "Bandingkan"
+    },
+    "web-vitals": {
+      "translation": "Web Vitals (Konten utama muncul, Respons terhadap klik, Tata letak tetap stabil)"
+    },
+    "ai-crawlers": { "translation": "crawler AI; visibilitas AI" },
+    "plan": { "translation": "paket", "note": "Not «rencana»." },
+    "usage": { "translation": "penggunaan" },
+    "billing": { "translation": "penagihan" },
+    "notifications": { "translation": "notifikasi" },
+    "history": { "translation": "riwayat" },
+    "version": { "translation": "versi" },
+    "restore": { "translation": "pulihkan" },
+    "promote": {
+      "translation": "gabungkan ke main",
+      "note": "main stays as written: it is the branch name."
+    },
+    "rollback": { "translation": "kembalikan; rollback" },
+    "checks": {
+      "translation": "pemeriksaan sebelum terbit",
+      "note": "Fix button: «Perbaiki»."
+    },
+    "danger-zone": { "translation": "Zona bahaya" },
+    "delete": { "translation": "hapus; pindahkan ke Sampah" },
+    "trash": { "translation": "Sampah" },
+    "delete-permanently": { "translation": "hapus permanen" },
+    "remove": {
+      "translation": "hapus; keluarkan",
+      "note": "For members: «keluarkan dari organisasi»."
+    },
+    "save": {
+      "translation": "simpan; tersimpan; perubahan yang belum disimpan"
+    },
+    "cancel": { "translation": "Batal" },
+    "copy": { "translation": "salin; disalin" },
+    "self-hosted": { "translation": "di-host sendiri" },
+    "dashboard": { "translation": "dasbor" },
+    "editor-screen": { "translation": "editor" },
+    "component": { "translation": "komponen; blok" },
+    "callout": { "translation": "kotak keterangan" }
+  }
+}
