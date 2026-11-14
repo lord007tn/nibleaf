@@ -1,0 +1,112 @@
+{
+  "terms": {
+    "site": {
+      "translation": "साइट",
+      "note": "Feminine: साइटें (plural), आपकी साइट. Not वेबसाइट."
+    },
+    "organization": {
+      "translation": "संगठन",
+      "note": "Never वर्कस्पेस or कार्यक्षेत्र, even where English still says workspace."
+    },
+    "page": { "translation": "पेज", "note": "Not पृष्ठ." },
+    "group": { "translation": "समूह" },
+    "page-tree": { "translation": "पेज ट्री" },
+    "publish": {
+      "translation": "प्रकाशित करें",
+      "short": "प्रकाशित करें",
+      "note": "Noun: प्रकाशन."
+    },
+    "draft": { "translation": "ड्राफ़्ट" },
+    "unpublished-changes": { "translation": "अप्रकाशित बदलाव" },
+    "preview": { "translation": "प्रीव्यू" },
+    "live-site": { "translation": "लाइव साइट" },
+    "reader": { "translation": "पाठक" },
+    "member": { "translation": "सदस्य" },
+    "people": { "translation": "लोग" },
+    "invitation": { "translation": "आमंत्रण", "short": "आमंत्रित करें" },
+    "join-link": { "translation": "जुड़ने का लिंक" },
+    "role": { "translation": "भूमिका" },
+    "role-owner": { "translation": "स्वामी" },
+    "role-admin": { "translation": "एडमिन" },
+    "role-editor": {
+      "translation": "संपादक",
+      "note": "The editing screen is एडिटर."
+    },
+    "role-viewer": { "translation": "दर्शक" },
+    "server-admin": {
+      "translation": "सर्वर व्यवस्थापक",
+      "note": "Kept distinct from the एडमिन role."
+    },
+    "account": { "translation": "खाता" },
+    "sign-in": { "translation": "साइन इन करें / साइन अप करें / साइन आउट करें" },
+    "settings": { "translation": "सेटिंग्स" },
+    "general": { "translation": "सामान्य" },
+    "appearance": { "translation": "दिखावट" },
+    "theme": { "translation": "थीम" },
+    "custom-domain": { "translation": "कस्टम डोमेन" },
+    "domain": {
+      "translation": "डोमेन",
+      "note": "पता when English means the address in general."
+    },
+    "redirect": { "translation": "रीडायरेक्ट" },
+    "visibility": {
+      "translation": "दृश्यता",
+      "note": "एक्सेस when English says access."
+    },
+    "add-on": { "translation": "ऐड-ऑन" },
+    "integration": { "translation": "एकीकरण" },
+    "webhook": { "translation": "वेबहुक" },
+    "api-key": { "translation": "API कुंजी" },
+    "token": { "translation": "टोकन" },
+    "branch": { "translation": "ब्रांच" },
+    "sync": { "translation": "सिंक" },
+    "import": { "translation": "आयात" },
+    "export": { "translation": "निर्यात" },
+    "language": {
+      "translation": "भाषा",
+      "note": "Source language: स्रोत भाषा."
+    },
+    "ask-ai": { "translation": "AI से पूछें" },
+    "ai-assistant": { "translation": "AI सहायक" },
+    "smart-ai": { "translation": "स्मार्ट AI" },
+    "analytics": { "translation": "एनालिटिक्स" },
+    "page-views": { "translation": "पेज व्यू" },
+    "visits": { "translation": "विज़िट" },
+    "searches": { "translation": "खोजें" },
+    "feedback": { "translation": "फ़ीडबैक" },
+    "period": { "translation": "अवधि" },
+    "compare": { "translation": "पिछली अवधि से तुलना" },
+    "web-vitals": {
+      "translation": "Web Vitals (मुख्य कंटेंट दिखने की गति, क्लिक पर प्रतिक्रिया, लेआउट की स्थिरता)",
+      "note": "Web Vitals, LCP, INP and CLS stay in English."
+    },
+    "ai-crawlers": { "translation": "AI क्रॉलर / AI दृश्यता" },
+    "plan": { "translation": "प्लान" },
+    "usage": { "translation": "उपयोग" },
+    "billing": { "translation": "बिलिंग" },
+    "notifications": { "translation": "सूचनाएँ" },
+    "history": { "translation": "इतिहास" },
+    "version": { "translation": "संस्करण" },
+    "restore": { "translation": "पुनर्स्थापित करें", "short": "वापस लाएँ" },
+    "promote": {
+      "translation": "मुख्य कंटेंट में मर्ज करें",
+      "note": "Not प्रकाशित करें: promoting merges a branch, publishing makes the draft live."
+    },
+    "rollback": { "translation": "रोलबैक करें" },
+    "checks": { "translation": "प्रकाशन जाँच", "short": "ठीक करें" },
+    "danger-zone": { "translation": "जोखिम क्षेत्र" },
+    "delete": { "translation": "हटाएँ / ट्रैश में ले जाएँ" },
+    "trash": { "translation": "ट्रैश" },
+    "delete-permanently": { "translation": "स्थायी रूप से हटाएँ" },
+    "remove": { "translation": "निकालें" },
+    "save": { "translation": "सहेजें / सहेजा गया / बिना सहेजे बदलाव" },
+    "cancel": { "translation": "रद्द करें" },
+    "copy": { "translation": "कॉपी करें / कॉपी हो गया" },
+    "self-hosted": { "translation": "सेल्फ़-होस्टेड" },
+    "dashboard": { "translation": "डैशबोर्ड" },
+    "editor-screen": { "translation": "एडिटर" },
+    "component": { "translation": "ब्लॉक" },
+    "callout": { "translation": "कॉलआउट" }
+  },
+  "style": "Polite आप with the करें imperative (सहेजें, हटाएँ, प्रकाशित करें). Common tech loanwords in Devanagari (साइट, पेज, डोमेन, टोकन); product and technical names in Latin script. End sentences with the danda । (no space before it); keep ? and ! as is. Curly quotes “ ”, ellipsis …. Nukta spellings: ड्राफ़्ट, फ़ीडबैक, ज़रूरत. Chandrabindu in -एँ endings (हटाएँ, सूचनाएँ). Western digits. Plural messages keep one and *."
+}
