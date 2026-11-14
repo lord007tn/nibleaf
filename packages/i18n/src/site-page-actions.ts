@@ -8,7 +8,7 @@ import { site_pageactions } from './paraglide/messages/site_pageactions.js';
 import { site_pagecopied } from './paraglide/messages/site_pagecopied.js';
 import { site_pagecopyfailed } from './paraglide/messages/site_pagecopyfailed.js';
 import { site_viewmarkdownhint } from './paraglide/messages/site_viewmarkdownhint.js';
-import { type SiteMessageKey, siteT } from './site';
+import { siteT } from './site';
 
 /*
  * The page actions' own messages (PUB-018): the split button by the page title
@@ -32,8 +32,12 @@ export type SitePageActionsMessageKey = keyof typeof pageActionMessages;
 
 const isPageActionKey = (key: string): key is SitePageActionsMessageKey => key in pageActionMessages;
 
-/** Translates the page actions' own keys and, through `siteT`, every other plain reader key. */
-export function sitePageActionsT(language?: string): (key: SitePageActionsMessageKey | SiteMessageKey) => string {
+/** The one plain reader key the page actions borrow from `siteT`. Listing it keeps
+ *  variable or counted keys (which this translator can't fill) out of its type. */
+type BorrowedSiteKey = 'viewMarkdown';
+
+/** Translates the page actions' own keys and the reader key they borrow. */
+export function sitePageActionsT(language?: string): (key: SitePageActionsMessageKey | BorrowedSiteKey) => string {
   const locale = resolveLocale(language) ?? 'en';
   const site = siteT(language) as (key: string) => string;
   return (key) => (isPageActionKey(key) ? pageActionMessages[key](undefined, { locale }) : site(key));
