@@ -36,7 +36,8 @@ export const calloutSlashItems: SlashItem[] = [
     descKey: 'editor.slash.check.desc',
     icon: CircleCheck,
     glyph: '✓',
-    keywords: [...CALLOUT_KEYWORDS, 'success', 'done'],
+    // Main's Spanish and Portuguese titles stay searchable ("/comprobar", "/verifique").
+    keywords: [...CALLOUT_KEYWORDS, 'success', 'done', 'comprobar', 'verifique'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'check' }).run(),
   },
   {
