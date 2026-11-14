@@ -1,9 +1,10 @@
+/** @vitest-environment jsdom */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   articleRendererModules,
   loadArticleRenderer,
@@ -110,5 +111,37 @@ describe('KaTeX loads only for math (PUB-017)', () => {
   it('renders math as plain text when the page did not ask for KaTeX', () => {
     const html = renderToStaticMarkup(createElement(RichMarkdown, { content: '<Note>Hi</Note>' }));
     expect(html).not.toContain('katex');
+  });
+});
+
+// Last: it resets the module graph, so later dynamic imports would see fresh modules.
+describe('preview page switches', () => {
+  it('keeps the current page on screen while KaTeX loads for a newly selected math page (previews have no loader)', async () => {
+    vi.resetModules();
+    const { act } = await import('react');
+    const { createRoot } = await import('react-dom/client');
+    const { Markdown } = await import('./markdown');
+    const modules = await import('@/lib/reader-hydration-modules');
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    await modules.articleMarkdownModule.load();
+    await modules.richMarkdownModule.load();
+    expect(modules.mathMarkdownModule.status()).toBe('idle');
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => root.render(createElement(Markdown, { content: '<Note>First page</Note>' })));
+    expect(host.textContent).toContain('First page');
+    // Select a page with math: no raw TeX while KaTeX is still loading.
+    act(() => root.render(createElement(Markdown, { content: '<Note>Second page</Note>\n\nThe area is $x^2$.' })));
+    expect(host.textContent).not.toContain('$x^2$');
+    expect(host.textContent).toContain('First page');
+    await act(async () => {
+      await modules.mathMarkdownModule.load();
+    });
+    await act(async () => undefined);
+    expect(host.querySelector('.katex')).not.toBeNull();
+    expect(host.textContent).toContain('Second page');
+    act(() => root.unmount());
+    host.remove();
   });
 });

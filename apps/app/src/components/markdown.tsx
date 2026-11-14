@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { LanguageFn } from 'highlight.js';
-import { type ComponentProps, Suspense, useMemo } from 'react';
+import { type ComponentProps, Suspense, useEffect, useMemo, useState } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
@@ -141,10 +141,46 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
   mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
 
+/** The content to show. A client update to content that newly needs KaTeX
+ *  (switching pages in a preview, which has no navigation loader) keeps the
+ *  current content on screen until the math module is in, rather than the
+ *  island's plain pending body, which would show raw TeX. Before the split the
+ *  rich module carried KaTeX, so such a switch typeset at once. The first
+ *  render (server, hydration) always shows the content as given. */
+function useShownContent(content: string): string {
+  const [shown, setShown] = useState(content);
+  const waitsForMath =
+    content !== shown && mathMarkdownModule.status() !== 'loaded' && readerRenderMode(content).math && readerRenderMode(content).rich;
+  useEffect(() => {
+    if (content === shown) return;
+    if (!waitsForMath) {
+      setShown(content);
+      return;
+    }
+    let current = true;
+    // A failed download shows the content anyway: the island retries and says so.
+    mathMarkdownModule
+      .load()
+      .catch(() => undefined)
+      .finally(() => {
+        if (current) setShown(content);
+      });
+    return () => {
+      current = false;
+    };
+  }, [content, shown, waitsForMath]);
+  return waitsForMath ? shown : content;
+}
+
 /** Render Markdown + MDX-style components (Cards, Tabs, Steps, Callouts…) with
  *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting.
  *  Pass `site` on a published site so internal links resolve to the site base. */
 export function Markdown(props: MarkdownProps) {
+  const content = useShownContent(props.content);
+  return <MarkdownContent {...props} content={content} />;
+}
+
+function MarkdownContent(props: MarkdownProps) {
   // Read with the renderer's own Markdown semantics (nested fences, container
   // ends, `r&#117;st`), the same on the server and in the browser, so the
   // modules the server marked are the ones hydration expects. Past the parser's
