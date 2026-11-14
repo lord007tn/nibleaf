@@ -652,6 +652,7 @@
   "settings_general_customdomain_hint": "کیا آپ چاہتے ہیں کہ قارئین آپ کا اپنا ڈومین استعمال کریں؟",
   "settings_general_customdomain_link": "حسب ضرورت ڈومین ترتیب دیں",
   "settings_general_url_taken": "یہ پتہ پہلے ہی کوئی اور سائٹ استعمال کر رہی ہے۔ کوئی دوسرا آزمائیں۔",
+  "settings_general_url_reserved": "یہ پتہ سسٹم کے لیے مخصوص ہے۔ کوئی دوسرا منتخب کریں۔",
   "settings_branding_title": "برانڈنگ",
   "settings_branding_upload": "اپ لوڈ کریں۔",
   "settings_branding_uploaded": "اپ لوڈ کیا گیا",
@@ -4890,7 +4891,9 @@
   "publish_checks_allclear": "تمام جانچ کامیاب رہی",
   "publish_checks_allclearhint": "کوئی ٹوٹا ہوا لنک، متبادل متن کے بغیر تصویر، بغیر عنوان کا صفحہ یا فالتو حروف نہیں ہیں۔",
   "publish_checks_fix": "ٹھیک کریں",
-  "publish_checks_fixlabel": "ایڈیٹر میں {title} ٹھیک کریں",
+  "publish_checks_fixproblem": "“{title}” درست کریں: {problem}",
+  "publish_checks_show": "دکھائیں ({count})",
+  "publish_checks_hide": "چھپائیں",
   "publish_checks_blockedreason": "شائع کرنے سے پہلے جانچ میں دی گئی خرابیاں ٹھیک کریں۔",
   "publish_checks_error": "خرابی",
   "publish_checks_warning": "انتباہ",
@@ -5036,5 +5039,23 @@
   "settings_aiassistants_watch_again": "دوبارہ انتظار کریں",
   "settings_aiassistants_keysloaderror": "ذاتی کلیدیں لوڈ نہیں ہو سکیں۔ سائن اِن کی ہوئی ایپس اب بھی دکھائی جا رہی ہیں۔",
   "settings_aiassistants_appsloaderror": "سائن اِن کی ہوئی ایپس لوڈ نہیں ہو سکیں۔ ذاتی کلیدیں اب بھی دکھائی جا رہی ہیں۔",
-  "oauth_consent_can_aiconversations": "محفوظ کیے گئے Ask AI سوالات اور جوابات پڑھنا۔ ای میل پتے، فون نمبر اور کلیدیں ہٹا دی جاتی ہیں، لیکن نام، پتے اور دیگر ذاتی معلومات باقی رہ سکتی ہیں۔"
+  "oauth_consent_can_aiconversations": "محفوظ کیے گئے Ask AI سوالات اور جوابات پڑھنا۔ ای میل پتے، فون نمبر اور کلیدیں ہٹا دی جاتی ہیں، لیکن نام، پتے اور دیگر ذاتی معلومات باقی رہ سکتی ہیں۔",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} غیر شائع شدہ تبدیلی",
+        "form=*": "{count} غیر شائع شدہ تبدیلیاں"
+      }
+    }
+  ],
+  "pending_siteonly": "نیویگیشن یا ترتیبات میں غیر شائع شدہ تبدیلیاں",
+  "pending_readersstillsee": "قارئین ابھی بھی ورژن {version} دیکھ رہے ہیں۔",
+  "pending_review": "جائزہ لیں اور شائع کریں",
+  "pending_draft": "ابھی لائیو نہیں",
+  "overview_col_status": "حیثیت",
+  "pagestatus_draft": "غیر شائع شدہ",
+  "pagestatus_changed": "تبدیل شدہ",
+  "pagestatus_live": "لائیو"
 }

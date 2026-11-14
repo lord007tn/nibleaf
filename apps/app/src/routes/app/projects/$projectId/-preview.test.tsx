@@ -21,14 +21,17 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'viewer' } }, isPending: false }) }));
 vi.mock('@/hooks/api', () => ({
   useBranches: () => ({ data: [] }),
-  useLanguages: () => ({ data: [] }),
+  useLanguages: () => ({ data: [{ id: 'lang-en', code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 }] }),
   usePage: () => queries.page,
   usePages: () => queries.pages,
   useProject: () => queries.project,
   useProjectMembers: () => ({ data: { members: [{ role: 'admin', user: { id: 'viewer' } }] }, isPending: false, isError: false }),
 }));
 vi.mock('@/hooks/api/query-options', () => ({ pageQueryOptions: vi.fn() }));
-vi.mock('@/hooks/api/route-prefetch', () => ({ defaultScopeId: () => undefined, prefetchScopedPages: vi.fn() }));
+vi.mock('@/hooks/api/route-prefetch', () => ({
+  defaultScopeId: (items?: Array<{ id: string }>) => items?.[0]?.id,
+  prefetchScopedPages: vi.fn(),
+}));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/components/editor/docs-version', () => ({ publishedVersionSlugFor: () => undefined }));
 vi.mock('@/components/markdown', () => ({ Markdown: () => null }));
@@ -37,7 +40,12 @@ vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/lib/site-theme', () => ({ projectThemeStyle: () => ({}), projectThemeVariables: () => ({}), resolveProjectTheme: () => undefined }));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
   DocumentationThemeProvider: ({ children }: { children?: ReactNode }) => <div data-site-theme="">{children}</div>,
-  DocumentationProjectPreviewLayout: ({ content }: { content: ReactNode }) => <div>{content}</div>,
+  DocumentationProjectPreviewLayout: ({ content, navigation }: { content: ReactNode; navigation: ReactNode }) => (
+    <div>
+      {navigation}
+      {content}
+    </div>
+  ),
 }));
 
 import { Route } from './preview';
@@ -126,6 +134,29 @@ describe('preview content', () => {
     queries.page = { data: pageB, isPending: false, isError: false };
     await act(async () => root.render(<ProjectPreview />));
     expect(content.scrollTop).toBe(0);
+  });
+
+  // P1-DASH-003: the preview listed every page flat by position, mixing group
+  // children in with top-level pages.
+  it('lists pages in the reader’s structure and order, and opens on the first page', async () => {
+    const base = { icon: null, description: null, content: '', hidden: false };
+    const pages = [
+      { ...base, id: 'faq', kind: 'PAGE', title: 'FAQ', parentId: null, position: 2 },
+      { ...base, id: 'api', kind: 'GROUP', title: 'API reference', parentId: null, position: 1 },
+      { ...base, id: 'auth', kind: 'PAGE', title: 'Authentication', parentId: 'api', position: 0 },
+      { ...base, id: 'start', kind: 'PAGE', title: 'Getting started', parentId: null, position: 0 },
+      { ...base, id: 'draft', kind: 'PAGE', title: 'Hidden draft', parentId: null, position: 3, hidden: true },
+    ];
+    queries.pages = { data: pages.map((page) => ({ ...page, slug: page.id, path: page.id })), isPending: false, isError: false };
+    queries.page = { data: pages[3], isPending: false, isError: false };
+    await act(async () => root.render(<ProjectPreview />));
+    const nav = container.querySelector('[data-preview-nav]');
+    expect([...(nav?.querySelectorAll('button') ?? [])].map((button) => button.textContent)).toEqual(['Getting started', 'Authentication', 'FAQ']);
+    // The group is a section label, not a disabled button, and holds its pages.
+    const section = [...(nav?.querySelectorAll('p') ?? [])].find((label) => label.textContent === 'API reference');
+    expect(section?.closest('li')?.textContent).toContain('Authentication');
+    expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe('Getting started');
+    expect(nav?.querySelector('[data-nav-block-start]')?.textContent).toBe('FAQ');
   });
 
   it('keeps the authoring chrome outside the site theme', async () => {
