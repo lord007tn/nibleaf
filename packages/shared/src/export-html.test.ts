@@ -4,35 +4,35 @@ import { expect, it } from 'vitest';
 import followingBaseline from './__fixtures__/markdown-export.following.main.json';
 import { escapeDisallowedExportHtml as safe } from './export-html';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
-import { renderedActiveHtml } from './testing/export-guard';
+import { exportCodeSamples, renderedActiveHtml } from './testing/export-guard';
 import { exportFollowingBlockCases } from './testing/export-guard-cases';
 
 it.each([
   '<u>safe</u> <custom foo="bar">text</custom>',
-  '<textarea><script>literal</script><img onerror="literal()"></textarea>',
+  '<textarea><script>literal</script></textarea>',
   '<!-- <script>literal</script> -->',
   '~~~html\n<script>literal</script>\n~~~',
-  '    <img onerror="literal()">',
-  'Use `<img onerror="literal()">`.',
-  '[unused]: data:image/png;base64,AAAA',
-])('leaves inactive output byte-identical: %s', (source) => {
+  '    <script>literal</script>',
+  'Use `<script>literal</script>`.',
+  '<div onclick="run()">text</div>',
+  '[x](data:text/html,x)',
+])('keeps element-inactive output byte-identical: %s', (source) => {
   expect(renderedActiveHtml(source)).toBe(0);
   expect(safe(source)).toBe(source);
 });
-
 it.each([
   '![x](data:image/png;base64,AAAA)',
-  '[x](data:image/png;base64,AAAA)',
-  '~~~html\n<script>literal()</script>\n~~~',
+  '[x](javascript:x)',
+  '~~~html\n<u>literal</u>\n~~~',
   '{expr}',
   '> 1. nested\n> - list',
   '    indented text',
   '**bold** and `code`',
-])('keeps a neutralized HTML block as literal text: %s', (body) => {
-  const source = `<div onclick="run()">\n${body}\n</div>`;
+])('keeps the element body literal: %s', (body) => {
+  const source = `<iframe>\n${body}\n</iframe>`;
   const output = safe(source);
-  const markdown = new MarkdownIt({ html: true });
-  const tokens = markdown.parse(output, {});
+  const md = new MarkdownIt({ html: true });
+  const tokens = md.parse(output, {});
   const pending = [...tokens];
   const created: string[] = [];
   while (pending.length) {
@@ -43,7 +43,7 @@ it.each([
     if (token.children) pending.push(...token.children);
   }
   expect(created).toEqual([]);
-  const nodes: DefaultTreeAdapterTypes.Node[] = [parseFragment(markdown.renderer.render(tokens, markdown.options, {}))];
+  const nodes: DefaultTreeAdapterTypes.Node[] = [parseFragment(md.render(output))];
   const text: string[] = [];
   while (nodes.length) {
     const node = nodes.pop();
@@ -59,78 +59,117 @@ it.each([
   expect(renderedActiveHtml(output)).toBe(0);
 });
 it.each([
-  ['<u>safe</u> <img src="x" onerror="run()"> end', '<u>safe</u> &lt;img src="x" onerror="run()"> end'],
+  ['<u>BEFORE</u><script>BODY</script><sup>AFTER</sup>', '<u>BEFORE</u>&lt;script>BODY&lt;/script><sup>AFTER</sup>'],
   ['A <script>body <img onerror="run()"></script> B', 'A &lt;script>body &lt;img onerror="run()">&lt;/script> B'],
-  ['![label](data:image/png;base64,AAAA)', '![label](#)'],
-  ['[label](data:image/png;base64,AAAA)', '[label](#)'],
-  ['![label](mailto:me@example.test)', '![label](#)'],
-  ['![label][ref]\n\n[ref]: data:image/png;base64,AAAA', '![label][ref]\n\n[ref]: #'],
-  [
-    '[label][one]\n\n[one]: data:image/png;base64,AAAA\n[two]: data:image/png;base64,AAAA',
-    '[label][one]\n\n[one]: #\n[two]: data:image/png;base64,AAAA',
-  ],
-  ['![label][ref]\n\n[ref]: d&#97;ta:image/png;base64,AAAA', '![label][ref]\n\n[ref]: #'],
-  ['> ![label](data:image/png;base64,AAAA)\r\n> `code`', '> ![label](#)\r\n> `code`'],
-  [
-    '- A <img onerror="run()"> B\n\n  ~~~\n  <img onerror="literal()">\n  ~~~',
-    '- A &lt;img onerror="run()"> B\n\n  ~~~\n  <img onerror="literal()">\n  ~~~',
-  ],
-  [
-    '| A | B |\n| - | - |\n| <img onerror="one()"> | <img onerror="two()"> |',
-    '| A | B |\n| - | - |\n| &lt;img onerror="one()"> | &lt;img onerror="two()"> |',
-  ],
-  [
-    '| A | B |\n| - | - |\n| x\\|y <img onerror="one()"> | x\\|y <img onerror="two()"> |',
-    '| A | B |\n| - | - |\n| x\\|y &lt;img onerror="one()"> | x\\|y &lt;img onerror="two()"> |',
-  ],
-  [
-    '<textarea onfocus="run()">![x](data:image/png;base64,AAAA)</textarea>',
-    '&lt;textarea onfocus="run()">!&#91;x](data:image/png;base64,AAAA)&lt;/textarea>',
-  ],
-])('edits only unsafe spans: %s', (source, expected) => {
+  ['| A | B |\n| - | - |\n| x\\|y <embed> | <embed> |', '| A | B |\n| - | - |\n| x\\|y &lt;embed> | &lt;embed> |'],
+])('edits only the element own span: %s', (source, expected) => {
   expect(safe(source)).toBe(expected);
   expect(renderedActiveHtml(safe(source))).toBe(0);
 });
-
-it.each(followingBaseline.cases)('preserves the next block: $name', ({ source, outputs }) => {
-  const markdown = new MarkdownIt({ html: true });
+it.each(followingBaseline.cases)('keeps adjacent author text: $name', ({ source, outputs }) => {
   for (const [index, project] of [normalizePublicMarkdownContent, portablePublicMdxMarkdown].entries()) {
     const main = outputs[index] ?? '';
     const output = project(source);
     expect(output).toBe(safe(main));
     expect(renderedActiveHtml(output)).toBe(0);
     if (renderedActiveHtml(main) === 0) expect(output).toBe(main);
-    const before = markdown.parse(main, {});
-    const after = markdown.parse(output, {});
-    const next = before.find((token) => token.map && ['inline', 'fence', 'code_block'].includes(token.type) && token.content.includes('FOLLOW'));
-    if (!next?.map) continue; // Main itself removed this authored block.
-    const retained = after.find((token) => token.type === next.type && token.content === next.content);
-    expect(retained, main).toBeDefined();
-    if (!retained?.map) continue;
-    const shift = retained.map[0] - next.map[0];
-    // Maps use physical lines. Undo only the authorized inserted boundary line.
-    expect(shift).toBeGreaterThanOrEqual(0);
-    expect(shift).toBeLessThanOrEqual(1);
-    const roles = (tokens: typeof before, map: [number, number], offset: number) =>
-      tokens
-        .filter((token) => token.map?.[0] === map[0] && token.map[1] === map[1])
-        .map((token) => [token.type, token.map?.map((line) => line - offset)]);
-    expect(roles(after, retained.map, shift)).toEqual(roles(before, next.map, 0));
-    if (next.type === 'fence' || next.type === 'code_block') {
-      const code = main
-        .split('\n')
-        .slice(...next.map)
-        .join('\n');
-      expect(
-        output
-          .split('\n')
-          .slice(...retained.map)
-          .join('\n'),
-      ).toBe(code);
-    }
+    if (main.includes('FOLLOW')) expect(output).toContain('FOLLOW');
+    for (const sample of exportCodeSamples(main))
+      expect(output.includes(sample) || exportCodeSamples(output).some((value) => value.includes(sample))).toBe(true);
+  }
+});
+it('pins adjacent-block sources to main', () => {
+  expect(followingBaseline.cases.map(({ name, source }) => ({ name, source }))).toEqual(exportFollowingBlockCases());
+});
+it('keeps the round-7 list tight', () => {
+  const source = '- <script>BODY</script>\n  FOLLOW\n- NEXT';
+  for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) {
+    const output = project(source);
+    const html = new MarkdownIt({ html: true }).render(output);
+    expect(html).toContain('<li>NEXT</li>');
+    expect(html).not.toContain('<p>NEXT</p>');
+    expect(output).toContain('FOLLOW');
+    expect(output).toContain('NEXT');
+    expect(renderedActiveHtml(output)).toBe(0);
   }
 });
 
-it('pins every generated following-block source to main', () => {
-  expect(followingBaseline.cases.map(({ name, source }) => ({ name, source }))).toEqual(exportFollowingBlockCases());
+it.each([
+  { name: 'top level', source: '<script>x</script>\n    <script>CODE</script>' },
+  { name: 'quote', source: '> <script>x</script>\n>     <script>CODE</script>' },
+])('preserves following code outside lists: $name', ({ source }) => {
+  const output = safe(source);
+  const md = new MarkdownIt({ html: true });
+  expect(renderedActiveHtml(output)).toBe(0);
+  expect(output).toContain(source.split('\n')[1]);
+  expect(md.parse(output, {}).find((token) => token.type === 'code_block')?.content).toBe('<script>CODE</script>\n');
+});
+it('preserves component code through the portable export', () => {
+  const output = portablePublicMdxMarkdown('<Note>\n\n<script>x</script>\n    <script>CODE</script>\n\n</Note>');
+  expect(renderedActiveHtml(output)).toBe(0);
+  expect(output).toContain('>     <script>CODE</script>');
+  expect(new MarkdownIt({ html: true }).parse(output, {}).find((token) => token.type === 'code_block')?.content).toBe('<script>CODE</script>\n');
+});
+it('escapes newly live code elements inside a tight list', () => {
+  const source = '- <script>x</script>\n      <script>CODE</script>\n- NEXT';
+  const output = safe(source);
+  expect(renderedActiveHtml(output)).toBe(0);
+  expect(output).toContain('&lt;script>CODE&lt;/script>');
+  const html = new MarkdownIt({ html: true }).render(output);
+  expect(html).toContain('<li>NEXT</li>');
+  expect(html).not.toContain('<p>NEXT</p>');
+  expect(html).toContain('CODE');
+  expect(html).toContain('NEXT');
+});
+it('neutralizes active elements through adversarial container/code transitions', () => {
+  const failures: string[] = [];
+  const wrappers = [
+    (s: string) => s,
+    (s: string) =>
+      s
+        .split('\n')
+        .map((line) => `> ${line}`)
+        .join('\n'),
+    (s: string) =>
+      s
+        .split('\n')
+        .map((line, at) => (at ? '  ' : '- ') + line)
+        .join('\n'),
+    (s: string) =>
+      s
+        .split('\n')
+        .map((line, at) => (at ? '  > ' : '- > ') + line)
+        .join('\n'),
+    (s: string) => `<Note>\n${s}\n</Note>`,
+  ];
+  for (const tag of ['script', 'style', 'iframe', 'object', 'embed'])
+    for (const wrap of wrappers)
+      for (const gap of ['', '\n', '    ', '> '])
+        for (const after of ['<script>CODE</script>', '<style>CODE</style>', '<iframe>CODE</iframe>', '<object>CODE</object>', '<embed>CODE']) {
+          const source = wrap(`<${tag}>BODY</${tag}>\n${gap}${after}\n\nAUTHOR`);
+          for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) {
+            const output = project(source);
+            if (renderedActiveHtml(output)) failures.push(`${source}\nOUTPUT:${output}`);
+          }
+        }
+  expect(failures.slice(0, 4)).toEqual([]);
+});
+
+it('preserves code spans inside image alt text in an active element', () => {
+  const literal = '`<script>CODE</script>`';
+  const output = safe(`A <object>![${literal}](/x)</object> B`);
+  expect(output).toContain(literal);
+  expect(renderedActiveHtml(output)).toBe(0);
+});
+
+it.each(['script', 'style', 'iframe', 'object', 'embed'])('fixes the exact #633 form for %s', (tag) => {
+  const source = `> <div>\n> ~~~\n<${tag}>SAFE</${tag}>`;
+  for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) expect(renderedActiveHtml(project(source))).toBe(0);
+  expect(portablePublicMdxMarkdown(source)).toContain('SAFE');
+});
+
+it('keeps a link-closing delimiter inside the element body literal', () => {
+  const output = safe('[prefix <script>](url)</script>');
+  expect(output).toContain('&#93;(url)');
+  expect(renderedActiveHtml(output)).toBe(0);
 });

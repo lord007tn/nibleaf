@@ -35,8 +35,7 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
     ['literal code beyond the parser budget', (n: number) => `~~~html\n${`${'>'.repeat(129)}<b>SAFE</b> [LABEL](url)\n`.repeat(n)}~~~`, 1000],
     [
       'export HTML safety',
-      (n: number) =>
-        `> <div>\n> ~~~\n${'<div onclick="run()"><sup>2</sup><img src="javascript:x"></div>\n\n![image](data:image/png;base64,AAAA)\n\n'.repeat(n)}`,
+      (n: number) => `> <div>\n> ~~~\n${'<object><sup>2</sup><script>BODY</script></object>\n\n![image](data:image/png;base64,AAAA)\n\n'.repeat(n)}`,
       250,
     ],
   ] as const)(

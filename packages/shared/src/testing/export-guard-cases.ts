@@ -133,26 +133,11 @@ export const PORTABLE_REGRESSION_IDS = [63, 597, 752, 824, 838, 874, 907, 1436, 
 
 /** #633: a fence-looking line inside HTML must not exempt a later tag from export safety. */
 export const activeHtmlExportCases = () => {
-  const payloads = [
-    '<script>SAFE</script>',
-    '<style>SAFE</style>',
-    '<iframe src="https://example.test">SAFE</iframe>',
-    '<object data="https://example.test">SAFE</object>',
-    '<embed src="https://example.test/SAFE">',
-    '<img src="/SAFE" onerror="run()">',
-    '<div onclick="run()">SAFE</div>',
-    '<a href="javascript:run()">SAFE</a>',
-    '<a href="data:text/html,SAFE">SAFE</a>',
-    '<img src="javascript:SAFE">',
-    '<img src="data:text/html,SAFE">',
-    '<a href="java&#x09;script&#58;run()">SAFE</a>',
-    '<script><img src="/SAFE" onerror="run()"></script>',
-    '<style><iframe src="https://example.test/SAFE"></iframe></style>',
-    '<textarea><img src="/SAFE" onerror="run()"></textarea>',
-    '<div title="a > b" onclick="run()">SAFE</div>',
-  ];
+  const payloads = ['script', 'style', 'iframe', 'object', 'embed'].map((tag) => `<${tag}>SAFE</${tag}>`);
   const containers = [
     { name: 'top level', wrap: (payload: string) => payload },
+    { name: 'after HTML', wrap: (payload: string) => `<div>BEFORE</div>\n\n${payload}` },
+    { name: 'after indented code', wrap: (payload: string) => `    CODE\n\n${payload}` },
     { name: 'quote exit (#633)', wrap: (payload: string) => `> <div>\n> ~~~\n${payload}` },
     { name: 'nested quote exit', wrap: (payload: string) => `> > <div>\n> > ~~~\n${payload}` },
     { name: 'quote in list exit', wrap: (payload: string) => `- > <div>\n  > ~~~\n${payload}` },
@@ -162,10 +147,10 @@ export const activeHtmlExportCases = () => {
     { name: 'component quote exit', wrap: (payload: string) => `<Note>\n> <div>\n> ~~~\n${payload}\n</Note>` },
     { name: 'nested components', wrap: (payload: string) => `<Tabs>\n<Tab title="Example">\n> <div>\n> ~~~\n${payload}\n</Tab>\n</Tabs>` },
   ];
-  return containers.map(({ name, wrap }) => ({ name, sources: payloads.map(wrap) }));
+  return containers.map(({ name, wrap }) => ({ name, sources: payloads.map((payload) => `${wrap(payload)}\n\nAUTHOR`) }));
 };
 
-/** Adjacent blocks whose role must survive neutralizing preceding HTML. */
+/** Main outputs for adjacent blocks; lazy paragraph joins are permitted. */
 export const exportFollowingBlockCases = () => {
   const containers = [
     ['root', (lines: string[]) => lines],

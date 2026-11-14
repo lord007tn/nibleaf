@@ -97,8 +97,8 @@ describe('projected link destinations', () => {
     expect(portablePublicMdxMarkdown(`<Button href="${href}">Go</Button>`)).toBe(`[Go](${href})`);
   });
 
-  it('neutralizes a tel destination that the reader strips, keeping its label', () => {
-    expect(portablePublicMdxMarkdown('<Button href="tel:+15550100">Go</Button>')).toBe('[Go](#)');
+  it('keeps main tel-link behavior pending URL hardening in #664', () => {
+    expect(portablePublicMdxMarkdown('<Button href="tel:+15550100">Go</Button>')).toBe('[Go](tel:+15550100)');
   });
 
   it('keeps a destination that tries to close its link and open another inside one link', () => {

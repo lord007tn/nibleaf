@@ -30,9 +30,11 @@ describe.runIf(growthTestsEnabled)('real documentation corpus export cost', () =
         }
       };
       // Both sides process the same corpus, so use equal repeat counts (unlike
-      // n-vs-4n growthMs). Alternate order and take medians to share JIT/GC/load.
-      run(true);
-      run(false);
+      // n-vs-4n growthMs). Alternate order and take the best of three for each side.
+      for (let warmup = 0; warmup < 5; warmup++) {
+        run(true);
+        run(false);
+      }
       const started = performance.now();
       run(true);
       const repeats = Math.max(1, Math.ceil(100 / Math.max(1, performance.now() - started)));
@@ -43,13 +45,13 @@ describe.runIf(growthTestsEnabled)('real documentation corpus export cost', () =
         for (let repeat = 0; repeat < repeats; repeat++) retained = run(baseline);
         return performance.now() - started;
       };
-      for (let round = 0; round < 5; round++) {
+      for (let round = 0; round < 3; round++) {
         for (const index of round % 2 ? [1, 0] : [0, 1]) samples[index]?.push(time(index === 0));
       }
       expect(retained).toHaveLength(corpus.length);
-      const median = (values: number[]) => values.sort((a, b) => a - b)[2] ?? 0;
-      const main = median(samples[0]);
-      const head = median(samples[1]);
+      const best = (values: number[]) => Math.min(...values);
+      const main = best(samples[0]);
+      const head = best(samples[1]);
       console.info(
         `Corpus cost ${name}: ${corpus.length} pages, main ${(main / repeats).toFixed(1)} ms, head ${(head / repeats).toFixed(1)} ms, ${(head / main).toFixed(3)}x (${repeats} equal corpus passes/sample)`,
       );

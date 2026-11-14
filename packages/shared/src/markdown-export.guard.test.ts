@@ -16,7 +16,7 @@ const readBaseline = (count: number): ExportGuardBaseline =>
   ) as ExportGuardBaseline;
 
 it.each(matrices)(
-  'keeps inactive main output byte-identical, preserves main code and emits zero active HTML: $label',
+  'keeps element-inactive main output byte-identical, preserves main code and emits zero active elements: $label',
   (matrix) => {
     const start = performance.now();
     const baseline = readBaseline(matrix.count);
@@ -37,7 +37,7 @@ it.each(matrices)(
   60_000,
 );
 
-it('adds zero active HTML in the 13 portable outputs caught by the round-4 review', () => {
+it('adds zero active elements in the 13 portable outputs caught by the round-4 review', () => {
   const matrix = matrices[1];
   const baseline = readBaseline(matrix.count);
   const failures: number[] = [];

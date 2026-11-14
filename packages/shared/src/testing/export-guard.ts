@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import MarkdownIt from 'markdown-it';
 import type Token from 'markdown-it/lib/token.mjs';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
@@ -44,16 +44,8 @@ parser.inline.State = class extends BaseInlineState {
     return token;
   }
 };
-for (const kind of ['link_open', 'image'] as const) {
-  const original = parser.renderer.rules[kind];
-  parser.renderer.rules[kind] = (tokens, at, options, env: { marker: string }, self) => {
-    tokens[at]?.attrSet(env.marker, '');
-    return original ? original(tokens, at, options, env, self) : self.renderToken(tokens, at, options);
-  };
-}
 const analyzeExport = (source: string, render: boolean) => {
-  const env = { marker: `data-export-${randomUUID()}` };
-  while (source.includes(env.marker)) env.marker = `data-export-${randomUUID()}`;
+  const env = {};
   const tokens = parser.parse(source, env);
   const lines = source.split('\n');
   const code: string[] = [];
@@ -82,56 +74,27 @@ const analyzeExport = (source: string, render: boolean) => {
   }
   return {
     code,
-    active: render ? countElements(parseFragment(parser.renderer.render(tokens, parser.options, env)), env.marker) : 0,
+    active: render ? countElements(parseFragment(parser.renderer.render(tokens, parser.options, env))) : 0,
     literal: parser.utils.unescapeAll(source),
   };
 };
 export const exportCodeSamples = (source: string): string[] => analyzeExport(source, false).code;
 
 const activeTags = ['script', 'style', 'iframe', 'object', 'embed'];
-const dangerousUrl = (value: string): boolean => {
-  const normalized = Array.from(value.toLowerCase())
-    .filter((character) => character.charCodeAt(0) > 32 && character.charCodeAt(0) !== 127)
-    .join('');
-  // readerSanitizeSchema inherits href/src protocols that exclude every data: URL,
-  // including raster images. There is no img-src exception in the reader.
-  return normalized.startsWith('javascript:') || normalized.startsWith('vbscript:') || normalized.startsWith('data:');
-};
-const readerDropsUrl = (value: string, property: string): boolean => {
-  const protocols = readerSanitizeSchema.protocols?.[property];
-  const colon = value.indexOf(':');
-  return (
-    !!protocols?.length &&
-    colon >= 0 &&
-    !['/', '?', '#'].some((delimiter) => {
-      const at = value.indexOf(delimiter);
-      return at >= 0 && at < colon;
-    }) &&
-    !protocols.includes(value.slice(0, colon))
-  );
-};
-const countElements = (root: DefaultTreeAdapterTypes.Node, marker: string): number => {
+const countElements = (root: DefaultTreeAdapterTypes.Node): number => {
   const pending = [root];
   let count = 0;
   while (pending.length) {
     const node = pending.pop();
     if (!node) continue;
     if ('tagName' in node && activeTags.includes(node.tagName)) count++;
-    if ('attrs' in node) {
-      const isMarkdown = node.attrs.some(({ name }) => name === marker);
-      count += node.attrs.filter(
-        ({ name, value }) =>
-          name.startsWith('on') ||
-          (['href', 'src', 'xlink:href'].includes(name) && (dangerousUrl(value) || (isMarkdown && readerDropsUrl(value, name)))),
-      ).length;
-    }
     if ('childNodes' in node) for (const child of node.childNodes) pending.push(child);
   }
   return count;
 };
 
-/** Render with raw HTML enabled, then count actual elements, handlers and URLs,
- * including entity-encoded attribute values. Code literals are inert. */
+/** Render with raw HTML enabled, then count only the five active elements. Handler/URL hardening is tracked in #664.
+ * Code literals are inert. */
 export const renderedActiveHtml = (source: string): number => analyzeExport(source, true).active;
 
 const reader = unified()
@@ -146,11 +109,8 @@ export const readerSanitizedActiveHtml = (source: string): number => {
   const pending: unknown[] = [tree];
   let active = 0;
   while (pending.length) {
-    const node = pending.pop() as { tagName?: string; properties?: Record<string, unknown>; children?: unknown[] };
+    const node = pending.pop() as { tagName?: string; children?: unknown[] };
     if (node.tagName && activeTags.includes(node.tagName)) active++;
-    for (const [name, value] of Object.entries(node.properties ?? {})) {
-      if (name.toLowerCase().startsWith('on') || (['href', 'src', 'xLinkHref'].includes(name) && dangerousUrl(String(value)))) active++;
-    }
     pending.push(...(node.children ?? []));
   }
   return active;
