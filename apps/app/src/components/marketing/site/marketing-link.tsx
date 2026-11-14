@@ -8,9 +8,11 @@ function destination(href: string): MarketingCtaDestination | undefined {
   if (url.hostname === 'docs.nibleaf.com') return 'docs';
   if (url.hostname !== 'nibleaf.com') return undefined;
   const path = url.pathname.replace(/\/+$/, '') || '/';
+  // The same page in either language counts as one destination.
+  const page = path.startsWith('/ar/') ? path.slice(3) : path;
   if (path === '/sign-up') return 'signup';
-  if (path === '/self-hosting') return 'self_hosting';
-  if (path === '/pricing') return 'pricing';
+  if (page === '/self-hosting') return 'self_hosting';
+  if (page === '/pricing') return 'pricing';
   if (path === '/contact') return 'contact';
   if (path.startsWith('/compare/') || path === '/ar/documentation-platforms') return 'comparison';
   if (path === '/tools/rtl-documentation-readiness') return 'rtl_tool';
