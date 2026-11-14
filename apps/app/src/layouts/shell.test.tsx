@@ -134,6 +134,24 @@ it.each([
   expect(Boolean(publish)).toBe(shown);
 });
 
+// P2-DASH-009: every dashboard page had the same browser-tab title.
+it.each([
+  ['', 'en:project.overview · Long site name / دليل المنتج · Nibleaf'],
+  ['/analytics/search', 'en:analytics.tab.search · Long site name / دليل المنتج · Nibleaf'],
+  ['/publishes', 'en:publishes.title · Long site name / دليل المنتج · Nibleaf'],
+  ['/settings', 'en:project.settings · Long site name / دليل المنتج · Nibleaf'],
+])('titles the site page %j as section · site · Nibleaf', async (path, title) => {
+  mocks.locale = 'en';
+  await render(`/app/projects/fixture${path}`);
+  expect(document.title).toBe(title);
+});
+
+it('titles an organization page as section · organization · Nibleaf', async () => {
+  mocks.locale = 'en';
+  await render('/app/o/acme/settings', false);
+  expect(document.title).toBe('en:nav.settings · Acme Docs · Nibleaf');
+});
+
 it('records the website (and so its org) as the last opened', async () => {
   mocks.recordVisit.mockClear();
   await render('/app/projects/fixture');

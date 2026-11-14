@@ -33,7 +33,9 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to: _to, params: _params, ...props }: { children: ReactNode; to: string; params: unknown }) => <a {...props}>{children}</a>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
-vi.mock('@tanstack/react-pacer', () => ({ useDebouncer: () => ({ maybeExecute: mocks.schedule, cancel: vi.fn() }) }));
+vi.mock('@/components/editor/editor-save-throttle', () => ({
+  useSaveThrottle: () => ({ maybeExecute: mocks.schedule, cancel: vi.fn(), flush: vi.fn() }),
+}));
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({}),
   useQueries: ({ combine }: { combine: (results: unknown[]) => unknown }) => combine([]),
