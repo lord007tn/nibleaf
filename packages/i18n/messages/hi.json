@@ -802,6 +802,8 @@
   "settings_unsaved_description": "आपके बदलाव सहेजे नहीं गए हैं।",
   "settings_unsaved_keep": "संपादन जारी रखें",
   "settings_appearance_location": "साइट सेटिंग्स → रूप और संपादक के सेटिंग्स पैनल में भी उपलब्ध है।",
+  "settings_appearance_summary": "आपकी प्रकाशित साइट कैसी दिखती है: उसका ब्रांड, थीम, टाइपोग्राफ़ी, हेडर, फ़ुटर और बैनर।",
+  "settings_appearance_sections": "रूप-रंग के अनुभाग",
   "settings_domain_guide_step1": "अपने डोमेन प्रदाता की DNS सेटिंग्स खोलें।",
   "settings_domain_guide_step2": "प्रत्येक रिकॉर्ड का प्रकार, नाम/होस्ट, मान/लक्ष्य भरें। CNAME पते को साइट से जोड़ता है; TXT स्वामित्व प्रमाणित करता है। सामान्यतः छोटा नाम दें; नीचे का पूरा नाम केवल माँगे जाने पर दें।",
   "settings_domain_guide_step3": "सहेजें, फिर दोबारा जाँचें।",

@@ -50,6 +50,7 @@ import { type ComponentType, type CSSProperties, type ReactNode, useCallback, us
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { type CommentAnchor, EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
+import { isUserDocChange, type LoadedMarkdown, markdownToEmit, redrawTransaction } from './editor-change-origin';
 import { type EditorLinks, useEditorLinks } from './editor-links';
 import { seedPageContent } from './editor-sections';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
@@ -68,6 +69,7 @@ import { SelectionShortcuts } from './extensions/selection-shortcuts';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { VideoEmbed } from './extensions/video-embed';
 import { annotateFences, type FenceSerializeState, writeFence } from './fence-source';
+import { SourceParagraph } from './paragraph-source';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
 import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
@@ -151,6 +153,11 @@ const CodeBlock = CodeBlockLowlight.extend({
       sourceFenceLines: {
         default: '',
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-lines')),
+        rendered: false,
+      },
+      sourceFenceTail: {
+        default: '',
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-tail')),
         rendered: false,
       },
     };
@@ -331,10 +338,13 @@ export function buildEditorExtensions({
       codeBlock: false,
       // MarkdownBlockquote replaces it, saving bold at a quote paragraph's start intact.
       blockquote: false,
+      // SourceParagraph replaces it, saving an untouched paragraph's line breaks.
+      paragraph: false,
       undoRedo: { newGroupDelay: 300 },
       link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
     }),
     MarkdownBlockquote,
+    SourceParagraph,
     AutomaticBlockDirection.configure({ dir }),
     ImageUpload.configure({ canEdit, getUpload: getUpload ?? (() => onUpload) }),
     CleanPaste.configure({ getUpload: getUpload ?? (() => onUpload), dir }),
@@ -715,6 +725,8 @@ export function TiptapEditor({
   titleSlot,
 }: TiptapEditorProps) {
   const lastEmitted = useRef<string>(value);
+  // The Markdown last seeded and its serialization: an edit back to it emits the source.
+  const loaded = useRef<LoadedMarkdown | null>(null);
   // Latest `value`, read inside deferred seeding so a re-seed queued before a
   // newer value arrived never re-applies the stale one.
   const valueRef = useRef(value);
@@ -785,10 +797,13 @@ export function TiptapEditor({
           }
           seedMarkdown(editor, valueRef.current);
           lastEmitted.current = getMarkdown(editor);
+          loaded.current = { source: valueRef.current, serialized: lastEmitted.current };
         });
       },
-      onUpdate: ({ editor }) => {
-        const markdown = getMarkdown(editor);
+      onUpdate: ({ editor, transaction }) => {
+        // Only the writer's own changes reach the draft (see editor-change-origin.ts).
+        if (!isUserDocChange(transaction)) return;
+        const markdown = markdownToEmit(loaded.current, getMarkdown(editor));
         lastEmitted.current = markdown;
         onChangeRef.current(markdown);
       },
@@ -856,6 +871,7 @@ export function TiptapEditor({
       queueMicrotask(() => {
         if (!editor.isDestroyed) {
           seedMarkdown(editor, valueRef.current);
+          loaded.current = { source: valueRef.current, serialized: getMarkdown(editor) };
         }
       });
     }
@@ -881,7 +897,7 @@ export function TiptapEditor({
     }
     queueMicrotask(() => {
       if (!editor.isDestroyed) {
-        editor.view.dispatch(editor.state.tr);
+        editor.view.dispatch(redrawTransaction(editor.state.tr));
       }
     });
   }, [comments, activeCommentId, commentMode, editor]);
