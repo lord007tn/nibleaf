@@ -13,12 +13,7 @@ vi.mock('@/components/project/publish-modal', () => ({ PublishModal: () => null 
 vi.mock('@/hooks/api', () => ({
   useProject: () => ({ data: { id: 'fixture', name: 'Acme API Reference', organizationId: 'org-1' } }),
   useOrganizationOfProject: () => ({ organization: { id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: 'owner' } }),
-  // The top bar's Publish (its sheet and pipeline are covered by their own tests).
-  useDeployments: () => ({ data: [] }),
-  usePendingChanges: () => ({ data: undefined }),
 }));
-vi.mock('@/components/project/publish-modal', () => ({ PublishModal: () => null }));
-vi.mock('@/components/project/deploy-pipeline', () => ({ DeployPipeline: () => null }));
 vi.mock('@/hooks/use-record-visit', () => ({ useRecordVisitEffect: () => undefined }));
 // The switchers are covered by their own tests; here they only need to occupy their breadcrumb slots.
 vi.mock('@/components/app/org-switcher/organization-switcher', () => ({ OrganizationSwitcher: () => <button type="button">Acme Docs</button> }));

@@ -55,9 +55,6 @@ vi.mock('@/components/project/publish-modal', () => ({ PublishModal: () => null 
 vi.mock('@/hooks/api', () => ({
   useProject: () => ({ data: { id: 'fixture', name: 'Long site name / دليل المنتج', organizationId: 'org-1' } }),
   useOrganizationOfProject: () => ({ organization: { id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: 'owner' } }),
-  // The top bar's Publish.
-  useDeployments: () => ({ data: [] }),
-  usePendingChanges: () => ({ data: undefined }),
 }));
 vi.mock('@/hooks/use-record-visit', () => ({ useRecordVisitEffect: mocks.recordVisit }));
 vi.mock('@/hooks/use-project-admin-status', () => ({ useProjectAdminStatus: () => ({ edit: 'edit' }) }));
@@ -117,21 +114,6 @@ it.each([
   if (path.startsWith('/analytics/') && path !== '/analytics/')
     expect(nav?.querySelector('a[href="/app/projects/fixture/analytics"]')?.textContent).toBe('en:project.analytics');
   expect(nav?.querySelector('li li')).toBeNull();
-});
-
-// P1-DASH-005: Publish lived only in the editor and the draft preview.
-it.each([
-  ['', true],
-  ['/analytics', true],
-  ['/publishes', true],
-  ['/settings', true],
-  // The draft preview has Publish in its own bar.
-  ['/preview', false],
-])('offers Publish in the site top bar on %j: %s', async (path, shown) => {
-  mocks.locale = 'en';
-  await render(`/app/projects/fixture${path}`);
-  const publish = document.querySelector('header button[aria-label="en:project.publish"]');
-  expect(Boolean(publish)).toBe(shown);
 });
 
 it('records the website (and so its org) as the last opened', async () => {

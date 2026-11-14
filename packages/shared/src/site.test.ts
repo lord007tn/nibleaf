@@ -20,10 +20,8 @@ import {
   type SnapshotLanguage,
   type SnapshotPage,
   type SnapshotProject,
-  startsUngroupedBlock,
   withOpenApiNav,
 } from './site';
-import { firstPage } from './site-route';
 
 describe('isPageTranslation', () => {
   it('uses an explicit translation key when localized paths differ', () => {
@@ -139,46 +137,13 @@ describe('buildNavTree', () => {
     expect(tree[0]).toMatchObject({ kind: 'GROUP', icon: 'hotel' });
     expect(tree[0]?.children.map((node) => node.path)).toEqual(['blog/hotel', 'blog/room']);
   });
-  // P1-DASH-002: groups used to be forced ahead of pages, so the live site's
-  // order (and its home page) differed from the editor's.
-  it('keeps the author’s order between groups and pages, with virtual categories where their first page sits', () => {
+  it('keeps real groups ahead of virtual categories and uncategorized pages last', () => {
     const tree = buildNavTree([
       page({ id: 'loose', position: 0 }),
       page({ id: 'guides', kind: 'GROUP', position: 1 }),
       page({ id: 'setup', position: 2, config: { category: 'Start', categoryOrder: 0 } }),
-      page({ id: 'last', position: 3 }),
     ]);
-    expect(tree.map((node) => node.title)).toEqual(['loose', 'guides', 'Start', 'last']);
-  });
-  it('orders the starter site as the editor does, so its home is "Getting started"', () => {
-    // The starter layout from `createStarterProject` (@nibleaf/auth).
-    const pages = [
-      page({ id: 'faq', title: 'FAQ', position: 4 }),
-      page({ id: 'api', kind: 'GROUP', title: 'API reference', path: 'api-reference', position: 3 }),
-      page({ id: 'auth', title: 'Authentication', parentId: 'api', path: 'api-reference/authentication', position: 0 }),
-      page({ id: 'widget', title: 'Create a widget', parentId: 'api', path: 'api-reference/create-a-widget', position: 1 }),
-      page({ id: 'tour', title: 'Components tour', position: 2 }),
-      page({ id: 'install', title: 'Installation', position: 1 }),
-      page({ id: 'start', title: 'Getting started', path: 'getting-started', position: 0 }),
-    ];
-    const tree = buildNavTree(pages);
-    expect(tree.map((node) => node.title)).toEqual(['Getting started', 'Installation', 'Components tour', 'API reference', 'FAQ']);
-    expect(tree[3]?.children.map((node) => node.title)).toEqual(['Authentication', 'Create a widget']);
-    expect(firstPage(pages)?.id).toBe('start');
-    // FAQ follows the API reference section, so it starts its own block.
-    expect(tree.map((_, index) => startsUngroupedBlock(tree, index))).toEqual([false, false, false, false, true]);
-  });
-  it('starts an unlabelled block only after a group that shows pages', () => {
-    const tree = buildNavTree([
-      page({ id: 'empty', kind: 'GROUP', position: 0 }),
-      page({ id: 'a', position: 1 }),
-      page({ id: 'g', kind: 'GROUP', position: 2 }),
-      page({ id: 'child', parentId: 'g', position: 0 }),
-      page({ id: 'b', position: 3 }),
-      page({ id: 'c', position: 4 }),
-    ]);
-    expect(tree.map((node) => node.id)).toEqual(['empty', 'a', 'g', 'b', 'c']);
-    expect(tree.map((_, index) => startsUngroupedBlock(tree, index))).toEqual([false, false, false, true, false]);
+    expect(tree.map((node) => node.title)).toEqual(['guides', 'Start', 'loose']);
   });
   it('auto-organizes oversized flat English imports while explicit categories win', () => {
     const pages = Array.from({ length: 24 }, (_, index) =>

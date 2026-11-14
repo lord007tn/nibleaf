@@ -23,6 +23,10 @@ export interface MarkdownCodeUsage {
   languages: string[];
   /** Raw HTML/MDX, or `$…$` math outside code. */
   rich: boolean;
+  /** `$…$` math outside code, or a ```math fence: the rich renderer then also
+   *  loads KaTeX. So does raw HTML with a `math-inline`/`math-display` class.
+   *  (A math fence alone doesn't make a page rich, as before.) */
+  math: boolean;
 }
 
 /** micromark can go superlinear on long runs of emphasis, bracket and tag
@@ -33,10 +37,12 @@ const MAX_MARKERS = 40_000;
 const MARKERS = new Set(['*', '_', '[', ']', '<', '>']);
 
 const CLASS_LANGUAGE = /\blang(?:uage)?-([^\s"'`>]+)/g;
+/** The classes rehype-katex renders as math. */
+const MATH_CLASS = /\bmath-(?:inline|display)\b/;
 
 /** Null when the document is too large or marker-dense to parse safely. */
 export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null => {
-  if (typeof markdown !== 'string') return { languages: [], rich: false };
+  if (typeof markdown !== 'string') return { languages: [], rich: false, math: false };
   if (markdown.length > MAX_LENGTH) return null;
   let markers = 0;
   for (let index = 0; index < markdown.length; index += 1) {
@@ -44,6 +50,8 @@ export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null =>
   }
   const languages = new Set<string>();
   let rich = false;
+  // Raw HTML that rehype-katex renders (`<code class="math-inline">`).
+  let htmlMath = false;
   const prose: string[] = [];
   const visit = (node: Nodes) => {
     if (node.type === 'code') {
@@ -53,6 +61,7 @@ export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null =>
     if (node.type === 'inlineCode') return;
     if (node.type === 'html') {
       rich = true;
+      if (MATH_CLASS.test(node.value)) htmlMath = true;
       for (const [, language] of node.value.matchAll(CLASS_LANGUAGE)) if (language) languages.add(language.toLowerCase());
       return;
     }
@@ -60,5 +69,6 @@ export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null =>
     if ('children' in node) for (const child of node.children as Nodes[]) visit(child);
   };
   visit(fromMarkdown(markdown, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] }));
-  return { languages: [...languages].sort(), rich: rich || containsMath(prose.join('\n')) };
+  const inlineMath = containsMath(prose.join('\n'));
+  return { languages: [...languages].sort(), rich: rich || inlineMath, math: inlineMath || htmlMath || languages.has('math') };
 };

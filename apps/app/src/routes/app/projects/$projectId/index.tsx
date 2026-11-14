@@ -34,8 +34,6 @@ import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { InlineSkeleton } from '@/components/inline-skeleton';
 import { ViewOnlyBanner } from '@/components/project/view-only-notice';
 import { QueryErrorState } from '@/components/query-error-state';
-import { PageStatusBadge, PendingChangesNotice } from '@/features/publish/components/pending-changes';
-import { pageLiveStatus } from '@/features/publish/model/pending';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import {
   friendlyErrorMessage,
@@ -102,8 +100,6 @@ function SiteOverviewPage() {
   const analyticsQuery = useProjectAnalytics(projectId, range);
   const { data: analytics, isPending: analyticsPending, isError: analyticsError } = analyticsQuery;
   const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
-  // The same check the top bar's Publish count reads: what the live site is missing.
-  const { data: pendingChanges } = usePendingChanges(projectId);
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
   const canManageSettings = settingsAccess === 'admin';
@@ -313,7 +309,6 @@ function SiteOverviewPage() {
               </Link>
             </div>
           </div>
-          <PendingChangesNotice className="mb-3" projectId={projectId} viewOnly={viewOnly} />
           <div aria-busy={deploymentsPending || undefined} className="flex flex-col gap-2">
             {deploymentsPending ? (
               <>
@@ -437,12 +432,11 @@ function SiteOverviewPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('overview.col.page')}</TableHead>
-                    <TableHead>{t('overview.col.status')}</TableHead>
                     <TableHead className="text-end">{t('overview.col.updated')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Shaped like a recent-page row: icon and title, status, then the date. */}
+                  {/* Shaped like a recent-page row: icon and title, then the date. */}
                   {RECENT_PAGE_SKELETON_ROWS.map((row) => (
                     <TableRow key={row}>
                       <TableCell>
@@ -450,9 +444,6 @@ function SiteOverviewPage() {
                           <Skeleton className="size-3.5 shrink-0 rounded-sm" />
                           <Skeleton className="h-4 w-1/2" />
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-14" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="ms-auto h-3 w-16" />
@@ -469,35 +460,30 @@ function SiteOverviewPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('overview.col.page')}</TableHead>
-                  <TableHead>{t('overview.col.status')}</TableHead>
                   <TableHead className="text-end">{t('overview.col.updated')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentPages.map((page) => {
-                  const status = pageLiveStatus(page.id, pendingChanges);
-                  return (
-                    <TableRow key={page.id} className="relative">
-                      <TableCell>
-                        {/* A real link to this page in the editor: keyboard, middle-click and
+                {recentPages.map((page) => (
+                  <TableRow key={page.id} className="relative">
+                    <TableCell>
+                      {/* A real link to this page in the editor: keyboard, middle-click and
                           screen readers all work, and the whole row stays clickable. */}
-                        <Link
-                          className="flex items-center gap-2.5 rounded-sm outline-none after:absolute after:inset-0 hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                          params={{ projectId }}
-                          search={{ page: page.id }}
-                          to="/app/projects/$projectId/editor"
-                        >
-                          <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate font-medium" dir="auto">
-                            {page.config?.sidebarTitle?.trim() || page.title}
-                          </span>
-                        </Link>
-                      </TableCell>
-                      <TableCell>{status ? <PageStatusBadge status={status} /> : null}</TableCell>
-                      <TableCell className="text-end text-muted-foreground text-xs">{date(page.updatedAt)}</TableCell>
-                    </TableRow>
-                  );
-                })}
+                      <Link
+                        className="flex items-center gap-2.5 rounded-sm outline-none after:absolute after:inset-0 hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                        params={{ projectId }}
+                        search={{ page: page.id }}
+                        to="/app/projects/$projectId/editor"
+                      >
+                        <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate font-medium" dir="auto">
+                          {page.config?.sidebarTitle?.trim() || page.title}
+                        </span>
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-end text-muted-foreground text-xs">{date(page.updatedAt)}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}

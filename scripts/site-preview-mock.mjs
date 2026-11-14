@@ -878,7 +878,7 @@ ${CURL_SHIPMENT}
     en: {
       title: 'Rate limits',
       description: 'Per-key request budgets and the headers that report them.',
-      content: `Limits are enforced per API key over a sliding sixty-second window.
+      content: `Limits are enforced per API key over a sliding sixty-second window. The bucket refills at $r = n / 60$ requests per second, where $n$ is the per-minute limit.
 
 | Key type | Requests per minute | Burst |
 | --- | --- | --- |

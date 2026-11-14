@@ -65,6 +65,14 @@ export const containsMath = (text: string): boolean => {
   return false;
 };
 
+/** A fenced code block in the `math` language: display math for remark-math. */
+const MATH_FENCE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*math\b/im;
+
+/** Math outside code, by the line scan (the fallback past the parser's bounds):
+ * only such pages load KaTeX (PUB-017). */
+export const needsMathMarkdown = (content: string): boolean =>
+  containsMath(withoutCode(content)) || MATH_FENCE.test(content) || /\bmath-(?:inline|display)\b/.test(content);
+
 /** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
  * detection conservative—false positives only load the richer renderer, while
  * false negatives could change output. Code (fenced blocks and inline spans)

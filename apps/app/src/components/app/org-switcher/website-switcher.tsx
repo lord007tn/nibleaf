@@ -43,16 +43,12 @@ export function WebsiteSwitcher({
           <Button
             aria-haspopup="dialog"
             aria-label={project ? t('switcher.websiteTrigger', { name: project.name }) : t('common.loading')}
-            // `shrink` overrides the button's `shrink-0`: on a phone the name truncates
-            // inside the breadcrumb instead of running under the top bar's actions.
-            className="h-8 min-w-0 max-w-48 shrink gap-1.5 px-1.5 font-medium data-[popup-open]:bg-muted"
+            className="h-8 min-w-0 max-w-48 gap-1.5 px-1.5 font-medium data-[popup-open]:bg-muted"
             variant="ghost"
           >
             {project ? (
-              // The name's own direction, so a Latin name in an Arabic dashboard
-              // truncates at its end ("Docum…"), not its start ("…ation").
-              <span className="min-w-0 truncate" dir="auto">
-                {project.name}
+              <span className="min-w-0 truncate">
+                <bdi>{project.name}</bdi>
               </span>
             ) : (
               <Skeleton aria-hidden className="h-4 w-20" />

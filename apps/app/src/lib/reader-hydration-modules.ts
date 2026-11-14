@@ -12,7 +12,7 @@ import { HYDRATION_MODULE_ATTRIBUTE, type HydrationModule, hydrationModule, load
 
 /** Moved to @nibleaf/shared/reader-rich, so the parser that reads a page's headings
  * as the reader renders them picks the same renderer. */
-import { needsRichMarkdown } from '@nibleaf/shared/reader-rich';
+import { needsMathMarkdown, needsRichMarkdown } from '@nibleaf/shared/reader-rich';
 
 export { needsRichMarkdown };
 /** The article renderer (Markdown, GFM, code highlighting): pages with an
@@ -23,6 +23,10 @@ export const articleMarkdownModule = hydrationModule('markdown', () => import('@
  *  It loads through the article renderer, which it builds on: its preload list
  *  then stays in that chunk, out of every page's first load. */
 export const richMarkdownModule = hydrationModule('markdown-rich', () => import('@/components/markdown').then((module) => module.loadRichMarkdown()));
+
+/** KaTeX and the math syntax: only pages with math (PUB-017). It loads through
+ *  the article renderer too, for the same reason. */
+export const mathMarkdownModule = hydrationModule('markdown-math', () => import('@/components/markdown').then((module) => module.loadMathMarkdown()));
 
 const HIGHLIGHT_KEY_PREFIX = 'hljs-';
 const highlightModules = new Map<string, HydrationModule<Record<string, LanguageFn>>>();
@@ -49,7 +53,11 @@ export const loadArticleRenderer = async (content: string): Promise<void> => {
     .then((languages) => Promise.all(languages.lazyHighlightLanguages(content).map((name) => highlightLanguageModule(name).load())))
     .catch(() => undefined);
   await Promise.all([
-    ...[articleMarkdownModule, ...(needsRichMarkdown(content) ? [richMarkdownModule] : [])].map((module) => module.load().catch(() => undefined)),
+    ...[
+      articleMarkdownModule,
+      ...(needsRichMarkdown(content) ? [richMarkdownModule] : []),
+      ...(needsMathMarkdown(content) ? [mathMarkdownModule] : []),
+    ].map((module) => module.load().catch(() => undefined)),
     grammars,
   ]);
 };
@@ -65,5 +73,5 @@ export const loadServerRenderedReaderModules = (root: ParentNode) => {
   }
   // Keys come from the server's own markup, and only name lazy languages.
   const grammars = [...languages].map((name) => highlightLanguageModule(name as LazyHighlightLanguage));
-  return loadServerRenderedModules(root, [articleMarkdownModule, richMarkdownModule, ...grammars]);
+  return loadServerRenderedModules(root, [articleMarkdownModule, richMarkdownModule, mathMarkdownModule, ...grammars]);
 };

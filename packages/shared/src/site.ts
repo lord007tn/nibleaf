@@ -272,27 +272,10 @@ export interface ResolvedPageCategory {
 
 const LARGE_FLAT_COLLECTION = 24;
 
-/** Lowercase in the page's language; a code that is not a usable language tag
- *  (empty, or custom) falls back to the default case mapping instead of throwing. */
-const localeLower = (text: string, languageCode: string): string => {
-  try {
-    return text.toLocaleLowerCase(languageCode || undefined);
-  } catch {
-    return text.toLowerCase();
-  }
-};
-
-/** The page fields navigation is built from: a published snapshot page, or a
- *  draft page in the dashboard preview (which has no content or version). */
-export type NavSourcePage = Pick<
-  SnapshotPage,
-  'id' | 'parentId' | 'languageCode' | 'kind' | 'title' | 'slug' | 'path' | 'icon' | 'config' | 'position' | 'hidden'
->;
-
 /** Resolve an explicit category, or infer a conservative workflow category for
  *  very large flat help-center imports. Explicit author metadata always wins;
  *  small hand-authored trees are never classified automatically. */
-export const resolvePageCategory = (page: NavSourcePage, siblingPageCount: number): ResolvedPageCategory | null => {
+export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number): ResolvedPageCategory | null => {
   const explicit = page.config?.category?.trim();
   if (explicit) {
     return {
@@ -305,7 +288,7 @@ export const resolvePageCategory = (page: NavSourcePage, siblingPageCount: numbe
     return null;
   }
 
-  const haystack = localeLower(`${page.title} ${page.slug}`, page.languageCode);
+  const haystack = `${page.title} ${page.slug}`.toLocaleLowerCase(page.languageCode);
   const ar = page.languageCode.toLowerCase().startsWith('ar');
   const rules: Array<{ title: string; icon: string; order: number; keywords: string[] }> = ar
     ? [
@@ -384,19 +367,10 @@ export const resolvePageCategory = (page: NavSourcePage, siblingPageCount: numbe
 };
 
 /** Build a navigation tree from snapshot pages, hiding pages flagged `hidden`.
- *  When `languageCode` is given, only that language's pages are included.
- *
- *  Siblings keep the author's order (`position`), groups and pages alike: the
- *  order the editor's page tree shows. One exception: virtual categories
- *  (importer metadata, or inferred for flat collections of 24+ pages) are not
- *  in the editor tree; they sit together where their first page sits, ordered
- *  among themselves by `categoryOrder`, so a categorized page can move ahead of
- *  later siblings. The site's home is resolved separately (`resolveSitePage`):
- *  a page with an empty path wins; a translated root serves the translation
- *  of the default language's home; otherwise the first page in this order. */
-export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], languageCode?: string): NavNode[] => {
+ *  When `languageCode` is given, only that language's pages are included. */
+export const buildNavTree = (pages: readonly SnapshotPage[], languageCode?: string): NavNode[] => {
   const visible = pages.filter((p) => !p.hidden && (!languageCode || p.languageCode === languageCode));
-  const byParent = new Map<string | null, T[]>();
+  const byParent = new Map<string | null, SnapshotPage[]>();
   for (const page of visible) {
     const list = byParent.get(page.parentId) ?? [];
     list.push(page);
@@ -405,7 +379,7 @@ export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], langu
   const build = (parentId: string | null): NavNode[] => {
     const siblings = (byParent.get(parentId) ?? []).sort((a, b) => a.position - b.position);
     const siblingPageCount = siblings.filter((page) => page.kind === 'PAGE').length;
-    const toNode = (page: T): NavNode => ({
+    const toNode = (page: SnapshotPage): NavNode => ({
       id: page.id,
       kind: page.kind,
       // Mintlify-style: a short sidebar label overrides the full page title in nav.
@@ -418,18 +392,16 @@ export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], langu
 
     // Categories are deliberately virtual: imported flat collections can gain
     // an ergonomic, collapsible sidebar without re-parenting pages or breaking
-    // any existing URL. They sit together, ordered by `categoryOrder`, where
-    // the author's first categorized page sits; every other sibling keeps its
-    // own position.
-    const ordered: Array<NavNode | 'categories'> = [];
-    const categories = new Map<string, { title: string; icon: string | null; order: number; firstPosition: number; pages: T[] }>();
+    // any existing URL. Real groups remain first; uncategorized pages follow the
+    // explicitly ordered category sections.
+    const plain: NavNode[] = [];
+    const categories = new Map<string, { title: string; icon: string | null; order: number; firstPosition: number; pages: SnapshotPage[] }>();
     for (const page of siblings) {
       const resolvedCategory = resolvePageCategory(page, siblingPageCount);
       if (!resolvedCategory) {
-        ordered.push(toNode(page));
+        plain.push(toNode(page));
         continue;
       }
-      if (categories.size === 0) ordered.push('categories');
       const { title } = resolvedCategory;
       const existing = categories.get(title);
       if (existing) {
@@ -456,26 +428,11 @@ export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], langu
         tag: null,
         children: category.pages.sort((a, b) => a.position - b.position).map(toNode),
       }));
-    return ordered.flatMap((entry) => (entry === 'categories' ? grouped : [entry]));
+    const realGroups = plain.filter((node) => node.kind === 'GROUP');
+    const uncategorizedPages = plain.filter((node) => node.kind === 'PAGE');
+    return [...realGroups, ...grouped, ...uncategorizedPages];
   };
   return build(null);
-};
-
-/** Whether a navigation group leads to at least one page (an empty group is not shown). */
-export const navGroupHasPage = (node: Pick<NavNode, 'kind' | 'children'>): boolean =>
-  node.children.some((child) => child.kind === 'PAGE' || navGroupHasPage(child));
-
-/** Whether a top-level page starts its own unlabelled block: it follows a shown
- *  group, so without a gap it would read as that group's last page. */
-export const startsUngroupedBlock = (nodes: readonly NavNode[], index: number): boolean => {
-  if (nodes[index]?.kind !== 'PAGE') return false;
-  for (let previous = index - 1; previous >= 0; previous--) {
-    const node = nodes[previous];
-    if (!node) return false;
-    if (node.kind === 'PAGE') return false;
-    if (navGroupHasPage(node)) return true;
-  }
-  return false;
 };
 
 export interface Heading {

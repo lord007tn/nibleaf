@@ -1,6 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { blockDirection } from '@nibleaf/shared/script-direction';
-import { startsUngroupedBlock } from '@nibleaf/shared/site';
 import { ChevronRight } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';
@@ -61,17 +60,7 @@ export const isVersionIndependentNavNode = (node: Pick<NavNode, 'id'>): boolean 
  *  holding the current page starts expanded. The link keeps navigating; the
  *  adjacent chevron toggles the subtree. Collapsed subpages stay in the DOM,
  *  hidden, so server HTML keeps every link for crawlers. */
-function NavLink({
-  node,
-  projectId,
-  currentPath,
-  lang,
-  version,
-  depth,
-  toggleLabel,
-  rail,
-  blockStart,
-}: NavItemProps & { node: NavNode; rail?: boolean; blockStart?: boolean }) {
+function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLabel, rail }: NavItemProps & { node: NavNode; rail?: boolean }) {
   const active = currentPath === node.path;
   const hasChildren = node.children.length > 0;
   const [open, setOpen] = useState(() => containsPath(node, currentPath));
@@ -85,8 +74,7 @@ function NavLink({
   const toggleId = `${id}-toggle`;
   const childrenId = `${id}-children`;
   return (
-    // A page after a section starts its own unlabelled block, spaced like a section.
-    <li className={blockStart ? 'mt-7' : undefined} data-nav-block-start={blockStart ? '' : undefined}>
+    <li>
       <div className="flex items-start gap-0.5 pointer-coarse:items-center">
         <a
           id={linkId}
@@ -266,12 +254,12 @@ interface NavItemProps {
 function NavItems({ id, hidden, nodes, rail, ...rest }: NavItemProps & { id?: string; hidden?: boolean; nodes: NavNode[]; rail?: boolean }) {
   return (
     <ul id={id} hidden={hidden} className={cn('space-y-px', rail && 'ms-3 border-border/70 border-s ps-3')}>
-      {nodes.map((node, index) => {
+      {nodes.map((node) => {
         if (node.kind === 'GROUP') {
           if (!firstLeafPath(node.children)) return null;
           return rest.depth === 0 ? <NavSection key={node.id} node={node} {...rest} /> : <NavSubGroup key={node.id} node={node} {...rest} />;
         }
-        return <NavLink blockStart={rest.depth === 0 && startsUngroupedBlock(nodes, index)} key={node.id} node={node} rail={rail} {...rest} />;
+        return <NavLink key={node.id} node={node} rail={rail} {...rest} />;
       })}
     </ul>
   );

@@ -25,7 +25,7 @@ import { ContentImage, SectionLink } from '@/components/site/reader-content-cont
 import { CORE_HIGHLIGHT_GRAMMARS, rehypeReaderHighlight } from '@/components/site/reader-highlight';
 import { lazyHighlightLanguages, lazyHighlightLanguagesNamed } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
-import { highlightLanguageModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
+import { highlightLanguageModule, mathMarkdownModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -48,8 +48,12 @@ export interface MarkdownProps {
 
 /** The rich renderer's chunk (see richMarkdownModule). */
 export const loadRichMarkdown = () => import('./markdown-rich').then((module) => module.default);
+/** KaTeX for pages with math (see mathMarkdownModule). */
+export const loadMathMarkdown = () => import('./markdown-math').then((module) => module.mathPlugins);
 
 const RICH_MODULES = [richMarkdownModule];
+const RICH_MATH_MODULES = [richMarkdownModule, mathMarkdownModule];
+const RICH_MATH_MARKER = { [HYDRATION_MODULE_ATTRIBUTE]: RICH_MATH_MODULES.map((module) => module.key).join(' ') };
 
 /** Rewrite a root-relative internal doc link to the site base. External URLs,
  *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
@@ -135,25 +139,25 @@ export function Markdown(props: MarkdownProps) {
   // ends, `r&#117;st`), the same on the server and in the browser, so the
   // modules the server marked are the ones hydration expects. Past the parser's
   // safety bounds, the line-based checks decide, erring towards loading.
-  const { rich, usage } = readerRenderMode(props.content);
+  const { rich, math, usage } = readerRenderMode(props.content);
   const languages = usage ? lazyHighlightLanguagesNamed(usage.languages, props.content) : lazyHighlightLanguages(props.content);
-  if (languages.length === 0) return <MarkdownBody {...props} rich={rich} />;
+  if (languages.length === 0) return <MarkdownBody {...props} rich={rich} math={math} />;
   // Code in a language outside the core grammars: its grammars load like the
   // rich renderer (before hydrating, and in the reader's loaders), and until
   // they have, the plain body keeps those blocks readable, unhighlighted.
   const modules = languages.map(highlightLanguageModule);
-  const plain = <MarkdownBody {...props} rich={rich} />;
+  const plain = <MarkdownBody {...props} rich={rich} math={math} />;
   const marker = { [HYDRATION_MODULE_ATTRIBUTE]: modules.map((module) => module.key).join(' ') };
   return (
     <Suspense fallback={plain}>
       <HydrationIsland className="contents" {...marker} modules={modules} pending={plain} failed={() => plain}>
-        {() => <MarkdownBody {...props} rich={rich} highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))} />}
+        {() => <MarkdownBody {...props} rich={rich} math={math} highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))} />}
       </HydrationIsland>
     </Suspense>
   );
 }
 
-function MarkdownBody({ content, className, site, highlightGrammars, rich }: MarkdownProps & { rich: boolean }) {
+function MarkdownBody({ content, className, site, highlightGrammars, rich, math }: MarkdownProps & { rich: boolean; math: boolean }) {
   if (rich) {
     // The router loads the rich chunk before hydrating markup it rendered, and
     // the reader's loaders before navigating. Until it loads, hydrating keeps
@@ -163,10 +167,24 @@ function MarkdownBody({ content, className, site, highlightGrammars, rich }: Mar
     const plain = <MarkdownRenderer content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
     return (
       <Suspense fallback={plain}>
-        <HydrationIsland className="contents" {...richMarkdownModule.marker} modules={RICH_MODULES} pending={plain} failed={() => plain}>
+        <HydrationIsland
+          className="contents"
+          {...(math ? RICH_MATH_MARKER : richMarkdownModule.marker)}
+          modules={math ? RICH_MATH_MODULES : RICH_MODULES}
+          pending={plain}
+          failed={() => plain}
+        >
           {() => {
             const Rich = richMarkdownModule.read();
-            return <Rich content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
+            return (
+              <Rich
+                content={content}
+                className={className}
+                site={site}
+                highlightGrammars={highlightGrammars}
+                math={math ? mathMarkdownModule.read() : undefined}
+              />
+            );
           }}
         </HydrationIsland>
       </Suspense>
