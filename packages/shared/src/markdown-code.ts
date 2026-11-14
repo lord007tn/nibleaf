@@ -325,7 +325,7 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
     // Indented 4 or more columns past its containers: indented code, or a lazy
     // paragraph line, but never a fence (except inside a component).
     if (components === 0 && indent >= 4) return 'prose';
-    const opening = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
+    const opening = openingMarkdownFence(content, components > 0 ? Number.POSITIVE_INFINITY : 3);
     if (opening) {
       fence = opening;
       paragraph = false;
@@ -364,7 +364,8 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
     const inside = continued.matched === stack.items.length;
     if (fence) {
       if (inside) {
-        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, Number.POSITIVE_INFINITY)) fence = undefined;
+        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, components > 0 ? Number.POSITIVE_INFINITY : 3))
+          fence = undefined;
         return 'code';
       }
       // The line leaves a container, which ends the fence; it starts afresh.

@@ -20,6 +20,7 @@ import {
   LAZY_INLINE_HTML_REPROS,
   ORDERED_LINE_UNDER_BULLET,
   QUOTED_DOCTYPE_BLOCK,
+  quoteCloserIndentationCases,
   TAB_BEFORE_QUOTE_IN_ITEM,
 } from './testing/fence-cases';
 import { mainFencedMarkdownLines } from './testing/markdown-code.main-reference';
@@ -77,6 +78,47 @@ const commonMarkCode = (lines: readonly string[]) => {
   return { fence, code };
 };
 
+it('keeps literal lines after a quoted closer indented six columns (CodeRabbit r4570988540)', () => {
+  const source = '> ~~~\n> \t\t~~~\n> literal\n> ~~~\nafter';
+  expect(micromarkFences(source).map(Number).join('')).toBe('11110');
+  expect(commonMarkCode(source.split('\n')).fence.map(Number).join('')).toBe('11110');
+  expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe('11110');
+});
+
+it.each(['~~~', '```'])('limits %s closers to three columns in quotes and both list/quote orders', (marker) => {
+  const failures: Array<{ source: string; ours: string; expected: string }> = [];
+  const markdownItDisagreements: number[] = [];
+  const cases = quoteCloserIndentationCases().filter((example) => example.marker === marker);
+  for (const [index, { source }] of cases.entries()) {
+    const expected = micromarkFences(source).map(Number).join('');
+    const ours = fencedMarkdownLines(source.split('\n')).map(Number).join('');
+    const markdownIt = commonMarkCode(source.split('\n')).fence.map(Number).join('');
+    if (ours !== expected) failures.push({ source, ours, expected });
+    if (markdownIt !== expected) markdownItDisagreements.push(index);
+  }
+  console.info(`Closer indentation ${marker}: ${cases.length} cases, ${failures.length} disagreements`);
+  expect(markdownItDisagreements).toEqual([]);
+  expect(failures.slice(0, 8), `${failures.length} disagreements`).toEqual([]);
+});
+
+it('preserves deeply indented MDX closers while bounding ordinary closers', () => {
+  const failures: Array<{ source: string; ours: string; expected: string }> = [];
+  for (const marker of ['~~~', '```']) {
+    const ordinary = [`> ${marker}`, `> \t\t${marker}`, '> literal', `> ${marker}`, 'after'];
+    for (const [source, expected] of [
+      [ordinary.join('\n'), '11110'],
+      [[marker, `    ${marker}`, 'literal', marker, 'after'].join('\n'), '11110'],
+      [[`- ${marker}`, `  \t\t${marker}`, '  literal', `  ${marker}`, 'after'].join('\n'), '11110'],
+      [['<CodeGroup>', ...ordinary.slice(0, 4).map((line) => `    ${line}`), '</CodeGroup>', 'after'].join('\n'), '0110100'],
+      [['<Note>', marker, `        ${marker}`, 'literal', '</Note>', 'after'].join('\n'), '011000'],
+    ] as const) {
+      const ours = fencedMarkdownLines(source.split('\n')).map(Number).join('');
+      if (ours !== expected) failures.push({ source, ours, expected });
+    }
+  }
+  expect(failures).toEqual([]);
+});
+
 // The shared reader scanner against CommonMark (markdown-it, as the importer
 // parses) on the generated fences in quotes and lists (#587). The examples run
 // without their MDX wrappers: markdown-it reads `<CodeGroup>` as an HTML block,
@@ -120,7 +162,7 @@ it('reads ordered siblings, thematic breaks, lazy lines, setext underlines and H
   const start = performance.now();
   type Tally = { cases: number; agree: number; codeMarkdownItCallsProse: number; exposedAgainstMain: number };
   const tallies = new Map<string, Tally>();
-  const failures: Array<{ index: number; category: DifferentialCategory; source: string; ours: string; markdownIt: string }> = [];
+  const failures: Array<{ index: number; category: DifferentialCategory; source: string; ours: string; expected: string }> = [];
   const markdownItDisagreements: number[] = [];
   const cases = differentialCases();
   for (const { index, category, nested, source } of cases) {
@@ -138,22 +180,24 @@ it('reads ordered siblings, thematic breaks, lazy lines, setext underlines and H
       if (main.some((isCode, line) => isCode && fence[line] && !ours[line])) tally.exposedAgainstMain++;
       tallies.set(key, tally);
     }
-    if (!ours.every((isCode, line) => isCode === fence[line])) {
-      // markdown-it 14.3.3 loses cumulative tab offsets after three quote
-      // markers. Keep every discrepancy visible and check micromark as well.
-      const independent = micromarkFences(source);
-      if (category === 'tab after a quote marker before a fence' && ours.every((isCode, line) => isCode === independent[line]))
-        markdownItDisagreements.push(index);
-      else failures.push({ index, category, source, ours: ours.map(Number).join(''), markdownIt: fence.map(Number).join('') });
-    }
+    // Check every closer shape with micromark. Keep the existing independent
+    // opener pins where markdown-it loses cumulative tab offsets in nested quotes.
+    const expected =
+      category === 'tab-after-quote closer indentation' ||
+      (category === 'tab after a quote marker before a fence' && !ours.every((isCode, line) => isCode === fence[line]))
+        ? micromarkFences(source)
+        : fence;
+    if (!expected.every((isCode, line) => isCode === fence[line])) markdownItDisagreements.push(index);
+    if (!ours.every((isCode, line) => isCode === expected[line]))
+      failures.push({ index, category, source, ours: ours.map(Number).join(''), expected: expected.map(Number).join('') });
   }
   const table = Object.fromEntries(tallies);
   Object.assign(task.meta, { differential: table });
   console.info('differential against markdown-it:', table);
   console.info(
-    `markdown-it differential: ${cases.length} cases in ${(performance.now() - start).toFixed(1)} ms; ${markdownItDisagreements.length} checked with micromark`,
+    `markdown-it differential: ${cases.length} cases in ${(performance.now() - start).toFixed(1)} ms; ${markdownItDisagreements.length} discrepancies pinned with micromark`,
   );
-  expect(markdownItDisagreements).toEqual([3092, 3111, 3119, 3194, 3252, 3373, 3438, 3504, 3514, 3552]);
+  expect(markdownItDisagreements).toEqual([3092, 3111, 3119, 3194, 3252, 3373, 3438, 3504, 3514, 3552, 3700, 4001]);
   expect(failures.slice(0, 8), `${failures.length} disagreements`).toEqual([]);
   // An HTML comment block ends at `-->`, not `--!>`: markdown-it keeps the fence-like line in it.
   const commentLines = HTML_COMMENT_WITH_BANG_CLOSER.split('\n');

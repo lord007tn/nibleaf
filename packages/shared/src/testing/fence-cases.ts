@@ -253,7 +253,8 @@ export type DifferentialCategory =
   | 'setext underlines'
   | 'HTML blocks'
   | 'HTML after a paragraph'
-  | 'tab after a quote marker before a fence';
+  | 'tab after a quote marker before a fence'
+  | 'tab-after-quote closer indentation';
 export interface DifferentialCase {
   index: number;
   category: DifferentialCategory;
@@ -261,6 +262,30 @@ export interface DifferentialCase {
   nested: boolean;
   source: string;
 }
+
+/** Closing delimiters at 0–7 columns, with tabs before and after the quote's
+ * optional space. Both list/quote orders and numbered items are covered. */
+export const quoteCloserIndentationCases = () => {
+  const containers = [
+    ['> ', '> '],
+    ['> > ', '> > '],
+    ['> - ', '>   '],
+    ['> 1. ', '>    '],
+    ['- > ', '  > '],
+    ['1. > ', '   > '],
+  ] as const;
+  const padding = ['', ' ', '  ', '   ', '    ', '     ', '      ', '       ', '\t', ' \t', '  \t', '   \t', '\t ', '\t  ', '\t\t'];
+  const cases: Array<{ marker: string; source: string }> = [];
+  for (const marker of ['~~~', '```']) {
+    for (const [first, rest] of containers) {
+      const closers = padding.map((pad) => `${rest}${pad}${marker}`);
+      if (rest.endsWith('> ')) for (const pad of ['\t', '\t ', '\t  ', '\t\t']) closers.push(`${rest.slice(0, -1)}${pad}${marker}`);
+      for (const closer of closers)
+        cases.push({ marker, source: [`${first}${marker}`, closer, `${rest}literal`, `${rest}${marker}`, 'after'].join('\n') });
+    }
+  }
+  return cases;
+};
 
 /**
  * Shapes around a fence that exercise CommonMark's block rules: ordered items
@@ -279,6 +304,7 @@ export const differentialCases = (seed = FENCE_CASE_SEED, perCategory = 512): Di
   };
   const choose = <T>(values: readonly [T, ...T[]]): T => values[next() % values.length] ?? values[0];
   const fence = () => choose(['`', '~'] as const).repeat(3 + (next() % 2));
+  const quoteClosers = quoteCloserIndentationCases();
   const shapes: Record<DifferentialCategory, () => string[]> = {
     'ordered siblings': () => {
       const delimiter = choose(['.', ')'] as const);
@@ -363,6 +389,7 @@ export const differentialCases = (seed = FENCE_CASE_SEED, perCategory = 512): Di
       // Include both fences (<4 columns after the quote) and indented lookalikes.
       return [`${quote}\t${pad}${f}md`, `${quote}# literal`, `${quote}${f}`];
     },
+    'tab-after-quote closer indentation': () => (quoteClosers[next() % quoteClosers.length] as { source: string }).source.split('\n'),
   };
   const prefixes: ReadonlyArray<readonly [first: string, rest: string]> = [
     ['> ', '> '],
