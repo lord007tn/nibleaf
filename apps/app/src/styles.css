@@ -485,6 +485,11 @@
   .nibleaf-site-chrome[data-theme-callouts="solid"]
     [data-theme-component="callout"] {
     --primary: var(--theme-code-accent);
+    /* The callout's own text-foreground utility outranks this layer, so the
+     * aliases themselves move to the code surface (as the Signal rail does):
+     * otherwise light mode draws dark text on the dark fill (PUB-019, 1.05:1). */
+    --foreground: var(--theme-code-foreground);
+    --muted-foreground: var(--theme-code-muted);
     color: var(--theme-code-foreground);
     background: color-mix(
       in oklab,
