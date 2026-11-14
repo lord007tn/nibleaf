@@ -9,7 +9,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const BASELINE_REVISION = '1270e549c01924e5156697986a513faafa1ce7c2';
+const BASELINE_REVISION = 'd93468d698bf4d3e2d7e484aed4b4ec133cbea65';
 const EDITOR = 'apps/app/src/components/editor';
 
 const here = dirname(fileURLToPath(import.meta.url));

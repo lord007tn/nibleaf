@@ -29,7 +29,7 @@ interface SerializerBaseline {
 }
 
 // A path, not a URL: jsdom replaces the global URL, which node:fs does not accept.
-const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__/serializer-differential.main-1270e549.json');
+const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__/serializer-differential.main-d93468d6.json');
 const hash = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);
 const cases = serializerCorpus();
 const sources = createHash('sha256')
