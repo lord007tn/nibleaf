@@ -656,6 +656,7 @@
   "settings_general_customdomain_hint": "Хотите, чтобы читатели заходили на ваш собственный домен?",
   "settings_general_customdomain_link": "Настроить свой домен",
   "settings_general_url_taken": "Этот адрес уже занят другим сайтом. Попробуйте другой.",
+  "settings_general_url_reserved": "Этот адрес зарезервирован системой. Выберите другой.",
   "settings_branding_title": "Брендинг",
   "settings_branding_upload": "Загрузить",
   "settings_branding_uploaded": "Загружено",
@@ -4928,7 +4929,9 @@
   "publish_checks_allclear": "Все проверки пройдены",
   "publish_checks_allclearhint": "Нет битых ссылок, изображений без альтернативного текста, страниц без названия и лишних символов.",
   "publish_checks_fix": "Исправить",
-  "publish_checks_fixlabel": "Исправить «{title}» в редакторе",
+  "publish_checks_fixproblem": "Исправить «{title}»: {problem}",
+  "publish_checks_show": "Показать ({count})",
+  "publish_checks_hide": "Скрыть",
   "publish_checks_blockedreason": "Перед публикацией исправьте ошибки из раздела «Проверки».",
   "publish_checks_error": "Ошибка",
   "publish_checks_warning": "Предупреждение",
@@ -5074,5 +5077,25 @@
   "settings_aiassistants_watch_again": "Ждать снова",
   "settings_aiassistants_keysloaderror": "Не удалось загрузить персональные ключи. Приложения, вошедшие через вход, по-прежнему показаны.",
   "settings_aiassistants_appsloaderror": "Не удалось загрузить приложения, вошедшие через вход. Персональные ключи по-прежнему показаны.",
-  "oauth_consent_can_aiconversations": "Читать сохранённые вопросы и ответы Ask AI. Адреса электронной почты, номера телефонов и ключи удаляются, но имена, адреса и другие личные данные могут остаться."
+  "oauth_consent_can_aiconversations": "Читать сохранённые вопросы и ответы Ask AI. Адреса электронной почты, номера телефонов и ключи удаляются, но имена, адреса и другие личные данные могут остаться.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} неопубликованное изменение",
+        "form=few": "{count} неопубликованных изменения",
+        "form=many": "{count} неопубликованных изменений",
+        "form=*": "{count} неопубликованного изменения"
+      }
+    }
+  ],
+  "pending_siteonly": "Неопубликованные изменения навигации или настроек",
+  "pending_readersstillsee": "Читатели пока видят версию {version}.",
+  "pending_review": "Проверить и опубликовать",
+  "pending_draft": "Ещё не опубликовано",
+  "overview_col_status": "Статус",
+  "pagestatus_draft": "Не опубликована",
+  "pagestatus_changed": "Изменена",
+  "pagestatus_live": "Опубликована"
 }

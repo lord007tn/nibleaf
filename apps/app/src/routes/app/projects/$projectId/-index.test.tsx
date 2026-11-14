@@ -549,6 +549,58 @@ describe('site overview when something fails or is still connecting', () => {
     });
   });
 
+  // P1-DASH-005: with unpublished edits, Overview said "Live · v1" and nothing else.
+  describe('unpublished changes', () => {
+    const page = (id: string, updatedAt: string) => ({ id, kind: 'PAGE', title: id, path: id, updatedAt, config: null });
+    beforeEach(() => {
+      Object.assign(queries, {
+        project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 1 }),
+        members: loaded({ members: [{ role: 'admin', user: { id: 'user-1' } }] }),
+        deployments: loaded([{ ...readyDeployment, version: 1 }]),
+        pages: loaded([page('edited', '2026-11-13T10:00:00Z'), page('fresh', '2026-11-13T09:00:00Z'), page('untouched', '2026-11-01T00:00:00Z')]),
+        content: loaded({
+          hasBaseline: true,
+          lastVersion: 1,
+          upToDate: false,
+          changes: [
+            { id: 'edited', status: 'modified' },
+            { id: 'fresh', status: 'added' },
+          ],
+        }),
+      });
+    });
+
+    it('says the live site is behind, with Review and publish', async () => {
+      await act(async () => root.render(<SiteOverviewPage />));
+      const notice = container.querySelector('[data-testid="pending-changes"]');
+      expect(notice?.textContent).toContain('pending.count');
+      expect(notice?.textContent).toContain('pending.readersStillSee');
+      // Outside the site shell there is no top-bar sheet to open, so it links to the editor's.
+      const review = [...(notice?.querySelectorAll('a') ?? [])].find((link) => link.textContent?.includes('pending.review'));
+      expect(review?.getAttribute('data-to')).toBe('/app/projects/$projectId/editor');
+    });
+
+    it('gives each recent page its status against the live site', async () => {
+      await act(async () => root.render(<SiteOverviewPage />));
+      const statuses = [...container.querySelectorAll('[data-page-status]')].map((badge) => badge.getAttribute('data-page-status'));
+      expect(statuses).toEqual(['changed', 'draft', 'live']);
+    });
+
+    it('offers Viewers the state without a publish action', async () => {
+      queries.members = loaded({ members: [{ role: 'viewer', user: { id: 'user-1' } }] });
+      await act(async () => root.render(<SiteOverviewPage />));
+      const notice = container.querySelector('[data-testid="pending-changes"]');
+      expect(notice?.textContent).toContain('pending.count');
+      expect(notice?.textContent).not.toContain('pending.review');
+    });
+
+    it('says nothing once everything is live', async () => {
+      queries.content = loaded({ hasBaseline: true, lastVersion: 1, upToDate: true, changes: [] });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.querySelector('[data-testid="pending-changes"]')).toBeNull();
+    });
+  });
+
   it('links a custom domain only once its DNS and HTTPS both work', async () => {
     queries.domains = loaded([domain({})]);
     await act(async () => root.render(<SiteOverviewPage />));

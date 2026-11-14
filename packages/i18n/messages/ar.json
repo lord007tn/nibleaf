@@ -710,6 +710,7 @@
   "settings_general_customdomain_hint": "هل تريد أن يستخدم القرّاء نطاقك الخاص؟",
   "settings_general_customdomain_link": "إعداد نطاق مخصص",
   "settings_general_url_taken": "يستخدم موقع آخر هذا العنوان بالفعل. جرّب عنوانًا مختلفًا.",
+  "settings_general_url_reserved": "هذا العنوان محجوز للنظام. اختر عنوانًا مختلفًا.",
   "settings_branding_title": "العلامة التجارية",
   "settings_branding_upload": "رفع",
   "settings_branding_uploaded": "تم الرفع",
@@ -4955,7 +4956,9 @@
   "publish_checks_allclear": "نجحت كل الفحوصات",
   "publish_checks_allclearhint": "لا توجد روابط معطلة أو صور بلا نص بديل أو صفحات بلا عنوان أو رموز زائدة.",
   "publish_checks_fix": "إصلاح",
-  "publish_checks_fixlabel": "إصلاح {title} في المحرر",
+  "publish_checks_fixproblem": "إصلاح «{title}»: {problem}",
+  "publish_checks_show": "عرض ({count})",
+  "publish_checks_hide": "إخفاء",
   "publish_checks_blockedreason": "أصلح الأخطاء الظاهرة في الفحوصات قبل النشر.",
   "publish_checks_error": "خطأ",
   "publish_checks_warning": "تحذير",
@@ -5112,5 +5115,27 @@
   "settings_aiassistants_watch_again": "تابع الانتظار",
   "settings_aiassistants_keysloaderror": "تعذّر تحميل المفاتيح الشخصية. ما زالت التطبيقات التي سجّلت الدخول معروضة.",
   "settings_aiassistants_appsloaderror": "تعذّر تحميل التطبيقات التي سجّلت الدخول. ما زالت المفاتيح الشخصية معروضة.",
-  "oauth_consent_can_aiconversations": "قراءة أسئلة «اسأل الذكاء الاصطناعي» المحفوظة وإجاباتها. تُحذف منها عناوين البريد الإلكتروني وأرقام الهواتف والمفاتيح، لكن قد تبقى فيها أسماء وعناوين وبيانات شخصية أخرى."
+  "oauth_consent_can_aiconversations": "قراءة أسئلة «اسأل الذكاء الاصطناعي» المحفوظة وإجاباتها. تُحذف منها عناوين البريد الإلكتروني وأرقام الهواتف والمفاتيح، لكن قد تبقى فيها أسماء وعناوين وبيانات شخصية أخرى.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا تغييرات غير منشورة",
+        "form=one": "تغيير واحد غير منشور",
+        "form=two": "تغييران غير منشورين",
+        "form=few": "{count} تغييرات غير منشورة",
+        "form=many": "{count} تغييرًا غير منشور",
+        "form=*": "{count} تغيير غير منشور"
+      }
+    }
+  ],
+  "pending_siteonly": "تغييرات غير منشورة في التنقل أو الإعدادات",
+  "pending_readersstillsee": "لا يزال القرّاء يرون الإصدار {version}.",
+  "pending_review": "المراجعة والنشر",
+  "pending_draft": "لم يُنشر بعد",
+  "overview_col_status": "الحالة",
+  "pagestatus_draft": "غير منشورة",
+  "pagestatus_changed": "معدّلة",
+  "pagestatus_live": "منشورة"
 }

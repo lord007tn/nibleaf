@@ -8,6 +8,20 @@ manifest remains the authority for the latest published artifact.
 
 ### Changed
 
+- **Live sites list navigation in the author's order.** The reader used to put
+  every group ahead of the pages beside it, so a site's sidebar and its home
+  page could differ from the editor's page tree. Groups and pages now keep the
+  order set in the editor at every level, and a site without a page at the
+  empty address opens on the first page in that order (a translated site root
+  still opens on the translation of the default language's home page). Virtual categories from
+  imports, which the editor tree does not show, still sit together, ordered by
+  their category order. This changes the sidebar order, the home page and prev/next
+  links of existing live sites whose groups were not already first, as soon as
+  this is deployed (no republish needed). The Git export's `docs.json`
+  navigation follows the same order. A page after a group starts its own
+  block, so it no longer reads as part of that group. The draft preview now
+  builds its sidebar from the same tree, so the editor, the preview and the
+  live site agree (P1-DASH-002, P1-DASH-003).
 - Move container services and the contributor toolchain to Node 26.13.0 after
   qualifying the Ghost importer renderer family (#51).
 - Container images after v0.2.1 omit pnpm and other package managers. Run search
@@ -16,6 +30,12 @@ manifest remains the authority for the latest published artifact.
   v0.2.1 images keep their original operator commands.
 
 ### Fixed
+
+- The first account's starter site gets the address `documentation` instead of
+  the reserved `docs`, so its General settings save on a fresh install. Sites
+  that already have a reserved address keep it: the API judges reservation only
+  when the address changes. The General form now sends only the fields that
+  changed and shows a taken, reserved or invalid address on the field.
 
 - Let app SSR processes exit after HTTP shutdown by avoiding request-local
   query cache timers. Bound default web shutdown to nine seconds and preserve

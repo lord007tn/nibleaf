@@ -652,6 +652,7 @@
   "settings_general_customdomain_hint": "Vous voulez que les lecteurs utilisent votre propre domaine ?",
   "settings_general_customdomain_link": "Configurer un domaine personnalisé",
   "settings_general_url_taken": "Un autre site utilise déjà cette adresse. Essayez-en une autre.",
+  "settings_general_url_reserved": "Cette adresse est réservée au système. Choisissez-en une autre.",
   "settings_branding_title": "Image de marque",
   "settings_branding_upload": "Télécharger",
   "settings_branding_uploaded": "Téléchargé",
@@ -4901,7 +4902,9 @@
   "publish_checks_allclear": "Toutes les vérifications sont réussies",
   "publish_checks_allclearhint": "Aucun lien cassé, aucune image sans texte alternatif, aucune page sans titre ni caractère résiduel.",
   "publish_checks_fix": "Corriger",
-  "publish_checks_fixlabel": "Corriger {title} dans l’éditeur",
+  "publish_checks_fixproblem": "Corriger « {title} » : {problem}",
+  "publish_checks_show": "Afficher ({count})",
+  "publish_checks_hide": "Masquer",
   "publish_checks_blockedreason": "Corrigez les erreurs listées dans Vérifications avant de publier.",
   "publish_checks_error": "Erreur",
   "publish_checks_warning": "Avertissement",
@@ -5047,5 +5050,23 @@
   "settings_aiassistants_watch_again": "Attendre à nouveau",
   "settings_aiassistants_keysloaderror": "Impossible de charger les clés personnelles. Les apps connectées restent affichées.",
   "settings_aiassistants_appsloaderror": "Impossible de charger les apps connectées. Les clés personnelles restent affichées.",
-  "oauth_consent_can_aiconversations": "Lire les questions et réponses Ask AI enregistrées. Les adresses e-mail, numéros de téléphone et clés sont retirés, mais des noms, des adresses et d’autres données personnelles peuvent subsister."
+  "oauth_consent_can_aiconversations": "Lire les questions et réponses Ask AI enregistrées. Les adresses e-mail, numéros de téléphone et clés sont retirés, mais des noms, des adresses et d’autres données personnelles peuvent subsister.",
+  "pending_count": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} modification non publiée",
+        "form=*": "{count} modifications non publiées"
+      }
+    }
+  ],
+  "pending_siteonly": "Modifications non publiées de la navigation ou des paramètres",
+  "pending_readersstillsee": "Les lecteurs voient toujours la version {version}.",
+  "pending_review": "Vérifier et publier",
+  "pending_draft": "Pas encore en ligne",
+  "overview_col_status": "Statut",
+  "pagestatus_draft": "Non publiée",
+  "pagestatus_changed": "Modifiée",
+  "pagestatus_live": "En ligne"
 }

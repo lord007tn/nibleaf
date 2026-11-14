@@ -71,7 +71,12 @@ const takeColumns = (line: string, at: LineCursor, columns: number): { cursor: L
 /** Past a `>` at `index`, with its optional following space (one column of a tab). */
 const afterQuoteMarker = (line: string, index: number, column: number): LineCursor => {
   const next = { index: index + 1, column: column + 1, spare: 0 };
-  return isSpace(line[next.index]) ? takeColumns(line, next, 1).cursor : next;
+  const content = isSpace(line[next.index]) ? takeColumns(line, next, 1).cursor : next;
+  // A tab after that optional space is indentation too. Carry its columns as
+  // spare spaces, just like the remainder of a partially consumed tab, so fence
+  // recognition sees columns rather than a raw tab (including the 4+ cutoff).
+  const space = whitespaceAhead(line, content);
+  return { index: space.index, column: space.column, spare: space.columns };
 };
 
 const contentAt = (line: string, at: LineCursor) => ' '.repeat(at.spare) + line.slice(at.index);
@@ -320,7 +325,7 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
     // Indented 4 or more columns past its containers: indented code, or a lazy
     // paragraph line, but never a fence (except inside a component).
     if (components === 0 && indent >= 4) return 'prose';
-    const opening = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
+    const opening = openingMarkdownFence(content, components > 0 ? Number.POSITIVE_INFINITY : 3);
     if (opening) {
       fence = opening;
       paragraph = false;
@@ -359,7 +364,8 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
     const inside = continued.matched === stack.items.length;
     if (fence) {
       if (inside) {
-        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, Number.POSITIVE_INFINITY)) fence = undefined;
+        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, components > 0 ? Number.POSITIVE_INFINITY : 3))
+          fence = undefined;
         return 'code';
       }
       // The line leaves a container, which ends the fence; it starts afresh.
