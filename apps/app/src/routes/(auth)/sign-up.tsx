@@ -5,7 +5,7 @@ import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-r
 import { useState } from 'react';
 import { z } from 'zod';
 import { EmailCodeStep, ResendStatus, useEmailCode } from '@/components/auth-email-code';
-import { AuthFormStatus, AuthTextField, useAuthFieldErrors } from '@/components/auth-form';
+import { AUTH_INLINE_LINK_CLASS, AuthFormStatus, AuthTextField, useAuthFieldErrors } from '@/components/auth-form';
 import { GoogleIcon } from '@/components/icons/brand';
 import { QueryErrorState } from '@/components/query-error-state';
 import { TermsNotice } from '@/components/terms-notice';
@@ -89,9 +89,9 @@ function SignUpPage() {
 
   if (metaPending) {
     // Only when the server couldn't read the instance metadata. Shaped like
-    // the form below (name, email, terms, button).
+    // the form below (terms under the heading, name, email, button).
     return (
-      <AuthLayout subtitle={t('auth.signUp.subtitle')}>
+      <AuthLayout notice={<Skeleton aria-hidden className="h-4 w-full" />} subtitle={t('auth.signUp.subtitle')}>
         <div aria-busy="true" className="flex flex-col gap-4">
           <p className="sr-only" role="status">
             {t('common.loading')}
@@ -102,9 +102,6 @@ function SignUpPage() {
               <Skeleton className="h-9 w-full" />
             </div>
           ))}
-          <div aria-hidden className="flex items-start gap-2.5">
-            <Skeleton className="h-4 flex-1" />
-          </div>
           <Skeleton aria-hidden className="mt-1 h-9 w-full" />
         </div>
       </AuthLayout>
@@ -127,7 +124,7 @@ function SignUpPage() {
         </p>
         <p className="mt-5 text-center text-muted-foreground text-sm">
           {t('auth.signUp.haveAccount')}{' '}
-          <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-in">
+          <Link className={AUTH_INLINE_LINK_CLASS} search={search.next ? { next: search.next } : {}} to="/sign-in">
             {t('auth.signIn.submit')}
           </Link>
         </p>
@@ -144,13 +141,10 @@ function SignUpPage() {
   }
 
   return (
-    <AuthLayout subtitle={t('auth.signUp.subtitle')}>
+    <AuthLayout notice={<TermsNotice className="text-center lg:text-start" />} subtitle={t('auth.signUp.subtitle')}>
       {/* An invitation is tied to one address, so Google (which may pick another) is hidden. */}
       {googleEnabled && !lockedEmail ? (
         <>
-          <div className="mb-2">
-            <TermsNotice />
-          </div>
           <Button
             className="mb-4 w-full gap-2"
             loading={isGoogleSubmitting}
@@ -218,7 +212,6 @@ function SignUpPage() {
             {code.error}
           </p>
         ) : null}
-        <TermsNotice />
         <ResendStatus resendIn={code.resendIn} />
         <AuthFormStatus message={fields.announcement} />
         {/* A send-wait (after a code or a rate limit) shows on this step too, and holds the button. */}
@@ -234,7 +227,7 @@ function SignUpPage() {
       </form>
       <p className="mt-5 text-center text-muted-foreground text-sm">
         {t('auth.signUp.haveAccount')}{' '}
-        <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-in">
+        <Link className={AUTH_INLINE_LINK_CLASS} search={search.next ? { next: search.next } : {}} to="/sign-in">
           {t('auth.signIn.submit')}
         </Link>
       </p>
