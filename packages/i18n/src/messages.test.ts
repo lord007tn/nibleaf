@@ -376,9 +376,11 @@ describe('dashboard safety copy', () => {
 });
 
 it('keeps the settings arrow and replacement warnings clear in English, Arabic and fallback catalogs', () => {
-  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => code !== 'ar')) {
+  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => !['ar', 'de', 'fr'].includes(code))) {
     expect(loadCatalog(code).preview_disabledaskadmin).toContain('Settings → Add-ons');
   }
+  expect(loadCatalog('de').preview_disabledaskadmin).toContain('Einstellungen → Add-ons');
+  expect(loadCatalog('fr').preview_disabledaskadmin).toContain('Paramètres → Modules complémentaires');
   expect(loadCatalog('en').settings_git_workflow_rotateconfirm_title).toBe('Replace the webhook secret?');
   expect(loadCatalog('ar').settings_git_workflow_rotateconfirm_title).toBe('هل تريد استبدال سر الإشعارات الواردة؟');
   expect(loadCatalog('en').settings_apikeys_rotateconfirm_expireddescription).toContain('The new key will expire in 90 days.');
@@ -403,7 +405,9 @@ it('localizes the compact checklist permission failure in Arabic and uses Englis
   const english = loadCatalog('en').overview_nudge_permissionserror;
   expect(english).toBe("Couldn't check your permissions.");
   expect(loadCatalog('ar').overview_nudge_permissionserror).toBe('تعذّر التحقق من صلاحياتك.');
-  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => code !== 'ar')) {
+  expect(loadCatalog('de').overview_nudge_permissionserror).toBe('Ihre Berechtigungen konnten nicht geprüft werden.');
+  expect(loadCatalog('fr').overview_nudge_permissionserror).toBe('Impossible de vérifier vos autorisations.');
+  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => !['ar', 'de', 'fr'].includes(code))) {
     expect(loadCatalog(code).overview_nudge_permissionserror).toBe(english);
   }
 });
