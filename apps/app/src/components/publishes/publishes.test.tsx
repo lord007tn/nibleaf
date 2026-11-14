@@ -29,9 +29,11 @@ vi.mock('@/hooks/api/publish-history', () => ({
   usePublishHistory: () => mocks.history(),
   usePublishHistoryDetail: () => mocks.detail(),
 }));
+const pendingFixture = vi.hoisted(() => ({ value: undefined as unknown }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useDeployments: () => mocks.deployments(),
+  usePendingChanges: () => ({ data: pendingFixture.value }),
   useProject: () => ({ data: { id: 'site-1', slug: 'docs', name: 'Docs' } }),
   useRollback: () => ({ mutateAsync: mocks.rollback, isPending: false }),
 }));
@@ -135,6 +137,28 @@ describe('Publishes page', () => {
     const link = rowOf(4)?.querySelector('a');
     expect(link?.getAttribute('data-to')).toBe('/app/projects/$projectId/publishes/$deploymentId');
     expect(JSON.parse(link?.getAttribute('data-params') ?? '{}')).toEqual({ projectId: 'site-1', deploymentId: 'dep-4' });
+  });
+
+  // P1-DASH-005: a page named Publishes that could not publish was a dead end.
+  it('leads the history with the draft readers do not see yet, and a way to publish it', async () => {
+    mocks.history.mockReturnValue(historyResult([page([item(2, 'READY')], { id: 'dep-2', version: 2 })]));
+    pendingFixture.value = { hasBaseline: true, lastVersion: 2, upToDate: false, changes: [{ id: 'p', status: 'modified' }] };
+    await render(<PublishesPage />);
+    const list = host.querySelector('[data-testid="publish-history"]');
+    const first = list?.firstElementChild;
+    expect(first?.getAttribute('data-testid')).toBe('pending-draft-row');
+    expect(first?.textContent).toContain('pending.count');
+    expect(first?.textContent).toContain('pending.readersStillSee(v2)');
+    expect([...(first?.querySelectorAll('a') ?? [])].some((link) => link.getAttribute('data-to') === '/app/projects/$projectId/editor')).toBe(true);
+    pendingFixture.value = undefined;
+  });
+
+  it('shows no draft row while the site is up to date', async () => {
+    mocks.history.mockReturnValue(historyResult([page([item(2, 'READY')], { id: 'dep-2', version: 2 })]));
+    pendingFixture.value = { hasBaseline: true, lastVersion: 2, upToDate: true, changes: [] };
+    await render(<PublishesPage />);
+    expect(host.querySelector('[data-testid="pending-draft-row"]')).toBeNull();
+    pendingFixture.value = undefined;
   });
 
   it('takes the newest live version from the polled publish list when it is ahead of the history', async () => {
