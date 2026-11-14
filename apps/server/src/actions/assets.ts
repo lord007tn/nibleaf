@@ -11,7 +11,17 @@ import {
 } from '@nibleaf/shared/constants';
 import { newId } from '@nibleaf/shared/ids';
 import { slugify } from '@nibleaf/shared/utils';
-import { deleteObject, headObject, isNotFound, presignPutUrl, putObject, putObjectStream, UPLOAD_PRESIGN_EXPIRES_IN_SECONDS } from '@nibleaf/storage';
+import {
+  deleteObject,
+  headObject,
+  imageDimensions,
+  isNotFound,
+  presignPutUrl,
+  putObject,
+  putObjectStream,
+  storedImageDimensions,
+  UPLOAD_PRESIGN_EXPIRES_IN_SECONDS,
+} from '@nibleaf/storage';
 import { keys as storageKeys } from '@nibleaf/storage/keys';
 import { type ConfirmAssetBody, type PresignAssetBody, safeInlineAssetContentType } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
@@ -69,10 +79,11 @@ export const storeAsset = async ({
 }) => {
   const key = importId ? importedAssetKey(projectId, importId, filename) : assetKey(projectId, filename);
   await putObject(key, bytes, contentType);
+  const dimensions = imageDimensions(bytes) ?? { width: null, height: null };
   return prisma.asset.upsert({
     where: { key },
-    create: { projectId, key, url: publicUrlForKey(key), contentType, size: bytes.byteLength, createdById },
-    update: { contentType, size: bytes.byteLength },
+    create: { projectId, key, url: publicUrlForKey(key), contentType, size: bytes.byteLength, createdById, ...dimensions },
+    update: { contentType, size: bytes.byteLength, ...dimensions },
   });
 };
 
@@ -227,6 +238,7 @@ export const confirmAsset = async (organizationId: string, projectId: string, us
   if (body.size !== size || body.contentType !== contentType) {
     throw badRequest('Confirmation metadata must match the reserved upload.', { reason: 'asset_upload_mismatch' });
   }
+  const dimensions = await storedImageDimensions(body.key);
   try {
     // A short atomic write batch excludes a cleanup claim. All storage I/O has already finished.
     const [, asset] = await prisma.$transaction([
@@ -235,7 +247,7 @@ export const confirmAsset = async (organizationId: string, projectId: string, us
         data: { cleanupStartedAt: null },
       }),
       prisma.asset.create({
-        data: { projectId, key: body.key, url: publicUrlForKey(body.key), contentType, size, createdById: userId },
+        data: { projectId, key: body.key, url: publicUrlForKey(body.key), contentType, size, createdById: userId, ...dimensions },
       }),
       prisma.pendingAssetUpload.delete({ where: { key: body.key } }),
     ]);

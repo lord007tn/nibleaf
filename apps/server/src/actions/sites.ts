@@ -680,6 +680,7 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       icon: page.icon,
       path: page.path,
       content: page.content,
+      imageDimensions: page.imageDimensions,
       headings: extractHeadings(page.content),
       // Per-page SEO + layout behaviour overrides (highest precedence in head()).
       config: page.config ?? null,

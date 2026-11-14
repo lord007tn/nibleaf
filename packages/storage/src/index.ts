@@ -15,6 +15,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { logger } from '@nibleaf/logger';
+import { imageSize } from 'image-size';
 import { getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTarget } from './client';
 import { keys } from './keys';
 
@@ -142,6 +143,48 @@ export const getObjectStream = async (key: string, target?: StorageTarget, abort
     throw new Error(`Object body for "${key}" is not a readable stream`);
   }
   return body;
+};
+
+const MAX_IMAGE_HEADER_BYTES = 256 * 1024;
+
+/** Metadata is best effort: malformed/unsupported images still upload normally. */
+export const imageDimensions = (bytes: Uint8Array): { width: number; height: number } | null => {
+  try {
+    const { width, height, orientation } = imageSize(bytes.subarray(0, MAX_IMAGE_HEADER_BYTES));
+    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1 || width > 2_147_483_647 || height > 2_147_483_647)
+      return null;
+    // Browsers apply EXIF orientation before laying out JPEGs.
+    return orientation && orientation >= 5 && orientation <= 8 ? { width: height, height: width } : { width, height };
+  } catch {
+    return null;
+  }
+};
+
+/** Read only an owned storage key's header, never an authored URL. Bound bytes,
+ * time and sockets even when a backend ignores Range or an image cannot parse. */
+export const storedImageDimensions = async (key: string): Promise<{ width: number; height: number } | null> => {
+  let body: Readable | undefined;
+  try {
+    const result = await getS3Client().send(new GetObjectCommand({ Bucket: getBucket(), Key: key, Range: `bytes=0-${MAX_IMAGE_HEADER_BYTES - 1}` }), {
+      abortSignal: AbortSignal.timeout(5000),
+    });
+    if (!(result.Body instanceof Readable)) return null;
+    body = result.Body;
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of body) {
+      const bytes = Buffer.from(chunk);
+      const kept = bytes.subarray(0, MAX_IMAGE_HEADER_BYTES - size);
+      chunks.push(kept);
+      size += kept.byteLength;
+      if (size >= MAX_IMAGE_HEADER_BYTES) break;
+    }
+    return imageDimensions(Buffer.concat(chunks, size));
+  } catch {
+    return null;
+  } finally {
+    body?.destroy();
+  }
 };
 
 export const headObject = (key: string, target?: StorageTarget): Promise<HeadObjectCommandOutput> =>
