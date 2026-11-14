@@ -42,7 +42,7 @@ const media = {
 } satisfies Record<string, MediaRef>;
 
 const startFree = { label: 'ابدأ مجانًا', href: '/sign-up' };
-const selfHost = { label: 'استضفه على خوادمك', href: '/self-hosting' };
+const selfHost = { label: 'استضفه على خوادمك', href: '/ar/self-hosting' };
 
 export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
   'support-teams': {
@@ -175,7 +175,7 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
           href: '/ar/documentation-platforms',
           description: 'المنصات من زاوية العربية وRTL، مع المصادر.',
         },
-        { label: 'الأسعار', href: '/pricing', description: 'السحابة المجانية التجريبية أو الاستضافة الذاتية. (بالإنجليزية)' },
+        { label: 'الأسعار', href: '/ar/pricing', description: 'السحابة المجانية التجريبية أو الاستضافة الذاتية.' },
         { label: 'Nibleaf لفرق المنتج', href: '/ar/use-cases/product-docs', description: 'تحرير بصري وإصدارات وترجمات لوثائق المنتج.' },
       ],
     },
