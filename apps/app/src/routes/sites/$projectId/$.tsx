@@ -75,7 +75,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       // page, so it intentionally has no Page row. Resolve its configured path
       // from the access-gated site shell before treating the page miss as 404.
       const referenceSite = await getSiteFn({ data: { projectId: params.projectId, language: lang, version } }).catch(() => null);
-      const referenceVersion = referenceSite?.versions.find((item) => item.slug === version);
+      const referenceVersion = referenceSite?.versions.find((item) => item.slug === version && path !== referenceSite.openapi?.path);
       const referencePath = referenceVersion ? path.slice(referenceVersion.slug.length).replace(/^\/+/, '') : path;
       if (referenceSite?.openapi) {
         if (!referencePath) {
@@ -91,7 +91,14 @@ export const Route = createFileRoute('/sites/$projectId/$')({
           });
         }
         if (referencePath === referenceSite.openapi.path) {
-          return { kind: 'openapi' as const, openapi: referenceSite.openapi, site: referenceSite, lang, siteOrigin: customDomainOrigin() };
+          return {
+            kind: 'openapi' as const,
+            openapi: referenceSite.openapi,
+            site: referenceSite,
+            lang,
+            version: referenceVersion?.slug,
+            siteOrigin: customDomainOrigin(),
+          };
         }
       }
       // Page didn't resolve — honor a configured redirect (throws a 308) before
@@ -166,7 +173,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       const noindex = loaderData.site.project.config?.visibility === 'private';
       const site = loaderData.site;
       const options = { primaryDomain: site.project.primaryDomain, slug: site.project.slug, requestOrigin: loaderData.siteOrigin };
-      const version = site.versions.find((item) => item.slug === site.activeVersion && !item.isDefault);
+      const version = site.versions.find((item) => item.slug === loaderData.version && !item.isDefault);
       const resourcePath = [version?.slug, loaderData.openapi.path].filter(Boolean).join('/');
       const resourceUrl = (language?: string) => sitePageUrl(params.projectId, resourcePath, siteLanguagePrefix(language, site.languages), options);
       const defaultCode = site.languages.find((item) => item.isDefault)?.code;

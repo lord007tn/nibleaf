@@ -92,6 +92,16 @@ describe('API-only homepages', () => {
     });
   });
 
+  it('keeps an exact API path when its root also names a version', async () => {
+    const site = {
+      ...fixture,
+      activeVersion: 'v2',
+      openapi: { title: 'API reference', path: 'v2/reference', contentHash: 'fixture', updatedAt: '2026-11-14T00:00:00.000Z' },
+    };
+    mocks.getSite.mockResolvedValue(site);
+    await expect(load('ar/v2/reference', site)).resolves.toMatchObject({ kind: 'openapi', version: undefined });
+  });
+
   it('does not turn an unrelated missing path into an API homepage', async () => {
     await expect(load('ar/missing')).rejects.toMatchObject({ isNotFound: true });
   });
