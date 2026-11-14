@@ -596,7 +596,9 @@ export function ThemeSection({ project }: { project: Project }) {
             <ul className="mt-2 grid gap-1.5">
               {accentAdjustments.map((adjustment) => (
                 <li className="flex flex-wrap items-center gap-2" dir="ltr" key={adjustment.mode}>
-                  <span className="w-9 text-muted-foreground">{adjustment.mode}</span>
+                  <span className="min-w-9 text-muted-foreground" dir="auto">
+                    {t(adjustment.mode === 'light' ? 'settings.styling.theme.light' : 'settings.styling.theme.dark')}
+                  </span>
                   <span aria-hidden className="size-3.5 rounded-sm border border-border" style={{ background: adjustment.from }} />
                   <code>{`${adjustment.from} ${adjustment.fromRatio.toFixed(2)}:1`}</code>
                   <span aria-hidden>→</span>

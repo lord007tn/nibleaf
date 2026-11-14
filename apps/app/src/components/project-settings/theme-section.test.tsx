@@ -208,7 +208,7 @@ describe('ThemeSection controls', () => {
     expect(readout).not.toBeNull();
     expect(readout?.getAttribute('role')).toBeNull();
     const line = readout?.querySelector('li')?.textContent ?? '';
-    expect(line).toMatch(/light#b96a3d 3\.94:1→#[0-9a-f]{6} [4-9]\.\d\d:1/);
+    expect(line).toMatch(/#b96a3d 3\.94:1→#[0-9a-f]{6} [4-9]\.\d\d:1/);
     expect(readout?.querySelector('li')?.getAttribute('dir')).toBe('ltr');
     const accentInput = [...container.querySelectorAll<HTMLInputElement>('input[type="color"]')].find((input) => input.value === '#b96a3d');
     expect(accentInput).toBeDefined();
