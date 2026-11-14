@@ -4,7 +4,7 @@ import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Field, SaveBar } from './shared';
+import { Field, SaveBar, SectionHeader, SectionNamedByTabs } from './shared';
 
 describe('Field', () => {
   it('associates its visible label with a direct input control', () => {
@@ -67,4 +67,18 @@ it('keeps shared field errors quiet unless the caller requests a live region', (
   const errors = ['Required'];
   expect(renderToStaticMarkup(<FieldError errors={errors} id="name-error" />)).not.toContain('role=');
   expect(renderToStaticMarkup(<FieldError errors={errors} role="status" />)).toContain('role="status"');
+});
+
+describe('SectionHeader', () => {
+  it('shows its title on its own, but only names itself to screen readers when tabs already name it', () => {
+    const alone = renderToStaticMarkup(<SectionHeader description="Logo and colours." icon={null} title="Branding" />);
+    expect(alone).toContain('<h2 class="font-semibold text-lg tracking-tight">Branding</h2>');
+    const inTabs = renderToStaticMarkup(
+      <SectionNamedByTabs value>
+        <SectionHeader description="Logo and colours." icon={null} title="Branding" />
+      </SectionNamedByTabs>,
+    );
+    expect(inTabs).toContain('<h2 class="sr-only">Branding</h2>');
+    expect(inTabs).toContain('Logo and colours.');
+  });
 });

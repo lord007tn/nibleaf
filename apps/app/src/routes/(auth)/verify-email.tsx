@@ -1,7 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
-import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,6 +9,7 @@ import { z } from 'zod';
 import { AuthCodeField } from '@/components/auth-email-code';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError, isCodeLockedError } from '@/lib/auth-errors';
+import { useAuthT } from '@/lib/auth-messages';
 import { afterAuthDestination } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 
@@ -29,7 +29,7 @@ export const Route = createFileRoute('/(auth)/verify-email')({
 });
 
 function VerifyEmailPage() {
-  const t = useT();
+  const t = useAuthT();
   const navigate = useNavigate();
   const router = useRouter();
   const search = Route.useSearch();

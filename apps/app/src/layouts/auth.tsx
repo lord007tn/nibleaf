@@ -1,8 +1,8 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
-import { useT } from '@nibleaf/i18n/react';
 import { ArrowLeft, Cloud, Globe2, Languages, ShieldCheck } from 'lucide-react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { InterfaceLanguageButton } from '@/components/interface-language-dialog';
+import { useAuthT } from '@/lib/auth-messages';
 
 /**
  * Auth chrome — a premium split: a dark, brand-led panel (plain-language value
@@ -22,7 +22,7 @@ const BRAND_POINTS: { icon: ComponentType<SVGProps<SVGSVGElement>>; key: 'auth.b
   ];
 
 export function AuthLayout({ children, subtitle }: { children: ReactNode; subtitle?: string }) {
-  const t = useT();
+  const t = useAuthT();
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
