@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { siteT } from '@nibleaf/i18n/site';
+import { sitePageActionsT } from '@nibleaf/i18n/site-page-actions';
 import { markdownAliasPath } from '@nibleaf/shared/markdown-discovery';
 import { Check, ChevronDown, Copy } from 'lucide-react';
 import { type ComponentProps, useState } from 'react';
@@ -38,7 +38,7 @@ const pageActionButtonClass =
 export function pageActionsTriggerProps(lang?: string): ComponentProps<'button'> {
   return {
     type: 'button',
-    'aria-label': siteT(lang)('pageActions'),
+    'aria-label': sitePageActionsT(lang)('pageActions'),
     // 44px wide as well as tall on touch screens (pointer-coarse:h-11 above).
     className: cn(pageActionButtonClass, '-ms-px rounded-e-md px-2 pointer-coarse:min-w-11 pointer-coarse:justify-center'),
     children: <ChevronDown className="size-3.5" aria-hidden />,
@@ -57,7 +57,7 @@ export function PageActions({
   attributes?: ContentLanguageAttributes;
   className?: string;
 }) {
-  const t = siteT(lang);
+  const t = sitePageActionsT(lang);
   const markdownHref = pageMarkdownHref(pageHref);
   const [copied, setCopied] = useState(false);
   const { loaded, start, trigger, failed } = useIntentModule(headerMenusModule);

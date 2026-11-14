@@ -20,8 +20,6 @@ import { site_changelogsubtitle } from './paraglide/messages/site_changelogsubti
 import { site_changeversion } from './paraglide/messages/site_changeversion.js';
 import { site_controlloadfailed } from './paraglide/messages/site_controlloadfailed.js';
 import { site_copymarkdown } from './paraglide/messages/site_copymarkdown.js';
-import { site_copypage } from './paraglide/messages/site_copypage.js';
-import { site_copypagehint } from './paraglide/messages/site_copypagehint.js';
 import { site_darkmode } from './paraglide/messages/site_darkmode.js';
 import { site_defaultversion } from './paraglide/messages/site_defaultversion.js';
 import { site_dismissbanner } from './paraglide/messages/site_dismissbanner.js';
@@ -62,13 +60,7 @@ import { site_notfoundtitle } from './paraglide/messages/site_notfoundtitle.js';
 import { site_notpublishedbody } from './paraglide/messages/site_notpublishedbody.js';
 import { site_notpublishedtitle } from './paraglide/messages/site_notpublishedtitle.js';
 import { site_onthispage } from './paraglide/messages/site_onthispage.js';
-import { site_openinaihint } from './paraglide/messages/site_openinaihint.js';
-import { site_openinchatgpt } from './paraglide/messages/site_openinchatgpt.js';
-import { site_openinclaude } from './paraglide/messages/site_openinclaude.js';
 import { site_openmenu } from './paraglide/messages/site_openmenu.js';
-import { site_pageactions } from './paraglide/messages/site_pageactions.js';
-import { site_pagecopied } from './paraglide/messages/site_pagecopied.js';
-import { site_pagecopyfailed } from './paraglide/messages/site_pagecopyfailed.js';
 import { site_pageunavailable } from './paraglide/messages/site_pageunavailable.js';
 import { site_previous } from './paraglide/messages/site_previous.js';
 import { site_privatetitle } from './paraglide/messages/site_privatetitle.js';
@@ -94,10 +86,10 @@ import { site_version } from './paraglide/messages/site_version.js';
 import { site_versioncurrent } from './paraglide/messages/site_versioncurrent.js';
 import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
-import { site_viewmarkdownhint } from './paraglide/messages/site_viewmarkdownhint.js';
 import type { SiteAccessMessageKey } from './site-access';
 import type { SiteChatMessageKey, SiteChatPluralKey } from './site-chat';
 import type { SiteContentMessageKey } from './site-content';
+import type { SitePageActionsMessageKey } from './site-page-actions';
 import type { SiteSearchMessageKey } from './site-search';
 
 /** Messages with {variables} keep Paraglide's generated input types, so a caller
@@ -176,15 +168,6 @@ const siteMessages = {
   articleDetails: site_articledetails,
   viewMarkdown: site_viewmarkdown,
   copyMarkdown: site_copymarkdown,
-  copyPage: site_copypage,
-  copyPageHint: site_copypagehint,
-  pageCopied: site_pagecopied,
-  pageCopyFailed: site_pagecopyfailed,
-  pageActions: site_pageactions,
-  viewMarkdownHint: site_viewmarkdownhint,
-  openInChatGpt: site_openinchatgpt,
-  openInClaude: site_openinclaude,
-  openInAiHint: site_openinaihint,
   markdownCopyFailed: site_markdowncopyfailed,
   viewDetails: site_viewdetails,
   dismissBanner: site_dismissbanner,
@@ -213,11 +196,18 @@ type SiteContractKey = Extract<MessageKey, `site.${string}`>;
  * (apps/app/src/lib/arabic-marketing-copy.ts) so it stays out of every reader's first load. */
 type SiteMarketingHeadKey = `arabic${'Landing' | 'Platforms'}${string}`;
 /** Reader keys `siteT` covers: all but those of the lazily loaded search dialog
- * (./site-search), article renderer (./site-content), AI chat panel (./site-chat)
+ * (./site-search), article renderer (./site-content), page actions
+ * (./site-page-actions), AI chat panel (./site-chat)
  * and private-site screen (./site-access). */
 export type SiteMessageKey = Exclude<
   SiteContractKey extends `site.${infer Key}` ? Key : never,
-  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey | SiteChatPluralKey | SiteAccessMessageKey | SiteMarketingHeadKey
+  | SiteSearchMessageKey
+  | SiteContentMessageKey
+  | SitePageActionsMessageKey
+  | SiteChatMessageKey
+  | SiteChatPluralKey
+  | SiteAccessMessageKey
+  | SiteMarketingHeadKey
 >;
 type SiteVariableKey = keyof typeof siteVariableMessages;
 type SitePluralKey = keyof typeof sitePluralMessages;

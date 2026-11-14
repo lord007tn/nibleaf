@@ -1,5 +1,6 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { siteT } from '@nibleaf/i18n/site';
+import { sitePageActionsT } from '@nibleaf/i18n/site-page-actions';
 import { Bot, Check, Copy, FileText, MessageSquare } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { languageTriggerProps, type SiteLanguage } from '@/components/site/language-switcher';
@@ -109,7 +110,7 @@ export function PageActionsMenu({
   start: IntentStart;
 }) {
   const trigger = useTakeFocus(start.focusTrigger);
-  const t = siteT(lang);
+  const t = sitePageActionsT(lang);
   const ai = askAiLinks(new URL(markdownHref, window.location.href).toString());
   const item = 'items-start gap-2.5 pointer-coarse:min-h-11';
   return (
