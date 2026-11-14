@@ -16,7 +16,28 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
     ['unbalanced braces', (n: number) => 'x { y '.repeat(n), 1500],
     ['deep quote markers', (n: number) => `${'> '.repeat(n)}x`, 50_000],
     ['deep nesting', (n: number) => `${'<Note>'.repeat(n)}x${'</Note>'.repeat(n)}`, 375],
-    ['export HTML safety', (n: number) => `> <div>\n> ~~~\n${'<div onclick="run()"><sup>2</sup><img src="javascript:x"></div>\n'.repeat(n)}`, 250],
+    ...(['quotes', 'lists', 'components'] as const).map(
+      (kind) =>
+        [
+          `deep ${kind} with HTML`,
+          (n: number) => {
+            const body =
+              '<sup>SAFE</sup><sub>SAFE</sub><u>SAFE</u><video src="/SAFE.mp4"></video><mdxembed provider="youtube" videoid="abcdefghijk"></mdxembed><img src="x" onerror="SAFE()"><script>SAFE</script>\n\n![SAFE](data:image/png;base64,SAFE)';
+            return kind === 'quotes'
+              ? '> '.repeat(n) + body
+              : kind === 'lists'
+                ? '- '.repeat(n) + body
+                : '<Note>'.repeat(n) + body + '</Note>'.repeat(n);
+          },
+          1000,
+        ] as const,
+    ),
+    [
+      'export HTML safety',
+      (n: number) =>
+        `> <div>\n> ~~~\n${'<div onclick="run()"><sup>2</sup><img src="javascript:x"></div>\n\n![image](data:image/png;base64,AAAA)\n\n'.repeat(n)}`,
+      250,
+    ],
   ] as const)(
     'scales linearly on %s',
     (label, build, n) => {
@@ -26,6 +47,14 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
       if (label === 'export HTML safety') {
         console.info(`Export safety growth n=${n}, 4n=${4 * n}: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
         expect(project(build(n)).map(renderedActiveHtml)).toEqual([0, 0]);
+      }
+      if (label.startsWith('deep ') && label.endsWith(' with HTML')) {
+        console.info(`${label}, n=${n}, 4n=${4 * n}: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
+        for (const output of project(build(4 * n))) {
+          expect(output).toContain('SAFE');
+          expect(output).not.toContain('<');
+          expect(renderedActiveHtml(output)).toBe(0);
+        }
       }
     },
     60_000,

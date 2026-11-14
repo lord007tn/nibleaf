@@ -35,14 +35,26 @@ const dangerousUrl = (value: string): boolean => {
   const normalized = Array.from(value.toLowerCase())
     .filter((character) => character.charCodeAt(0) > 32 && character.charCodeAt(0) !== 127)
     .join('');
-  return normalized.startsWith('javascript:') || normalized.startsWith('vbscript:') || normalized.startsWith('data:text/html');
+  // readerSanitizeSchema inherits href/src protocols that exclude every data: URL,
+  // including raster images. There is no img-src exception in the reader.
+  return normalized.startsWith('javascript:') || normalized.startsWith('vbscript:') || normalized.startsWith('data:');
 };
-const countElements = (node: DefaultTreeAdapterTypes.Node): number =>
-  ('tagName' in node && activeTags.includes(node.tagName) ? 1 : 0) +
-  ('attrs' in node
-    ? node.attrs.filter(({ name, value }) => name.startsWith('on') || (['href', 'src', 'xlink:href'].includes(name) && dangerousUrl(value))).length
-    : 0) +
-  ('childNodes' in node ? node.childNodes.reduce((sum, child) => sum + countElements(child), 0) : 0);
+const countElements = (root: DefaultTreeAdapterTypes.Node): number => {
+  const pending = [root];
+  let count = 0;
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) continue;
+    if ('tagName' in node && activeTags.includes(node.tagName)) count++;
+    if ('attrs' in node) {
+      count += node.attrs.filter(
+        ({ name, value }) => name.startsWith('on') || (['href', 'src', 'xlink:href'].includes(name) && dangerousUrl(value)),
+      ).length;
+    }
+    if ('childNodes' in node) for (const child of node.childNodes) pending.push(child);
+  }
+  return count;
+};
 
 /** Render with raw HTML enabled, then count actual elements, handlers and URLs,
  * including entity-encoded attribute values. Code literals are inert. */
