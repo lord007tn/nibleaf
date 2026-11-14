@@ -30,8 +30,11 @@ The initial cold index build was 314.6 ms before and 258.3 ms after. The under-2
 result applies to warm p50; this change does not promise cold-start latency below
 200 ms. All 18 scenario/query result hashes match before/after, including order,
 scores and snippets. The benchmark also asserts stable results across measured
-rounds. Raw measurements and per-query percentiles are in [before.json](before.json)
-and [after.json](after.json).
+rounds. Per-query percentiles and result hashes are in [before.json](before.json)
+and [after.json](after.json). `benchmark.ts` now also writes every measured
+request's timing (`samplesMs` per query), so a fresh run's percentiles can be
+recomputed. The receipts committed here are from the original run, before that
+field existed, so they carry percentiles and sample counts, not the raw timings.
 
 ![Seeded local latency comparison](latency.png)
 

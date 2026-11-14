@@ -302,7 +302,8 @@ export const runPublishedSearch = async (
     const hybridHits = await Promise.race([hybrid, timeout]);
     signal?.throwIfAborted();
     if (hybridHits !== null) return { hits: hybridHits, runtime: 'hybrid' };
-    const keywordHits = await keyword;
+    // The caller's signal, not the hybrid lane's (which the deadline aborted).
+    const keywordHits = await (signal ? untilAborted(keyword, signal) : keyword);
     signal?.throwIfAborted();
     return { hits: keywordHits, runtime: 'legacy-fallback' };
   } finally {

@@ -156,6 +156,21 @@ describe('hybrid index recovery', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('rejects promptly when the reader aborts while the keyword fallback is still running', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+    doubles.resolveWorkspaceAi.mockReturnValueOnce(new Promise(() => undefined));
+    const controller = new AbortController();
+    // The keyword lane never settles: only the reader's abort can end this search.
+    const response = runPublishedSearch(scope, 'abort-during-fallback', 12, () => new Promise<never>(() => undefined), controller.signal);
+    const rejected = expect(response).rejects.toMatchObject({ name: 'AbortError' });
+    // Past the 80 ms deadline the fallback is chosen and its await begins.
+    await vi.advanceTimersByTimeAsync(81);
+    controller.abort();
+    await rejected;
+    expect(doubles.embed).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('propagates keyword failures and clears the optional lane deadline', async () => {
     doubles.resolveWorkspaceAi.mockReturnValueOnce(new Promise(() => undefined));
     const error = new Error('keyword index unavailable');

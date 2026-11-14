@@ -132,7 +132,7 @@ it('measures the audit queries against a seeded PostgreSQL publication and real 
     samples: number;
     p50Ms: number | undefined;
     p95Ms: number | undefined;
-    perQuery: Array<{ query: string; resultHash: string; p50Ms: number | undefined; p95Ms: number | undefined }>;
+    perQuery: Array<{ query: string; resultHash: string; p50Ms: number | undefined; p95Ms: number | undefined; samplesMs: number[] }>;
   }> = [];
   for (const readinessDelayMs of [0, 700]) {
     controls.delayMs = readinessDelayMs;
@@ -172,7 +172,8 @@ it('measures the audit queries against a seeded PostgreSQL publication and real 
       coldMs,
       samples: samples.length,
       ...percentiles(samples),
-      perQuery: perQuery.map(({ samples: values, ...row }) => ({ ...row, ...percentiles(values) })),
+      // Every measured request's timing, so the percentiles can be recomputed.
+      perQuery: perQuery.map(({ samples: values, ...row }) => ({ ...row, ...percentiles(values), samplesMs: values })),
     });
   }
   await mkdir('output/search-latency', { recursive: true });
