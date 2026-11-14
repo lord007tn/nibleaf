@@ -599,6 +599,49 @@ describe('published language path migration (HTTP edge)', () => {
   });
 });
 
+describe('published RSS language prefixes', () => {
+  for (const [name, pathPrefix] of [
+    ['default', ''],
+    ['normal', 'ar'],
+    ['collision', '~lang/ar'],
+    ['occupied', '~lang~/ar'],
+    ['occupied-twice', '~lang~~/ar'],
+  ]) {
+    const projectId = `rss-${name}`;
+    for (const origin of [`http://localhost:4310/sites/${projectId}`, `https://${projectId}.example`, `https://${projectId}.nibleaf.com`]) {
+      it(`keeps links and GUIDs on ${origin}/${pathPrefix}`, async () => {
+        vi.clearAllMocks();
+        const source = `http://localhost:4310/sites/${projectId}`;
+        mocks.got.mockImplementation(async (target: string) => {
+          if (target.includes('/domains/resolve?')) return upstream({ data: { projectId } });
+          if (target.endsWith('/changelog/rss.xml'))
+            return upstream(
+              `<rss><channel><link>${source}/changelog</link><item><link>${source}/changelog#release-v1</link><guid isPermaLink="true">${source}/changelog#release-v1</guid></item></channel></rss>`,
+            );
+          return upstream({
+            data: {
+              project: { config: { visibility: 'public' }, primaryDomain: null },
+              languages: [
+                { code: 'en', isDefault: true },
+                { code: 'ar', isDefault: false, pathPrefix: pathPrefix || '~lang/ar' },
+              ],
+            },
+          });
+        });
+        const base = `${origin}${pathPrefix ? `/${pathPrefix}` : ''}`;
+        const response = await server.fetch(new Request(`${base}/changelog/rss.xml`));
+        expect(response.status).toBe(200);
+        expect(response.headers.get('content-type')).toContain('application/rss+xml');
+        const body = await response.text();
+        expect(body).toContain(`<link>${base}/changelog</link>`);
+        expect(body).toContain(`<link>${base}/changelog#release-v1</link>`);
+        expect(body).toContain(`<guid isPermaLink="true">${base}/changelog#release-v1</guid>`);
+        expect(mocks.startHandler).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
 describe('language redirects isolate private and credential-dependent requests', () => {
   const languages = [
     { code: 'en', isDefault: true },

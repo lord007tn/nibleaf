@@ -11,7 +11,7 @@ import {
   markdownAlternateUrl,
   markdownDiscoveryLinkHeader,
 } from '@nibleaf/shared/markdown-discovery';
-import type { PathLanguage } from '@nibleaf/shared/site-language';
+import { type PathLanguage, publishedSitePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
 import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
 import { legacySiteLanguageTarget } from '@nibleaf/shared/site-language-redirect';
 import type { Register } from '@tanstack/react-router';
@@ -924,7 +924,11 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
         const parsed = parseSiteLanguagePath(path, meta?.languages ?? []);
         if (parsed.language && parsed.path === 'changelog/rss.xml') {
           const base = isCustomDomain ? `${url.protocol}//${host}` : `${url.origin}/sites/${projectId}`;
-          const proxied = await proxySeoDocument(projectId, 'changelog/rss.xml', `${base}/${encodeURIComponent(parsed.language.code)}`);
+          const proxied = await proxySeoDocument(
+            projectId,
+            'changelog/rss.xml',
+            `${base}${publishedSitePath('', parsed.language.isDefault ? undefined : siteLanguagePrefix(parsed.language.code, meta?.languages))}`,
+          );
           return proxied?.ok ? withoutHeadBody(proxied.response, request.method) : seoUnavailableResponse('changelog/rss.xml');
         }
       }

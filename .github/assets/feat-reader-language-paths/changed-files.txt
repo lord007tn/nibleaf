@@ -52,6 +52,7 @@ apps/app/src/lib/site-seo.ts
 apps/app/src/routes/-git-preview.test.tsx
 apps/app/src/routes/git-preview.$token.tsx
 apps/app/src/routes/sites/$projectId/$.tsx
+apps/app/src/routes/sites/$projectId/-openapi-home.test.ts
 apps/app/src/routes/sites/$projectId/-reader-language.test.tsx
 apps/app/src/routes/sites/$projectId/-reader-theme.test.tsx
 apps/app/src/routes/sites/$projectId/-route-errors.test.ts
