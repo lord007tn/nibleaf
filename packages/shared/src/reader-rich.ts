@@ -105,15 +105,20 @@ const containsUnescapedMath = (text: string): boolean => {
 };
 
 /** Whether a page may hold math, by the line scan (the fallback past the
- * parser's bounds, and the navigation preloader). It errs towards loading: a
- * miss would leave raw TeX on a rich page. Dollars count anywhere, code
- * included, since remark-math can read a delimiter where plain Markdown sees a
- * code span (`$\`x$\``). Class names count outside code spans and fences, read
- * after decoding character references (`math&#45;inline` is math). It only
- * matters on a rich page: the plain renderer has no math syntax, and the
- * preloader fetches KaTeX only with the rich renderer. */
-export const needsMathMarkdown = (content: string): boolean =>
-  containsUnescapedMath(content) || MATH_FENCE.test(content) || MATH_CLASS.test(decodeNumericReferences(withoutCode(content)));
+ * parser's bounds, and the navigation preloader). It errs towards loading,
+ * reading the whole text, code included: a miss would leave raw TeX on a rich
+ * page, while a false positive only fetches KaTeX. So dollars count anywhere
+ * (remark-math can read a delimiter where plain Markdown sees a code span,
+ * `$\`x$\``), and fence languages and class names are read after decoding
+ * character references (`~~~m&#97;th`, `math&#45;inline`), with no code
+ * stripping that could cut through an HTML attribute. It only matters on a
+ * rich page: the plain renderer has no math syntax, and the preloader fetches
+ * KaTeX only with the rich renderer, so a code-only page still never does. */
+export const needsMathMarkdown = (content: string): boolean => {
+  if (containsUnescapedMath(content)) return true;
+  const decoded = decodeNumericReferences(content);
+  return MATH_FENCE.test(decoded) || MATH_CLASS.test(decoded);
+};
 
 /** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
  * detection conservative—false positives only load the richer renderer, while

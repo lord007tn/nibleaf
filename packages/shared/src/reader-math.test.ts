@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { markdownCodeUsage } from './markdown-code-usage';
 import { readerRenderMode } from './reader-render-mode';
-import { needsMathMarkdown } from './reader-rich';
+import { needsMathMarkdown, needsRichMarkdown } from './reader-rich';
 
 const CASES: Array<[string, string, { rich: boolean; math: boolean }]> = [
   ['an MDX component, no math', 'Intro.\n\n<Card title="Start">Go</Card>', { rich: true, math: false }],
@@ -44,9 +44,21 @@ describe('math detection', () => {
 
   it('does not load KaTeX for a math class named only in code', () => {
     for (const content of ['Use `math-inline` in CSS.', '```css\n.math-display { margin: 0 }\n```']) {
-      expect(needsMathMarkdown(content), content).toBe(false);
+      // The page is not rich, so neither the renderer nor the preloader
+      // (KaTeX only with the rich renderer) touches math, whatever the
+      // conservative line scan says.
+      expect(needsRichMarkdown(content), content).toBe(false);
       expect(readerRenderMode(content).math, content).toBe(false);
     }
+  });
+
+  it.each([
+    ['an entity-encoded fence language', '<div></div>\n\n~~~m&#97;th\nx^2\n~~~'],
+    ['a math class beside attribute backticks', '<code title="`" class="math-inline" data-x="`">x^2</code>'],
+  ])('past the parser bounds, still loads KaTeX for %s on a rich page', (_name, body) => {
+    const content = `${body}\n\n${'word '.repeat(80_001)}`;
+    expect(markdownCodeUsage(content)).toBeNull();
+    expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
   });
 
   it('reads math on a rich page exactly as remark-math does: escaped and unpaired dollars are not math', () => {
