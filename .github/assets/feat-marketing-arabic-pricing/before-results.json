@@ -4,10 +4,7 @@
     "path": "/ar/pricing",
     "width": 1440,
     "theme": "light",
-    "chain": [
-      "307 /ar/pricing",
-      "200 /pricing"
-    ],
+    "chain": ["307 /ar/pricing", "200 /pricing"],
     "finalPath": "/pricing",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -27,10 +24,7 @@
     "path": "/ar/self-hosting",
     "width": 1440,
     "theme": "light",
-    "chain": [
-      "307 /ar/self-hosting",
-      "200 /self-hosting"
-    ],
+    "chain": ["307 /ar/self-hosting", "200 /self-hosting"],
     "finalPath": "/self-hosting",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -50,10 +44,7 @@
     "path": "/ar/pricing",
     "width": 390,
     "theme": "light",
-    "chain": [
-      "307 /ar/pricing",
-      "200 /pricing"
-    ],
+    "chain": ["307 /ar/pricing", "200 /pricing"],
     "finalPath": "/pricing",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -73,10 +64,7 @@
     "path": "/ar/self-hosting",
     "width": 390,
     "theme": "light",
-    "chain": [
-      "307 /ar/self-hosting",
-      "200 /self-hosting"
-    ],
+    "chain": ["307 /ar/self-hosting", "200 /self-hosting"],
     "finalPath": "/self-hosting",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -96,10 +84,7 @@
     "path": "/ar/pricing",
     "width": 1440,
     "theme": "dark",
-    "chain": [
-      "307 /ar/pricing",
-      "200 /pricing"
-    ],
+    "chain": ["307 /ar/pricing", "200 /pricing"],
     "finalPath": "/pricing",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -119,10 +104,7 @@
     "path": "/ar/self-hosting",
     "width": 1440,
     "theme": "dark",
-    "chain": [
-      "307 /ar/self-hosting",
-      "200 /self-hosting"
-    ],
+    "chain": ["307 /ar/self-hosting", "200 /self-hosting"],
     "finalPath": "/self-hosting",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -142,10 +124,7 @@
     "path": "/ar/pricing",
     "width": 390,
     "theme": "dark",
-    "chain": [
-      "307 /ar/pricing",
-      "200 /pricing"
-    ],
+    "chain": ["307 /ar/pricing", "200 /pricing"],
     "finalPath": "/pricing",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -165,10 +144,7 @@
     "path": "/ar/self-hosting",
     "width": 390,
     "theme": "dark",
-    "chain": [
-      "307 /ar/self-hosting",
-      "200 /self-hosting"
-    ],
+    "chain": ["307 /ar/self-hosting", "200 /self-hosting"],
     "finalPath": "/self-hosting",
     "htmlLang": "en",
     "htmlDir": "ltr",

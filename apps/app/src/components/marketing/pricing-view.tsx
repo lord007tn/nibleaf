@@ -12,7 +12,7 @@ const arrow = 'size-4 rtl:rotate-180';
 
 function CellValue({ value, includedLabel, lang }: { value: PricingCell; includedLabel: string; lang: MarketingLang }) {
   if (value === true) {
-    return <Check aria-label={includedLabel} className="mx-auto size-4 text-primary" />;
+    return <Check role="img" aria-label={includedLabel} className="mx-auto block size-4 text-primary" />;
   }
   return <span className="block text-center text-muted-foreground text-xs leading-snug">{isolateLatin(value, lang)}</span>;
 }
@@ -104,29 +104,57 @@ export function PricingView({ copy, lang }: { copy: PricingCopy; lang: Marketing
               ))}
             </ul>
           </div>
+          {/* A real table (plans as column headers, features as row headers), styled
+              as the grid it replaced. Fixed layout keeps the 1.6 : 1 : 1 columns and
+              lets long cells wrap, so it fits a phone without scrolling. The first and
+              last cells carry the row's side padding; the 1rem gap is split between
+              neighbours. In Arabic the columns mirror with the page direction. */}
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
-            <div className="grid grid-cols-[1.6fr_1fr_1fr] items-center gap-4 border-border border-b bg-muted/40 px-6 py-3 font-medium text-sm">
-              <span />
-              <span className="text-center">{copy.cloud.name}</span>
-              <span className="text-center">{copy.selfHosted.name}</span>
-            </div>
-            {copy.included.groups.map((group) => (
-              <div key={group.title} className="group">
-                <div className="border-border border-b bg-muted/20 px-6 py-2 font-medium text-muted-foreground text-xs uppercase tracking-wider rtl:tracking-normal">
-                  {t(group.title)}
-                </div>
-                {group.rows.map((row) => (
-                  <div
-                    key={row.label}
-                    className="grid grid-cols-[1.6fr_1fr_1fr] items-center gap-4 border-border border-b px-6 py-3.5 text-sm group-last:last:border-b-0"
-                  >
-                    <span>{t(row.label)}</span>
-                    <CellValue value={row.cloud} includedLabel={copy.included.includedLabel} lang={lang} />
-                    <CellValue value={row.self} includedLabel={copy.included.includedLabel} lang={lang} />
-                  </div>
-                ))}
-              </div>
-            ))}
+            <table className="w-full table-fixed border-collapse text-sm">
+              <caption className="sr-only">{copy.included.title}</caption>
+              <colgroup>
+                <col className="w-[44.44%]" />
+                <col className="w-[27.78%]" />
+                <col className="w-[27.78%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-border border-b bg-muted/40 font-medium">
+                  <td className="py-3 ps-6 pe-2" />
+                  <th scope="col" className="px-2 py-3 text-center font-medium">
+                    {copy.cloud.name}
+                  </th>
+                  <th scope="col" className="py-3 ps-2 pe-6 text-center font-medium">
+                    {copy.selfHosted.name}
+                  </th>
+                </tr>
+              </thead>
+              {copy.included.groups.map((group) => (
+                <tbody key={group.title} className="group">
+                  <tr className="border-border border-b bg-muted/20">
+                    <th
+                      scope="rowgroup"
+                      colSpan={3}
+                      className="px-6 py-2 text-start font-medium text-muted-foreground text-xs uppercase tracking-wider rtl:tracking-normal"
+                    >
+                      {t(group.title)}
+                    </th>
+                  </tr>
+                  {group.rows.map((row) => (
+                    <tr key={row.label} className="border-border border-b group-last:last:border-b-0">
+                      <th scope="row" className="py-3.5 ps-6 pe-2 text-start align-middle font-normal">
+                        {t(row.label)}
+                      </th>
+                      <td className="px-2 py-3.5 align-middle">
+                        <CellValue value={row.cloud} includedLabel={copy.included.includedLabel} lang={lang} />
+                      </td>
+                      <td className="py-3.5 ps-2 pe-6 align-middle">
+                        <CellValue value={row.self} includedLabel={copy.included.includedLabel} lang={lang} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
+            </table>
           </div>
         </div>
       </section>

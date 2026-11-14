@@ -1,5 +1,6 @@
 /** `/ar/pricing` and `/ar/self-hosting` (P2-MKT-002): Arabic pages on the English layouts and facts. */
 import { readdirSync } from 'node:fs';
+import { parseHTML } from 'linkedom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { marketingFaqs } from '@/lib/marketing-faqs';
@@ -79,6 +80,43 @@ describe('/ar/pricing', () => {
   it('states the interface locale count the catalog actually has', () => {
     const catalogs = readdirSync(new URL('../../../../../packages/i18n/messages', import.meta.url)).filter((file) => file.endsWith('.json'));
     expect(PRICING_FACTS.interfaceLocales).toBe(catalogs.length);
+  });
+});
+
+describe('the plan comparison', () => {
+  // A native table: screen readers can move by row and column and hear which
+  // plan a cell belongs to, in both languages (the grid it replaced could not).
+  it.each([
+    ['en', () => renderToStaticMarkup(<PricingPage />), pricingEn],
+    ['ar', () => renderToStaticMarkup(<ArabicPricingPage />), pricingAr],
+  ] as const)('is a table with plan column headers and feature row headers (%s)', (lang, render, copy) => {
+    const { document } = parseHTML(render());
+    const tables = document.querySelectorAll('main table');
+    expect(tables).toHaveLength(1);
+    const table = tables[0] as Element;
+    expect(table.closest('[dir]')?.getAttribute('dir')).toBe(lang === 'ar' ? 'rtl' : 'ltr');
+    expect(table.querySelector('caption')?.textContent).toBe(copy.included.title);
+
+    const columns = [...table.querySelectorAll('thead th[scope="col"]')].map((cell) => cell.textContent);
+    expect(columns).toEqual([copy.cloud.name, copy.selfHosted.name]);
+
+    const groups = [...table.querySelectorAll('tbody th[scope="rowgroup"]')];
+    expect(groups.map((cell) => cell.textContent)).toEqual(copy.included.groups.map((group) => group.title));
+    expect(groups.every((cell) => (cell.getAttribute('colspan') ?? cell.getAttribute('colSpan')) === '3')).toBe(true);
+
+    const rows = [...table.querySelectorAll('tbody tr')].filter((row) => row.querySelector('th[scope="row"]'));
+    const expected = copy.included.groups.flatMap((group) => group.rows);
+    expect(rows.map((row) => row.querySelector('th[scope="row"]')?.textContent)).toEqual(expected.map((row) => row.label));
+    rows.forEach((row, index) => {
+      const cells = [...row.querySelectorAll('td')];
+      expect(cells).toHaveLength(2);
+      const values = [expected[index]?.cloud, expected[index]?.self];
+      cells.forEach((cell, column) => {
+        const value = values[column];
+        if (value === true) expect(cell.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toBe(copy.included.includedLabel);
+        else expect(cell.textContent).toBe(value);
+      });
+    });
   });
 });
 

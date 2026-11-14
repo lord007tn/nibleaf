@@ -4,9 +4,7 @@
     "path": "/ar/pricing",
     "width": 1440,
     "theme": "light",
-    "chain": [
-      "200 /ar/pricing"
-    ],
+    "chain": ["200 /ar/pricing"],
     "finalPath": "/ar/pricing",
     "htmlLang": "ar",
     "htmlDir": "rtl",
@@ -17,11 +15,7 @@
     "clientWidth": 1440,
     "overflowing": [],
     "canonical": "http://localhost:4310/ar/pricing",
-    "hreflang": [
-      "en=/pricing",
-      "ar=/ar/pricing",
-      "x-default=/pricing"
-    ],
+    "hreflang": ["en=/pricing", "ar=/ar/pricing", "x-default=/pricing"],
     "switcher": "/pricing",
     "title": "أسعار Nibleaf: سحابة مجانية خلال المرحلة التجريبية، وحالة الاستضافة الذاتية"
   },
@@ -30,9 +24,7 @@
     "path": "/ar/self-hosting",
     "width": 1440,
     "theme": "light",
-    "chain": [
-      "200 /ar/self-hosting"
-    ],
+    "chain": ["200 /ar/self-hosting"],
     "finalPath": "/ar/self-hosting",
     "htmlLang": "ar",
     "htmlDir": "rtl",
@@ -56,9 +48,7 @@
     "path": "/pricing",
     "width": 1440,
     "theme": "light",
-    "chain": [
-      "200 /pricing"
-    ],
+    "chain": ["200 /pricing"],
     "finalPath": "/pricing",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -69,11 +59,7 @@
     "clientWidth": 1440,
     "overflowing": [],
     "canonical": "http://localhost:4310/pricing",
-    "hreflang": [
-      "en=/pricing",
-      "ar=/ar/pricing",
-      "x-default=/pricing"
-    ],
+    "hreflang": ["en=/pricing", "ar=/ar/pricing", "x-default=/pricing"],
     "switcher": "/ar/pricing",
     "title": "Nibleaf pricing: free cloud beta and self-hosting status"
   },
@@ -82,9 +68,7 @@
     "path": "/self-hosting",
     "width": 1440,
     "theme": "light",
-    "chain": [
-      "200 /self-hosting"
-    ],
+    "chain": ["200 /self-hosting"],
     "finalPath": "/self-hosting",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -114,9 +98,7 @@
     "path": "/ar/pricing",
     "width": 390,
     "theme": "light",
-    "chain": [
-      "200 /ar/pricing"
-    ],
+    "chain": ["200 /ar/pricing"],
     "finalPath": "/ar/pricing",
     "htmlLang": "ar",
     "htmlDir": "rtl",
@@ -127,11 +109,7 @@
     "clientWidth": 390,
     "overflowing": [],
     "canonical": "http://localhost:4310/ar/pricing",
-    "hreflang": [
-      "en=/pricing",
-      "ar=/ar/pricing",
-      "x-default=/pricing"
-    ],
+    "hreflang": ["en=/pricing", "ar=/ar/pricing", "x-default=/pricing"],
     "switcher": "/pricing",
     "title": "أسعار Nibleaf: سحابة مجانية خلال المرحلة التجريبية، وحالة الاستضافة الذاتية"
   },
@@ -140,9 +118,7 @@
     "path": "/ar/self-hosting",
     "width": 390,
     "theme": "light",
-    "chain": [
-      "200 /ar/self-hosting"
-    ],
+    "chain": ["200 /ar/self-hosting"],
     "finalPath": "/ar/self-hosting",
     "htmlLang": "ar",
     "htmlDir": "rtl",
@@ -166,9 +142,7 @@
     "path": "/pricing",
     "width": 390,
     "theme": "light",
-    "chain": [
-      "200 /pricing"
-    ],
+    "chain": ["200 /pricing"],
     "finalPath": "/pricing",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -179,11 +153,7 @@
     "clientWidth": 390,
     "overflowing": [],
     "canonical": "http://localhost:4310/pricing",
-    "hreflang": [
-      "en=/pricing",
-      "ar=/ar/pricing",
-      "x-default=/pricing"
-    ],
+    "hreflang": ["en=/pricing", "ar=/ar/pricing", "x-default=/pricing"],
     "switcher": "/ar/pricing",
     "title": "Nibleaf pricing: free cloud beta and self-hosting status"
   },
@@ -192,9 +162,7 @@
     "path": "/self-hosting",
     "width": 390,
     "theme": "light",
-    "chain": [
-      "200 /self-hosting"
-    ],
+    "chain": ["200 /self-hosting"],
     "finalPath": "/self-hosting",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -224,9 +192,7 @@
     "path": "/ar/pricing",
     "width": 1440,
     "theme": "dark",
-    "chain": [
-      "200 /ar/pricing"
-    ],
+    "chain": ["200 /ar/pricing"],
     "finalPath": "/ar/pricing",
     "htmlLang": "ar",
     "htmlDir": "rtl",
@@ -237,11 +203,7 @@
     "clientWidth": 1440,
     "overflowing": [],
     "canonical": "http://localhost:4310/ar/pricing",
-    "hreflang": [
-      "en=/pricing",
-      "ar=/ar/pricing",
-      "x-default=/pricing"
-    ],
+    "hreflang": ["en=/pricing", "ar=/ar/pricing", "x-default=/pricing"],
     "switcher": "/pricing",
     "title": "أسعار Nibleaf: سحابة مجانية خلال المرحلة التجريبية، وحالة الاستضافة الذاتية"
   },
@@ -250,9 +212,7 @@
     "path": "/ar/self-hosting",
     "width": 1440,
     "theme": "dark",
-    "chain": [
-      "200 /ar/self-hosting"
-    ],
+    "chain": ["200 /ar/self-hosting"],
     "finalPath": "/ar/self-hosting",
     "htmlLang": "ar",
     "htmlDir": "rtl",
@@ -276,9 +236,7 @@
     "path": "/pricing",
     "width": 1440,
     "theme": "dark",
-    "chain": [
-      "200 /pricing"
-    ],
+    "chain": ["200 /pricing"],
     "finalPath": "/pricing",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -289,11 +247,7 @@
     "clientWidth": 1440,
     "overflowing": [],
     "canonical": "http://localhost:4310/pricing",
-    "hreflang": [
-      "en=/pricing",
-      "ar=/ar/pricing",
-      "x-default=/pricing"
-    ],
+    "hreflang": ["en=/pricing", "ar=/ar/pricing", "x-default=/pricing"],
     "switcher": "/ar/pricing",
     "title": "Nibleaf pricing: free cloud beta and self-hosting status"
   },
@@ -302,9 +256,7 @@
     "path": "/self-hosting",
     "width": 1440,
     "theme": "dark",
-    "chain": [
-      "200 /self-hosting"
-    ],
+    "chain": ["200 /self-hosting"],
     "finalPath": "/self-hosting",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -334,9 +286,7 @@
     "path": "/ar/pricing",
     "width": 390,
     "theme": "dark",
-    "chain": [
-      "200 /ar/pricing"
-    ],
+    "chain": ["200 /ar/pricing"],
     "finalPath": "/ar/pricing",
     "htmlLang": "ar",
     "htmlDir": "rtl",
@@ -347,11 +297,7 @@
     "clientWidth": 390,
     "overflowing": [],
     "canonical": "http://localhost:4310/ar/pricing",
-    "hreflang": [
-      "en=/pricing",
-      "ar=/ar/pricing",
-      "x-default=/pricing"
-    ],
+    "hreflang": ["en=/pricing", "ar=/ar/pricing", "x-default=/pricing"],
     "switcher": "/pricing",
     "title": "أسعار Nibleaf: سحابة مجانية خلال المرحلة التجريبية، وحالة الاستضافة الذاتية"
   },
@@ -360,9 +306,7 @@
     "path": "/ar/self-hosting",
     "width": 390,
     "theme": "dark",
-    "chain": [
-      "200 /ar/self-hosting"
-    ],
+    "chain": ["200 /ar/self-hosting"],
     "finalPath": "/ar/self-hosting",
     "htmlLang": "ar",
     "htmlDir": "rtl",
@@ -386,9 +330,7 @@
     "path": "/pricing",
     "width": 390,
     "theme": "dark",
-    "chain": [
-      "200 /pricing"
-    ],
+    "chain": ["200 /pricing"],
     "finalPath": "/pricing",
     "htmlLang": "en",
     "htmlDir": "ltr",
@@ -399,11 +341,7 @@
     "clientWidth": 390,
     "overflowing": [],
     "canonical": "http://localhost:4310/pricing",
-    "hreflang": [
-      "en=/pricing",
-      "ar=/ar/pricing",
-      "x-default=/pricing"
-    ],
+    "hreflang": ["en=/pricing", "ar=/ar/pricing", "x-default=/pricing"],
     "switcher": "/ar/pricing",
     "title": "Nibleaf pricing: free cloud beta and self-hosting status"
   },
@@ -412,9 +350,7 @@
     "path": "/self-hosting",
     "width": 390,
     "theme": "dark",
-    "chain": [
-      "200 /self-hosting"
-    ],
+    "chain": ["200 /self-hosting"],
     "finalPath": "/self-hosting",
     "htmlLang": "en",
     "htmlDir": "ltr",
