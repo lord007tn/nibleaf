@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { act } from 'react';
+import { act, StrictMode } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { usePageTitle } from './use-page-title';
@@ -47,4 +48,45 @@ it('leaves a title that another page set in the meantime', async () => {
   document.title = 'Getting started — Documentation';
   await act(async () => root?.render(null));
   expect(document.title).toBe('Getting started — Documentation');
+});
+
+// Sol re-check 2 of #643: a reader page whose SEO title is the same text as the
+// dashboard's lost it to the dashboard's fallback. TanStack's HeadContent
+// renders the route title as a React `<title>`; this does the same.
+function HeadTitle({ text }: { text: string }) {
+  return createPortal(<title>{text}</title>, document.head);
+}
+
+it('leaves a title another page set to the very same text', async () => {
+  document.head.replaceChildren();
+  root = createRoot(document.body.appendChild(document.createElement('div')));
+  const same = 'Overview · Documentation · Nibleaf';
+  await act(async () =>
+    root?.render(
+      <>
+        <HeadTitle text="Nibleaf Cloud — documentation workspace" />
+        <Titled title={same} />
+      </>,
+    ),
+  );
+  expect(document.title).toBe(same);
+  // One commit: the dashboard goes, and the reader's head sets the same text.
+  await act(async () => root?.render(<HeadTitle text={same} />));
+  expect(document.title).toBe(same);
+});
+
+it('still gives the title back in StrictMode', async () => {
+  document.head.replaceChildren();
+  document.title = 'Fallback';
+  root = createRoot(document.body.appendChild(document.createElement('div')));
+  await act(async () =>
+    root?.render(
+      <StrictMode>
+        <Titled title="Members · Ada's workspace · Nibleaf" />
+      </StrictMode>,
+    ),
+  );
+  expect(document.title).toBe("Members · Ada's workspace · Nibleaf");
+  await act(async () => root?.render(<StrictMode>{null}</StrictMode>));
+  expect(document.title).toBe('Fallback');
 });
