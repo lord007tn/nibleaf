@@ -1,6 +1,9 @@
 {
   "terms": {
-    "site": { "translation": "সাইট", "note": "Always সাইট, never ওয়েবসাইট or প্রজেক্ট." },
+    "site": {
+      "translation": "সাইট",
+      "note": "Always সাইট, never ওয়েবসাইট or প্রজেক্ট."
+    },
     "organization": {
       "translation": "প্রতিষ্ঠান",
       "note": "Never ওয়ার্কস্পেস or কর্মক্ষেত্র. English strings that say workspace mean প্রতিষ্ঠান."
@@ -8,7 +11,11 @@
     "page": { "translation": "পৃষ্ঠা" },
     "group": { "translation": "গ্রুপ" },
     "page-tree": { "translation": "পৃষ্ঠা ট্রি" },
-    "publish": { "translation": "প্রকাশ করুন", "short": "প্রকাশ", "note": "Noun (one published version): প্রকাশনা." },
+    "publish": {
+      "translation": "প্রকাশ করুন",
+      "short": "প্রকাশ",
+      "note": "Noun (one published version): প্রকাশনা."
+    },
     "draft": { "translation": "খসড়া" },
     "unpublished-changes": { "translation": "অপ্রকাশিত পরিবর্তন" },
     "preview": { "translation": "প্রিভিউ", "short": "প্রিভিউ" },
@@ -16,16 +23,29 @@
     "reader": { "translation": "পাঠক" },
     "member": { "translation": "সদস্য" },
     "people": { "translation": "লোকজন" },
-    "invitation": { "translation": "আমন্ত্রণ", "short": "আমন্ত্রণ জানান", "note": "Button: আমন্ত্রণ জানান." },
+    "invitation": {
+      "translation": "আমন্ত্রণ",
+      "short": "আমন্ত্রণ জানান",
+      "note": "Button: আমন্ত্রণ জানান."
+    },
     "join-link": { "translation": "যোগদানের লিংক" },
     "role": { "translation": "ভূমিকা" },
     "role-owner": { "translation": "মালিক" },
     "role-admin": { "translation": "অ্যাডমিন" },
-    "role-editor": { "translation": "সম্পাদক", "note": "The role. The editing screen is এডিটর." },
+    "role-editor": {
+      "translation": "সম্পাদক",
+      "note": "The role. The editing screen is এডিটর."
+    },
     "role-viewer": { "translation": "দর্শক" },
-    "server-admin": { "translation": "সার্ভার প্রশাসক", "note": "Never অ্যাডমিন, which is the site or organization role." },
+    "server-admin": {
+      "translation": "সার্ভার প্রশাসক",
+      "note": "Never অ্যাডমিন, which is the site or organization role."
+    },
     "account": { "translation": "অ্যাকাউন্ট" },
-    "sign-in": { "translation": "সাইন ইন করুন", "note": "সাইন ইন / সাইন আপ / সাইন আউট." },
+    "sign-in": {
+      "translation": "সাইন ইন করুন",
+      "note": "সাইন ইন / সাইন আপ / সাইন আউট."
+    },
     "settings": { "translation": "সেটিংস" },
     "general": { "translation": "সাধারণ" },
     "appearance": { "translation": "চেহারা" },
@@ -33,7 +53,10 @@
     "custom-domain": { "translation": "কাস্টম ডোমেইন" },
     "domain": { "translation": "ডোমেইন", "note": "Address in prose: ঠিকানা." },
     "redirect": { "translation": "রিডাইরেক্ট" },
-    "visibility": { "translation": "দৃশ্যমানতা", "note": "Access in prose: অ্যাক্সেস." },
+    "visibility": {
+      "translation": "দৃশ্যমানতা",
+      "note": "Access in prose: অ্যাক্সেস."
+    },
     "add-on": { "translation": "অ্যাড-অন" },
     "integration": { "translation": "ইন্টিগ্রেশন" },
     "webhook": { "translation": "ওয়েবহুক" },
@@ -58,7 +81,10 @@
       "translation": "Web Vitals",
       "note": "Cards: মূল কনটেন্ট দেখা যায়, ক্লিকে সাড়া দেয়, লেআউট স্থির থাকে. LCP, INP, CLS stay in English."
     },
-    "ai-crawlers": { "translation": "AI ক্রলার", "note": "AI visibility: AI-তে দৃশ্যমানতা." },
+    "ai-crawlers": {
+      "translation": "AI ক্রলার",
+      "note": "AI visibility: AI-তে দৃশ্যমানতা."
+    },
     "plan": { "translation": "প্ল্যান" },
     "usage": { "translation": "ব্যবহার" },
     "billing": { "translation": "বিলিং" },
@@ -66,17 +92,31 @@
     "history": { "translation": "ইতিহাস" },
     "version": { "translation": "সংস্করণ" },
     "restore": { "translation": "পুনরুদ্ধার করুন", "short": "পুনরুদ্ধার" },
-    "promote": { "translation": "main-এ যুক্ত করুন", "note": "Merging a version's content into main. Not প্রকাশ." },
+    "promote": {
+      "translation": "main-এ যুক্ত করুন",
+      "note": "Merging a version's content into main. Not প্রকাশ."
+    },
     "rollback": { "translation": "রোলব্যাক করুন", "short": "রোলব্যাক" },
-    "checks": { "translation": "প্রকাশের আগের যাচাই", "note": "Fix button: ঠিক করুন." },
+    "checks": {
+      "translation": "প্রকাশের আগের যাচাই",
+      "note": "Fix button: ঠিক করুন."
+    },
     "danger-zone": { "translation": "বিপজ্জনক অংশ" },
     "delete": { "translation": "মুছুন", "note": "Move to Trash: ট্র্যাশে সরান." },
     "trash": { "translation": "ট্র্যাশ" },
     "delete-permanently": { "translation": "স্থায়ীভাবে মুছুন" },
     "remove": { "translation": "সরান" },
-    "save": { "translation": "সংরক্ষণ করুন", "short": "সংরক্ষণ", "note": "Saved: সংরক্ষিত. Unsaved changes: অসংরক্ষিত পরিবর্তন." },
+    "save": {
+      "translation": "সংরক্ষণ করুন",
+      "short": "সংরক্ষণ",
+      "note": "Saved: সংরক্ষিত. Unsaved changes: অসংরক্ষিত পরিবর্তন."
+    },
     "cancel": { "translation": "বাতিল করুন", "short": "বাতিল" },
-    "copy": { "translation": "কপি করুন", "short": "কপি", "note": "Copied: কপি হয়েছে." },
+    "copy": {
+      "translation": "কপি করুন",
+      "short": "কপি",
+      "note": "Copied: কপি হয়েছে."
+    },
     "self-hosted": { "translation": "সেলফ-হোস্টেড" },
     "dashboard": { "translation": "ড্যাশবোর্ড" },
     "editor-screen": { "translation": "এডিটর" },

@@ -1,6 +1,9 @@
 {
   "terms": {
-    "site": { "translation": "سائٹ", "note": "Always سائٹ, never ویب سائٹ or پروجیکٹ." },
+    "site": {
+      "translation": "سائٹ",
+      "note": "Always سائٹ, never ویب سائٹ or پروجیکٹ."
+    },
     "organization": {
       "translation": "تنظیم",
       "note": "Never ورک اسپیس or کام کی جگہ. English strings that say workspace mean تنظیم."
@@ -8,7 +11,11 @@
     "page": { "translation": "صفحہ", "note": "Plural: صفحات." },
     "group": { "translation": "گروپ" },
     "page-tree": { "translation": "صفحات کا ڈھانچہ" },
-    "publish": { "translation": "شائع کریں", "short": "شائع کریں", "note": "Noun (one published version): اشاعت." },
+    "publish": {
+      "translation": "شائع کریں",
+      "short": "شائع کریں",
+      "note": "Noun (one published version): اشاعت."
+    },
     "draft": { "translation": "مسودہ" },
     "unpublished-changes": { "translation": "غیر شائع شدہ تبدیلیاں" },
     "preview": { "translation": "پیش نظارہ" },
@@ -16,16 +23,29 @@
     "reader": { "translation": "قاری", "note": "Plural: قارئین." },
     "member": { "translation": "رکن", "note": "Plural: اراکین." },
     "people": { "translation": "افراد" },
-    "invitation": { "translation": "دعوت نامہ", "short": "مدعو کریں", "note": "Button: مدعو کریں." },
+    "invitation": {
+      "translation": "دعوت نامہ",
+      "short": "مدعو کریں",
+      "note": "Button: مدعو کریں."
+    },
     "join-link": { "translation": "شمولیت کا لنک" },
     "role": { "translation": "کردار" },
     "role-owner": { "translation": "مالک" },
     "role-admin": { "translation": "منتظم" },
-    "role-editor": { "translation": "مدیر", "note": "The role. The editing screen is ایڈیٹر." },
+    "role-editor": {
+      "translation": "مدیر",
+      "note": "The role. The editing screen is ایڈیٹر."
+    },
     "role-viewer": { "translation": "ناظر" },
-    "server-admin": { "translation": "سرور ایڈمنسٹریٹر", "note": "Never منتظم, which is the site or organization role." },
+    "server-admin": {
+      "translation": "سرور ایڈمنسٹریٹر",
+      "note": "Never منتظم, which is the site or organization role."
+    },
     "account": { "translation": "اکاؤنٹ" },
-    "sign-in": { "translation": "سائن ان کریں", "note": "سائن ان / سائن اپ / سائن آؤٹ." },
+    "sign-in": {
+      "translation": "سائن ان کریں",
+      "note": "سائن ان / سائن اپ / سائن آؤٹ."
+    },
     "settings": { "translation": "ترتیبات" },
     "general": { "translation": "عمومی" },
     "appearance": { "translation": "ظاہری شکل" },
@@ -43,7 +63,10 @@
     "sync": { "translation": "ہم آہنگی", "short": "سنک" },
     "import": { "translation": "درآمد" },
     "export": { "translation": "برآمد" },
-    "language": { "translation": "زبان", "note": "Source language: ماخذ زبان." },
+    "language": {
+      "translation": "زبان",
+      "note": "Source language: ماخذ زبان."
+    },
     "ask-ai": { "translation": "AI سے پوچھیں" },
     "ai-assistant": { "translation": "AI معاون" },
     "smart-ai": { "translation": "اسمارٹ AI" },
@@ -58,7 +81,10 @@
       "translation": "Web Vitals",
       "note": "Cards: مرکزی مواد ظاہر ہوتا ہے، کلک پر ردعمل، لے آؤٹ مستحکم رہتا ہے. LCP, INP, CLS stay in English."
     },
-    "ai-crawlers": { "translation": "AI کرالرز", "note": "AI visibility: AI میں مرئیت." },
+    "ai-crawlers": {
+      "translation": "AI کرالرز",
+      "note": "AI visibility: AI میں مرئیت."
+    },
     "plan": { "translation": "پلان" },
     "usage": { "translation": "استعمال" },
     "billing": { "translation": "بلنگ" },
@@ -66,15 +92,27 @@
     "history": { "translation": "تاریخچہ" },
     "version": { "translation": "ورژن" },
     "restore": { "translation": "بحال کریں" },
-    "promote": { "translation": "main میں ضم کریں", "note": "Merging a version's content into main. Not شائع." },
+    "promote": {
+      "translation": "main میں ضم کریں",
+      "note": "Merging a version's content into main. Not شائع."
+    },
     "rollback": { "translation": "رول بیک کریں" },
-    "checks": { "translation": "اشاعت سے پہلے کی جانچ", "note": "Fix button: درست کریں." },
+    "checks": {
+      "translation": "اشاعت سے پہلے کی جانچ",
+      "note": "Fix button: درست کریں."
+    },
     "danger-zone": { "translation": "خطرناک زون" },
-    "delete": { "translation": "حذف کریں", "note": "Move to Trash: ردی میں منتقل کریں." },
+    "delete": {
+      "translation": "حذف کریں",
+      "note": "Move to Trash: ردی میں منتقل کریں."
+    },
     "trash": { "translation": "ردی" },
     "delete-permanently": { "translation": "مستقل طور پر حذف کریں" },
     "remove": { "translation": "ہٹائیں" },
-    "save": { "translation": "محفوظ کریں", "note": "Saved: محفوظ ہو گیا. Unsaved changes: غیر محفوظ تبدیلیاں." },
+    "save": {
+      "translation": "محفوظ کریں",
+      "note": "Saved: محفوظ ہو گیا. Unsaved changes: غیر محفوظ تبدیلیاں."
+    },
     "cancel": { "translation": "منسوخ کریں", "short": "منسوخ" },
     "copy": { "translation": "کاپی کریں", "note": "Copied: کاپی ہو گیا." },
     "self-hosted": { "translation": "سیلف ہوسٹڈ" },
