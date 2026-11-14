@@ -17,8 +17,10 @@
 
 /* Geist loads with font-display: swap. Until it arrives, text draws in this
    local face scaled to Geist's metrics (the values Next.js's font tooling derives
-   for Geist over Arial), so the swap doesn't re-wrap lines: on published docs the
-   sidebar used to jump a line about 0.8s after load (PUB-016, CLS 0.107). */
+   for Geist over Arial), which reduces the shift when the swap lands: on published
+   docs the sidebar used to jump a line about 0.8s after load (PUB-016, CLS 0.107).
+   The overrides match Geist's average metrics, not every word's width, so a label
+   right at its line's limit can still re-wrap. */
 @font-face {
   font-family: "Geist Fallback";
   src: local("Arial"), local("Helvetica Neue"), local("Helvetica");
