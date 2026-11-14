@@ -11,6 +11,7 @@
     },
     ".": {
       "entry": [
+        ".github/assets/org-default-cloud-copy/capture.mjs",
         "tests/integration/editor-p2/browser.mjs",
         "tests/integration/import-fidelity/browser.mjs",
         "tests/integration/import-fidelity/local-only-node.mjs",
