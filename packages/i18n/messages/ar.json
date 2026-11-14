@@ -2474,6 +2474,7 @@
   "site_languagecurrent": "اللغة: {language}",
   "site_versioncurrent": "الإصدار: {version}",
   "site_sitelinks": "روابط الموقع",
+  "site_quicklinks": "روابط سريعة",
   "site_docssections": "أقسام الوثائق",
   "site_docspages": "صفحات الوثائق",
   "site_notfoundtitle": "لم نعثر على هذه الصفحة",

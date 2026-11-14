@@ -4,6 +4,7 @@ import { isRtl as isRtlLocale, resolveLocale } from '@nibleaf/i18n/locales';
 import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
+import { blockDirection } from '@nibleaf/shared/script-direction';
 import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -361,6 +362,7 @@ function SiteChrome() {
   const themeCss = projectThemeCss(config);
   // The active language may localize the site name (brand + footer copyright).
   const siteName = site?.languageConfig?.name || site?.project.name;
+  const footerCopyright = footer?.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim();
   const brandInner = (
     <>
       {logo ? (
@@ -613,7 +615,7 @@ function SiteChrome() {
                           rel={link.external ? 'noreferrer' : undefined}
                           aria-current={link.active ? 'page' : undefined}
                           className={cn(
-                            'inline-flex items-center gap-1 transition-colors',
+                            'inline-flex min-h-6 items-center gap-1 transition-colors',
                             link.active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground',
                           )}
                         >
@@ -687,24 +689,28 @@ function SiteChrome() {
             navigationLabels={{ showAll: t('navShowAll'), showLess: t('navShowLess') }}
             navigation={
               <>
+                {/* Its own named landmark: the sidebar box around it is a plain
+                    div, so these links would otherwise sit outside every landmark. */}
                 {navAnchors.length > 0 ? (
-                  <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
-                    {navAnchors.map((anchor) => (
-                      <li key={`${anchor.label}-${anchor.href}`}>
-                        <a
-                          href={resolveNavHref(anchor.href)}
-                          target={anchor.external ? '_blank' : undefined}
-                          rel={anchor.external ? 'noreferrer' : undefined}
-                          className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
-                        >
-                          <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
-                            {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
-                          </span>
-                          <span className="truncate">{anchor.label}</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+                  <nav aria-label={t('quickLinks')}>
+                    <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
+                      {navAnchors.map((anchor) => (
+                        <li key={`${anchor.label}-${anchor.href}`}>
+                          <a
+                            href={resolveNavHref(anchor.href)}
+                            target={anchor.external ? '_blank' : undefined}
+                            rel={anchor.external ? 'noreferrer' : undefined}
+                            className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
+                          >
+                            <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
+                              {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
+                            </span>
+                            <span className="truncate">{anchor.label}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
                 ) : null}
                 <SiteNav
                   nodes={site.nav ?? []}
@@ -733,7 +739,8 @@ function SiteChrome() {
                       className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row"
                       data-theme-region="footer"
                     >
-                      <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim()}</span>
+                      {/* Isolated and laid out by its own script, like the rest of the chrome (PUB-015). */}
+                      <span dir={blockDirection(footerCopyright)}>{footerCopyright}</span>
                       <div className="flex items-center gap-1">
                         {footer.github ? (
                           <a

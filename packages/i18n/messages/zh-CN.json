@@ -2329,6 +2329,7 @@
   "site_languagecurrent": "语言：{language}",
   "site_versioncurrent": "版本：{version}",
   "site_sitelinks": "网站链接",
+  "site_quicklinks": "快速链接",
   "site_docssections": "文档分区",
   "site_docspages": "文档页面",
   "site_notfoundtitle": "找不到这个页面",

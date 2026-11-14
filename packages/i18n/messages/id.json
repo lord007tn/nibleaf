@@ -2329,6 +2329,7 @@
   "site_languagecurrent": "Bahasa: {language}",
   "site_versioncurrent": "Versi: {version}",
   "site_sitelinks": "Tautan situs",
+  "site_quicklinks": "Tautan cepat",
   "site_docssections": "Bagian dokumentasi",
   "site_docspages": "Halaman dokumentasi",
   "site_notfoundtitle": "Kami tidak menemukan halaman itu",
