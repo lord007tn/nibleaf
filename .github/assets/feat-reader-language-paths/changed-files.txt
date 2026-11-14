@@ -64,6 +64,7 @@ packages/shared/src/site-language.test.ts
 packages/shared/src/site-language.ts
 packages/shared/src/site-links.test.ts
 packages/shared/src/site-links.ts
+packages/shared/src/site-route.property.test.ts
 packages/shared/src/site-route.test.ts
 packages/shared/src/site-route.ts
 packages/shared/src/site.ts
