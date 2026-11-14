@@ -39,7 +39,8 @@ function SelfHostingPage() {
           </p>
           <div className="mt-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
             <h2 className="font-semibold text-xl">Distribution checks completed</h2>
-            <ul className="mt-4 space-y-2 text-muted-foreground text-sm leading-relaxed">
+            {/* Full-strength text: muted grey on the green tint was 4.1:1 (MKT-006). */}
+            <ul className="mt-4 space-y-2 text-foreground text-sm leading-relaxed">
               <li>The repository can be cloned without GitHub credentials.</li>
               <li>The pinned container release can be fetched anonymously from GHCR.</li>
               <li>The installer and production Compose file are pinned to one release and protected by committed SHA-256 digests.</li>

@@ -1,0 +1,3564 @@
+{
+  "baseline": "f8e1f166530e906110aa6debd958d04615ca4643",
+  "head": "2956e0b43ed8995ce2f7a5264f91c7b25a4968f0",
+  "environment": "Isolated actual-route fixture; intercepted fictional HTTP; no server, database or real site",
+  "swappedForBefore": [
+    "apps/app/src/components/project/project-access-boundary.tsx",
+    "apps/app/src/layouts/account.tsx",
+    "apps/app/src/routes/app/o/$orgSlug/route.tsx",
+    "paraglide message analytics_status_readsdisabled_title (en, ar)",
+    "paraglide message analytics_status_readsdisabled_body (en, ar)"
+  ],
+  "attempted": 0,
+  "axe": {
+    "version": "4.14.0",
+    "rules": [
+      "landmark-one-main",
+      "region",
+      "role-img-alt",
+      "svg-img-alt",
+      "color-contrast",
+      "button-name",
+      "link-name"
+    ]
+  },
+  "captures": [
+    {
+      "phase": "before",
+      "screen": "unknown-org",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-unknown-org-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-org",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-unknown-org-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-org",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "before-unknown-org-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-org",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-unknown-org-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-org",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-unknown-org-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-org",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-unknown-org-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-org",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "before-unknown-org-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-org",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-unknown-org-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-site",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-unknown-site-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-site",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-unknown-site-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-site",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "before-unknown-site-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-site",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-unknown-site-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-site",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-unknown-site-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-site",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-unknown-site-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-site",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "before-unknown-site-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "unknown-site",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-unknown-site-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": []
+    },
+    {
+      "phase": "before",
+      "screen": "analytics-reads-off",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-analytics-reads-off-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "The server is collecting analytics. When migration is ready, the server admin can enable reports with ANALYTICS_MODE=clickhouse.",
+      "mentionsAnalyticsMode": true
+    },
+    {
+      "phase": "before",
+      "screen": "analytics-reads-off",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-analytics-reads-off-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "The server is collecting analytics. When migration is ready, the server admin can enable reports with ANALYTICS_MODE=clickhouse.",
+      "mentionsAnalyticsMode": true
+    },
+    {
+      "phase": "before",
+      "screen": "analytics-reads-off",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "before-analytics-reads-off-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "The server is collecting analytics. When migration is ready, the server admin can enable reports with ANALYTICS_MODE=clickhouse.",
+      "mentionsAnalyticsMode": true
+    },
+    {
+      "phase": "before",
+      "screen": "analytics-reads-off",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-analytics-reads-off-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "The server is collecting analytics. When migration is ready, the server admin can enable reports with ANALYTICS_MODE=clickhouse.",
+      "mentionsAnalyticsMode": true
+    },
+    {
+      "phase": "before",
+      "screen": "analytics-reads-off",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "before-analytics-reads-off-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
+      "mentionsAnalyticsMode": true
+    },
+    {
+      "phase": "before",
+      "screen": "analytics-reads-off",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "before-analytics-reads-off-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
+      "mentionsAnalyticsMode": true
+    },
+    {
+      "phase": "before",
+      "screen": "analytics-reads-off",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "before-analytics-reads-off-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
+      "mentionsAnalyticsMode": true
+    },
+    {
+      "phase": "before",
+      "screen": "analytics-reads-off",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "before-analytics-reads-off-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
+      "mentionsAnalyticsMode": true
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-org",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-unknown-org-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Page not found"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-org",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-unknown-org-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Page not found"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-org",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "after-unknown-org-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Page not found"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-org",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-unknown-org-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Page not found"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-org",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-unknown-org-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["الصفحة غير موجودة"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-org",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-unknown-org-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["الصفحة غير موجودة"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-org",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "after-unknown-org-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["الصفحة غير موجودة"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-org",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-unknown-org-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/organizations/by-slug/unknown",
+        "GET /api/app/me/switcher",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["الصفحة غير موجودة"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-site",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-unknown-site-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Page not found"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-site",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-unknown-site-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Page not found"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-site",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "after-unknown-site-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Page not found"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-site",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-unknown-site-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Page not found"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-site",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-unknown-site-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["الصفحة غير موجودة"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-site",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-unknown-site-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["الصفحة غير موجودة"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-site",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "after-unknown-site-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["الصفحة غير موجودة"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "unknown-site",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-unknown-site-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["الصفحة غير موجودة"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "site-load-failed",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-site-load-failed-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Something went wrong"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "button",
+            "name": "Try again",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "site-load-failed",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-site-load-failed-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Something went wrong"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "button",
+            "name": "Try again",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "site-load-failed",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "after-site-load-failed-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Something went wrong"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "button",
+            "name": "Try again",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "site-load-failed",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-site-load-failed-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["Something went wrong"],
+        "header": "NibleafBack to ⁨Acme Docs⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "Skip to main content",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Back to ⁨Acme Docs⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "button",
+            "name": "Try again",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "Sites",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "site-load-failed",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-site-load-failed-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["حدث خطأ ما"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "button",
+            "name": "حاول مجددًا",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "site-load-failed",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-site-load-failed-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["حدث خطأ ما"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "button",
+            "name": "حاول مجددًا",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "site-load-failed",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "after-site-load-failed-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["حدث خطأ ما"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "button",
+            "name": "حاول مجددًا",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "site-load-failed",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-site-load-failed-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED",
+        "Failed to load resource: net::ERR_INTERNET_DISCONNECTED"
+      ],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics",
+        "GET /api/app/projects/unknown",
+        "GET /api/app/projects/unknown/languages",
+        "GET /api/app/projects/unknown/branches",
+        "GET /api/app/projects/unknown/pages",
+        "GET /api/app/projects/unknown/deployments",
+        "GET /api/app/projects/unknown/members",
+        "GET /api/app/projects/unknown/domains",
+        "GET /api/app/projects/unknown/analytics"
+      ],
+      "unexpectedRequests": [],
+      "structure": {
+        "mainLandmarks": 1,
+        "headings": ["حدث خطأ ما"],
+        "header": "Nibleafالعودة إلى ⁨أكمي⁩",
+        "controls": [
+          {
+            "tag": "button",
+            "name": "انتقل إلى المحتوى الرئيسي",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "العودة إلى ⁨أكمي⁩",
+            "href": "/app/o/acme/websites"
+          },
+          {
+            "tag": "button",
+            "name": "حاول مجددًا",
+            "href": null
+          },
+          {
+            "tag": "a",
+            "name": "المواقع",
+            "href": "/app"
+          }
+        ],
+        "unnamedControls": 0
+      },
+      "backToOrganization": true,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-reads-off",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-analytics-reads-off-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "Whoever runs this server can turn them on with the setup guide.",
+      "mentionsAnalyticsMode": false,
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 1,
+          "targets": ["#base-ui-_r_8_ > .font-semibold"],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-reads-off",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-analytics-reads-off-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "Whoever runs this server can turn them on with the setup guide.",
+      "mentionsAnalyticsMode": false,
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 1,
+          "targets": ["#base-ui-_r_8_ > .font-semibold"],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-reads-off",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "after-analytics-reads-off-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "Whoever runs this server can turn them on with the setup guide.",
+      "mentionsAnalyticsMode": false,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-reads-off",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-analytics-reads-off-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "Whoever runs this server can turn them on with the setup guide.",
+      "mentionsAnalyticsMode": false,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-reads-off",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-analytics-reads-off-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "يستطيع من يدير هذا الخادم تفعيلها باتباع دليل الإعداد.",
+      "mentionsAnalyticsMode": false,
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 1,
+          "targets": ["#base-ui-_r_8_ > .font-semibold"],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-reads-off",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-analytics-reads-off-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "يستطيع من يدير هذا الخادم تفعيلها باتباع دليل الإعداد.",
+      "mentionsAnalyticsMode": false,
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 1,
+          "targets": ["#base-ui-_r_8_ > .font-semibold"],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-reads-off",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "after-analytics-reads-off-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "يستطيع من يدير هذا الخادم تفعيلها باتباع دليل الإعداد.",
+      "mentionsAnalyticsMode": false,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-reads-off",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-analytics-reads-off-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "notice": "يستطيع من يدير هذا الخادم تفعيلها باتباع دليل الإعداد.",
+      "mentionsAnalyticsMode": false,
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-charts",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-analytics-charts-en-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "charts": {
+        "performance": {
+          "figures": [
+            {
+              "name": "Main content appears within 2.1 sec for most readers."
+            }
+          ],
+          "vitals": [
+            {
+              "barAriaHidden": true,
+              "items": ["Good: 68%", "Needs improvement: 22%", "Poor: 10%"]
+            }
+          ]
+        },
+        "overview": {
+          "figures": [
+            {
+              "name": "Page views: 2,500 in total, busiest Nov 12 with 240."
+            }
+          ],
+          "vitals": []
+        },
+        "allFiguresNamed": true,
+        "vitalsBarHiddenWithDl": true
+      },
+      "axe": [
+        {
+          "rule": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "targets": [
+            ".col-start-1.row-start-1.gap-\\[inherit\\] > .sm\\:inline.hidden"
+          ],
+          "summary": "Element has insufficient color contrast of 3.46 (foreground color: #f1e2db, background color: #c25a2f, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+        },
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 1,
+          "targets": [".font-semibold.text-sm"],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-charts",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-analytics-charts-en-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "charts": {
+        "performance": {
+          "figures": [
+            {
+              "name": "Main content appears within 2.1 sec for most readers."
+            }
+          ],
+          "vitals": [
+            {
+              "barAriaHidden": true,
+              "items": ["Good: 68%", "Needs improvement: 22%", "Poor: 10%"]
+            }
+          ]
+        },
+        "overview": {
+          "figures": [
+            {
+              "name": "Page views: 2,500 in total, busiest Nov 12 with 240."
+            }
+          ],
+          "vitals": []
+        },
+        "allFiguresNamed": true,
+        "vitalsBarHiddenWithDl": true
+      },
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 1,
+          "targets": [".font-semibold.text-sm"],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-charts",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "file": "after-analytics-charts-en-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "charts": {
+        "performance": {
+          "figures": [
+            {
+              "name": "Main content appears within 2.1 sec for most readers."
+            }
+          ],
+          "vitals": [
+            {
+              "barAriaHidden": true,
+              "items": ["Good: 68%", "Needs improvement: 22%", "Poor: 10%"]
+            }
+          ]
+        },
+        "overview": {
+          "figures": [
+            {
+              "name": "Page views: 2,500 in total, busiest Nov 12 with 240."
+            }
+          ],
+          "vitals": []
+        },
+        "allFiguresNamed": true,
+        "vitalsBarHiddenWithDl": true
+      },
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-charts",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-analytics-charts-en-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "charts": {
+        "performance": {
+          "figures": [
+            {
+              "name": "Main content appears within 2.1 sec for most readers."
+            }
+          ],
+          "vitals": [
+            {
+              "barAriaHidden": true,
+              "items": ["Good: 68%", "Needs improvement: 22%", "Poor: 10%"]
+            }
+          ]
+        },
+        "overview": {
+          "figures": [
+            {
+              "name": "Page views: 2,500 in total, busiest Nov 12 with 240."
+            }
+          ],
+          "vitals": []
+        },
+        "allFiguresNamed": true,
+        "vitalsBarHiddenWithDl": true
+      },
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-charts",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "file": "after-analytics-charts-ar-1440-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "charts": {
+        "performance": {
+          "figures": [
+            {
+              "name": "يظهر المحتوى الرئيسي خلال 2.1 ث لدى معظم القرّاء."
+            }
+          ],
+          "vitals": [
+            {
+              "barAriaHidden": true,
+              "items": ["جيد: 68‎%‎", "يحتاج إلى تحسين: 22‎%‎", "ضعيف: 10‎%‎"]
+            }
+          ]
+        },
+        "overview": {
+          "figures": [
+            {
+              "name": "مشاهدات الصفحات: الإجمالي 2,500، وكانت الذروة 12 نوفمبر بعدد 240."
+            }
+          ],
+          "vitals": []
+        },
+        "allFiguresNamed": true,
+        "vitalsBarHiddenWithDl": true
+      },
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 1,
+          "targets": [".font-semibold.text-sm"],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-charts",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "file": "after-analytics-charts-ar-1440-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "charts": {
+        "performance": {
+          "figures": [
+            {
+              "name": "يظهر المحتوى الرئيسي خلال 2.1 ث لدى معظم القرّاء."
+            }
+          ],
+          "vitals": [
+            {
+              "barAriaHidden": true,
+              "items": ["جيد: 68‎%‎", "يحتاج إلى تحسين: 22‎%‎", "ضعيف: 10‎%‎"]
+            }
+          ]
+        },
+        "overview": {
+          "figures": [
+            {
+              "name": "مشاهدات الصفحات: الإجمالي 2,500، وكانت الذروة 12 نوفمبر بعدد 240."
+            }
+          ],
+          "vitals": []
+        },
+        "allFiguresNamed": true,
+        "vitalsBarHiddenWithDl": true
+      },
+      "axe": [
+        {
+          "rule": "region",
+          "impact": "moderate",
+          "nodes": 1,
+          "targets": [".font-semibold.text-sm"],
+          "summary": "Some page content is not contained by landmarks"
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-charts",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "file": "after-analytics-charts-ar-390-light.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "charts": {
+        "performance": {
+          "figures": [
+            {
+              "name": "يظهر المحتوى الرئيسي خلال 2.1 ث لدى معظم القرّاء."
+            }
+          ],
+          "vitals": [
+            {
+              "barAriaHidden": true,
+              "items": ["جيد: 68‎%‎", "يحتاج إلى تحسين: 22‎%‎", "ضعيف: 10‎%‎"]
+            }
+          ]
+        },
+        "overview": {
+          "figures": [
+            {
+              "name": "مشاهدات الصفحات: الإجمالي 2,500، وكانت الذروة 12 نوفمبر بعدد 240."
+            }
+          ],
+          "vitals": []
+        },
+        "allFiguresNamed": true,
+        "vitalsBarHiddenWithDl": true
+      },
+      "axe": []
+    },
+    {
+      "phase": "after",
+      "screen": "analytics-charts",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "file": "after-analytics-charts-ar-390-dark.png",
+      "noHorizontalOverflow": true,
+      "overflow": {
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "requests": [
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/overview",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session",
+        "GET /api/auth/get-session",
+        "GET /api/app/projects/handbook",
+        "GET /api/app/projects/handbook/languages",
+        "GET /api/app/projects/handbook/branches",
+        "GET /api/app/projects/handbook/pages",
+        "GET /api/app/projects/handbook/deployments",
+        "GET /api/app/projects/handbook/analytics/insights/performance",
+        "GET /api/app/me/switcher",
+        "GET /api/app/projects",
+        "GET /api/app/notifications/unread-count",
+        "GET /api/app/projects/handbook/domains",
+        "GET /api/app/projects/handbook/members",
+        "GET /api/app/projects/handbook/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "unexpectedRequests": [],
+      "charts": {
+        "performance": {
+          "figures": [
+            {
+              "name": "يظهر المحتوى الرئيسي خلال 2.1 ث لدى معظم القرّاء."
+            }
+          ],
+          "vitals": [
+            {
+              "barAriaHidden": true,
+              "items": ["جيد: 68‎%‎", "يحتاج إلى تحسين: 22‎%‎", "ضعيف: 10‎%‎"]
+            }
+          ]
+        },
+        "overview": {
+          "figures": [
+            {
+              "name": "مشاهدات الصفحات: الإجمالي 2,500، وكانت الذروة 12 نوفمبر بعدد 240."
+            }
+          ],
+          "vitals": []
+        },
+        "allFiguresNamed": true,
+        "vitalsBarHiddenWithDl": true
+      },
+      "axe": []
+    }
+  ]
+}

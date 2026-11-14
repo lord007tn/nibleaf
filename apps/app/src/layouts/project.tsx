@@ -22,6 +22,8 @@ import { ShellSearchButton } from '@/components/app/shell-search-button';
 import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
 import { PublishLauncherContext } from '@/features/publish/components/publish-launcher';
+import { sitePreviewLink } from '@/features/site-preview/components/site-preview-link';
+import { previewsDraft } from '@/features/site-preview/model/preview-target';
 import { isSectionId } from '@/features/site-settings/model/ids';
 import { sectionLabelKey } from '@/features/site-settings/model/sections';
 import { useDeployments, useOrganizationOfProject, usePendingChanges, useProject } from '@/hooks/api';
@@ -198,7 +200,8 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   // The website implies its org (§5.4.2): the switcher shows it and it becomes the last org.
   const { organization } = useOrganizationOfProject(project?.organizationId);
   useRecordVisitEffect({ projectId: project ? projectId : undefined });
-  const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
+  const previewDraft = previewsDraft(project);
+  const previewLink = sitePreviewLink(projectId, previewDraft, t);
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -217,7 +220,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
 
   return (
     <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
-      <ProjectSidebar orgSlug={organization?.slug} projectId={projectId} />
+      <ProjectSidebar orgSlug={organization?.slug} previewDraft={previewDraft} projectId={projectId} />
       <SidebarInset as="div">
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
@@ -253,23 +256,12 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               })}
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ms-auto flex shrink-0 items-center gap-2">
+          <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <ShellSearchButton />
             <NotificationsPopover />
-            <Button
-              nativeButton={false}
-              render={
-                previewEnabled ? (
-                  <Link aria-label={t('project.previewDraftAria')} params={{ projectId }} to="/app/projects/$projectId/preview" />
-                ) : (
-                  // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
-                  <a aria-label={t('project.previewLiveAria')} href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
-                )
-              }
-              size="sm"
-              variant="outline"
-            >
-              <Eye aria-hidden className="size-3.5" /> <span className="hidden sm:inline">{t('project.preview')}</span>
+            {/* Phones give the site name the room: Preview moves into the sidebar there. */}
+            <Button className="hidden sm:inline-flex" nativeButton={false} render={previewLink} size="sm" variant="outline">
+              <Eye aria-hidden className="size-3.5" /> <span>{t('project.preview')}</span>
             </Button>
             {headerPublish ? <PublishControl compact openRequest={publishRequest} project={project} /> : null}
           </div>

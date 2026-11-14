@@ -48,7 +48,10 @@ it.each(['en', 'ar'] as const)('keeps the language link and theme action inside 
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog?.getAttribute('lang')).toBe(language);
     expect(dialog?.querySelector(`a[href="${alternate}"][hreflang="${copy.languageSwitch.hrefLang}"]`)).not.toBeNull();
-    expect(dialog?.querySelector(`button[aria-label="${copy.theme.toDark}"]`)).not.toBeNull();
+    // One toggle pattern with the docs reader: a constant name, pressed while dark (P3-MKT-009).
+    const toggle = dialog?.querySelector(`button[aria-label="${copy.theme.darkMode}"]`);
+    expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle?.getAttribute('title')).toBe(copy.theme.toDark);
     expect(dialog?.querySelector(`a[href="${copy.login.href}"]`)).not.toBeNull();
     const close = dialog?.querySelector<HTMLButtonElement>(`button[aria-label="${copy.menu.close}"]`);
     await act(async () => close?.click());

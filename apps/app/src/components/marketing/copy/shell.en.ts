@@ -15,7 +15,7 @@ export const shellEn: ShellCopy = {
   login: { label: 'Log in', href: '/sign-in' },
   start: { label: 'Start free', href: '/sign-up' },
   languageSwitch: { label: 'العربية', ariaLabel: 'Nibleaf بالعربية', hrefLang: 'ar' },
-  theme: { toDark: 'Switch to dark mode', toLight: 'Switch to light mode' },
+  theme: { darkMode: 'Dark mode', toDark: 'Switch to dark mode', toLight: 'Switch to light mode' },
   menu: { open: 'Open menu', close: 'Close menu', title: 'Menu' },
   github: {
     label: 'GitHub',
