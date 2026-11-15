@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { resolveTheme, THEME_PRESETS } from '@nibleaf/shared/themes';
-import { type CreateProjectBody, projectConfigSchema } from '@nibleaf/validators';
+import { type CreateProjectBody, projectConfigSchema, updateProjectBody } from '@nibleaf/validators';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   tx: {
     organization: { create: vi.fn() },
     member: { create: vi.fn(), findUnique: vi.fn() },
-    project: { create: vi.fn() },
+    project: { create: vi.fn(), findFirst: vi.fn(), updateManyAndReturn: vi.fn() },
     projectAddon: { createMany: vi.fn() },
     projectAddonAuditEvent: { createMany: vi.fn() },
     language: { create: vi.fn() },
@@ -581,5 +581,41 @@ describe('site creation language, starters and address availability', () => {
         expect(call.data.content).toBe(catalog[`newsite_starter_${message}_content`]);
       }
     }
+  });
+});
+
+// The dashboard's Banner settings send `config.banner` as JSON; the real
+// validator and merge decide what is stored. `mergeConfig` merges an object
+// section one level deep and keeps any key the patch leaves out.
+describe('updateProject: clearing saved banner text', () => {
+  const BANNER = { enabled: true, dismissible: false, message: 'Spring sale', linkLabel: 'See plans', linkUrl: 'https://example.com/pricing' };
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, seo: { metaTitle: 'Docs' }, redirects: [{ from: '/old', to: '/new' }] };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), banner: { ...BANNER } };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  /** The request as the dashboard sends it: JSON, then the route's validator. */
+  const save = (banner: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { banner } }))));
+
+  it.each(['message', 'linkLabel', 'linkUrl'] as const)('stores an empty %s sent as "", and keeps every other key and section', async (key) => {
+    const readback = await save({ ...BANNER, [key]: '' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, banner: { ...BANNER, [key]: '' } });
+    expect(readback).toMatchObject({ config: { banner: { ...BANNER, [key]: '' } } });
+  });
+
+  it('keeps a key the patch leaves out: why the dashboard must send cleared text as ""', async () => {
+    // JSON drops `undefined`, so this is what an omitted cleared field looks like on the wire.
+    await save({ ...BANNER, message: undefined });
+    expect(stored.banner).toStrictEqual(BANNER);
   });
 });
