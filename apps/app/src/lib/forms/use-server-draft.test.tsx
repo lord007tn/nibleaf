@@ -444,3 +444,364 @@ describe('useServerDraftForm: refetch sequences during a save', () => {
     });
   }
 });
+
+describe('useServerDraftForm: a payload transformed before sending (toSent)', () => {
+  type Variable = { key: string; value: string };
+  type Vars = { variables: Variable[]; title: string };
+  type VarsApi = ReturnType<typeof useServerDraftForm<Vars>>;
+  /** Like the variables form: a row without a key is never sent. */
+  const dropBlankKeys = (values: Vars): Vars => ({ ...values, variables: values.variables.filter((row) => row.key !== '') });
+  /** Like the SEO form: strings are sent trimmed. */
+  const trim = (values: Values): Values => ({ name: values.name.trim(), description: values.description.trim() });
+
+  function SentHarness<V extends Record<string, unknown>>({
+    source,
+    toSent,
+    onSubmit,
+    expose,
+  }: {
+    source: V;
+    toSent?: (values: V) => V;
+    onSubmit: (values: V, save: DraftSave<V>) => Promise<Outcome>;
+    expose: (api: ReturnType<typeof useServerDraftForm<V>>) => void;
+  }) {
+    expose(useServerDraftForm<V>({ identity: ['site'], source, onSubmit, toSent }));
+    return null;
+  }
+
+  /** A form whose adopter sends `toSent(values)` (or the values); its save stays pending until finished. */
+  async function mountSent<V extends Record<string, unknown>>(source: V, toSent?: (values: V) => V) {
+    const root = createRoot(document.createElement('div'));
+    roots.push(root);
+    let api!: ReturnType<typeof useServerDraftForm<V>>;
+    const saves: Array<{ sent: V; save: DraftSave<V>; finish: (outcome: Outcome) => void }> = [];
+    const onSubmit = (values: V, save: DraftSave<V>) =>
+      new Promise<Outcome>((resolve) => {
+        saves.push({ sent: toSent ? toSent(values) : values, save, finish: resolve });
+      });
+    const render = (next: V) =>
+      act(async () =>
+        root.render(
+          <SentHarness<V>
+            expose={(value) => {
+              api = value;
+            }}
+            onSubmit={onSubmit}
+            source={next}
+            toSent={toSent}
+          />,
+        ),
+      );
+    await render(source);
+    const set = (field: keyof V & string, value: unknown) =>
+      act(async () => (api.form.setFieldValue as (field: string, value: unknown) => void)(field, value));
+    const submit = () =>
+      act(async () => {
+        void api.submit();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    /** The server stored what the adopter sent, or `confirmed`. */
+    const succeed = (confirmed?: V) =>
+      act(async () => {
+        const entry = saves[0];
+        entry?.save.succeeded(confirmed ?? entry.sent);
+        entry?.finish('saved');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    const fail = () =>
+      act(async () => {
+        saves[0]?.save.failed();
+        saves[0]?.finish('failed');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    return { render, saves, set, submit, succeed, fail, api: () => api };
+  }
+
+  const saved: Vars = {
+    variables: [
+      { key: 'product', value: 'Acme' },
+      { key: 'version', value: '2.0' },
+    ],
+    title: 'Docs',
+  };
+  const unnamed = { key: '', value: 'no name' };
+  const submitted = [{ key: 'product', value: 'Acme Cloud' }, { key: 'version', value: '2.0' }, unnamed];
+  const stored: Vars = { ...saved, variables: submitted.slice(0, 2) };
+  const later = [{ key: 'product', value: 'Acme Cloud' }, { key: 'version', value: '3.0' }, unnamed];
+
+  /** The variables repro: the stored value (without the unnamed row) lands mid-save, and version is edited after or before it. */
+  async function repro(order: 'refetch then edit' | 'edit then refetch') {
+    const draft = await mountSent(saved, dropBlankKeys);
+    await draft.set('variables', submitted);
+    await draft.submit();
+    expect(draft.saves[0]?.sent).toEqual(stored);
+    if (order === 'edit then refetch') await draft.set('variables', later);
+    await draft.render(stored);
+    if (order === 'refetch then edit') await draft.set('variables', later);
+    return draft;
+  }
+  /** The newer version and the unnamed row stay as dirty draft content, with no conflict. */
+  const expectKept = (api: VarsApi) => {
+    expect(api.conflicts).toEqual([]);
+    expect(api.form.state.values.variables).toEqual(later);
+    expect(api.baseline).toEqual(stored);
+    expect(api.isDirty).toBe(true);
+  };
+
+  for (const order of ['refetch then edit', 'edit then refetch'] as const) {
+    it(`takes the stored value as the save’s echo (${order})`, async () => {
+      const { api } = await repro(order);
+      expectKept(api());
+    });
+    it(`keeps the newer edit and the unnamed row after success (${order})`, async () => {
+      const { succeed, api } = await repro(order);
+      await succeed();
+      expect(api().isSaving).toBe(false);
+      expectKept(api());
+    });
+    it(`keeps the newer edit and the unnamed row after failure (${order})`, async () => {
+      const { fail, api } = await repro(order);
+      await fail();
+      expect(api().isSaving).toBe(false);
+      expectKept(api());
+    });
+  }
+
+  it('still reports someone else’s change to an edited field and adopts it on an untouched one', async () => {
+    const { render, set, submit, api } = await mountSent(saved, dropBlankKeys);
+    await set('variables', submitted);
+    await submit();
+    const theirs = [{ key: 'product', value: 'Acme Enterprise' }];
+    await render({ variables: theirs, title: 'Their docs' });
+    expect(api().conflicts).toEqual(['variables']);
+    expect(api().form.state.values).toEqual({ variables: submitted, title: 'Their docs' });
+    await act(async () => api().resolveConflict('variables', 'theirs'));
+    expect(api().form.state.values).toEqual({ variables: theirs, title: 'Their docs' });
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('keeps an edit made during the save as a conflict through someone else’s change and the save’s success', async () => {
+    const { render, set, submit, succeed, api } = await mountSent(saved, dropBlankKeys);
+    await set('variables', submitted);
+    await submit();
+    await set('variables', later);
+    const theirs = [{ key: 'product', value: 'Acme Enterprise' }];
+    await render({ variables: theirs, title: 'Their docs' });
+    expect(api().conflicts).toEqual(['variables']);
+    // Their save landed after ours.
+    await succeed({ variables: theirs, title: 'Their docs' });
+    expect(api().conflicts).toEqual(['variables']);
+    expect(api().form.state.values).toEqual({ variables: later, title: 'Their docs' });
+    expect(api().isDirty).toBe(true);
+  });
+
+  it('keeps an unnamed row through someone else’s change while a save that sent nothing for it is in flight', async () => {
+    const { render, set, submit, succeed, api } = await mountSent(saved, dropBlankKeys);
+    // Only an unnamed row: the save sends the variables unchanged, so it awaits no echo for them.
+    await set('variables', [...saved.variables, unnamed]);
+    await set('title', 'Guide');
+    await submit();
+    const theirs = [{ key: 'product', value: 'Acme Enterprise' }];
+    await render({ variables: theirs, title: 'Guide' });
+    expect(api().form.state.values.variables).toEqual([...saved.variables, unnamed]);
+    expect(api().conflicts).toEqual(['variables']);
+    await succeed({ variables: theirs, title: 'Guide' });
+    expect(api().form.state.values).toEqual({ variables: [...saved.variables, unnamed], title: 'Guide' });
+    expect(api().conflicts).toEqual(['variables']);
+  });
+
+  it('confirms a save whose only change toSent drops, and ends clean', async () => {
+    const { set, submit, succeed, api } = await mountSent(saved, dropBlankKeys);
+    await set('variables', [...saved.variables, unnamed]);
+    await submit();
+    await succeed();
+    expect(api().form.state.values).toEqual(saved);
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('trims: the trimmed echo is no conflict, and the confirmed save is clean', async () => {
+    const { render, set, submit, succeed, api } = await mountSent(original, trim);
+    await set('name', 'Title  ');
+    await submit();
+    await render({ name: 'Title', description: 'd1' });
+    expect(api().conflicts).toEqual([]);
+    // The typed value stays until the save is confirmed.
+    expect(api().form.state.values.name).toBe('Title  ');
+    await render({ name: 'Title', description: 'd2' });
+    expect(api().form.state.values).toEqual({ name: 'Title  ', description: 'd2' });
+    await succeed({ name: 'Title', description: 'd2' });
+    expect(api().form.state.values).toEqual({ name: 'Title', description: 'd2' });
+    expect(api().isDirty).toBe(false);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('trims: keeps an edit made during the save', async () => {
+    const { render, set, submit, succeed, api } = await mountSent(original, trim);
+    await set('name', 'Title  ');
+    await submit();
+    await set('name', 'Title 2');
+    await render({ name: 'Title', description: 'd1' });
+    expect(api().conflicts).toEqual([]);
+    expect(api().form.state.values.name).toBe('Title 2');
+    await succeed();
+    expect(api().form.state.values.name).toBe('Title 2');
+    expect(api().baseline.name).toBe('Title');
+    expect(api().isDirty).toBe(true);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('trims: takes someone else’s change after the echo to a sent field the person left alone', async () => {
+    const { render, set, submit, succeed, api } = await mountSent(original, trim);
+    await set('name', 'Title  ');
+    await submit();
+    await render({ name: 'Title', description: 'd1' });
+    await render({ name: 'Theirs', description: 'd1' });
+    expect(api().conflicts).toEqual([]);
+    expect(api().form.state.values.name).toBe('Theirs');
+    await succeed({ name: 'Theirs', description: 'd1' });
+    expect(api().form.state.values.name).toBe('Theirs');
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('trims: reports someone else’s change to a sent field before its echo as a conflict', async () => {
+    const { render, set, submit, api } = await mountSent(original, trim);
+    await set('name', 'Title  ');
+    await submit();
+    await render({ name: 'Theirs', description: 'd1' });
+    expect(api().conflicts).toEqual(['name']);
+    expect(api().form.state.values.name).toBe('Title  ');
+  });
+
+  it('trims: a save that only added spaces ends clean', async () => {
+    const { set, submit, succeed, api } = await mountSent(original, trim);
+    await set('name', 'Original  ');
+    await submit();
+    await succeed();
+    expect(api().form.state.values.name).toBe('Original');
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('clears a conflict once the save’s trimmed echo lands after someone else’s change', async () => {
+    const { render, set, submit, succeed, api } = await mountSent(original, trim);
+    await set('name', 'S  ');
+    await submit();
+    await render({ name: 'T', description: 'd1' });
+    expect(api().conflicts).toEqual(['name']);
+    await render({ name: 'S', description: 'd1' });
+    expect(api().conflicts).toEqual([]);
+    await succeed();
+    expect(api().form.state.values.name).toBe('S');
+    expect(api().isDirty).toBe(false);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('clears a conflict once the save’s echo without the unnamed row lands after someone else’s change', async () => {
+    const { render, set, submit, succeed, api } = await mountSent(saved, dropBlankKeys);
+    await set('variables', submitted);
+    await submit();
+    await render({ ...saved, variables: [{ key: 'product', value: 'Acme Enterprise' }] });
+    expect(api().conflicts).toEqual(['variables']);
+    await render(stored);
+    expect(api().conflicts).toEqual([]);
+    expect(api().form.state.values.variables).toEqual(submitted);
+    await succeed();
+    expect(api().form.state.values).toEqual(stored);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  describe('a baseline toSent would change (stored before trimming)', () => {
+    const untrimmed = { name: ' O', description: 'd1' };
+
+    it('confirms a save that only added spaces, with or without a response', async () => {
+      for (const confirmed of [undefined, { name: 'O', description: 'd1' }]) {
+        const { set, submit, succeed, api } = await mountSent(untrimmed, trim);
+        await set('name', ' O  ');
+        await submit();
+        await succeed(confirmed);
+        expect(api().form.state.values.name).toBe('O');
+        expect(api().isDirty).toBe(false);
+        expect(api().conflicts).toEqual([]);
+      }
+    });
+
+    it('takes the save’s own normalizing refetch as no change, never a conflict', async () => {
+      const { render, set, submit, succeed, api } = await mountSent(untrimmed, trim);
+      await set('name', ' O  ');
+      await submit();
+      await render({ name: 'O', description: 'd1' });
+      expect(api().conflicts).toEqual([]);
+      await succeed();
+      expect(api().form.state.values.name).toBe('O');
+      expect(api().isDirty).toBe(false);
+      expect(api().conflicts).toEqual([]);
+    });
+  });
+
+  describe('histories over trimmed and untrimmed baselines', () => {
+    // One field, `name`, trimmed when sent. Each history is checked against
+    // the same history without toSent, with every value already trimmed: in
+    // sent space the two must end alike. The one intended difference: spaces
+    // the person typed (sending nothing new) are kept as a conflict against
+    // someone else's value instead of being replaced by it.
+    type Sequence = string[];
+    type Submit = 'S  ' | 'S' | 'spaces' | 'untouched';
+    type During = 'untouched' | 'edited';
+    type Seen = { name: string; conflict: boolean; dirty: boolean };
+
+    type History = { baseline: string; submit: Submit; during: During; server: Sequence };
+    const histories: History[] = [];
+    for (const baseline of ['O', ' O']) {
+      for (const submit of ['S  ', 'S', 'spaces', 'untouched'] as const) {
+        const own = submit === 'spaces' || submit === 'untouched' ? baseline.trim() : 'S';
+        for (const during of ['untouched', 'edited'] as const) {
+          for (const server of [[], [own], ['T'], ['T', own], [own, 'T']]) histories.push({ baseline, submit, during, server });
+        }
+      }
+    }
+
+    /** Runs a history to the end of its refetches, transformed or as its trimmed equivalent. */
+    async function play({ baseline, submit, during, server }: History, transformed: boolean) {
+      const normalize = (value: string) => (transformed ? value : value.trim());
+      const description = submit === 'untouched' ? 'mine' : 'd1';
+      const draft = await mountSent({ name: normalize(baseline), description: 'd1' }, transformed ? trim : undefined);
+      if (submit === 'untouched') await draft.set('description', 'mine');
+      else await draft.set('name', normalize(submit === 'spaces' ? `${baseline}  ` : submit));
+      await draft.submit();
+      if (during === 'edited') await draft.set('name', 'E');
+      for (const name of server) await draft.render({ name, description });
+      return { ...draft, description };
+    }
+    const seen = (api: ReturnType<typeof useServerDraftForm<Values>>): Seen => ({
+      name: api.form.state.values.name.trim(),
+      conflict: api.conflicts.includes('name'),
+      dirty: api.form.state.values.name.trim() !== api.baseline.name.trim(),
+    });
+    const confirmedName = ({ server }: History, own: string) => (server.at(-1) === 'T' && server.includes(own) ? 'T' : own);
+
+    /** Plays a history to an outcome and reports what the form shows. */
+    async function outcome(history: History, transformed: boolean, end: 'pending' | 'success' | 'failure') {
+      const draft = await play(history, transformed);
+      if (end === 'success') {
+        const own = draft.saves[0]?.sent.name ?? '';
+        await draft.succeed({ name: confirmedName(history, own.trim()), description: draft.description });
+      }
+      if (end === 'failure') await draft.fail();
+      if (end !== 'pending') expect(draft.api().isSaving).toBe(false);
+      return seen(draft.api());
+    }
+
+    for (const history of histories) {
+      const label = `baseline "${history.baseline}", sends ${history.submit}, ${history.during}, server ${history.server.join(' → ') || 'silent'}`;
+      it(label, async () => {
+        const typedSpacesOnly = history.submit === 'spaces' && history.during === 'untouched';
+        for (const end of ['pending', 'success', 'failure'] as const) {
+          const expected = await outcome(history, false, end);
+          const actual = await outcome(history, true, end);
+          // Typed spaces stay as the person's edit while someone else's value stands.
+          if (typedSpacesOnly && expected.name === 'T') expect(actual).toEqual({ name: history.baseline.trim(), conflict: true, dirty: true });
+          else expect(actual).toEqual(expected);
+        }
+      });
+    }
+  });
+});
