@@ -16,8 +16,17 @@ import {
 export type DraftSave<T extends DraftValues> = {
   /** The baseline the save is relative to (what the server last confirmed when it started). */
   baseline: T;
-  /** Call after the server confirmed. Pass its normalized values when it returned them. */
-  succeeded: (confirmed?: T) => void;
+  /**
+   * Call after the server confirmed. Pass its normalized values when it
+   * returned them: this request's own response, never a snapshot read from the
+   * query cache. Server data reaches the form only through `source`, where it is
+   * reconciled for edits and conflicts.
+   *
+   * Returns true when the form then matches what the server confirmed: nothing
+   * left to save or resolve. Close, collapse or move on only then; otherwise the
+   * form holds an edit or a conflict the person still has to see.
+   */
+  succeeded: (confirmed?: T) => boolean;
   /** Call after a failed save: nothing is confirmed and the edits stay. */
   failed: () => void;
   /**
@@ -55,6 +64,13 @@ type ActiveSave<T extends DraftValues> = { id: number; generation: number; pendi
  *   the form's value for it is the person's (sent or newer), and the echo is
  *   never a conflict. After the echo the key follows the normal rules;
  * - after a save, edits made while it was in flight survive and stay dirty;
+ * - a save's response never silently overrides a value a refetch showed
+ *   during the save that is neither where the save started, nor what it sent,
+ *   nor what the response confirms: where the form holds another value for
+ *   that key (sent, edited or kept), it stays, dirty, against the refetched
+ *   value, so the conflict survives and "theirs" is the value the person saw.
+ *   A refetch that renders only after `succeeded` (TanStack batches observer
+ *   updates) is reconciled then, as any server change;
  * - `isDirty` compares the form with the confirmed baseline, nothing else.
  *
  * Pass `toSent` when the submit handler sends a transformed payload (rows
@@ -119,9 +135,7 @@ export function useServerDraftForm<T extends DraftValues>({
       const isCurrent = () => save.generation === generationRef.current && activeRef.current?.id === save.id;
       save.outcome = await onSubmitRef.current(value, {
         baseline: baselineRef.current,
-        succeeded: (confirmed) => {
-          if (isCurrent()) succeededRef.current(save, confirmed);
-        },
+        succeeded: (confirmed) => isCurrent() && succeededRef.current(save, confirmed),
         failed: () => {
           // Nothing was confirmed: the edits stay and later refetches follow the normal rules.
           if (isCurrent()) save.pending = undefined;
@@ -192,7 +206,7 @@ export function useServerDraftForm<T extends DraftValues>({
 
   const succeeded = (save: ActiveSave<T>, confirmed?: T) => {
     const pending = save.pending;
-    if (!pending) return;
+    if (!pending) return false;
     const result = reconcileSaveSuccess({
       submitted: pending.values,
       current: form.state.values as T,
@@ -206,6 +220,8 @@ export function useServerDraftForm<T extends DraftValues>({
     form.reset(result.baseline);
     applyValues(result.current);
     setConflicts((previous) => previous.filter((key) => !deepEqual(result.current[key], result.baseline[key])));
+    // Not dirty means no conflict either: one stays only where the form differs from the baseline.
+    return !isDraftDirty(result.current, result.baseline);
   };
   const succeededRef = useRef(succeeded);
   succeededRef.current = succeeded;

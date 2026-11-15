@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import { notifyManager, QueryClient, QueryClientProvider, useMutation, useQuery } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type DraftSave, type DraftSubmitResult, useServerDraftForm } from './use-server-draft';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -370,6 +371,363 @@ describe('useServerDraftForm: the save’s own refetch', () => {
     expect(api().baseline).toEqual({ name: '/old.svg', description: 'theirs' });
     expect(api().isDirty).toBe(true);
     expect(api().conflicts).toEqual([]);
+  });
+});
+
+/** What the form shows and holds: its values, the confirmed baseline and the conflicts. */
+const snapshot = (api: Api) => ({ values: api.form.state.values, baseline: api.baseline, conflicts: api.conflicts });
+
+describe('useServerDraftForm: a response that arrives after a refetch already landed (#743)', () => {
+  // 'Theirs' is on screen before the PATCH response 'Sent' confirms. Values
+  // can't tell whether it was written after the PATCH (the mutation's own
+  // refetch read it) or before (and the PATCH overwrote it): the form never
+  // drops the person's value for it, and "theirs" is the value they saw.
+  const old = { name: 'Old', description: 'd1' };
+  const sent = { name: 'Sent', description: 'd1' };
+  const theirs = { name: 'Theirs', description: 'd1' };
+  type Order = 'refetch then edit' | 'edit then refetch' | 'no edit';
+  const edits = ['refetch then edit', 'edit then refetch'] as const;
+
+  /** Sends 'Sent', then lands 'Theirs' and types 'Newer' in the given order; the save stays pending. */
+  async function race(order: Order) {
+    const draft = await mount('site', old);
+    await draft.set('name', 'Sent');
+    await draft.submit();
+    if (order === 'edit then refetch') await draft.set('name', 'Newer');
+    await draft.render('site', theirs);
+    if (order === 'refetch then edit') await draft.set('name', 'Newer');
+    expect(draft.api().conflicts).toEqual(['name']);
+    return draft;
+  }
+  const mine = (order: Order) => (order === 'no edit' ? 'Sent' : 'Newer');
+
+  for (const order of [...edits, 'no edit'] as const) {
+    it(`keeps the person’s value and the conflict, and "Use theirs" takes their value (${order})`, async () => {
+      const { succeed, api } = await race(order);
+      await succeed(0, sent);
+      expect(api().isSaving).toBe(false);
+      expect(snapshot(api())).toEqual({ values: { name: mine(order), description: 'd1' }, baseline: theirs, conflicts: ['name'] });
+      expect(api().isDirty).toBe(true);
+      await act(async () => api().resolveConflict('name', 'theirs'));
+      expect(api().form.state.values).toEqual(theirs);
+      expect(api().isDirty).toBe(false);
+      expect(api().conflicts).toEqual([]);
+    });
+
+    it(`"Keep mine" after the save keeps the person’s value to save next (${order})`, async () => {
+      const { saves, submit, succeed, api } = await race(order);
+      await succeed(0, sent);
+      await act(async () => api().resolveConflict('name', 'mine'));
+      expect(api().conflicts).toEqual([]);
+      expect(api().isDirty).toBe(true);
+      await submit();
+      expect(saves[1]?.values).toEqual({ name: mine(order), description: 'd1' });
+    });
+
+    it(`"Keep mine" during the save survives its success (${order})`, async () => {
+      const { succeed, api } = await race(order);
+      await act(async () => api().resolveConflict('name', 'mine'));
+      await succeed(0, sent);
+      expect(snapshot(api())).toEqual({ values: { name: mine(order), description: 'd1' }, baseline: theirs, conflicts: [] });
+      expect(api().isDirty).toBe(true);
+    });
+
+    it(`ends pending or failed as it did before the fix (${order})`, async () => {
+      const { saves, api } = await race(order);
+      const pending = snapshot(api());
+      expect(pending).toEqual({ values: { name: mine(order), description: 'd1' }, baseline: theirs, conflicts: ['name'] });
+      await act(async () => {
+        saves[0]?.save.failed();
+        saves[0]?.finish('failed');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(api().isSaving).toBe(false);
+      expect(snapshot(api())).toEqual(pending);
+    });
+  }
+
+  it('tells the submit handler whether the save settled, so it closes or moves on only then', async () => {
+    const settle = async (draft: Awaited<ReturnType<typeof mount>>) => {
+      let settled: boolean | undefined;
+      await act(async () => {
+        settled = draft.saves[0]?.save.succeeded(sent);
+        draft.saves[0]?.finish('saved');
+      });
+      return settled;
+    };
+    expect(await settle(await race('no edit'))).toBe(false);
+    const clean = await mount('site', old);
+    await clean.set('name', 'Sent');
+    await clean.submit();
+    expect(await settle(clean)).toBe(true);
+  });
+
+  it('keeps a value typed away and back to the sent one during the save', async () => {
+    const { set, succeed, api } = await race('refetch then edit');
+    await set('name', 'Sent');
+    await succeed(0, sent);
+    expect(snapshot(api())).toEqual({ values: sent, baseline: theirs, conflicts: ['name'] });
+    expect(api().isDirty).toBe(true);
+  });
+
+  it('keeps "Use theirs" chosen during the save, against the response, as before the fix', async () => {
+    const { succeed, api } = await race('refetch then edit');
+    await act(async () => api().resolveConflict('name', 'theirs'));
+    await succeed(0, sent);
+    expect(snapshot(api())).toEqual({ values: theirs, baseline: sent, conflicts: [] });
+  });
+
+  it('discards to their value after the save', async () => {
+    const { succeed, api } = await race('refetch then edit');
+    await succeed(0, sent);
+    await act(async () => api().discard());
+    expect(api().form.state.values).toEqual(theirs);
+    expect(api().isDirty).toBe(false);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('follows later changes after the save, against their value', async () => {
+    const { render, succeed, api } = await race('refetch then edit');
+    await succeed(0, sent);
+    await render('site', { name: 'Later', description: 'd2' });
+    expect(api().form.state.values).toEqual({ name: 'Newer', description: 'd2' });
+    expect(api().conflicts).toEqual(['name']);
+    await act(async () => api().resolveConflict('name', 'theirs'));
+    expect(api().form.state.values.name).toBe('Later');
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('keeps each field against its own refetched value, and confirms the response for the rest', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', 'Sent');
+    await set('description', 'Sent d');
+    await submit();
+    await set('name', 'Newer');
+    // Their name; our description echoed.
+    await render('site', { name: 'Theirs', description: 'Sent d' });
+    await succeed(0, { name: 'Sent', description: 'Sent d' });
+    expect(snapshot(api())).toEqual({
+      values: { name: 'Newer', description: 'Sent d' },
+      baseline: { name: 'Theirs', description: 'Sent d' },
+      conflicts: ['name'],
+    });
+  });
+
+  it('confirms the response for a field the form took from a refetch, as before the fix', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', 'Sent');
+    await submit();
+    await render('site', { name: 'Sent', description: 'theirs' });
+    await succeed(0, sent);
+    expect(snapshot(api())).toEqual({ values: sent, baseline: sent, conflicts: [] });
+  });
+
+  describe('refetch histories, then the response', () => {
+    // Only a refetched value that is neither where the save started ('Old'),
+    // nor what it sent, nor what the response confirms ('Sent') is kept as the
+    // baseline, and only while the form holds another value. A refetch from
+    // before the save or the save's own echo, in any number or order, leaves
+    // 'Sent'; a value the form took from a refetch confirms the response.
+    const histories: Array<{ refetches: string[]; baseline: string; shown: string; conflict: boolean }> = [
+      { refetches: ['Old'], baseline: 'Sent', shown: 'Sent', conflict: false },
+      { refetches: ['Sent', 'Old'], baseline: 'Sent', shown: 'Sent', conflict: false },
+      { refetches: ['Sent', 'Sent', 'Sent', 'Sent'], baseline: 'Sent', shown: 'Sent', conflict: false },
+      { refetches: ['Old', 'Old', 'Sent', 'Sent', 'Old'], baseline: 'Sent', shown: 'Sent', conflict: false },
+      { refetches: ['Theirs', 'Sent'], baseline: 'Sent', shown: 'Sent', conflict: false },
+      { refetches: ['Theirs', 'Theirs', 'Theirs', 'Theirs'], baseline: 'Theirs', shown: 'Sent', conflict: true },
+      { refetches: ['Old', 'Theirs', 'Old', 'Theirs'], baseline: 'Theirs', shown: 'Sent', conflict: true },
+      { refetches: ['Old', 'Sent', 'Theirs', 'Later'], baseline: 'Sent', shown: 'Sent', conflict: false },
+    ];
+    for (const { refetches, baseline, shown, conflict } of histories) {
+      it(`${refetches.join(' → ')}: ${baseline}`, async () => {
+        const { render, set, submit, succeed, api } = await mount('site', old);
+        await set('name', 'Sent');
+        await submit();
+        // A new object each time, as a refetch delivers it.
+        for (const name of refetches) await render('site', { name, description: 'd1' });
+        await succeed(0, sent);
+        expect(api().baseline.name).toBe(baseline);
+        expect(api().form.state.values.name).toBe(shown);
+        expect(api().conflicts).toEqual(conflict ? ['name'] : []);
+      });
+    }
+  });
+
+  it('ignores the wall clock: the race ends alike with it fixed, going back or going forward', async () => {
+    const ends: Array<ReturnType<typeof snapshot>> = [];
+    for (const clock of [() => 0, (step: number) => 1e12 - step * 3_600_000, (step: number) => 1e12 + step * 3_600_000]) {
+      let step = 0;
+      const now = vi.spyOn(Date, 'now').mockImplementation(() => clock(step++));
+      const { succeed, api } = await race('refetch then edit');
+      await succeed(0, sent);
+      ends.push(snapshot(api()));
+      now.mockRestore();
+    }
+    expect(ends).toEqual(new Array(3).fill({ values: { name: 'Newer', description: 'd1' }, baseline: theirs, conflicts: ['name'] }));
+  });
+
+  it('ignores the response of a save from before an identity switch and back', async () => {
+    const { render, saves, api } = await race('refetch then edit');
+    await render('site-b', { name: 'B', description: '' });
+    await render('site', { name: 'Again', description: 'd1' });
+    await act(async () => {
+      expect(saves[0]?.save.isCurrent()).toBe(false);
+      saves[0]?.save.succeeded(sent);
+      saves[0]?.finish('saved');
+    });
+    expect(snapshot(api())).toEqual({ values: { name: 'Again', description: 'd1' }, baseline: { name: 'Again', description: 'd1' }, conflicts: [] });
+  });
+});
+
+describe('useServerDraftForm: with TanStack Query (#743)', () => {
+  // The adopter mutations' shape (useUpdateProjectConfig): PATCH, await the
+  // query's invalidation in onSuccess, then resolve with the PATCH response.
+  // TanStack Query batches observer notifications onto its scheduler; it is
+  // captured here and run explicitly, as the next tick would.
+  const queued: Array<() => void> = [];
+  beforeEach(() => notifyManager.setScheduler((callback) => queued.push(callback)));
+  afterEach(() => {
+    queued.length = 0;
+    notifyManager.setScheduler((callback) => setTimeout(callback, 0));
+  });
+  const runBatchedNotifications = () =>
+    act(async () => {
+      while (queued.length) queued.shift()?.();
+    });
+
+  async function mountQuery() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } } });
+    const server = { stored: { name: 'Old', description: 'd1' } as Values, down: false };
+    client.setQueryData(['site'], server.stored);
+    const rendered: string[] = [];
+    let respond!: (response: Values) => void;
+    let requested!: () => void;
+    const request = new Promise<void>((resolve) => {
+      requested = resolve;
+    });
+    const atConfirm: { cached?: Values; rendered?: string } = {};
+    let api!: Api;
+
+    function QueryForm() {
+      const source = useQuery({
+        queryKey: ['site'],
+        queryFn: async () => {
+          if (server.down) throw new Error('refetch failed');
+          return server.stored;
+        },
+      }).data as Values;
+      const mutation = useMutation({
+        mutationFn: (_body: Values) =>
+          new Promise<Values>((resolve) => {
+            respond = resolve;
+            requested();
+          }),
+        onSuccess: () => client.invalidateQueries({ queryKey: ['site'] }),
+      });
+      rendered.push(source.name);
+      api = useServerDraftForm<Values>({
+        identity: ['site'],
+        source,
+        onSubmit: async (values, save) => {
+          const response = await mutation.mutateAsync(values);
+          atConfirm.cached = client.getQueryData(['site']);
+          atConfirm.rendered = rendered.at(-1);
+          save.succeeded(response);
+          return 'saved';
+        },
+      });
+      return null;
+    }
+
+    const root = createRoot(document.createElement('div'));
+    roots.push(root);
+    await act(async () =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <QueryForm />
+        </QueryClientProvider>,
+      ),
+    );
+    await runBatchedNotifications();
+    const set = (field: keyof Values, value: string) => act(async () => api.form.setFieldValue(field, value));
+    let result!: Promise<DraftSubmitResult>;
+    const submit = () =>
+      act(async () => {
+        result = api.submit();
+        await request;
+      });
+    /** Someone else stores `values`; a refetch (a focus refetch, say) reads it and renders. */
+    const refetchRenders = async (values: Values) => {
+      await act(async () => {
+        server.stored = values;
+        await client.refetchQueries({ queryKey: ['site'] });
+      });
+      await runBatchedNotifications();
+    };
+    /** The server holds `stored` when the PATCH responds `response`; the save's own refetch reads it, or fails. */
+    const confirm = (response: Values, stored: Values | 'refetch fails') =>
+      act(async () => {
+        if (stored === 'refetch fails') server.down = true;
+        else server.stored = stored;
+        respond(response);
+        expect(await result).toBe('saved');
+      });
+    return { client, set, submit, refetchRenders, confirm, atConfirm, rendered, api: () => api };
+  }
+
+  const sent = { name: 'Sent', description: 'd1' };
+  const theirs = { name: 'Theirs', description: 'd1' };
+
+  it('never adopts a value read before the PATCH when the save’s own refetch fails', async () => {
+    const { client, set, submit, refetchRenders, confirm, api } = await mountQuery();
+    await set('name', 'Sent');
+    await submit();
+    // Read before the PATCH lands; the PATCH then stores 'Sent' over it.
+    await refetchRenders(theirs);
+    expect(api().conflicts).toEqual(['name']);
+    await confirm(sent, 'refetch fails');
+    await runBatchedNotifications();
+    expect(client.getQueryState(['site'])?.status).toBe('error');
+    // 'Sent' stays in the form, so a later save can't write 'Theirs' back unasked.
+    expect(snapshot(api())).toEqual({ values: sent, baseline: theirs, conflicts: ['name'] });
+    expect(api().isDirty).toBe(true);
+  });
+
+  // The rest pass before the fix too: they pin the batched path, where the
+  // refetched value reaches the form only after the confirmation.
+  it('reconciles a refetched value that renders after the confirmation: the newer edit keeps its conflict', async () => {
+    const { set, submit, confirm, atConfirm, rendered, api } = await mountQuery();
+    await set('name', 'Sent');
+    await submit();
+    await set('name', 'Newer');
+    await confirm(sent, theirs);
+    // Confirmed while the cache held their value and the form's source did not yet.
+    expect(atConfirm).toEqual({ cached: theirs, rendered: 'Old' });
+    await runBatchedNotifications();
+    expect(rendered.at(-1)).toBe('Theirs');
+    expect(snapshot(api())).toEqual({ values: { name: 'Newer', description: 'd1' }, baseline: theirs, conflicts: ['name'] });
+    await act(async () => api().resolveConflict('name', 'theirs'));
+    expect(api().form.state.values).toEqual(theirs);
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('takes a refetched value that renders after the confirmation on a form the save left clean', async () => {
+    const { set, submit, confirm, atConfirm, api } = await mountQuery();
+    await set('name', 'Sent');
+    await submit();
+    await confirm(sent, theirs);
+    expect(atConfirm).toEqual({ cached: theirs, rendered: 'Old' });
+    await runBatchedNotifications();
+    expect(snapshot(api())).toEqual({ values: theirs, baseline: theirs, conflicts: [] });
+  });
+
+  it('ends clean when the refetch is the save’s own echo', async () => {
+    const { set, submit, confirm, api } = await mountQuery();
+    await set('name', 'Sent');
+    await submit();
+    await confirm(sent, sent);
+    await runBatchedNotifications();
+    expect(snapshot(api())).toEqual({ values: sent, baseline: sent, conflicts: [] });
   });
 });
 
@@ -797,8 +1155,9 @@ describe('useServerDraftForm: a payload transformed before sending (toSent)', ()
         for (const end of ['pending', 'success', 'failure'] as const) {
           const expected = await outcome(history, false, end);
           const actual = await outcome(history, true, end);
-          // Typed spaces stay as the person's edit while someone else's value stands.
-          if (typedSpacesOnly && expected.name === 'T') expect(actual).toEqual({ name: history.baseline.trim(), conflict: true, dirty: true });
+          // Typed spaces stay as the person's edit against someone else's value, the last one seen.
+          if (typedSpacesOnly && history.server.at(-1) === 'T')
+            expect(actual).toEqual({ name: history.baseline.trim(), conflict: true, dirty: true });
           else expect(actual).toEqual(expected);
         }
       });

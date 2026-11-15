@@ -204,6 +204,37 @@ describe('OpenApiSettings draft', () => {
     expect(field('openapi-path').value).toBe('api-reference');
   });
 
+  it('closes the editor only over a settled draft: a title someone else saved during the save stays open, with the conflict', async () => {
+    const save = pendingSave();
+    await render();
+    await click('settings.openapi.edit');
+    await type(field('openapi-title'), 'Sent');
+    await act(async () => void button('common.save').click());
+    // Someone else's title reaches the form while the save is in flight; a later fetch then fails,
+    // so the save confirms what it sent.
+    await refetch({ ...saved, title: 'Theirs', contentHash: 'hash-2' });
+    act(() =>
+      queryClient
+        .getQueryCache()
+        .find({ queryKey: queryKeys.openapi.detail('site-1') })
+        ?.setState({ status: 'error', error: new Error('offline') }),
+    );
+    await act(async () => save.finish());
+    await render();
+
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('settings.openapi.saved');
+    const editorOpen = container.querySelector('#openapi-title') !== null;
+    // The leave guard reports a draft only while the editor shows it.
+    expect(dirty.size).toBe(editorOpen ? 1 : 0);
+    if (editorOpen) {
+      expect(field('openapi-title').value).toBe('Sent');
+      expect(container.textContent).toContain('forms.changedElsewhere');
+      await click('forms.useTheirs');
+      expect(field('openapi-title').value).toBe('Theirs');
+      expect(dirty.size).toBe(0);
+    }
+  });
+
   it('keeps Cancel disabled while saving, so a failed save leaves later edits in view', async () => {
     const save = pendingSave();
     mocks.toastError.mockClear();
