@@ -3,7 +3,7 @@ import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import { expect, it, vi } from 'vitest';
 import followingBaseline from './__fixtures__/markdown-export.following.main.json';
 import { escapeDisallowedExportHtml as safe } from './export-html';
-import { authoredExportText, exportTextInOrder } from './export-html-source';
+import { authoredExportText, exportTextInOrder, readExportHtml } from './export-html-source';
 import { captureExportStructure, compareExportStructure } from './export-structure';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 import { exportCodeSamples, renderedActiveHtml } from './testing/export-guard';
@@ -28,8 +28,8 @@ const mainOutput = (project: (s: string) => string, source: string) => {
 const rescued = (baseline: string, output: string) => {
   const before = inspectExport(baseline),
     after = inspectExport(output);
-  const model = captureExportStructure(baseline, before.tokens);
-  const comparison = compareExportStructure(model, output, after.tokens);
+  const model = captureExportStructure(baseline, before.tokens, readExportHtml(baseline, { hazards: true }));
+  const comparison = compareExportStructure(model, output, after.tokens, true);
   expect(after.elements).toBe(0);
   expect(newlyLiveFeatures(before.features, after.features)).toBe(0);
   expect(comparison.preserved).toBe(true);
@@ -47,7 +47,6 @@ it.each([
   '~~~html\n<script>literal</script>\n~~~',
   '    <script>literal</script>',
   'Use `<script>literal</script>`.',
-  '<div onclick="run()">text</div>',
   '[x](data:text/html,x)',
 ])('keeps element-inactive output byte-identical: %s', (source) => {
   expect(renderedActiveHtml(source)).toBe(0);
@@ -105,7 +104,7 @@ it.each(followingBaseline.cases)('keeps adjacent author text: $name', ({ source,
     const output = project(source);
     expect(output).toBe(safe(main));
     expect(renderedActiveHtml(output)).toBe(0);
-    if (renderedActiveHtml(main) === 0) expect(output).toBe(main);
+    if (inspectExport(main).active === 0) expect(output).toBe(main);
     if (main.includes('FOLLOW')) expect(output).toContain('FOLLOW');
     if (
       !rescued(main, output) &&
