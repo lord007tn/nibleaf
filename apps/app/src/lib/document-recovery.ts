@@ -87,3 +87,21 @@ export function setNavigationPending(pending: boolean): void {
 export function onlySpeculativeLoads(): boolean {
   return speculativeLoads > 0 && !navigationPending;
 }
+
+/** Errors from loads the page can do without, set by runOptionalLoad. */
+const optionalFailures = new WeakSet<object>();
+
+/** Runs a load the page has a fallback for (an optional picker or toast host).
+ *  Its own failure never reloads the page: the importer sees the error and
+ *  falls back. A different chunk failing meanwhile still recovers as usual. */
+export function runOptionalLoad<T>(load: () => Promise<T>): Promise<T> {
+  return load().catch((error: unknown) => {
+    if (error !== null && typeof error === 'object') optionalFailures.add(error);
+    throw error;
+  });
+}
+
+/** Whether this preload error came from a runOptionalLoad load. */
+export function isOptionalLoadFailure(error: unknown): boolean {
+  return error !== null && typeof error === 'object' && optionalFailures.has(error);
+}

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { reloadOnceOnChunkLoadFailure } from './chunk-reload';
-import { runSpeculative, setNavigationPending } from './document-recovery';
+import { runOptionalLoad, runSpeculative, setNavigationPending } from './document-recovery';
 
 const chunkError = (file = 'editor-OLD.js') => new TypeError(`Failed to fetch dynamically imported module: https://app.nibleaf.test/assets/${file}`);
 
@@ -30,9 +30,15 @@ function memoryStorage(): Storage {
 
 /** What Vite's preload helper does when a dynamic import fails: dispatch the
  *  event, then rethrow to the importer (the router) unless it was cancelled. */
-function failChunkLoad(error: Error) {
+function dispatchChunkError(error: Error) {
   const event = Object.assign(new Event('vite:preloadError', { cancelable: true }), { payload: error });
   window.dispatchEvent(event);
+  return event;
+}
+function failChunkLoad(error: Error) {
+  const event = dispatchChunkError(error);
+  // The listener decides one task later, after the importer has seen the error.
+  vi.runOnlyPendingTimers();
   if (!event.defaultPrevented) throw error;
 }
 
@@ -132,6 +138,34 @@ describe('reload once after a chunk fails to load', () => {
     setNavigationPending(false);
     finish();
     await prefetch;
+  });
+
+  it('never reloads the page for a load it can do without (runOptionalLoad)', async () => {
+    const page = openDocument(memoryStorage());
+    const error = chunkError('picker-OLD.js');
+    // Vite dispatches the event, then rethrows the same error to the importer.
+    const optional = runOptionalLoad(async () => {
+      const event = dispatchChunkError(error);
+      if (!event.defaultPrevented) throw error;
+    });
+    await expect(optional).rejects.toBe(error);
+    vi.runOnlyPendingTimers();
+    expect(page.reload).not.toHaveBeenCalled();
+  });
+
+  it('still reloads when a needed chunk fails while an optional load is pending', async () => {
+    const page = openDocument(memoryStorage());
+    let finish: () => void = () => undefined;
+    const optional = runOptionalLoad(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    expect(() => failChunkLoad(chunkError('sign-up-route-OLD.js'))).toThrow();
+    expect(page.reload).toHaveBeenCalledTimes(1);
+    finish();
+    await optional;
   });
 
   it('never reloads when session storage is blocked, so there can be no loop', () => {
