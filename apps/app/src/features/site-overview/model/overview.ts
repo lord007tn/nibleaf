@@ -19,7 +19,7 @@ export type OverviewDeployment = { status: 'PENDING' | 'BUILDING' | 'READY' | 'F
 export type OverviewDomain = DomainServingState & { domain: string; isPrimary: boolean };
 
 /** The page-views answer, as far as the Overview reads it. */
-export type OverviewAnalytics = {
+type OverviewAnalytics = {
   availability?: string;
   totalViews?: number | null;
   comparableTotalViews?: number | null;
@@ -53,7 +53,7 @@ export interface SiteOverviewInput<D extends OverviewDeployment> {
  * - `neverPublished`: the site itself says it has none;
  * - `unknown`: neither is known yet (loading, or the site failed to load).
  */
-export type PublishingState = 'live' | 'neverPublished' | 'unknown';
+type PublishingState = 'live' | 'neverPublished' | 'unknown';
 
 /**
  * The "Live site" card:
@@ -62,7 +62,7 @@ export type PublishingState = 'live' | 'neverPublished' | 'unknown';
  * - `loadError`: the answer failed, so say nothing about whether it's live;
  * - `reserved`: never published, so show the address it will go live at.
  */
-export type LiveCardState = 'live' | 'loading' | 'loadError' | 'reserved';
+type LiveCardState = 'live' | 'loading' | 'loadError' | 'reserved';
 
 export interface SiteOverview<D extends OverviewDeployment> {
   /**
