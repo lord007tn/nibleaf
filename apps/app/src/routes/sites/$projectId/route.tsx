@@ -19,6 +19,7 @@ import { MobileNav, type MobileNavChoice } from '@/components/site/mobile-nav';
 import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/components/site/page-alternates-context';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { PrivacyChoicesLink, SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
+import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } from '@/components/site/site-nav';
 import type { PrivateSiteGate } from '@/components/site/site-private-gate';
@@ -334,6 +335,7 @@ function SiteChrome() {
     languages,
     homeHref: readerHomeHref,
     openSearch: showSearch ? () => openSiteSearch(() => setSearchOpen(true), t('searchDocumentation')) : undefined,
+    pendingArticle: SiteArticleSkeleton,
   };
 
   if (!site) {

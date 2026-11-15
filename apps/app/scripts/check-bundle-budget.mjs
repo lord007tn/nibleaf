@@ -62,9 +62,10 @@ const profiles = {
 // auth-sign-in 383_100 → 338_100, auth-sign-up 384_800 → 341_100: the
 // published-docs routes' head() and headers() import their SEO helpers when
 // they run, the root reads the no-flash theme script from its own small module,
-// and the reader's pending skeleton loads with its component. Product pages no
-// longer load the reader's SEO, theme, redirect and chrome-copy chunks (about
-// 44 KiB). Measured 337,095 and 340,102 bytes; the margin is ~1 KiB.
+// and the reader routes' pending component only renders the skeleton the reader
+// chrome hands down. Product pages no longer load the reader's SEO, theme,
+// redirect and chrome-copy chunks (about 44 KiB). Measured 337,159 and 340,165
+// bytes; the margin is ~1 KiB.
 const gzipBudgets = {
   'public-docs': 345_100,
   'public-docs-index': 345_100,

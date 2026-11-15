@@ -5,7 +5,7 @@ import { lazy, Suspense } from 'react';
 import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
 import { SiteNotFound } from '@/components/site/site-not-found';
 import { SitePageView } from '@/components/site/site-page-view';
-import { useSiteReader } from '@/components/site/site-reader-context';
+import { SiteReaderPending, useSiteReader } from '@/components/site/site-reader-context';
 import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
@@ -28,7 +28,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   // Opening another page keeps the reader chrome and shows an article-shaped
   // placeholder (after the router's short pending delay) instead of a
   // full-screen loader.
-  pendingComponent: SiteArticleSkeleton,
+  pendingComponent: SiteReaderPending,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // On a public site, a page shown in the last 30 s (the page query's stale time)
   // is still fresh: Back and Forward reuse it instead of running the loader
