@@ -69,7 +69,7 @@ try {
       uncommitted: git('status', '--porcelain'),
       keys,
       outsideAttempts: attempted.length,
-      browserVersion: browser.version(),
+      browser: 'Repository local-only Playwright wrapper; installed headless Chromium',
       captures,
     });
   });
