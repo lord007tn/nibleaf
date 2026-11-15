@@ -7,7 +7,7 @@
 //                                                           rewrite untranslated/de.json's pending list
 //                                                           from the catalog (only ever to shrink it)
 //
-// A string is untranslated when its value is the current or changed base English one, unless
+// A string is untranslated when its value is the current English one, unless
 // nothing translatable is left once {placeholders}, glossary doNotTranslate
 // terms, numbers and punctuation are taken out ("GitHub", "{count} MB").
 // untranslated/<locale>.json lists the exceptions: `sameAsEnglish` (identical
@@ -62,15 +62,19 @@ function checkBase(base) {
   for (const locale of locales().filter((value) => value !== 'en')) {
     const path = `packages/i18n/untranslated/${locale}.json`;
     const { sameAsEnglish, pending } = exceptions(locale);
+    let leftovers;
+    try {
+      leftovers = untranslatedKeys(english, catalog(locale), keep, previousEnglish, sameAsEnglish);
+    } catch (error) {
+      throw new Error(`${locale}: ${error.message}`);
+    }
     // The first guard PR establishes the baseline; later PRs must shrink it.
     if (git('ls-tree', '--name-only', base, '--', path).trim()) {
       const previous = JSON.parse(git('show', `${base}:${path}`));
       const grown = pendingGrowth(previousEnglish, previous.pending ?? [], pending);
       if (grown.length) throw new Error(`${locale}: pending grew from ${base}: ${grown.join(', ')}`);
     }
-    const unlisted = untranslatedKeys(english, catalog(locale), keep, previousEnglish).filter(
-      (key) => !sameAsEnglish.includes(key) && !pending.includes(key),
-    );
+    const unlisted = leftovers.filter((key) => !sameAsEnglish.includes(key) && !pending.includes(key));
     if (unlisted.length) throw new Error(`${locale}: untranslated keys not listed against ${base}: ${unlisted.join(', ')}`);
   }
 }
@@ -110,19 +114,28 @@ export function onlyKeptTerms(text, keep) {
 /** Text compared for sameness: whitespace runs collapse and the ends trim, so a stray space is no translation. */
 const comparable = (value) => texts(value).map((text) => text.replace(/\s+/g, ' ').trim());
 
-/** Copies of current English, or of the base value for a key changed in this PR. */
-export function untranslatedKeys(english, messages, keep, previousEnglish = {}) {
-  return Object.keys(english).filter((key) => {
-    if (!(key in messages)) return false;
-    const sources = [english[key]];
-    if (key in previousEnglish && JSON.stringify(english[key]) !== JSON.stringify(previousEnglish[key])) sources.push(previousEnglish[key]);
-    return sources.some(
-      (source) =>
-        typeof messages[key] === typeof source &&
-        JSON.stringify(comparable(messages[key])) === JSON.stringify(comparable(source)) &&
-        !texts(source).every((text) => onlyKeptTerms(text, keep)),
+const copiesEnglish = (message, english, keep) =>
+  typeof message === typeof english &&
+  JSON.stringify(comparable(message)) === JSON.stringify(comparable(english)) &&
+  !texts(english).every((text) => onlyKeptTerms(text, keep));
+
+/** Current-English leftovers. Old-English copies must be refreshed before they can stay pending. */
+export function untranslatedKeys(english, messages, keep, previousEnglish = {}, sameAsEnglish = []) {
+  const keys = Object.keys(english).filter((key) => key in messages);
+  const stale = keys.filter(
+    (key) =>
+      key in previousEnglish &&
+      JSON.stringify(english[key]) !== JSON.stringify(previousEnglish[key]) &&
+      copiesEnglish(messages[key], previousEnglish[key], keep) &&
+      !copiesEnglish(messages[key], english[key], keep) &&
+      !sameAsEnglish.includes(key),
+  );
+  if (stale.length)
+    throw new Error(
+      `Keys still copying the previous English value: ${stale.join(', ')}. ` +
+        'Refresh the locale fallback to the current English value and keep the key in pending, translate it, or list it in sameAsEnglish if it legitimately stays the same.',
     );
-  });
+  return keys.filter((key) => copiesEnglish(messages[key], english[key], keep));
 }
 
 const placeholders = (value) => [...new Set(texts(value).flatMap((text) => [...text.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((m) => m[1])))].sort();
@@ -166,17 +179,16 @@ function main(argv) {
   const chosen = argv.filter((arg) => !arg.startsWith('--'));
   const targets = chosen.length ? chosen : locales().filter((locale) => locale !== 'en');
   for (const locale of targets) {
-    const leftovers = untranslatedKeys(english, catalog(locale), keep, previousEnglish);
     const { sameAsEnglish, pending, exists } = exceptions(locale);
-    if (rewrite) {
-      let nextPendingKeys;
-      try {
-        nextPendingKeys = nextPending({ leftovers, sameAsEnglish, pending, exists });
-      } catch (error) {
-        throw new Error(`${locale}: ${error.message}`);
+    let leftovers;
+    try {
+      leftovers = untranslatedKeys(english, catalog(locale), keep, previousEnglish, sameAsEnglish);
+      if (rewrite) {
+        const nextPendingList = nextPending({ leftovers, sameAsEnglish, pending, exists });
+        writeFileSync(new URL(`untranslated/${locale}.json`, root), `${JSON.stringify({ sameAsEnglish, pending: nextPendingList }, null, 2)}\n`);
       }
-      const nextPendingList = nextPendingKeys;
-      writeFileSync(new URL(`untranslated/${locale}.json`, root), `${JSON.stringify({ sameAsEnglish, pending: nextPendingList }, null, 2)}\n`);
+    } catch (error) {
+      throw new Error(`${locale}: ${error.message}`);
     }
     const unlisted = leftovers.filter((key) => !sameAsEnglish.includes(key) && !pending.includes(key));
     const untranslated = leftovers.filter((key) => !sameAsEnglish.includes(key)).length;

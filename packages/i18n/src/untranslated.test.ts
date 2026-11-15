@@ -18,13 +18,15 @@ const { baseCatalog, catalog, exceptions, keepTerms, locales, nextPending, onlyK
     onlyKeptTerms: (text: string, keep: string[]) => boolean;
     parityProblems: (english: Catalog, messages: Catalog) => string[];
     pendingGrowth: (english: Catalog, basePending: string[], pending: string[]) => string[];
-    untranslatedKeys: (english: Catalog, messages: Catalog, keep: string[], previousEnglish?: Catalog) => string[];
+    untranslatedKeys: (english: Catalog, messages: Catalog, keep: string[], previousEnglish?: Catalog, sameAsEnglish?: string[]) => string[];
   };
 
 const english = catalog('en');
 const previousEnglish = baseCatalog();
 const keep = keepTerms();
 const translated = locales().filter((locale) => locale !== 'en');
+const refreshAdvice =
+  'Refresh the locale fallback to the current English value and keep the key in pending, translate it, or list it in sameAsEnglish';
 
 describe('untranslated strings', () => {
   // A value identical to English must be translated, or listed in
@@ -32,15 +34,18 @@ describe('untranslated strings', () => {
   it.each(translated)('%s translates every string or lists it', (locale) => {
     const { sameAsEnglish, pending } = exceptions(locale);
     const listed = new Set([...sameAsEnglish, ...pending]);
-    expect(untranslatedKeys(english, catalog(locale), keep, previousEnglish).filter((key) => !listed.has(key))).toEqual([]);
+    expect(untranslatedKeys(english, catalog(locale), keep, previousEnglish, sameAsEnglish).filter((key) => !listed.has(key))).toEqual([]);
   });
 
   // `pending` only shrinks: a key translated since must leave the list (run
   // `pnpm --filter @nibleaf/i18n run untranslated -- --baseline <locale>`).
-  it.each(translated)('%s lists only strings that still copy current or base English', (locale) => {
+  it.each(translated)('%s keeps pending identical to current English and exceptions on existing keys', (locale) => {
     const { sameAsEnglish, pending } = exceptions(locale);
-    const leftovers = new Set(untranslatedKeys(english, catalog(locale), keep, previousEnglish));
-    expect([...sameAsEnglish, ...pending].filter((key) => !leftovers.has(key))).toEqual([]);
+    const messages = catalog(locale);
+    const leftovers = new Set(untranslatedKeys(english, messages, keep, previousEnglish, sameAsEnglish));
+    expect(pending.filter((key) => !leftovers.has(key))).toEqual([]);
+    // An intentional old-English term remains valid after its history is gone.
+    expect(sameAsEnglish.filter((key) => !(key in english) || !(key in messages))).toEqual([]);
     expect(sameAsEnglish.filter((key) => pending.includes(key))).toEqual([]);
   });
 });
@@ -85,7 +90,7 @@ describe('the untranslated check', () => {
       write('messages/de.json', { existing: 'Speichern', example: 'Old English help' });
       write('glossary/terms.json', { doNotTranslate: ['GitHub'] });
       write('project.inlang/settings.json', { locales: ['en', 'de'] });
-      git('init');
+      git('init', '-b', 'main');
       git('add', '.');
       const commit = () =>
         git('-c', 'user.name=Test', '-c', 'user.email=test@example.test', '-c', 'commit.gpgsign=false', 'commit', '-m', 'baseline');
@@ -107,18 +112,27 @@ describe('the untranslated check', () => {
 
       // A PR changes only English, then attempts the normal baseline shrink.
       write('untranslated/de.json', { pending: ['example'] });
+      git('switch', '-c', 'refresh-fallback');
       write('messages/en.json', { existing: 'Save', example: 'New English help' });
       git('add', '.');
       commit();
       const baseArgs = ['--check-base', 'origin/main'];
-      expect(run(baseArgs).status).toBe(0);
-      expect(run(['--baseline', 'de']).status).toBe(0);
+      const oldCopy = run(baseArgs);
+      expect(oldCopy.status).not.toBe(0);
+      expect(oldCopy.stderr).toContain('example');
+      expect(oldCopy.stderr).toContain(refreshAdvice);
+      const baselinePath = join(fixture, relativeRoot, 'untranslated/de.json');
+      const beforeBaseline = readFileSync(baselinePath, 'utf8');
+      const oldBaseline = run(['--baseline', 'de']);
+      expect(oldBaseline.status).not.toBe(0);
+      expect(oldBaseline.stderr).toContain(refreshAdvice);
+      expect(readFileSync(baselinePath, 'utf8')).toBe(beforeBaseline);
       const baseline = () => JSON.parse(readFileSync(join(fixture, relativeRoot, 'untranslated/de.json'), 'utf8'));
       expect(baseline().pending).toEqual(['example']);
       write('untranslated/de.json', { pending: [] });
       const pruned = run(baseArgs);
       expect(pruned.status).not.toBe(0);
-      expect(pruned.stderr).toContain('untranslated keys not listed against origin/main: example');
+      expect(pruned.stderr).toContain(refreshAdvice);
 
       // A genuine translation may leave pending, including through --baseline.
       write('untranslated/de.json', { pending: ['example'] });
@@ -133,6 +147,94 @@ describe('the untranslated check', () => {
       expect(run(['--baseline', 'de']).status).toBe(0);
       expect(baseline()).toEqual({ sameAsEnglish: ['example'], pending: [] });
       expect(run(baseArgs).status).toBe(0);
+
+      // Refreshing the fallback makes pending independent of Git history.
+      write('messages/de.json', { existing: 'Speichern', example: 'New English help' });
+      write('untranslated/de.json', { pending: ['example'] });
+      expect(run(baseArgs).status).toBe(0);
+      expect(run(['--baseline', 'de']).status).toBe(0);
+      expect(baseline().pending).toEqual(['example']);
+      git('add', '.');
+      commit();
+
+      // Main advances independently, then receives the refreshed PR by a real merge.
+      git('switch', 'main');
+      writeFileSync(join(fixture, 'unrelated.txt'), 'main advanced');
+      git('add', '.');
+      commit();
+      git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+      git('switch', 'refresh-fallback');
+      expect(run(baseArgs).status).toBe(0);
+      git('switch', 'main');
+      git(
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.test',
+        '-c',
+        'commit.gpgsign=false',
+        'merge',
+        '--no-ff',
+        'refresh-fallback',
+        '-m',
+        'merge',
+      );
+      git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+      expect(run(baseArgs).status).toBe(0);
+      expect(run(['--baseline', 'de']).status).toBe(0);
+      expect(baseline().pending).toEqual(['example']);
+
+      // Main-push CI and the next unrelated commit still see ordinary current-English pending.
+      writeFileSync(join(fixture, 'unrelated.txt'), 'another unrelated commit');
+      git('add', '.');
+      commit();
+      git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+      expect(run(baseArgs).status).toBe(0);
+      expect(run(['--baseline', 'de']).status).toBe(0);
+      expect(baseline().pending).toEqual(['example']);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  it('uses the common ancestor when main independently changes the same English key', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'nibleaf-i18n-divergent-'));
+    const relativeRoot = 'packages/i18n/';
+    const write = (path: string, value: unknown) => writeFileSync(join(fixture, relativeRoot, path), JSON.stringify(value));
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: fixture, stdio: 'pipe' });
+    const commit = () => git('-c', 'user.name=Test', '-c', 'user.email=test@example.test', '-c', 'commit.gpgsign=false', 'commit', '-am', 'fixture');
+    try {
+      for (const dir of ['scripts', 'messages', 'untranslated', 'project.inlang', 'glossary'])
+        mkdirSync(join(fixture, relativeRoot, dir), { recursive: true });
+      copyFileSync(new URL('../scripts/untranslated.mjs', import.meta.url), join(fixture, relativeRoot, 'scripts/untranslated.mjs'));
+      write('messages/en.json', { example: 'Old English help' });
+      write('messages/de.json', { example: 'Old English help' });
+      write('untranslated/de.json', { pending: ['example'] });
+      write('glossary/terms.json', { doNotTranslate: [] });
+      write('project.inlang/settings.json', { locales: ['en', 'de'] });
+      git('init', '-b', 'main');
+      git('add', '.');
+      commit();
+      git('branch', 'feature');
+      write('messages/en.json', { example: 'Independent main English help' });
+      commit();
+      git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+      git('switch', 'feature');
+      write('messages/en.json', { example: 'New English help' });
+      commit();
+      const stale = spawnSync(process.execPath, ['scripts/untranslated.mjs', '--baseline', 'de'], {
+        cwd: join(fixture, relativeRoot),
+        encoding: 'utf8',
+      });
+      expect(stale.status).not.toBe(0);
+      expect(stale.stderr).toContain(refreshAdvice);
+      write('messages/de.json', { example: 'New English help' });
+      const refreshed = spawnSync(process.execPath, ['scripts/untranslated.mjs', '--baseline', 'de'], {
+        cwd: join(fixture, relativeRoot),
+        encoding: 'utf8',
+      });
+      expect(refreshed.status).toBe(0);
+      expect(JSON.parse(readFileSync(join(fixture, relativeRoot, 'untranslated/de.json'), 'utf8')).pending).toEqual(['example']);
     } finally {
       rmSync(fixture, { recursive: true, force: true });
     }
@@ -156,12 +258,35 @@ describe('the untranslated check', () => {
     expect(untranslatedKeys({ a: 'Save changes' }, { a: ' Save  changes ' }, keep)).toEqual(['a']);
   });
 
-  it('keeps copies of the previous English value pending when English changes', () => {
-    const leftovers = untranslatedKeys({ example: 'New English help' }, { example: ' Old  English help ' }, keep, { example: 'Old English help' });
-    expect(leftovers).toEqual(['example']);
-    expect(nextPending({ leftovers, sameAsEnglish: [], pending: ['example'], exists: true })).toEqual(['example']);
-    expect(() => nextPending({ leftovers, sameAsEnglish: [], pending: [], exists: true })).toThrow(/refusing to add/);
-    expect(nextPending({ leftovers, sameAsEnglish: ['example'], pending: [], exists: true })).toEqual([]);
+  it('rejects copies of the previous English value with actionable refresh guidance', () => {
+    expect(() =>
+      untranslatedKeys({ example: 'New English help' }, { example: ' Old  English help ' }, keep, { example: 'Old English help' }),
+    ).toThrow(refreshAdvice);
+  });
+
+  it('keeps a refreshed fallback pending before and after its Git history disappears', () => {
+    const current = { example: 'New English help' };
+    for (const base of [{ example: 'Old English help' }, current]) {
+      const leftovers = untranslatedKeys(current, current, keep, base);
+      expect(leftovers).toEqual(['example']);
+      expect(nextPending({ leftovers, sameAsEnglish: [], pending: ['example'], exists: true })).toEqual(['example']);
+    }
+  });
+
+  it('allows intentional old-English terms through sameAsEnglish with or without base history', () => {
+    for (const base of [{ example: 'Old English help' }, { example: 'New English help' }]) {
+      expect(untranslatedKeys({ example: 'New English help' }, { example: 'Old English help' }, keep, base, ['example'])).toEqual([]);
+    }
+  });
+
+  it('rejects an old-English plural message and accepts its refreshed fallback', () => {
+    const plural = (noun: string) => [
+      { declarations: ['input count'], selectors: ['count'], match: { 'count=one': `{count} ${noun}`, 'count=*': `{count} ${noun}s` } },
+    ];
+    const base = { example: plural('page') };
+    const current = { example: plural('document') };
+    expect(() => untranslatedKeys(current, base, keep, base)).toThrow(refreshAdvice);
+    expect(untranslatedKeys(current, current, keep, base)).toEqual(['example']);
   });
 
   it('allows genuine translations, new keys and kept terms after English changes', () => {
