@@ -53,8 +53,16 @@ export function MobileNavDrawer({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger ref={trigger} {...mobileNavTriggerProps(label, triggerLabel)} />
-      {/* Open from the reading-start edge: left in LTR, right in RTL (Arabic). */}
-      <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 max-w-[calc(100vw-2rem)] p-0" dir={isRtl ? 'rtl' : 'ltr'} closeLabel={closeLabel}>
+      {/* Open from the reading-start edge: left in LTR, right in RTL (Arabic).
+          `data-site-drawer` lets the site theme give the drawer an accent shade
+          that reads on its raised surface (projectThemeCss, #726). */}
+      <SheetContent
+        side={isRtl ? 'right' : 'left'}
+        className="w-80 max-w-[calc(100vw-2rem)] p-0"
+        dir={isRtl ? 'rtl' : 'ltr'}
+        closeLabel={closeLabel}
+        data-site-drawer=""
+      >
         <SheetHeader className="sr-only">
           <SheetTitle>{label}</SheetTitle>
         </SheetHeader>
