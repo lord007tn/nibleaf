@@ -345,7 +345,7 @@ createRoot(document.getElementById('root')!).render(
       assert.deepEqual(errors, []);
       assert.equal(requests.filter(({ call }) => call.startsWith('PATCH')).length, 1);
       assert.equal(steps.at(-1).fields.favicon, '/favicon.svg');
-      assert.equal(steps[2].fields.logoDark.startsWith(origin), true);
+      assert.equal(new URL(steps[2].fields.logoDark).origin, origin);
       assert.equal(steps[4].saveButtonVisible, false);
       assert.equal(steps[6].fields.favicon, '/brand/typed-meanwhile.svg');
       assert.deepEqual(steps[8].fields, { ...steps[4].fields });
