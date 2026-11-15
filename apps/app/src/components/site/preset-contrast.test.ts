@@ -4,6 +4,7 @@
  * dark fill (1.05:1), and the code block's language label read 3.81:1 on
  * Manuscript's code chrome.
  */
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { contrastRatio } from '@nibleaf/shared/themes';
@@ -396,6 +397,160 @@ describe('the active row in the mobile drawer (#726)', () => {
     const dark = legacyDarkAccent(brand);
     expect(onStackedTint(dark, '#171717', 0.1, 1)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio('#171717', dark)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// #744: pre-v1 dark mode mixes the brand 72% towards white and the code accent
+// 55%. For a dark brand neither mix reads (#000000 gave #292929, 1.36:1 on the
+// #0a0a0a canvas), so those values become the nearest shade that does, while
+// every brand that already read keeps the CSS it shipped, byte for byte.
+describe('pre-v1 dark mode with a dark brand (#744)', () => {
+  const CANVAS = '#0a0a0a';
+  const POPOVER = '#171717';
+  const CODE = '#0d1117';
+  const toHex = (channels: number[]) => `#${channels.map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`;
+  /** A declared colour as the browser draws it, as sRGB channels: a `color-mix(in oklab,…,white)`
+   * worked out independently and left UNROUNDED (the browser keeps the fraction), or a hex. */
+  const drawn = (value: string): number[] => {
+    const mix = value.match(/^color-mix\(in oklab,(#[0-9a-f]{6}) (\d+)%,white\)$/);
+    return mix ? hoverMixOklab(hoverRgb(mix[1] as string), [255, 255, 255], Number(mix[2]) / 100) : hoverRgb(value);
+  };
+  /** Contrast on the colour's own `weight` tint over `background`, composited without rounding. */
+  const onOwnTint = (color: number[], background: string, weight = 0.1) => hoverContrast(color, hoverOver(hoverRgb(background), color, weight));
+  const declarations = (rule: string): Record<string, string> =>
+    Object.fromEntries(
+      rule.split(';').map((declaration) => [declaration.slice(0, declaration.indexOf(':')), declaration.slice(declaration.indexOf(':') + 1)]),
+    );
+  const legacyDark = (brand: string) => {
+    const css = projectThemeCss({ styling: { primaryColor: brand } } as never);
+    const opener = ':root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{';
+    const start = css.indexOf(opener) + opener.length;
+    const page = declarations(css.slice(start, css.indexOf('}', start)));
+    const light = declarations(css.slice(css.indexOf('{') + 1, css.indexOf('}')));
+    const drawer = drawerRule(css, 'dark');
+    const drawerTokens = drawer ? declarations(drawer) : {};
+    return {
+      css,
+      page,
+      light,
+      primary: drawn(page['--primary'] as string),
+      onPrimary: hoverRgb(page['--primary-foreground'] as string),
+      drawerPrimary: drawn(drawerTokens['--primary'] ?? (page['--primary'] as string)),
+      drawerOnPrimary: hoverRgb(drawerTokens['--primary-foreground'] ?? (page['--primary-foreground'] as string)),
+      codeAccent: drawn(light['--theme-code-accent'] as string),
+    };
+  };
+  /** Every target in #744 the brand misses, with its ratio (empty when it meets them all), on fractional channels. */
+  const shortfalls = (brand: string) => {
+    const dark = legacyDark(brand);
+    const [canvas, popover, code] = [CANVAS, POPOVER, CODE].map(hoverRgb) as [number[], number[], number[]];
+    const checks: [string, number, number][] = [
+      ['--primary on the canvas', hoverContrast(dark.primary, canvas), 4.5],
+      ['--primary on its tint', onOwnTint(dark.primary, CANVAS), 4.5],
+      ['--ring on the canvas', hoverContrast(drawn(dark.page['--ring'] as string), canvas), 3],
+      ['--theme-focus on the canvas', hoverContrast(drawn(dark.page['--theme-focus'] as string), canvas), 3],
+      ['--primary-foreground on --primary', hoverContrast(dark.onPrimary, dark.primary), 4.5],
+      ['drawer --primary on the popover', hoverContrast(dark.drawerPrimary, popover), 4.5],
+      ['drawer --primary on its tint', onOwnTint(dark.drawerPrimary, POPOVER), 4.5],
+      ['drawer --primary-foreground on its --primary', hoverContrast(dark.drawerOnPrimary, dark.drawerPrimary), 4.5],
+      ['--theme-code-accent on the code surface', hoverContrast(dark.codeAccent, code), 4.5],
+    ];
+    return checks.filter(([, ratio, target]) => ratio < target).map(([name, ratio]) => `${name}: ${ratio.toFixed(4)}:1`);
+  };
+
+  it.each([
+    ['#000000', 1.36],
+    ['#111111', 2.23],
+    ['#0b3d91', 4.17],
+    ['#1a1a2e', 2.58],
+    ['#14532d', 4.41],
+  ])('reads everywhere it is drawn with brand %s (the mix gave %s:1 on the canvas)', (brand, before) => {
+    expect(contrastRatio(legacyDarkAccent(brand), CANVAS)).toBeCloseTo(before, 2);
+    expect(shortfalls(brand)).toEqual([]);
+    const dark = legacyDark(brand);
+    // One shade, in place of the mix, for the accent, info and focus.
+    for (const token of ['--theme-accent', '--theme-info', '--theme-focus', '--ring']) expect(dark.page[token], token).toBe(dark.page['--primary']);
+    expect(dark.page['--primary']).toMatch(/^#[0-9a-f]{6}$/);
+    expect(dark.page['--theme-accent-foreground']).toBe(dark.page['--primary-foreground']);
+  });
+
+  // The browser keeps a mix's fractional channels; rounding them first can lift a
+  // colour just under AA over the line. These two did, and kept their mix.
+  it('judges a mix by its unrounded colour: #2d25e3 read 4.5003:1 on its tint rounded, 4.4760:1 as drawn', () => {
+    const fractional = hoverMixOklab(hoverRgb('#2d25e3'), [255, 255, 255], 0.72);
+    expect(toHex(fractional)).toBe('#5874f1');
+    expect(onOwnTint(hoverRgb('#5874f1'), CANVAS)).toBeCloseTo(4.5003, 4);
+    expect(onOwnTint(fractional, CANVAS)).toBeCloseTo(4.476, 4);
+    const dark = legacyDark('#2d25e3');
+    expect(dark.page['--primary']).toMatch(/^#[0-9a-f]{6}$/);
+    expect(shortfalls('#2d25e3')).toEqual([]);
+  });
+
+  it("judges the code accent the same way: #3a1408's 55% mix read 4.5041:1 rounded, 4.4812:1 as drawn", () => {
+    const fractional = hoverMixOklab(hoverRgb('#3a1408'), [255, 255, 255], 0.55);
+    expect(hoverContrast(hoverRgb(toHex(fractional)), hoverRgb(CODE))).toBeCloseTo(4.5041, 4);
+    expect(hoverContrast(fractional, hoverRgb(CODE))).toBeCloseTo(4.4812, 4);
+    const dark = legacyDark('#3a1408');
+    expect(dark.light['--theme-code-accent']).toMatch(/^#[0-9a-f]{6}$/);
+    expect(shortfalls('#3a1408')).toEqual([]);
+  });
+
+  it('meets every target for any brand, and keeps each mix wherever it reads with room to spare', () => {
+    const clears = (ratio: number) => ratio >= 4.51;
+    const levels = [0, 36, 73, 109, 146, 182, 219, 255];
+    for (const r of levels)
+      for (const g of levels)
+        for (const b of levels) {
+          const brand = toHex([r, g, b]);
+          expect(shortfalls(brand), brand).toEqual([]);
+          const { page, css } = legacyDark(brand);
+          const mixed = hoverMixOklab([r, g, b], [255, 255, 255], 0.72);
+          if (clears(hoverContrast(mixed, hoverRgb(CANVAS))) && clears(onOwnTint(mixed, CANVAS)) && clears(hoverContrast(hoverRgb(POPOVER), mixed)))
+            expect(page['--primary'], brand).toBe(`color-mix(in oklab,${brand} 72%,white)`);
+          const code = hoverMixOklab([r, g, b], [255, 255, 255], 0.55);
+          if (clears(hoverContrast(code, hoverRgb(CODE))))
+            expect(css, brand).toContain(`--theme-code-accent:color-mix(in oklab,${brand} 55%,white);`);
+        }
+  });
+
+  it('leaves the CSS byte-identical for brands that already read, and for every themed site', () => {
+    // sha256 of projectThemeCss on main before #744.
+    const main = [
+      ['legacy default', '7b00bf30206bb765bad89d41dc31516829281c4781f243b97544a762e527cd40'],
+      ['legacy #5546e8', '7b00bf30206bb765bad89d41dc31516829281c4781f243b97544a762e527cd40'],
+      ['legacy #b96a3d', '36766d040827b7a93d3741fb076c09fffdc47768e49fcaa3ffa964f545c125c0'],
+      ['legacy #3b82f6', '3988f6a107dbfd00dfaaaa44e18a4e48589879a8c523a55c376b2d88b4edd253'],
+      ['legacy #2f855a', 'dfb5d0766a92e9923d4a8edd9c2c52197f8378542f6864c2ccb722c4f53bf35c'],
+      ['legacy #f4b400', '9a2401bb40c1de0743da82daab9dadb332d683f0cff9c756dace6c5261fcd9c8'],
+      ['legacy #a3e635', '25047dc1ad3e30e78cb12773df39063ee52d085b22bb518461a0e1d8b9b42492'],
+      ['harbor', '01b3c913ed3809b0fec552a43a54fd1e643f86547c80ffe487069adfb08b1562'],
+      ['harbor + #5546e8', '0fc506a4970694fc4b90e424f03a4755f7ba76102564e0fed477a2c46df7e491'],
+      ['harbor + #b96a3d', 'c7c53bde90a17e626cbf753598814ab8ee89564cb29a0bc15f57bf98b5ebde8a'],
+      ['harbor + #000000', '545307511c6fe139cbd945205b9323f86897b54537f7553950775a31a101bf85'],
+      ['harbor + #0b3d91', 'd56e38f16d47f52c4eeb44f50023c9fe4c4be29810c8fd3a7ff6f1d5999b4ae9'],
+      ['manuscript', '31ba0290105a814d1d8ee0182958980d31cf0ef80cc293594941153132471fcf'],
+      ['manuscript + #5546e8', 'd669dc3e54ebeaeef8eb16446fcf01ff91a55607e4484c0d0dca7bdfaff9c6f0'],
+      ['manuscript + #b96a3d', '9577f9e38f4b6e6d930411d94f21c57a6748844b44955fc89cadbc5238d82046'],
+      ['manuscript + #000000', 'dd8728094b8cc7d412107d314c8c52112b79463d08d8c769fbedf1a0d60939f2'],
+      ['manuscript + #0b3d91', 'e4dc14428c246f5bcb1b24e6b58ad9923fa0cf2001e04bfda05bb41d4ecdd2ab'],
+      ['signal', '186e52215a81de2834fea748b2262fd4fe4e18f854ae3d605b43cfe45c37c0f0'],
+      ['signal + #5546e8', '6912535b36f62ff01bdbc6dff40fe7f7aa1ffa034e6f3f840271227e19dae56b'],
+      ['signal + #b96a3d', 'f4b4c1c62f3b147d64b5fc506e34b16edfa63cfeba5dc0b6dee56a60e3402a4c'],
+      ['signal + #000000', '9c30b3c8f5d5d11514376f0e6c63e572a4ae425120d95c78449c13196903800c'],
+      ['signal + #0b3d91', 'cdf7071f93241b7586aa05d7d7ebf9a37d9cc0dbc5d8ae53d86a1c1432df9973'],
+    ];
+    const configFor = (name: string) => {
+      const [first, , brand] = name.split(' ');
+      if (first === 'legacy') return name === 'legacy default' ? {} : { styling: { primaryColor: name.slice('legacy '.length) } };
+      return { theme: { preset: first }, ...(brand ? { styling: { primaryColor: brand } } : {}) };
+    };
+    const now = main.map(([name]) => [
+      name,
+      createHash('sha256')
+        .update(projectThemeCss(configFor(name as string) as never))
+        .digest('hex'),
+    ]);
+    expect(now).toEqual(main);
   });
 });
 
