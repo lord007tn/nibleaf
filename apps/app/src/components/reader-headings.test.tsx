@@ -8,6 +8,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { MarkdownRenderer } from './markdown';
+import { mathPlugins } from './markdown-math';
 import RichMarkdown from './markdown-rich';
 
 /*
@@ -22,8 +23,11 @@ import RichMarkdown from './markdown-rich';
 const site = { projectId: 'project', lang: 'en', defaultLanguage: 'en' };
 /** The headings the renderer outputs, read from its HTML as a browser would. */
 const rendered = (content: string) => {
-  const rich = readerRenderMode(content).rich;
-  const html = renderToStaticMarkup(createElement(rich ? RichMarkdown : MarkdownRenderer, { content, site }));
+  const { rich, math } = readerRenderMode(content);
+  // The rich renderer gets KaTeX exactly when the reader loads it for this page.
+  const html = renderToStaticMarkup(
+    rich ? createElement(RichMarkdown, { content, site, math: math ? mathPlugins : undefined }) : createElement(MarkdownRenderer, { content, site }),
+  );
   const document = new DOMParser().parseFromString(html, 'text/html');
   return [...document.querySelectorAll('h1, h2, h3, h4, h5, h6')].map((heading) => ({
     depth: Number(heading.tagName[1]),

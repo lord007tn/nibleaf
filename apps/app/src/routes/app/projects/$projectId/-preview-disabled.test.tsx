@@ -34,7 +34,7 @@ vi.mock('@/hooks/api', () => ({
   usePages: () => ({}),
   usePage: () => ({}),
 }));
-vi.mock('@/components/markdown', () => ({ Markdown: () => null }));
+vi.mock('@/components/markdown', () => ({ Markdown: () => null, useMathReady: () => true }));
 vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
   DocumentationProjectPreviewLayout: () => <p data-testid="usable-preview">preview content</p>,

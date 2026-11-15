@@ -50,3 +50,7 @@ describe('publishFailureDetails', () => {
     expect(publishFailureDetails(undefined)).toEqual([]);
   });
 });
+
+it('keeps owner links with language/content collisions on the server-resolved legacy form', () => {
+  expect(publishedPageUrl('p1', { path: 'ar/guide', title: 'Guide', languageCode: 'ar' }, options)).toBe(`${site}/ar/guide?lang=ar`);
+});

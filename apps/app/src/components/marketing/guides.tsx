@@ -168,7 +168,7 @@ export function GuidesHub({ locale, stars = 0 }: { locale: GuideLocale; stars?: 
             </a>
             <a
               className="inline-flex h-10 items-center rounded-md border border-background/25 px-4 font-medium text-sm hover:bg-background/10"
-              href="/self-hosting"
+              href={locale === 'ar' ? '/ar/self-hosting' : '/self-hosting'}
             >
               {t.selfHost}
             </a>

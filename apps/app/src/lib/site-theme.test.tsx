@@ -1,5 +1,5 @@
 import { translateFn } from '@nibleaf/i18n';
-import { contrastRatio } from '@nibleaf/shared/themes';
+import { contrastRatio, readableAccentText } from '@nibleaf/shared/themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { ThemePreview } from '@/components/project-settings/theme-section';
@@ -12,6 +12,20 @@ import {
   DocumentationThemeProvider,
 } from '@/components/site/documentation-theme-provider';
 import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteAppearance, siteThemeNoFlashScript } from './site-theme';
+
+/** Contrast of `color` on a `weight` tint of itself over `background`, worked
+ * out here independently with unrounded channels (no hex rounding). */
+const onTint = (color: string, background: string, weight: number) => {
+  const rgb = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+  const linear = (value: number) => {
+    const n = value / 255;
+    return n <= 0.040_45 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = ([r = 0, g = 0, b = 0]: number[]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  const text = luminance(rgb(color));
+  const tint = luminance(rgb(background).map((value, index) => value * (1 - weight) + (rgb(color)[index] ?? 0) * weight));
+  return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
+};
 
 describe('footer small print contrast', () => {
   const footerColors = (css: string) => [...css.matchAll(/--theme-footer-muted:([^;}]+)/g)].map((match) => match[1]);
@@ -145,10 +159,36 @@ describe('published theme projection', () => {
     expect(String(projectThemeStyle({ typography: { bodyFont: 'Inter' } }).fontFamily)).toMatch(/^'Inter','Noto Sans Arabic Variable',/);
   });
 
+  it.each(['#009966', '#387818'])('keeps the rail accent at AA on Signal with accent %s, in the CSS and the dashboard preview', (accent) => {
+    const config = { theme: { preset: 'signal', colors: { light: { accent } } } } as never;
+    const code = resolveProjectTheme(config).colors.light.code;
+    const css = projectThemeCss(config);
+    const fromCss = css.match(/:root,\.nibleaf-site-chrome\{[^}]*--theme-code-accent:(#[0-9a-f]{6})/)?.[1] as string;
+    const fromPreview = projectThemeVariables(config, 'light')['--theme-code-accent' as never] as string;
+    expect(fromCss).toBe(fromPreview);
+    // Main drew the authored #009966 here; the canvas shade would have read 4.35:1 on the tint.
+    if (accent === '#009966') expect(fromCss).toBe('#009966');
+    // The rail's active item: the code accent on a 14% tint of itself, unrounded.
+    expect(onTint(fromCss, code, 0.14)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(fromCss, code)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("draws a pre-v1 site's code accent from its brand, as before", () => {
+    expect(projectThemeCss({ styling: { primaryColor: '#5546e8' } } as never)).toContain('--theme-code-accent:color-mix(in oklab,#5546e8 55%,white)');
+  });
+
   it('keeps pre-v1 projects on their existing design-system palette', () => {
     const css = projectThemeCss({ styling: { primaryColor: '#c2410c' } });
     expect(css).toContain('--theme-canvas:var(--background)');
-    expect(css).toContain('--primary:#c2410c');
+    // The accent is drawn in the shade that reads as text on #fafafa and its tint (PUB-006).
+    const accent = readableAccentText('#c2410c', '#fafafa');
+    expect(contrastRatio(accent, '#fafafa')).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain(`--primary:${accent}`);
+    expect(css).toContain('--primary-foreground:#ffffff');
+    // Dark keeps the design system's on-primary text it always had.
+    expect(css).toMatch(/\.dark\{[^}]*--primary-foreground:#171717/);
+    // ...and mixes the brand itself towards white, unchanged from before.
+    expect(css).toContain('color-mix(in oklab,#c2410c 72%,white)');
     expect(css).not.toContain('--background:#f8fafc');
   });
 

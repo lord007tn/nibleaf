@@ -12,6 +12,7 @@
  *   preview-legacy      no `theme` config (legacy palette branch)
  *   preview-answers     "harbor" with Ask AI available (the panel opens; no answer is requested)
  *   preview-private     "harbor", private, read by a signed-in reader
+ *   preview-brand       no `theme` config, brand colour #B96A3D (fails AA as text as authored, PUB-006)
  *   preview-consent     "harbor" that asks for analytics consent (native, no third-party
  *                       scripts) and offers Ask AI (the launcher; no answer is ever requested)
  *   preview-unset       "harbor" whose owner never picked light or dark (follows the reader's device)
@@ -940,7 +941,7 @@ ${CURL_SHIPMENT}
     en: {
       title: 'Rate limits',
       description: 'Per-key request budgets and the headers that report them.',
-      content: `Limits are enforced per API key over a sliding sixty-second window.
+      content: `Limits are enforced per API key over a sliding sixty-second window. The bucket refills at $r = n / 60$ requests per second, where $n$ is the per-minute limit.
 
 | Key type | Requests per minute | Burst |
 | --- | --- | --- |
@@ -1109,12 +1110,14 @@ const THEME_META = {
 
 const PROJECTS = {
   'preview-harbor': { preset: 'harbor' },
+  'preview-language-collision': { preset: 'harbor', languageCollision: true },
   'preview-manuscript': { preset: 'manuscript' },
   'preview-signal': { preset: 'signal' },
   'preview-legacy': { preset: null },
   'preview-answers': { preset: 'harbor', answers: true },
   // A private site whose reader is signed in; access can be revoked mid-session.
   'preview-private': { preset: 'harbor', visibility: 'private' },
+  'preview-brand': { preset: null, primaryColor: '#B96A3D' },
   'preview-consent': { preset: 'harbor', consent: true, answers: true },
   // No styling.theme: the reader follows the visitor's device (PUB-004).
   'preview-unset': { preset: 'harbor', unsetAppearance: true },
@@ -1288,6 +1291,9 @@ const findPage = (path) => {
 const projectPayload = (id, preset, language) => {
   const languageConfig = LANGUAGE_CONFIG[language.code];
   const config = projectConfig(preset, PROJECTS[id]?.visibility, PROJECTS[id]?.unsetAppearance);
+  if (PROJECTS[id]?.primaryColor) {
+    config.styling.primaryColor = PROJECTS[id].primaryColor;
+  }
   if (PROJECTS[id]?.consent) {
     config.analytics = { cookieConsent: true };
   }
@@ -1307,7 +1313,7 @@ const siteShell = (id, preset, query) => {
   return {
     project: projectPayload(id, preset, language),
     nav: buildNav(language.code),
-    languages: LANGUAGES,
+    languages: LANGUAGES.map((item) => ({ ...item, pathPrefix: PROJECTS[id]?.languageCollision && item.code === 'ar' ? '~lang/ar' : item.code })),
     versions: VERSIONS,
     activeLanguage: language.code,
     activeVersion: version.slug,
@@ -1323,7 +1329,8 @@ const siteShell = (id, preset, query) => {
 const sitePage = (id, preset, query) => {
   const language = resolveLanguage(query.get('lang'));
   const version = resolveVersion(query.get('version'));
-  const page = findPage(cleanPath(query.get('path')));
+  const collision = PROJECTS[id]?.languageCollision && cleanPath(query.get('path')) === 'ar/guide';
+  const page = collision ? PAGES[0] : findPage(cleanPath(query.get('path')));
   if (!page) return null;
   const lang = language.code;
   const index = PAGES.indexOf(page);
@@ -1340,7 +1347,7 @@ const sitePage = (id, preset, query) => {
       title: localized.title,
       description: localized.description,
       icon: page.icon ?? null,
-      path: pagePath(page),
+      path: collision ? 'ar/guide' : pagePath(page),
       content: localized.content,
       headings: extractHeadings(localized.content),
       config: page.tag ? { tag: page.tag } : null,
@@ -1349,7 +1356,12 @@ const sitePage = (id, preset, query) => {
     activeVersion: version.slug,
     versions: VERSIONS,
     languageConfig: LANGUAGE_CONFIG[lang],
-    languages: LANGUAGES.map((item) => ({ code: item.code, isDefault: item.isDefault, path: pagePath(page) })),
+    languages: LANGUAGES.map((item) => ({
+      code: item.code,
+      isDefault: item.isDefault,
+      path: collision ? 'ar/guide' : pagePath(page),
+      pathPrefix: PROJECTS[id]?.languageCollision && item.code === 'ar' ? '~lang/ar' : item.code,
+    })),
     breadcrumbs: [
       { title: group.title[lang], path: group.slug },
       { title: localized.title, path: pagePath(page) },
@@ -1371,6 +1383,11 @@ const SITE_ROUTE = /^\/api\/public\/sites\/([^/]+)(?:\/(.*))?$/;
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   const { pathname, searchParams } = url;
+
+  if (pathname === '/api/public/domains/resolve' && searchParams.get('host') === 'docs.localhost') {
+    json(res, 200, { data: { projectId: 'preview-harbor' } });
+    return;
+  }
 
   if (pathname.startsWith('/api/public/assets/')) {
     res.writeHead(200, { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'no-store' });
@@ -1420,6 +1437,12 @@ const server = createServer((req, res) => {
         return;
       }
       json(res, 200, { data: page });
+      return;
+    }
+    if (rest === 'markdown') {
+      const page = sitePage(id, project.preset, searchParams);
+      res.writeHead(page ? 200 : 404, { 'content-type': 'text/markdown; charset=utf-8' });
+      res.end(page ? `# ${page.page.title}\n\n${page.page.content}\n` : 'Not found');
       return;
     }
     if (rest === 'search') {

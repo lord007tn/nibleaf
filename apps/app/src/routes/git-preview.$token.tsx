@@ -19,6 +19,8 @@ import {
 } from '@nibleaf/i18n/messages';
 import { useLocale } from '@nibleaf/i18n/react';
 import type { SiteSnapshot } from '@nibleaf/shared/site';
+import { sitePathLanguages } from '@nibleaf/shared/site-language-policy';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { Eye, FileText, GitPullRequest, Lock, Menu } from 'lucide-react';
 import { type MouseEvent, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
@@ -108,6 +110,7 @@ function GitPreviewPage({ snapshot }: { snapshot: SiteSnapshot }) {
   const [requested, setRequested] = useState<{ language?: string; versionId?: string }>({});
   const scope = useMemo(() => previewScope(snapshot, requested), [snapshot, requested]);
   const { pages, language, version } = scope;
+  const languages = useMemo(() => sitePathLanguages(snapshot), [snapshot]);
   const [pageId, setPageId] = useState(pages[0]?.id);
   const page = pages.find((item) => item.id === pageId) ?? pages[0];
   const [navOpen, setNavOpen] = useState(false);
@@ -151,13 +154,13 @@ function GitPreviewPage({ snapshot }: { snapshot: SiteSnapshot }) {
     const url = new URL(href, window.location.href);
     const base = `/sites/${snapshot.project.id}`;
     if (url.origin !== window.location.origin || !(url.pathname === base || url.pathname.startsWith(`${base}/`))) return;
-    const segments = safeDecode(url.pathname.slice(base.length)).replace(/^\/+|\/+$/g, '');
+    const parsed = parseSiteLanguagePath(url.pathname.slice(base.length), languages);
+    const segments = safeDecode(parsed.path);
     const path =
       versionSlug && (segments === versionSlug || segments.startsWith(`${versionSlug}/`))
         ? segments.slice(versionSlug.length).replace(/^\/+/, '')
         : segments;
-    // An authored `?lang=` picks that language's page; otherwise stay in this one.
-    const languageCode = url.searchParams.get('lang') ?? page.languageCode;
+    const languageCode = parsed.language?.code ?? url.searchParams.get('lang') ?? page.languageCode;
     const target = snapshot.pages.find(
       (item) => item.kind === 'PAGE' && !item.hidden && item.languageCode === languageCode && item.versionId === page.versionId && item.path === path,
     );
@@ -306,7 +309,7 @@ function GitPreviewPage({ snapshot }: { snapshot: SiteSnapshot }) {
               </div>
               <Markdown
                 content={page.content}
-                site={{ projectId: snapshot.project.id, lang: page.languageCode, defaultLanguage, version: versionSlug }}
+                site={{ projectId: snapshot.project.id, lang: page.languageCode, defaultLanguage, version: versionSlug, languages, path: page.path }}
               />
             </>
           ) : (

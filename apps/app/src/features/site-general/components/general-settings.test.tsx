@@ -237,6 +237,32 @@ describe('GeneralSettings', () => {
     expect(dirty.size).toBeGreaterThan(0);
   });
 
+  it('saves on Enter in a single-line field through the hidden default button, and sends nothing while clean', async () => {
+    const buttons = container.querySelectorAll<HTMLButtonElement>('form button[type="submit"]');
+    expect(buttons).toHaveLength(1);
+    const enter = buttons[0] as HTMLButtonElement;
+    expect(enter.hidden).toBe(true);
+    // The browser's implicit submission (Enter in a text field) clicks the form's default button.
+    await act(async () => enter.click());
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    mocks.updateProject.mockResolvedValueOnce(undefined);
+    await type(input('settings.general.name.label'), 'Renamed');
+    await act(async () => enter.click());
+    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+    expect(mocks.updateProject).toHaveBeenCalledWith(expect.objectContaining({ name: 'Renamed' }));
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('common.saved');
+    expect(dirty.size).toBe(0);
+  });
+
+  it('on Enter with an invalid field, focuses it and sends nothing', async () => {
+    const name = input('settings.general.name.label');
+    await type(name, '');
+    await act(async () => container.querySelector<HTMLButtonElement>('form button[type="submit"]')?.click());
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(name);
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('forms.fixHighlighted');
+  });
+
   it('keeps the save in flight through a refetch after the text was typed back', async () => {
     const pending = deferred();
     mocks.updateProject.mockReturnValueOnce(pending.promise);

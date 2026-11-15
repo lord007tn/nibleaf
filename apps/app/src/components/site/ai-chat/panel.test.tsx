@@ -94,6 +94,7 @@ const mount = async (request?: { id: number; question?: string; source: 'deep_li
           <Panel
             projectId={projectId}
             lang="en"
+            defaultLanguage="en"
             version={siteVersion}
             direction="ltr"
             config={null}
@@ -341,7 +342,7 @@ describe('chat panel', () => {
     await render();
     const link = document.getElementById(`${ANSWER_ID}-source-1`)?.getAttribute('href');
     // jsdom's host reads as a custom domain: no /sites/<id> prefix.
-    expect(link).toBe(`/${asked ? `${asked}/` : ''}guide?lang=en#install`);
+    expect(link).toBe(`/${asked ? `${asked}/` : ''}guide#install`);
   });
 
   it('streams without citation markers, even one split across chunks', async () => {

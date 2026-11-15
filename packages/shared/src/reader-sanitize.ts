@@ -86,6 +86,6 @@ export const readerSanitizeSchema: SanitizeOptions = {
     code: [['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang'],
     // How an image loads: only the values browsers define (set by the reader's
     // rehypeImageLoading, or written by an author to override it).
-    img: [...(defaultSchema.attributes?.img ?? []), ['loading', 'eager', 'lazy'], ['decoding', 'sync', 'async', 'auto']],
+    img: [...(defaultSchema.attributes?.img ?? []), 'width', 'height', ['loading', 'eager', 'lazy'], ['decoding', 'sync', 'async', 'auto']],
   },
 };

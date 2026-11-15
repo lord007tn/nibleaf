@@ -189,7 +189,16 @@ export const upsertLeafPage = async (target: ImportTarget, page: ImportedPage): 
 
 /** {@link upsertLeafPage} that also returns the row id, for importers whose
  * pages have child pages of their own (GitBook nests pages under pages). */
-export const upsertPage = async (target: ImportTarget, page: ImportedPage): Promise<{ outcome: UpsertOutcome; id: string }> => {
+export const upsertPage = async (target: ImportTarget, page: ImportedPage): Promise<{ outcome: UpsertOutcome; id: string }> =>
+  persistPage(target, page);
+
+/** Reserve addresses without replacing an existing body until all destinations are known. */
+export const reserveImportPage = async (target: ImportTarget, page: Omit<ImportedPage, 'content'>) => persistPage(target, page);
+
+const persistPage = async (
+  target: ImportTarget,
+  page: Omit<ImportedPage, 'content'> & { content?: string },
+): Promise<{ outcome: UpsertOutcome; id: string }> => {
   const { projectId, branchId, languageId } = target;
   // Scoped to kind PAGE so a leaf import can never overwrite a sibling GROUP
   // row that happens to carry the same slug — the create path below (via
@@ -204,7 +213,7 @@ export const upsertPage = async (target: ImportTarget, page: ImportedPage): Prom
     const config = page.config && withImportedCategoryIcon(page.config, existingConfig.categoryIcon);
     const data = {
       title: page.title,
-      content: page.content,
+      ...(page.content !== undefined ? { content: page.content } : {}),
       ...(page.description !== undefined ? { description: page.description } : {}),
       // Only icons the reader draws (or the one the page already had); others are dropped.
       ...(page.icon !== undefined ? { icon: importedPageIcon(page.icon, found.icon) } : {}),
@@ -213,18 +222,7 @@ export const upsertPage = async (target: ImportTarget, page: ImportedPage): Prom
       ...(page.position !== undefined ? { position: page.position } : {}),
       ...(page.hidden !== undefined ? { hidden: page.hidden } : {}),
     };
-    if (!exceedsUtf8Bytes(page.content, MAX_PAGE_CONTENT_BYTES)) {
-      await prisma.page.update({ where: { id: found.id }, data });
-    } else {
-      // Over the cap: re-imports follow the editor's rule (a page over the cap
-      // may not grow), compared with the stored body under the row lock and
-      // written in the same transaction.
-      await prisma.$transaction(async (tx) => {
-        const [stored] = await tx.$queryRaw<Array<{ content: string }>>`SELECT content FROM "page" WHERE id = ${found.id} FOR NO KEY UPDATE`;
-        assertPageContentFits(page.content, stored?.content);
-        await tx.page.update({ where: { id: found.id }, data });
-      });
-    }
+    await updateImportPage(target, found.id, data, page.content);
     return { outcome: 'updated', id: found.id };
   }
   const created = await createPage(projectId, {
@@ -243,4 +241,24 @@ export const upsertPage = async (target: ImportTarget, page: ImportedPage): Prom
   // createPage has no visibility input; hidden pages are flagged right after.
   if (page.hidden) await prisma.page.update({ where: { id: created.id }, data: { hidden: true } });
   return { outcome: 'imported', id: created.id };
+};
+
+/** Content writes keep the editor's size rule, including legacy oversized pages. */
+export const writeImportPageContent = async (target: ImportTarget, id: string, content: string): Promise<void> => {
+  await updateImportPage(target, id, { content }, content);
+};
+
+const updateImportPage = async (target: ImportTarget, id: string, data: Prisma.PageUpdateInput, content?: string) => {
+  const where = { id, projectId: target.projectId, branchId: target.branchId, languageId: target.languageId };
+  if (content === undefined || !exceedsUtf8Bytes(content, MAX_PAGE_CONTENT_BYTES)) {
+    await prisma.page.update({ where, data });
+    return;
+  }
+  await prisma.$transaction(async (tx) => {
+    const [stored] = await tx.$queryRaw<Array<{ content: string }>>`
+      SELECT content FROM "page" WHERE id = ${id} AND "projectId" = ${target.projectId}
+      AND "branchId" = ${target.branchId} AND "languageId" = ${target.languageId} FOR NO KEY UPDATE`;
+    assertPageContentFits(content, stored?.content);
+    await tx.page.update({ where, data });
+  });
 };

@@ -20,6 +20,7 @@ import { tmpdir } from 'node:os';
 import { extname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { acquireDevstackLock, hostKey, withLocalOnlyBrowser } from '../lib/capture-env.mjs';
+import { writeEvidenceJson } from '../lib/evidence-json.mjs';
 
 const root = resolve(import.meta.dirname, '../../..');
 const appDir = resolve(root, 'apps/app');
@@ -692,27 +693,20 @@ Requests: ${requests.join(', ')}`);
         ];
       }),
     );
-    await writeFile(
-      resolve(output, 'evidence.json'),
-      `${JSON.stringify(
-        {
-          environment:
-            'Isolated actual-route fixture (dashboard shell, ProjectLayout + settings and analytics routes, OrganizationLayout + members route); intercepted fictional HTTP; no server, database or real site',
-          locales,
-          screens: selectedScreens.map((screen) => screen.key),
-          sizes: sizes.map(({ width, height, mobile }) => `${width}×${height}${mobile ? ' touch' : ''}`),
-          attempted: attempted.length,
-          axe: axeSource ? { version: axeVersion, rules: ['color-contrast'] } : null,
-          leftoverRule:
-            'Visible text (an element’s own text nodes, ≥3 letters) equal to an en catalog value ({placeholders} match anything) that is not one of the locale’s own translations (its text for a key where it differs from English). A key whose locale text copies the English one counts as untranslated. Glossary doNotTranslate values and the keys untranslated/<locale>.json lists as sameAsEnglish are excluded; en has none by definition.',
-          doNotTranslate: doNotTranslate.length,
-          summary,
-          captures,
-        },
-        null,
-        2,
-      )}\n`,
-    );
+    await writeEvidenceJson(resolve(output, 'evidence.json'), {
+      environment:
+        'Isolated actual-route fixture (dashboard shell, ProjectLayout + settings and analytics routes, OrganizationLayout + members route); intercepted fictional HTTP; no server, database or real site',
+      locales,
+      screens: selectedScreens.map((screen) => screen.key),
+      sizes: sizes.map(({ width, height, mobile }) => `${width}×${height}${mobile ? ' touch' : ''}`),
+      attempted: attempted.length,
+      axe: axeSource ? { version: axeVersion, rules: ['color-contrast'] } : null,
+      leftoverRule:
+        'Visible text (an element’s own text nodes, ≥3 letters) equal to an en catalog value ({placeholders} match anything) that is not one of the locale’s own translations (its text for a key where it differs from English). A key whose locale text copies the English one counts as untranslated. Glossary doNotTranslate values and the keys untranslated/<locale>.json lists as sameAsEnglish are excluded; en has none by definition.',
+      doNotTranslate: doNotTranslate.length,
+      summary,
+      captures,
+    });
     console.log(JSON.stringify({ attempted: attempted.length, summary }, null, 2));
     assert.equal(attempted.length, 0, 'no request outside the fixture origin');
     for (const entry of captures) {

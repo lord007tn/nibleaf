@@ -1,0 +1,222 @@
+$ curl.exe -sSI http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=en&tab=cli&tag=a&tag=b
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:57 GMT
+location: /sites/preview-harbor/getting-started/introduction?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/sites/preview-harbor/getting-started/introduction.md?lang=en&tab=cli&tag=a&tag=b
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:57 GMT
+location: /sites/preview-harbor/getting-started/introduction.md?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar&tab=cli&tag=a&tag=b
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /sites/preview-harbor/ar/getting-started/introduction?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/sites/preview-harbor/getting-started/introduction.md?lang=ar&tab=cli&tag=a&tag=b
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /sites/preview-harbor/ar/getting-started/introduction.md?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/sites/preview-harbor/v2/getting-started/introduction?lang=en&tab=cli&tag=a&tag=b
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /sites/preview-harbor/v2/getting-started/introduction?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/sites/preview-harbor/v2/getting-started/introduction.md?lang=en&tab=cli&tag=a&tag=b
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /sites/preview-harbor/v2/getting-started/introduction.md?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/sites/preview-harbor/v2/getting-started/introduction?lang=ar&tab=cli&tag=a&tag=b
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /sites/preview-harbor/ar/v2/getting-started/introduction?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/sites/preview-harbor/v2/getting-started/introduction.md?lang=ar&tab=cli&tag=a&tag=b
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /sites/preview-harbor/ar/v2/getting-started/introduction.md?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/getting-started/introduction?lang=en&tab=cli&tag=a&tag=b -H Host: docs.localhost:4310 -H X-Forwarded-Proto: http
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /getting-started/introduction?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/getting-started/introduction.md?lang=en&tab=cli&tag=a&tag=b -H Host: docs.localhost:4310 -H X-Forwarded-Proto: http
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /getting-started/introduction.md?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/getting-started/introduction?lang=ar&tab=cli&tag=a&tag=b -H Host: docs.localhost:4310 -H X-Forwarded-Proto: http
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /ar/getting-started/introduction?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/getting-started/introduction.md?lang=ar&tab=cli&tag=a&tag=b -H Host: docs.localhost:4310 -H X-Forwarded-Proto: http
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /ar/getting-started/introduction.md?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/v2/getting-started/introduction?lang=en&tab=cli&tag=a&tag=b -H Host: docs.localhost:4310 -H X-Forwarded-Proto: http
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /v2/getting-started/introduction?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/v2/getting-started/introduction.md?lang=en&tab=cli&tag=a&tag=b -H Host: docs.localhost:4310 -H X-Forwarded-Proto: http
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /v2/getting-started/introduction.md?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/v2/getting-started/introduction?lang=ar&tab=cli&tag=a&tag=b -H Host: docs.localhost:4310 -H X-Forwarded-Proto: http
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /ar/v2/getting-started/introduction?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+$ curl.exe -sSI http://localhost:4310/v2/getting-started/introduction.md?lang=ar&tab=cli&tag=a&tag=b -H Host: docs.localhost:4310 -H X-Forwarded-Proto: http
+HTTP/1.1 308
+vary: sec-fetch-dest, accept
+date: Sat, 14 Nov 2026 13:44:58 GMT
+location: /ar/v2/getting-started/introduction.md?tab=cli&tag=a&tag=b
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-frame-options: SAMEORIGIN
+x-nibleaf-revision: development
+Connection: keep-alive
+Keep-Alive: timeout=5

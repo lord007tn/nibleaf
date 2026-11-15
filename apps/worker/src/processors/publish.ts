@@ -19,6 +19,7 @@ import { env } from '../env';
 import { notifyDeployment } from '../lib/notify';
 import { recordPublishReady } from '../lib/publish-activation';
 import { buildDeploymentAssetReferences } from '../lib/publish-asset-references';
+import { addPublishedImageDimensions } from '../lib/publish-image-dimensions';
 import { DurableUsageEnqueueError, enqueueAnalyticsEvent } from '../lib/usage-ingest';
 
 const log = createLogger({ processor: 'publish' });
@@ -391,6 +392,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     }
     const snapshot = redirectValidation.snapshot;
     const references = await buildDeploymentAssetReferences(snapshot);
+    await addPublishedImageDimensions(snapshot, references);
     const pageCount = draftSnapshot.pages.filter((page) => page.kind === 'PAGE').length;
 
     const ready = await prisma.deployment.update({

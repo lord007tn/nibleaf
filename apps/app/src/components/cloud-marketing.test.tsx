@@ -31,7 +31,10 @@ describe('bilingual landing journey', () => {
     expect(root.querySelector('a[href="#main"]')).not.toBeNull();
     expect(root.querySelector(`a[href="${alternate}"][hreflang="${alternateLang}"]`)).not.toBeNull();
     expect(root.querySelector('main a[href="/sign-up"]')).not.toBeNull();
-    expect(root.querySelector('main a[href="/self-hosting"]')).not.toBeNull();
+    // Each language links to its own self-hosting and pricing pages (P2-MKT-002).
+    const prefix = lang === 'ar' ? '/ar' : '';
+    expect(root.querySelector(`main a[href="${prefix}/self-hosting"]`)).not.toBeNull();
+    expect(root.querySelector(`main a[href="${prefix}/pricing"]`)).not.toBeNull();
     expect(root.querySelector('#features')).not.toBeNull();
     for (const feature of copy.features.filter((candidate) => (LANDING_STORY_IDS as readonly string[]).includes(candidate.id))) {
       expect(root.querySelector(`#${feature.id} h2`)?.textContent).toBe(feature.title);

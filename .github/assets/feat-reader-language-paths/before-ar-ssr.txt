@@ -1,0 +1,6 @@
+<!-- Unmodified SSR tag excerpts from http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar -->
+<html lang="ar" dir="rtl">
+<link rel="canonical" href="http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar" nonce="Yv8sxZsWqD9Pm1EOPWJ8TuYS"/>
+<link rel="alternate" hrefLang="en" href="http://localhost:4310/sites/preview-harbor/getting-started/introduction" nonce="Yv8sxZsWqD9Pm1EOPWJ8TuYS"/>
+<link rel="alternate" hrefLang="ar" href="http://localhost:4310/sites/preview-harbor/getting-started/introduction?lang=ar" nonce="Yv8sxZsWqD9Pm1EOPWJ8TuYS"/>
+<link rel="alternate" hrefLang="x-default" href="http://localhost:4310/sites/preview-harbor/getting-started/introduction" nonce="Yv8sxZsWqD9Pm1EOPWJ8TuYS"/>

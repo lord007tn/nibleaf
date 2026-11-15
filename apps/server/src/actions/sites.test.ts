@@ -43,7 +43,7 @@ vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ ki
 import og from '@/modules/public/sites/og';
 import { trackProjectEvents } from './analytics';
 import { resolveViewerAccess } from './reader-access';
-import { getSiteOgData, getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
+import { getSite, getSiteOgData, getSitePage, getSitePageMarkdown, getSiteSitemap, invalidatePublishedSiteConfig, searchSite } from './sites';
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id' | 'path' | 'position'>): SnapshotPage => ({
   parentId: null,
@@ -108,6 +108,52 @@ describe('getSitePage lede vs excerpt', () => {
     mocks.deploymentFindUnique.mockResolvedValue({ snapshot });
   });
 
+  it('lists every language and version in one sitemap with canonical path prefixes', async () => {
+    const languages = [...snapshot.project.languages, { code: 'ar', label: 'Arabic', direction: 'RTL' as const, isDefault: false, config: null }];
+    mocks.deploymentFindUnique.mockResolvedValue({
+      snapshot: {
+        ...snapshot,
+        project: {
+          ...snapshot.project,
+          languages,
+          versions: [...snapshot.project.versions, { id: 'version-2', name: 'v2', slug: 'v2', isDefault: false }],
+        },
+        pages: [
+          ...snapshot.pages,
+          page({ id: 'arabic', path: 'guide', position: 2, languageCode: 'ar' }),
+          page({ id: 'arabic-v2', path: 'guide', position: 2, languageCode: 'ar', versionId: 'version-2' }),
+        ],
+      },
+    });
+    const sitemap = await getSiteSitemap('project-1');
+    expect(sitemap.body).toContain('/sites/project-1/authentication</loc>');
+    expect(sitemap.body).toContain('/sites/project-1/ar/guide</loc>');
+    expect(sitemap.body).toContain('/sites/project-1/ar/v2/guide</loc>');
+    expect(sitemap.body).not.toContain('?lang=');
+  });
+
+  it('uses one collision policy in the shell, pages and sitemap without republishing', async () => {
+    const languages = [...snapshot.project.languages, { code: 'ar', label: 'Arabic', direction: 'RTL' as const, isDefault: false, config: null }];
+    mocks.deploymentFindUnique.mockResolvedValue({
+      snapshot: {
+        ...snapshot,
+        project: { ...snapshot.project, languages },
+        pages: [
+          ...snapshot.pages,
+          page({ id: 'default-collision', path: 'ar/guide', position: 2 }),
+          page({ id: 'arabic-collision', path: 'ar/guide', languageCode: 'ar', position: 2 }),
+        ],
+      },
+    });
+    const shell = await getSite('project-1');
+    expect(shell.languages.find((item) => item.code === 'ar')?.pathPrefix).toBe('~lang/ar');
+    const content = await getSitePage('project-1', 'ar/guide', 'ar');
+    expect(content.languages.find((item) => item.code === 'ar')?.pathPrefix).toBe('~lang/ar');
+    const sitemap = await getSiteSitemap('project-1');
+    expect(sitemap.body).toContain('/sites/project-1/ar/guide</loc>');
+    expect(sitemap.body).toContain('/sites/project-1/~lang/ar/ar/guide</loc>');
+  });
+
   it('serves a real 1200×630 public PNG, revalidates it and changes ETag with the published title', async () => {
     const app = new Hono().route('/sites', og);
     const response = await app.request('/sites/project-1/og/authentication.png');
@@ -165,6 +211,15 @@ describe('getSitePage lede vs excerpt', () => {
     const result = await getSitePage('project-1', 'authentication');
     expect(result.page.description).toBe('How tokens work.');
     expect(result.page.excerpt).toBe(body);
+  });
+
+  it('returns the published page image dimensions and accepts older snapshots without them', async () => {
+    const imageDimensions = { '/api/public/assets/projects/project-1/assets/a.png': { width: 1313, height: 900 } };
+    mocks.deploymentFindUnique.mockResolvedValueOnce({
+      snapshot: { ...snapshot, pages: [{ ...snapshot.pages[0], imageDimensions }, snapshot.pages[1]] },
+    });
+    expect((await getSitePage('project-1', 'authentication')).page.imageDimensions).toEqual(imageDimensions);
+    expect((await getSitePage('project-1', 'getting-started')).page.imageDimensions).toBeUndefined();
   });
 
   it('never promotes the derived excerpt to a lede when the author wrote no description', async () => {

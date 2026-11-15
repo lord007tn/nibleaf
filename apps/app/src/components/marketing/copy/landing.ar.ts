@@ -21,7 +21,7 @@ export const landingAr: LandingCopy = {
     subtitle:
       'اكتب في محرر بصري وانشر موقع توثيق سهل البحث. يسأل قرّاؤك فتصلهم إجابة بالذكاء الاصطناعي تُحيل إلى القسم الذي جاءت منه. ثم اعرف ما لم يجدوه وأكمل النقص، حتى من Claude أو ChatGPT.',
     primaryCta: { label: 'ابدأ مجانًا', href: '/sign-up' },
-    secondaryCta: { label: 'استضفه على خوادمك', href: '/self-hosting' },
+    secondaryCta: { label: 'استضفه على خوادمك', href: '/ar/self-hosting' },
     tertiaryLink: { label: 'تصفّح وثائقنا، المنشورة على Nibleaf نفسه', href: 'https://docs.nibleaf.com?lang=ar' },
     assurances: ['مجاني خلال المرحلة التجريبية، بلا بطاقة دفع', 'مفتوح المصدر بترخيص AGPL-3.0', 'العربية والإنجليزية، من اليمين إلى اليسار'],
     availabilityNote: heroAvailabilityNote('ar'),
@@ -44,7 +44,7 @@ export const landingAr: LandingCopy = {
         icon: 'server',
         title: 'يعمل على خوادمك',
         body: 'مُثبِّت Docker Compose يرشدك خطوة بخطوة ويُعدّ المنظومة كاملة على خادمك.',
-        href: '/self-hosting',
+        href: '/ar/self-hosting',
       },
       {
         icon: 'support',
@@ -237,10 +237,10 @@ export const landingAr: LandingCopy = {
         'PostgreSQL وذاكرة تخزين مؤقت متوافقة مع Redis، إضافة إلى تخزين متوافق مع S3: المرفق أو الذي تختاره',
         'خدمات اختيارية: Qdrant للمساعد، وClickHouse للتحليلات',
       ],
-      cta: { label: 'اقرأ دليل الاستضافة الذاتية', href: '/self-hosting' },
+      cta: { label: 'اقرأ دليل الاستضافة الذاتية', href: '/ar/self-hosting' },
       footnote: 'تتولى أنت الخوادم والتحديثات والنسخ الاحتياطية، وتدفع لمزوّد الذكاء الاصطناعي الذي تختاره.',
     },
-    detailsLink: { label: 'قارن الخيارين بالتفصيل', href: '/pricing' },
+    detailsLink: { label: 'قارن الخيارين بالتفصيل', href: '/ar/pricing' },
   },
   compare: {
     eyebrow: 'المقارنات',
@@ -328,6 +328,6 @@ export const landingAr: LandingCopy = {
     title: 'امنح عملاءك وثائق تُجيبهم.',
     body: 'ابدأ مجانًا على Nibleaf Cloud، أو شغّله على خوادمك.',
     primary: { label: 'ابدأ مجانًا', href: '/sign-up' },
-    secondary: { label: 'استضفه على خوادمك', href: '/self-hosting' },
+    secondary: { label: 'استضفه على خوادمك', href: '/ar/self-hosting' },
   },
 };

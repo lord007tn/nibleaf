@@ -92,3 +92,16 @@ describe('link targets keep the fragment the reader lands on (#553)', () => {
     expect(resolveLink('#top', from)).toBeNull();
   });
 });
+
+it('keeps the full content path of absolute legacy query links', () => {
+  const target = { ...page('arabic-nested', 'ar/guide'), languageCode: 'ar' };
+  const bilingual: SiteSnapshot = {
+    ...snapshot,
+    project: {
+      ...snapshot.project,
+      languages: [...snapshot.project.languages, { code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null }],
+    },
+    pages: [...snapshot.pages, target],
+  };
+  expect(createLinkTargetResolver(bilingual)('/ar/guide?lang=ar#install', from, true)).toEqual({ destination: target, fragment: 'install' });
+});

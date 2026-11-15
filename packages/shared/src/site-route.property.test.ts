@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultLanguage, isPageTranslation, type SiteSnapshot, type SnapshotPage } from './site';
+import { defaultLanguage, isPageTranslation, publicLanguages, type SiteSnapshot, type SnapshotPage } from './site';
 import {
   activeLanguageCode,
   activeVersion,
@@ -171,13 +171,31 @@ const compareOn = (seeds: number) => {
             mismatches.push(`seed ${seed} path ${path} lang ${lang} version ${version}: ${actual} vs ${expected}`);
           checks += 1;
         }
-        // The route serves the page the lookup finds (it passes the first segment as the version).
         const route = resolveSiteRoute(snapshot, path, { lang });
         if (route.kind === 'redirect') covered.add(`${route.reason} redirect`);
         const splat = path.replace(/^\/+|\/+$/g, '');
-        const expected = reference(splat, lang, splat ? splat.split('/')[0] : undefined);
+        const [first, ...rest] = splat.split('/');
+        const languages = publicLanguages(snapshot.project.languages);
+        const legacyQuery = languages.some((language) => language.code === lang);
+        const prefix = languages.find((language) => language.code === first);
+        // Generated content/version segments never equal language codes. New
+        // prefix URLs therefore select a language before this unchanged linear
+        // lookup; a known legacy query still selects the WHOLE original path.
+        // Explicit collision cases live in site-route.test.ts.
+        const content = prefix && !legacyQuery ? rest.join('/') : splat;
+        const language = prefix && !legacyQuery ? prefix.code : lang;
+        let expected = reference(content, language, content ? content.split('/')[0] : undefined);
+        // Main's guessed-prefix redirect was only reached after a page miss.
+        // The shared resolver now follows that alias to the same page, while
+        // the UI issues its canonical path redirect.
+        if (!expected && prefix && legacyQuery) {
+          const alias = rest.join('/');
+          expected = reference(alias, prefix.code, alias ? alias.split('/')[0] : undefined);
+        }
         if ((route.kind === 'page' ? route.page.id : null) !== (expected?.page.id ?? null) && mismatches.length < 5)
-          mismatches.push(`route seed ${seed} path ${path} lang ${lang}`);
+          mismatches.push(
+            `route seed ${seed} path ${path} lang ${lang}: ${route.kind === 'page' ? route.page.id : route.kind} vs ${expected?.page.id ?? null}`,
+          );
         checks += 1;
       }
     }
