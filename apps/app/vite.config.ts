@@ -59,6 +59,13 @@ const READER_ROUTE = /^(?:__root__$|\/sites(?:\/|$))/;
 const LAZY_LOADER_GROUPINGS = [['loader'], ['component'], ['errorComponent'], ['notFoundComponent']] satisfies Array<
   Array<'loader' | 'component' | 'errorComponent' | 'notFoundComponent'>
 >;
+/** The reader's routes keep their loaders eager, and their article-shaped
+ *  pending skeleton loads with the component (which renders it too) instead
+ *  of in every page's entry chunk, where its translator would bring all the
+ *  reader's chrome copy. */
+const READER_GROUPINGS = [['component', 'pendingComponent'], ['errorComponent'], ['notFoundComponent']] satisfies Array<
+  Array<'component' | 'pendingComponent' | 'errorComponent' | 'notFoundComponent'>
+>;
 
 export default defineConfig(({ mode }) => {
   const configEnv = createEnv({
@@ -210,7 +217,8 @@ export default defineConfig(({ mode }) => {
             // A route's loader normally stays in the router's eager chunk, which
             // published docs pages load too. Only the reader's own loaders need
             // to be there; every other route's loader loads with its route.
-            splitBehavior: ({ routeId }) => (READER_ROUTE.test(routeId) ? undefined : LAZY_LOADER_GROUPINGS),
+            splitBehavior: ({ routeId }) =>
+              routeId === '__root__' ? undefined : READER_ROUTE.test(routeId) ? READER_GROUPINGS : LAZY_LOADER_GROUPINGS,
           },
         },
       }),

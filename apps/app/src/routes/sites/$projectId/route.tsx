@@ -35,7 +35,7 @@ import { siteEmoji } from '@/lib/site-emoji';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite, safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
-import { readerFallbackHead, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
+import { siteIconHref } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme, siteAppearance } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
@@ -102,8 +102,12 @@ export const Route = createFileRoute('/sites/$projectId')({
       return { site: null, siteOrigin: customDomainOrigin(), unavailable: error.reason === 'not_published' ? undefined : ('missing' as const) };
     }
   },
-  headers: ({ loaderData }) => (loaderData ? siteRobotsHeaders(loaderData.site) : undefined),
-  head: ({ loaderData, match, matches }) => {
+  // The SEO helpers load with the reader, not in every page's entry chunk: a
+  // route's head() and headers() always stay in the router's eager chunk. The
+  // reader's components import site-seo too, so a published page has it already.
+  headers: async ({ loaderData }) => (loaderData ? (await import('@/lib/site-seo')).siteRobotsHeaders(loaderData.site) : undefined),
+  head: async ({ loaderData, match, matches }) => {
+    const { readerFallbackHead, siteHead, unavailableSiteHead } = await import('@/lib/site-seo');
     const lang = (match.search as { lang?: string }).lang;
     // The shell failed to load (not a 404): still give the tab a title.
     if (!loaderData) return readerFallbackHead(matches, lang);

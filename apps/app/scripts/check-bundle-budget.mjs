@@ -59,11 +59,17 @@ const profiles = {
 // auth layout's language button loads its picker dialog (cmdk and its dialog
 // helpers, ~17 KiB) on first open instead of with the page. Measured 382,003 and
 // 383,693 bytes; the margin is ~1 KiB, which also takes back #613's raise.
+// auth-sign-in 383_100 → 338_100, auth-sign-up 384_800 → 341_100: the
+// published-docs routes' head() and headers() import their SEO helpers when
+// they run, the root reads the no-flash theme script from its own small module,
+// and the reader's pending skeleton loads with its component. Product pages no
+// longer load the reader's SEO, theme, redirect and chrome-copy chunks (about
+// 44 KiB). Measured 337,095 and 340,102 bytes; the margin is ~1 KiB.
 const gzipBudgets = {
   'public-docs': 345_100,
   'public-docs-index': 345_100,
-  'auth-sign-in': 383_100,
-  'auth-sign-up': 384_800,
+  'auth-sign-in': 338_100,
+  'auth-sign-up': 341_100,
 };
 
 /** The published-docs profiles: the dashboard, auth and marketing boundaries
