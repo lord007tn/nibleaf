@@ -5,6 +5,7 @@ import {
   canonicalThemeTemplateJson,
   contrastRatio,
   inspectThemeTemplateInput,
+  mixOklab,
   previewThemeConfigChanges,
   readableAccentText,
   readableCodeAccent,
@@ -33,6 +34,22 @@ const onTint = (color: string, background: string, weight: number) => {
   const tint = luminance(rgb(background).map((value, index) => value * (1 - weight) + (rgb(color)[index] ?? 0) * weight));
   return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
 };
+
+describe('mixOklab', () => {
+  // Checked against Chromium's rendering in tests/integration/theme-contrast/oklab-mix.mjs.
+  it('mixes in OKLab as `color-mix(in oklab, <color> <share>, <other>)` does', () => {
+    expect(mixOklab('#000000', '#ffffff', 0.72)).toBe('#292929');
+    expect(mixOklab('#5546e8', '#ffffff', 0.72)).toBe('#7c81f3');
+    expect(mixOklab('#0b3d91', '#ffffff', 0.55)).toBe('#7694c5');
+  });
+
+  it('returns either end at 100% and 0%, and leaves a value that is not a hex untouched', () => {
+    expect(mixOklab('#b96a3d', '#ffffff', 1)).toBe('#b96a3d');
+    expect(mixOklab('#b96a3d', '#ffffff', 0)).toBe('#ffffff');
+    expect(mixOklab('#abc', '#ffffff', 1)).toBe('#aabbcc');
+    expect(mixOklab('var(--x)', '#ffffff', 0.5)).toBe('var(--x)');
+  });
+});
 
 describe('readableOnBackground', () => {
   it('reaches the target on a mid-tone background by trying the other side too', () => {
