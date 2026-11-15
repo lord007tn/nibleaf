@@ -49,9 +49,16 @@ Use the design-system primitives. Never hand-write a card.
 ## Forms that save with a button
 
 ```tsx
-const { form, ...draft } = useServerDraftForm({ identity: [projectId, 'general'], source, onSubmit });
-// onSubmit returns 'saved' | 'invalid' | 'failed' and calls save.succeeded(confirmed) on success.
-useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+const { form, ...draft } = useServerDraftForm({ identity: [projectId, 'general'], source, onSubmit: saveValues });
+// saveValues returns 'saved' | 'invalid' | 'failed' and calls save.succeeded(confirmed) on success.
+const formProps = useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+
+return (
+  <form noValidate {...formProps}>
+    <SaveRegionSubmit />
+    {/* fields */}
+  </form>
+);
 ```
 
 - **`source`** is the normalized editable values from the query (`toValues(query.data)`). The hook keeps the form in
@@ -65,6 +72,11 @@ useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.
 - **Wrap the screen in `SaveRegionProvider`.** The bar appears only while something is dirty. It saves with Save,
   Enter or Cmd/Ctrl+S, and an invalid save focuses the first highlighted field. It also reports to the route's
   unsaved-changes guard.
+- **Enter saves the form it was pressed in.** Spread the props `useSaveRegionForm` returns on the `<form>` and render
+  `<SaveRegionSubmit />` inside it. HTML submits a form on Enter only if it has a submit button or a single text field;
+  this hidden one is never a Tab stop or announced. Plain Enter in an editable single-line field then saves that form
+  only, if it is dirty, with the bar's status and focus handling. Enter during IME composition, with a modifier, or on a
+  radio or checkbox does not save. Textareas keep their newline. Save and Cmd/Ctrl+S still save every dirty form.
 - **Fields:** wrap them in `FormField` with `validators={validateOnBlurThenChange(check)}`. Errors show after the
   field is left or the form is submitted, never while typing in a fresh field, and they clear as the value is fixed.
 - **Server refusals that belong to a field** (an address already taken) go on that field through `withServerError`.
