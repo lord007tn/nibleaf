@@ -57,6 +57,16 @@ const hoverMixOklab = (a: number[], b: number[], share: number) => {
   ].map((value) => Math.min(255, Math.max(0, fromLinear(value))));
 };
 
+/** The drawer's own accent rule, which projectThemeCss emits (scoped to
+ * `[data-site-drawer]`) when a mode's canvas shade doesn't read on the raised
+ * surface (#726); undefined when the drawer keeps the page's accent. */
+const DARK_DRAWER = ':root.dark [data-site-drawer],.nibleaf-site-chrome.dark [data-site-drawer]{';
+const drawerRule = (css: string, mode: 'light' | 'dark') => {
+  const opener = mode === 'light' ? '}[data-site-drawer]{' : DARK_DRAWER;
+  const start = css.indexOf(opener);
+  return start < 0 ? undefined : css.slice(start + opener.length, css.indexOf('}', start + opener.length));
+};
+
 // #731: hover states in the mobile nav drawer, which sits on the popover surface.
 // The classes are read from the components, so these cases follow what ships.
 describe('drawer hover states (#731)', () => {
@@ -80,13 +90,15 @@ describe('drawer hover states (#731)', () => {
         (['light', 'dark'] as const).map((mode) => {
           const config = { theme: { preset }, ...(brand ? { styling: { primaryColor: brand } } : {}) } as never;
           const variables = projectThemeVariables(config, mode) as Record<string, string>;
+          // Inside the drawer, its scoped shade replaces the page's accent when the theme emits one.
+          const rule = drawerRule(projectThemeCss(config), mode);
           return {
             name: `${preset}${brand ? ` + ${brand}` : ''} ${mode}`,
             surface: resolveProjectTheme(config).colors[mode].surfaceRaised,
             muted: variables['--muted'] as string,
             foreground: variables['--foreground'] as string,
-            accent: hoverRgb(variables['--primary'] as string),
-            onAccent: variables['--primary-foreground'] as string,
+            accent: hoverRgb(rule?.match(/--primary:(#[0-9a-f]{6})/)?.[1] ?? (variables['--primary'] as string)),
+            onAccent: rule?.match(/--primary-foreground:(#[0-9a-f]{6})/)?.[1] ?? (variables['--primary-foreground'] as string),
           };
         }),
       ),
@@ -118,6 +130,17 @@ describe('drawer hover states (#731)', () => {
   const ctaClasses = drawerSource.match(/className="[^"]*bg-primary [^"]*text-primary-foreground[^"]*"/)?.[0] ?? '';
   const colourOf = (palette: DrawerPalette, token: string) =>
     token === 'foreground' ? hoverRgb(palette.foreground) : token === 'primary' ? palette.accent : undefined;
+
+  it("models the drawer's own accent where the theme scopes one, not the page's", () => {
+    for (const preset of ['harbor', 'manuscript', 'signal'] as const) {
+      const config = { theme: { preset }, styling: { primaryColor: '#b96a3d' } } as never;
+      const shade = drawerRule(projectThemeCss(config), 'dark')?.match(/--primary:(#[0-9a-f]{6})/)?.[1] as string;
+      const palette = palettes.find((candidate) => candidate.name === `${preset} + #b96a3d dark`);
+      expect(shade).toMatch(/^#[0-9a-f]{6}$/);
+      expect(shade).not.toBe((projectThemeVariables(config, 'dark') as Record<string, string>)['--primary']);
+      expect(palette?.accent).toEqual(hoverRgb(shade));
+    }
+  });
 
   it('reads the hover classes it models', () => {
     expect(rowClasses).toMatch(/hover:bg-muted\/\d+/);
@@ -310,12 +333,6 @@ describe('the active row in the mobile drawer (#726)', () => {
   );
   const configFor = ({ preset, brand }: { preset: string; brand?: string }) =>
     ({ theme: { preset }, ...(brand ? { styling: { primaryColor: brand } } : {}) }) as never;
-  const DARK_DRAWER = ':root.dark [data-site-drawer],.nibleaf-site-chrome.dark [data-site-drawer]{';
-  const drawerRule = (css: string, mode: 'light' | 'dark') => {
-    const opener = mode === 'light' ? '}[data-site-drawer]{' : DARK_DRAWER;
-    const start = css.indexOf(opener);
-    return start < 0 ? undefined : css.slice(start + opener.length, css.indexOf('}', start + opener.length));
-  };
   /** What the drawer draws: its own shade when the theme scopes one, else the page's accent. */
   const drawerColors = (theme: (typeof cases)[number]) => {
     const config = configFor(theme);
@@ -380,4 +397,127 @@ describe('the active row in the mobile drawer (#726)', () => {
     expect(onStackedTint(dark, '#171717', 0.1, 1)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio('#171717', dark)).toBeGreaterThanOrEqual(4.5);
   });
+});
+
+// The reader's other primary buttons with a label: the header's call to action
+// and the not-found page's search button. Their hover used to fade fill and label
+// together (`hover:opacity-90`), which fell below AA with #b96a3d. The classes are
+// read from the components, so these cases follow what ships.
+describe('call-to-action hover in the header and on the not-found page', () => {
+  interface PagePalette {
+    name: string;
+    header: string;
+    page: string;
+    foreground: string;
+    accent: number[];
+    onAccent: string;
+  }
+  const designSystem = (mode: 'light' | 'dark') => {
+    const css = read('../../../../../packages/design-system/src/styles/globals.css');
+    const block = css.slice(css.indexOf(mode === 'light' ? ':root {' : '.dark {'));
+    const token = (name: string) => block.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`))?.[1] as string;
+    return { canvas: token('background'), foreground: token('foreground') };
+  };
+  const palettes: PagePalette[] = [
+    ...(['harbor', 'manuscript', 'signal'] as const).flatMap((preset) =>
+      [undefined, '#b96a3d'].flatMap((brand) =>
+        (['light', 'dark'] as const).map((mode) => {
+          const config = { theme: { preset }, ...(brand ? { styling: { primaryColor: brand } } : {}) } as never;
+          const variables = projectThemeVariables(config, mode) as Record<string, string>;
+          const colors = resolveProjectTheme(config).colors[mode];
+          return {
+            name: `${preset}${brand ? ` + ${brand}` : ''} ${mode}`,
+            // Signal's toolbar sits on the surface; the other headers on the canvas (styles.css).
+            header: preset === 'signal' ? colors.surface : colors.canvas,
+            page: colors.canvas,
+            foreground: variables['--foreground'] as string,
+            accent: hoverRgb(variables['--primary'] as string),
+            onAccent: variables['--primary-foreground'] as string,
+          };
+        }),
+      ),
+    ),
+    // Pre-v1 sites draw on the design system's canvas with the brand as accent.
+    ...['#5546e8', '#b96a3d'].flatMap((brand) => {
+      const css = projectThemeCss({ styling: { primaryColor: brand } } as never);
+      const light = css.match(/:root,\.nibleaf-site-chrome\{[^}]*--primary:(#[0-9a-f]{6});--primary-foreground:(#[0-9a-f]{6})/);
+      const dark = css.match(
+        /:root\.dark,[^{]*\{[^}]*--primary:color-mix\(in oklab,(#[0-9a-f]{6}) (\d+)%,white\);--primary-foreground:(#[0-9a-f]{6})/,
+      );
+      const [lightDs, darkDs] = [designSystem('light'), designSystem('dark')];
+      return [
+        {
+          name: `legacy ${brand} light`,
+          header: lightDs.canvas,
+          page: lightDs.canvas,
+          foreground: lightDs.foreground,
+          accent: hoverRgb(light?.[1] as string),
+          onAccent: light?.[2] as string,
+        },
+        {
+          name: `legacy ${brand} dark`,
+          header: darkDs.canvas,
+          page: darkDs.canvas,
+          foreground: darkDs.foreground,
+          accent: hoverMixOklab(hoverRgb(dark?.[1] as string), [255, 255, 255], Number(dark?.[2]) / 100),
+          onAccent: dark?.[3] as string,
+        },
+      ];
+    }),
+  ];
+
+  const routeSource = read('../../routes/sites/$projectId/route.tsx');
+  const headerStart = routeSource.indexOf('data-analytics-placement="navbar"');
+  const buttons = [
+    {
+      name: 'header',
+      classes: routeSource.slice(headerStart).match(/className="([^"]*)"/)?.[1] ?? '',
+      surface: (palette: PagePalette) => palette.header,
+    },
+    {
+      name: 'not-found',
+      classes: read('site-not-found.tsx').match(/className="([^"]*bg-primary [^"]*text-primary-foreground[^"]*)"/)?.[1] ?? '',
+      surface: (palette: PagePalette) => palette.page,
+    },
+  ];
+
+  it('reads both buttons, which no longer fade their label with their fill', () => {
+    for (const button of buttons) {
+      expect(button.classes, button.name).toContain('bg-primary');
+      expect(button.classes, button.name).toContain('text-primary-foreground');
+      expect(button.classes, button.name).not.toMatch(/hover:opacity-/);
+      // Only the fill transitions: transition-colors would also fade the focus outline in.
+      expect(button.classes, button.name).toContain('transition-[background-color]');
+    }
+  });
+
+  it.each(buttons.flatMap((button) => palettes.map((palette) => ({ button, palette, label: `${button.name}: ${palette.name}` }))))(
+    'keeps the label at AA on hover, with a visible change: $label',
+    ({ button, palette }) => {
+      // The label sits on the far side of the foreground (light on a dark accent,
+      // dark on a light one), so a fill moved towards the foreground leaves it.
+      expect(contrastRatio(palette.onAccent, palette.foreground)).toBeGreaterThanOrEqual(4.5);
+      const label = hoverRgb(palette.onAccent);
+      const surface = hoverRgb(button.surface(palette));
+      const resting = hoverContrast(label, palette.accent);
+      const opacity = button.classes.match(/hover:opacity-(\d+)/)?.[1];
+      const mixed = button.classes.match(/hover:bg-\[color-mix\(in_oklab,var\(--primary\)_(\d+)%,var\(--foreground\)\)\]/)?.[1];
+      let fill: number[];
+      let hovered: number;
+      if (opacity) {
+        // The whole button fades over what it sits on: label and fill alike.
+        const alpha = Number(opacity) / 100;
+        fill = hoverOver(surface, palette.accent, alpha);
+        hovered = hoverContrast(hoverOver(surface, label, alpha), fill);
+      } else {
+        expect(mixed).toBeDefined();
+        fill = hoverMixOklab(palette.accent, hoverRgb(palette.foreground), Number(mixed) / 100);
+        hovered = hoverContrast(label, fill);
+      }
+      expect(hovered).toBeGreaterThanOrEqual(4.5);
+      expect(hovered).toBeGreaterThanOrEqual(resting);
+      // A visible hover: the fill steps at least about 1.1:1 from its resting colour.
+      expect(hoverContrast(fill, palette.accent)).toBeGreaterThan(1.1);
+    },
+  );
 });
