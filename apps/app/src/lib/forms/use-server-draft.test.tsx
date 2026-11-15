@@ -187,3 +187,260 @@ describe('useServerDraftForm: conflicts', () => {
     expect(api().conflicts).toEqual([]);
   });
 });
+
+describe('useServerDraftForm: the save’s own refetch', () => {
+  // Some mutation hooks resolve only after their own refetch, so the sent
+  // values reach the form while the save is still in flight.
+  const old = { name: '/old.svg', description: 'd1' };
+
+  it('keeps a value typed back to the old one during the save', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await set('name', '/old.svg');
+    await render('site', { name: '/sent.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/old.svg');
+    expect(api().conflicts).toEqual([]);
+    await succeed(0, { name: '/sent.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/old.svg');
+    expect(api().baseline.name).toBe('/sent.svg');
+    expect(api().isDirty).toBe(true);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('keeps a newer value typed during the save, without reporting its own save as a conflict', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await set('name', '/newer.svg');
+    await render('site', { name: '/sent.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/newer.svg');
+    expect(api().conflicts).toEqual([]);
+    await succeed(0, { name: '/sent.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/newer.svg');
+    expect(api().baseline.name).toBe('/sent.svg');
+    expect(api().isDirty).toBe(true);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('keeps the sent value when a refetch from before the save lands during it', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    // A focus refetch that left before the save reached the server, carrying
+    // someone else's description.
+    await render('site', { name: '/old.svg', description: 'theirs' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'theirs' });
+    expect(api().conflicts).toEqual([]);
+    await succeed(0, { name: '/sent.svg', description: 'theirs' });
+    expect(api().form.state.values.name).toBe('/sent.svg');
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('takes someone else’s change to a field the person did not touch', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await render('site', { name: '/sent.svg', description: 'theirs' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'theirs' });
+    expect(api().conflicts).toEqual([]);
+    expect(api().isDirty).toBe(false);
+    // The server kept both changes.
+    await succeed(0, { name: '/sent.svg', description: 'theirs' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'theirs' });
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('reports someone else’s change to a field the person sent as a conflict', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await render('site', { name: '/theirs.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/sent.svg');
+    expect(api().conflicts).toEqual(['name']);
+    // Their save landed after ours.
+    await succeed(0, { name: '/sent.svg', description: 'd1' });
+    expect(api().isSaving).toBe(false);
+  });
+
+  it('reports someone else’s change to a field the person edited during the save as a conflict', async () => {
+    const { render, set, submit, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await set('description', 'mine');
+    await render('site', { name: '/sent.svg', description: 'theirs' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'mine' });
+    expect(api().conflicts).toEqual(['description']);
+  });
+
+  /** Submits a new name, then lands a refetch with someone else's description before the save's own refetch. */
+  async function twoRefetches() {
+    const draft = await mount('site', old);
+    await draft.set('name', '/sent.svg');
+    await draft.submit();
+    await draft.render('site', { name: '/old.svg', description: 'd2' });
+    expect(draft.api().form.state.values).toEqual({ name: '/sent.svg', description: 'd2' });
+    await draft.render('site', { name: '/sent.svg', description: 'd3' });
+    return draft;
+  }
+
+  it('takes each later refetch for a field the person did not send', async () => {
+    const { api } = await twoRefetches();
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().conflicts).toEqual([]);
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('is clean after a save that succeeds following two refetches', async () => {
+    const { succeed, api } = await twoRefetches();
+    await succeed(0, { name: '/sent.svg', description: 'd3' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().baseline).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().isDirty).toBe(false);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('keeps the latest server values after a save that fails following two refetches', async () => {
+    const { saves, api } = await twoRefetches();
+    await act(async () => {
+      saves[0]?.save.failed();
+      saves[0]?.finish('failed');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(api().isSaving).toBe(false);
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().baseline).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().conflicts).toEqual([]);
+  });
+
+  /** The save's echo, then someone else's change, then another. */
+  async function echoThenTwoChanges() {
+    const draft = await mount('site', old);
+    await draft.set('name', '/sent.svg');
+    await draft.submit();
+    await draft.render('site', { name: '/sent.svg', description: 'd1' });
+    await draft.render('site', { name: '/theirs.svg', description: 'd1' });
+    expect(draft.api().form.state.values.name).toBe('/theirs.svg');
+    expect(draft.api().conflicts).toEqual([]);
+    await draft.render('site', { name: '/later.svg', description: 'd1' });
+    expect(draft.api().form.state.values.name).toBe('/later.svg');
+    expect(draft.api().conflicts).toEqual([]);
+    return draft;
+  }
+
+  it('takes each change someone else makes to a sent field after the save’s echo', async () => {
+    const { api } = await echoThenTwoChanges();
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('is clean after a save that succeeds following its echo and two later changes', async () => {
+    const { succeed, api } = await echoThenTwoChanges();
+    await succeed(0, { name: '/later.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/later.svg');
+    expect(api().isDirty).toBe(false);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('keeps the latest server value after a save that fails following its echo and two later changes', async () => {
+    const { saves, api } = await echoThenTwoChanges();
+    await act(async () => {
+      saves[0]?.save.failed();
+      saves[0]?.finish('failed');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(api().form.state.values.name).toBe('/later.svg');
+    expect(api().isDirty).toBe(false);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('keeps the edits and the server’s values after a failed save with a refetch', async () => {
+    const { render, saves, set, submit, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await set('name', '/newer.svg');
+    // Someone else changed the description; the save itself failed.
+    await render('site', { name: '/old.svg', description: 'theirs' });
+    await act(async () => {
+      saves[0]?.save.failed();
+      saves[0]?.finish('failed');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(api().isSaving).toBe(false);
+    expect(api().form.state.values).toEqual({ name: '/newer.svg', description: 'theirs' });
+    expect(api().baseline).toEqual({ name: '/old.svg', description: 'theirs' });
+    expect(api().isDirty).toBe(true);
+    expect(api().conflicts).toEqual([]);
+  });
+});
+
+describe('useServerDraftForm: refetch sequences during a save', () => {
+  // One field, `name`, across up to three refetches. O is the value before the
+  // save, S what it sent, T and U someone else's values, E a newer edit.
+  const O = '/o';
+  const S = '/s';
+  const T = '/t';
+  const U = '/u';
+  const E = '/e';
+  type Person = 'untouched' | 'sent' | 'typed back' | 'edited';
+  type End = { name: string; conflict: boolean; dirty: boolean };
+  type Row = { person: Person; server: string[]; pending: End; confirmed: string; success: End };
+  const end = (name: string, conflict: boolean, dirty: boolean): End => ({ name, conflict, dirty });
+  const rows: Row[] = [
+    { person: 'untouched', server: [S, T, U], pending: end(U, false, false), confirmed: U, success: end(U, false, false) },
+    { person: 'untouched', server: [O, S, T], pending: end(T, false, false), confirmed: T, success: end(T, false, false) },
+    { person: 'untouched', server: [T, S, U], pending: end(U, false, false), confirmed: U, success: end(U, false, false) },
+    { person: 'sent', server: [S, T, U], pending: end(U, false, false), confirmed: U, success: end(U, false, false) },
+    { person: 'sent', server: [O, S, T], pending: end(T, false, false), confirmed: T, success: end(T, false, false) },
+    { person: 'sent', server: [T, S, U], pending: end(U, false, false), confirmed: U, success: end(U, false, false) },
+    { person: 'sent', server: [T, U], pending: end(S, true, true), confirmed: U, success: end(U, false, false) },
+    { person: 'sent', server: [O], pending: end(S, false, true), confirmed: S, success: end(S, false, false) },
+    { person: 'typed back', server: [S], pending: end(O, false, true), confirmed: S, success: end(O, false, true) },
+    { person: 'typed back', server: [S, T, U], pending: end(O, true, true), confirmed: U, success: end(O, true, true) },
+    { person: 'typed back', server: [O, S, T], pending: end(O, true, true), confirmed: T, success: end(O, true, true) },
+    { person: 'typed back', server: [T, S, U], pending: end(O, true, true), confirmed: U, success: end(O, true, true) },
+    { person: 'edited', server: [S], pending: end(E, false, true), confirmed: S, success: end(E, false, true) },
+    { person: 'edited', server: [S, T, U], pending: end(E, true, true), confirmed: U, success: end(E, true, true) },
+    { person: 'edited', server: [T, S, U], pending: end(E, true, true), confirmed: U, success: end(E, true, true) },
+  ];
+
+  /** Runs a row up to its last refetch, leaving the save pending. */
+  async function play({ person, server }: Row) {
+    const draft = await mount('site', { name: O, description: 'd1' });
+    // An untouched name still needs a save in flight: send the description instead.
+    await draft.set(person === 'untouched' ? 'description' : 'name', person === 'untouched' ? 'mine' : S);
+    await draft.submit();
+    if (person === 'typed back') await draft.set('name', O);
+    if (person === 'edited') await draft.set('name', E);
+    const description = person === 'untouched' ? 'mine' : 'd1';
+    for (const name of server) await draft.render('site', { name, description });
+    return { ...draft, description };
+  }
+  const state = (api: Api): End => ({
+    name: api.form.state.values.name,
+    conflict: api.conflicts.includes('name'),
+    dirty: api.form.state.values.name !== api.baseline.name,
+  });
+
+  for (const row of rows) {
+    const label = `${row.person}, server ${row.server.join(' → ')}`;
+    it(`${label}: while pending`, async () => {
+      const { api } = await play(row);
+      expect(state(api())).toEqual(row.pending);
+    });
+    it(`${label}: after success`, async () => {
+      const { succeed, api, description } = await play(row);
+      await succeed(0, { name: row.confirmed, description });
+      expect(state(api())).toEqual(row.success);
+    });
+    it(`${label}: after failure, as it was while pending`, async () => {
+      const { saves, api } = await play(row);
+      await act(async () => {
+        saves[0]?.save.failed();
+        saves[0]?.finish('failed');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(api().isSaving).toBe(false);
+      expect(state(api())).toEqual(row.pending);
+    });
+  }
+});
