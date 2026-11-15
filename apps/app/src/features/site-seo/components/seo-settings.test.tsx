@@ -269,20 +269,21 @@ describe('SeoSettings: the project scope', () => {
 describe("SeoSettings: a save's own refetch, which the mutation awaits before it resolves", () => {
   /**
    * Saves `typed` for the title, makes `newer` edits while the save runs, then
-   * delivers the save's own refetch (the stored, trimmed value) before the
-   * mutation resolves, as `useUpdateProjectConfig` does.
+   * delivers the save's own refetch before the mutation resolves, as
+   * `useUpdateProjectConfig` does. The server holds `stored`: by default the
+   * trimmed value the save sent, or someone else's value written meanwhile.
    */
-  const saveThenEditThenRefetch = async (typed: string, newer: (() => Promise<unknown>) | null) => {
+  const saveThenEditThenRefetch = async (typed: string, newer: (() => Promise<unknown>) | null, stored = typed.trim()) => {
     await render(site({ ...SAVED, metaTitle: 'Old' }));
     const request = deferred<Project>();
     mocks.updateProject.mockReturnValueOnce(request.promise);
     await type(input('metaTitle'), typed);
     await save();
     await newer?.();
-    const stored = site({ ...SAVED, metaTitle: typed.trim() });
-    await render(stored);
+    const refetched = site({ ...SAVED, metaTitle: stored });
+    await render(refetched);
     const conflictBeforeResolve = conflict();
-    await act(async () => request.resolve(stored));
+    await act(async () => request.resolve(refetched));
     return conflictBeforeResolve;
   };
 
@@ -310,21 +311,54 @@ describe("SeoSettings: a save's own refetch, which the mutation awaits before it
     expect(region()).toBeNull();
   });
 
-  it('a trimmed title echoes and the form settles clean on the stored value', async () => {
-    await saveThenEditThenRefetch('  Sent  ', null);
+  it('a trimmed title with no newer edit echoes and ends clean on the stored value', async () => {
+    expect(await saveThenEditThenRefetch('  Sent  ', null)).toBe(false);
+    expect(mocks.updateProject).toHaveBeenCalledWith({ config: { seo: { ...SAVED, metaTitle: 'Sent', allowIndex: true } } });
     expect(input('metaTitle').value).toBe('Sent');
+    expect(conflict()).toBe(false);
+    expect(region()).toBeNull();
+    expect(dirty.size).toBe(0);
+  });
+
+  it('a trimmed title with a newer edit during the save: no false conflict, the edit survives and saves next', async () => {
+    expect(await saveThenEditThenRefetch('  Sent  ', () => type(input('metaTitle'), 'Newer'))).toBe(false);
+    expect(input('metaTitle').value).toBe('Newer');
+    expect(conflict()).toBe(false);
+    expect(region()).not.toBeNull();
+    mocks.updateProject.mockImplementationOnce(async (request) => confirmed(request));
+    await save();
+    expect(mocks.updateProject).toHaveBeenLastCalledWith({ config: { seo: { ...SAVED, metaTitle: 'Newer', allowIndex: true } } });
+    expect(region()).toBeNull();
+  });
+
+  it("someone else's title written during a trimmed save still conflicts; Use theirs takes it", async () => {
+    expect(await saveThenEditThenRefetch('  Sent  ', () => type(input('metaTitle'), 'Newer'), 'Theirs')).toBe(true);
+    expect(input('metaTitle').value).toBe('Newer');
+    expect(conflict()).toBe(true);
+    await click(buttonNamed('forms.useTheirs'));
+    expect(input('metaTitle').value).toBe('Theirs');
     expect(conflict()).toBe(false);
     expect(region()).toBeNull();
   });
 
-  // Expected to fail until useServerDraftForm takes `toSent`: the hook records
-  // the raw '  Sent  ' as sent, so the stored 'Sent' is not recognised as the
-  // save's own echo and is reported as someone else's change. "Use theirs"
-  // would then replace the newer edit with the save's own value.
-  it.fails('a trimmed title with a newer edit during the save: no false conflict, the edit survives', async () => {
-    expect(await saveThenEditThenRefetch('  Sent  ', () => type(input('metaTitle'), 'Newer'))).toBe(false);
-    expect(input('metaTitle').value).toBe('Newer');
+  it('a language scope judges its trimmed echo by what it sent too', async () => {
+    mocks.languages = [ENGLISH, arabic()];
+    await render(site());
+    await chooseScope('العربية');
+    const request = deferred<Language>();
+    mocks.updateLanguage.mockReturnValueOnce(request.promise);
+    await type(input('metaTitle'), '  توثيق  ');
+    await save();
+    await type(input('metaTitle'), 'توثيق أحدث');
+    const stored = { metaTitle: 'توثيق', metaDescription: '', socialImage: '', allowIndex: true };
+    mocks.languages = [ENGLISH, arabic(stored)];
+    await render(site());
     expect(conflict()).toBe(false);
+    await act(async () => request.resolve(arabic(stored)));
+    expect(mocks.updateLanguage).toHaveBeenCalledWith({ id: 'ar', body: { config: { seo: stored } } });
+    expect(input('metaTitle').value).toBe('توثيق أحدث');
+    expect(conflict()).toBe(false);
+    expect(region()).not.toBeNull();
   });
 });
 

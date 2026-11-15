@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { languageSeoConfig, projectSeoPatch, seoPlaceholders, seoValues, uploadResultAction } from './seo';
+import { languageSeoConfig, projectSeoPatch, sentSeoValues, seoPlaceholders, seoValues, uploadResultAction } from './seo';
 
 const BLANK = { metaTitle: '', metaDescription: '', socialImage: '', allowIndex: true };
 
@@ -49,6 +49,20 @@ describe('languageSeoConfig', () => {
     ['indexing off', { allowIndex: false }, { allowIndex: false }],
   ])('overrides with %s, sending all four values', (_, change, stored) => {
     expect(languageSeoConfig({ ...BLANK, ...change })).toStrictEqual({ seo: { ...BLANK, ...stored } });
+  });
+});
+
+describe('sentSeoValues', () => {
+  const draft = { metaTitle: '  Docs ', metaDescription: ' \t ', socialImage: ' /og/a.png ', allowIndex: false };
+
+  it.each(['project', 'language'] as const)('is what the %s save stores, read back as the form reads it', (scope) => {
+    const stored = scope === 'project' ? projectSeoPatch(draft) : languageSeoConfig(draft)?.seo;
+    expect(sentSeoValues(scope, draft)).toStrictEqual(seoValues(stored));
+    expect(sentSeoValues(scope, draft)).toStrictEqual({ metaTitle: 'Docs', metaDescription: '', socialImage: '/og/a.png', allowIndex: false });
+  });
+
+  it('reads a language cleared to config: null as blank text that allows indexing', () => {
+    expect(sentSeoValues('language', { ...BLANK, metaTitle: '   ' })).toStrictEqual(BLANK);
   });
 });
 

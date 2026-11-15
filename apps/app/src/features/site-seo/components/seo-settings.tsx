@@ -21,7 +21,7 @@ import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useSaveSeo, useSeoLanguages, useUploadSocialImage } from '../api/hooks';
-import { PROJECT_SCOPE, type SeoValues, seoPlaceholders, seoValues, type UploadRequest, uploadResultAction } from '../model/seo';
+import { PROJECT_SCOPE, type SeoValues, sentSeoValues, seoPlaceholders, seoValues, type UploadRequest, uploadResultAction } from '../model/seo';
 
 /** The `dir` for text written in a content language; the project scope lets the text decide. */
 const dirOf = (language: Pick<Language, 'direction'> | undefined) => (language ? (language.direction === 'RTL' ? 'rtl' : 'ltr') : 'auto');
@@ -53,10 +53,13 @@ function SeoForm({ project }: { project: Project }) {
   const languageSeo = activeLanguage?.config?.seo;
   const source = useMemo(() => seoValues(activeLanguage ? languageSeo : projectSeo), [activeLanguage, languageSeo, projectSeo]);
   const identity = [project.id, 'seo', activeLanguage?.id ?? PROJECT_SCOPE];
+  const scopeKind = activeLanguage ? 'language' : 'project';
 
   const { form, ...draft } = useServerDraftForm<SeoValues>({
     identity,
     source,
+    // The save sends trimmed text; judge its echo by that, not by the raw draft.
+    toSent: (value) => sentSeoValues(scopeKind, value),
     onSubmit: async (value, save) => {
       try {
         save.succeeded(activeLanguage ? await saveLanguage(activeLanguage.id, value) : await saveProject(value));
@@ -99,7 +102,7 @@ function SeoForm({ project }: { project: Project }) {
   const unsettled = draft.isDirty || isSaving;
   useLayoutEffect(() => setDirty(unsettled), [setDirty, unsettled]);
 
-  const placeholders = seoPlaceholders(activeLanguage ? 'language' : 'project', projectSeo, project);
+  const placeholders = seoPlaceholders(scopeKind, projectSeo, project);
   const textDir = dirOf(activeLanguage);
 
   return (

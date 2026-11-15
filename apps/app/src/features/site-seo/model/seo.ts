@@ -63,6 +63,16 @@ export function languageSeoConfig(values: SeoValues): { seo: Required<SeoConfig>
 }
 
 /**
+ * The values a save of `values` stores in `scope`, read back as the form reads
+ * them: the save's own payload (`projectSeoPatch` or `languageSeoConfig`)
+ * through `seoValues`. The draft hook records this as what the save sent, so
+ * the server echoing the trimmed text is recognised as the save's own echo.
+ */
+export function sentSeoValues(scope: 'project' | 'language', values: SeoValues): SeoValues {
+  return seoValues(scope === 'project' ? projectSeoPatch(values) : languageSeoConfig(values)?.seo);
+}
+
+/**
  * What an empty text field shows, so the form reads complete. The project
  * scope falls back to the site's name and description; a language scope shows
  * what it inherits: the project's SEO text, else the site's name and
