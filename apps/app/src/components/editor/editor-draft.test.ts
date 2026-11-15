@@ -8,6 +8,7 @@ import {
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
+  shouldSaveDraft,
   snapshotOf,
 } from './editor-draft';
 
@@ -142,6 +143,32 @@ describe('shouldFlushDraft', () => {
     expect(shouldFlushDraft(cleanState(pageA), pageA, false, true)).toBe(true);
     expect(shouldFlushDraft(cleanState(pageA), pageB, true, true)).toBe(false);
     expect(shouldFlushDraft({ synced: null, draft: { title: '', content: '' } }, newPage, true, true)).toBe(false);
+  });
+});
+
+describe('shouldSaveDraft (#728)', () => {
+  const inFlight = {
+    ...snapshotOf(pageA),
+    content: `${pageA.content}
+- three`,
+  };
+
+  it('saves a draft back at the stored text while a write of other text is pending', () => {
+    expect(shouldSaveDraft(cleanState(pageA), pageA, inFlight)).toBe(true);
+    expect(shouldSaveDraft(cleanState(pageA), pageA, undefined)).toBe(false);
+  });
+
+  it('saves nothing more when the draft is what the pending write stores', () => {
+    const typed: DraftState = { synced: snapshotOf(pageA), draft: { title: inFlight.title, content: inFlight.content } };
+    expect(shouldAutosave(typed, pageA)).toBe(true);
+    expect(shouldSaveDraft(typed, pageA, inFlight)).toBe(true);
+    expect(shouldSaveDraft({ ...typed, synced: { ...inFlight } }, pageA, inFlight)).toBe(false);
+  });
+
+  it('ignores a pending write of another page, and never saves a conflicted draft', () => {
+    expect(shouldSaveDraft(cleanState(pageA), pageA, { ...pageB })).toBe(false);
+    expect(shouldSaveDraft({ ...cleanState(pageA), conflicted: true }, pageA, inFlight)).toBe(false);
+    expect(shouldSaveDraft(cleanState(pageA), pageB, inFlight)).toBe(false);
   });
 });
 

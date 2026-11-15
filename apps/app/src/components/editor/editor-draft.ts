@@ -108,6 +108,23 @@ export function shouldAutosave(state: DraftState, page: Pick<ServerSnapshot, 'id
   return true;
 }
 
+/**
+ * Whether the draft must be saved: it differs from the server copy it mirrors,
+ * or from `pending`, the last write still pending, which the server holds once it
+ * lands. Undoing back to the stored text while a write is in flight is then
+ * still saved after it (#728).
+ */
+export function shouldSaveDraft(
+  state: DraftState,
+  page: Pick<ServerSnapshot, 'id'> | null | undefined,
+  pending: Pick<ServerSnapshot, 'id' | 'title' | 'content'> | undefined,
+): boolean {
+  if (shouldAutosave(state, page)) return true;
+  const { synced } = state;
+  if (!pending || !synced || pending.id !== synced.id) return false;
+  return shouldAutosave({ ...state, synced: { ...synced, title: pending.title, content: pending.content } }, page);
+}
+
 export const isEditorRevisionConflict = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:revision_conflict';
 
