@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture: the real Themes section (before: main; after: this branch) with the real design system, EN/AR catalogs, project query and mutations, the theme import and export mutations, ConfirmProvider and Sonner, in an editor-canvas frame; a fictional site and template; the project GET, PATCH (merged like the API) and template endpoints (on the shared theme functions) answered by interception; not the signed-in dashboard or production",
-  "baseline": "e904f936e7ff4d7d630544718cfea03b478531a6",
-  "head": "5bb25664472e0242d6681a5a0495f9e8dbe77a69",
+  "baseline": "df4e66581544b727c096da3b845673216b84ddd7",
+  "head": "74f3c5fc1a7589c94a6febc6cf9b0e946a6ef8ac",
   "uncommitted": [],
   "swappedForBefore": [
     "apps/app/src/components/project-settings/theme-section.tsx"
@@ -316,6 +316,7 @@
           "body": { "mode": "merge", "apply": true }
         },
         { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
         { "call": "GET /api/app/projects/site-1" }
       ],
       "pageErrors": [],
@@ -449,7 +450,7 @@
             "Could not save"
           ],
           "saveBar": true,
-          "status": "Saved",
+          "status": "",
           "overflow": false
         },
         {
@@ -478,7 +479,9 @@
           "dialog": null,
           "importResult": "preview",
           "undoEnabled": false,
-          "toasts": [],
+          "toasts": [
+            "Draft theme saved. Publish when you are ready for readers to receive it."
+          ],
           "saveBar": false,
           "status": "",
           "overflow": false
