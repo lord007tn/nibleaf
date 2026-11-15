@@ -285,7 +285,7 @@ async function typeSlowly(count: number, every: number) {
  *  (an edited paragraph is saved on one line; the others keep their breaks). */
 const FIRST_PARAGRAPH =
   'Every paragraph on this page is wrapped by hand, the way most Markdown in a Git\nrepository is. Opening it must not change a byte.';
-const withTyped = (typed: string) => HARD_WRAPPED_EN.replace(FIRST_PARAGRAPH, `${FIRST_PARAGRAPH.replace('\n', ' ')}${typed}`);
+const withTyped = (typed: string) => HARD_WRAPPED_EN.replace(FIRST_PARAGRAPH, `${FIRST_PARAGRAPH.replaceAll('\n', ' ')}${typed}`);
 
 /** Saves as [ms since `start`, characters typed], for comparing schedules. */
 const saves = (start: number) => server.patches.map((patch) => [patch.at - start, (patch.content.match(/a byte\.(x*)/)?.[1] ?? '').length] as const);
