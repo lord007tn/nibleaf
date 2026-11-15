@@ -717,6 +717,70 @@ describe('updateProject: saving SEO from the dashboard form', () => {
   });
 });
 
+// The dashboard's Theme Studio sends `config.theme` whole when the authored
+// theme changed and `config.styling: { theme }` when the appearance changed,
+// never Styling's `primaryColor` or `radius` (features/site-theme).
+describe('updateProject: saving the theme and appearance from Theme Studio', () => {
+  const STYLING = { primaryColor: '#5546e8', radius: 'pill', theme: 'dark' };
+  const THEME = {
+    version: 1,
+    preset: 'signal',
+    metadata: { name: 'Handbook', description: 'Our theme', author: 'Docs team' },
+    colors: { light: { accent: '#2f4ad0' } },
+    layout: { shell: 'console' },
+  };
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, typography: { bodyFont: 'Inter' }, redirects: [{ from: '/old', to: '/new' }] };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), styling: { ...STYLING }, theme: structuredClone(THEME) };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (config: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config }))));
+
+  it('an appearance-only save keeps Styling’s colour and radius and the authored theme', async () => {
+    const readback = await save({ styling: { theme: 'system' } });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: { ...STYLING, theme: 'system' }, theme: THEME });
+    expect(readback).toMatchObject({ config: { styling: { ...STYLING, theme: 'system' } } });
+  });
+
+  it('a theme-only save keeps every styling key, and the optional theme parts it carries as authored', async () => {
+    const theme = { ...THEME, colors: { light: { accent: '#2f4ad0', canvas: '#fdfdfd' } } };
+    await save({ theme });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: STYLING, theme });
+    // No resolved default was written: layout and components hold only what was authored.
+    expect(Object.keys(stored.theme as object)).toStrictEqual(['version', 'preset', 'metadata', 'colors', 'layout']);
+  });
+
+  it('merges the theme one level deep: a part left out is kept, a part sent empty is cleared (Keep mine)', async () => {
+    await save({ theme: { version: 1, preset: 'harbor' } });
+    expect((stored.theme as typeof THEME).layout).toStrictEqual(THEME.layout);
+    await save({ theme: { version: 1, preset: 'harbor', layout: {}, colors: {} } });
+    expect(stored.theme).toStrictEqual({ ...THEME, preset: 'harbor', layout: {}, colors: {} });
+    expect(resolveTheme({ theme: stored.theme as never }).layout).toStrictEqual(THEME_PRESETS.harbor.layout);
+  });
+
+  it('a site with no appearance keeps none after a theme save', async () => {
+    stored = { styling: { primaryColor: '#5546e8' } };
+    await save({ theme: { version: 1, preset: 'manuscript' } });
+    expect(stored).toStrictEqual({ styling: { primaryColor: '#5546e8' }, theme: { version: 1, preset: 'manuscript' } });
+  });
+
+  it('refuses an authored theme that fails contrast, as the dashboard does before saving', () => {
+    expect(updateProjectBody.safeParse({ config: { theme: { version: 1, preset: 'harbor', colors: { light: { foreground: '#eeeeee' } } } } }).success).toBe(
+      false,
+    );
+  });
+});
+
 // The dashboard's Footer form sends `config.footer` as JSON with only the keys
 // the person changed: a text trimmed, a cleared one as '' (the reader shows no
 // link and an empty copyright line), the badge only when switched.
