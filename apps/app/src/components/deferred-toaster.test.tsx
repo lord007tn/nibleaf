@@ -32,6 +32,25 @@ it('renders nothing on the server, so the toast host never reaches the first loa
   expect(renderToString(<DeferredToaster position="bottom-right" />)).toBe('');
 });
 
+it('keeps the page as it is when the toast host cannot load', async () => {
+  const loader = await import('./deferred-toaster-loader');
+  const spy = vi.spyOn(loader, 'loadDeferredToaster').mockResolvedValueOnce(null);
+  container = document.createElement('div');
+  container.innerHTML = '<p id="form">form</p>';
+  document.body.append(container);
+  const host = document.createElement('div');
+  container.append(host);
+  await act(async () => {
+    root = createRoot(host);
+    root.render(<DeferredToaster position="bottom-right" />);
+  });
+  await vi.waitFor(() => expect(spy).toHaveBeenCalled());
+  await act(async () => Promise.resolve());
+  expect(container.querySelector('#form')?.textContent).toBe('form');
+  expect(container.querySelector('section[aria-live]')).toBeNull();
+  spy.mockRestore();
+});
+
 it('shows toasts fired before the lazy toast host resolved, in its live region', async () => {
   // Fired before the host is even rendered (a toast from an early effect)...
   toast.success('Saved before the host');
