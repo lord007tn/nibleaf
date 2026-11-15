@@ -60,6 +60,24 @@ describe('editor save queue', () => {
     expect(save.mock.calls.map(([value]) => value.content)).toEqual(['older', 'newer', 'other page']);
   });
 
+  it('reports the last draft sent while any write is pending (#728)', async () => {
+    const first = deferred();
+    const second = deferred();
+    const save = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const queue = createEditorSaveQueue(save);
+    expect(queue.pendingDraft()).toBeUndefined();
+    const older = queue.save(draft('older'));
+    expect(queue.pendingDraft()?.content).toBe('older');
+    const newer = queue.save(draft('newer'));
+    expect(queue.pendingDraft()?.content).toBe('newer');
+    first.reject(new Error('Network error'));
+    await expect(older).rejects.toThrow('Network error');
+    expect(queue.pendingDraft()?.content).toBe('newer');
+    second.resolve('saved');
+    await newer;
+    expect(queue.pendingDraft()).toBeUndefined();
+  });
+
   it('shares a queued save when publish flushes the exact same draft', async () => {
     const save = vi.fn().mockResolvedValue('saved');
     const queue = createEditorSaveQueue(save);
