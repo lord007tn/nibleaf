@@ -1,0 +1,1613 @@
+{
+  "environment": "Isolated component fixture: the real banner section (before: main; after: this PR) with the real design system, EN/AR catalogs, Query cache and mutations; API answered by interception with fictional data. Not the dashboard and not production.",
+  "baseline": "b0e063ca39939659b5f290fb2be8d5bf836b276a",
+  "head": "898e03249bd1b81b47529e1e8e989a5577e24264",
+  "attempted": 0,
+  "sheets": [
+    "sheet-en-1440-light.png",
+    "sheet-en-1440-dark.png",
+    "sheet-en-390-light.png",
+    "sheet-en-390-dark.png",
+    "sheet-ar-1440-light.png",
+    "sheet-ar-1440-dark.png",
+    "sheet-ar-390-light.png",
+    "sheet-ar-390-dark.png"
+  ],
+  "captures": [
+    {
+      "scene": "dirty",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "failed",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "Could not save"
+    },
+    {
+      "scene": "failed",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "Could not save"
+    },
+    {
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, true],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": false,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "failed",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "Could not save"
+    },
+    {
+      "scene": "failed",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "Could not save"
+    },
+    {
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, true],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": false,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "failed",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "Could not save"
+    },
+    {
+      "scene": "failed",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "Could not save"
+    },
+    {
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, true],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": false,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "failed",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "Could not save"
+    },
+    {
+      "scene": "failed",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "Could not save"
+    },
+    {
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, true],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 v3 is here — faster and better."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "Read the changelog →"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": false,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "failed",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "تعذر الحفظ"
+    },
+    {
+      "scene": "failed",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "تعذر الحفظ"
+    },
+    {
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, true],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": false,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "failed",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "تعذر الحفظ"
+    },
+    {
+      "scene": "failed",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "تعذر الحفظ"
+    },
+    {
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, true],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": false,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "failed",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "تعذر الحفظ"
+    },
+    {
+      "scene": "failed",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "تعذر الحفظ"
+    },
+    {
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, true],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": false,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "dirty",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "failed",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "تعذر الحفظ"
+    },
+    {
+      "scene": "failed",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": ["PATCH /api/app/projects/site-1/languages/ar"],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "dir": "rtl",
+          "placeholder": "Spring sale: 20% off annual plans"
+        },
+        { "value": "", "dir": "rtl", "placeholder": "See plans" },
+        {
+          "value": "",
+          "dir": "ltr",
+          "placeholder": "https://example.com/pricing"
+        }
+      ],
+      "saveVisible": true,
+      "toast": "تعذر الحفظ"
+    },
+    {
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, true],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "auto",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "auto",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": true,
+      "toast": null
+    },
+    {
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "requests": [],
+      "toggles": [true, false],
+      "fields": [
+        {
+          "value": "Summer sale: 30% off annual plans",
+          "dir": "ltr",
+          "placeholder": "🎉 الإصدار 3 وصل — أسرع وأفضل."
+        },
+        {
+          "value": "See plans",
+          "dir": "ltr",
+          "placeholder": "اقرأ سجل التغييرات ←"
+        },
+        {
+          "value": "https://example.com/pricing",
+          "dir": "ltr",
+          "placeholder": "https://…/changelog"
+        }
+      ],
+      "saveVisible": false,
+      "toast": null
+    }
+  ],
+  "recording": {
+    "file": "flow-after-en-1440.webm",
+    "locale": "en",
+    "width": 1440,
+    "theme": "light",
+    "requests": [
+      "PATCH /api/app/projects/site-1",
+      "PATCH /api/app/projects/site-1",
+      "GET /api/app/projects/site-1",
+      "GET /api/app/projects/site-1"
+    ],
+    "steps": [
+      {
+        "step": "Turned Dismissible off: a toggle alone makes the form dirty",
+        "toggles": [true, false],
+        "fields": [
+          {
+            "value": "Spring sale: 20% off annual plans",
+            "dir": "ltr",
+            "placeholder": "🎉 v3 is here — faster and better."
+          },
+          {
+            "value": "See plans",
+            "dir": "ltr",
+            "placeholder": "Read the changelog →"
+          },
+          {
+            "value": "https://example.com/pricing",
+            "dir": "ltr",
+            "placeholder": "https://…/changelog"
+          }
+        ],
+        "saveVisible": true,
+        "toast": null
+      },
+      {
+        "step": "Typed into the message",
+        "toggles": [true, false],
+        "fields": [
+          {
+            "value": "Spring sale: 20% off annual plans (ends Friday)",
+            "dir": "ltr",
+            "placeholder": "🎉 v3 is here — faster and better."
+          },
+          {
+            "value": "See plans",
+            "dir": "ltr",
+            "placeholder": "Read the changelog →"
+          },
+          {
+            "value": "https://example.com/pricing",
+            "dir": "ltr",
+            "placeholder": "https://…/changelog"
+          }
+        ],
+        "saveVisible": true,
+        "toast": null
+      },
+      {
+        "step": "Save failed: the toast says so, the draft and the bar stay",
+        "toggles": [true, false],
+        "fields": [
+          {
+            "value": "Spring sale: 20% off annual plans (ends Friday)",
+            "dir": "ltr",
+            "placeholder": "🎉 v3 is here — faster and better."
+          },
+          {
+            "value": "See plans",
+            "dir": "ltr",
+            "placeholder": "Read the changelog →"
+          },
+          {
+            "value": "https://example.com/pricing",
+            "dir": "ltr",
+            "placeholder": "https://…/changelog"
+          }
+        ],
+        "saveVisible": true,
+        "toast": "Could not save"
+      },
+      {
+        "step": "Saved on retry: the bar closes",
+        "toggles": [true, false],
+        "fields": [
+          {
+            "value": "Spring sale: 20% off annual plans (ends Friday)",
+            "dir": "ltr",
+            "placeholder": "🎉 v3 is here — faster and better."
+          },
+          {
+            "value": "See plans",
+            "dir": "ltr",
+            "placeholder": "Read the changelog →"
+          },
+          {
+            "value": "https://example.com/pricing",
+            "dir": "ltr",
+            "placeholder": "https://…/changelog"
+          }
+        ],
+        "saveVisible": false,
+        "toast": "Could not save"
+      },
+      {
+        "step": "A new edit",
+        "toggles": [true, false],
+        "fields": [
+          {
+            "value": "Spring sale: 20% off annual plans (ends Friday)",
+            "dir": "ltr",
+            "placeholder": "🎉 v3 is here — faster and better."
+          },
+          {
+            "value": "Compare plans",
+            "dir": "ltr",
+            "placeholder": "Read the changelog →"
+          },
+          {
+            "value": "https://example.com/pricing",
+            "dir": "ltr",
+            "placeholder": "https://…/changelog"
+          }
+        ],
+        "saveVisible": true,
+        "toast": "Could not save"
+      },
+      {
+        "step": "Switching scope with an edit asks first",
+        "toggles": [true, false],
+        "fields": [
+          {
+            "value": "Spring sale: 20% off annual plans (ends Friday)",
+            "dir": "ltr",
+            "placeholder": "🎉 v3 is here — faster and better."
+          },
+          {
+            "value": "Compare plans",
+            "dir": "ltr",
+            "placeholder": "Read the changelog →"
+          },
+          {
+            "value": "https://example.com/pricing",
+            "dir": "ltr",
+            "placeholder": "https://…/changelog"
+          }
+        ],
+        "saveVisible": true,
+        "toast": null
+      },
+      {
+        "step": "Discarded and switched: the Arabic scope opens clean, with the project text as placeholders",
+        "toggles": [true, false],
+        "fields": [
+          {
+            "value": "",
+            "dir": "rtl",
+            "placeholder": "Spring sale: 20% off annual plans (ends Friday)"
+          },
+          { "value": "", "dir": "rtl", "placeholder": "See plans" },
+          {
+            "value": "",
+            "dir": "ltr",
+            "placeholder": "https://example.com/pricing"
+          }
+        ],
+        "saveVisible": false,
+        "toast": null
+      }
+    ]
+  }
+}
