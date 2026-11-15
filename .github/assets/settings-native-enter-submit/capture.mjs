@@ -168,7 +168,13 @@ function PairForm({ id, label }: { id: string; label: string }) {
     const outcome = await draft.submit();
     return outcome === 'busy' ? 'failed' : outcome;
   };
-  const formProps = regionAfter.useSaveRegionForm(id, { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = regionAfter.useSaveRegionForm(id, {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
   return (
     <form aria-label={label} className="flex flex-col gap-2 rounded-xl border border-border p-4" noValidate {...formProps}>
       <regionAfter.SaveRegionSubmit />

@@ -23,13 +23,26 @@ function TestForm({ id, form, invalid = false, children }: { id: string; form: S
   );
 }
 
-const fakeForm = (overrides: Partial<SaveRegionForm> = {}): SaveRegionForm => ({
-  isDirty: true,
-  isSubmitting: false,
-  submit: vi.fn(async (): Promise<Outcome> => 'saved'),
-  discard: vi.fn(),
-  ...overrides,
-});
+/**
+ * A registered form whose settlement the test controls through `state`. Its
+ * default submit settles it, as a save that left nothing behind; a custom
+ * submit leaves it as it was.
+ */
+const fakeForm = (overrides: Partial<SaveRegionForm> = {}) => {
+  const state = { settled: overrides.isDirty === false, generation: 0 };
+  const form: SaveRegionForm = {
+    isDirty: true,
+    isSubmitting: false,
+    submit: vi.fn(async (): Promise<Outcome> => {
+      state.settled = true;
+      return 'saved';
+    }),
+    discard: vi.fn(),
+    settlement: () => ({ ...state }),
+    ...overrides,
+  };
+  return Object.assign(form, { state });
+};
 
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
@@ -66,7 +79,7 @@ describe('SaveRegionSubmit', () => {
 
 describe('useSaveRegionForm submit', () => {
   it('saves only the form Enter was pressed in, and says so', async () => {
-    const a = fakeForm();
+    const a = fakeForm({ isDirty: false });
     const b = fakeForm();
     await render(
       <>
@@ -78,6 +91,21 @@ describe('useSaveRegionForm submit', () => {
     expect(b.submit).toHaveBeenCalledTimes(1);
     expect(a.submit).not.toHaveBeenCalled();
     expect(status()).toBe('common.saved');
+  });
+
+  it('does not call the page saved while another form still has edits', async () => {
+    const a = fakeForm();
+    const b = fakeForm();
+    await render(
+      <>
+        <TestForm form={a} id="a" />
+        <TestForm form={b} id="b" />
+      </>,
+    );
+    await pressEnterIn('b');
+    expect(b.submit).toHaveBeenCalledTimes(1);
+    expect(a.submit).not.toHaveBeenCalled();
+    expect(status()).toBe('forms.unsavedChanges');
   });
 
   it('sends nothing from a clean form', async () => {
@@ -134,6 +162,7 @@ describe('useSaveRegionForm submit', () => {
     await act(async () => barSave().click());
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true })));
     expect(a.submit).toHaveBeenCalledTimes(1);
+    a.state.settled = true;
     await act(async () => finish('saved'));
     expect(status()).toBe('common.saved');
   });

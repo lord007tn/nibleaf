@@ -111,6 +111,52 @@ describe('useServerDraftForm: identity', () => {
   });
 });
 
+describe('useServerDraftForm: settlement', () => {
+  it('reads the form as it is now, not as it last rendered: settled only with no save in flight and nothing left', async () => {
+    const { set, submit, succeed, api } = await mount('site', original);
+    const settlement = api().settlement;
+    expect(settlement()).toEqual({ settled: true, generation: 0 });
+    await set('name', 'A');
+    expect(settlement().settled).toBe(false);
+    await submit();
+    // Typed back while saving: the request can still change it.
+    await set('name', 'Original');
+    expect(settlement().settled).toBe(false);
+    await set('name', 'A');
+    await act(async () => {
+      expect(settlement().settled).toBe(false);
+      api().form.setFieldValue('name', 'AB');
+      // No render in between: the edit counts at once.
+      expect(settlement().settled).toBe(false);
+    });
+    await succeed(0, { ...original, name: 'A' });
+    expect(settlement().settled).toBe(false);
+    await set('name', 'A');
+    expect(settlement().settled).toBe(true);
+    expect(api().settlement).toBe(settlement);
+  });
+
+  it('is settled right after a clean confirmation, before the form re-renders', async () => {
+    const { saves, set, submit, api } = await mount('site', original);
+    await set('name', 'A');
+    const { result } = await submit();
+    await act(async () => {
+      saves[0]?.save.succeeded(saves[0].values);
+      saves[0]?.finish('saved');
+      expect(await result).toBe('saved');
+      expect(api().settlement().settled).toBe(true);
+    });
+  });
+
+  it('moves to a new generation with each identity, and back', async () => {
+    const { render, api } = await mount('site-a', original);
+    const before = api().settlement().generation;
+    await render('site-b', original);
+    await render('site-a', original);
+    expect(api().settlement().generation).toBe(before + 2);
+  });
+});
+
 describe('useServerDraftForm: one save at a time', () => {
   it('refuses a second submit while one is in flight and keeps the newer text afterwards', async () => {
     const { saves, set, submit, succeed, api } = await mount('site', original);

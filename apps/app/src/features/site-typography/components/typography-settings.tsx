@@ -93,7 +93,13 @@ function TypographyForm({ project }: { project: Project }) {
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  const formProps = useSaveRegionForm('site-typography', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-typography', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   return (
     <form className="flex flex-col gap-6" noValidate {...formProps}>

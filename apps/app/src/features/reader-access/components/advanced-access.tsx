@@ -364,7 +364,13 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
     return 'deferred';
   }, [baseline, form, save]);
   // Enter and Save both run `submit`, so a change to who can sign in always asks first.
-  const formProps = useSaveRegionForm('reader-jwt', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('reader-jwt', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   return (
     <SettingsSection

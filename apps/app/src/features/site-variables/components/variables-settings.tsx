@@ -75,7 +75,13 @@ function VariablesForm({ project }: { project: Project }) {
     discardDraft();
     retire();
   }, [discardDraft, isSaving, retire]);
-  const formProps = useSaveRegionForm('site-variables', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard });
+  const formProps = useSaveRegionForm('site-variables', {
+    isDirty: draft.isDirty,
+    isSubmitting: isSaving,
+    submit,
+    discard,
+    settlement: draft.settlement,
+  });
 
   const rows = useStore(form.store, (state) => state.values.variables);
   const readRows = () => form.getFieldValue('variables');
