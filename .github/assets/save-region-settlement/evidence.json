@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture: the real SEO section (useServerDraftForm + SaveRegion) with the real design system, EN/AR catalogs, project query and config mutation; before = main’s lib/forms/save-region.tsx, after = this branch; fictional site; project GET and config PATCH answered by interception; live region read from the DOM (not screen-reader speech); not the signed-in dashboard or production",
   "baseline": "e904f936e7ff4d7d630544718cfea03b478531a6",
-  "head": "27fe608afff759344468fbbfc7f2a3fd48f01e6d",
+  "head": "d60c4acdd15aff66d3822495875e81f2ca50425f",
   "uncommitted": [],
   "swappedForBefore": ["apps/app/src/lib/forms/save-region.tsx"],
   "attempted": 0,

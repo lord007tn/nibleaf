@@ -53,9 +53,10 @@ live-region contract, **not a screen-reader speech certification**. No assistive
 ## The new tests against main
 
 `apps/app/src/lib/forms/save-region-settlement.test.tsx` uses the real `useServerDraftForm` and `SaveRegionProvider`.
-Run against main's `save-region.tsx` (nothing else swapped), 17 of its 28 tests fail. Among them are the #759
+Run against main's `save-region.tsx` (nothing else swapped), 19 of its 30 tests fail. Among them are the #759
 reproduction (Sent → refetch Theirs → success keeps the conflict: main says "Saved"), edits during a save, "Keep
-mine", Enter while another form is dirty, and the stale (replaced, unmounted, A → B → A) cases. The 11 that pass are
+mine", Enter while another form is dirty, an edit landing in the same batch as a clean save's end, a sibling's own
+save finishing after "Unsaved changes", and the stale (replaced, unmounted, A → B → A) cases. The 11 that pass are
 behaviour kept as it was: clean save, normalized echo, pristine no-op, failure, invalid, busy, deferred, all-clean
 multi-form, invalid stopping the run, mixed deferred, and identity switch during the save.
 
