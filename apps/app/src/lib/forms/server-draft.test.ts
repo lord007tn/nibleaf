@@ -175,6 +175,52 @@ describe('a successful save after refetches (rule 3 with the save’s state)', (
   });
 });
 
+describe('a save without toSent', () => {
+  it('restores an explicitly undefined key the form dropped, as before toSent', () => {
+    type Optional = { x?: string; y: string; z: string };
+    const baseline: Optional = { x: undefined, y: 'O', z: 'O' };
+    const submitted: Optional = { y: 'O', z: 'S' };
+    const next: Optional = { x: undefined, y: 'T', z: 'S' };
+    const change = reconcileServerChange({ baseline, current: submitted, next, save: startSave(baseline, submitted) });
+    expect(change.current).toStrictEqual(next);
+    expect(isDraftDirty(change.current, change.baseline)).toBe(false);
+  });
+});
+
+describe('a save of a transformed payload (toSent)', () => {
+  const trim = (values: Values): Values => ({ ...values, name: values.name.trim() });
+  const save = startSave(base, { ...base, name: 'Help  ', slug: 'help' }, trim);
+
+  it('records what was sent and the keys it changed in sent space', () => {
+    expect(save.values.name).toBe('Help');
+    expect(save.raw.name).toBe('Help  ');
+    expect([...save.sent]).toEqual(['name', 'slug']);
+    // Only spaces added: nothing new is sent, so no echo is awaited.
+    expect([...startSave(base, { ...base, name: 'Docs ' }, trim).sent]).toEqual([]);
+  });
+
+  it('takes the transformed value as the echo, and keeps the raw value meanwhile', () => {
+    const change = reconcileServerChange({ baseline: base, current: save.raw, next: save.values, save });
+    expect(change.conflicts).toEqual([]);
+    expect(change.current.name).toBe('Help  ');
+    expect([...(change.save?.echoed ?? [])]).toEqual(['name', 'slug']);
+    const unrelated = reconcileServerChange({ ...change, next: { ...save.values, tags: ['b'] } });
+    expect(unrelated.current).toEqual({ ...save.raw, tags: ['b'] });
+    const theirs = reconcileServerChange({ ...change, next: { ...save.values, name: 'Theirs' } });
+    expect(theirs.current.name).toBe('Theirs');
+    expect(theirs.conflicts).toEqual([]);
+  });
+
+  it('confirms the transformed value on success unless the person changed it since', () => {
+    const during = { save, baseline: base };
+    const confirmed = reconcileSaveSuccess({ submitted: save.values, current: save.raw, during });
+    expect(confirmed.current).toEqual(save.values);
+    const edited = reconcileSaveSuccess({ submitted: save.values, current: { ...save.raw, name: 'Help 2' }, during });
+    expect(edited.current.name).toBe('Help 2');
+    expect(isDraftDirty(edited.current, edited.baseline)).toBe(true);
+  });
+});
+
 describe('resolving a conflict', () => {
   it('takes the server value for "theirs" and keeps the edit for "mine"', () => {
     const current = { ...base, name: 'Mine' };

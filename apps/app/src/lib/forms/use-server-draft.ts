@@ -1,6 +1,7 @@
 import { useForm, useStore } from '@tanstack/react-form';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  agreesWith,
   type DraftValues,
   deepEqual,
   isDraftDirty,
@@ -56,6 +57,14 @@ type ActiveSave<T extends DraftValues> = { id: number; generation: number; pendi
  * - after a save, edits made while it was in flight survive and stay dirty;
  * - `isDirty` compares the form with the confirmed baseline, nothing else.
  *
+ * Pass `toSent` when the submit handler sends a transformed payload (rows
+ * without a key dropped, strings trimmed): the save then records
+ * `toSent(values)` as what it sent, so the server storing and echoing that is
+ * recognised as the save's own echo and confirms it. The form keeps the raw
+ * values: edits made during the save stay visible and dirty, and what
+ * `toSent` drops stays in the draft until the save is confirmed. The submit
+ * handler still receives the raw values and applies the same transform.
+ *
  * The hook owns the form so the form's `defaultValues` is always the
  * baseline (`useForm` re-applies its `defaultValues` on every render while
  * the form is untouched). Always submit through `submit()`, never
@@ -65,10 +74,13 @@ export function useServerDraftForm<T extends DraftValues>({
   identity,
   source,
   onSubmit,
+  toSent,
 }: {
   identity: ReadonlyArray<string | number | null | undefined>;
   source: T;
   onSubmit: (values: T, save: DraftSave<T>) => Promise<'saved' | 'invalid' | 'failed'>;
+  /** What the submit handler sends for these values, when it isn't the values themselves. */
+  toSent?: (values: T) => T;
 }) {
   const identityKey = JSON.stringify(identity);
   const [baseline, setBaselineState] = useState<T>(source);
@@ -84,6 +96,8 @@ export function useServerDraftForm<T extends DraftValues>({
   const [conflicts, setConflicts] = useState<Array<keyof T & string>>([]);
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
+  const toSentRef = useRef(toSent);
+  toSentRef.current = toSent;
 
   const setBaseline = useCallback((next: T) => {
     baselineRef.current = next;
@@ -101,7 +115,7 @@ export function useServerDraftForm<T extends DraftValues>({
     onSubmit: async ({ value }) => {
       const save = activeRef.current;
       if (!save) return;
-      save.pending = startSave(baselineRef.current, value);
+      save.pending = startSave(baselineRef.current, value, toSentRef.current);
       const isCurrent = () => save.generation === generationRef.current && activeRef.current?.id === save.id;
       save.outcome = await onSubmitRef.current(value, {
         baseline: baselineRef.current,
@@ -128,10 +142,14 @@ export function useServerDraftForm<T extends DraftValues>({
     [form],
   );
 
-  /** Keeps a conflict until it is resolved or the draft agrees with the server again; adds new ones. */
-  const mergeConflicts = useCallback((found: Array<keyof T & string>, current: T, nextBaseline: T) => {
+  /**
+   * Keeps a conflict until it is resolved or the draft agrees with the server
+   * again (judged as the save in flight judges its keys); adds new ones.
+   */
+  const mergeConflicts = useCallback((found: Array<keyof T & string>, current: T, nextBaseline: T, save?: PendingSave<T>) => {
+    const agrees = agreesWith(current, nextBaseline, save);
     setConflicts((previous) => {
-      const kept = previous.filter((key) => !deepEqual(current[key], nextBaseline[key]));
+      const kept = previous.filter((key) => !agrees(key));
       const merged = [...new Set([...kept, ...found])];
       return merged.length === previous.length && merged.every((key, index) => key === previous[index]) ? previous : merged;
     });
@@ -169,7 +187,7 @@ export function useServerDraftForm<T extends DraftValues>({
     if (save && change.save) save.pending = change.save;
     setBaseline(change.baseline);
     applyValues(change.current);
-    mergeConflicts(change.conflicts, change.current, change.baseline);
+    mergeConflicts(change.conflicts, change.current, change.baseline, change.save);
   }, [applyValues, form, identityKey, mergeConflicts, setBaseline, source]);
 
   const succeeded = (save: ActiveSave<T>, confirmed?: T) => {
