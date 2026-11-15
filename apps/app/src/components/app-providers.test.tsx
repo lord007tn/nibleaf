@@ -207,7 +207,7 @@ it.each(['en', 'ar'] as const)('selects the rendered host and toast and reads of
   const selects = (element: Element) => rules.filter(({ rule }) => element.matches(rule.selectorText)).length;
   expect(
     rules.filter(({ rule }) => !host.matches(rule.selectorText) && !item.matches(rule.selectorText)).map(({ rule }) => rule.selectorText),
-    `phone rules that select neither of Sonner's rendered elements: host ${host.cloneNode(false).outerHTML}`,
+    `phone rules that select neither of Sonner's rendered elements: host ${(host.cloneNode(false) as Element).outerHTML}`,
   ).toEqual([]);
   expect([selects(host), selects(item)].map(Boolean)).toEqual([true, true]);
 

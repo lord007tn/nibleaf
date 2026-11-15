@@ -1,0 +1,235 @@
+{
+  "environment": "The placement check of capture.mjs --verify: the same component fixture in headless Chromium, current tree only, light theme, three failed saves expanded; no screenshots or videos",
+  "head": "e2331f83b6e7fb2f8c06679d54053c320937f581",
+  "uncommitted": [],
+  "sonner": "2.0.8",
+  "deferredHost": "not on this tree (#703 unmerged): rows measure the eager host",
+  "attempted": 0,
+  "failed": [],
+  "rows": [
+    {
+      "phase": "after",
+      "locale": "en",
+      "layout": "390",
+      "anchor": "top",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 16, "bottom": 595 },
+        { "index": 1, "top": 84, "bottom": 508 },
+        { "index": 2, "top": 171, "bottom": 421 }
+      ],
+      "saveTap": "control",
+      "discardTap": "control",
+      "resized": "390 → 1440 → 390",
+      "unmount": "clean"
+    },
+    {
+      "phase": "auth",
+      "locale": "en",
+      "layout": "390",
+      "anchor": "bottom",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 595, "bottom": 16 },
+        { "index": 1, "top": 508, "bottom": 84 },
+        { "index": 2, "top": 421, "bottom": 171 }
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "layout": "390",
+      "anchor": "top",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 16, "bottom": 595 },
+        { "index": 1, "top": 84, "bottom": 508 },
+        { "index": 2, "top": 171, "bottom": 421 }
+      ],
+      "saveTap": "control",
+      "discardTap": "control",
+      "resized": "390 → 1440 → 390",
+      "unmount": "clean"
+    },
+    {
+      "phase": "auth",
+      "locale": "ar",
+      "layout": "390",
+      "anchor": "bottom",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 595, "bottom": 16 },
+        { "index": 1, "top": 508, "bottom": 84 },
+        { "index": 2, "top": 421, "bottom": 171 }
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "layout": "844x390",
+      "anchor": "top",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 24, "bottom": 313 },
+        { "index": 1, "top": 92, "bottom": 226 },
+        { "index": 2, "top": 179, "bottom": 139 }
+      ],
+      "saveTap": "control",
+      "discardTap": "control",
+      "unmount": "clean"
+    },
+    {
+      "phase": "auth",
+      "locale": "en",
+      "layout": "844x390",
+      "anchor": "bottom",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 313, "bottom": 24 },
+        { "index": 1, "top": 226, "bottom": 92 },
+        { "index": 2, "top": 139, "bottom": 179 }
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "layout": "844x390",
+      "anchor": "top",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 24, "bottom": 313 },
+        { "index": 1, "top": 92, "bottom": 226 },
+        { "index": 2, "top": 179, "bottom": 139 }
+      ],
+      "saveTap": "control",
+      "discardTap": "control",
+      "unmount": "clean"
+    },
+    {
+      "phase": "auth",
+      "locale": "ar",
+      "layout": "844x390",
+      "anchor": "bottom",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 313, "bottom": 24 },
+        { "index": 1, "top": 226, "bottom": 92 },
+        { "index": 2, "top": 139, "bottom": 179 }
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "layout": "1440",
+      "anchor": "bottom",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 823, "bottom": 24 },
+        { "index": 1, "top": 736, "bottom": 92 },
+        { "index": 2, "top": 649, "bottom": 179 }
+      ],
+      "saveTap": "control",
+      "discardTap": "control",
+      "unmount": "clean"
+    },
+    {
+      "phase": "auth",
+      "locale": "en",
+      "layout": "1440",
+      "anchor": "bottom",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 823, "bottom": 24 },
+        { "index": 1, "top": 736, "bottom": 92 },
+        { "index": 2, "top": 649, "bottom": 179 }
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "layout": "1440",
+      "anchor": "bottom",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 823, "bottom": 24 },
+        { "index": 1, "top": 736, "bottom": 92 },
+        { "index": 2, "top": 649, "bottom": 179 }
+      ],
+      "saveTap": "control",
+      "discardTap": "control",
+      "unmount": "clean"
+    },
+    {
+      "phase": "auth",
+      "locale": "ar",
+      "layout": "1440",
+      "anchor": "bottom",
+      "offsets": {
+        "--offset-top": "24px",
+        "--offset-bottom": "24px",
+        "--mobile-offset-top": "16px",
+        "--mobile-offset-bottom": "16px"
+      },
+      "toasts": [
+        { "index": 0, "top": 823, "bottom": 24 },
+        { "index": 1, "top": 736, "bottom": 92 },
+        { "index": 2, "top": 649, "bottom": 179 }
+      ]
+    }
+  ]
+}
