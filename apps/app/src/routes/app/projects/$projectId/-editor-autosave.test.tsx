@@ -410,6 +410,46 @@ describe('an edit keeps every untouched paragraph as written', { timeout: ROUTE_
   });
 });
 
+describe('a page written with CRLF keeps its line endings (#702)', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  const CRLF = (page: string) => page.replaceAll('\n', '\r\n');
+  const MIXED = HARD_WRAPPED_EN.split('\n')
+    .map((line, index, lines) => line + (index === lines.length - 1 ? '' : index % 3 === 0 ? '\n' : '\r\n'))
+    .join('');
+
+  it.each<[string, string, typeof ENGLISH]>([
+    ['the hard-wrapped page, CRLF', CRLF(HARD_WRAPPED_EN), ENGLISH],
+    ['the hard-wrapped Arabic page, CRLF', CRLF(HARD_WRAPPED_AR), ARABIC],
+    ['the imported Quickstart page, CRLF', CRLF(IMPORTED_QUICKSTART), ENGLISH],
+    ['the hard-wrapped page, mixed CRLF and LF', MIXED, ENGLISH],
+  ])('%s, opened and left: 0 saves', async (_name, content, language) => {
+    await open(content, language);
+    await everyFlush();
+    expect(server.patches).toEqual([]);
+    expect(server.content).toBe(content);
+  });
+
+  it.each([
+    ['CRLF', CRLF(HARD_WRAPPED_EN)],
+    ['mixed CRLF and LF', MIXED],
+  ])('%s: one word changed saves that word only, every line ending as written', async (_name, source) => {
+    await open(source);
+    replaceWord('A short item.', 'A tiny item.');
+    await advance(1000);
+    expect(server.patches).toHaveLength(1);
+    expect(server.content).toBe(source.replace('A short item.', 'A tiny item.'));
+  });
+
+  it('CRLF: a word changed in a wrapped paragraph re-wraps only that paragraph, with CRLF', async () => {
+    const source = CRLF(HARD_WRAPPED_EN);
+    await open(source);
+    replaceWord('npm.', 'pnpm.');
+    await advance(1000);
+    expect(server.patches).toHaveLength(1);
+    const before = CRLF('Install the package with your package manager of choice. The command below uses\nnpm.');
+    expect(server.content).toBe(source.replace(before, 'Install the package with your package manager of choice. The command below uses pnpm.'));
+  });
+});
+
 describe('save pacing while typing (P2-JRN-001)', { timeout: ROUTE_TEST_TIMEOUT }, () => {
   it('one character a second for 12 s: 4 saves within the 12 s, 5 in all', async () => {
     await open(HARD_WRAPPED_EN);

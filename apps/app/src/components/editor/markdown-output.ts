@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core';
 import type { Fragment, Mark, Node as PMNode } from '@tiptap/pm/model';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
+import { normalizeLineEndings, readLineEndings, restoreLineEndings, type SourceLineEndings } from './line-endings';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -275,18 +276,55 @@ type MarkdownSerializerLike = {
   serialize(content: PMNode | Fragment): string;
 };
 
+type MarkdownStorageLike = {
+  serializer: MarkdownSerializerLike;
+  getMarkdown(): string;
+  /** The line endings of the Markdown the document was last set from (line-endings.ts). */
+  lineEndings: SourceLineEndings | null;
+};
+
+type SetContent = (content: unknown, ...rest: unknown[]) => (props: { editor: Editor }) => boolean;
+
+const markdownStorage = (editor: Editor) => (editor.storage as unknown as { markdown: MarkdownStorageLike }).markdown;
+
 /** tiptap-markdown, saving with `LinearMarkdownSerializerState`. Its serializer
- *  builds its own state class; this one is the same with the output kept as pieces. */
+ *  builds its own state class; this one is the same with the output kept as pieces.
+ *  A page is read with LF line endings and saved with its own (line-endings.ts). */
 export const LinearMarkdown = Markdown.extend({
+  addCommands() {
+    const commands = (this.parent?.() ?? {}) as { setContent?: SetContent };
+    const setContent = commands.setContent as SetContent;
+    return {
+      ...commands,
+      // Markdown set as the document (a page load, a re-seed) is read with LF, and
+      // its endings are kept for the save. Anything else set has no source to keep.
+      // A dry run (`editor.can().setContent(…)`, no `dispatch`) sets nothing, as
+      // core `setContent` replaces nothing then.
+      setContent:
+        (content: unknown, ...rest: unknown[]) =>
+        (props: { editor: Editor; dispatch?: unknown }) => {
+          const markdown = typeof content === 'string';
+          if (props.dispatch) markdownStorage(props.editor).lineEndings = markdown ? readLineEndings(content) : null;
+          return setContent(markdown ? normalizeLineEndings(content) : content, ...rest)(props);
+        },
+    } as never;
+  },
   onBeforeCreate(event) {
+    // The editor's first content, when it is Markdown, is read the same way.
+    const { content } = this.editor.options;
+    const lineEndings = typeof content === 'string' ? readLineEndings(content) : null;
+    if (typeof content === 'string') this.editor.options.content = normalizeLineEndings(content);
     this.parent?.(event);
-    const storage = this.editor.storage as unknown as { markdown: { serializer: MarkdownSerializerLike } };
-    const { serializer } = storage.markdown;
+    const storage = markdownStorage(this.editor);
+    storage.lineEndings = lineEndings;
+    const { serializer } = storage;
     const scanDelims = scanDelimsOf(this.editor);
     serializer.serialize = (content) => {
       const state = new LinearMarkdownSerializerState(serializer.nodes, serializer.marks, { hardBreakNodeName: 'hardBreak' }, scanDelims);
       state.renderContent(content as PMNode);
       return state.output.toString();
     };
+    // Only the whole page is saved with the source's endings; a copied slice keeps LF.
+    storage.getMarkdown = () => restoreLineEndings(storage.lineEndings, serializer.serialize(this.editor.state.doc));
   },
 });
