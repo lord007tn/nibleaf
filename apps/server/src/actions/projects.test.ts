@@ -828,6 +828,19 @@ describe('updateProject: saving styling from the dashboard form', () => {
     expect(theme.colors.light.accent).not.toBe(THEME_PRESETS.harbor.colors.light.accent);
   });
 
+  it('a radius chosen over Signal’s inherited Sharp is stored by one patch and outlasts later theme changes', async () => {
+    const signal = { preset: 'signal' };
+    stored = { ...structuredClone(SIBLINGS), theme: signal, styling: { primaryColor: '#5546e8' } };
+    expect(resolveTheme(stored as Parameters<typeof resolveTheme>[0]).layout.radius).toBe('sharp');
+    const readback = await save({ radius: 'rounded' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, theme: signal, styling: { primaryColor: '#5546e8', radius: 'rounded' } });
+    expect(readback).toMatchObject({ config: { theme: signal, styling: { primaryColor: '#5546e8', radius: 'rounded' } } });
+    expect(resolveTheme(stored as Parameters<typeof resolveTheme>[0]).layout.radius).toBe('rounded');
+    expect(
+      resolveTheme({ ...stored, theme: { preset: 'signal', layout: { radius: 'pill' } } } as Parameters<typeof resolveTheme>[0]).layout.radius,
+    ).toBe('rounded');
+  });
+
   it('why the form sends only what changed: main’s full payload wrote back a radius and appearance it never edited', async () => {
     // Another writer set the appearance and radius after main's form had read the site.
     startWith({ primaryColor: '#5546e8', theme: 'dark', radius: 'pill' });

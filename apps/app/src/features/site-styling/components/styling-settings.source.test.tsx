@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { resolveTheme, type ThemeOwnedProjectConfig } from '@nibleaf/shared/themes';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -123,7 +124,17 @@ const buttonNamed = (name: string) => {
 const click = (name: string) => act(async () => buttonNamed(name).click());
 const radius = () =>
   [...container.querySelectorAll('button[aria-pressed="true"]')].map((b) => b.textContent).find((x) => x?.startsWith('settings.styling.radius'));
+/** Where the shown radius comes from, as its group describes it to assistive tech. */
+const radiusSource = () => {
+  const group = container.querySelector('fieldset[aria-describedby]');
+  const label = document.getElementById(group?.getAttribute('aria-labelledby') ?? '')?.textContent;
+  const source = document.getElementById(group?.getAttribute('aria-describedby') ?? '')?.textContent;
+  return { label, source: source?.replace('settings.styling.radius.', '') };
+};
+const INHERITED = { label: 'settings.styling.radius.label', source: 'inherited' };
+const OVERRIDE = { label: 'settings.styling.radius.label', source: 'override' };
 const region = () => container.querySelector('[data-slot="save-region"]');
+const status = () => container.querySelector('[role="status"][aria-live="polite"]')?.textContent?.trim() ?? '';
 const conflict = () => container.textContent?.includes('forms.changedElsewhere');
 const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
 const startSave = async () => {
@@ -186,20 +197,199 @@ describe('StylingSettings over the project query: a save sends only what changed
     }
   });
 
-  it('an unset radius shows Rounded and stays unset: Sharp then Rounded again leaves nothing to save', async () => {
-    await open({ styling: { primaryColor: '#16a34a' } });
-    expect(radius()).toBe('settings.styling.radius.rounded');
-    await click('settings.styling.radius.sharp');
-    expect(region()).not.toBeNull();
-    await click('settings.styling.radius.rounded');
-    expect(region()).toBeNull();
-  });
-
   it('a stored Sharp set back to Rounded sends rounded', async () => {
     await open({ styling: { radius: 'sharp' } });
     await click('settings.styling.radius.rounded');
     await save();
     expect(lastPatch()?.config).toStrictEqual({ styling: { radius: 'rounded' } });
+  });
+});
+
+describe('StylingSettings: an unset radius shows the theme’s, and a choice sets the site’s own', () => {
+  const SIGNAL = { preset: 'signal' };
+  /** What the reader draws from what the stand-in API now stores. */
+  const readerRadius = (site: Site = 'site-1') => resolveTheme(server.config[site] as ThemeOwnedProjectConfig).layout.radius;
+  const methods = () => vi.mocked(fetch).mock.calls.map(([input, init]) => new Request(input, init).method);
+
+  it.each([
+    ['Harbor', { preset: 'harbor' }, 'rounded'],
+    ['Signal', SIGNAL, 'sharp'],
+    ['Manuscript', { preset: 'manuscript' }, 'rounded'],
+    ['Harbor with its own layout radius', THEME, 'sharp'],
+    ['Signal with its own layout radius', { preset: 'signal', layout: { radius: 'pill' } }, 'pill'],
+  ])('%s: shows the radius the reader draws, as inherited, with nothing to save and no write', async (_name, theme, shown) => {
+    await open({ theme, styling: { primaryColor: '#5546e8' } });
+    expect(radius()).toBe(`settings.styling.radius.${shown}`);
+    expect(readerRadius()).toBe(shown);
+    expect(radiusSource()).toStrictEqual(INHERITED);
+    expect(region()).toBeNull();
+    await read();
+    expect(region()).toBeNull();
+    expect(server.patches).toStrictEqual([]);
+    expect(methods().every((method) => method === 'GET')).toBe(true);
+  });
+
+  it('main regression: Signal, unset; one click on Rounded saves {radius: rounded} in one request, and the reader then draws Rounded', async () => {
+    await open({ theme: SIGNAL, styling: { primaryColor: '#5546e8', theme: 'dark' } });
+    // Main showed Rounded here, and a click on it changed nothing.
+    expect(radius()).toBe('settings.styling.radius.sharp');
+    await click('settings.styling.radius.rounded');
+    expect(radius()).toBe('settings.styling.radius.rounded');
+    expect(radiusSource()).toStrictEqual(OVERRIDE);
+    expect(region()).not.toBeNull();
+    await save();
+    expect(server.patches).toStrictEqual([{ site: 'site-1', config: { styling: { radius: 'rounded' } } }]);
+    expect(server.config['site-1']).toStrictEqual({ theme: SIGNAL, styling: { primaryColor: '#5546e8', theme: 'dark', radius: 'rounded' } });
+    expect(readerRadius()).toBe('rounded');
+    await read();
+    expect(radius()).toBe('settings.styling.radius.rounded');
+    expect(radiusSource()).toStrictEqual(OVERRIDE);
+    expect(region()).toBeNull();
+    expect(status()).toBe('common.saved');
+  });
+
+  it('a click on the inherited radius itself sets it; later theme changes no longer move it', async () => {
+    await open({ theme: SIGNAL, styling: {} });
+    const sharp = buttonNamed('settings.styling.radius.sharp');
+    expect(sharp.getAttribute('aria-pressed')).toBe('true');
+    expect(sharp.disabled).toBe(false);
+    await click('settings.styling.radius.sharp');
+    expect(radiusSource()).toStrictEqual(OVERRIDE);
+    expect(region()).not.toBeNull();
+    await save();
+    expect(lastPatch()?.config).toStrictEqual({ styling: { radius: 'sharp' } });
+    elsewhere('site-1', (config) => ({ ...config, theme: { preset: 'harbor', layout: { radius: 'pill' } } }));
+    await read();
+    expect(radius()).toBe('settings.styling.radius.sharp');
+    expect(radiusSource()).toStrictEqual(OVERRIDE);
+    expect(readerRadius()).toBe('sharp');
+    expect(region()).toBeNull();
+  });
+
+  it('a color-only save and theme refetches never set it: the shown radius follows the theme, still inherited', async () => {
+    await open({ theme: SIGNAL, styling: { primaryColor: '#5546e8' } });
+    await click('#0ea5e9');
+    await save();
+    expect(lastPatch()?.config).toStrictEqual({ styling: { primaryColor: '#0ea5e9' } });
+    expect(server.config['site-1'].styling).toStrictEqual({ primaryColor: '#0ea5e9' });
+    expect(radius()).toBe('settings.styling.radius.sharp');
+    elsewhere('site-1', (config) => ({ ...config, theme: { preset: 'manuscript' } }));
+    await read();
+    expect(radius()).toBe('settings.styling.radius.rounded');
+    expect(radiusSource()).toStrictEqual(INHERITED);
+    expect(region()).toBeNull();
+    // A theme change while a color edit is pending: the shown radius follows, the color edit stays, nothing else is sent.
+    await click('#16a34a');
+    elsewhere('site-1', (config) => ({ ...config, theme: SIGNAL }));
+    await read();
+    expect(radius()).toBe('settings.styling.radius.sharp');
+    expect(radiusSource()).toStrictEqual(INHERITED);
+    await save();
+    expect(lastPatch()?.config).toStrictEqual({ styling: { primaryColor: '#16a34a' } });
+    expect(server.config['site-1'].styling).toStrictEqual({ primaryColor: '#16a34a' });
+  });
+
+  it('a chosen radius survives a theme refetch; Discard returns to the inherited one', async () => {
+    await open({ theme: SIGNAL, styling: {} });
+    await click('settings.styling.radius.pill');
+    elsewhere('site-1', (config) => ({ ...config, theme: { preset: 'manuscript' } }));
+    await read();
+    expect(radius()).toBe('settings.styling.radius.pill');
+    expect(conflict()).toBe(false);
+    await click('forms.discard');
+    expect(radius()).toBe('settings.styling.radius.rounded');
+    expect(radiusSource()).toStrictEqual(INHERITED);
+    expect(region()).toBeNull();
+    expect(server.patches).toStrictEqual([]);
+  });
+
+  it('a failed save keeps the chosen radius; the retry sends it', async () => {
+    await open({ theme: SIGNAL, styling: {} });
+    server.failPatch = true;
+    await click('settings.styling.radius.rounded');
+    await save();
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+    expect(radius()).toBe('settings.styling.radius.rounded');
+    expect(radiusSource()).toStrictEqual(OVERRIDE);
+    expect(region()).not.toBeNull();
+    server.failPatch = false;
+    await save();
+    expect(server.patches.map((patch) => patch.config)).toStrictEqual([{ styling: { radius: 'rounded' } }, { styling: { radius: 'rounded' } }]);
+    expect(readerRadius()).toBe('rounded');
+    expect(region()).toBeNull();
+  });
+
+  it('another writer’s radius: "Keep mine" sends mine against theirs; "Use theirs" takes theirs as the site’s own', async () => {
+    await open({ theme: SIGNAL, styling: {} });
+    await click('settings.styling.radius.rounded');
+    elsewhere('site-1', (config) => ({ ...config, styling: { radius: 'pill' } }));
+    await read();
+    expect(conflict()).toBe(true);
+    await click('forms.keepMine');
+    await save();
+    expect(lastPatch()?.config).toStrictEqual({ styling: { radius: 'rounded' } });
+    expect(readerRadius()).toBe('rounded');
+
+    await click('settings.styling.radius.sharp');
+    elsewhere('site-1', (config) => ({ ...config, styling: { radius: 'pill' } }));
+    await read();
+    expect(conflict()).toBe(true);
+    await click('forms.useTheirs');
+    expect(radius()).toBe('settings.styling.radius.pill');
+    expect(radiusSource()).toStrictEqual(OVERRIDE);
+    expect(region()).toBeNull();
+  });
+
+  it('a newer choice during the save stays to save, never "Saved"; the next save sends it alone', async () => {
+    await open({ theme: SIGNAL, styling: {} });
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await click('settings.styling.radius.rounded');
+    await startSave();
+    await click('settings.styling.radius.pill');
+    await read();
+    await patch.open();
+    await finished();
+    server.holdPatch = undefined;
+    expect(radius()).toBe('settings.styling.radius.pill');
+    expect(region()).not.toBeNull();
+    expect(status()).not.toBe('common.saved');
+    await save();
+    expect(lastPatch()?.config).toStrictEqual({ styling: { radius: 'pill' } });
+    expect(region()).toBeNull();
+    expect(status()).toBe('common.saved');
+  });
+
+  it('A → B → A with a late completion: the choice shows on no other site, and each site shows what its server holds', async () => {
+    await open({ theme: SIGNAL, styling: {} });
+    server.config['site-2'] = { theme: { preset: 'harbor' }, styling: {} };
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await click('settings.styling.radius.pill');
+    await startSave();
+    await act(async () => showSite('site-2'));
+    await vi.waitFor(() => expect(radius()).toBe('settings.styling.radius.rounded'));
+    expect(radiusSource()).toStrictEqual(INHERITED);
+    expect(region()).toBeNull();
+    await act(async () => showSite('site-1'));
+    await settle();
+    // Back on site 1 before its save answered: a fresh form on what the cache holds, nothing carried over.
+    expect(radius()).toBe('settings.styling.radius.sharp');
+    expect(radiusSource()).toStrictEqual(INHERITED);
+    expect(region()).toBeNull();
+    await patch.open();
+    await finished();
+    server.holdPatch = undefined;
+    expect(region()).toBeNull();
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    await read();
+    expect(radius()).toBe('settings.styling.radius.pill');
+    expect(radiusSource()).toStrictEqual(OVERRIDE);
+    await act(async () => showSite('site-2'));
+    await read('site-2');
+    expect(radius()).toBe('settings.styling.radius.rounded');
+    expect(radiusSource()).toStrictEqual(INHERITED);
+    expect(server.patches).toStrictEqual([{ site: 'site-1', config: { styling: { radius: 'pill' } } }]);
   });
 });
 

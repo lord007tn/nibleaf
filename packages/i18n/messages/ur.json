@@ -757,6 +757,8 @@
   "settings_styling_radius_sharp": "تیز",
   "settings_styling_radius_rounded": "گول",
   "settings_styling_radius_pill": "گولی",
+  "settings_styling_radius_inherited": "تھیم سے لیا گیا۔ اس سائٹ کے لیے مقرر کرنے کو کوئی بھی آپشن چنیں، منتخب شدہ بھی۔",
+  "settings_styling_radius_override": "اس سائٹ کے لیے مقرر۔ تھیم بدلنے سے یہ نہیں بدلے گا۔",
   "settings_typography_title": "نوع ٹائپ",
   "settings_typography_headingfont_label": "سرخی والا فونٹ",
   "settings_typography_headingfont_hint": "صفحہ کے عنوانات اور سیکشن کی سرخیوں کے لیے استعمال کیا جاتا ہے۔",

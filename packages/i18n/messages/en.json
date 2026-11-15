@@ -807,6 +807,8 @@
   "settings_styling_radius_sharp": "Sharp",
   "settings_styling_radius_rounded": "Rounded",
   "settings_styling_radius_pill": "Pill",
+  "settings_styling_radius_inherited": "From the theme. Choose any option, the selected one included, to keep it for this site.",
+  "settings_styling_radius_override": "Set for this site. Changing the theme won’t change it.",
   "settings_typography_title": "Typography",
   "settings_typography_headingfont_label": "Heading font",
   "settings_typography_headingfont_hint": "Used for page titles and section headings.",

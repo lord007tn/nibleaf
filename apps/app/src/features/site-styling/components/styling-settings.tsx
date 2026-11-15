@@ -6,12 +6,13 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
+import type { ThemeOwnedProjectConfig } from '@nibleaf/shared/themes';
 import { useStore } from '@tanstack/react-form';
 import { Paintbrush } from 'lucide-react';
 import { useCallback, useId, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
-import { FIELD_MONO, Field, GroupLabel, SectionHeader, Segmented } from '@/components/project-settings/shared';
+import { FIELD_MONO, GroupLabel, SectionHeader, Segmented } from '@/components/project-settings/shared';
 import type { Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
@@ -21,12 +22,12 @@ import {
   clamp,
   colorProblem,
   editColor,
-  editRadius,
   HSL_MAX,
   type Hsl,
   hexText,
   hexToHsl,
   hslToHex,
+  inheritedRadius,
   PRESETS,
   type Radius,
   SHOWN_DEFAULT_COLOR,
@@ -84,6 +85,9 @@ function StylingForm({ project }: { project: Project }) {
   const saveStyling = useSaveStyling(project.id);
   const styling = project.config?.styling as StylingConfig | undefined;
   const source = useMemo(() => stylingValues(styling), [styling]);
+  // What an unset radius gets from the stored theme. Shown, never written into the draft.
+  const theme = (project.config as ThemeOwnedProjectConfig | undefined)?.theme;
+  const inherited = useMemo(() => inheritedRadius(theme), [theme]);
   const identity = JSON.stringify([project.id, 'styling']);
   const [reveal, setReveal] = useIdentityState(identity, HIDDEN);
   const [transient, setTransient] = useIdentityState<Transient | null>(identity, null);
@@ -145,6 +149,8 @@ function StylingForm({ project }: { project: Project }) {
   const text = own?.text ?? (shown ?? color).toUpperCase();
   const problem = colorProblem(color) && (reveal.left || reveal.attempted);
   const errorId = useId();
+  const radiusLabelId = useId();
+  const radiusSourceId = useId();
 
   const setColor = (next: string, view: Omit<Transient, 'value'> | null) => {
     setTransient(() => (view ? { value: next, ...view } : null));
@@ -277,18 +283,26 @@ function StylingForm({ project }: { project: Project }) {
 
       <form.Field name="radius">
         {(field) => (
-          <Field hint={t('settings.styling.radius.hint')} label={t('settings.styling.radius.label')}>
+          // Any choice, the inherited radius included, is the person's: it sets this site's own radius.
+          <fieldset aria-describedby={radiusSourceId} aria-labelledby={radiusLabelId} className="mb-6 min-w-0">
+            <GroupLabel>
+              <span id={radiusLabelId}>{t('settings.styling.radius.label')}</span>
+            </GroupLabel>
+            <p className="mt-1 mb-3 text-muted-foreground text-xs leading-snug">{t('settings.styling.radius.hint')}</p>
             <Segmented<Radius>
               className="max-w-[280px]"
-              onChange={(next) => field.handleChange(editRadius(next, draft.baseline.radius))}
+              onChange={(next) => field.handleChange(next)}
               options={[
                 { value: 'sharp', label: t('settings.styling.radius.sharp') },
                 { value: 'rounded', label: t('settings.styling.radius.rounded') },
                 { value: 'pill', label: t('settings.styling.radius.pill') },
               ]}
-              value={shownRadius(field.state.value)}
+              value={shownRadius(field.state.value, inherited)}
             />
-          </Field>
+            <p className="mt-2 text-muted-foreground text-xs leading-snug" id={radiusSourceId}>
+              {field.state.value === '' ? t('settings.styling.radius.inherited') : t('settings.styling.radius.override')}
+            </p>
+          </fieldset>
         )}
       </form.Field>
     </form>

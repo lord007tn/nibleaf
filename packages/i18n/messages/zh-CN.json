@@ -747,6 +747,8 @@
   "settings_styling_radius_sharp": "夏普",
   "settings_styling_radius_rounded": "圆形",
   "settings_styling_radius_pill": "丸",
+  "settings_styling_radius_inherited": "来自主题。选择任一选项（包括当前选中的）即可为此网站固定该圆角。",
+  "settings_styling_radius_override": "已为此网站设置。更换主题不会改变它。",
   "settings_typography_title": "版式",
   "settings_typography_headingfont_label": "标题字体",
   "settings_typography_headingfont_hint": "用于页面标题和章节标题。",

@@ -9,10 +9,15 @@
  *   accent of its own for that mode (`config.theme.colors.<mode>.accent`), and
  *   the reader nudges it until it reads as text on the canvas;
  * - a stored radius replaces the theme's `layout.radius`; with none stored, the
- *   preset's (or the theme's) radius applies.
+ *   theme's radius applies (its `layout.radius`, else its preset's). The form
+ *   shows that inherited radius as such, and any radius the person chooses,
+ *   even the one inherited, is stored for this website: a later theme change
+ *   no longer moves it.
  * The appearance (`config.styling.theme`) belongs to the Theme section and is
  * never part of this form.
  */
+
+import { resolveTheme, type ThemeOwnedProjectConfig } from '@nibleaf/shared/themes';
 
 const RADII = ['sharp', 'rounded', 'pill'] as const;
 export type Radius = (typeof RADII)[number];
@@ -27,13 +32,13 @@ export type StylingPatch = { primaryColor?: string; radius?: Radius };
  * The form's values.
  * - `primaryColor`: `''` when none is stored; `#rrggbb` (lowercase) when the
  *   text is a color; otherwise the text as typed, which is never sent.
- * - `radius`: `''` when none is stored, else the stored radius.
+ * - `radius`: `''` when none is stored (the theme's applies), else the
+ *   website's own radius: stored, or chosen in this draft.
  */
 export type StylingValues = { primaryColor: string; radius: Radius | '' };
 
-/** What the controls show for an unset color and radius (as the form always has). */
+/** What the controls show for an unset color (as the form always has). */
 export const SHOWN_DEFAULT_COLOR = '#5546e8';
-const SHOWN_DEFAULT_RADIUS: Radius = 'rounded';
 
 export const PRESETS = ['#5546e8', '#0ea5e9', '#16a34a', '#22c55e', '#eab308', '#ea580c', '#ef4444', '#db2777', '#a855f7', '#0f172a'] as const;
 
@@ -62,8 +67,16 @@ export const hexText = (text: string): string => {
 /** The color the controls show for a value: the stored one, the default for none, `null` while the text is not a color. */
 export const shownColor = (value: string): string | null => (value === '' ? SHOWN_DEFAULT_COLOR : parseHex(value));
 
-/** The radius the control shows for a value. */
-export const shownRadius = (value: Radius | ''): Radius => (value === '' ? SHOWN_DEFAULT_RADIUS : value);
+/**
+ * The radius the site gets from its theme when Styling stores none, as the
+ * reader resolves it (`resolveTheme`): the theme's `layout.radius`, else its
+ * preset's. Only `config.theme` decides it, so a stored or drafted
+ * `styling.radius` never shows as inherited.
+ */
+export const inheritedRadius = (theme: ThemeOwnedProjectConfig['theme']): Radius => resolveTheme({ theme }).layout.radius;
+
+/** The radius the control shows: the website's own, else the inherited one. */
+export const shownRadius = (value: Radius | '', inherited: Radius): Radius => (value === '' ? inherited : value);
 
 /** `config.styling` read as the form's values. A stored short color reads as its long form. */
 export function stylingValues(styling: StylingConfig | null | undefined): StylingValues {
@@ -88,9 +101,6 @@ export function editColor(text: string, baseline: string): string {
   return color === shownColor(baseline) ? baseline : color;
 }
 
-/** The value for a radius the person chose: the one the baseline shows keeps the baseline value (unset stays unset). */
-export const editRadius = (next: Radius, baseline: Radius | ''): Radius | '' => (next === shownRadius(baseline) ? baseline : next);
-
 /** The color problem a save would refuse: text that is not a color. */
 export const colorProblem = (value: string): 'invalidHex' | null => (value === '' || parseHex(value) ? null : 'invalidHex');
 
@@ -98,8 +108,9 @@ export const colorProblem = (value: string): 'invalidHex' | null => (value === '
  * The `config.styling` patch: only the keys changed from `baseline` (what the
  * server confirmed when this save started). The server merges `styling` key by
  * key and keeps every key a patch leaves out, so an untouched color, radius or
- * appearance stays as stored, including another writer's. `config.theme` and
- * `styling.theme` are never sent. A value that can't be stored (`''`, or text
+ * appearance stays as stored, including another writer's. A radius chosen
+ * over an unset one is sent even when it equals the inherited radius: the
+ * choice is what stores it. `config.theme` and `styling.theme` are never sent. A value that can't be stored (`''`, or text
  * that is not a color) is never sent either; the form refuses the latter first.
  */
 export function stylingPatch(values: StylingValues, baseline: StylingValues): StylingPatch {

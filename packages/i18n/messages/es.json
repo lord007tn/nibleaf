@@ -757,6 +757,8 @@
   "settings_styling_radius_sharp": "Afilado",
   "settings_styling_radius_rounded": "Redondeado",
   "settings_styling_radius_pill": "Píldora",
+  "settings_styling_radius_inherited": "Del tema. Elija cualquier opción, incluida la seleccionada, para fijarla en este sitio.",
+  "settings_styling_radius_override": "Fijado para este sitio. Cambiar el tema no lo cambia.",
   "settings_typography_title": "Tipografía",
   "settings_typography_headingfont_label": "Fuente de los títulos",
   "settings_typography_headingfont_hint": "Se utiliza para títulos de páginas y encabezados de secciones.",

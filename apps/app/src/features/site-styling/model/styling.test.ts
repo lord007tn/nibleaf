@@ -1,15 +1,17 @@
+import { resolveTheme } from '@nibleaf/shared/themes';
 import { projectConfigSchema } from '@nibleaf/validators';
 import { describe, expect, it } from 'vitest';
 import {
   clamp,
   colorProblem,
   editColor,
-  editRadius,
   hexText,
   hexToHsl,
   hslToHex,
+  inheritedRadius,
   parseHex,
   shownColor,
+  shownRadius,
   stylingPatch,
   stylingValues,
 } from './styling';
@@ -61,11 +63,31 @@ describe('editing the color', () => {
 });
 
 describe('radius', () => {
-  it('choosing what an unset radius shows keeps it unset; any other choice sets it', () => {
-    expect(editRadius('rounded', '')).toBe('');
-    expect(editRadius('sharp', '')).toBe('sharp');
-    expect(editRadius('rounded', 'sharp')).toBe('rounded');
-    expect(editRadius('sharp', 'sharp')).toBe('sharp');
+  it.each([
+    ['no theme (Harbor)', undefined, 'rounded'],
+    ['Harbor', { preset: 'harbor' as const }, 'rounded'],
+    ['Signal', { preset: 'signal' as const }, 'sharp'],
+    ['Manuscript', { preset: 'manuscript' as const }, 'rounded'],
+    ['Signal with its own layout radius', { preset: 'signal' as const, layout: { radius: 'pill' as const } }, 'pill'],
+    ['an unknown preset (Harbor)', { preset: 'gone' as 'harbor' }, 'rounded'],
+  ])('an unset radius inherits what the reader resolves for %s', (_name, theme, radius) => {
+    expect(inheritedRadius(theme)).toBe(radius);
+    // The reader's own resolution of the same stored config, without a styling radius.
+    expect(resolveTheme({ theme, styling: {} }).layout.radius).toBe(radius);
+  });
+
+  it('shows the site’s own radius over the inherited one', () => {
+    expect(shownRadius('', 'sharp')).toBe('sharp');
+    expect(shownRadius('rounded', 'sharp')).toBe('rounded');
+    expect(shownRadius('sharp', 'pill')).toBe('sharp');
+  });
+
+  it('a radius chosen over an unset one is sent, even the inherited one; render and refetch alone send nothing', () => {
+    const unset = { primaryColor: '', radius: '' as const };
+    expect(stylingPatch({ ...unset, radius: 'rounded' }, unset)).toStrictEqual({ radius: 'rounded' });
+    expect(stylingPatch({ ...unset, radius: 'sharp' }, unset)).toStrictEqual({ radius: 'sharp' });
+    expect(stylingPatch(unset, unset)).toStrictEqual({});
+    expect(stylingPatch({ primaryColor: '#0ea5e9', radius: '' }, unset)).toStrictEqual({ primaryColor: '#0ea5e9' });
   });
 });
 
