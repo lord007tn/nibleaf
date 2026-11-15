@@ -59,8 +59,7 @@ import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { DirectionProvider } from '@nibleaf/design-system/components/ui/direction';
 import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
 import { setLanguage } from '@nibleaf/i18n/locale-state';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 import { BannerSettings } from '@/features/site-banner/components/banner-settings';
 import { queryKeys } from '@/hooks/api/query-keys';
@@ -74,10 +73,20 @@ const client = new QueryClient({ defaultOptions: { queries: { staleTime: Number.
 client.setQueryData(queryKeys.languages.all('site-1'), ${JSON.stringify(LANGUAGES)});
 const Section = params.get('phase') === 'before' ? BeforeSection : BannerSettings;
 
+const projectKey = queryKeys.projects.detail('site-1');
+client.setQueryData(projectKey, { id: 'site-1', config: { banner: ${JSON.stringify(PROJECT_BANNER)} } });
+// A refetch that finds the project changed elsewhere.
+Object.assign(window, {
+  serverChange: (banner: object) =>
+    client.setQueryData(projectKey, (old: { config: { banner: object } }) => ({ ...old, config: { banner: { ...old.config.banner, ...banner } } })),
+});
+
+/** Like the app's hosts: the project comes from its query, so a save's invalidation refetches it. */
 function Host() {
-  const [project, setProject] = useState({ id: 'site-1', config: { banner: ${JSON.stringify(PROJECT_BANNER)} } });
-  // What the host hands down after a refetch: the project, changed elsewhere.
-  Object.assign(window, { serverChange: (banner: object) => setProject((old) => ({ ...old, config: { banner: { ...old.config.banner, ...banner } } })) });
+  const { data: project } = useQuery({
+    queryKey: projectKey,
+    queryFn: async () => (await (await fetch('/api/app/projects/site-1')).json()).data,
+  });
   return <Section project={project as never} />;
 }
 
@@ -117,19 +126,25 @@ createRoot(document.getElementById('root')!).render(
   const dist = resolve(harness, 'dist');
   const mime = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.woff2': 'font/woff2' };
 
-  /** Serves the build and answers the API: saves fail or succeed per `api.mode`; every request is recorded. */
+  /**
+   * Serves the build and answers the API: saves fail or succeed per `api.mode`,
+   * a project save merges the banner one level deep as the server does, and
+   * every request is recorded.
+   */
   const serve = async (context, api) => {
+    api.project ??= { id: 'site-1', config: { banner: { ...PROJECT_BANNER } } };
     await context.route(`${origin}/**`, async (route) => {
       const request = route.request();
       const { pathname } = new URL(request.url());
       if (pathname === '/sheet') return route.fulfill({ body: '<!doctype html><title>sheet</title>', contentType: 'text/html' });
       if (pathname.startsWith('/api/')) {
         api.requests.push(`${request.method()} ${pathname}`);
-        if (request.method() === 'GET') return route.fulfill({ json: { data: LANGUAGES } });
+        if (request.method() === 'GET') return route.fulfill({ json: { data: pathname.endsWith('/languages') ? LANGUAGES : api.project } });
         if (api.mode === 'fail') return route.fulfill({ status: 500, json: { error: { message: 'Simulated failure' } } });
-        const body = request.postDataJSON();
-        const config = body.config ?? {};
-        return route.fulfill({ json: { data: pathname.includes('/languages/') ? { ...LANGUAGES[1], config } : { id: 'site-1', config } } });
+        const { config = {} } = request.postDataJSON();
+        if (pathname.includes('/languages/')) return route.fulfill({ json: { data: { ...LANGUAGES[1], config } } });
+        api.project = { ...api.project, config: { banner: { ...api.project.config.banner, ...config.banner } } };
+        return route.fulfill({ json: { data: api.project } });
       }
       const file = resolve(dist, pathname.startsWith('/assets/') ? `.${pathname}` : 'index.html');
       assert.ok(file.startsWith(`${dist}${sep}`));
@@ -307,6 +322,8 @@ createRoot(document.getElementById('root')!).render(
     await switches(page).nth(1).click();
     await note('Turned Dismissible off: a toggle alone makes the form dirty');
     await settle(page, 1000);
+    await textInputs(page).nth(0).click();
+    await page.keyboard.press('End');
     await textInputs(page).nth(0).pressSequentially(' (ends Friday)', { delay: 40 });
     await note('Typed into the message');
     await settle(page, 600);
@@ -338,7 +355,13 @@ createRoot(document.getElementById('root')!).render(
     assert.equal(steps.at(-1).fields[0].value, '');
     assert.equal(steps.at(-1).fields[0].dir, 'rtl');
     assert.equal(steps.at(-1).saveVisible, false);
-    assert.deepEqual(api.requests, ['PATCH /api/app/projects/site-1', 'PATCH /api/app/projects/site-1']);
+    assert.deepEqual(
+      api.requests.filter((request) => request.startsWith('PATCH')),
+      ['PATCH /api/app/projects/site-1', 'PATCH /api/app/projects/site-1'],
+    );
+    assert.ok(api.requests.includes('GET /api/app/projects/site-1'));
+    // The Arabic scope inherits the Dismissible the project save stored.
+    assert.deepEqual(steps.at(-1).toggles, [true, false]);
 
     assert.equal(attempted.length, 0);
     await writeEvidenceJson(resolve(import.meta.dirname, 'evidence.json'), {
