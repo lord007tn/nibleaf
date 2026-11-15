@@ -1,0 +1,42 @@
+Log normalization: ANSI styling and non-ASCII terminal glyphs removed.
+Expected failure after temporarily removing only the model reset setter.
+
+ RUN  v5.1.0 C:/Users/raedb/AppData/Local/OpenAI/Codex/worktrees/nibleaf-provider-copy/apps/app
+
+  src/features/site-ai/components/provider-key-form.test.tsx (8 tests | 1 failed | 7 skipped) 176ms
+    ProviderKeyForm (8)
+      drops a checked model list and its chosen model when the key changes 175ms
+pnpm.exe : 
+At C:\Users\raedb\AppData\Local\pnpm\bin\pnpm.ps1:14 char:3
++   & "$basedir/../global/v11/557a16cc51f818d142da6cabdc92990972c46d607 ...
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Failed Tests 1 
+
+ FAIL  src/features/site-ai/components/provider-key-form.test.tsx > ProviderKeyForm > drops a checked model list and its chosen model when the key changes
+AssertionError: expected 'gpt-6-sol' to contain 'gpt-6-luna'
+
+Expected: "gpt-6-luna"
+Received: "gpt-6-sol"
+
+  src/features/site-ai/components/provider-key-form.test.tsx:154:41
+    152|     // The list checked against the old key is reset, and the choice g
+    153|     expect(state.models.reset).toHaveBeenCalledTimes(1);
+    154|     expect(modelTrigger()?.textContent).toContain('gpt-6-luna');
+       |                                         ^
+    155|   });
+    156|
+
+[1/1]
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 skipped (8)
+   Start at  07:50:46
+   Duration  2.62s (environment 51%, import 34%, transform 7%, tests 7%, worker 1%)
+
+undefined
+C:\Users\raedb\AppData\Local\OpenAI\Codex\worktrees\nibleaf-provider-copy\apps\app:
+ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command failed with exit code 1: vitest run src/features/site-ai/components/provider-key-form.test.tsx --maxWorkers=1 --testNamePattern drops a checked model list

@@ -1,6 +1,17 @@
 import { SaveRegion } from '@nibleaf/design-system/components/ui/save-region';
 import { useT } from '@nibleaf/i18n/react';
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { DirtyStateReporter } from '@/components/project-settings/shared';
 
 /**
@@ -21,20 +32,81 @@ export type SaveRegionForm = {
 type Registry = {
   register: (id: string, form: SaveRegionForm) => void;
   unregister: (id: string) => void;
+  /** Saves one form the way Save does, focusing an invalid field inside `root`. */
+  saveForm: (form: SaveRegionForm, root: HTMLFormElement) => Promise<void>;
 };
 
 const SaveRegionContext = createContext<Registry | null>(null);
 
-/** Registers an explicit-save form with the page's SaveRegion while mounted. */
+/** Input types that are an editable single line of text, where Enter means "save". */
+const SINGLE_LINE = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number', 'date', 'datetime-local', 'month', 'week', 'time']);
+
+/**
+ * Whether a keydown is an Enter that should save: plain Enter in an editable
+ * single-line field. Browsers also submit implicitly on Shift+Enter, on Enter
+ * in a radio or checkbox, and (Chromium) on an Enter delivered while an IME
+ * composition is open; none of those is a request to save.
+ */
+function isSaveEnter(event: KeyboardEvent) {
+  if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return false;
+  if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return false;
+  const { target } = event;
+  return target instanceof HTMLInputElement && SINGLE_LINE.has(target.type) && !target.readOnly && !target.disabled;
+}
+
+/**
+ * Registers an explicit-save form with the page's SaveRegion while mounted.
+ * Returns props for the `<form>`: Enter in one of its single-line fields saves
+ * this form only (when it is dirty), through the same run as Save. Render
+ * `<SaveRegionSubmit />` inside the form so Enter submits it at all.
+ */
 export function useSaveRegionForm(id: string, form: SaveRegionForm) {
   const registry = useContext(SaveRegionContext);
   if (!registry) throw new Error('useSaveRegionForm must be used inside SaveRegionProvider');
-  const { register, unregister } = registry;
+  const { register, unregister, saveForm } = registry;
   const { isDirty, isSubmitting, submit, discard } = form;
   useEffect(() => {
     register(id, { isDirty, isSubmitting, submit, discard });
   }, [discard, id, isDirty, isSubmitting, register, submit]);
   useEffect(() => () => unregister(id), [id, unregister]);
+
+  // Implicit submission happens in the same task as its keydown, so a key that
+  // must not save only has to be remembered until the task ends. The key
+  // itself is never cancelled: the IME, the radio and the newline keep it.
+  const ignoreSubmit = useRef(false);
+  const onKeyDown = useCallback((event: ReactKeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== 'Enter' && event.keyCode !== 229) return;
+    if (isSaveEnter(event.nativeEvent)) return;
+    ignoreSubmit.current = true;
+    setTimeout(() => {
+      ignoreSubmit.current = false;
+    });
+  }, []);
+  const onSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      // React bubbles a submit through portals: a dialog's own form is not this one.
+      if (event.target !== event.currentTarget) return;
+      event.preventDefault();
+      if (ignoreSubmit.current) return;
+      void saveForm({ isDirty, isSubmitting, submit, discard }, event.currentTarget);
+    },
+    [discard, isDirty, isSubmitting, saveForm, submit],
+  );
+  return { onKeyDown, onSubmit };
+}
+
+/**
+ * The form's default button, so Enter in a single-line field submits a form
+ * with several fields (HTML implicit submission needs one). Hidden: not
+ * focusable and not announced; the SaveRegion's Save is the visible one.
+ */
+export function SaveRegionSubmit() {
+  const t = useT();
+  return (
+    <button hidden type="submit">
+      {t('common.save')}
+    </button>
+  );
 }
 
 /** Focuses the first field marked invalid inside `root`, scrolling it into view. */
@@ -98,7 +170,6 @@ export function SaveRegionProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
-  const registry = useMemo(() => ({ register, unregister }), [register, unregister]);
 
   const dirtyForms = [...forms.values()].filter((form) => form.isDirty);
   const anyDirty = dirtyForms.length > 0;
@@ -107,32 +178,44 @@ export function SaveRegionProvider({ children }: { children: ReactNode }) {
   // typed the value back to what was saved: the request can still change it.
   const unsettled = anyDirty || saving;
 
-  const save = useCallback(async () => {
-    if (running) return;
-    const pending = [...forms.values()].filter((form) => form.isDirty);
-    if (pending.length === 0) return;
-    setRunning(true);
-    setStatus('');
-    try {
-      let deferred = false;
-      for (const form of pending) {
-        const result = await form.submit();
-        if (result === 'deferred') {
-          deferred = true;
-          continue;
+  /** Submits `pending` in order and reports the outcome; an invalid one focuses its first field inside `root`. */
+  const run = useCallback(
+    async (pending: SaveRegionForm[], root: ParentNode | null) => {
+      if (running || pending.length === 0) return;
+      setRunning(true);
+      setStatus('');
+      try {
+        let deferred = false;
+        for (const form of pending) {
+          const result = await form.submit();
+          if (result === 'deferred') {
+            deferred = true;
+            continue;
+          }
+          if (result === 'invalid') {
+            setStatus(t('forms.fixHighlighted'));
+            focusFirstInvalid(root);
+            return;
+          }
+          if (result === 'failed') return;
         }
-        if (result === 'invalid') {
-          setStatus(t('forms.fixHighlighted'));
-          focusFirstInvalid(rootRef.current);
-          return;
-        }
-        if (result === 'failed') return;
+        if (!deferred) setStatus(t('common.saved'));
+      } finally {
+        setRunning(false);
       }
-      if (!deferred) setStatus(t('common.saved'));
-    } finally {
-      setRunning(false);
-    }
-  }, [forms, running, t]);
+    },
+    [running, t],
+  );
+  const save = useCallback(
+    () =>
+      run(
+        [...forms.values()].filter((form) => form.isDirty),
+        rootRef.current,
+      ),
+    [forms, run],
+  );
+  const saveForm = useCallback((form: SaveRegionForm, root: HTMLFormElement) => run(form.isDirty ? [form] : [], root), [run]);
+  const registry = useMemo(() => ({ register, unregister, saveForm }), [register, unregister, saveForm]);
 
   const discard = useCallback(() => {
     if (saving) return;

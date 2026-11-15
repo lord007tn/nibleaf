@@ -12,7 +12,7 @@
  * skipped.
  */
 
-import { claimDocumentRecovery, onlySpeculativeLoads } from '@/lib/document-recovery';
+import { claimDocumentRecovery, isOptionalLoadFailure, onlySpeculativeLoads } from '@/lib/document-recovery';
 
 /** The chunk or stylesheet that failed, from the preload error's message, or the page as a fallback. */
 function failedAsset(event: Event): string {
@@ -30,12 +30,21 @@ function reloadOnChunkLoadFailure(event: Event): void {
     event.preventDefault();
     return;
   }
-  // One budget with the reader's navigation fallback (lib/document-recovery.ts):
-  // the same chunk failing again after a reload never reloads twice, a session
-  // never reloads more than a couple of times, and one failure never triggers
-  // two recoveries.
-  if (!claimDocumentRecovery(`chunk:${failedAsset(event)}`)) return;
-  window.location.reload();
+  // Decide one task later, once the importer has seen the error (Vite rethrows
+  // this same error to it right after the event): a load the page can do
+  // without (runOptionalLoad) claims its own failure and falls back, so the
+  // page isn't reloaded over it. Any other chunk failing still reloads.
+  const payload = (event as Event & { payload?: unknown }).payload;
+  const asset = failedAsset(event);
+  setTimeout(() => {
+    if (isOptionalLoadFailure(payload)) return;
+    // One budget with the reader's navigation fallback (lib/document-recovery.ts):
+    // the same chunk failing again after a reload never reloads twice, a session
+    // never reloads more than a couple of times, and one failure never triggers
+    // two recoveries.
+    if (!claimDocumentRecovery(`chunk:${asset}`)) return;
+    window.location.reload();
+  }, 0);
 }
 
 /** Registers the listener on the client. It's safe to call more than once:

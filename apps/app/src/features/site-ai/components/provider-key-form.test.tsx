@@ -133,6 +133,21 @@ describe('ProviderKeyForm', () => {
     await mount();
     expect(document.querySelector('[role="status"]')?.textContent).toBe('settings.smartAi.modelsVerified');
     expect(state.models.reset).not.toHaveBeenCalled();
+    await act(async () => {
+      const trigger = modelTrigger();
+      trigger?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+      trigger?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+      trigger?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));
+      trigger?.click();
+    });
+    const anotherModel = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((option) => option.textContent?.includes('gpt-6-sol'));
+    expect(anotherModel).toBeDefined();
+    await act(async () => {
+      anotherModel?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+      anotherModel?.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));
+      anotherModel?.click();
+    });
+    expect(modelTrigger()?.textContent).toContain('gpt-6-sol');
     await typeKey('another-fake-key-for-the-test');
     // The list checked against the old key is reset, and the choice goes back to the stored model.
     expect(state.models.reset).toHaveBeenCalledTimes(1);
