@@ -20,8 +20,8 @@ import {
   type ColorMode,
   chooseAppearance,
   type HistoryEntry,
-  previewConfig,
   presetTheme,
+  previewConfig,
   problemTokens,
   recordHistory,
   type SaveMark,
@@ -366,7 +366,9 @@ function ThemeForm({ project }: { project: Project }) {
             return (
               <label className="grid gap-1.5 text-[12.5px]" key={key}>
                 <span className="font-medium">{t(`settings.theme.color.${key}`)}</span>
-                <span className={cn('flex items-center gap-2 rounded-md border bg-background p-1.5', invalid ? 'border-destructive' : 'border-input')}>
+                <span
+                  className={cn('flex items-center gap-2 rounded-md border bg-background p-1.5', invalid ? 'border-destructive' : 'border-input')}
+                >
                   <input
                     aria-describedby={invalid ? contrastId : undefined}
                     aria-invalid={invalid || undefined}

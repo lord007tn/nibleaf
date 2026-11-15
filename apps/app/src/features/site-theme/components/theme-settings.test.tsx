@@ -24,7 +24,12 @@ vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, transl
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 vi.mock('@tanstack/react-router', () => ({ useBlocker: () => undefined }));
 vi.mock('@/services/api-origin', () => ({ apiOrigin: () => 'http://dashboard.test' }));
-vi.mock('@/lib/site-theme', () => ({ projectThemeVariables: () => ({}), projectThemeStyle: () => ({}) }));
+vi.mock('@/lib/site-theme', () => ({
+  projectThemeVariables: () => ({}),
+  projectThemeStyle: () => ({}),
+  // main's section reads it; kept so this suite also runs against main.
+  siteAppearance: (config?: { styling?: { theme?: string } } | null) => config?.styling?.theme ?? 'system',
+}));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
   DocumentationThemeProvider: ({ children, theme }: { children: unknown; theme: { id: string } }) => (
     <div data-preset={theme.id} data-testid="preview">
@@ -63,16 +68,22 @@ const isObject = (value: unknown): value is Config => typeof value === 'object' 
 /** The API's project PATCH merge: each object section one level deep, anything else replaced. */
 const mergeConfig = (existing: Config, incoming: Config) => {
   const merged = { ...existing };
-  for (const [key, value] of Object.entries(incoming)) merged[key] = isObject(value) ? { ...(isObject(merged[key]) ? merged[key] : {}), ...value } : value;
+  for (const [key, value] of Object.entries(incoming))
+    merged[key] = isObject(value) ? { ...(isObject(merged[key]) ? merged[key] : {}), ...value } : value;
   return merged;
 };
 /** `importProjectTheme` from apps/server/src/actions/themes.ts, on the same shared functions. */
 const importTheme = (current: Config, body: { template: unknown; mode: 'merge' | 'replace'; apply: boolean }) => {
   const parsed = parseThemeTemplate(body.template);
-  if (!parsed.success) return undefined;
+  if (!parsed.success) return;
   const incoming = {
     ...parsed.template.config,
-    theme: { version: THEME_SCHEMA_VERSION, preset: parsed.template.config.theme?.preset ?? 'harbor', ...parsed.template.config.theme, metadata: parsed.template.metadata },
+    theme: {
+      version: THEME_SCHEMA_VERSION,
+      preset: parsed.template.config.theme?.preset ?? 'harbor',
+      ...parsed.template.config.theme,
+      metadata: parsed.template.metadata,
+    },
   };
   const next = applyThemeTemplateConfig(applyThemeTemplateConfig(current, themeOwnedConfig(current), 'replace'), incoming, body.mode);
   const changes = previewThemeConfigChanges(current, next);
@@ -185,8 +196,13 @@ beforeEach(() => {
   };
   stubApi();
   downloads.length = 0;
-  vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: (blob: Blob) => (downloads.push(blob), 'blob:theme'), revokeObjectURL: () => {} }));
-  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  // jsdom has no object URLs: the download's Blob is kept instead, and the link is never followed.
+  URL.createObjectURL = (blob: Blob) => {
+    downloads.push(blob);
+    return 'blob:theme';
+  };
+  URL.revokeObjectURL = vi.fn();
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(vi.fn());
   vi.stubGlobal(
     'matchMedia',
     vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn() })),
@@ -228,7 +244,11 @@ const segment = (fieldLabel: string, option: string) => buttonNamed(option, fiel
 const appearance = (option: 'light' | 'dark' | 'system') => click(segment('settings.theme.appearance', `settings.styling.theme.${option}`));
 const shownAppearance = () => field('settings.theme.appearance').querySelector('[aria-pressed="true"]')?.textContent;
 const preset = (id: string) =>
-  click([...container.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')].find((b) => b.textContent?.includes(`settings.theme.preset.${id}.name`)) as HTMLElement);
+  click(
+    [...container.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')].find((b) =>
+      b.textContent?.includes(`settings.theme.preset.${id}.name`),
+    ) as HTMLElement,
+  );
 const activePreset = () => container.querySelector<HTMLElement>('[data-testid="preview"]')?.dataset.preset;
 const color = (key: string) => {
   const found = container.querySelector<HTMLInputElement>(`input[type="color"][aria-label="settings.theme.color.${key}"]`);
@@ -286,7 +306,12 @@ const answer = (choice: 'discard' | 'keep') => {
   return click(buttonNamed(choice === 'discard' ? 'settings.chrome.scope.discardConfirm' : 'settings.unsaved.keep', open));
 };
 const template = (preset: string, extra: Config = {}) =>
-  JSON.stringify({ kind: THEME_TEMPLATE_KIND, version: 1, metadata: { name: 'Imported', description: 'From a file' }, config: { theme: { preset }, ...extra } });
+  JSON.stringify({
+    kind: THEME_TEMPLATE_KIND,
+    version: 1,
+    metadata: { name: 'Imported', description: 'From a file' },
+    config: { theme: { preset }, ...extra },
+  });
 
 describe('Theme Studio follows the project query', () => {
   it('main regression: a refetch reaches a clean draft (main seeded it once, on mount)', async () => {
@@ -635,7 +660,13 @@ describe('theme templates', () => {
   it('a slow file read never overwrites text typed since, and a late preview never reaches another site', async () => {
     await open();
     let release!: (text: string) => void;
-    const file = { size: 10, text: () => new Promise<string>((resolve) => (release = resolve)) };
+    const file = {
+      size: 10,
+      text: () =>
+        new Promise<string>((resolve) => {
+          release = resolve;
+        }),
+    };
     const input = container.querySelector<HTMLInputElement>('input[type="file"]') as HTMLInputElement;
     await act(async () => {
       Object.defineProperty(input, 'files', { value: [file], configurable: true });

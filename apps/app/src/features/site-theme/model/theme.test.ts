@@ -4,8 +4,8 @@ import {
   chooseAppearance,
   HISTORY_LIMIT,
   type HistoryEntry,
-  previewConfig,
   presetTheme,
+  previewConfig,
   problemTokens,
   readTemplateText,
   recordHistory,
@@ -161,9 +161,7 @@ describe('validation and templates', () => {
     expect(issues.map((issue) => `${issue.mode}:${issue.pair}`)).toContain('light:foreground/canvas');
     expect(problemTokens(issues[0] as (typeof issues)[number])).toStrictEqual(['foreground', 'canvas']);
     // A brand accent that only fails as text is shaded for readers, not a save problem (PUB-006).
-    expect(themeProblems(previewConfig(null, values({ version: 1, preset: 'harbor', colors: { light: { accent: '#b96a3d' } } })))).toStrictEqual(
-      [],
-    );
+    expect(themeProblems(previewConfig(null, values({ version: 1, preset: 'harbor', colors: { light: { accent: '#b96a3d' } } })))).toStrictEqual([]);
     expect(themeProblems(previewConfig(null, values(presetTheme('signal'))))).toStrictEqual([]);
   });
 

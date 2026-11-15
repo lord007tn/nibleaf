@@ -743,8 +743,7 @@ describe('updateProject: saving the theme and appearance from Theme Studio', () 
     });
   });
 
-  const save = (config: Record<string, unknown>) =>
-    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config }))));
+  const save = (config: Record<string, unknown>) => updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config }))));
 
   it('an appearance-only save keeps Styling’s colour and radius and the authored theme', async () => {
     const readback = await save({ styling: { theme: 'system' } });
@@ -775,9 +774,9 @@ describe('updateProject: saving the theme and appearance from Theme Studio', () 
   });
 
   it('refuses an authored theme that fails contrast, as the dashboard does before saving', () => {
-    expect(updateProjectBody.safeParse({ config: { theme: { version: 1, preset: 'harbor', colors: { light: { foreground: '#eeeeee' } } } } }).success).toBe(
-      false,
-    );
+    expect(
+      updateProjectBody.safeParse({ config: { theme: { version: 1, preset: 'harbor', colors: { light: { foreground: '#eeeeee' } } } } }).success,
+    ).toBe(false);
   });
 });
 
