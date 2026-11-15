@@ -11,6 +11,10 @@
 // to 55% of the window and a `resize` event is dispatched, which is what the
 // SaveRegion listens to. The layout viewport does not change and no keyboard
 // is drawn.
+//
+// `--verify` checks the current tree only and makes no media: it asserts the
+// placement against what Sonner renders and writes verify.json, never the
+// committed evidence.json, screenshots or videos.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -20,6 +24,7 @@ import { pathToFileURL } from 'node:url';
 import { acquireDevstackLock, hostKey, withLocalOnlyBrowser } from '../../../tests/integration/lib/capture-env.mjs';
 import { writeEvidenceJson } from '../../../tests/integration/lib/evidence-json.mjs';
 
+const verify = process.argv.includes('--verify');
 const root = resolve(import.meta.dirname, '../../..');
 const app = resolve(root, 'apps/app');
 const require = createRequire(resolve(app, 'package.json'));
@@ -87,6 +92,7 @@ import { setLanguage } from '@nibleaf/i18n/locale-state';
 import { useT } from '@nibleaf/i18n/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
+import { LocalizedProductProviders } from '@/components/localized-product-providers';
 import { AnalyticsSettings } from '@/features/site-analytics-settings/components/analytics-settings';
 import { AppProviders as Before } from './before/app-providers';
 import { AppProviders as After } from './after/app-providers';
@@ -100,7 +106,8 @@ document.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
 const theme = params.get('theme') === 'dark' ? 'dark' : 'light';
 document.documentElement.classList.add(theme);
 document.documentElement.style.colorScheme = theme;
-const AppProviders = { before: Before, after: After, 'after-703': After703 }[params.get('phase') ?? 'after'] ?? After;
+// 'auth' is the auth pages' providers (AuthProviders renders LocalizedProductProviders without the dashboard scope).
+const AppProviders = { before: Before, after: After, 'after-703': After703, auth: LocalizedProductProviders }[params.get('phase') ?? 'after'] ?? After;
 const project = { id: 'site-1', name: 'Handbook', slug: 'handbook', config: { theme: { preset: 'nib' }, analytics: ${JSON.stringify(savedAnalytics)} } };
 const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
 
@@ -118,11 +125,13 @@ function Page() {
     </div>
   );
 }
-createRoot(document.getElementById('root')!).render(
+const root = createRoot(document.getElementById('root')!);
+root.render(
   <QueryClientProvider client={client}>
     <AppProviders><Page /></AppProviders>
   </QueryClientProvider>,
 );
+window.__unmountFixture = () => root.unmount();
 `,
   );
   const { build } = await fromApp('vite');
@@ -352,6 +361,190 @@ createRoot(document.getElementById('root')!).render(
   };
   const planFor = (scene) => (scene === 'error-floating' ? failures.network : failures.stacked);
 
+  /** Where Sonner's host puts the toasts: its offset variables, the front toast's edges, and the stack in Sonner's order (front first). */
+  const placement = (page) =>
+    page.evaluate(() => {
+      const host = document.querySelector('[data-sonner-toaster]');
+      const style = getComputedStyle(host);
+      const probe = document.body.appendChild(document.createElement('div'));
+      probe.style.paddingTop = 'env(safe-area-inset-top, 0px)';
+      const safeTop = Number.parseFloat(getComputedStyle(probe).paddingTop);
+      probe.remove();
+      const offsets = Object.fromEntries(
+        ['--offset-top', '--offset-bottom', '--mobile-offset-top', '--mobile-offset-bottom'].map((name) => [
+          name,
+          style.getPropertyValue(name).trim(),
+        ]),
+      );
+      const toasts = [...host.querySelectorAll('[data-sonner-toast]')]
+        .filter((toast) => toast.dataset.removed !== 'true')
+        .map((toast) => {
+          const r = toast.getBoundingClientRect();
+          return {
+            index: Number(toast.dataset.index),
+            top: Math.round(r.top),
+            bottom: Math.round(innerHeight - r.bottom),
+            left: Math.round(r.left),
+            right: Math.round(innerWidth - r.right),
+            y: toast.dataset.yPosition,
+            x: toast.dataset.xPosition,
+          };
+        })
+        .sort((a, b) => a.index - b.index);
+      const dashboardRules = [...document.styleSheets]
+        .flatMap((sheet) => [...sheet.cssRules])
+        .filter((rule) => rule.cssText.includes('data-dashboard-toasts')).length;
+      return {
+        host: { y: host.dataset.yPosition, x: host.dataset.xPosition, inDashboardScope: Boolean(host.closest('[data-dashboard-toasts]')) },
+        hosts: document.querySelectorAll('[data-sonner-toaster]').length,
+        offsets,
+        safeTop,
+        toasts,
+        dashboardRules,
+      };
+    });
+
+  /**
+   * What is wrong with the stack's placement. It belongs at `anchor`, `offset` (the host's own variable) plus the safe area from that
+   * edge, front toast nearest it and the rest stacking away, on the reading side for `locale`. A list, so one run reports every row.
+   */
+  const placementProblems = (seen, { anchor, offset, locale, layout }) => {
+    const problems = [];
+    const value = seen.offsets[offset];
+    if (!/^\d+(\.\d+)?px$/.test(value))
+      problems.push(`${offset} on Sonner's host is ${JSON.stringify(value)}, not a px length: ${JSON.stringify(seen.offsets)}`);
+    const [front, ...rest] = seen.toasts;
+    if (!front) return [...problems, 'no toast rendered'];
+    const expected = Number.parseFloat(value) + (anchor === 'top' ? seen.safeTop : 0);
+    if (Math.abs(front[anchor] - expected) > 1)
+      problems.push(`front toast is ${front[anchor]}px from the ${anchor}, expected ${offset} ${value} = ${expected}px: ${JSON.stringify(front)}`);
+    const away = (a, b) => (anchor === 'top' ? b.top > a.top : b.bottom > a.bottom);
+    if (rest.some((toast, i) => !away(seen.toasts[i], toast)))
+      problems.push(`the stack does not grow away from the ${anchor}: ${JSON.stringify(seen.toasts)}`);
+    const side = locale === 'ar' ? 'left' : 'right';
+    for (const [what, x] of [['host', seen.host.x], ...seen.toasts.map((toast) => [`toast ${toast.index}`, toast.x])])
+      if (x !== side) problems.push(`${what} data-x-position is ${x}, expected ${side} for ${locale}`);
+    // Sonner's phone layout is full width; elsewhere the stack hugs the reading side.
+    if (layout !== '390' && !(front[side] < front[side === 'left' ? 'right' : 'left']))
+      problems.push(`front toast is not on the ${side}: ${JSON.stringify(front)}`);
+    if (seen.hosts !== 1) problems.push(`${seen.hosts} toast hosts`);
+    return problems;
+  };
+
+  /** `--verify`: #715's placement on this tree, in EN and AR, with no media. */
+  async function verifyPlacement(browser, attempted) {
+    const providers = await readFile(resolve(app, 'src/components/localized-product-providers.tsx'), 'utf8');
+    // Since #703 the host loads after hydration (DeferredToaster); a tree whose providers import the design system's Toaster mounts it eagerly.
+    const deferredHost = !providers.includes("'@nibleaf/design-system/components/ui/sonner'");
+    // The installed Sonner (the workspace installs hoisted, see pnpm-workspace.yaml).
+    const sonner = JSON.parse(await readFile(resolve(root, 'node_modules/sonner/package.json'), 'utf8')).version;
+    const desktop = { width: 1440, height: 900 };
+    const layouts = [
+      { name: '390', viewport: { width: 390, height: 664 }, touch: true, top: '--mobile-offset-top', bottom: '--mobile-offset-bottom' },
+      { name: '844x390', viewport: { width: 844, height: 390 }, touch: true, top: '--offset-top', bottom: '--offset-bottom' },
+      { name: '1440', viewport: desktop, touch: false, top: null, bottom: '--offset-bottom' },
+    ];
+    const rows = [];
+    const failed = [];
+    for (const layout of layouts)
+      for (const locale of ['en', 'ar'])
+        for (const phase of ['after', 'auth']) {
+          const where = `${phase} ${locale} ${layout.name}`;
+          const problems = [];
+          const context = await browser.newContext({
+            viewport: layout.viewport,
+            hasTouch: layout.touch,
+            isMobile: layout.touch,
+            colorScheme: 'light',
+            reducedMotion: 'reduce',
+          });
+          const { page, errors, consoleErrors } = await open(context, { phase, locale, theme: 'light' }, failures.stacked);
+          // The host region settles before the first toast, deferred or not.
+          await page.locator('section[aria-live="polite"]').waitFor({ state: 'attached', timeout: 15_000 });
+          await scenes['stacked-floating'](page, locale);
+          const seen = await placement(page);
+          const anchor = phase === 'after' && layout.top ? 'top' : 'bottom';
+          problems.push(...placementProblems(seen, { anchor, offset: anchor === 'top' ? layout.top : layout.bottom, locale, layout: layout.name }));
+          // Sonner reports bottom throughout; #715 moves the dashboard's host with CSS only.
+          if (seen.host.y !== 'bottom' || seen.toasts.some((toast) => toast.y !== 'bottom'))
+            problems.push(`data-y-position is not bottom: ${JSON.stringify(seen)}`);
+          if (seen.host.inDashboardScope !== (phase === 'after')) problems.push(`host inDashboardScope is ${seen.host.inDashboardScope}`);
+          if (phase === 'auth' && seen.dashboardRules !== 0) problems.push(`auth page has ${seen.dashboardRules} dashboard toast rules`);
+          const row = {
+            phase,
+            locale,
+            layout: layout.name,
+            anchor,
+            offsets: seen.offsets,
+            toasts: seen.toasts.map(({ index, top, bottom }) => ({ index, top, bottom })),
+          };
+          if (phase === 'after') {
+            const controls = await geometry(page);
+            row.saveTap = await tapLands(page, saveButton(page, locale), layout.touch);
+            row.discardTap = await tapLands(page, discardButton(page, locale), layout.touch);
+            if (controls.toastOverControl) problems.push('a toast overlaps Save or Discard');
+            const hits = [...controls.saveHits, ...controls.discardHits, row.saveTap, row.discardTap];
+            if (hits.some((hit) => hit !== 'control')) problems.push(`hit-tests and taps on Save and Discard: ${JSON.stringify(hits)}`);
+            if (layout.name === '390') {
+              // A phone that turns into a desktop-wide window and back keeps no layout from the other size.
+              for (const [size, back] of [
+                [desktop, false],
+                [layout.viewport, true],
+              ]) {
+                await page.setViewportSize(size);
+                await page.waitForTimeout(450);
+                const resized = await placement(page);
+                const resizedProblems = placementProblems(resized, {
+                  anchor: back ? 'top' : 'bottom',
+                  offset: back ? layout.top : '--offset-bottom',
+                  locale,
+                  layout: back ? '390' : '1440',
+                });
+                problems.push(...resizedProblems.map((problem) => `after resizing to ${size.width}: ${problem}`));
+                if (back && (await geometry(page)).toastOverControl) problems.push('after resizing back: a toast overlaps Save or Discard');
+              }
+              row.resized = '390 → 1440 → 390';
+            }
+            const left = await page.evaluate(() => {
+              window.__unmountFixture();
+              return {
+                hosts: document.querySelectorAll('[data-sonner-toaster], [data-dashboard-toasts]').length,
+                dashboardRules: [...document.styleSheets]
+                  .flatMap((sheet) => [...sheet.cssRules])
+                  .filter((rule) => rule.cssText.includes('data-dashboard-toasts')).length,
+                rootStyle: [...document.documentElement.style],
+                bodyStyle: document.body.getAttribute('style'),
+              };
+            });
+            const stale = left.hosts || left.dashboardRules || left.rootStyle.some((name) => name !== 'color-scheme') || left.bodyStyle;
+            if (stale) problems.push(`left behind after unmount: ${JSON.stringify(left)}`);
+            row.unmount = stale ? left : 'clean';
+          }
+          if (errors.length || consoleErrors.length) problems.push(`page errors: ${JSON.stringify([...errors, ...consoleErrors])}`);
+          await context.close();
+          rows.push(row);
+          failed.push(...problems.map((problem) => `${where}: ${problem}`));
+        }
+    assert.equal(attempted.length, 0);
+    await writeEvidenceJson(resolve(import.meta.dirname, 'verify.json'), {
+      environment:
+        'The placement check of capture.mjs --verify: the same component fixture in headless Chromium, current tree only, light theme, three failed saves expanded; no screenshots or videos',
+      head: git('rev-parse', 'HEAD'),
+      uncommitted: git('status', '--porcelain', '--', 'apps/app/src').split('\n').filter(Boolean),
+      sonner,
+      deferredHost: deferredHost
+        ? 'on this tree: every row waited for the host region before the first toast'
+        : 'not on this tree (before #703): rows measure the eager host',
+      attempted: attempted.length,
+      failed,
+      rows,
+    });
+    assert.deepEqual(failed, [], 'placement problems (also in verify.json)');
+    console.log(
+      `${rows.length} placement rows pass (Sonner ${sonner}); deferred host ${deferredHost ? 'verified' : 'not on this tree (before #703)'}; verify.json written, no media`,
+    );
+  }
+
   // Phones run every scene; 1440 checks desktop placement is unchanged; 768 and a landscape phone are measured for the record.
   const layouts = [
     { name: '390', viewport: { width: 390, height: 664 }, touch: true, shots: ['error-floating', 'stacked-floating', 'stacked-docked'] },
@@ -373,6 +566,7 @@ createRoot(document.getElementById('root')!).render(
   const shots = [];
   const recordings = [];
   await withLocalOnlyBrowser({ allowedHosts: [hostKey(origin)] }, async ({ browser, attempted }) => {
+    if (verify) return verifyPlacement(browser, attempted);
     const newContext = (layout, theme, extra = {}) =>
       browser.newContext({
         viewport: layout.viewport,
@@ -500,7 +694,8 @@ createRoot(document.getElementById('root')!).render(
       recordings,
     });
   });
-  console.log(`${measurements.length} measurements, ${shots.length} sheets, ${recordings.length} recordings; no page errors or outside requests`);
+  if (!verify)
+    console.log(`${measurements.length} measurements, ${shots.length} sheets, ${recordings.length} recordings; no page errors or outside requests`);
 } finally {
   if (harness) {
     assert.ok(harness.startsWith(`${app}${sep}`));

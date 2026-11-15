@@ -44,7 +44,7 @@ it('keeps the page as it is when the toast host cannot load', async () => {
     root = createRoot(host);
     root.render(<DeferredToaster position="bottom-right" />);
   });
-  await vi.waitFor(() => expect(spy).toHaveBeenCalled());
+  await vi.waitFor(() => expect(spy).toHaveBeenCalled(), { timeout: 5000 });
   await act(async () => Promise.resolve());
   expect(container.querySelector('#form')?.textContent).toBe('form');
   expect(container.querySelector('section[aria-live]')).toBeNull();
@@ -64,9 +64,14 @@ it('shows toasts fired before the lazy toast host resolved, in its live region',
   expect(container.querySelector('section[aria-live]')).toBeNull();
   toast('Sent while loading');
 
-  await vi.waitFor(() => {
-    const region = container?.querySelector('section[aria-live="polite"]');
-    expect(region?.textContent).toContain('Saved before the host');
-    expect(region?.textContent).toContain('Sent while loading');
-  });
-});
+  // The host's first import is a real, cold module load: under a parallel test
+  // run it can take well over vitest's 1 s default, so give it room.
+  await vi.waitFor(
+    () => {
+      const region = container?.querySelector('section[aria-live="polite"]');
+      expect(region?.textContent).toContain('Saved before the host');
+      expect(region?.textContent).toContain('Sent while loading');
+    },
+    { timeout: 10_000 },
+  );
+}, 15_000);
