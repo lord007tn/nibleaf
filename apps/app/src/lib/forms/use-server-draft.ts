@@ -4,9 +4,11 @@ import {
   type DraftValues,
   deepEqual,
   isDraftDirty,
+  type PendingSave,
   reconcileSaveSuccess,
   reconcileServerChange,
   resolveConflict as resolveConflictValues,
+  startSave,
 } from './server-draft';
 
 /** What a submit handler gets besides the values, to report how its save went. */
@@ -29,8 +31,12 @@ export type DraftSave<T extends DraftValues> = {
 /** How a call to `submit()` ended. */
 export type DraftSubmitResult = 'saved' | 'invalid' | 'failed' | 'busy';
 
-/** The one save in flight: what it sent, the baseline it started from, and which identity generation it belongs to. */
-type ActiveSave<T> = { id: number; generation: number; snapshot: T; from: T; outcome?: 'saved' | 'invalid' | 'failed' };
+/**
+ * The one save in flight: which identity generation it belongs to and, once
+ * its request is sent, what it sent and which of those keys the server has
+ * echoed (see `PendingSave`).
+ */
+type ActiveSave<T extends DraftValues> = { id: number; generation: number; pending?: PendingSave<T>; outcome?: 'saved' | 'invalid' | 'failed' };
 
 /**
  * A TanStack form kept in step with server data (operations/ui-overhaul.md
@@ -43,8 +49,10 @@ type ActiveSave<T> = { id: number; generation: number; snapshot: T; from: T; out
  *   Cmd+S during a save can't start a second one; only that save's own
  *   completion releases it;
  * - a refetch during a save reconciles values but never drops the save's
- *   snapshot or its pending state; the server holding what the save sent is
- *   that save's echo, never a conflict, and never replaces a newer edit;
+ *   state or its pending flag. The save records what it sent and which keys
+ *   it changed when its request goes out; until a refetch echoes a sent key,
+ *   the form's value for it is the person's (sent or newer), and the echo is
+ *   never a conflict. After the echo the key follows the normal rules;
  * - after a save, edits made while it was in flight survive and stay dirty;
  * - `isDirty` compares the form with the confirmed baseline, nothing else.
  *
@@ -93,14 +101,17 @@ export function useServerDraftForm<T extends DraftValues>({
     onSubmit: async ({ value }) => {
       const save = activeRef.current;
       if (!save) return;
-      save.snapshot = value;
+      save.pending = startSave(baselineRef.current, value);
       const isCurrent = () => save.generation === generationRef.current && activeRef.current?.id === save.id;
       save.outcome = await onSubmitRef.current(value, {
         baseline: baselineRef.current,
         succeeded: (confirmed) => {
           if (isCurrent()) succeededRef.current(save, confirmed);
         },
-        failed: () => undefined,
+        failed: () => {
+          // Nothing was confirmed: the edits stay and later refetches follow the normal rules.
+          if (isCurrent()) save.pending = undefined;
+        },
         isCurrent,
       });
     },
@@ -152,17 +163,26 @@ export function useServerDraftForm<T extends DraftValues>({
       return;
     }
     // Edits or a save in flight: merge without resetting anything. The save's
-    // snapshot tells its own refetch apart from someone else's change.
+    // state tells its own echo apart from someone else's change.
     const save = activeRef.current;
-    const submitted = save ? { values: save.snapshot, from: save.from } : undefined;
-    const change = reconcileServerChange({ baseline: prior, current, next: source, submitted });
+    const change = reconcileServerChange({ baseline: prior, current, next: source, save: save?.pending });
+    if (save && change.save) save.pending = change.save;
     setBaseline(change.baseline);
     applyValues(change.current);
     mergeConflicts(change.conflicts, change.current, change.baseline);
   }, [applyValues, form, identityKey, mergeConflicts, setBaseline, source]);
 
   const succeeded = (save: ActiveSave<T>, confirmed?: T) => {
-    const result = reconcileSaveSuccess({ submitted: save.snapshot, current: form.state.values as T, confirmed });
+    const pending = save.pending;
+    if (!pending) return;
+    const result = reconcileSaveSuccess({
+      submitted: pending.values,
+      current: form.state.values as T,
+      confirmed,
+      during: { save: pending, baseline: baselineRef.current },
+    });
+    // The save is over: until its lock releases, refetches follow the normal rules.
+    save.pending = undefined;
     lastSource.current = result.baseline;
     setBaseline(result.baseline);
     form.reset(result.baseline);
@@ -179,12 +199,7 @@ export function useServerDraftForm<T extends DraftValues>({
   const submit = useCallback(async (): Promise<DraftSubmitResult> => {
     if (activeRef.current) return 'busy';
     nextSaveId.current += 1;
-    const save: ActiveSave<T> = {
-      id: nextSaveId.current,
-      generation: generationRef.current,
-      snapshot: form.state.values as T,
-      from: baselineRef.current,
-    };
+    const save: ActiveSave<T> = { id: nextSaveId.current, generation: generationRef.current };
     activeRef.current = save;
     setIsSaving(true);
     try {
