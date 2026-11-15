@@ -22,3 +22,9 @@ changes on purpose, by running the test's generator against that version's edito
 edit) for each page without a Frame that `frame-main-differential.test.ts` generates: seeded
 component openers and the serializer corpus's pages. It was made by running that test against
 main's editor with `WRITE_NON_FRAME_MAIN=1`.
+
+`blank-line-attribute-main.json` holds a digest of main's result (nodes with their attributes,
+save, save after an attribute edit) for each page that `attribute-blank-line-main-differential.test.ts`
+generates: seeded openers for every registry component with no blank line inside any attribute
+value, the serializer corpus, the generated opening tags above and the hard-wrapped pages. It was
+made by running that test against main's `mdx-roundtrip.ts` with `WRITE_BLANK_LINE_MAIN=1` (#721).
