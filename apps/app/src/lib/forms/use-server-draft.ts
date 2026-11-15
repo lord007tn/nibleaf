@@ -43,7 +43,8 @@ type ActiveSave<T> = { id: number; generation: number; snapshot: T; outcome?: 's
  *   Cmd+S during a save can't start a second one; only that save's own
  *   completion releases it;
  * - a refetch during a save reconciles values but never drops the save's
- *   snapshot or its pending state;
+ *   snapshot or its pending state; the server holding what the save sent is
+ *   that save's echo, never a conflict, and never replaces a newer edit;
  * - after a save, edits made while it was in flight survive and stay dirty;
  * - `isDirty` compares the form with the confirmed baseline, nothing else.
  *
@@ -150,8 +151,9 @@ export function useServerDraftForm<T extends DraftValues>({
       form.reset(source);
       return;
     }
-    // Edits or a save in flight: merge without resetting anything.
-    const change = reconcileServerChange({ baseline: prior, current, next: source });
+    // Edits or a save in flight: merge without resetting anything. The save's
+    // snapshot tells its own refetch apart from someone else's change.
+    const change = reconcileServerChange({ baseline: prior, current, next: source, submitted: activeRef.current?.snapshot });
     setBaseline(change.baseline);
     applyValues(change.current);
     mergeConflicts(change.conflicts, change.current, change.baseline);

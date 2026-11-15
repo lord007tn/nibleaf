@@ -58,6 +58,35 @@ describe('a server change while editing (rule 2)', () => {
   });
 });
 
+describe('a server change during a save (rule 2 with the submitted values)', () => {
+  const submitted = { ...base, name: 'Sent' };
+
+  it('keeps a value typed back to the baseline when the save’s own echo arrives', () => {
+    const change = reconcileServerChange({ baseline: base, current: base, next: submitted, submitted });
+    expect(change.current.name).toBe('Docs');
+    expect(change.baseline.name).toBe('Sent');
+    expect(change.conflicts).toEqual([]);
+  });
+
+  it('keeps a newer value and does not report the echo as a conflict', () => {
+    const change = reconcileServerChange({ baseline: base, current: { ...base, name: 'Newer' }, next: submitted, submitted });
+    expect(change.current.name).toBe('Newer');
+    expect(change.conflicts).toEqual([]);
+  });
+
+  it('keeps the sent value when the refetch predates the save', () => {
+    const change = reconcileServerChange({ baseline: base, current: submitted, next: { ...base, slug: 'help' }, submitted });
+    expect(change.current).toEqual({ ...submitted, slug: 'help' });
+    expect(change.conflicts).toEqual([]);
+  });
+
+  it('still takes and reports someone else’s changes', () => {
+    const change = reconcileServerChange({ baseline: base, current: submitted, next: { ...base, name: 'Theirs', slug: 'help' }, submitted });
+    expect(change.current).toEqual({ ...submitted, slug: 'help' });
+    expect(change.conflicts).toEqual(['name']);
+  });
+});
+
 describe('a successful save (rule 3)', () => {
   it('confirms what was sent', () => {
     const submitted = { ...base, name: 'Help' };

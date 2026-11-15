@@ -49,13 +49,28 @@ export type ServerChange<T extends DraftValues> = {
  * - Keys the person edited and the server left alone keep the edit.
  * - Keys both changed keep the edit and are reported as conflicts, unless
  *   both landed on the same value.
+ *
+ * During a save, pass what it sent as `submitted`: a key the person sent
+ * counts as edited even if they typed it back since, and the server holding
+ * the sent value is the save's own echo, not someone else's change.
  */
-export function reconcileServerChange<T extends DraftValues>({ baseline, current, next }: { baseline: T; current: T; next: T }): ServerChange<T> {
+export function reconcileServerChange<T extends DraftValues>({
+  baseline,
+  current,
+  next,
+  submitted,
+}: {
+  baseline: T;
+  current: T;
+  next: T;
+  submitted?: T;
+}): ServerChange<T> {
   const merged: DraftValues = { ...current };
   const conflicts: Array<keyof T & string> = [];
   for (const key of keysOf(baseline, current, next)) {
-    const edited = !deepEqual(current[key], baseline[key]);
-    const serverChanged = !deepEqual(next[key], baseline[key]);
+    const sent = submitted !== undefined && !deepEqual(submitted[key], baseline[key]);
+    const edited = sent || !deepEqual(current[key], baseline[key]);
+    const serverChanged = !deepEqual(next[key], baseline[key]) && !(sent && deepEqual(next[key], submitted?.[key]));
     if (!edited) merged[key] = next[key];
     else if (serverChanged && !deepEqual(current[key], next[key])) conflicts.push(key as keyof T & string);
   }

@@ -187,3 +187,108 @@ describe('useServerDraftForm: conflicts', () => {
     expect(api().conflicts).toEqual([]);
   });
 });
+
+describe('useServerDraftForm: the save’s own refetch', () => {
+  // Some mutation hooks resolve only after their own refetch, so the sent
+  // values reach the form while the save is still in flight.
+  const old = { name: '/old.svg', description: 'd1' };
+
+  it('keeps a value typed back to the old one during the save', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await set('name', '/old.svg');
+    await render('site', { name: '/sent.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/old.svg');
+    expect(api().conflicts).toEqual([]);
+    await succeed(0, { name: '/sent.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/old.svg');
+    expect(api().baseline.name).toBe('/sent.svg');
+    expect(api().isDirty).toBe(true);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('keeps a newer value typed during the save, without reporting its own save as a conflict', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await set('name', '/newer.svg');
+    await render('site', { name: '/sent.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/newer.svg');
+    expect(api().conflicts).toEqual([]);
+    await succeed(0, { name: '/sent.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/newer.svg');
+    expect(api().baseline.name).toBe('/sent.svg');
+    expect(api().isDirty).toBe(true);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('keeps the sent value when a refetch from before the save lands during it', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    // A focus refetch that left before the save reached the server, carrying
+    // someone else's description.
+    await render('site', { name: '/old.svg', description: 'theirs' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'theirs' });
+    expect(api().conflicts).toEqual([]);
+    await succeed(0, { name: '/sent.svg', description: 'theirs' });
+    expect(api().form.state.values.name).toBe('/sent.svg');
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('takes someone else’s change to a field the person did not touch', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await render('site', { name: '/sent.svg', description: 'theirs' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'theirs' });
+    expect(api().conflicts).toEqual([]);
+    expect(api().isDirty).toBe(false);
+    // The server kept both changes.
+    await succeed(0, { name: '/sent.svg', description: 'theirs' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'theirs' });
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('reports someone else’s change to a field the person sent as a conflict', async () => {
+    const { render, set, submit, succeed, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await render('site', { name: '/theirs.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/sent.svg');
+    expect(api().conflicts).toEqual(['name']);
+    // Their save landed after ours.
+    await succeed(0, { name: '/sent.svg', description: 'd1' });
+    expect(api().isSaving).toBe(false);
+  });
+
+  it('reports someone else’s change to a field the person edited during the save as a conflict', async () => {
+    const { render, set, submit, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await set('description', 'mine');
+    await render('site', { name: '/sent.svg', description: 'theirs' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'mine' });
+    expect(api().conflicts).toEqual(['description']);
+  });
+
+  it('keeps the edits and the server’s values after a failed save with a refetch', async () => {
+    const { render, saves, set, submit, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await set('name', '/newer.svg');
+    // Someone else changed the description; the save itself failed.
+    await render('site', { name: '/old.svg', description: 'theirs' });
+    await act(async () => {
+      saves[0]?.save.failed();
+      saves[0]?.finish('failed');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(api().isSaving).toBe(false);
+    expect(api().form.state.values).toEqual({ name: '/newer.svg', description: 'theirs' });
+    expect(api().baseline).toEqual({ name: '/old.svg', description: 'theirs' });
+    expect(api().isDirty).toBe(true);
+    expect(api().conflicts).toEqual([]);
+  });
+});
