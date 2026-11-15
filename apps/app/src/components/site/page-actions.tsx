@@ -65,12 +65,17 @@ export function PageActions({
   // or from an earlier click, is aborted, and even if its response still arrives
   // it can never write over a newer copy.
   const pending = useRef<AbortController | null>(null);
+  // The "Copied" tick's 1.5 s timer: a newer copy restarts it, so an earlier
+  // copy's timer can't clear the newer tick early.
+  const tickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Leaving the page (unmounting) cancels its copy and clears the slot, so a late
-  // response can never pass for the current request.
+  // response can never pass for the current request, and drops the tick's timer.
   useEffect(
     () => () => {
       pending.current?.abort();
       pending.current = null;
+      if (tickTimer.current !== null) clearTimeout(tickTimer.current);
+      tickTimer.current = null;
     },
     [],
   );
@@ -90,7 +95,11 @@ export function PageActions({
       if (!current()) return;
       setCopied(true);
       announce(t('pageCopied'));
-      setTimeout(() => setCopied(false), 1500);
+      if (tickTimer.current !== null) clearTimeout(tickTimer.current);
+      tickTimer.current = setTimeout(() => {
+        tickTimer.current = null;
+        setCopied(false);
+      }, 1500);
     } catch {
       // A superseded request ends quietly; only the current one reports a failure.
       if (!current()) return;
