@@ -1,14 +1,40 @@
 import MarkdownIt from 'markdown-it';
 import type Token from 'markdown-it/lib/token.mjs';
 import { type DefaultTreeAdapterTypes, Parser, parseFragment } from 'parse5';
+import { AttributeReplay } from './export-html-replay';
+import { dangerous, isExportUrlAttribute, unsafeAttribute } from './export-url-policy';
 
 const ACTIVE_TAGS = ['script', 'style', 'iframe', 'object', 'embed'];
-/** HTML element names are contiguous after `<`. This is only a sound prefilter;
- * Markdown and parse5 decide whether a matching substring is a live element. */
-export const mayHaveActiveExportHtml = (source: string): boolean => {
+export const mayHaveActiveExportElements = (source: string): boolean => {
   const lower = source.toLowerCase();
   return ACTIVE_TAGS.some((tag) => lower.includes(`<${tag}`));
 };
+/** HTML element names are contiguous after `<`. This is only a sound prefilter;
+ * Do not infer quote/code state here: containers can split a scheme and inline
+ * code can contain misleading quotes. Only the rendered parse5 tree owns risk. */
+export const mayHaveActiveExportHtml = (source: string): boolean => {
+  if (!source.includes('<') && !source.includes('](') && !source.includes(']:')) return false;
+  const lower = source.toLowerCase(),
+    html = lower.includes('<');
+  if (html && ACTIVE_TAGS.some((tag) => lower.includes(`<${tag}`))) return true;
+  if (html && /(?:^|[^a-z0-9])on/.test(lower)) return true;
+  if (/&(?!(?:amp|lt|gt|quot|apos);)/.test(lower)) return true;
+  if (!lower.includes(':')) return false;
+  const skeleton = lower.replace(/[^a-z:]/g, '');
+  return ['javascript:', 'vbscript:', 'data:'].some((s) => skeleton.includes(s));
+};
+export interface ExportHtmlMetrics {
+  generatedBytes: number;
+  replayBytes: number;
+  replayAnalyses: number;
+  skip?: 'source' | 'tokens';
+}
+interface ReadOptions {
+  hazards?: boolean;
+  replay?: boolean;
+  cached?: { tokens: Token[]; env: Record<string, unknown> };
+  metrics?: ExportHtmlMetrics;
+}
 const markdown = new MarkdownIt({ html: true });
 const inlineStarts = new WeakMap<Token, number>();
 const inlineCode = new WeakMap<Token, string>();
@@ -30,23 +56,84 @@ interface HtmlSpan {
 
 export const parseExportTokens = (source: string) => markdown.parse(source, {});
 
-export const readExportHtml = (source: string) => {
-  if (!mayHaveActiveExportHtml(source)) return;
-  const input = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD');
-  const env = {};
-  const tokens = markdown.parse(input, env);
-  const inspect = [...tokens];
-  let candidate = false;
-  while (inspect.length) {
-    const token = inspect.pop();
-    if (!token) continue;
-    if ((token.type === 'html_block' || token.type === 'html_inline') && mayHaveActiveExportHtml(token.content)) {
-      candidate = true;
-      break;
+interface ExportHtmlState {
+  tokens: Token[];
+  active: Array<[number, number]>;
+  inert: Array<[number, number]>;
+  risky: boolean;
+  spans: HtmlSpan[];
+  editable: Uint8Array;
+  code: Uint8Array;
+  leaders: number[];
+}
+export const readExportHtml = (source: string, options: ReadOptions = {}): ExportHtmlState | undefined => {
+  const { hazards = false, replay: fullValues = false, cached, metrics } = options;
+  const schemeRisk = new Map<string, boolean>();
+  const attributeRisk = new Map<string, Map<string, Map<string, boolean>>>();
+  const isDangerous = (value: string): boolean => {
+    let result = schemeRisk.get(value);
+    if (result === undefined) {
+      result = dangerous(value);
+      schemeRisk.set(value, result);
     }
-    if (token.children) for (const child of token.children) inspect.push(child);
+    return result;
+  };
+  const isUnsafeAttribute = (attribute: DefaultTreeAdapterTypes.Element['attrs'][number], tag: string): boolean => {
+    let names = attributeRisk.get(tag);
+    if (!names) {
+      names = new Map();
+      attributeRisk.set(tag, names);
+    }
+    const name = attribute.prefix ? `${attribute.prefix}:${attribute.name}` : attribute.name;
+    if (name.startsWith('on')) return true;
+    if (!isExportUrlAttribute(name)) return false;
+    let values = names.get(name);
+    if (!values) {
+      values = new Map();
+      names.set(name, values);
+    }
+    let result = values.get(attribute.value);
+    if (result === undefined) {
+      result = unsafeAttribute(attribute, tag);
+      values.set(attribute.value, result);
+    }
+    return result;
+  };
+
+  const candidate = hazards ? mayHaveActiveExportHtml(source) : mayHaveActiveExportElements(source);
+  if (!candidate) {
+    if (metrics) metrics.skip = 'source';
+    return;
   }
-  if (!candidate) return;
+  const input = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD');
+  const env = cached?.env ?? {};
+  const tokens = cached?.tokens ?? markdown.parse(input, env);
+  if (!cached) {
+    // With no raw HTML, generated HTML is well formed and all untrusted text
+    // is escaped. Only accepted href/src token values can supply a target URL.
+    const pending = [...tokens];
+    let possible = false;
+    while (pending.length) {
+      const token = pending.pop();
+      if (!token) continue;
+      const htmlToken = token.type === 'html_inline' || token.type === 'html_block';
+      if (
+        hazards
+          ? htmlToken ||
+            ((token.type === 'link_open' || token.type === 'image') &&
+              token.attrs?.some(([name, value]) => (name === 'href' || name === 'src') && isDangerous(value)))
+          : htmlToken && mayHaveActiveExportElements(token.content)
+      ) {
+        possible = true;
+        break;
+      }
+      if (token.children) for (const child of token.children) pending.push(child);
+    }
+    if (!possible) {
+      if (metrics) metrics.skip = 'tokens';
+      return;
+    }
+  }
   const offsets: number[] = [];
   if (input !== source) {
     for (let at = 0; at < source.length; at++) {
@@ -144,7 +231,10 @@ export const readExportHtml = (source: string) => {
       line = newline + 1;
     }
   };
+  const destinationBounds = new Map<number, { sourceFrom: number; sourceTo: number }>();
   const chunks: string[] = [];
+  const macros: Array<{ at: number; value: string }> = [];
+  const escapedValues = new Map<string, string>();
   const spans: HtmlSpan[] = [];
   const renderedBounds: Array<{ from: number; to: number; end: number }> = [];
   let length = 0;
@@ -218,12 +308,34 @@ export const readExportHtml = (source: string) => {
     const attributes = token.attrs;
     // Abbreviate only the throwaway render's generated URLs/titles to bound
     // reference fanout. Authored destinations are never edited (#664).
-    if (token.type === 'link_open' || token.type === 'image')
-      token.attrs = attributes?.map(([name, value]) => [name, name === 'href' || name === 'src' ? '#' : name === 'title' ? '' : value]) ?? null;
+    const destinationToken = token.type === 'link_open' || token.type === 'image';
+    if (destinationToken)
+      token.attrs =
+        attributes?.map(([name, value]) => {
+          if (name === 'title') return [name, ''];
+          if (name !== 'href' && name !== 'src') return [name, value];
+          return [name, fullValues ? '' : hazards && isDangerous(value) ? 'data:' : '#'];
+        }) ?? null;
     const value = rule
       ? rule(frame.tokens, frame.at - 1, markdown.options, env, markdown.renderer)
       : markdown.renderer.renderToken(frame.tokens, frame.at - 1, markdown.options);
     token.attrs = attributes;
+    if (fullValues && destinationToken) {
+      for (const match of value.matchAll(/ (href|src|title)=""/g)) {
+        const original = attributes?.find(([name]) => name === match[1])?.[1] ?? '';
+        let escaped = escapedValues.get(original);
+        if (escaped === undefined) {
+          escaped = markdown.utils.escapeHtml(original);
+          escapedValues.set(original, escaped);
+        }
+        macros.push({ at: length + match.index + match[0].length - 1, value: escaped });
+      }
+    }
+    if (hazards && destinationToken && attributes?.some(([name, value]) => (name === 'href' || name === 'src') && isDangerous(value)))
+      destinationBounds.set(length, {
+        sourceFrom: originalOffset(lineStarts[map[0]] ?? 0),
+        sourceTo: originalOffset(lineStarts[map[1]] ?? input.length),
+      });
     renderedBounds.push({ from: length, to: length + value.length, end: originalOffset(lineStarts[map[1]] ?? input.length) });
     if (token.type === 'html_block' || token.type === 'html_inline') {
       const positions =
@@ -238,6 +350,7 @@ export const readExportHtml = (source: string) => {
     length += value.length;
   }
   const html = chunks.join('');
+  if (metrics) metrics.generatedBytes += html.length;
   const originalAt = new Int32Array(html.length).fill(-1);
   const endAt = new Int32Array(html.length);
   for (const bound of renderedBounds) endAt.fill(bound.end, bound.from, bound.to);
@@ -263,6 +376,7 @@ export const readExportHtml = (source: string) => {
   // so a declaration opened in a changed run cannot release content past it.
   let unfinishedTag = false,
     lastRawEnd = 0;
+  let mixedTag = false;
   const parser = Parser.getFragmentParser<DefaultTreeAdapterTypes.DefaultTreeAdapterMap>(null, {
     sourceCodeLocationInfo: true,
     onParseError: (error) => {
@@ -276,14 +390,23 @@ export const readExportHtml = (source: string) => {
     endTag = parser.onEndTag.bind(parser),
     doctype = parser.onDoctype.bind(parser);
   parser.onStartTag = (token) => {
+    const loc = token.location;
+    if (loc && (originalAt[loc.startOffset] ?? -1) >= 0 && (generatedBefore[loc.endOffset] ?? 0) > (generatedBefore[loc.startOffset] ?? 0))
+      mixedTag = true;
     remember(token.location?.endOffset);
     startTag(token);
   };
   parser.onEndTag = (token) => {
+    const loc = token.location;
+    if (loc && (originalAt[loc.startOffset] ?? -1) >= 0 && (generatedBefore[loc.endOffset] ?? 0) > (generatedBefore[loc.startOffset] ?? 0))
+      mixedTag = true;
     remember(token.location?.endOffset);
     endTag(token);
   };
   parser.onDoctype = (token) => {
+    const loc = token.location;
+    if (loc && (originalAt[loc.startOffset] ?? -1) >= 0 && (generatedBefore[loc.endOffset] ?? 0) > (generatedBefore[loc.startOffset] ?? 0))
+      mixedTag = true;
     const from = originalAt[token.location?.startOffset ?? -1] ?? -1;
     if (from >= 0 && token.location) {
       risky = true;
@@ -292,7 +415,23 @@ export const readExportHtml = (source: string) => {
     remember(token.location?.endOffset);
     doctype(token);
   };
-  parser.tokenizer.write(html, true);
+  if (fullValues) {
+    const replay = new AttributeReplay();
+    let at = 0;
+    for (const macro of macros) {
+      parser.tokenizer.write(html.slice(at, macro.at), false);
+      replay.apply(parser.tokenizer, macro.value);
+      at = macro.at;
+    }
+    parser.tokenizer.write(html.slice(at), true);
+    if (metrics) {
+      metrics.replayAnalyses += replay.analyses;
+      metrics.replayBytes += replay.bytes;
+    }
+  } else parser.tokenizer.write(html, true);
+  // Short attributes preserve the parse unless a raw start tag crossed generated
+  // markup. In that case replay actual values with the SAME Markdown tokens.
+  if (hazards && !fullValues && (mixedTag || unfinishedTag)) return readExportHtml(source, { ...options, replay: true, cached: { tokens, env } });
   if (unfinishedTag) {
     risky = true;
     hide(Math.max(0, lastRawEnd - 1), source.length);
@@ -301,15 +440,29 @@ export const readExportHtml = (source: string) => {
   while (pending.length) {
     const node = pending.pop();
     if (!node) continue;
+    if ('tagName' in node && !node.sourceCodeLocation && hazards && node.attrs.some((a) => isUnsafeAttribute(a, node.tagName))) {
+      risky = true;
+      for (const span of spans) {
+        const from = span.positions[0],
+          to = span.positions.at(-1);
+        if (from != null && to != null) active.push([from, to + 1]);
+      }
+    }
     if ('tagName' in node && node.sourceCodeLocation) {
       const loc = node.sourceCodeLocation;
       const from = originalAt[loc.startOffset] ?? -1;
-      if (ACTIVE_TAGS.includes(node.tagName)) {
+      const unsafe = hazards && node.attrs.some((a) => isUnsafeAttribute(a, node.tagName));
+      if (unsafe) {
+        risky = true;
+      }
+      if (ACTIVE_TAGS.includes(node.tagName) || unsafe) {
         const end = loc.endTag?.endOffset ?? (node.tagName === 'embed' ? loc.startTag?.endOffset : loc.endOffset);
         const to = !loc.endTag && rawText.includes(node.tagName) ? source.length : sourceEnd(end ?? html.length);
         // A generated renderer token cannot create these elements. If its source
         // is unavailable, escape the raw HTML spans rather than throw on export.
-        if (from >= 0) active.push([from, Math.max(from + 1, to)]);
+        const destination = unsafe && destinationBounds.get(loc.startOffset);
+        if (destination) active.push([destination.sourceFrom, destination.sourceTo]);
+        else if (from >= 0) active.push([from, Math.max(from + 1, to)]);
         else
           for (const span of spans) {
             const first = span.positions[0],

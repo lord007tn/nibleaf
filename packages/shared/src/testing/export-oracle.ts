@@ -2,6 +2,73 @@ import MarkdownIt from 'markdown-it';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 
 const markdown = new MarkdownIt({ html: true });
+// Independent of the production policy: scan candidate URLs with sticky token
+// patterns and skip entire descriptor parentheses before accepting a comma.
+const exportUrlCandidates = (value: string, name: string, tag = ''): string[] => {
+  if (['ping', 'profile', 'itemtype', 'attributionsrc', 'archive'].includes(name))
+    return value.split(name === 'archive' && tag === 'applet' ? /[\t\n\f\r ,]+/ : /[\t\n\f\r ]+/);
+  if (name !== 'srcset' && name !== 'imagesrcset') return [value];
+  const result: string[] = [];
+  const separators = /[\t\n\f\r ,]*/y,
+    url = /[^\t\n\f\r ]+/y,
+    descriptors = /\([^)]*(?:\)|$)|,/g;
+  let cursor = 0;
+  while (cursor < value.length) {
+    separators.lastIndex = cursor;
+    separators.exec(value);
+    cursor = separators.lastIndex;
+    url.lastIndex = cursor;
+    const token = url.exec(value);
+    if (!token) break;
+    cursor = url.lastIndex;
+    result.push(token[0].replace(/,+$/, ''));
+    if (token[0].endsWith(',')) continue;
+    descriptors.lastIndex = cursor;
+    let match: RegExpExecArray | null;
+    do {
+      match = descriptors.exec(value);
+    } while (match && match[0] !== ',');
+    cursor = match ? descriptors.lastIndex : value.length;
+  }
+  return result;
+};
+const urlAttributes = new Set([
+  'href',
+  'src',
+  'xlink:href',
+  'action',
+  'formaction',
+  'data',
+  'poster',
+  'background',
+  'cite',
+  'longdesc',
+  'usemap',
+  'profile',
+  'manifest',
+  'codebase',
+  'classid',
+  'archive',
+  'ping',
+  'srcset',
+  'imagesrcset',
+  'icon',
+  'lowsrc',
+  'dynsrc',
+  'itemid',
+  'itemtype',
+  'attributionsrc',
+]);
+export const oracleUnsafeAttribute = (name: string, value: string, tag = ''): boolean =>
+  name.startsWith('on') ||
+  (urlAttributes.has(name) &&
+    exportUrlCandidates(value, name, tag).some((candidate) =>
+      /^(javascript|vbscript|data):/i.test(
+        Array.from(candidate)
+          .filter((character) => character.charCodeAt(0) > 32 && character.charCodeAt(0) !== 127)
+          .join(''),
+      ),
+    ));
 export const inspectRenderedExport = (html: string) => {
   const pending: DefaultTreeAdapterTypes.Node[] = [parseFragment(html)];
   const features: string[] = [],
@@ -14,15 +81,8 @@ export const inspectRenderedExport = (html: string) => {
     if ('tagName' in node) {
       if (['script', 'style', 'iframe', 'object', 'embed'].includes(node.tagName)) elements++;
       for (const attribute of node.attrs) {
-        const value = Array.from(attribute.value.toLowerCase())
-          .filter((c) => c.charCodeAt(0) > 32 && c.charCodeAt(0) !== 127)
-          .join('');
-        if (
-          attribute.name.startsWith('on') ||
-          (['href', 'src', 'xlink:href', 'action', 'formaction', 'data', 'poster', 'background'].includes(attribute.name) &&
-            ['javascript:', 'vbscript:', 'data:'].some((scheme) => value.startsWith(scheme)))
-        )
-          features.push(`${node.tagName}:${attribute.name}:${attribute.value}`);
+        const name = attribute.prefix ? `${attribute.prefix}:${attribute.name}` : attribute.name;
+        if (oracleUnsafeAttribute(name, attribute.value, node.tagName)) features.push(`${node.tagName}:${attribute.name}:${attribute.value}`);
       }
     }
     if ('childNodes' in node)
@@ -31,7 +91,7 @@ export const inspectRenderedExport = (html: string) => {
         if (child) pending.push(child);
       }
   }
-  return { features, elements, text: text.join('') };
+  return { features, elements, active: elements + features.length, text: text.join('') };
 };
 export const inspectExport = (source: string) => {
   const tokens = markdown.parse(source, {});

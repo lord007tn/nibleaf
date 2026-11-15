@@ -4,6 +4,16 @@ import { captureExportStructure, compareExportStructure, literalExportText } fro
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 import { authoredVisibleText, inspectExport, newlyLiveFeatures } from './testing/export-oracle';
 
+// Pin the #652 element-only phase against its historical contracts. The full
+// handler/URL pipeline is checked independently in markdown-export.664.test.ts.
+vi.mock('./export-html-source', async (original) => {
+  const actual = await original<typeof import('./export-html-source')>();
+  return {
+    ...actual,
+    readExportHtml: (source: string, options?: Parameters<typeof actual.readExportHtml>[1]) =>
+      options?.hazards ? undefined : actual.readExportHtml(source, options),
+  };
+});
 const mode = vi.hoisted(() => ({ main: false }));
 vi.mock('./export-html', async (original) => {
   const actual = await original<typeof import('./export-html')>();

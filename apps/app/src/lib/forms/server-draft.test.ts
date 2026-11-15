@@ -175,6 +175,75 @@ describe('a successful save after refetches (rule 3 with the save’s state)', (
   });
 });
 
+describe('a response that arrives after a refetch already landed (#743)', () => {
+  const sent = { ...base, name: 'Sent' };
+  /** Starts a save of `sent` and folds each refetch into it, as the hook does. */
+  const play = (current: Values, refetches: Values[]) => {
+    let state = { baseline: base, current, save: startSave(base, sent), conflicts: [] as string[] };
+    for (const next of refetches) {
+      const change = reconcileServerChange({ baseline: state.baseline, current: state.current, next, save: state.save });
+      state = { baseline: change.baseline, current: change.current, save: change.save ?? state.save, conflicts: change.conflicts };
+    }
+    return state;
+  };
+  const succeed = ({ baseline, current, save }: ReturnType<typeof play>, confirmed?: Values) =>
+    reconcileSaveSuccess({ submitted: save.values, current, confirmed, during: { save, baseline } });
+
+  it('keeps the newer edit against the refetched value, which "theirs" then takes', () => {
+    const state = play({ ...sent, name: 'Newer' }, [{ ...base, name: 'Theirs' }]);
+    expect(state.conflicts).toEqual(['name']);
+    const result = succeed(state, sent);
+    expect(result.baseline.name).toBe('Theirs');
+    expect(result.current.name).toBe('Newer');
+    expect(resolveConflict({ ...result, key: 'name', choice: 'theirs' }).name).toBe('Theirs');
+  });
+
+  it('keeps the sent value against the refetched one, and confirms the response where the form took the refetched value', () => {
+    // Values can't tell whether 'Theirs' was written before the save (and the
+    // PATCH overwrote it) or after: never adopted silently.
+    const state = play(sent, [{ ...base, name: 'Theirs', slug: 'theirs' }]);
+    expect(state.conflicts).toEqual(['name']);
+    const result = succeed(state, sent);
+    expect(result.baseline).toEqual({ ...base, name: 'Theirs' });
+    expect(result.current).toEqual(sent);
+  });
+
+  it('confirms the response, as without the refetch, when it agrees with the refetched value', () => {
+    const state = play(sent, [
+      { ...base, name: 'Theirs' },
+      { ...base, name: 'Later' },
+    ]);
+    const result = succeed(state, { ...base, name: 'Later' });
+    expect(result).toEqual({ baseline: { ...base, name: 'Later' }, current: { ...base, name: 'Later' } });
+  });
+
+  it('lets the response win over a refetch from before the save, the save’s own echo, and a stale one after it', () => {
+    const normalized = { ...sent, name: 'sent' };
+    for (const refetches of [[base], [sent], [sent, base], [base, sent, base]]) {
+      const result = succeed(play(sent, refetches), normalized);
+      expect(result.baseline).toEqual(normalized);
+      expect(result.current).toEqual(normalized);
+    }
+  });
+
+  it('judges a transformed save in sent space: its trimmed echo is no newer value, someone else’s is', () => {
+    const trim = (values: Values): Values => ({ ...values, name: values.name.trim() });
+    const raw = { ...base, name: '  Sent  ' };
+    const fold = (refetches: Values[]) => {
+      let state = { baseline: base, current: raw, save: startSave(base, raw, trim) };
+      for (const next of refetches) {
+        const change = reconcileServerChange({ ...state, next });
+        state = { baseline: change.baseline, current: change.current, save: change.save ?? state.save };
+      }
+      return reconcileSaveSuccess({ submitted: state.save.values, current: state.current, confirmed: sent, during: state });
+    };
+    expect(fold([sent])).toEqual({ baseline: sent, current: sent });
+    const theirs = fold([{ ...base, name: 'Theirs' }]);
+    expect(theirs.baseline.name).toBe('Theirs');
+    expect(theirs.current.name).toBe('  Sent  ');
+  });
+});
+
 describe('a save without toSent', () => {
   it('restores an explicitly undefined key the form dropped, as before toSent', () => {
     type Optional = { x?: string; y: string; z: string };
