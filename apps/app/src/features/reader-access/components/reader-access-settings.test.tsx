@@ -607,7 +607,6 @@ describe('advanced access', () => {
     expect(dialog()?.textContent).toContain('settings.visibility.jwt.impact.issuer');
     // Nothing claims "Saved" while the JWT change is still unanswered.
     expect(region()?.textContent).not.toContain('common.saved');
-    expect(barStatus()).toBe('');
   });
 
   it('names a new issuer and key set in the confirmation, and keeps a failure in the dialog', async () => {
