@@ -24,7 +24,7 @@ import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { isolate } from '@/lib/bidi';
 import { useFormatters } from '@/lib/format';
 import { validateOnBlurThenChange, withServerError } from '@/lib/forms/field-errors';
-import { focusFirstInvalid, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 import { useAudiencePages, useCreateAudience, useDeleteAudience, useEmergencyRevoke, useSaveJwtConfig, useTestJwt } from '../api/hooks';
@@ -306,7 +306,6 @@ const JWT_FIELDS: ReadonlyArray<{
 function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid: () => void }) {
   const t = useT();
   const saveJwt = useSaveJwtConfig(projectId);
-  const formRef = useRef<HTMLFormElement>(null);
   const manage = decisionProps(manageDecision(status));
   const source = useMemo(() => jwtValues(data.jwt), [data.jwt]);
   // Set while the confirmation runs the save, so a failure shows in the dialog rather than a toast.
@@ -364,7 +363,8 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
     setConfirmOpen(true);
     return 'deferred';
   }, [baseline, form, save]);
-  useSaveRegionForm('reader-jwt', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  // Enter and Save both run `submit`, so a change to who can sign in always asks first.
+  const formProps = useSaveRegionForm('reader-jwt', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   return (
     <SettingsSection
@@ -372,16 +372,8 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
       headingLevel={3}
       title={t('settings.authentication.reader.jwtTitle')}
     >
-      <form
-        className="divide-y divide-border"
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!draft.isDirty) return;
-          void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
-        }}
-        ref={formRef}
-      >
+      <form className="divide-y divide-border" noValidate {...formProps}>
+        <SaveRegionSubmit />
         {/* Also tells the page these reader settings hold an edit, so they stay on screen if visibility changes. */}
         <DirtyStateReporter dirty={draft.isDirty || draft.isSaving} />
         <DraftConflicts conflicts={draft.conflicts} resolve={draft.resolveConflict} />

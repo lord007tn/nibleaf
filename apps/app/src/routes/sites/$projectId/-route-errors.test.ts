@@ -38,12 +38,12 @@ beforeEach(() => {
 });
 
 describe('published reader route input', () => {
-  it('titles reader pages when the site shell fails to load', () => {
-    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => {
+  it('titles reader pages when the site shell fails to load', async () => {
+    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => Promise<{
       meta?: unknown[];
-    };
-    expect(head({ match: { search: { lang: 'ar' } }, matches: [] }).meta).toEqual([{ title: 'الوثائق' }]);
-    expect(head({ match: { search: {} }, matches: [] }).meta).toEqual([{ title: 'Documentation' }]);
+    }>;
+    expect((await head({ match: { search: { lang: 'ar' } }, matches: [] })).meta).toEqual([{ title: 'الوثائق' }]);
+    expect((await head({ match: { search: {} }, matches: [] })).meta).toEqual([{ title: 'Documentation' }]);
   });
 
   it('loads the site shell for a malformed percent path instead of throwing', async () => {
@@ -74,10 +74,10 @@ describe('published reader route input', () => {
 
     await expect(load()).resolves.toEqual({ site: null, siteOrigin: null, unavailable: 'private', gate });
     // The tab title follows the site's own language when the URL names none.
-    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => {
+    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => Promise<{
       meta?: Array<{ title?: string }>;
-    };
-    expect(head({ loaderData: { site: null, unavailable: 'private', gate }, match: { search: {} }, matches: [] }).meta?.[0]).toEqual({
+    }>;
+    expect((await head({ loaderData: { site: null, unavailable: 'private', gate }, match: { search: {} }, matches: [] })).meta?.[0]).toEqual({
       title: 'هذا التوثيق خاص',
     });
   });

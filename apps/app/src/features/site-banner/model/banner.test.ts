@@ -34,14 +34,40 @@ describe('projectBannerValues', () => {
 });
 
 describe('projectBannerPatch', () => {
-  it('sends both toggles and the trimmed text, leaving empty text out', () => {
-    expect(projectBannerPatch(values({ enabled: true, message: '  Hello  ', linkLabel: '   ', linkUrl: ' /pricing ' }))).toEqual({
+  it('sends both toggles and the trimmed text', () => {
+    expect(
+      projectBannerPatch(values({ enabled: true, message: '  Hello  ', linkLabel: ' Shop ', linkUrl: ' https://acme.test/sale ' })),
+    ).toStrictEqual({
       enabled: true,
       dismissible: true,
       message: 'Hello',
-      linkLabel: undefined,
-      linkUrl: '/pricing',
+      linkLabel: 'Shop',
+      linkUrl: 'https://acme.test/sale',
     });
+  });
+
+  // The server merges `config.banner` one level deep and keeps any key a patch
+  // leaves out, so a cleared text must be sent as '' or the old text comes back.
+  it.each(['message', 'linkLabel', 'linkUrl'] as const)('sends a cleared or blank %s as an empty string, never leaving it out', (key) => {
+    for (const blank of ['', '   ', '\t\n ']) {
+      const patch = projectBannerPatch({ ...projectBanner, [key]: blank });
+      expect(Object.hasOwn(patch, key)).toBe(true);
+      expect(patch).toStrictEqual({ ...projectBanner, [key]: '' });
+      // JSON keeps the key, so the request carries it.
+      expect(JSON.parse(JSON.stringify({ config: { banner: patch } })).config.banner[key]).toBe('');
+    }
+  });
+
+  it('reads a cleared text back as empty, and a saved project patch round-trips', () => {
+    const cleared = values({ enabled: true, dismissible: false, message: 'Spring sale', linkUrl: 'mailto:team@acme.test' });
+    expect(projectBannerValues(projectBannerPatch(cleared))).toStrictEqual(cleared);
+    expect(projectBannerValues(projectBannerPatch(values()))).toStrictEqual(values());
+  });
+
+  it('keeps nonblank absolute links as typed, trimmed', () => {
+    for (const linkUrl of ['https://acme.test/sale', 'mailto:team@acme.test', 'tel:+123456789', 'ftp://acme.test/file']) {
+      expect(projectBannerPatch(values({ linkUrl: ` ${linkUrl} ` })).linkUrl).toBe(linkUrl);
+    }
   });
 
   it('keeps an explicit false for both toggles', () => {
@@ -86,6 +112,15 @@ describe('languageBannerOverride', () => {
       message: 'Soldes',
       linkUrl: '/fr/soldes',
     });
+  });
+
+  it('never stores a blank text: a cleared field inherits the project', () => {
+    const override = languageBannerOverride(
+      values({ enabled: true, dismissible: false, message: 'Soldes', linkLabel: '  ', linkUrl: '' }),
+      projectBanner,
+    );
+    expect(override).toStrictEqual({ message: 'Soldes' });
+    expect(languageBannerOverride(values({ enabled: true, dismissible: false, linkLabel: ' ' }), projectBanner)).toBeNull();
   });
 
   it('stores only the toggles that differ from what the language inherits', () => {
