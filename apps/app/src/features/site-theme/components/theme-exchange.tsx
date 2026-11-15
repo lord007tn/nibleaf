@@ -152,7 +152,7 @@ export function ThemeExchange({
   };
 
   const apply = async () => {
-    if (!shown || pending || isSaving) return;
+    if (!shown || pending !== undefined || isSaving) return;
     const asked = shown;
     const mark = isDirty ? editMark() : undefined;
     if (mark !== undefined) {
