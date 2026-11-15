@@ -1,0 +1,6359 @@
+{
+  "environment": "Component fixture in headless Chromium: the real AppProviders (Sonner toast host), SaveRegion and Site settings → Analytics form with the real design system and EN/AR catalogs, in a stand-in dashboard frame; fictional site; the config PATCH answered by interception (network failure, 409, 500, then success); touch emulated for phone layouts; on-screen keyboard simulated by overriding visualViewport.height; not the signed-in dashboard, not production, not a physical phone",
+  "baseline": "94296fda439ae40193b270a874e470f8373972e8",
+  "head": "85d544064328690d1246ece964b4bd60b93e37d1",
+  "pr703": "e8b7b6a3ccef22af28f0babb1bba9f2ef9919b19",
+  "uncommitted": [],
+  "swappedForBefore": ["apps/app/src/components/app-providers.tsx"],
+  "attempted": 0,
+  "shots": [
+    {
+      "file": "error-floating-before-en-390.png",
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-before-en-390.png",
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-docked-before-en-390.png",
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "error-floating-after-en-390.png",
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-after-en-390.png",
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-docked-after-en-390.png",
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "error-floating-before-ar-390.png",
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-before-ar-390.png",
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-docked-before-ar-390.png",
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "ar",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "error-floating-after-ar-390.png",
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-after-ar-390.png",
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-docked-after-ar-390.png",
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "ar",
+      "layout": "390",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-before-en-1440.png",
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "1440",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-after-en-1440.png",
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "1440",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-before-ar-1440.png",
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-after-ar-1440.png",
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "themes": ["light", "dark"]
+    },
+    {
+      "file": "stacked-floating-before-en-320.png",
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "320",
+      "themes": ["light"]
+    },
+    {
+      "file": "stacked-docked-before-en-320.png",
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "320",
+      "themes": ["light"]
+    },
+    {
+      "file": "stacked-floating-after-en-320.png",
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "320",
+      "themes": ["light"]
+    },
+    {
+      "file": "stacked-docked-after-en-320.png",
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "320",
+      "themes": ["light"]
+    },
+    {
+      "file": "stacked-floating-before-en-844x390.png",
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "844x390",
+      "themes": ["light"]
+    },
+    {
+      "file": "stacked-floating-after-en-844x390.png",
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "844x390",
+      "themes": ["light"]
+    }
+  ],
+  "measurements": [
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 575,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 575,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 508,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 421,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 508,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 421,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 244, "y": 581, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 581, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 582,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 569,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 244, "y": 581, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 581, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 582,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 569,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 582,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 569,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 582,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 569,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 84,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 171,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 84,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 171,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 244, "y": 581, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 581, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 244, "y": 581, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 581, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after-703",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 84,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 171,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 244, "y": 581, "w": 113, "h": 40 },
+      "discard": { "x": 164, "y": 581, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 575,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 575,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 508,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 421,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 508,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 421,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 33, "y": 581, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 581, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 582,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 569,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 33, "y": 581, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 581, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 582,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 569,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 582,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 569,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 595,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 582,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 569,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 84,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 171,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 84,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 171,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 33, "y": 581, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 581, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 33, "y": 581, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 581, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "dark",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after-703",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 84,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 171,
+          "w": 358,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-docked",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 365,
+      "bar": { "x": 16, "y": 530, "w": 358, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 33, "y": 581, "w": 112, "h": 40 },
+      "discard": { "x": 153, "y": 581, "w": 58, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "window": { "w": 390, "h": 664 },
+      "visualViewportHeight": 664,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 358,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 25,
+          "y": 31,
+          "w": 340,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 34,
+          "y": 47,
+          "w": 322,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 1069,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 1078,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 1069,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 1078,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 1069,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 1078,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 1069,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 1078,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after-703",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 32, "y": 610, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 662, "y": 633, "w": 113, "h": 36 },
+      "discard": { "x": 582, "y": 633, "w": 72, "h": 36 },
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 1060,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 1060,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 1069,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 1078,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 33,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 42,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 33,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 42,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 33,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 42,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "dark",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 33,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 42,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after-703",
+      "scene": "error-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 803,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-floating",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": { "x": 648, "y": 570, "w": 760, "h": 82, "docked": false },
+      "saveRegionH": "82px",
+      "save": { "x": 665, "y": 593, "w": 112, "h": 36 },
+      "discard": { "x": 785, "y": 593, "w": 58, "h": 36 },
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 736,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 24,
+          "y": 649,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-hidden",
+      "locale": "ar",
+      "layout": "1440",
+      "theme": "light",
+      "window": { "w": 1440, "h": 900 },
+      "visualViewportHeight": 900,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 24,
+          "y": 823,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 33,
+          "y": 810,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 42,
+          "y": 797,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "تعذر الحفظ" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "left",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": { "x": 16, "y": 454, "w": 288, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 174, "y": 505, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 505, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 479,
+          "w": 288,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": { "x": 16, "y": 454, "w": 288, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 174, "y": 505, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 505, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 499,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 392,
+          "w": 288,
+          "h": 93,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 305,
+          "w": 288,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 312,
+      "bar": { "x": 16, "y": 434, "w": 288, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 174, "y": 485, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 485, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 499,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 23,
+          "y": 486,
+          "w": 274,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 30,
+          "y": 473,
+          "w": 259,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 499,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 23,
+          "y": 486,
+          "w": 274,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 30,
+          "y": 473,
+          "w": 259,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": { "x": 16, "y": 454, "w": 288, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 174, "y": 505, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 505, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 288,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": { "x": 16, "y": 454, "w": 288, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 174, "y": 505, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 505, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 84,
+          "w": 288,
+          "h": 93,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 190,
+          "w": 288,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 312,
+      "bar": { "x": 16, "y": 434, "w": 288, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 174, "y": 485, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 485, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 23,
+          "y": 31,
+          "w": 274,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 30,
+          "y": 47,
+          "w": 259,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 23,
+          "y": 31,
+          "w": 274,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 30,
+          "y": 47,
+          "w": 259,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after-703",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": { "x": 16, "y": 454, "w": 288, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 174, "y": 505, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 505, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 288,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": { "x": 16, "y": 454, "w": 288, "h": 114, "docked": false },
+      "saveRegionH": "114px",
+      "save": { "x": 174, "y": 505, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 505, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 84,
+          "w": 288,
+          "h": 93,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 16,
+          "y": 190,
+          "w": 288,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 312,
+      "bar": { "x": 16, "y": 434, "w": 288, "h": 102, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 174, "y": 485, "w": 113, "h": 40 },
+      "discard": { "x": 94, "y": 485, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 23,
+          "y": 31,
+          "w": 274,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 30,
+          "y": 47,
+          "w": 259,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "320",
+      "theme": "light",
+      "window": { "w": 320, "h": 568 },
+      "visualViewportHeight": 568,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 16,
+          "y": 16,
+          "w": 288,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 23,
+          "y": 31,
+          "w": 274,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 30,
+          "y": 47,
+          "w": 259,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 927,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 388,
+          "y": 860,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 388,
+          "y": 773,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 563,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 74, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 397,
+          "y": 934,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 406,
+          "y": 921,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 397,
+          "y": 934,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 406,
+          "y": 921,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 927,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 388,
+          "y": 860,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 388,
+          "y": 773,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 563,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 74, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 397,
+          "y": 934,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 406,
+          "y": 921,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 397,
+          "y": 934,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 406,
+          "y": 921,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after-703",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 927,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 388,
+          "y": 860,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 388,
+          "y": 773,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 563,
+      "bar": { "x": 24, "y": 602, "w": 720, "h": 74, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 614, "y": 625, "w": 113, "h": 40 },
+      "discard": { "x": 534, "y": 625, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 397,
+          "y": 934,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 406,
+          "y": 921,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "768",
+      "theme": "light",
+      "window": { "w": 768, "h": 1024 },
+      "visualViewportHeight": 1024,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 388,
+          "y": 947,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 397,
+          "y": 934,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 406,
+          "y": 921,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "before",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": { "x": 24, "y": 304, "w": 760, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 654, "y": 327, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 327, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 293,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": { "x": 24, "y": 304, "w": 760, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 654, "y": 327, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 327, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 313,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 464,
+          "y": 226,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 464,
+          "y": 139,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 215,
+      "bar": { "x": 24, "y": 284, "w": 760, "h": 74, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 654, "y": 307, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 307, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 313,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 473,
+          "y": 300,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 482,
+          "y": 287,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": true,
+      "saveHits": ["toast", "toast", "toast", "toast", "toast"],
+      "discardHits": ["toast", "toast", "toast", "toast", "toast"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "toast",
+      "discardTap": "toast",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "before",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 464,
+          "y": 313,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 473,
+          "y": 300,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 482,
+          "y": 287,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": false,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": { "x": 24, "y": 304, "w": 760, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 654, "y": 327, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 327, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 24,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": { "x": 24, "y": 304, "w": 760, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 654, "y": 327, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 327, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 24,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 464,
+          "y": 92,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 464,
+          "y": 179,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 215,
+      "bar": { "x": 24, "y": 284, "w": 760, "h": 74, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 654, "y": 307, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 307, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 24,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 473,
+          "y": 39,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 482,
+          "y": 55,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 464,
+          "y": 24,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 473,
+          "y": 39,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 482,
+          "y": 55,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    },
+    {
+      "phase": "after-703",
+      "scene": "error-floating",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": { "x": 24, "y": 304, "w": 760, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 654, "y": 327, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 327, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 24,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": {
+        "lines": 2,
+        "clipped": false,
+        "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+      },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network"],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-floating",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": { "x": 24, "y": 304, "w": 760, "h": 86, "docked": false },
+      "saveRegionH": "86px",
+      "save": { "x": 654, "y": 327, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 327, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 24,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": true
+        },
+        {
+          "x": 464,
+          "y": 92,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        },
+        {
+          "x": 464,
+          "y": 179,
+          "w": 356,
+          "h": 73,
+          "type": "error",
+          "front": false,
+          "expanded": true
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-docked",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 215,
+      "bar": { "x": 24, "y": 284, "w": 760, "h": 74, "docked": true },
+      "saveRegionH": null,
+      "save": { "x": 654, "y": 307, "w": 113, "h": 40 },
+      "discard": { "x": 574, "y": 307, "w": 72, "h": 40 },
+      "toasts": [
+        {
+          "x": 464,
+          "y": 24,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 473,
+          "y": 39,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 482,
+          "y": 55,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": ["control", "control", "control", "control", "control"],
+      "discardHits": ["control", "control", "control", "control", "control"],
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "G-XXXXXXXXXX",
+      "overflow": false,
+      "saveTap": "control",
+      "discardTap": "control",
+      "requests": ["network", 409, 500],
+      "stillDirty": true
+    },
+    {
+      "phase": "after-703",
+      "scene": "stacked-hidden",
+      "locale": "en",
+      "layout": "844x390",
+      "theme": "light",
+      "window": { "w": 844, "h": 390 },
+      "visualViewportHeight": 390,
+      "bar": null,
+      "saveRegionH": null,
+      "save": null,
+      "discard": null,
+      "toasts": [
+        {
+          "x": 464,
+          "y": 24,
+          "w": 356,
+          "h": 54,
+          "type": "error",
+          "front": true,
+          "expanded": false
+        },
+        {
+          "x": 473,
+          "y": 39,
+          "w": 338,
+          "h": 51,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        },
+        {
+          "x": 482,
+          "y": 55,
+          "w": 320,
+          "h": 48,
+          "type": "error",
+          "front": false,
+          "expanded": false
+        }
+      ],
+      "toastOverControl": false,
+      "saveHits": null,
+      "discardHits": null,
+      "frontToast": { "lines": 1, "clipped": false, "text": "Could not save" },
+      "host": {
+        "yPosition": "bottom",
+        "xPosition": "right",
+        "inDashboardScope": true,
+        "liveRegion": "polite"
+      },
+      "sections": 1,
+      "focus": "h1",
+      "overflow": false,
+      "saveTap": null,
+      "discardTap": null,
+      "requests": ["network", 409, 500],
+      "stillDirty": false
+    }
+  ],
+  "recordings": [
+    {
+      "file": "retry-after-en-390.webm",
+      "locale": "en",
+      "layout": "390",
+      "theme": "light",
+      "requests": ["network", 200],
+      "steps": [
+        {
+          "step": "edited the GA4 id; the save bar shows",
+          "window": { "w": 390, "h": 664 },
+          "visualViewportHeight": 664,
+          "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+          "saveRegionH": "114px",
+          "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+          "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+          "toasts": [],
+          "toastOverControl": false,
+          "saveHits": ["control", "control", "control", "control", "control"],
+          "discardHits": [
+            "control",
+            "control",
+            "control",
+            "control",
+            "control"
+          ],
+          "frontToast": null,
+          "host": null,
+          "sections": 1,
+          "focus": "G-XXXXXXXXXX",
+          "overflow": false,
+          "value": "G-7N3P5R8"
+        },
+        {
+          "step": "tapped Save: the request failed; the error shows and the edit is kept",
+          "window": { "w": 390, "h": 664 },
+          "visualViewportHeight": 664,
+          "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+          "saveRegionH": "114px",
+          "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+          "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+          "toasts": [
+            {
+              "x": 16,
+              "y": 16,
+              "w": 358,
+              "h": 73,
+              "type": "error",
+              "front": true,
+              "expanded": false
+            }
+          ],
+          "toastOverControl": false,
+          "saveHits": ["control", "control", "control", "control", "control"],
+          "discardHits": [
+            "control",
+            "control",
+            "control",
+            "control",
+            "control"
+          ],
+          "frontToast": {
+            "lines": 2,
+            "clipped": false,
+            "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+          },
+          "host": {
+            "yPosition": "bottom",
+            "xPosition": "right",
+            "inDashboardScope": true,
+            "liveRegion": "polite"
+          },
+          "sections": 1,
+          "focus": "body",
+          "overflow": false,
+          "value": "G-7N3P5R8"
+        },
+        {
+          "step": "corrected the id with the error still showing",
+          "window": { "w": 390, "h": 664 },
+          "visualViewportHeight": 664,
+          "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+          "saveRegionH": "114px",
+          "save": { "x": 244, "y": 601, "w": 113, "h": 40 },
+          "discard": { "x": 164, "y": 601, "w": 72, "h": 40 },
+          "toasts": [
+            {
+              "x": 16,
+              "y": 16,
+              "w": 358,
+              "h": 73,
+              "type": "error",
+              "front": true,
+              "expanded": false
+            }
+          ],
+          "toastOverControl": false,
+          "saveHits": ["control", "control", "control", "control", "control"],
+          "discardHits": [
+            "control",
+            "control",
+            "control",
+            "control",
+            "control"
+          ],
+          "frontToast": {
+            "lines": 2,
+            "clipped": false,
+            "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+          },
+          "host": {
+            "yPosition": "bottom",
+            "xPosition": "right",
+            "inDashboardScope": true,
+            "liveRegion": "polite"
+          },
+          "sections": 1,
+          "focus": "G-XXXXXXXXXX",
+          "overflow": false,
+          "value": "G-7N3P5R8T2V"
+        },
+        {
+          "step": "tapped Save again: saved, the bar hides",
+          "window": { "w": 390, "h": 664 },
+          "visualViewportHeight": 664,
+          "bar": null,
+          "saveRegionH": null,
+          "save": null,
+          "discard": null,
+          "toasts": [
+            {
+              "x": 16,
+              "y": 16,
+              "w": 358,
+              "h": 73,
+              "type": "error",
+              "front": true,
+              "expanded": false
+            }
+          ],
+          "toastOverControl": false,
+          "saveHits": null,
+          "discardHits": null,
+          "frontToast": {
+            "lines": 2,
+            "clipped": false,
+            "text": "Couldn't reach Nibleaf. Check your internet connection and try again."
+          },
+          "host": {
+            "yPosition": "bottom",
+            "xPosition": "right",
+            "inDashboardScope": true,
+            "liveRegion": "polite"
+          },
+          "sections": 1,
+          "focus": "h1",
+          "overflow": false,
+          "value": "G-7N3P5R8T2V"
+        }
+      ]
+    },
+    {
+      "file": "retry-after-ar-390.webm",
+      "locale": "ar",
+      "layout": "390",
+      "theme": "light",
+      "requests": ["network", 200],
+      "steps": [
+        {
+          "step": "edited the GA4 id; the save bar shows",
+          "window": { "w": 390, "h": 664 },
+          "visualViewportHeight": 664,
+          "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+          "saveRegionH": "114px",
+          "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+          "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+          "toasts": [],
+          "toastOverControl": false,
+          "saveHits": ["control", "control", "control", "control", "control"],
+          "discardHits": [
+            "control",
+            "control",
+            "control",
+            "control",
+            "control"
+          ],
+          "frontToast": null,
+          "host": null,
+          "sections": 1,
+          "focus": "G-XXXXXXXXXX",
+          "overflow": false,
+          "value": "G-7N3P5R8"
+        },
+        {
+          "step": "tapped Save: the request failed; the error shows and the edit is kept",
+          "window": { "w": 390, "h": 664 },
+          "visualViewportHeight": 664,
+          "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+          "saveRegionH": "114px",
+          "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+          "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+          "toasts": [
+            {
+              "x": 16,
+              "y": 16,
+              "w": 358,
+              "h": 73,
+              "type": "error",
+              "front": true,
+              "expanded": false
+            }
+          ],
+          "toastOverControl": false,
+          "saveHits": ["control", "control", "control", "control", "control"],
+          "discardHits": [
+            "control",
+            "control",
+            "control",
+            "control",
+            "control"
+          ],
+          "frontToast": {
+            "lines": 2,
+            "clipped": false,
+            "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+          },
+          "host": {
+            "yPosition": "bottom",
+            "xPosition": "left",
+            "inDashboardScope": true,
+            "liveRegion": "polite"
+          },
+          "sections": 1,
+          "focus": "body",
+          "overflow": false,
+          "value": "G-7N3P5R8"
+        },
+        {
+          "step": "corrected the id with the error still showing",
+          "window": { "w": 390, "h": 664 },
+          "visualViewportHeight": 664,
+          "bar": { "x": 16, "y": 550, "w": 358, "h": 114, "docked": false },
+          "saveRegionH": "114px",
+          "save": { "x": 33, "y": 601, "w": 112, "h": 40 },
+          "discard": { "x": 153, "y": 601, "w": 58, "h": 40 },
+          "toasts": [
+            {
+              "x": 16,
+              "y": 16,
+              "w": 358,
+              "h": 73,
+              "type": "error",
+              "front": true,
+              "expanded": false
+            }
+          ],
+          "toastOverControl": false,
+          "saveHits": ["control", "control", "control", "control", "control"],
+          "discardHits": [
+            "control",
+            "control",
+            "control",
+            "control",
+            "control"
+          ],
+          "frontToast": {
+            "lines": 2,
+            "clipped": false,
+            "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+          },
+          "host": {
+            "yPosition": "bottom",
+            "xPosition": "left",
+            "inDashboardScope": true,
+            "liveRegion": "polite"
+          },
+          "sections": 1,
+          "focus": "G-XXXXXXXXXX",
+          "overflow": false,
+          "value": "G-7N3P5R8T2V"
+        },
+        {
+          "step": "tapped Save again: saved, the bar hides",
+          "window": { "w": 390, "h": 664 },
+          "visualViewportHeight": 664,
+          "bar": null,
+          "saveRegionH": null,
+          "save": null,
+          "discard": null,
+          "toasts": [
+            {
+              "x": 16,
+              "y": 16,
+              "w": 358,
+              "h": 73,
+              "type": "error",
+              "front": true,
+              "expanded": false
+            }
+          ],
+          "toastOverControl": false,
+          "saveHits": null,
+          "discardHits": null,
+          "frontToast": {
+            "lines": 2,
+            "clipped": false,
+            "text": "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+          },
+          "host": {
+            "yPosition": "bottom",
+            "xPosition": "left",
+            "inDashboardScope": true,
+            "liveRegion": "polite"
+          },
+          "sections": 1,
+          "focus": "h1",
+          "overflow": false,
+          "value": "G-7N3P5R8T2V"
+        }
+      ]
+    }
+  ]
+}
