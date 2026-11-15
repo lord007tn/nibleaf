@@ -92,7 +92,6 @@ const regionButton = (name: string) => {
 };
 const save = () => click(regionButton('common.save'));
 const discard = () => click(regionButton('forms.discard'));
-const settle = () => act(async () => undefined);
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -335,7 +334,6 @@ describe('BrandingSettings: uploads', () => {
     await choose('favicon');
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     await upload.finish('https://cdn.example/assets/icon.png');
-    await settle();
     expect(input('favicon').value).toBe('https://cdn.example/assets/icon.png');
   });
 
