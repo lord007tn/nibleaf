@@ -1,6 +1,6 @@
 {
   "environment": "Component fixture: the real Footer section (features/site-footer, through its compatibility re-export) with the real design system, EN/AR catalogs, project and language queries and both save mutations, in an editor-canvas frame; fictional site and Arabic language; GETs and PATCHes answered by interception; not the signed-in dashboard or production",
-  "head": "2ad8ad5d82e4ec90b1d706b39f2c5000efdb9dda",
+  "head": "fc73048ed5157c9e073c7a2371d1877497cc6f18",
   "uncommitted": [],
   "attempted": 0,
   "captures": [
@@ -72,7 +72,8 @@
       "overflow": false,
       "requests": [
         "GET /api/app/projects/site-1",
-        "GET /api/app/projects/site-1/languages"
+        "GET /api/app/projects/site-1/languages",
+        "GET /api/app/projects/site-1"
       ],
       "pageErrors": []
     },
@@ -144,7 +145,8 @@
       "overflow": false,
       "requests": [
         "GET /api/app/projects/site-1",
-        "GET /api/app/projects/site-1/languages"
+        "GET /api/app/projects/site-1/languages",
+        "GET /api/app/projects/site-1"
       ],
       "pageErrors": []
     },
@@ -216,7 +218,8 @@
       "overflow": false,
       "requests": [
         "GET /api/app/projects/site-1",
-        "GET /api/app/projects/site-1/languages"
+        "GET /api/app/projects/site-1/languages",
+        "GET /api/app/projects/site-1"
       ],
       "pageErrors": []
     },
@@ -288,7 +291,8 @@
       "overflow": false,
       "requests": [
         "GET /api/app/projects/site-1",
-        "GET /api/app/projects/site-1/languages"
+        "GET /api/app/projects/site-1/languages",
+        "GET /api/app/projects/site-1"
       ],
       "pageErrors": []
     }
@@ -304,34 +308,15 @@
         { "call": "GET /api/app/projects/site-1/languages" },
         {
           "call": "PATCH /api/app/projects/site-1",
-          "body": {
-            "config": {
-              "footer": {
-                "copyright": "",
-                "github": "",
-                "x": "https://x.com/handbookdocs",
-                "linkedin": "/company/handbook",
-                "madeWithBadge": true
-              }
-            }
-          }
+          "body": { "config": { "footer": { "copyright": "", "github": "" } } }
         },
         { "call": "GET /api/app/projects/site-1" },
         { "call": "GET /api/app/projects/site-1" },
         {
           "call": "PATCH /api/app/projects/site-1",
-          "body": {
-            "config": {
-              "footer": {
-                "copyright": "",
-                "github": "",
-                "x": "https://x.com/handbookdocs",
-                "linkedin": "/company/handbook",
-                "madeWithBadge": false
-              }
-            }
-          }
+          "body": { "config": { "footer": { "madeWithBadge": false } } }
         },
+        { "call": "GET /api/app/projects/site-1" },
         { "call": "GET /api/app/projects/site-1" },
         { "call": "GET /api/app/projects/site-1" },
         {
@@ -343,7 +328,8 @@
           "call": "PATCH /api/app/projects/site-1/languages/ar",
           "body": { "config": { "footer": null } }
         },
-        { "call": "GET /api/app/projects/site-1/languages" }
+        { "call": "GET /api/app/projects/site-1/languages" },
+        { "call": "GET /api/app/projects/site-1" }
       ],
       "pageErrors": [],
       "steps": [
@@ -499,8 +485,7 @@
               "copyright": "",
               "github": "",
               "x": "https://x.com/handbookdocs",
-              "linkedin": "/company/handbook",
-              "madeWithBadge": true
+              "linkedin": "/company/handbook"
             },
             "arabic": {
               "seo": { "metaTitle": "دليل هاندبوك" },
@@ -540,8 +525,7 @@
               "copyright": "",
               "github": "",
               "x": "https://x.com/handbookdocs",
-              "linkedin": "/company/handbook",
-              "madeWithBadge": true
+              "linkedin": "/company/handbook"
             },
             "arabic": {
               "seo": { "metaTitle": "دليل هاندبوك" },
@@ -616,7 +600,7 @@
           "saveButtonVisible": false,
           "status": "Saved",
           "overflow": false,
-          "requestsSoFar": 8,
+          "requestsSoFar": 9,
           "server": {
             "footer": {
               "copyright": "",
@@ -657,7 +641,7 @@
           "saveButtonVisible": false,
           "status": "Saved",
           "overflow": false,
-          "requestsSoFar": 10,
+          "requestsSoFar": 11,
           "server": {
             "footer": {
               "copyright": "",
@@ -699,7 +683,7 @@
           "saveButtonVisible": false,
           "status": "Saved",
           "overflow": false,
-          "requestsSoFar": 12,
+          "requestsSoFar": 13,
           "server": {
             "footer": {
               "copyright": "",
@@ -740,7 +724,7 @@
           "saveButtonVisible": false,
           "status": "Saved",
           "overflow": false,
-          "requestsSoFar": 12,
+          "requestsSoFar": 14,
           "server": {
             "footer": {
               "copyright": "",
