@@ -346,6 +346,28 @@ describe('SaveRegion settlement: one form (#759)', () => {
     expect(history()).toEqual(['', 'common.saved', '']);
   });
 
+  it('an edit landing in the same batch as a clean save’s end is never claimed "Saved", in any rendered frame', async () => {
+    const a = controls();
+    await render([{ id: 'a', source: old, controls: a }]);
+    await edit(a, 'name', 'New');
+    await clickSave();
+    await act(async () => {
+      const entry = a.saves[0];
+      entry?.save.succeeded(entry.values);
+      entry?.finish('saved');
+      // The run's continuation reads every form settled and decides "Saved"…
+      await tick();
+      // …then, before React commits the clean registration, the person types again.
+      a.draft.form.setFieldValue('name', 'Newer');
+    });
+    expect(a.draft.settlement().settled).toBe(false);
+    expect(bar()).not.toBeNull();
+    expect(status()).toBe('');
+    await edit(a, 'name', 'Newest');
+    expect(status()).toBe('');
+    expect(history()).toEqual(['']);
+  });
+
   it('Discard after "Unsaved changes" clears it, and Discard while the save is pending does nothing', async () => {
     const a = controls();
     await render([{ id: 'a', source: old, controls: a }]);
@@ -457,6 +479,30 @@ describe('SaveRegion settlement: several forms', () => {
     expect(b.saves).toHaveLength(0);
     expect(status()).toBe('forms.unsavedChanges');
     expect(history()).toEqual(['', 'forms.unsavedChanges']);
+  });
+
+  it('a sibling saving on its own, clean but still pending, then done: "Unsaved changes" clears silently, never "Saved"', async () => {
+    const { a, b } = await twoDirty();
+    // B saves on its own (as the JWT confirmation does), outside the bar's run.
+    await act(async () => {
+      void b.draft.submit();
+      await tick();
+    });
+    // Its own echo lands: B is clean, but its save is still pending.
+    await render([
+      { id: 'a', source: old, controls: a },
+      { id: 'b', source: { name: 'B', description: 'd1' }, controls: b },
+    ]);
+    expect(b.draft.isDirty).toBe(false);
+    await pressEnterIn('a');
+    await succeed(a, 0);
+    expect(status()).toBe('forms.unsavedChanges');
+    // B's completion changes only whether it is saving.
+    await succeed(b, 0);
+    expect(b.draft.settlement().settled).toBe(true);
+    expect(bar()).toBeNull();
+    expect(status()).toBe('');
+    expect(history()).toEqual(['', 'forms.unsavedChanges', '']);
   });
 
   it('an invalid form stops the run before the next one', async () => {

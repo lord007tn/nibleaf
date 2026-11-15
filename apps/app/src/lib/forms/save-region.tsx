@@ -29,6 +29,10 @@ import type { DraftSettlement } from './use-server-draft';
  * or a conflict, so once the saves end the region says "Saved" only when
  * every registered form is settled. `submit` still resolves `'saved'` for an
  * accepted request either way.
+ *
+ * A hand-written `settlement` must be stable, read live state covering all of
+ * the form's unsaved state, return a real identity generation, and change
+ * only together with `isDirty` or `isSubmitting` (UI_GUIDE.md).
  */
 export type SaveRegionForm = {
   isDirty: boolean;
@@ -170,55 +174,48 @@ export function SaveRegionProvider({ children }: { children: ReactNode }) {
   const keyboardOpen = useKeyboardOpen();
 
   const allSettled = useCallback(() => [...live.current.values()].every((form) => form.settlement().settled), []);
-  // Once nothing is left anywhere (Discard, Use theirs, an edit typed back), "Unsaved changes" is over: cleared, not announced.
-  const clearUnsettled = useCallback(() => {
-    if (allSettled()) setStatus((previous) => (previous === 'unsettled' ? '' : previous));
-  }, [allSettled]);
 
-  const register = useCallback(
-    (id: string, form: Registered) => {
-      const existing = live.current.get(id);
-      live.current.set(id, form);
-      // A new edit makes an earlier "Saved" untrue. It is taken back once,
-      // silently; later keystrokes change nothing.
-      if (form.isDirty && !existing?.isDirty) setStatus((previous) => (previous === 'saved' ? '' : previous));
-      else if (!form.isDirty && existing?.isDirty) clearUnsettled();
-      setForms((previous) => {
-        const current = previous.get(id);
-        if (
-          current &&
-          current.instance === form.instance &&
-          current.isDirty === form.isDirty &&
-          current.isSubmitting === form.isSubmitting &&
-          current.submit === form.submit &&
-          current.discard === form.discard &&
-          current.settlement === form.settlement
-        ) {
-          return previous;
-        }
-        const next = new Map(previous);
-        next.set(id, form);
-        return next;
-      });
-    },
-    [clearUnsettled],
-  );
-  const unregister = useCallback(
-    (id: string, instance: object) => {
-      const existing = live.current.get(id);
-      // A form remounted under the same id has registered itself already: leave it.
-      if (existing?.instance !== instance) return;
-      live.current.delete(id);
-      if (existing.isDirty) clearUnsettled();
-      setForms((previous) => {
-        if (previous.get(id)?.instance !== instance) return previous;
-        const next = new Map(previous);
-        next.delete(id);
-        return next;
-      });
-    },
-    [clearUnsettled],
-  );
+  const register = useCallback((id: string, form: Registered) => {
+    live.current.set(id, form);
+    setForms((previous) => {
+      const current = previous.get(id);
+      if (
+        current &&
+        current.instance === form.instance &&
+        current.isDirty === form.isDirty &&
+        current.isSubmitting === form.isSubmitting &&
+        current.submit === form.submit &&
+        current.discard === form.discard &&
+        current.settlement === form.settlement
+      ) {
+        return previous;
+      }
+      const next = new Map(previous);
+      next.set(id, form);
+      return next;
+    });
+  }, []);
+  const unregister = useCallback((id: string, instance: object) => {
+    // A form remounted under the same id has registered itself already: leave it.
+    if (live.current.get(id)?.instance !== instance) return;
+    live.current.delete(id);
+    setForms((previous) => {
+      if (previous.get(id)?.instance !== instance) return previous;
+      const next = new Map(previous);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  // What was announced must stay true of the forms as they are now, read live
+  // on every render (every change to a form's dirty or saving state renders
+  // here, completion included). An edit takes "Saved" back, even one that
+  // landed before its form's clean state rendered; "Unsaved changes" goes once
+  // nothing is left. Both silently, and before a stale claim renders.
+  if (status === 'saved' || status === 'unsettled') {
+    const settledNow = allSettled();
+    if (status === 'saved' ? !settledNow : settledNow) setStatus('');
+  }
 
   const dirtyForms = [...forms.values()].filter((form) => form.isDirty);
   const anyDirty = dirtyForms.length > 0;

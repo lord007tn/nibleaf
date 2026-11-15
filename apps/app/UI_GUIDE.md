@@ -96,6 +96,16 @@ return (
   a form that was replaced, or moved to another identity since. A new edit silently takes back an earlier "Saved".
   Settling forms without a save (Discard, "Use theirs") silently clears "Unsaved changes" and never says "Saved". The
   bar's status is the page's one save announcement: don't add another.
+
+  If you write your own `settlement` instead of passing `draft.settlement` (a form with authored state outside the
+  draft, like Theme):
+  - **Keep it stable** (`useCallback`). A new function each render re-registers the form with the bar every render.
+  - **Read live state** (refs, the form store), not render state, and cover everything that counts as unsaved:
+    `settled` is true only with no save in flight and nothing left to save or resolve anywhere in the form.
+  - **Return a real `generation`**: the draft's, or one that changes whenever the form starts over for another site,
+    language or other identity. Never a constant. The bar uses it to drop results for an identity the form has left.
+  - **Keep `isDirty` and `isSubmitting` in step with it.** The bar re-checks its status against every form's
+    settlement when a registration changes, so a settlement that changes without either flag changing is not seen.
 - **Enter saves the form it was pressed in.** Spread the props `useSaveRegionForm` returns on the `<form>` and render
   `<SaveRegionSubmit />` inside it. HTML submits a form on Enter only if it has a submit button or a single text field;
   this hidden one is never a Tab stop or announced. Plain Enter in an editable single-line field then saves that form
