@@ -47,7 +47,6 @@ it.each([
   '~~~html\n<script>literal</script>\n~~~',
   '    <script>literal</script>',
   'Use `<script>literal</script>`.',
-  '<div onclick="run()">text</div>',
   '[x](data:text/html,x)',
 ])('keeps element-inactive output byte-identical: %s', (source) => {
   expect(renderedActiveHtml(source)).toBe(0);

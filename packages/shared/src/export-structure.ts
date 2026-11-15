@@ -164,17 +164,33 @@ export const captureExportStructure = (
 /** Canonical last-resort output. Outside the owned ranges bytes are untouched.
  * Separators occur only at their root-block boundaries. Encoding code
  * points (rather than UTF-16 units) also preserves non-BMP author characters. */
-export const literalExportText = (main: ExportStructure): string => {
+export const exportBoundaryEnding = (source: string, at: number): string => {
+  if (source[at - 1] === '\r') return '\r';
+  if (source[at - 1] === '\n') return source[at - 2] === '\r' ? '\r\n' : '\n';
+  for (let i = at; i < source.length; i++) {
+    if (source[i] === '\r') return source[i + 1] === '\n' ? '\r\n' : '\r';
+    if (source[i] === '\n') return '\n';
+  }
+  return '\n';
+};
+export const literalExportText = (main: ExportStructure, nativeBoundaries = false): string => {
   const chunks: string[] = [];
   let cursor = 0;
   for (const range of main.rescue ?? main.literal ?? []) {
     chunks.push(main.source.slice(cursor, range.from));
     const value = Array.from(authoredExportText(main.source.slice(range.from, range.to)), (c) =>
-      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c.codePointAt(0) ?? 0) > 127 ? c : `&#${c.codePointAt(0)};`,
+      (c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9') ||
+      (c.codePointAt(0) ?? 0) > 127 ||
+      (nativeBoundaries && (((c.codePointAt(0) ?? 0) < 32 && !['\t', '\n', '\r'].includes(c)) || c === '\u007f'))
+        ? c
+        : `&#${c.codePointAt(0)};`,
     ).join('');
     // A whole root block is owned here: the literal paragraph starts and ends
     // outside its unproven containers. Following code keeps its root context.
-    chunks.push(`\n${value}\n\n`);
+    const newline = nativeBoundaries ? exportBoundaryEnding(main.source, range.from) : '\n';
+    chunks.push(`${newline}${value}${newline}${newline}`);
     cursor = range.to;
   }
   chunks.push(main.source.slice(cursor));
@@ -237,7 +253,7 @@ const snapshot = (blocks: Block[], regions: ExportHtmlRun[], origins: readonly (
  * at either run boundary, and whitespace padding on that run's blank lines.
  * Every original line occurs once, in order. Code and block structure outside
  * the regions remain exact; literalization escapes never discard prose. */
-export const compareExportStructure = (main: ExportStructure, output: string, tokens: Token[]) => {
+export const compareExportStructure = (main: ExportStructure, output: string, tokens: Token[], nativeBoundaries = false) => {
   const originalLines = exportSourceLines(main.source);
   const editable = new Uint8Array(main.source.length);
   for (const range of main.literal ?? []) editable.fill(1, range.from, range.to);
@@ -341,7 +357,7 @@ export const compareExportStructure = (main: ExportStructure, output: string, to
   const current = captureExportStructure(output, tokens, null);
   const identity = source.map((_, index) => index);
   const equal = snapshot(main.blocks, regions, identity, new Set()) === snapshot(current.blocks, regions, origins, separators);
-  const unpreservable = !equal || !preserved ? Boolean(main.literal?.length && output === literalExportText(main)) : false;
+  const unpreservable = !equal || !preserved ? Boolean(main.literal?.length && output === literalExportText(main, nativeBoundaries)) : false;
   let outsideCodeStable = true;
   if (unpreservable) {
     const owners = main.rescue ?? main.literal ?? [];

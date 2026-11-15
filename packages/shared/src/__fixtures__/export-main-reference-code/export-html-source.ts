@@ -1,0 +1,396 @@
+// Frozen main at ec2d10d8; test-only byte reference for #664.
+import MarkdownIt from 'markdown-it';
+import type Token from 'markdown-it/lib/token.mjs';
+import { type DefaultTreeAdapterTypes, Parser, parseFragment } from 'parse5';
+
+const ACTIVE_TAGS = ['script', 'style', 'iframe', 'object', 'embed'];
+/** HTML element names are contiguous after `<`. This is only a sound prefilter;
+ * Markdown and parse5 decide whether a matching substring is a live element. */
+export const mayHaveActiveExportHtml = (source: string): boolean => {
+  const lower = source.toLowerCase();
+  return ACTIVE_TAGS.some((tag) => lower.includes(`<${tag}`));
+};
+const markdown = new MarkdownIt({ html: true });
+const inlineStarts = new WeakMap<Token, number>();
+const inlineCode = new WeakMap<Token, string>();
+const BaseInlineState = markdown.inline.State;
+markdown.inline.State = class extends BaseInlineState {
+  override push(type: string, tag: string, nesting: Token['nesting']): Token {
+    const token = super.push(type, tag, nesting);
+    if (type === 'html_inline' || type === 'code_inline' || type === 'image') inlineStarts.set(token, this.pos);
+    if (type === 'code_inline') inlineCode.set(token, this.src);
+    return token;
+  }
+};
+interface HtmlSpan {
+  token: Token;
+  from: number;
+  to: number;
+  positions: number[];
+}
+
+export const parseExportTokens = (source: string) => markdown.parse(source, {});
+
+export const readExportHtml = (source: string) => {
+  if (!mayHaveActiveExportHtml(source)) return;
+  const input = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD');
+  const env = {};
+  const tokens = markdown.parse(input, env);
+  const inspect = [...tokens];
+  let candidate = false;
+  while (inspect.length) {
+    const token = inspect.pop();
+    if (!token) continue;
+    if ((token.type === 'html_block' || token.type === 'html_inline') && mayHaveActiveExportHtml(token.content)) {
+      candidate = true;
+      break;
+    }
+    if (token.children) for (const child of token.children) inspect.push(child);
+  }
+  if (!candidate) return;
+  const offsets: number[] = [];
+  if (input !== source) {
+    for (let at = 0; at < source.length; at++) {
+      offsets.push(at);
+      if (source[at] === '\r' && source[at + 1] === '\n') at++;
+    }
+    offsets.push(source.length);
+  }
+  const originalOffset = (at: number) => (input === source ? Math.min(at, source.length) : (offsets[at] ?? source.length));
+  const lines = input.split('\n');
+  const lineStarts = [0];
+  for (const line of lines) lineStarts.push((lineStarts.at(-1) ?? 0) + line.length + 1);
+  const lineCursors = new Uint32Array(lines.length);
+  let tableDepth = 0;
+  const tableLines = new Map<number, { text: string; positions: number[] }>();
+  const positionsFor = (content: string, map: [number, number]): number[] => {
+    const positions: number[] = [];
+    let lineAt = map[0];
+    for (const line of content.split('\n')) {
+      const raw = lines[lineAt] ?? '';
+      let row = tableLines.get(lineAt);
+      if (tableDepth && !row && raw.includes('\\|')) {
+        const text: string[] = [];
+        const positions: number[] = [];
+        for (let at = 0; at < raw.length; at++) {
+          if (raw[at] === '\\' && raw[at + 1] === '|') continue;
+          text.push(raw[at] ?? '');
+          positions.push((lineStarts[lineAt] ?? 0) + at);
+        }
+        positions.push((lineStarts[lineAt] ?? 0) + raw.length);
+        row = { text: text.join(''), positions };
+        tableLines.set(lineAt, row);
+      }
+      const original = tableDepth && row ? row.text : raw;
+      const sourceAt = (at: number) => originalOffset(tableDepth && row ? (row.positions[at] ?? input.length) : (lineStarts[lineAt] ?? 0) + at);
+      let leading = 0;
+      while (line[leading] === ' ' || line[leading] === '\t') leading++;
+      let cursor = original.indexOf(line, lineCursors[lineAt] ?? 0);
+      if (cursor >= 0) {
+        for (let at = 0; at < line.length; at++) positions.push(sourceAt(cursor + at));
+        cursor += line.length;
+      } else {
+        cursor = lineCursors[lineAt] ?? 0;
+        const tail = original.indexOf(line.slice(leading), cursor);
+        let leadingAt = tail >= 0 ? tail : cursor;
+        let columns = leading;
+        while (leadingAt > cursor && columns > 0 && [' ', '\t'].includes(original[leadingAt - 1] ?? '')) {
+          columns -= original[leadingAt - 1] === '\t' ? 4 : 1;
+          leadingAt--;
+        }
+        if (tail >= 0) cursor = tail;
+        for (let at = 0; at < line.length; at++) {
+          if (at < leading) {
+            positions.push(sourceAt(leadingAt));
+            continue;
+          }
+          const found = original.indexOf(line[at] ?? '', cursor);
+          if (found >= 0) cursor = found;
+          positions.push(sourceAt(cursor));
+          if (found >= 0) cursor++;
+        }
+      }
+      lineCursors[lineAt] = cursor;
+      positions.push(sourceAt(original.length));
+      lineAt++;
+    }
+    positions.length = content.length;
+    return positions;
+  };
+
+  const editable = new Uint8Array(source.length);
+  const code = new Uint8Array(source.length);
+  const leaders: number[] = [];
+  const allow = (content: string, positions: number[]) => {
+    for (const at of positions) editable[at] = 1;
+    let line = 0;
+    while (line < content.length) {
+      let first = line;
+      while (content[first] === ' ' || content[first] === '\t') {
+        first++;
+      }
+      for (let at = line; at < first; at++) if (positions[at] !== undefined) leaders.push(positions[at] as number);
+      if ('>+-#='.includes(content[first] ?? '') && content[first] && positions[first] !== undefined) leaders.push(positions[first] as number);
+      let end = first;
+      while (end < first + 9 && (content[end] ?? '') >= '0' && (content[end] ?? '') <= '9') end++;
+      if (
+        end > first &&
+        (content[end] === '.' || content[end] === ')') &&
+        [' ', '\t', '\n', ''].includes(content[end + 1] ?? '') &&
+        positions[end] !== undefined
+      )
+        leaders.push(positions[end] as number);
+      const newline = content.indexOf('\n', line);
+      if (newline < 0) break;
+      line = newline + 1;
+    }
+  };
+  const chunks: string[] = [];
+  const spans: HtmlSpan[] = [];
+  const renderedBounds: Array<{ from: number; to: number; end: number }> = [];
+  let length = 0;
+  let map: [number, number] = [0, lines.length];
+  const protectInlineCode = (token: Token, positions: number[]) => {
+    const start = inlineStarts.get(token) ?? 0;
+    let end = start + token.markup.length;
+    // Original characters corresponding to code are found from the inline
+    // source captured by the parser, rather than normalized token.content.
+    const location = inlineCode.get(token);
+    if (location) {
+      let at = start + token.markup.length;
+      for (;;) {
+        const next = location.indexOf('`', at);
+        if (next < 0) {
+          end = location.length;
+          break;
+        }
+        at = next;
+        while (location[at] === '`') at++;
+        if (at - next === token.markup.length) {
+          end = at;
+          break;
+        }
+      }
+    }
+    for (let at = start; at < end; at++) {
+      const original = positions[at];
+      if (original !== undefined) code[original] = 1;
+    }
+  };
+  const frames = [{ tokens, at: 0, positions: [] as number[] }];
+  while (frames.length) {
+    const frame = frames.at(-1);
+    if (!frame) break;
+    const token = frame.tokens[frame.at++];
+    if (!token) {
+      frames.pop();
+      continue;
+    }
+    if (token.type === 'table_open') tableDepth++;
+    if (token.type === 'table_close') tableDepth--;
+    if (token.map) map = token.map;
+    if (token.type === 'inline') {
+      const positions = positionsFor(token.content, token.map ?? map);
+      allow(token.content, positions);
+      frames.push({ tokens: token.children ?? [], at: 0, positions });
+      continue;
+    }
+    if ((token.type === 'fence' || token.type === 'code_block') && token.map)
+      code.fill(1, originalOffset(lineStarts[token.map[0]] ?? input.length), originalOffset(lineStarts[token.map[1]] ?? input.length));
+    if (token.type === 'code_inline') protectInlineCode(token, frame.positions);
+    if (token.type === 'image' && token.children) {
+      // Alt text has its own inline parser state, but its code spans still
+      // carry author bytes. Walk those child states without rendering twice.
+      const start = (inlineStarts.get(token) ?? 0) + 2;
+      const pending = [{ tokens: token.children, positions: frame.positions.slice(start, start + token.content.length) }];
+      while (pending.length) {
+        const current = pending.pop();
+        if (!current) continue;
+        for (const child of current.tokens) {
+          if (child.type === 'code_inline') protectInlineCode(child, current.positions);
+          if (child.type === 'image' && child.children) {
+            const start = (inlineStarts.get(child) ?? 0) + 2;
+            pending.push({ tokens: child.children, positions: current.positions.slice(start, start + child.content.length) });
+          }
+        }
+      }
+    }
+    const rule = markdown.renderer.rules[token.type];
+    const attributes = token.attrs;
+    // Abbreviate only the throwaway render's generated URLs/titles to bound
+    // reference fanout. Authored destinations are never edited (#664).
+    if (token.type === 'link_open' || token.type === 'image')
+      token.attrs = attributes?.map(([name, value]) => [name, name === 'href' || name === 'src' ? '#' : name === 'title' ? '' : value]) ?? null;
+    const value = rule
+      ? rule(frame.tokens, frame.at - 1, markdown.options, env, markdown.renderer)
+      : markdown.renderer.renderToken(frame.tokens, frame.at - 1, markdown.options);
+    token.attrs = attributes;
+    renderedBounds.push({ from: length, to: length + value.length, end: originalOffset(lineStarts[map[1]] ?? input.length) });
+    if (token.type === 'html_block' || token.type === 'html_inline') {
+      const positions =
+        token.type === 'html_block'
+          ? positionsFor(token.content, token.map ?? map)
+          : frame.positions.slice(inlineStarts.get(token) ?? 0, (inlineStarts.get(token) ?? 0) + token.content.length);
+      allow(token.content, positions);
+      const span = { token, from: length, to: length + value.length, positions };
+      spans.push(span);
+    }
+    chunks.push(value);
+    length += value.length;
+  }
+  const html = chunks.join('');
+  const originalAt = new Int32Array(html.length).fill(-1);
+  const endAt = new Int32Array(html.length);
+  for (const bound of renderedBounds) endAt.fill(bound.end, bound.from, bound.to);
+  for (const span of spans) for (let at = span.from; at < span.to; at++) originalAt[at] = span.positions[at - span.from] ?? -1;
+  // A start tag spanning renderer-generated markup was unterminated in the
+  // author's HTML token. Prefix counts keep every context lookup constant-time.
+  const generatedBefore = new Uint32Array(html.length + 1);
+  for (let at = 0; at < html.length; at++) generatedBefore[at + 1] = (generatedBefore[at] ?? 0) + Number((originalAt[at] ?? -1) < 0);
+  const active: Array<[number, number]> = [];
+  let risky = spans.some((span) => span.token.content.includes('<!') || span.token.content.includes('<?'));
+  const hidden = new Int32Array(source.length + 1);
+  const hide = (from: number, to: number) => {
+    hidden[from] = (hidden[from] ?? 0) + 1;
+    hidden[to] = (hidden[to] ?? 0) - 1;
+  };
+  const sourceEnd = (end: number): number => {
+    if (end >= html.length) return source.length;
+    if ((originalAt[end - 1] ?? -1) >= 0) return (originalAt[end - 1] ?? 0) + 1;
+    return endAt[end - 1] ?? source.length;
+  };
+  const rawText = ['script', 'style', 'iframe', 'xmp', 'noembed', 'noframes', 'noscript', 'plaintext', 'textarea', 'title'];
+  // Fragment parsing discards doctypes. Capture their token locations as well,
+  // so a declaration opened in a changed run cannot release content past it.
+  let unfinishedTag = false,
+    lastRawEnd = 0;
+  const parser = Parser.getFragmentParser<DefaultTreeAdapterTypes.DefaultTreeAdapterMap>(null, {
+    sourceCodeLocationInfo: true,
+    onParseError: (error) => {
+      if (error.code === 'eof-in-tag') unfinishedTag = true;
+    },
+  });
+  const remember = (end: number | undefined) => {
+    if (end != null && (originalAt[end - 1] ?? -1) >= 0) lastRawEnd = Math.max(lastRawEnd, sourceEnd(end));
+  };
+  const startTag = parser.onStartTag.bind(parser),
+    endTag = parser.onEndTag.bind(parser),
+    doctype = parser.onDoctype.bind(parser);
+  parser.onStartTag = (token) => {
+    remember(token.location?.endOffset);
+    startTag(token);
+  };
+  parser.onEndTag = (token) => {
+    remember(token.location?.endOffset);
+    endTag(token);
+  };
+  parser.onDoctype = (token) => {
+    const from = originalAt[token.location?.startOffset ?? -1] ?? -1;
+    if (from >= 0 && token.location) {
+      risky = true;
+      hide(from, sourceEnd(token.location.endOffset));
+    }
+    remember(token.location?.endOffset);
+    doctype(token);
+  };
+  parser.tokenizer.write(html, true);
+  if (unfinishedTag) {
+    risky = true;
+    hide(Math.max(0, lastRawEnd - 1), source.length);
+  }
+  const pending: DefaultTreeAdapterTypes.Node[] = [parser.getFragment()];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) continue;
+    if ('tagName' in node && node.sourceCodeLocation) {
+      const loc = node.sourceCodeLocation;
+      const from = originalAt[loc.startOffset] ?? -1;
+      if (ACTIVE_TAGS.includes(node.tagName)) {
+        const end = loc.endTag?.endOffset ?? (node.tagName === 'embed' ? loc.startTag?.endOffset : loc.endOffset);
+        const to = !loc.endTag && rawText.includes(node.tagName) ? source.length : sourceEnd(end ?? html.length);
+        // A generated renderer token cannot create these elements. If its source
+        // is unavailable, escape the raw HTML spans rather than throw on export.
+        if (from >= 0) active.push([from, Math.max(from + 1, to)]);
+        else
+          for (const span of spans) {
+            const first = span.positions[0],
+              last = span.positions.at(-1);
+            if (first != null && last != null) active.push([first, last + 1]);
+          }
+      }
+      const opening = loc.startTag;
+      const malformedOpening = opening && (generatedBefore[opening.endOffset] ?? 0) > (generatedBefore[opening.startOffset] ?? 0);
+      if (from >= 0 && ((!loc.endTag && node.tagName !== 'embed') || malformedOpening)) risky = true;
+      // Own the earlier malformed opener; a normal unclosed element does not
+      // need to consume following code merely because its closing tag is absent.
+      if (from >= 0 && malformedOpening) hide(from, Math.max(from + 1, sourceEnd(loc.endOffset)));
+      if (from >= 0 && [...rawText, 'select', 'template', 'svg', 'math', 'table', 'frameset'].includes(node.tagName)) {
+        risky = true;
+        hide(from, loc.endTag ? sourceEnd(loc.endTag.endOffset) : source.length);
+      }
+    }
+    const loc = 'sourceCodeLocation' in node ? node.sourceCodeLocation : undefined;
+    if (loc && (node.nodeName === '#comment' || (node.nodeName === '#text' && html.slice(loc.startOffset, loc.endOffset).includes('<')))) {
+      const from = originalAt[loc.startOffset] ?? -1;
+      if (from >= 0) {
+        risky = true;
+        hide(from, Math.max(from, sourceEnd(loc.endOffset)));
+      }
+    }
+    if ('childNodes' in node) for (const child of node.childNodes) pending.push(child);
+  }
+  if (!active.length) return;
+  const inert: Array<[number, number]> = [];
+  const ends = new Int32Array(source.length + 1);
+  for (const [from, to] of active) ends[from] = Math.max(ends[from] ?? 0, to);
+  const ordered: Array<[number, number]> = [];
+  let depth = 0,
+    start = -1;
+  for (let at = 0; at <= source.length; at++) {
+    if ((ends[at] ?? 0) > at) ordered.push([at, ends[at] ?? at]);
+    depth += hidden[at] ?? 0;
+    if (depth > 0 && start < 0) start = at;
+    if (depth === 0 && start >= 0) {
+      inert.push([start, at]);
+      start = -1;
+    }
+  }
+  return { tokens, active: ordered, inert, risky, spans, editable, code, leaders };
+};
+
+export const renderedExportText = (source: string): string => {
+  const pending: DefaultTreeAdapterTypes.Node[] = [parseFragment(markdown.render(source))];
+  const text: string[] = [];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) continue;
+    if (node.nodeName === '#text' && 'value' in node) text.push(node.value);
+    if ('childNodes' in node)
+      for (let at = node.childNodes.length - 1; at >= 0; at--) {
+        const child = node.childNodes[at];
+        if (child) pending.push(child);
+      }
+  }
+  return text.join('');
+};
+
+/** Decode only references the author wrote. Escape literal '<' first so the
+ * decoder reads source as text, never as markup. Renderer-created spellings
+ * are absent here: authored '-->' stays '-->', even if main rendered it as
+ * the literal '--&gt;' inside a malformed raw-text context. */
+export const authoredExportText = (source: string): string => {
+  const literal = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD').replaceAll('<', '&lt;');
+  return parseFragment(literal)
+    .childNodes.map((node) => (node.nodeName === '#text' && 'value' in node ? node.value : ''))
+    .join('');
+};
+export const exportTextEnd = (expected: string, actual: string, start = 0): number => {
+  let cursor = start;
+  for (const character of expected) {
+    const at = actual.indexOf(character, cursor);
+    if (at < 0) return -1;
+    cursor = at + character.length;
+  }
+  return cursor;
+};
+export const exportTextInOrder = (expected: string, actual: string): boolean => exportTextEnd(expected, actual) >= 0;

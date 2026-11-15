@@ -65,7 +65,7 @@ const neutralize = (source: string, remaining = false, state = readExportHtml(so
   return { output: output.join(''), active: state.active.length, escaped, tokens };
 };
 
-/** Neutralize only script/style/iframe/object/embed; URL/handler hardening is #664.
+/** Preserve the foundation repair for script/style/iframe/object/embed.
  * Main's projection remains authoritative. At most two targeted passes handle
  * newly exposed elements; the final bounded fallback escapes remaining HTML. */
 const settle = (first: string): string => {
@@ -173,7 +173,7 @@ const literalizeRun = (source: string, state: NonNullable<ReturnType<typeof read
   return output;
 };
 
-export const escapeDisallowedExportHtml = (source: string): string => {
+const escapeActiveElements = (source: string): string => {
   const state = readExportHtml(source);
   if (!state) return source;
   const model = captureExportStructure(source, state.tokens, state);
@@ -184,4 +184,14 @@ export const escapeDisallowedExportHtml = (source: string): string => {
   const comparison = compareExportStructure(model, output, parseExportTokens(output));
   if (comparison.equal) return output;
   return boundedLiteralization(model, first.tokens, first.escaped, comparison.regions);
+};
+
+/** Preserve the foundation's projection first. Only constructs that remain live
+ * in its rendered output acquire an owned literal-text region. */
+export const escapeDisallowedExportHtml = (source: string): string => {
+  const baseline = escapeActiveElements(source);
+  const state = readExportHtml(baseline, { hazards: true });
+  if (!state) return baseline;
+  const model = captureExportStructure(baseline, state.tokens, state);
+  return literalExportText(model, true);
 };
