@@ -11,16 +11,30 @@ export interface PageDraft {
 export const samePageDraft = (a: PageDraft, b: PageDraft): boolean =>
   a.id === b.id && a.title === b.title && a.content === b.content && a.expectedUpdatedAt === b.expectedUpdatedAt;
 
+/** What a write's response says the server stored. */
+export interface StoredPage {
+  id: string;
+  title: string;
+  content: string;
+}
+
 /** The same title and content for the same page, whatever revision each was based on. */
-const sameStoredText = (a: PageDraft, b: PageDraft): boolean => a.id === b.id && a.title === b.title && a.content === b.content;
+const sameStoredText = (a: StoredPage, b: StoredPage): boolean => a.id === b.id && a.title === b.title && a.content === b.content;
 
 /** Serialize writes so an older request can never overwrite a newer draft. */
-export function createEditorSaveQueue<T>(save: (draft: PageDraft) => Promise<T>, revisionOf?: (saved: T) => string | undefined) {
+export function createEditorSaveQueue<T>(
+  save: (draft: PageDraft) => Promise<T>,
+  revisionOf?: (saved: T) => string | undefined,
+  storedOf?: (saved: T) => StoredPage | undefined,
+) {
   let tail: Promise<unknown> = Promise.resolve();
   let latest: { draft: PageDraft; result: Promise<T> } | undefined;
   let pending = 0;
   const revisions = new Map<string, { revision: string; bases: Set<string> }>();
   const conflicts = new Map<string, unknown>();
+  /** The revisions this queue's own writes produced, per page. */
+  const produced = new Map<string, Set<string>>();
+  const ownRevision = (id: string, revision: string | undefined) => revision !== undefined && produced.get(id)?.has(revision) === true;
 
   return {
     save(draft: PageDraft): Promise<T> {
@@ -43,6 +57,10 @@ export function createEditorSaveQueue<T>(save: (draft: PageDraft) => Promise<T>,
               if (oldest) bases.delete(oldest);
             }
             revisions.set(draft.id, { revision, bases });
+            const mine = produced.get(draft.id) ?? new Set<string>();
+            mine.add(revision);
+            if (mine.size > 128) mine.delete(mine.values().next().value as string);
+            produced.set(draft.id, mine);
           }
           return saved;
         } catch (error) {
@@ -50,12 +68,25 @@ export function createEditorSaveQueue<T>(save: (draft: PageDraft) => Promise<T>,
           throw error;
         }
       };
-      // The last write still pending stores this very text, only from an older
-      // base (a flush ran before it was acknowledged, another after: #735). Once
-      // it lands the server holds this draft, so nothing is sent; if it fails,
-      // this draft is sent in its place.
-      const stored = latest && sameStoredText(latest.draft, draft) ? latest.result : undefined;
-      const result = stored ? stored.catch(send) : tail.catch(() => undefined).then(send);
+      // The last write still pending carries this very text, only from another
+      // base (a flush ran before it was acknowledged, another after: #735). This
+      // draft waits for it, and is skipped only if, once it settles, the server
+      // holds exactly this draft from a revision this queue knows: the draft's
+      // base is that write's own or one this queue's writes produced (never a
+      // foreign server copy), and the response shows this page, title and
+      // content stored. Otherwise the draft is sent after it, as before.
+      const previous = latest && sameStoredText(latest.draft, draft) ? latest : undefined;
+      const storedThisDraft = (saved: T) => {
+        const ownBase = draft.expectedUpdatedAt === previous?.draft.expectedUpdatedAt || ownRevision(draft.id, draft.expectedUpdatedAt);
+        const stored = storedOf?.(saved);
+        return ownBase && stored !== undefined && sameStoredText(stored, draft);
+      };
+      const result = previous
+        ? previous.result.then(
+            (saved) => (storedThisDraft(saved) ? saved : send()),
+            () => send(),
+          )
+        : tail.catch(() => undefined).then(send);
       const entry = { draft, result };
       pending += 1;
       latest = entry;
