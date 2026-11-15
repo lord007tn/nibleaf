@@ -1,0 +1,453 @@
+{
+  "baseline": "ec2d10d8b7ff3faa3472cc629ff81941422e5baa",
+  "matrices": {
+    "expanded": {
+      "exports": 39600,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 22146,
+      "tokenSkips": 8415,
+      "fallbacks": 0,
+      "expanded": 0,
+      "inactiveHash": "3a96680ce57c42dc7662ddd2ed693d658ba7c815e8e1fcfa339966103032d27f"
+    },
+    "hazards": {
+      "exports": 6060,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 5411,
+      "tokenSkips": 0,
+      "fallbacks": 562,
+      "expanded": 558,
+      "inactiveHash": "333efd2a5a7ad1db6924b983df40364668566b7e7a01a9a2f4e498367dda5d88"
+    },
+    "contexts": {
+      "exports": 4830,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 4600,
+      "tokenSkips": 50,
+      "fallbacks": 42,
+      "expanded": 30,
+      "inactiveHash": "552be2282d06a8f9212f0792681fe802f5abee77b458a401aa394c6842d80b01"
+    },
+    "review": {
+      "exports": 34180,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 27820,
+      "tokenSkips": 1262,
+      "fallbacks": 1295,
+      "expanded": 846,
+      "inactiveHash": "831b0b941b84873cfd5da32da8bec4e67d589e35760a0b9a266859ec2597e0d5"
+    },
+    "guard2640": {
+      "exports": 5280,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 5244,
+      "tokenSkips": 24,
+      "fallbacks": 0,
+      "expanded": 0,
+      "inactiveHash": "f79803646c34b6f26476399d097d6cc5b5f0f94cc33bd45774f6c42aa44bf897"
+    },
+    "guard4096": {
+      "exports": 8192,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 3597,
+      "tokenSkips": 1051,
+      "fallbacks": 0,
+      "expanded": 0,
+      "inactiveHash": "6a1b315ba83ea004e4a38c1ecfba1cd167b488be6f89850ffb6de2b3266e8b8e"
+    },
+    "round7": {
+      "exports": 32768,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 9912,
+      "tokenSkips": 4417,
+      "fallbacks": 3973,
+      "expanded": 2818,
+      "inactiveHash": "f338712c6eba119feab264b10aea0846c66d59b5006ef790479e2fb6da08a5e7"
+    },
+    "round12": {
+      "exports": 68006,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 44177,
+      "tokenSkips": 4751,
+      "fallbacks": 5750,
+      "expanded": 3697,
+      "inactiveHash": "0b1affda74dcad61593b8c00ffdcd14747ef34aadc224d283f840f4c5d36632f"
+    },
+    "generator": {
+      "exports": 65536,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 27283,
+      "tokenSkips": 14139,
+      "fallbacks": 7972,
+      "expanded": 7121,
+      "inactiveHash": "ba7406cc090cc664204b1f1b3d51aa993a2f6d0339e77081a9c2a8069cefdb03"
+    },
+    "compound": {
+      "exports": 16384,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 9410,
+      "tokenSkips": 1473,
+      "fallbacks": 2566,
+      "expanded": 2395,
+      "inactiveHash": "1ac313c678ca196be6a7054eb727fa49200d8adc1249eec573a78018457c71f2"
+    },
+    "corpus": {
+      "exports": 728,
+      "active": 0,
+      "inactiveChanges": 0,
+      "textLoss": 0,
+      "outsideBytes": 0,
+      "outsideStructure": 0,
+      "outsideCode": 0,
+      "throws": 0,
+      "unsafeSkips": 0,
+      "skips": 570,
+      "tokenSkips": 142,
+      "fallbacks": 2,
+      "expanded": 2,
+      "inactiveHash": "60ad5269ce9e53d3bb643b78177c2d8dd0a0b24bfb14f5166789293e587dcd5f"
+    }
+  },
+  "utc": "2026-11-15T19:40:50.660931+00:00",
+  "runtime": {
+    "node": "26.13.0",
+    "markdownIt": "14.3.3",
+    "parse5": "7.3.0"
+  },
+  "cost": {
+    "public": {
+      "status": "measured",
+      "meanAddedMs": 0.12171538461543455,
+      "p99AddedMs": 1.8609999999989668,
+      "pairedRatio": 1.7086681610393366,
+      "mainCorpusMs": 62.2334999999739,
+      "headCorpusMs": 106.33639999999696,
+      "roundCpu": [
+        62.45559502664298, 49.31597528684908, 40.81180811808118,
+        40.05180127148576, 57.3346116970278, 58.42093491388951,
+        48.23294065347855, 58.44627299128751, 57.473734479465136
+      ],
+      "discarded": 0,
+      "pass": true
+    },
+    "portable": {
+      "status": "measured",
+      "meanAddedMs": 0.2085260989010099,
+      "p99AddedMs": 2.718400000001566,
+      "pairedRatio": 2.407149775796389,
+      "mainCorpusMs": 53.47860000003493,
+      "headCorpusMs": 128.73099999998885,
+      "roundCpu": [
+        59.99108932947203, 57.23756906077349, 60.601170062537825,
+        58.17888799355359, 51.298701298701296, 69.2479674796748,
+        49.68425341210022, 58.92057026476578, 55.6753189617246
+      ],
+      "discarded": 0,
+      "pass": true
+    }
+  },
+  "fanout": [
+    {
+      "prefix": "<div>safe</div>",
+      "name": "public",
+      "status": "measured",
+      "times": [25.55489999999986, 80.3159999999998],
+      "ratio": 3.142880621720306,
+      "cpu": 48.17320703653586,
+      "pass": true,
+      "sizes": [
+        {
+          "sourceBytes": 1473,
+          "generatedBytes": 0,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "skip": "source",
+          "mainActive": 0,
+          "inactiveChanges": 0
+        },
+        {
+          "sourceBytes": 5697,
+          "generatedBytes": 0,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "skip": "source",
+          "mainActive": 0,
+          "inactiveChanges": 0
+        }
+      ]
+    },
+    {
+      "prefix": "<div>safe</div>",
+      "name": "portable",
+      "status": "measured",
+      "times": [20.01150000000007, 74.8048384615385],
+      "ratio": 3.738092519877982,
+      "cpu": 42.49886000911993,
+      "pass": true,
+      "sizes": [
+        {
+          "sourceBytes": 1473,
+          "generatedBytes": 3500,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "mainActive": 0,
+          "inactiveChanges": 0
+        },
+        {
+          "sourceBytes": 5697,
+          "generatedBytes": 13868,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "mainActive": 0,
+          "inactiveChanges": 0
+        }
+      ]
+    },
+    {
+      "prefix": "<img onerror=ATTACK>",
+      "name": "public",
+      "status": "measured",
+      "times": [28.4325000000008, 86.20635337078704],
+      "ratio": 3.0319652992450403,
+      "cpu": 46.35592078674391,
+      "pass": true,
+      "sizes": [
+        {
+          "sourceBytes": 1478,
+          "generatedBytes": 0,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "skip": "source",
+          "mainActive": 0,
+          "inactiveChanges": 0
+        },
+        {
+          "sourceBytes": 5702,
+          "generatedBytes": 0,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "skip": "source",
+          "mainActive": 0,
+          "inactiveChanges": 0
+        }
+      ]
+    },
+    {
+      "prefix": "<img onerror=ATTACK>",
+      "name": "portable",
+      "status": "measured",
+      "times": [32.49919999999929, 127.28600000000006],
+      "ratio": 3.91658871603002,
+      "cpu": 36.247020888826576,
+      "pass": true,
+      "sizes": [
+        {
+          "sourceBytes": 1478,
+          "generatedBytes": 3505,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "mainActive": 1,
+          "inactiveChanges": 0
+        },
+        {
+          "sourceBytes": 5702,
+          "generatedBytes": 13873,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "mainActive": 1,
+          "inactiveChanges": 0
+        }
+      ]
+    },
+    {
+      "prefix": "<div title=\"",
+      "name": "public",
+      "status": "measured",
+      "times": [30.36579999999958, 94.59043596938355],
+      "ratio": 3.1150319098915507,
+      "cpu": 35.2154903185509,
+      "pass": true,
+      "sizes": [
+        {
+          "sourceBytes": 1470,
+          "generatedBytes": 0,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "skip": "source",
+          "mainActive": 0,
+          "inactiveChanges": 0
+        },
+        {
+          "sourceBytes": 5694,
+          "generatedBytes": 0,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "skip": "source",
+          "mainActive": 0,
+          "inactiveChanges": 0
+        }
+      ]
+    },
+    {
+      "prefix": "<div title=\"",
+      "name": "portable",
+      "status": "measured",
+      "times": [26.79650000000038, 125.83636250000336],
+      "ratio": 4.695999944022599,
+      "cpu": 44.06158357771262,
+      "pass": true,
+      "sizes": [
+        {
+          "sourceBytes": 1470,
+          "generatedBytes": 6866,
+          "replayBytes": 426,
+          "replayAnalyses": 3,
+          "mainActive": 0,
+          "inactiveChanges": 0
+        },
+        {
+          "sourceBytes": 5694,
+          "generatedBytes": 27218,
+          "replayBytes": 1578,
+          "replayAnalyses": 3,
+          "mainActive": 0,
+          "inactiveChanges": 0
+        }
+      ]
+    },
+    {
+      "prefix": "<div title='",
+      "name": "public",
+      "status": "measured",
+      "times": [31.874100000000908, 104.03786609336079],
+      "ratio": 3.264025214621207,
+      "cpu": 39.36012751907093,
+      "pass": true,
+      "sizes": [
+        {
+          "sourceBytes": 1470,
+          "generatedBytes": 0,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "skip": "source",
+          "mainActive": 0,
+          "inactiveChanges": 0
+        },
+        {
+          "sourceBytes": 5694,
+          "generatedBytes": 0,
+          "replayBytes": 0,
+          "replayAnalyses": 0,
+          "skip": "source",
+          "mainActive": 0,
+          "inactiveChanges": 0
+        }
+      ]
+    },
+    {
+      "prefix": "<div title='",
+      "name": "portable",
+      "status": "measured",
+      "times": [28.539300000000367, 131.7719999999972],
+      "ratio": 4.61721205495564,
+      "cpu": 57.20711510938459,
+      "pass": true,
+      "sizes": [
+        {
+          "sourceBytes": 1470,
+          "generatedBytes": 6866,
+          "replayBytes": 277,
+          "replayAnalyses": 2,
+          "mainActive": 0,
+          "inactiveChanges": 0
+        },
+        {
+          "sourceBytes": 5694,
+          "generatedBytes": 27218,
+          "replayBytes": 1045,
+          "replayAnalyses": 2,
+          "mainActive": 0,
+          "inactiveChanges": 0
+        }
+      ]
+    }
+  ],
+  "sourceSha256Lf": {
+    "export-html-source.ts": "53e8640685a277c4e26708fcaf570db7380b50280d6b365b01fb79f821fdf5c1",
+    "export-html.ts": "f5d33e80961a856926261d34b9677194d1befb9d95b8193ea8a507cad7f7cef5",
+    "export-html-replay.ts": "0d0ce20383f99b2a3854393d1bdfd95d22b20aec4ce406687c63ffb18c450e43",
+    "export-url-policy.ts": "102a54c7d774bf65e5a9df51f9d7aa530c1e8637ea7e40a2608de0167e57bc89",
+    "export-structure.ts": "abf99500d902e75e892f5ee1eb6f1b26322586fb73559fce657d7f46b61e52df"
+  },
+  "rawCostSha256": "1d01996a9ee724dac3bdafa60336273777912cb35832dec1978a99be016e2f18"
+}
