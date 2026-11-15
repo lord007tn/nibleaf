@@ -20,10 +20,19 @@ const require = createRequire(resolve(app, 'package.json'));
 const fromApp = async (name) => import(pathToFileURL(require.resolve(name)).href);
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const baseline = git('merge-base', 'HEAD', 'origin/main');
-const beforeSource = git('show', `${baseline}:apps/app/src/components/project-settings/navbar-section.tsx`).replace(
-  "from './shared'",
-  "from '@/components/project-settings/shared'",
-);
+// main's section, with the two compact field tokens it used (gone from shared.tsx with it) copied from main.
+const mainTokens = git('show', `${baseline}:apps/app/src/components/project-settings/shared.tsx`)
+  .split(/\r?\n/)
+  .filter((line) => /^export const FIELD_COMPACT(_MONO)? =/.test(line))
+  .map((line) => line.replace('export ', ''));
+assert.equal(mainTokens.length, 2);
+const beforeSource = [
+  git('show', `${baseline}:apps/app/src/components/project-settings/navbar-section.tsx`)
+    .replace("from './shared'", "from '@/components/project-settings/shared'")
+    .replace(/\s*FIELD_COMPACT,\s*FIELD_COMPACT_MONO,/, ''),
+  ...mainTokens,
+].join('\n');
+assert.ok(!/FIELD_COMPACT,\s*FIELD_COMPACT_MONO,/.test(beforeSource));
 const catalogs = {
   en: JSON.parse(await readFile(resolve(root, 'packages/i18n/messages/en.json'), 'utf8')),
   ar: JSON.parse(await readFile(resolve(root, 'packages/i18n/messages/ar.json'), 'utf8')),

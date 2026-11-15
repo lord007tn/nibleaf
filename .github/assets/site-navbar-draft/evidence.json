@@ -1,0 +1,1979 @@
+{
+  "environment": "Component fixture: the real Navbar section (before: main; after: this branch) with the real design system, EN/AR catalogs, project and languages queries and mutations, ConfirmProvider and Sonner, in an editor-canvas frame; fictional site with a fictional public navbar and Arabic override; GETs and PATCHes (merged like the API) answered by interception; not the signed-in dashboard or production",
+  "baseline": "36de1597aff1878ae95eceec2391ebd26fe253f0",
+  "head": "cecccee4aacab7d4452dc9d2e0a8f7aae91c67cd",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/components/project-settings/navbar-section.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "project-en-1440.png",
+      "scope": "project",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "fields": [
+          {
+            "name": "Primary CTA label",
+            "value": "Book a demo",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Primary CTA URL",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "Guides",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "Blog",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "https://blog.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "API reference",
+            "dir": "auto",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "/api", "dir": "ltr", "disabled": false },
+          {
+            "name": "INPUT",
+            "value": "Community",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "https://community.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "users",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+        ],
+        "removeNames": [
+          "Remove link",
+          "Remove link",
+          "Remove tab",
+          "Remove anchor"
+        ],
+        "invalid": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "fields": [
+          {
+            "name": "Primary CTA label",
+            "value": "Book a demo",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Primary CTA URL",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "Link label",
+            "value": "Guides",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "Link label",
+            "value": "Blog",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "https://blog.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "Link label",
+            "value": "API reference",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "/api",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "Link label",
+            "value": "Community",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "https://community.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "Icon", "value": "users", "dir": "ltr", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+        ],
+        "removeNames": [
+          "Remove link Guides",
+          "Remove link Blog",
+          "Remove tab API reference",
+          "Remove anchor Community"
+        ],
+        "invalid": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "project-en-390.png",
+      "scope": "project",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "fields": [
+          {
+            "name": "Primary CTA label",
+            "value": "Book a demo",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Primary CTA URL",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "Guides",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "Blog",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "https://blog.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "API reference",
+            "dir": "auto",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "/api", "dir": "ltr", "disabled": false },
+          {
+            "name": "INPUT",
+            "value": "Community",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "https://community.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "users",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+        ],
+        "removeNames": [
+          "Remove link",
+          "Remove link",
+          "Remove tab",
+          "Remove anchor"
+        ],
+        "invalid": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "fields": [
+          {
+            "name": "Primary CTA label",
+            "value": "Book a demo",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Primary CTA URL",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "Link label",
+            "value": "Guides",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "Link label",
+            "value": "Blog",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "https://blog.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "Link label",
+            "value": "API reference",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "/api",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "Link label",
+            "value": "Community",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "https://community.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "Icon", "value": "users", "dir": "ltr", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+        ],
+        "removeNames": [
+          "Remove link Guides",
+          "Remove link Blog",
+          "Remove tab API reference",
+          "Remove anchor Community"
+        ],
+        "invalid": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "project-ar-1440.png",
+      "scope": "project",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "fields": [
+          {
+            "name": "نص زر الإجراء الأساسي",
+            "value": "Book a demo",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "رابط زر الإجراء الأساسي",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "Guides",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "Blog",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "https://blog.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "API reference",
+            "dir": "auto",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "/api", "dir": "ltr", "disabled": false },
+          {
+            "name": "INPUT",
+            "value": "Community",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "https://community.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "users",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+        ],
+        "removeNames": [
+          "إزالة الرابط",
+          "إزالة الرابط",
+          "إزالة التبويب",
+          "إزالة المرساة"
+        ],
+        "invalid": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "fields": [
+          {
+            "name": "نص زر الإجراء الأساسي",
+            "value": "Book a demo",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "رابط زر الإجراء الأساسي",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "نص الرابط",
+            "value": "Guides",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "نص الرابط",
+            "value": "Blog",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "https://blog.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "نص الرابط",
+            "value": "API reference",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "/api",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "نص الرابط",
+            "value": "Community",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "https://community.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "الأيقونة",
+            "value": "users",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+        ],
+        "removeNames": [
+          "إزالة الرابط Guides",
+          "إزالة الرابط Blog",
+          "إزالة التبويب API reference",
+          "إزالة المرساة Community"
+        ],
+        "invalid": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "project-ar-390.png",
+      "scope": "project",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "fields": [
+          {
+            "name": "نص زر الإجراء الأساسي",
+            "value": "Book a demo",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "رابط زر الإجراء الأساسي",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "Guides",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "Blog",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "https://blog.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "API reference",
+            "dir": "auto",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "/api", "dir": "ltr", "disabled": false },
+          {
+            "name": "INPUT",
+            "value": "Community",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "https://community.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "users",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+        ],
+        "removeNames": [
+          "إزالة الرابط",
+          "إزالة الرابط",
+          "إزالة التبويب",
+          "إزالة المرساة"
+        ],
+        "invalid": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "fields": [
+          {
+            "name": "نص زر الإجراء الأساسي",
+            "value": "Book a demo",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "رابط زر الإجراء الأساسي",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "نص الرابط",
+            "value": "Guides",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "نص الرابط",
+            "value": "Blog",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "https://blog.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "نص الرابط",
+            "value": "API reference",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "/api",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "نص الرابط",
+            "value": "Community",
+            "dir": "auto",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "https://community.example.com",
+            "dir": "ltr",
+            "disabled": false
+          },
+          {
+            "name": "الأيقونة",
+            "value": "users",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+        ],
+        "removeNames": [
+          "إزالة الرابط Guides",
+          "إزالة الرابط Blog",
+          "إزالة التبويب API reference",
+          "إزالة المرساة Community"
+        ],
+        "invalid": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "language-en-1440.png",
+      "scope": "language",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "fields": [
+          {
+            "name": "Primary CTA label",
+            "value": "احجز عرضا",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "Primary CTA URL",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": true
+          },
+          {
+            "name": "INPUT",
+            "value": "الأدلة",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true }
+        ],
+        "removeNames": ["Remove link"],
+        "invalid": [],
+        "focused": "العربية",
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "fields": [
+          {
+            "name": "Primary CTA label",
+            "value": "احجز عرضا",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "Primary CTA URL",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": true
+          },
+          {
+            "name": "Link label",
+            "value": "الأدلة",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true }
+        ],
+        "removeNames": ["Remove link الأدلة"],
+        "invalid": [],
+        "focused": "العربية",
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "language-en-390.png",
+      "scope": "language",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "fields": [
+          {
+            "name": "Primary CTA label",
+            "value": "احجز عرضا",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "Primary CTA URL",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": true
+          },
+          {
+            "name": "INPUT",
+            "value": "الأدلة",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true }
+        ],
+        "removeNames": ["Remove link"],
+        "invalid": [],
+        "focused": "العربية",
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "fields": [
+          {
+            "name": "Primary CTA label",
+            "value": "احجز عرضا",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "Primary CTA URL",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": true
+          },
+          {
+            "name": "Link label",
+            "value": "الأدلة",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "Link URL",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true }
+        ],
+        "removeNames": ["Remove link الأدلة"],
+        "invalid": [],
+        "focused": "العربية",
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "language-ar-1440.png",
+      "scope": "language",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "fields": [
+          {
+            "name": "نص زر الإجراء الأساسي",
+            "value": "احجز عرضا",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "رابط زر الإجراء الأساسي",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": true
+          },
+          {
+            "name": "INPUT",
+            "value": "الأدلة",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true }
+        ],
+        "removeNames": ["إزالة الرابط"],
+        "invalid": [],
+        "focused": "العربية",
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "fields": [
+          {
+            "name": "نص زر الإجراء الأساسي",
+            "value": "احجز عرضا",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "رابط زر الإجراء الأساسي",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": true
+          },
+          {
+            "name": "نص الرابط",
+            "value": "الأدلة",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true }
+        ],
+        "removeNames": ["إزالة الرابط الأدلة"],
+        "invalid": [],
+        "focused": "العربية",
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "language-ar-390.png",
+      "scope": "language",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "fields": [
+          {
+            "name": "نص زر الإجراء الأساسي",
+            "value": "احجز عرضا",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "رابط زر الإجراء الأساسي",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": true
+          },
+          {
+            "name": "INPUT",
+            "value": "الأدلة",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "INPUT",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true }
+        ],
+        "removeNames": ["إزالة الرابط"],
+        "invalid": [],
+        "focused": "العربية",
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "fields": [
+          {
+            "name": "نص زر الإجراء الأساسي",
+            "value": "احجز عرضا",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "رابط زر الإجراء الأساسي",
+            "value": "https://handbook.example.com/demo",
+            "dir": "ltr",
+            "disabled": true
+          },
+          {
+            "name": "نص الرابط",
+            "value": "الأدلة",
+            "dir": "rtl",
+            "disabled": false
+          },
+          {
+            "name": "عنوان الرابط",
+            "value": "/guides",
+            "dir": "ltr",
+            "disabled": false
+          },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true },
+          { "name": "INPUT", "value": "on", "dir": "", "disabled": true }
+        ],
+        "removeNames": ["إزالة الرابط الأدلة"],
+        "invalid": [],
+        "focused": "العربية",
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [
+          { "call": "GET /api/app/projects/site-1" },
+          { "call": "GET /api/app/projects/site-1/languages" }
+        ],
+        "pageErrors": []
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1/languages" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": {
+            "config": {
+              "navbar": {
+                "ctaLabel": "",
+                "ctaUrl": "",
+                "links": [
+                  { "label": "Guides", "href": "/guides" },
+                  {
+                    "label": "Blog",
+                    "href": "https://blog.example.com",
+                    "external": true
+                  },
+                  { "label": "Pricing", "href": "/pricing" }
+                ],
+                "tabs": [],
+                "anchors": [
+                  {
+                    "label": "Community",
+                    "href": "https://community.example.com",
+                    "icon": "users"
+                  }
+                ],
+                "showSearch": true,
+                "changelog": false
+              }
+            }
+          }
+        },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": {
+            "config": {
+              "navbar": {
+                "ctaLabel": "",
+                "ctaUrl": "",
+                "links": [
+                  { "label": "Guides", "href": "/guides" },
+                  {
+                    "label": "Blog",
+                    "href": "https://blog.example.com",
+                    "external": true
+                  },
+                  { "label": "Pricing", "href": "/pricing" }
+                ],
+                "tabs": [],
+                "anchors": [
+                  {
+                    "label": "Community",
+                    "href": "https://community.example.com",
+                    "icon": "users"
+                  }
+                ],
+                "showSearch": true,
+                "changelog": false
+              }
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: the stored navbar, no save bar",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "Book a demo",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "https://handbook.example.com/demo",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Blog",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://blog.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "API reference",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/api",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Blog",
+            "Remove tab API reference",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Add link: focus on its label; Pricing, Tab, /pricing",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "Book a demo",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "https://handbook.example.com/demo",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Blog",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://blog.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Pricing",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/pricing",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "API reference",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/api",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Blog",
+            "Remove link Pricing",
+            "Remove tab API reference",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": "Link URL",
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Remove link Blog: gone from the draft, focus on the next Remove, Undo offered",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "Book a demo",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "https://handbook.example.com/demo",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Pricing",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/pricing",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "API reference",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/api",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Pricing",
+            "Remove tab API reference",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": "Remove link Pricing",
+          "toasts": ["Removed\nUndo"],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Undo: Blog is back in place with its external flag, focus on its label",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "Book a demo",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "https://handbook.example.com/demo",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Blog",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://blog.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Pricing",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/pricing",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "API reference",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/api",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Blog",
+            "Remove link Pricing",
+            "Remove tab API reference",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": "Link label",
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "the only tab removed, and both CTA texts cleared",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Blog",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://blog.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Pricing",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/pricing",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Blog",
+            "Remove link Pricing",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": "Primary CTA URL",
+          "toasts": ["Removed\nUndo"],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Ctrl+S, refused by the server: one error toast, the draft and its edits kept, no \"Saved\"",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Blog",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://blog.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Pricing",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/pricing",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Blog",
+            "Remove link Pricing",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": "Primary CTA URL",
+          "toasts": ["Could not save", "Removed\nUndo"],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Ctrl+S again: saved and refetched; the CTA is cleared, the tabs are [], no save bar",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Blog",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://blog.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Pricing",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/pricing",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Blog",
+            "Remove link Pricing",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": "Primary CTA URL",
+          "toasts": ["Could not save"],
+          "saveBar": false,
+          "status": "Saved",
+          "overflow": false
+        },
+        {
+          "step": "the search switch turned off: the save bar shows",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Blog",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://blog.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Pricing",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/pricing",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Blog",
+            "Remove link Pricing",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": "Show search in navbar",
+          "toasts": ["Could not save"],
+          "saveBar": true,
+          "status": "Saved",
+          "overflow": false
+        },
+        {
+          "step": "Discard: the switch is back on, no save bar",
+          "dir": "ltr",
+          "fields": [
+            {
+              "name": "Primary CTA label",
+              "value": "",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Primary CTA URL",
+              "value": "",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Guides",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/guides",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Blog",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://blog.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Pricing",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "/pricing",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Link label",
+              "value": "Community",
+              "dir": "auto",
+              "disabled": false
+            },
+            {
+              "name": "Link URL",
+              "value": "https://community.example.com",
+              "dir": "ltr",
+              "disabled": false
+            },
+            {
+              "name": "Icon",
+              "value": "users",
+              "dir": "ltr",
+              "disabled": false
+            },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false },
+            { "name": "INPUT", "value": "on", "dir": "", "disabled": false }
+          ],
+          "removeNames": [
+            "Remove link Guides",
+            "Remove link Blog",
+            "Remove link Pricing",
+            "Remove anchor Community"
+          ],
+          "invalid": [],
+          "focused": null,
+          "toasts": ["Could not save"],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        }
+      ]
+    }
+  ]
+}
