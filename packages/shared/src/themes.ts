@@ -403,11 +403,13 @@ const toOklab = (hex: string): [number, number, number] => {
 export type RgbChannels = readonly [number, number, number];
 
 /** `color-mix(in oklab, <color> <share>, <other>)` for opaque colours: mixed in
- * OKLab and converted back to sRGB, with each channel clipped to 0–255 (not the
- * full CSS gamut mapping, which mixes towards white never need: they stay in
- * gamut) and NOT rounded. The browser keeps this fractional colour, so any
- * pass/fail decision about a shipped mix is made on these channels; null when
- * either input isn't a hex. */
+ * OKLab and converted back to sRGB, with each channel clipped to 0–255 and NOT
+ * rounded. Clipping is not the full CSS gamut mapping: a saturated brand mixed
+ * towards white can leave sRGB (72% #ff0000 computes red ≈ 264), and the browser
+ * maps that instead. The sampled Chromium check agrees on the colours it covers;
+ * it doesn't prove equivalence for every input. The browser keeps the fractional
+ * colour, so any pass/fail decision about a shipped mix is made on these
+ * channels; null when either input isn't a hex. */
 export const mixOklabChannels = (color: string, other: string, share: number): RgbChannels | null => {
   const a = normalizeHex(color);
   const b = normalizeHex(other);
