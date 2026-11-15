@@ -160,8 +160,8 @@ function useKeyboardOpen() {
  */
 export function SaveRegionProvider({ children }: { children: ReactNode }) {
   const t = useT();
-  // What renders (the bar, the leave guard) and, beside it, the registrations
-  // as they are now, which a save reads when it ends whatever has rendered.
+  // `forms` is what renders (the bar, the leave guard); `live` holds the
+  // registrations as they are now, which a save reads when it ends.
   const [forms, setForms] = useState<ReadonlyMap<string, Registered>>(() => new Map());
   const live = useRef(new Map<string, Registered>());
   const [status, setStatus] = useState<Status>('');
