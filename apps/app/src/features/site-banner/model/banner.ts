@@ -75,22 +75,27 @@ export function inheritedPlaceholders(projectBanner: BannerConfig | null | undef
   return placeholders;
 }
 
+/** Schemes the server refuses for clickable config links (`packages/validators`); refused here first. */
+const REFUSED_SCHEME = /^(?:javascript|data|vbscript):/i;
+
 /**
  * What is wrong with the link address: empty is fine (no link, or the
- * project's in a language scope); otherwise it must be an absolute http(s)
- * URL. The reader links to it as stored, so a relative or bare path would
+ * project's in a language scope); otherwise it must be an absolute URL, as the
+ * field's native `type="url"` check required: it parses on its own and names
+ * its scheme (https:, mailto:, tel:, ftp:…). A relative or bare path is
+ * refused, because the reader links to the address as stored and it would
  * resolve against whatever page shows the banner.
  */
 export function linkUrlProblem(value: string): 'invalid' | undefined {
   const address = value.trim();
   if (!address) return undefined;
-  let url: URL;
+  if (REFUSED_SCHEME.test(address)) return 'invalid';
   try {
-    url = new URL(address);
+    // Parsing on its own (no base) is what makes it absolute: it names its scheme.
+    return new URL(address).protocol ? undefined : 'invalid';
   } catch {
     return 'invalid';
   }
-  return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname ? undefined : 'invalid';
 }
 
 /** The project scope's `config.banner` patch: both toggles, and each text trimmed or left out when empty. */

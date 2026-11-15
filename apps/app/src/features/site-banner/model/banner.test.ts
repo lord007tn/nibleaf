@@ -124,27 +124,36 @@ describe('scope values in the draft lifecycle', () => {
 });
 
 describe('linkUrlProblem', () => {
-  it.each(['', '   ', 'https://acme.test/sale', 'http://acme.test', ' https://acme.test/docs/ar/guide?ref=banner#plans '])(
-    'accepts %j: empty, or an absolute http(s) address',
+  it.each([
+    '',
+    '   ',
+    'https://acme.test/sale',
+    'http://acme.test',
+    ' https://acme.test/docs/ar/guide?ref=banner#plans ',
+    'https://acme.test:8443/pricing',
+    'https://bücher.example/angebote',
+    'https://xn--bcher-kva.example/',
+    'HTTPS://ACME.TEST/SALE',
+    'Http://acme.test',
+    'mailto:team@acme.test',
+    'MAILTO:team@acme.test',
+    'tel:+123456789',
+    'ftp://acme.test/file',
+  ])('accepts %j: empty, or an absolute URL as native type="url" does', (value) => {
+    expect(linkUrlProblem(value)).toBeUndefined();
+  });
+
+  it.each(['/guide', 'guide', './guide', '../pricing', '#plans', '?ref=banner', '//acme.test/sale', 'acme.test/pricing', 'https://'])(
+    'rejects %j: relative and bare paths, and addresses that do not parse',
     (value) => {
-      expect(linkUrlProblem(value)).toBeUndefined();
+      expect(linkUrlProblem(value)).toBe('invalid');
     },
   );
 
-  it.each([
-    '/guide',
-    'guide',
-    './guide',
-    '../pricing',
-    '#plans',
-    '?ref=banner',
-    '//acme.test/sale',
-    'acme.test/pricing',
-    'https://',
-    'mailto:team@acme.test',
-    'ftp://acme.test/file',
-    'javascript:alert(1)',
-  ])('rejects %j: relative and bare paths, and other schemes', (value) => {
-    expect(linkUrlProblem(value)).toBe('invalid');
-  });
+  it.each(['javascript:alert(1)', 'JavaScript:alert(1)', ' javascript:alert(1)', 'data:text/html,<p>hi</p>', 'VBScript:msgbox'])(
+    'rejects %j: a scheme the server refuses',
+    (value) => {
+      expect(linkUrlProblem(value)).toBe('invalid');
+    },
+  );
 });

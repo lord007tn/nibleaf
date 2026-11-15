@@ -32,7 +32,8 @@ const dirOf = (language: Pick<Language, 'direction'> | undefined) => (language ?
  * Save button: Save now lives in the page's bar, outside the form, so the
  * browser no longer submits on Enter. An IME composition and modified Enter
  * are left alone. A second Enter during a save reaches the draft's lock and
- * sends nothing. Moves to the shared Enter adapter in lib/forms once it lands.
+ * sends nothing. The form's submit handler then reports the outcome as the
+ * page's Save does. Moves to the shared Enter adapter in lib/forms once it lands.
  */
 const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
   if (event.key !== 'Enter' || event.nativeEvent.isComposing || event.keyCode === 229) return;
@@ -103,6 +104,17 @@ function BannerForm({ project }: { project: Project }) {
   const enabled = useStore(form.store, (state) => state.values.enabled);
   const submissionAttempts = useStore(form.store, (state) => state.submissionAttempts);
   const formRef = useRef<HTMLFormElement>(null);
+  // What an Enter save announces: the same words, and the same politeness, as the page's Save.
+  const [enterStatus, setEnterStatus] = useState('');
+  const saveFromEnter = async () => {
+    setEnterStatus('');
+    const outcome = await submit();
+    if (outcome === 'saved') setEnterStatus(t('common.saved'));
+    if (outcome === 'invalid') {
+      setEnterStatus(t('forms.fixHighlighted'));
+      focusFirstInvalid(formRef.current);
+    }
+  };
   const linkUrlId = useId();
   const linkUrlMessage = (value: string) => (linkUrlProblem(value) ? t('settings.addons.url.invalid') : undefined);
   const placeholders = activeLanguage ? inheritedPlaceholders(projectBanner) : {};
@@ -114,11 +126,13 @@ function BannerForm({ project }: { project: Project }) {
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        if (!draft.isDirty) return;
-        void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
+        if (draft.isDirty) void saveFromEnter();
       }}
       ref={formRef}
     >
+      <div aria-live="polite" className="sr-only" role="status">
+        {enterStatus}
+      </div>
       <SectionHeader icon={<Megaphone className="size-4" />} title={t('settings.banner.title')} />
       <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.banner.description')}</p>
       <LanguageScopePicker

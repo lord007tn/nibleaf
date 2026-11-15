@@ -465,6 +465,9 @@ describe('BannerSettings — link address', () => {
   });
 });
 
+/** What the page's polite status regions currently say: the SaveRegion's and the form's own. */
+const announced = () => [...document.querySelectorAll('[role="status"]')].map((region) => region.textContent?.trim()).filter(Boolean);
+
 describe('BannerSettings — Enter', () => {
   it('Enter in a single-line field saves once, even pressed again while the save is in flight', async () => {
     const pending = deferred<unknown>();
@@ -476,8 +479,35 @@ describe('BannerSettings — Enter', () => {
     await press(linkUrl());
     expect(mocks.updateProject).toHaveBeenCalledTimes(1);
     expect(mocks.updateProject).toHaveBeenCalledWith({ config: { banner: { ...PROJECT_BANNER, message: 'Summer sale' } } });
+    expect(announced()).not.toContain('common.saved');
     await act(async () => pending.resolve({ id: 'site-1', config: { banner: { ...PROJECT_BANNER, message: 'Summer sale' } } }));
     expect(saveRegion()).toBeNull();
+    // No toast on success: the polite status says it, as the page's Save does.
+    expect(announced()).toEqual(['common.saved']);
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it('a failed Enter save announces nothing as saved and keeps the draft', async () => {
+    mocks.updateProject.mockRejectedValueOnce(new Error('offline'));
+    await render(projectWith(PROJECT_BANNER));
+    await type(message(), 'Summer sale');
+    await press(message());
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+    expect(announced()).not.toContain('common.saved');
+    expect(message().value).toBe('Summer sale');
+    expect(saveRegion()).not.toBeNull();
+  });
+
+  it('saves an absolute mailto: or tel: link on Enter', async () => {
+    mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
+    await render(projectWith(PROJECT_BANNER));
+    await type(linkUrl(), 'mailto:team@acme.test');
+    await press(linkUrl());
+    expect(mocks.updateProject).toHaveBeenLastCalledWith({ config: { banner: { ...PROJECT_BANNER, linkUrl: 'mailto:team@acme.test' } } });
+    await type(linkUrl(), 'tel:+123456789');
+    await press(linkUrl());
+    expect(mocks.updateProject).toHaveBeenLastCalledWith({ config: { banner: { ...PROJECT_BANNER, linkUrl: 'tel:+123456789' } } });
+    expect(announced()).toEqual(['common.saved']);
   });
 
   it('leaves Enter alone during an IME composition, with a modifier, and while nothing changed', async () => {
@@ -503,5 +533,6 @@ describe('BannerSettings — Enter', () => {
     expect(mocks.updateProject).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(linkUrl());
     expect(errorOf(linkUrl())).toBe('settings.addons.url.invalid');
+    expect(announced()).toEqual(['forms.fixHighlighted']);
   });
 });
