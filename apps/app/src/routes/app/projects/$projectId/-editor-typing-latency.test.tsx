@@ -16,6 +16,8 @@
  *   too: guards).
  */
 
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   STARTER_API_CREATE_WIDGET_CONTENT,
   STARTER_COMPONENTS_TOUR_CONTENT,
@@ -1010,6 +1012,187 @@ describe('#728: undo while an autosave is in flight', { timeout: ROUTE_TEST_TIME
   });
 });
 
+/*
+ * #735: the compensating save after an undo was sent twice. The navigation's
+ * flush queued the undone text against the stored revision; the `A` write then
+ * landed, and the next flush (unmount, pagehide, a hidden tab, blur, or the
+ * autosave's own timer) queued the same text again against the new revision.
+ * The queue told them apart by revision only, so both were sent. Now a draft
+ * whose text the last pending write already carries is sent only if that write
+ * fails.
+ */
+/** Every write the route sent, landed or failed, as `original` or `original+<typed>`. */
+let attempts: Array<{ pageId: string; content: string }> = [];
+const label = (content: string) => (content === ORIGINAL ? 'original' : `original+${content.match(/a byte\.([^\n]*)/)?.[1] ?? '?'}`);
+const sent = () => attempts.map((write) => label(write.content));
+function recordAttempts() {
+  attempts = [];
+  const send = mocks.update.getMockImplementation() as (args: UpdateArgs) => Promise<unknown>;
+  mocks.update.mockImplementation(async (args: UpdateArgs) => {
+    attempts.push({ pageId: args.pageId, content: args.body.content });
+    return send(args);
+  });
+}
+/** Navigate away (the blocker's flush), returning whether the navigation was blocked. */
+const navigate = async () => {
+  let blocked: Promise<boolean> | undefined;
+  await act(async () => {
+    blocked = mocks.blocker?.shouldBlockFn();
+  });
+  return async () => expect(await blocked).toBe(false);
+};
+/** Publish (its flush), returning a check that the publish went ahead. */
+const publish = async () => {
+  let ready: Promise<boolean> | undefined;
+  await act(async () => {
+    ready = mocks.publish?.beforePublish();
+  });
+  return async () => expect(await ready).toBe(true);
+};
+const leaves: Array<[string, () => Promise<void>]> = [
+  ['the editor unmounts', unmount],
+  ['the page is closed (pagehide)', () => act(async () => window.dispatchEvent(new Event('pagehide')))],
+  ['the tab is hidden', () => act(async () => hideTab())],
+  ['the window loses focus', () => act(async () => window.dispatchEvent(new Event('blur')))],
+  // Staying: the autosave's own timer flushes the draft while the write is held.
+  ['the author stays on the page', () => advance(5000)],
+];
+
+describe('#735: one compensating save per final draft', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  beforeEach(() => {
+    holdWrites();
+    recordAttempts();
+  });
+
+  it('regression: type, autosave in flight, undo, navigate, the write lands, unmount during the compensating save: it is sent once', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    expect(held.map((write) => label(write.content))).toEqual(['original']);
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it.each(leaves)('navigating, then %s during the compensating save: sent once', async (_name, leave) => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await leave();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it.each(leaves)('publishing, then %s during the compensating save: sent once', async (_name, leave) => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const published = await publish();
+    await settleWrite();
+    await leave();
+    await drain();
+    await published();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('two quick undo/redo cycles ending on the undo, then navigate and unmount: sent once', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    redo();
+    undo();
+    redo();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('the compensating save fails: the unmount flush sends the undone text again, and it lands', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await settleWrite(false);
+    await drain();
+    // The navigation's own save failed, so it stayed on the page and said so.
+    await expect(proceeded()).rejects.toThrow();
+    expect(sent()).toEqual(['original+A', 'original', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('the write in flight fails: the undone text still lands, once', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite(false);
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('a different final draft typed during the compensating save is never deduplicated', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    key('B');
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original', 'original+B']);
+    expect(server.content).toBe(withTyped('B'));
+  });
+
+  it('the same text on two pages: each page gets its own writes', async () => {
+    const twin = { ...pageOf('page-2', ORIGINAL), title: 'Page' };
+    await open(ORIGINAL, [twin]);
+    await typeAndHoldTheSave();
+    undo();
+    await act(async () => (mocks.tree as { onSelect: (id: string) => void } | null)?.onSelect('page-2'));
+    await settleWrite();
+    await settleWrite();
+    mocks.page = twin;
+    await rerender();
+    await advance(SERIALIZE_PAUSE);
+    // The same edit on the twin: its autosave waits out the minimum interval.
+    key('A');
+    await advance(3500);
+    expect(held.map((write) => label(write.content))).toEqual(['original+A']);
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(attempts.map((write) => `${write.pageId}:${label(write.content)}`)).toEqual([
+      'page-1:original+A',
+      'page-1:original',
+      'page-2:original+A',
+      'page-2:original',
+    ]);
+  });
+});
+
 /** A small seeded generator (mulberry32), so a failing sequence can be replayed. */
 const seeded = (start: number) => {
   let seed = start;
@@ -1021,6 +1204,23 @@ const seeded = (start: number) => {
   };
 };
 const SEEDS = Array.from({ length: 60 }, (_, index) => 728 + index * 7919);
+/**
+ * Writes main (5eae6bf7) sent for each seed, from `__fixtures__/autosave-writes-main.json`
+ * (#735). Made by running this file against main's save queue with
+ * `WRITE_AUTOSAVE_WRITES_MAIN=1`.
+ */
+const WRITES_FIXTURE = resolve(import.meta.dirname, '../../../../components/editor/__fixtures__/autosave-writes-main.json');
+const RECORDING_MAIN = Boolean(process.env.WRITE_AUTOSAVE_WRITES_MAIN);
+const MAIN_WRITES: Record<number, number> = RECORDING_MAIN ? {} : JSON.parse(readFileSync(WRITES_FIXTURE, 'utf8')).writes;
+const mainWrites: Record<number, number> = {};
+afterAll(() => {
+  if (RECORDING_MAIN)
+    writeFileSync(
+      WRITES_FIXTURE,
+      `${JSON.stringify({ base: '5eae6bf7', writes: mainWrites }, null, 2)}
+`,
+    );
+});
 const OPS = ['type', 'type', 'undo', 'undo', 'undo', 'redo', 'idle', 'idle', 'land', 'blur', 'hide'] as const;
 const ENDINGS = ['unmount', 'pagehide', 'navigate', 'stay'] as const;
 
@@ -1061,5 +1261,14 @@ describe('#728 differential: once every write settles, the server holds the fina
     await drain();
     if (blocked) expect(await blocked).toBe(false);
     expect({ steps, server: server.content.trimEnd() }).toEqual({ steps, server: finalDraft });
+    // #735: never more writes than main sent for the same sequence.
+    const writes = mocks.update.mock.calls.length;
+    mainWrites[seed] = writes;
+    expect({ steps, writes, main: MAIN_WRITES[seed], atMostMain: writes <= (MAIN_WRITES[seed] ?? (RECORDING_MAIN ? writes : -1)) }).toEqual({
+      steps,
+      writes,
+      main: MAIN_WRITES[seed],
+      atMostMain: true,
+    });
   });
 });

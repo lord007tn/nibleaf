@@ -28,3 +28,9 @@ save, save after an attribute edit) for each page that `attribute-blank-line-mai
 generates: seeded openers for every registry component with no blank line inside any attribute
 value, the serializer corpus, the generated opening tags above and the hard-wrapped pages. It was
 made by running that test against main's `mdx-roundtrip.ts` with `WRITE_BLANK_LINE_MAIN=1` (#721).
+
+`autosave-writes-main.json` holds how many writes main (5eae6bf7) sent for each seeded sequence
+of edits, undos, flushes and landed writes in the #728 differential of
+`routes/app/projects/$projectId/-editor-typing-latency.test.tsx`. The test checks the editor never
+sends more (#735). It was made by running that test against main's `editor-save-queue.ts` with
+`WRITE_AUTOSAVE_WRITES_MAIN=1`. Regenerate it only when the sequences change on purpose.
