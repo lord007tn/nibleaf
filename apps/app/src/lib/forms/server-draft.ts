@@ -7,6 +7,11 @@
  * - `submitted`: what an in-flight save sent;
  * - `current`: the form's state.
  *
+ * Some forms send a transformed payload (`toSent`: rows without a key dropped,
+ * strings trimmed), so the server stores and echoes values the form never
+ * held. A save is then judged in sent space: what it sent, and the baseline
+ * passed through `toSent`. The form itself always keeps the raw values.
+ *
  * Values are compared per top-level key, each key compared deeply. That is the
  * granularity at which edits are kept or replaced.
  */
@@ -36,25 +41,36 @@ export const editedKeys = <T extends DraftValues>(current: T, baseline: T) =>
 
 /**
  * A save in flight, fixed when its request is sent:
- * - `values`: what it sent;
- * - `sent`: the keys it changed from the baseline at that moment;
+ * - `values`: what it sent (`toSent` of the form's values, when given);
+ * - `raw`: the form's values it was sent from;
+ * - `sent`: the keys it changed from the baseline at that moment, compared in
+ *   sent space, so a change `toSent` drops (a row without a key, trailing
+ *   spaces) is not awaited as an echo that never comes;
  * - `echoed`: the sent keys a refetch has since returned with the sent value.
  *   A key joins once and never leaves for the rest of the save.
  */
 export type PendingSave<T extends DraftValues> = {
   values: T;
+  raw: T;
   sent: ReadonlySet<string>;
   echoed: ReadonlySet<string>;
 };
 
-export const startSave = <T extends DraftValues>(baseline: T, values: T): PendingSave<T> => ({
-  values,
-  sent: new Set(editedKeys(values, baseline)),
-  echoed: new Set(),
-});
+export const startSave = <T extends DraftValues>(baseline: T, raw: T, toSent?: (values: T) => T): PendingSave<T> => {
+  const values = toSent ? toSent(raw) : raw;
+  return { values, raw, sent: new Set(editedKeys(values, toSent ? toSent(baseline) : baseline)), echoed: new Set() };
+};
 
 /** A sent key the server hasn't echoed yet: the form holds the person's pending value for it. */
 const awaitingEcho = <T extends DraftValues>(save: PendingSave<T>, key: string) => save.sent.has(key) && !save.echoed.has(key);
+
+/**
+ * The person's value for `key` during a save: what the save sent for it while
+ * the form still holds the value it was sent from, else the form's value (an
+ * edit made since). Without `toSent` this is always the form's value.
+ */
+const ownValue = <T extends DraftValues>(save: PendingSave<T>, current: T, key: string) =>
+  deepEqual(current[key], save.raw[key]) ? save.values[key] : current[key];
 
 export type ServerChange<T extends DraftValues> = {
   /** The new baseline: always the server's values. */
@@ -78,7 +94,9 @@ export type ServerChange<T extends DraftValues> = {
  * person's pending value: it counts as edited even if they typed it back
  * since, and the server returning the sent value is the echo, never a
  * conflict. Once echoed, the key follows the rules above against the
- * baseline, which the echo set to the sent value and later changes move on.
+ * baseline, which the echo set to the sent value and later changes move on;
+ * while the person hasn't changed it since the save, it is judged by the sent
+ * value, and the form keeps its raw value until the server changes the key.
  */
 export function reconcileServerChange<T extends DraftValues>({
   baseline,
@@ -101,9 +119,11 @@ export function reconcileServerChange<T extends DraftValues>({
       else if (serverChanged && !deepEqual(current[key], next[key])) conflicts.push(key as keyof T & string);
       continue;
     }
-    const edited = !deepEqual(current[key], baseline[key]);
-    if (!edited) merged[key] = next[key];
-    else if (serverChanged && !deepEqual(current[key], next[key])) conflicts.push(key as keyof T & string);
+    const mine = save?.echoed.has(key) ? ownValue(save, current, key) : current[key];
+    const edited = !deepEqual(mine, baseline[key]);
+    if (!edited) {
+      if (serverChanged) merged[key] = next[key];
+    } else if (serverChanged && !deepEqual(mine, next[key])) conflicts.push(key as keyof T & string);
   }
   return { baseline: next, current: merged as T, conflicts, save: save && { ...save, echoed } };
 }
@@ -118,7 +138,9 @@ export function reconcileServerChange<T extends DraftValues>({
  * refetches), keys are judged by rule 2's classification: a key awaiting its
  * echo is edited if it differs from what was sent; any other key if it
  * differs from that baseline, so values the form took from the server are
- * not edits. Without a response, those keys confirm that baseline.
+ * not edits. Without a response, those keys confirm that baseline. A key the
+ * person hasn't changed since the save is judged by what the save sent for
+ * it, so a value `toSent` normalized is confirmed, not kept as an edit.
  */
 export function reconcileSaveSuccess<T extends DraftValues>({
   submitted,
@@ -132,12 +154,13 @@ export function reconcileSaveSuccess<T extends DraftValues>({
   during?: { save: PendingSave<T>; baseline: T };
 }): { baseline: T; current: T } {
   const awaiting = (key: string) => !during || awaitingEcho(during.save, key);
+  const mine = (key: string) => (during ? ownValue(during.save, current, key) : current[key]);
   const reference = (key: string) => (awaiting(key) ? submitted[key] : during?.baseline[key]);
   const keys = keysOf(submitted, current, ...(during ? [during.baseline] : []));
   const baseline = confirmed ?? (during ? (Object.fromEntries(keys.map((key) => [key, reference(key)])) as T) : submitted);
   const next: DraftValues = { ...baseline };
   for (const key of keys) {
-    if (!deepEqual(current[key], reference(key))) next[key] = current[key];
+    if (!deepEqual(mine(key), reference(key))) next[key] = current[key];
   }
   return { baseline, current: next as T };
 }
