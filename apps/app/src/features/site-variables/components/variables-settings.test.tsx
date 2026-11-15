@@ -384,6 +384,24 @@ describe('VariablesSettings — server changes', () => {
     expect(saveRegion()).toBeNull();
   });
 
+  it('a row removed after a conflict appeared is not restored once Use theirs is chosen', async () => {
+    await render(projectWith(SAVED));
+    await type(valueInput(0), 'Mine');
+    await render(projectWith(pairs(['product', 'Theirs'], ['version', '2.0'])));
+    expect(conflictShown()).toBe(true);
+    // Offered on the baseline the conflict brought, so only accepting their list can retire it.
+    await click(removeButton(1));
+    expect(undoOnScreen()).toBe(true);
+    await click(buttonNamed('forms.useTheirs'));
+    expect(undoOnScreen()).toBe(false);
+    await clickUndo();
+    expect(shown()).toEqual([
+      ['product', 'Theirs'],
+      ['version', '2.0'],
+    ]);
+    expect(saveRegion()).toBeNull();
+  });
+
   it("another site starts clean; the first site's Undo and save never reach it", async () => {
     const pending = deferred<Project>();
     mocks.updateProject.mockReturnValueOnce(pending.promise);

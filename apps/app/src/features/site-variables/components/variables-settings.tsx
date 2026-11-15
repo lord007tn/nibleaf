@@ -126,7 +126,16 @@ function VariablesForm({ project }: { project: Project }) {
         <Callout
           action={
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => draft.resolveConflict('variables', 'theirs')} size="sm" type="button" variant="outline">
+              <Button
+                onClick={() => {
+                  // Their list replaces the draft: a row removed from the draft must not come back into it.
+                  retire();
+                  draft.resolveConflict('variables', 'theirs');
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
                 {t('forms.useTheirs')}
               </Button>
               <Button onClick={() => draft.resolveConflict('variables', 'mine')} size="sm" type="button" variant="ghost">
