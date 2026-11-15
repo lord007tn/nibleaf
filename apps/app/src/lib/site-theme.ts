@@ -1,4 +1,6 @@
 import {
+  ACCENT_TEXT_CONTRAST,
+  contrastRatio,
   type ResolvedTheme,
   readableAccentText,
   readableCodeAccent,
@@ -109,6 +111,33 @@ const legacyTokenDeclarations = (accent: string, brand: string): string =>
     '--theme-footer-muted:#707070',
   ].join(';');
 
+/** The mobile nav drawer is a popover on the raised surface (`bg-popover`), not
+ * the canvas the accent is shaded for, so its active row (`text-primary` on
+ * `bg-primary/10`) can fall short there: #b96a3d on Harbor dark read 3.81:1 (#726).
+ * The drawer gets the nearest shade that reads on that surface and its tint,
+ * with on-accent text that still reads on the shade; null when the canvas
+ * shade already reads there, so most sites' CSS is unchanged. */
+const drawerAccent = (tokens: ThemeColorTokens): { primary: string; foreground: string } | null => {
+  const primary = readableAccentText(tokens.accent, tokens.surfaceRaised);
+  if (primary === tokens.accent) return null;
+  const foreground = contrastRatio(tokens.accentForeground, primary) >= ACCENT_TEXT_CONTRAST ? tokens.accentForeground : readableOnAccent(primary);
+  return { primary, foreground };
+};
+
+/** The drawer's accent rules, light then dark. Both are written when either mode
+ * needs a shade, since the light rule would otherwise apply in dark too. */
+const drawerAccentRules = (light: ThemeColorTokens, dark: ThemeColorTokens): string[] => {
+  const lightShade = drawerAccent(light);
+  const darkShade = drawerAccent(dark);
+  if (!lightShade && !darkShade) return [];
+  const declarations = (tokens: ThemeColorTokens, shade: { primary: string; foreground: string } | null) =>
+    `--primary:${shade?.primary ?? tokens.accent};--primary-foreground:${shade?.foreground ?? tokens.accentForeground}`;
+  return [
+    `[data-site-drawer]{${declarations(light, lightShade)}}`,
+    `:root.dark [data-site-drawer],.nibleaf-site-chrome.dark [data-site-drawer]{${declarations(dark, darkShade)}}`,
+  ];
+};
+
 /** The design system's light canvas (packages/design-system globals.css), which pre-v1 sites draw on. */
 const LEGACY_LIGHT_CANVAS = '#fafafa';
 /** The design system's dark on-primary text, which dark pre-v1 sites have always used. */
@@ -157,6 +186,7 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
         // light palette and descendants inherit those values, so they are bound
         // again here (h5/h6 and rules use them).
         `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:var(--theme-code-accent);--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
+        ...drawerAccentRules(light, dark),
       ]
     : [
         `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent, legacyBrand)};--primary:${legacyAccent};--primary-foreground:${legacyAccentForeground};--theme-accent-foreground:${legacyAccentForeground};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
