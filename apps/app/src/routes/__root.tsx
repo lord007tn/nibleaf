@@ -6,7 +6,7 @@ import { type ReactNode, useState } from 'react';
 import { RootMarketingAnalytics } from '@/components/root-marketing-analytics';
 import { useRememberMarketingLanguage } from '@/lib/remember-marketing-language';
 import { useRootDocument } from '@/lib/root-document';
-import { siteThemeNoFlashScript } from '@/lib/site-theme';
+import { siteThemeNoFlashScript } from '@/lib/site-theme-bootstrap';
 import appCss from '@/styles.css?url';
 
 /** Available to every route's `beforeLoad` / `loader` as `context`. */
