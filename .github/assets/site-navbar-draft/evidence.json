@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture: the real Navbar section (before: main; after: this branch) with the real design system, EN/AR catalogs, project and languages queries and mutations, ConfirmProvider and Sonner, in an editor-canvas frame; fictional site with a fictional public navbar and Arabic override; GETs and PATCHes (merged like the API) answered by interception; not the signed-in dashboard or production",
-  "baseline": "36de1597aff1878ae95eceec2391ebd26fe253f0",
-  "head": "cecccee4aacab7d4452dc9d2e0a8f7aae91c67cd",
+  "baseline": "e0a44382d25a70eae2bd96c561dd6eb2d4057a1e",
+  "head": "c1835c705b586d9a3150a3692cba880da8c4b5cb",
   "uncommitted": [],
   "swappedForBefore": [
     "apps/app/src/components/project-settings/navbar-section.tsx"
@@ -1124,16 +1124,7 @@
                   },
                   { "label": "Pricing", "href": "/pricing" }
                 ],
-                "tabs": [],
-                "anchors": [
-                  {
-                    "label": "Community",
-                    "href": "https://community.example.com",
-                    "icon": "users"
-                  }
-                ],
-                "showSearch": true,
-                "changelog": false
+                "tabs": []
               }
             }
           }
@@ -1154,16 +1145,7 @@
                   },
                   { "label": "Pricing", "href": "/pricing" }
                 ],
-                "tabs": [],
-                "anchors": [
-                  {
-                    "label": "Community",
-                    "href": "https://community.example.com",
-                    "icon": "users"
-                  }
-                ],
-                "showSearch": true,
-                "changelog": false
+                "tabs": []
               }
             }
           }
