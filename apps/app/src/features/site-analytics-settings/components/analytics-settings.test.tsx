@@ -91,6 +91,25 @@ const errorOf = (el: HTMLElement) =>
     .map((id) => document.getElementById(id))
     .find((node) => node?.dataset.slot === 'settings-row-error')?.textContent;
 
+const status = () => container.querySelector('[role="status"]')?.textContent;
+/**
+ * A keydown on `el`, then what the browser's implicit submission does in the
+ * same task unless the key was cancelled: it clicks the form's default button.
+ * The next macrotask is awaited so a key the form ignored is forgotten.
+ */
+const pressEnter = async (el: HTMLInputElement, init: KeyboardEventInit = {}) => {
+  const keydown = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init });
+  await act(async () => {
+    el.dispatchEvent(keydown);
+    if (!keydown.defaultPrevented) el.form?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+  });
+  await act(() => new Promise((resolve) => setTimeout(resolve)));
+  return keydown;
+};
+const payload = (analytics: Partial<Analytics>) => ({
+  config: { analytics: { ga4: 'G-ABC123', campaignDimensions: false, storePublicSearchTerms: false, ...analytics } },
+});
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;
@@ -144,25 +163,118 @@ describe('AnalyticsSettings', () => {
     expect(region()).not.toBeNull();
   });
 
-  // The form has two text fields and no submit button, where browsers don't submit on Enter by themselves.
-  it('submits on Enter in an id field: errors first, then the save', async () => {
-    const enter = (el: HTMLElement) =>
-      act(async () => {
-        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
-      });
-    await type(plausible(), 'not a domain');
-    await enter(plausible());
-    expect(mocks.update).not.toHaveBeenCalled();
-    expect(errorOf(plausible())).toBe('settings.analytics.plausible.error');
-    expect(document.activeElement).toBe(plausible());
-
-    mocks.update.mockResolvedValueOnce(saved({ ga4: 'G-ABC123', plausible: 'docs.acme.com' }));
-    await type(plausible(), 'docs.acme.com');
-    await enter(plausible());
-    expect(mocks.update).toHaveBeenCalledWith({
-      config: { analytics: { ga4: 'G-ABC123', plausible: 'docs.acme.com', campaignDimensions: false, storePublicSearchTerms: false } },
+  describe('Enter in an id field', () => {
+    it('has one hidden default button, so Enter submits a form with two text fields', () => {
+      const buttons = container.querySelectorAll<HTMLButtonElement>('form button[type="submit"]');
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0]?.hidden).toBe(true);
     });
-    expect(region()).toBeNull();
+
+    it.each([
+      ['GA4', ga4, 'G-NEW1', { ga4: 'G-NEW1' }],
+      ['Plausible', plausible, 'docs.acme.com', { plausible: 'docs.acme.com' }],
+    ])('in %s sends one valid request and says Saved', async (_, field, text, sent) => {
+      mocks.update.mockResolvedValueOnce(saved({ ga4: 'G-ABC123', ...sent }));
+      await type(field(), text);
+      expect(status()).toBe('');
+      await pressEnter(field());
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      expect(mocks.update).toHaveBeenCalledWith(payload(sent));
+      expect(status()).toBe('common.saved');
+      expect(region()).toBeNull();
+      expect(dirty.size).toBe(0);
+    });
+
+    it('says Saved again on a second Enter save', async () => {
+      mocks.update.mockResolvedValueOnce(saved({ ga4: 'G-ONE' }));
+      await type(ga4(), 'G-ONE');
+      await pressEnter(ga4());
+      expect(status()).toBe('common.saved');
+
+      const second = deferred<Project>();
+      mocks.update.mockReturnValueOnce(second.promise);
+      await type(plausible(), 'docs.acme.com');
+      await pressEnter(plausible());
+      // The run clears the last announcement while it saves, so the next one is new.
+      expect(status()).toBe('');
+      await act(async () => second.resolve(saved({ ga4: 'G-ONE', plausible: 'docs.acme.com' })));
+      expect(mocks.update).toHaveBeenCalledTimes(2);
+      expect(mocks.update).toHaveBeenLastCalledWith(payload({ ga4: 'G-ONE', plausible: 'docs.acme.com' }));
+      expect(status()).toBe('common.saved');
+    });
+
+    it('shows the error, focuses the first invalid field and sends nothing', async () => {
+      await type(plausible(), 'not a domain');
+      await pressEnter(plausible());
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(errorOf(plausible())).toBe('settings.analytics.plausible.error');
+      expect(document.activeElement).toBe(plausible());
+      expect(status()).toBe('forms.fixHighlighted');
+
+      await type(ga4(), 'UA-1234');
+      await type(plausible(), 'docs.acme.com');
+      await pressEnter(plausible());
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(ga4());
+    });
+
+    it('after a refusal keeps the edit, says why once, and does not say Saved', async () => {
+      mocks.update.mockRejectedValueOnce({ status: 403 });
+      await type(ga4(), 'G-NEW1');
+      await pressEnter(ga4());
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      expect(mocks.toastError).toHaveBeenCalledTimes(1);
+      expect(mocks.toastError).toHaveBeenCalledWith('Could not save');
+      expect(status()).toBe('');
+      expect(ga4().value).toBe('G-NEW1');
+      expect(region()).not.toBeNull();
+    });
+
+    it('while a save runs, starts nothing and says nothing until it ends', async () => {
+      const pending = deferred<Project>();
+      mocks.update.mockReturnValueOnce(pending.promise);
+      await type(ga4(), 'G-NEW1');
+      await pressEnter(ga4());
+      await pressEnter(ga4());
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      expect(status()).toBe('');
+      await act(async () => pending.resolve(saved({ ga4: 'G-NEW1' })));
+      expect(status()).toBe('common.saved');
+    });
+
+    it('while clean, sends nothing and says nothing', async () => {
+      await pressEnter(ga4());
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(status()).toBe('');
+    });
+
+    it.each([
+      ['Shift+Enter', { shiftKey: true }],
+      ['Ctrl+Enter', { ctrlKey: true }],
+      ['Alt+Enter', { altKey: true }],
+      ['Cmd+Enter', { metaKey: true }],
+      ['Enter while an IME composition is open', { isComposing: true }],
+      ['the IME’s own key (229)', { key: 'Process', keyCode: 229 }],
+    ])('%s does not save, and the key is not cancelled', async (_, init) => {
+      await type(ga4(), 'G-NEW1');
+      const keydown = await pressEnter(ga4(), init);
+      expect(keydown.defaultPrevented).toBe(false);
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(status()).toBe('');
+      expect(region()).not.toBeNull();
+    });
+  });
+
+  it.each([
+    ['Ctrl+S', { ctrlKey: true }],
+    ['Cmd+S', { metaKey: true }],
+  ])('%s saves the form and says Saved, as before', async (_, init) => {
+    mocks.update.mockResolvedValueOnce(saved({ ga4: 'G-NEW1' }));
+    await type(ga4(), 'G-NEW1');
+    await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true, ...init })));
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update).toHaveBeenCalledWith(payload({ ga4: 'G-NEW1' }));
+    expect(status()).toBe('common.saved');
   });
 
   it('makes the form dirty with a switch alone, and discards it', async () => {
@@ -191,6 +303,7 @@ describe('AnalyticsSettings', () => {
     expect(checked(searchTerms())).toBe(true);
     expect(region()).toBeNull();
     expect(dirty.size).toBe(0);
+    expect(status()).toBe('common.saved');
   });
 
   it('saves trimmed ids, clears an emptied one, and settles on what the server holds', async () => {

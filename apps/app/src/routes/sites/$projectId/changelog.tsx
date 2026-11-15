@@ -5,7 +5,6 @@ import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { pageHead, readerFallbackHead, siteChangelogHead, siteLanguageFromMatches, unavailableSiteHeadFromMatches } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
@@ -35,7 +34,12 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
     }
     return { site, entries, lang: deps.lang, siteOrigin: customDomainOrigin() };
   },
-  head: ({ loaderData, params, match, matches }) => {
+  // The SEO helpers load with the reader, not in every page's entry chunk (see
+  // the parent route's head()).
+  head: async ({ loaderData, params, match, matches }) => {
+    const { pageHead, readerFallbackHead, siteChangelogHead, siteLanguageFromMatches, unavailableSiteHeadFromMatches } = await import(
+      '@/lib/site-seo'
+    );
     if (match.status === 'error') return readerFallbackHead(matches, siteLanguageFromMatches(matches));
     const site = loaderData?.site;
     // A missing site renders the not-found page: no canonical or feed for it.

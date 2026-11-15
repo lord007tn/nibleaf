@@ -11,7 +11,7 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
 import { Link } from '@tanstack/react-router';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { LanguageOptionLabel, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
@@ -24,7 +24,7 @@ import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { isolate } from '@/lib/bidi';
 import { validateOnBlurThenChange } from '@/lib/forms/field-errors';
-import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 import { useSaveSearch, useSearchConfiguration, useSearchLanguages, wasReported } from '../api/hooks';
@@ -114,7 +114,6 @@ function SearchForm({
   const { save } = useSaveSearch(project.id);
   const extraLanguages = orderLanguages(languages).filter((language) => !language.isDefault);
   const source = useMemo(() => searchValues(configuration, languages), [configuration, languages]);
-  const formRef = useRef<HTMLFormElement>(null);
 
   const { form, ...draft } = useServerDraftForm<SearchValues>({
     identity: [project.id, 'search'],
@@ -140,7 +139,7 @@ function SearchForm({
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  useSaveRegionForm('site-search', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-search', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   const { disabled } = decisionProps(fieldsDecision(status));
   const maxResultsMessage = (value: string) =>
@@ -150,16 +149,8 @@ function SearchForm({
   const hotkeyOptions = SEARCH_HOTKEYS.map((value) => ({ value, label: HOTKEY_LABEL[value] }));
 
   return (
-    <form
-      className="flex flex-col gap-8"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!draft.isDirty) return;
-        void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
-      }}
-      ref={formRef}
-    >
+    <form className="flex flex-col gap-8" noValidate {...formProps}>
+      <SaveRegionSubmit />
       {draft.conflicts.length > 0 ? (
         <Callout
           action={
