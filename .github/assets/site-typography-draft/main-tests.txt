@@ -1,0 +1,30 @@
+The new test "never sends back a rhythm value someone else changed since the form opened" (typography-settings.test.tsx),
+run against main's typography-section.tsx (merge base 8e67481c7) with the same mocks, its save button found by text.
+main sends every value back, its stale line height 1.6 included, over the 1.9 another tab saved:
+
+ ❯ src/features/site-typography/components/zz-main.test.tsx (14 tests | 1 failed | 13 skipped) 128ms
+   ❯ TypographySettings: the draft (14)
+     × never sends back a rhythm value someone else changed since the form opened 127ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/features/site-typography/components/zz-main.test.tsx > TypographySettings: the draft > never sends back a rhythm value someone else changed since the form opened
+AssertionError: expected { headingFont: 'Merriweather', …(5) } to deeply equal { baseSize: '17' }
+- Expected
++ Received
+  {
+    "baseSize": "17",
++   "bodyFont": "Inter",
++   "codeFont": "Fira Code",
++   "flow": "1",
++   "headingFont": "Merriweather",
++   "leading": "1.6",
+  }
+ ❯ src/features/site-typography/components/zz-main.test.tsx:248:65
+    246|     await save();
+    247|     // The patch holds the base size alone: no stale copy of the old l…
+    248|     expect(mocks.update.mock.calls[0]?.[0]?.config?.typography).toEqua…
+       |                                                                 ^
+    249|     expect(pressed('leading')).toEqual(['1.9']);
+    250|   });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 skipped (14)
