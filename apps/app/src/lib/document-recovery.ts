@@ -90,20 +90,38 @@ export function onlySpeculativeLoads(): boolean {
 
 /** One claim per optional rejection: Vite may reuse an error across importers. */
 const optionalFailures = new WeakMap<object, number>();
+/** Decisions still waiting for the importer's microtask checkpoint. */
+const pendingPreloadDecisions = new WeakMap<object, number>();
+
+/** Opens one decision window before the preload listener schedules its timer. */
+export function registerPendingPreloadDecision(error: unknown): void {
+  if (error === null || typeof error !== 'object') return;
+  pendingPreloadDecisions.set(error, (pendingPreloadDecisions.get(error) ?? 0) + 1);
+}
 
 /** Runs a load the page has a fallback for (an optional picker or toast host).
- *  Its own failure never reloads the page: the importer sees the error and
- *  falls back. A different chunk failing meanwhile still recovers as usual. */
+ *  Its own failure can claim a pending preload decision so the importer falls
+ *  back without reloading. A different chunk failing still recovers as usual.
+ *  `load` must return the `import()` promise chain directly, with no macrotask
+ *  before it settles; a late failure cannot exempt a decision that already ran. */
 export function runOptionalLoad<T>(load: () => Promise<T>): Promise<T> {
   return load().catch((error: unknown) => {
-    if (error !== null && typeof error === 'object') optionalFailures.set(error, (optionalFailures.get(error) ?? 0) + 1);
+    if (error !== null && typeof error === 'object') {
+      const claims = optionalFailures.get(error) ?? 0;
+      // Reserve at most one claim per pending decision, even if a rejection is reused.
+      if ((pendingPreloadDecisions.get(error) ?? 0) > claims) optionalFailures.set(error, claims + 1);
+      else if (import.meta.env.DEV) console.warn('An optional load failed too late to be exempt from chunk recovery.', error);
+    }
     throw error;
   });
 }
 
-/** Consumes one optional-load claim for this preload event, if any remain. */
+/** Closes one decision window and consumes at most one optional-load claim. */
 export function isOptionalLoadFailure(error: unknown): boolean {
   if (error === null || typeof error !== 'object') return false;
+  const pending = pendingPreloadDecisions.get(error) ?? 0;
+  if (pending === 1) pendingPreloadDecisions.delete(error);
+  else if (pending > 1) pendingPreloadDecisions.set(error, pending - 1);
   const claims = optionalFailures.get(error) ?? 0;
   if (!claims) return false;
   if (claims === 1) optionalFailures.delete(error);

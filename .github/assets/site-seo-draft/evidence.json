@@ -1,0 +1,860 @@
+{
+  "environment": "Component fixture: the real SEO section (before: main; after: this branch) with the real design system, EN/AR catalogs, project and language queries, both save mutations and the shared upload hook, in an editor-canvas frame; fictional site, Arabic language and local PNG; GETs, PATCHes and upload presign/PUT/confirm answered by interception; not the signed-in dashboard or production",
+  "baseline": "9fa7561a82570ec281187899ca57ccffa9c2f08d",
+  "head": "8c2cbf78827f126ec3603226338cfb15db4cbb89",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/components/project-settings/seo-section.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "pristine-before-en-1440.png",
+      "phase": "before",
+      "scene": "pristine",
+      "locale": "en",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fields": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "auto",
+        "metaDescription": "auto",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook",
+        "metaDescription": "Guides for the Handbook team.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-after-en-1440.png",
+      "phase": "after",
+      "scene": "pristine",
+      "locale": "en",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fields": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "auto",
+        "metaDescription": "auto",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook",
+        "metaDescription": "Guides for the Handbook team.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": [],
+      "saveButtonVisible": false,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "arabic-draft-after-en-1440.png",
+      "phase": "after",
+      "scene": "arabic-draft",
+      "locale": "en",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fields": {
+        "metaTitle": "دليل فريق هاندبوك",
+        "metaDescription": "",
+        "socialImage": "http://seo.fixture.test/storage/site-1/seo/1-handbook-cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "rtl",
+        "metaDescription": "rtl",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": ["Uploaded"],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages",
+        "POST /api/app/projects/site-1/assets/presign",
+        "PUT /storage/…",
+        "POST /api/app/projects/site-1/assets/confirm"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-before-en-390.png",
+      "phase": "before",
+      "scene": "pristine",
+      "locale": "en",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fields": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "auto",
+        "metaDescription": "auto",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook",
+        "metaDescription": "Guides for the Handbook team.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-after-en-390.png",
+      "phase": "after",
+      "scene": "pristine",
+      "locale": "en",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fields": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "auto",
+        "metaDescription": "auto",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook",
+        "metaDescription": "Guides for the Handbook team.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": [],
+      "saveButtonVisible": false,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "arabic-draft-after-en-390.png",
+      "phase": "after",
+      "scene": "arabic-draft",
+      "locale": "en",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fields": {
+        "metaTitle": "دليل فريق هاندبوك",
+        "metaDescription": "",
+        "socialImage": "http://seo.fixture.test/storage/site-1/seo/1-handbook-cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "rtl",
+        "metaDescription": "rtl",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": ["Uploaded"],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages",
+        "POST /api/app/projects/site-1/assets/presign",
+        "PUT /storage/…",
+        "POST /api/app/projects/site-1/assets/confirm"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-before-ar-1440.png",
+      "phase": "before",
+      "scene": "pristine",
+      "locale": "ar",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fields": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "auto",
+        "metaDescription": "auto",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook",
+        "metaDescription": "Guides for the Handbook team.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-after-ar-1440.png",
+      "phase": "after",
+      "scene": "pristine",
+      "locale": "ar",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fields": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "auto",
+        "metaDescription": "auto",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook",
+        "metaDescription": "Guides for the Handbook team.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": [],
+      "saveButtonVisible": false,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "arabic-draft-after-ar-1440.png",
+      "phase": "after",
+      "scene": "arabic-draft",
+      "locale": "ar",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fields": {
+        "metaTitle": "دليل فريق هاندبوك",
+        "metaDescription": "",
+        "socialImage": "http://seo.fixture.test/storage/site-1/seo/1-handbook-cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "rtl",
+        "metaDescription": "rtl",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": ["تم الرفع"],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages",
+        "POST /api/app/projects/site-1/assets/presign",
+        "PUT /storage/…",
+        "POST /api/app/projects/site-1/assets/confirm"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-before-ar-390.png",
+      "phase": "before",
+      "scene": "pristine",
+      "locale": "ar",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fields": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "auto",
+        "metaDescription": "auto",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook",
+        "metaDescription": "Guides for the Handbook team.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-after-ar-390.png",
+      "phase": "after",
+      "scene": "pristine",
+      "locale": "ar",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fields": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "auto",
+        "metaDescription": "auto",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook",
+        "metaDescription": "Guides for the Handbook team.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": [],
+      "saveButtonVisible": false,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "arabic-draft-after-ar-390.png",
+      "phase": "after",
+      "scene": "arabic-draft",
+      "locale": "ar",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fields": {
+        "metaTitle": "دليل فريق هاندبوك",
+        "metaDescription": "",
+        "socialImage": "http://seo.fixture.test/storage/site-1/seo/1-handbook-cover.png",
+        "allowIndex": true
+      },
+      "fieldDir": {
+        "metaTitle": "rtl",
+        "metaDescription": "rtl",
+        "socialImage": "ltr"
+      },
+      "placeholders": {
+        "metaTitle": "Handbook Docs",
+        "metaDescription": "Everything the Handbook team writes down.",
+        "socialImage": "/og/cover.png"
+      },
+      "uploading": false,
+      "toasts": ["تم الرفع"],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages",
+        "POST /api/app/projects/site-1/assets/presign",
+        "PUT /storage/…",
+        "POST /api/app/projects/site-1/assets/confirm"
+      ],
+      "pageErrors": []
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-after-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1/languages" },
+        {
+          "call": "POST /api/app/projects/site-1/assets/presign",
+          "body": {
+            "filename": "handbook-cover.png",
+            "contentType": "image/png",
+            "size": 70
+          }
+        },
+        { "call": "PUT /storage/…", "bytes": 70 },
+        {
+          "call": "POST /api/app/projects/site-1/assets/confirm",
+          "body": {
+            "key": "site-1/seo/1-handbook-cover.png",
+            "contentType": "image/png",
+            "size": 70
+          }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/assets/presign",
+          "body": {
+            "filename": "handbook-cover.png",
+            "contentType": "image/png",
+            "size": 70
+          }
+        },
+        { "call": "PUT /storage/…", "bytes": 70 },
+        {
+          "call": "POST /api/app/projects/site-1/assets/confirm",
+          "body": {
+            "key": "site-1/seo/2-handbook-cover.png",
+            "contentType": "image/png",
+            "size": 70
+          }
+        },
+        {
+          "call": "PATCH /api/app/projects/site-1/languages/ar",
+          "body": {
+            "config": {
+              "seo": {
+                "metaTitle": "دليل فريق هاندبوك",
+                "metaDescription": "",
+                "socialImage": "http://seo.fixture.test/storage/site-1/seo/2-handbook-cover.png",
+                "allowIndex": true
+              }
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1/languages" },
+        {
+          "call": "PATCH /api/app/projects/site-1/languages/ar",
+          "body": { "config": null }
+        },
+        { "call": "GET /api/app/projects/site-1/languages" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: Default scope, pristine, no save bar",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "auto",
+            "metaDescription": "auto",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook",
+            "metaDescription": "Guides for the Handbook team.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 2,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        },
+        {
+          "step": "chose an image in the Default scope: the Upload button shows progress",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "auto",
+            "metaDescription": "auto",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook",
+            "metaDescription": "Guides for the Handbook team.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": true,
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 5,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        },
+        {
+          "step": "switched to the Arabic scope while that upload runs (clean, so no confirmation)",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "",
+            "metaDescription": "",
+            "socialImage": "",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "rtl",
+            "metaDescription": "rtl",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 5,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        },
+        {
+          "step": "the Default-scope upload finished: it did not fill the Arabic draft, nothing is unsaved",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "",
+            "metaDescription": "",
+            "socialImage": "",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "rtl",
+            "metaDescription": "rtl",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 5,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        },
+        {
+          "step": "uploaded in the Arabic scope: the URL fills the draft only, no PATCH",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "",
+            "metaDescription": "",
+            "socialImage": "http://seo.fixture.test/storage/site-1/seo/2-handbook-cover.png",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "rtl",
+            "metaDescription": "rtl",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": ["Uploaded"],
+          "saveButtonVisible": true,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 8,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        },
+        {
+          "step": "typed an Arabic title",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "دليل فريق هاندبوك",
+            "metaDescription": "",
+            "socialImage": "http://seo.fixture.test/storage/site-1/seo/2-handbook-cover.png",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "rtl",
+            "metaDescription": "rtl",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": ["Uploaded"],
+          "saveButtonVisible": true,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 8,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        },
+        {
+          "step": "Save pressed: saving",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "دليل فريق هاندبوك",
+            "metaDescription": "",
+            "socialImage": "http://seo.fixture.test/storage/site-1/seo/2-handbook-cover.png",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "rtl",
+            "metaDescription": "rtl",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": ["Uploaded"],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 9,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        },
+        {
+          "step": "saved and refetched: the Arabic SEO is stored, its banner kept, the form clean",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "دليل فريق هاندبوك",
+            "metaDescription": "",
+            "socialImage": "http://seo.fixture.test/storage/site-1/seo/2-handbook-cover.png",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "rtl",
+            "metaDescription": "rtl",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": ["Uploaded"],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 10,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": {
+              "banner": { "message": "إعلان تجريبي" },
+              "seo": {
+                "metaTitle": "دليل فريق هاندبوك",
+                "metaDescription": "",
+                "socialImage": "http://seo.fixture.test/storage/site-1/seo/2-handbook-cover.png",
+                "allowIndex": true
+              }
+            }
+          }
+        },
+        {
+          "step": "cleared both and saved: config null, the Arabic SEO is gone and its banner kept",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "",
+            "metaDescription": "",
+            "socialImage": "",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "rtl",
+            "metaDescription": "rtl",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 12,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        },
+        {
+          "step": "back to Default: the project SEO is unchanged",
+          "dir": "ltr",
+          "fields": {
+            "metaTitle": "Handbook Docs",
+            "metaDescription": "Everything the Handbook team writes down.",
+            "socialImage": "/og/cover.png",
+            "allowIndex": true
+          },
+          "fieldDir": {
+            "metaTitle": "auto",
+            "metaDescription": "auto",
+            "socialImage": "ltr"
+          },
+          "placeholders": {
+            "metaTitle": "Handbook",
+            "metaDescription": "Guides for the Handbook team.",
+            "socialImage": "/og/cover.png"
+          },
+          "uploading": false,
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 12,
+          "server": {
+            "seo": {
+              "metaTitle": "Handbook Docs",
+              "metaDescription": "Everything the Handbook team writes down.",
+              "socialImage": "/og/cover.png"
+            },
+            "arabic": { "banner": { "message": "إعلان تجريبي" } }
+          }
+        }
+      ]
+    }
+  ]
+}

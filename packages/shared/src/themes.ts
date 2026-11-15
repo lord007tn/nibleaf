@@ -385,6 +385,78 @@ const mixHex = (first: string, second: string, weight: number): string => {
   return `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
 };
 
+const linearToSrgb = (value: number): number => 255 * (value <= 0.003_130_8 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055);
+
+const toOklab = (hex: string): [number, number, number] => {
+  const [r = 0, g = 0, b = 0] = [1, 3, 5].map((start) => channel(Number.parseInt(hex.slice(start, start + 2), 16)));
+  const l = Math.cbrt(0.412_221_470_8 * r + 0.536_332_536_3 * g + 0.051_445_992_9 * b);
+  const m = Math.cbrt(0.211_903_498_2 * r + 0.680_699_545_1 * g + 0.107_396_956_6 * b);
+  const s = Math.cbrt(0.088_302_461_9 * r + 0.281_718_837_6 * g + 0.629_978_700_5 * b);
+  return [
+    0.210_454_255_3 * l + 0.793_617_785 * m - 0.004_072_046_8 * s,
+    1.977_998_495_1 * l - 2.428_592_205 * m + 0.450_593_709_9 * s,
+    0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766 * s,
+  ];
+};
+
+/** sRGB channels (0–255) that may be fractional, as a mix computes them before any rounding. */
+export type RgbChannels = readonly [number, number, number];
+
+/** `color-mix(in oklab, <color> <share>, <other>)` for opaque colours: mixed in
+ * OKLab and converted back to sRGB, with each channel clipped to 0–255 and NOT
+ * rounded. Clipping is not the full CSS gamut mapping: a saturated brand mixed
+ * towards white can leave sRGB (72% #ff0000 computes red ≈ 264), and the browser
+ * maps that instead. The sampled Chromium check agrees on the colours it covers;
+ * it doesn't prove equivalence for every input. The browser keeps the fractional
+ * colour, so any pass/fail decision about a shipped mix is made on these
+ * channels; null when either input isn't a hex. */
+export const mixOklabChannels = (color: string, other: string, share: number): RgbChannels | null => {
+  const a = normalizeHex(color);
+  const b = normalizeHex(other);
+  if (!/^#[0-9a-f]{6}$/i.test(a) || !/^#[0-9a-f]{6}$/i.test(b)) return null;
+  const first = toOklab(a);
+  const second = toOklab(b);
+  const [L, A, B] = first.map((value, index) => value * share + (second[index] ?? 0) * (1 - share)) as [number, number, number];
+  const l = (L + 0.396_337_777_4 * A + 0.215_803_757_3 * B) ** 3;
+  const m = (L - 0.105_561_345_8 * A - 0.063_854_172_8 * B) ** 3;
+  const s = (L - 0.089_484_177_5 * A - 1.291_485_548 * B) ** 3;
+  return [
+    4.076_741_662_1 * l - 3.307_711_591_3 * m + 0.230_969_929_2 * s,
+    -1.268_438_004_6 * l + 2.609_757_401_1 * m - 0.341_319_396_5 * s,
+    -0.004_196_086_3 * l - 0.703_418_614_7 * m + 1.707_614_701 * s,
+  ].map((value) => Math.min(255, Math.max(0, linearToSrgb(value)))) as unknown as RgbChannels;
+};
+
+/** Channels as a `#rrggbb` hex, rounded: only for emitting a colour, never for deciding whether one reads. */
+export const channelsHex = (channels: RgbChannels): string => `#${channels.map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`;
+
+/** `mixOklabChannels` rounded to a hex: the colour a replacement is emitted as. */
+export const mixOklab = (color: string, other: string, share: number): string => {
+  const channels = mixOklabChannels(color, other, share);
+  return channels ? channelsHex(channels) : color;
+};
+
+const hexChannels = (hex: string): RgbChannels => {
+  const value = normalizeHex(hex);
+  return [1, 3, 5].map((start) => Number.parseInt(value.slice(start, start + 2), 16)) as unknown as RgbChannels;
+};
+const channelsLuminance = ([r, g, b]: RgbChannels): number => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+
+/** WCAG contrast between two colours given as (possibly fractional) channels or hexes. */
+export const channelsContrast = (foreground: RgbChannels | string, background: RgbChannels | string): number => {
+  const first = channelsLuminance(typeof foreground === 'string' ? hexChannels(foreground) : foreground);
+  const second = channelsLuminance(typeof background === 'string' ? hexChannels(background) : background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+};
+
+/** Contrast of `color` as accent text on the canvas and on its own 10% tint
+ * (`bg-primary/10`), composited in sRGB without rounding (contrastOnTint). */
+export const accentTextContrast = (color: RgbChannels, canvas: string): { canvas: number; tint: number } => {
+  const background = hexChannels(canvas);
+  const tint = background.map((value, index) => value * (1 - ACCENT_TINT) + (color[index] ?? 0) * ACCENT_TINT) as unknown as RgbChannels;
+  return { canvas: channelsContrast(color, background), tint: channelsContrast(color, tint) };
+};
+
 /** Nudge `color` towards white or black until it reads against `background`.
  * Used for accents on the canvas (3:1, large UI) and for accent text drawn on
  * the always-dark code surface (4.5:1). Returns the input untouched when it

@@ -175,6 +175,121 @@ describe('a successful save after refetches (rule 3 with the save’s state)', (
   });
 });
 
+describe('a response that arrives after a refetch already landed (#743)', () => {
+  const sent = { ...base, name: 'Sent' };
+  /** Starts a save of `sent` and folds each refetch into it, as the hook does. */
+  const play = (current: Values, refetches: Values[]) => {
+    let state = { baseline: base, current, save: startSave(base, sent), conflicts: [] as string[] };
+    for (const next of refetches) {
+      const change = reconcileServerChange({ baseline: state.baseline, current: state.current, next, save: state.save });
+      state = { baseline: change.baseline, current: change.current, save: change.save ?? state.save, conflicts: change.conflicts };
+    }
+    return state;
+  };
+  const succeed = ({ baseline, current, save }: ReturnType<typeof play>, confirmed?: Values) =>
+    reconcileSaveSuccess({ submitted: save.values, current, confirmed, during: { save, baseline } });
+
+  it('keeps the newer edit against the refetched value, which "theirs" then takes', () => {
+    const state = play({ ...sent, name: 'Newer' }, [{ ...base, name: 'Theirs' }]);
+    expect(state.conflicts).toEqual(['name']);
+    const result = succeed(state, sent);
+    expect(result.baseline.name).toBe('Theirs');
+    expect(result.current.name).toBe('Newer');
+    expect(resolveConflict({ ...result, key: 'name', choice: 'theirs' }).name).toBe('Theirs');
+  });
+
+  it('keeps the sent value against the refetched one, and confirms the response where the form took the refetched value', () => {
+    // Values can't tell whether 'Theirs' was written before the save (and the
+    // PATCH overwrote it) or after: never adopted silently.
+    const state = play(sent, [{ ...base, name: 'Theirs', slug: 'theirs' }]);
+    expect(state.conflicts).toEqual(['name']);
+    const result = succeed(state, sent);
+    expect(result.baseline).toEqual({ ...base, name: 'Theirs' });
+    expect(result.current).toEqual(sent);
+  });
+
+  it('confirms the response, as without the refetch, when it agrees with the refetched value', () => {
+    const state = play(sent, [
+      { ...base, name: 'Theirs' },
+      { ...base, name: 'Later' },
+    ]);
+    const result = succeed(state, { ...base, name: 'Later' });
+    expect(result).toEqual({ baseline: { ...base, name: 'Later' }, current: { ...base, name: 'Later' } });
+  });
+
+  it('lets the response win over a refetch from before the save, the save’s own echo, and a stale one after it', () => {
+    const normalized = { ...sent, name: 'sent' };
+    for (const refetches of [[base], [sent], [sent, base], [base, sent, base]]) {
+      const result = succeed(play(sent, refetches), normalized);
+      expect(result.baseline).toEqual(normalized);
+      expect(result.current).toEqual(normalized);
+    }
+  });
+
+  it('judges a transformed save in sent space: its trimmed echo is no newer value, someone else’s is', () => {
+    const trim = (values: Values): Values => ({ ...values, name: values.name.trim() });
+    const raw = { ...base, name: '  Sent  ' };
+    const fold = (refetches: Values[]) => {
+      let state = { baseline: base, current: raw, save: startSave(base, raw, trim) };
+      for (const next of refetches) {
+        const change = reconcileServerChange({ ...state, next });
+        state = { baseline: change.baseline, current: change.current, save: change.save ?? state.save };
+      }
+      return reconcileSaveSuccess({ submitted: state.save.values, current: state.current, confirmed: sent, during: state });
+    };
+    expect(fold([sent])).toEqual({ baseline: sent, current: sent });
+    const theirs = fold([{ ...base, name: 'Theirs' }]);
+    expect(theirs.baseline.name).toBe('Theirs');
+    expect(theirs.current.name).toBe('  Sent  ');
+  });
+});
+
+describe('a save without toSent', () => {
+  it('restores an explicitly undefined key the form dropped, as before toSent', () => {
+    type Optional = { x?: string; y: string; z: string };
+    const baseline: Optional = { x: undefined, y: 'O', z: 'O' };
+    const submitted: Optional = { y: 'O', z: 'S' };
+    const next: Optional = { x: undefined, y: 'T', z: 'S' };
+    const change = reconcileServerChange({ baseline, current: submitted, next, save: startSave(baseline, submitted) });
+    expect(change.current).toStrictEqual(next);
+    expect(isDraftDirty(change.current, change.baseline)).toBe(false);
+  });
+});
+
+describe('a save of a transformed payload (toSent)', () => {
+  const trim = (values: Values): Values => ({ ...values, name: values.name.trim() });
+  const save = startSave(base, { ...base, name: 'Help  ', slug: 'help' }, trim);
+
+  it('records what was sent and the keys it changed in sent space', () => {
+    expect(save.values.name).toBe('Help');
+    expect(save.raw.name).toBe('Help  ');
+    expect([...save.sent]).toEqual(['name', 'slug']);
+    // Only spaces added: nothing new is sent, so no echo is awaited.
+    expect([...startSave(base, { ...base, name: 'Docs ' }, trim).sent]).toEqual([]);
+  });
+
+  it('takes the transformed value as the echo, and keeps the raw value meanwhile', () => {
+    const change = reconcileServerChange({ baseline: base, current: save.raw, next: save.values, save });
+    expect(change.conflicts).toEqual([]);
+    expect(change.current.name).toBe('Help  ');
+    expect([...(change.save?.echoed ?? [])]).toEqual(['name', 'slug']);
+    const unrelated = reconcileServerChange({ ...change, next: { ...save.values, tags: ['b'] } });
+    expect(unrelated.current).toEqual({ ...save.raw, tags: ['b'] });
+    const theirs = reconcileServerChange({ ...change, next: { ...save.values, name: 'Theirs' } });
+    expect(theirs.current.name).toBe('Theirs');
+    expect(theirs.conflicts).toEqual([]);
+  });
+
+  it('confirms the transformed value on success unless the person changed it since', () => {
+    const during = { save, baseline: base };
+    const confirmed = reconcileSaveSuccess({ submitted: save.values, current: save.raw, during });
+    expect(confirmed.current).toEqual(save.values);
+    const edited = reconcileSaveSuccess({ submitted: save.values, current: { ...save.raw, name: 'Help 2' }, during });
+    expect(edited.current.name).toBe('Help 2');
+    expect(isDraftDirty(edited.current, edited.baseline)).toBe(true);
+  });
+});
+
 describe('resolving a conflict', () => {
   it('takes the server value for "theirs" and keeps the edit for "mine"', () => {
     const current = { ...base, name: 'Mine' };

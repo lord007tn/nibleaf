@@ -690,7 +690,10 @@ function SiteChrome() {
                         data-analytics-placement="navbar"
                         target="_blank"
                         rel="noreferrer"
-                        className="ms-1 hidden h-9 cursor-pointer items-center rounded-full bg-primary px-4 font-medium text-primary-foreground text-sm shadow-sm transition-opacity hover:opacity-90 sm:inline-flex"
+                        // Hover moves the fill towards the foreground, away from its label, so the
+                        // pair only gains contrast; fading the whole button dropped below AA. Only the
+                        // fill transitions, so the focus outline still appears at once.
+                        className="ms-1 hidden h-9 cursor-pointer items-center rounded-full bg-primary px-4 font-medium text-primary-foreground text-sm shadow-sm transition-[background-color] hover:bg-[color-mix(in_oklab,var(--primary)_85%,var(--foreground))] sm:inline-flex"
                       >
                         {ctaLabel}
                       </a>

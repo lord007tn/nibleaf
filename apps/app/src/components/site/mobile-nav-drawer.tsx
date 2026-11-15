@@ -122,7 +122,10 @@ export function MobileNavDrawer({
                     data-analytics-placement="mobile-navbar"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
+                    // Hover moves the fill towards the foreground, away from its label
+                    // (light text on a dark accent, dark on a light one), so the pair
+                    // gains contrast; fading the whole button dropped it below AA (#731).
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-colors hover:bg-[color-mix(in_oklab,var(--primary)_85%,var(--foreground))]"
                     onClick={() => setOpen(false)}
                   >
                     {cta.label}

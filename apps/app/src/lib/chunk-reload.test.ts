@@ -62,6 +62,8 @@ describe('reload once after a chunk fails to load', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it('registers one listener and reloads the page the first time a chunk fails', () => {
@@ -173,6 +175,53 @@ describe('reload once after a chunk fails to load', () => {
     expect(page.reload).not.toHaveBeenCalled();
     vi.runOnlyPendingTimers();
     expect(page.reload).not.toHaveBeenCalled();
+  });
+
+  it('discards a delayed optional catch so a later event with the same error still recovers', async () => {
+    vi.stubEnv('DEV', true);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const page = openDocument(memoryStorage());
+    const error = chunkError('picker-OLD.js');
+    const optional = runOptionalLoad(() =>
+      Promise.resolve()
+        .then(() => failChunkLoad(error))
+        .catch(
+          (failure: unknown) =>
+            new Promise<never>((_, reject) => {
+              setTimeout(() => reject(failure), 1);
+            }),
+        ),
+    );
+    const rejected = expect(optional).rejects.toBe(error);
+    // Flush Vite's dispatch/rethrow, but leave the importer's catch behind a task.
+    await vi.advanceTimersByTimeAsync(0);
+    expect(page.reload).toHaveBeenCalledTimes(1);
+    expect(warn).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    await rejected;
+
+    // A fresh document with a fresh budget makes exemption observable even though
+    // the first document already spent its one recovery on this same asset.
+    const later = openDocument(memoryStorage());
+    expect(() => failChunkLoad(error)).toThrow(error);
+    vi.runOnlyPendingTimers();
+    expect(later.reload).toHaveBeenCalledTimes(1);
+    expect(page.reload).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledExactlyOnceWith('An optional load failed too late to be exempt from chunk recovery.', error);
+  });
+
+  it.each([true, false])('discards an optional claim without a pending event (DEV: %s)', async (dev) => {
+    vi.stubEnv('DEV', dev);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const page = openDocument(memoryStorage());
+    const error = chunkError('picker-OLD.js');
+    await expect(runOptionalLoad(() => Promise.reject(error))).rejects.toBe(error);
+
+    expect(() => failChunkLoad(error)).toThrow(error);
+    vi.runOnlyPendingTimers();
+    expect(page.reload).toHaveBeenCalledTimes(1);
+    if (dev) expect(warn).toHaveBeenCalledExactlyOnceWith('An optional load failed too late to be exempt from chunk recovery.', error);
+    else expect(warn).not.toHaveBeenCalled();
   });
 
   it.each([true, false])('reloads once for shared CSS with one optional and one required importer (optional first: %s)', async (optionalFirst) => {
