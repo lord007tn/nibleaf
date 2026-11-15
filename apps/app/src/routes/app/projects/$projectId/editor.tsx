@@ -626,6 +626,8 @@ function EditorPage() {
           }
         },
         (saved) => saved.updatedAt,
+        // What the server stored, so a repeat of a pending write's text is skipped only when it landed as sent (#735).
+        (saved) => saved,
       ),
     [],
   );

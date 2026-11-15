@@ -16,6 +16,8 @@
  *   too: guards).
  */
 
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   STARTER_API_CREATE_WIDGET_CONTENT,
   STARTER_COMPONENTS_TOUR_CONTENT,
@@ -1010,6 +1012,199 @@ describe('#728: undo while an autosave is in flight', { timeout: ROUTE_TEST_TIME
   });
 });
 
+/*
+ * #735: the compensating save after an undo was sent twice. The navigation's
+ * flush queued the undone text against the stored revision; the `A` write then
+ * landed, and the next flush (unmount, pagehide, a hidden tab, blur, or the
+ * autosave's own timer) queued the same text again against the new revision.
+ * The queue told them apart by revision only, so both were sent. Now a draft
+ * whose text the last pending write already carries is sent only if that write
+ * fails.
+ */
+/** Every write the route sent, landed or failed, as `original` or `original+<typed>`. */
+let attempts: Array<{ pageId: string; content: string }> = [];
+const label = (content: string) => (content === ORIGINAL ? 'original' : `original+${content.match(/a byte\.([^\n]*)/)?.[1] ?? '?'}`);
+const sent = () => attempts.map((write) => label(write.content));
+function recordAttempts() {
+  attempts = [];
+  const send = mocks.update.getMockImplementation() as (args: UpdateArgs) => Promise<unknown>;
+  mocks.update.mockImplementation(async (args: UpdateArgs) => {
+    attempts.push({ pageId: args.pageId, content: args.body.content });
+    return send(args);
+  });
+}
+/** Navigate away (the blocker's flush), returning whether the navigation was blocked. */
+const navigate = async () => {
+  let blocked: Promise<boolean> | undefined;
+  await act(async () => {
+    blocked = mocks.blocker?.shouldBlockFn();
+  });
+  return async () => expect(await blocked).toBe(false);
+};
+/** Publish (its flush), returning a check that the publish went ahead. */
+const publish = async () => {
+  let ready: Promise<boolean> | undefined;
+  await act(async () => {
+    ready = mocks.publish?.beforePublish();
+  });
+  return async () => expect(await ready).toBe(true);
+};
+const leaves: Array<[string, () => Promise<void>]> = [
+  ['the editor unmounts', unmount],
+  [
+    'the page is closed (pagehide)',
+    () =>
+      act(async () => {
+        window.dispatchEvent(new Event('pagehide'));
+      }),
+  ],
+  ['the tab is hidden', () => act(async () => hideTab())],
+  [
+    'the window loses focus',
+    () =>
+      act(async () => {
+        window.dispatchEvent(new Event('blur'));
+      }),
+  ],
+  // Staying: the autosave's own timer flushes the draft while the write is held.
+  ['the author stays on the page', () => advance(5000)],
+];
+
+describe('#735: one compensating save per final draft', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  beforeEach(() => {
+    holdWrites();
+    recordAttempts();
+  });
+
+  it('regression: type, autosave in flight, undo, navigate, the write lands, unmount during the compensating save: it is sent once', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    expect(held.map((write) => label(write.content))).toEqual(['original']);
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it.each(leaves)('navigating, then %s during the compensating save: sent once', async (_name, leave) => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await leave();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it.each(leaves)('publishing, then %s during the compensating save: sent once', async (_name, leave) => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const published = await publish();
+    await settleWrite();
+    await leave();
+    await drain();
+    await published();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('two quick undo/redo cycles ending on the undo, then navigate and unmount: sent once', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    redo();
+    undo();
+    redo();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('the compensating save fails: the unmount flush sends the undone text again, and it lands', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await settleWrite(false);
+    await drain();
+    // The navigation's own save failed, so it stayed on the page and said so.
+    await expect(proceeded()).rejects.toThrow();
+    expect(sent()).toEqual(['original+A', 'original', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('the write in flight fails: the undone text still lands, once', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite(false);
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('a different final draft typed during the compensating save is never deduplicated', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    key('B');
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original', 'original+B']);
+    expect(server.content).toBe(withTyped('B'));
+  });
+
+  it('the same text on two pages: each page gets its own writes', async () => {
+    const twin = { ...pageOf('page-2', ORIGINAL), title: 'Page' };
+    await open(ORIGINAL, [twin]);
+    await typeAndHoldTheSave();
+    undo();
+    await act(async () => (mocks.tree as { onSelect: (id: string) => void } | null)?.onSelect('page-2'));
+    await settleWrite();
+    await settleWrite();
+    mocks.page = twin;
+    await rerender();
+    await advance(SERIALIZE_PAUSE);
+    // The same edit on the twin: its autosave waits out the minimum interval.
+    key('A');
+    await advance(3500);
+    expect(held.map((write) => label(write.content))).toEqual(['original+A']);
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(attempts.map((write) => `${write.pageId}:${label(write.content)}`)).toEqual([
+      'page-1:original+A',
+      'page-1:original',
+      'page-2:original+A',
+      'page-2:original',
+    ]);
+  });
+});
+
 /** A small seeded generator (mulberry32), so a failing sequence can be replayed. */
 const seeded = (start: number) => {
   let seed = start;
@@ -1021,6 +1216,23 @@ const seeded = (start: number) => {
   };
 };
 const SEEDS = Array.from({ length: 60 }, (_, index) => 728 + index * 7919);
+/**
+ * Writes main (5eae6bf7) sent for each seed, from `__fixtures__/autosave-writes-main.json`
+ * (#735). Made by running this file against main's save queue with
+ * `WRITE_AUTOSAVE_WRITES_MAIN=1`.
+ */
+const WRITES_FIXTURE = resolve(import.meta.dirname, '../../../../components/editor/__fixtures__/autosave-writes-main.json');
+const RECORDING_MAIN = Boolean(process.env.WRITE_AUTOSAVE_WRITES_MAIN);
+const MAIN_WRITES: Record<number, number> = RECORDING_MAIN ? {} : JSON.parse(readFileSync(WRITES_FIXTURE, 'utf8')).writes;
+const mainWrites: Record<number, number> = {};
+afterAll(() => {
+  if (RECORDING_MAIN)
+    writeFileSync(
+      WRITES_FIXTURE,
+      `${JSON.stringify({ base: '5eae6bf7', writes: mainWrites }, null, 2)}
+`,
+    );
+});
 const OPS = ['type', 'type', 'undo', 'undo', 'undo', 'redo', 'idle', 'idle', 'land', 'blur', 'hide'] as const;
 const ENDINGS = ['unmount', 'pagehide', 'navigate', 'stay'] as const;
 
@@ -1061,5 +1273,230 @@ describe('#728 differential: once every write settles, the server holds the fina
     await drain();
     if (blocked) expect(await blocked).toBe(false);
     expect({ steps, server: server.content.trimEnd() }).toEqual({ steps, server: finalDraft });
+    // #735: never more writes than main sent for the same sequence.
+    const writes = mocks.update.mock.calls.length;
+    mainWrites[seed] = writes;
+    expect({ steps, writes, main: MAIN_WRITES[seed], atMostMain: writes <= (MAIN_WRITES[seed] ?? (RECORDING_MAIN ? writes : -1)) }).toEqual({
+      steps,
+      writes,
+      main: MAIN_WRITES[seed],
+      atMostMain: true,
+    });
+  });
+});
+
+/*
+ * #735 review: a repeat of a pending write's text is skipped only when that write
+ * provably stored it. The draft's base must be the write's own or a revision this
+ * queue produced (never a foreign server copy), and the response must show the
+ * same page, title and content stored. Two losses the first version of the fix
+ * had: retyping the text over another client's copy, and a write the server
+ * stored normalized.
+ */
+/** How the server stores the write sent `index`-th (0-based): as sent, or normalized. */
+let storeAs: (index: number, content: string) => string = (_index, content) => content;
+/** Writes that the server stores when they are sent (`'request'`) or when their response lands (`'response'`). */
+function serveWrites(commit: 'request' | 'response') {
+  held = [];
+  attempts = [];
+  storeAs = (_index, content) => content;
+  mocks.update.mockImplementation(async ({ pageId, body }: UpdateArgs) => {
+    const index = attempts.length;
+    attempts.push({ pageId, content: body.content });
+    const store = () => {
+      const content = storeAs(index, body.content);
+      server.patches.push({ at: Date.now(), content, expectedUpdatedAt: body.expectedUpdatedAt });
+      server = { ...server, content, updatedAt: new Date().toISOString() };
+      const page = mocks.pages.find((item) => item.id === pageId) ?? mocks.page;
+      return { ...page, title: body.title, content, updatedAt: server.updatedAt };
+    };
+    const early = commit === 'request' ? store() : undefined;
+    const ok = await new Promise<boolean>((settle) => held.push({ content: body.content, settle }));
+    if (!ok) throw new Error('Network error');
+    return early ?? store();
+  });
+}
+const NORMALIZED = '\n\nNormalized by the server.';
+/** Another client saved `content` at `updatedAt`, and the route's page query returns it. */
+async function foreignCopy(content: string, updatedAt: string) {
+  server = { ...server, content, updatedAt };
+  mocks.page = { ...mocks.page, content, updatedAt };
+  mocks.pages = [mocks.page as Record<string, unknown>];
+  await rerender();
+  await advance(0);
+}
+/** Replace the last character of the first paragraph with `text`, as selecting it and typing does. */
+function replaceLastTyped(text: string) {
+  const ed = current();
+  let end = -1;
+  ed.state.doc.descendants((node, pos) => {
+    if (end >= 0) return false;
+    if (node.type.name === 'paragraph' && node.textContent.startsWith(FIRST_WORDS)) end = pos + node.nodeSize - 1;
+    return end < 0;
+  });
+  ed.view.dispatch(ed.state.tr.insertText(text, end - 1, end));
+}
+const FOREIGN_AT = '2026-11-14T10:00:00.000Z';
+
+describe('#735 review: a repeat is skipped only when the pending write stored it', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  it('repro 1: the A write commits, undo, another client saves B, B is replaced by A, navigate, unmount: A is stored', async () => {
+    await open(ORIGINAL);
+    serveWrites('request');
+    await typeAndHoldTheSave();
+    undo();
+    await foreignCopy(withTyped('B'), FOREIGN_AT);
+    expect(getMarkdown(current())).toContain('a byte.B');
+    act(() => replaceLastTyped('A'));
+    const proceeded = await navigate();
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+  });
+
+  it('the foreign copy is replaced by other text: that text is sent and stored', async () => {
+    await open(ORIGINAL);
+    serveWrites('request');
+    await typeAndHoldTheSave();
+    undo();
+    await foreignCopy(withTyped('B'), FOREIGN_AT);
+    act(() => replaceLastTyped('C'));
+    const proceeded = await navigate();
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original+C']);
+    expect(server.content).toBe(withTyped('C'));
+  });
+
+  it('the A write commits but its response fails, then the same retyping over the foreign copy: A is sent again and stored', async () => {
+    await open(ORIGINAL);
+    serveWrites('request');
+    await typeAndHoldTheSave();
+    undo();
+    await foreignCopy(withTyped('B'), FOREIGN_AT);
+    act(() => replaceLastTyped('A'));
+    const proceeded = await navigate();
+    await unmount();
+    await settleWrite(false);
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+  });
+
+  it('repro 2: the #735 sequence, and the compensating write is stored normalized: the undone text is sent again and stored', async () => {
+    await open(ORIGINAL);
+    serveWrites('response');
+    storeAs = (index, content) => (index === 1 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('the #735 sequence, and the A write is stored normalized: the compensating write stores the undone text, sent once', async () => {
+    await open(ORIGINAL);
+    serveWrites('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await drain();
+    await proceeded();
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('the #735 sequence, and the compensating write fails, then its replacement lands: the undone text is stored', async () => {
+    await open(ORIGINAL);
+    serveWrites('response');
+    await typeAndHoldTheSave();
+    undo();
+    const proceeded = await navigate();
+    await settleWrite();
+    await unmount();
+    await settleWrite(false);
+    await drain();
+    await expect(proceeded()).rejects.toThrow();
+    expect(sent()).toEqual(['original+A', 'original', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+});
+
+/*
+ * The #728 generator with two more steps: another client's copy arriving (adopted
+ * while the draft is clean, ignored while it is dirty) and the server storing the
+ * next write normalized. Writes are stored when sent or when they land, per seed.
+ * Whenever main ends with the final draft stored, this branch must too, and it
+ * never sends more writes than main.
+ */
+const REVIEW_SEEDS = Array.from({ length: 40 }, (_, index) => 735 + index * 6007);
+const REVIEW_OPS = ['type', 'type', 'undo', 'undo', 'redo', 'idle', 'idle', 'land', 'blur', 'adopt', 'normalize'] as const;
+const REVIEW_FIXTURE = resolve(import.meta.dirname, '../../../../components/editor/__fixtures__/autosave-review-main.json');
+const RECORDING_REVIEW = Boolean(process.env.WRITE_AUTOSAVE_REVIEW_MAIN);
+const MAIN_REVIEW: Record<number, { writes: number; stored: boolean }> = RECORDING_REVIEW
+  ? {}
+  : JSON.parse(readFileSync(REVIEW_FIXTURE, 'utf8')).seeds;
+const reviewResults: Record<number, { writes: number; stored: boolean }> = {};
+afterAll(() => {
+  if (RECORDING_REVIEW) writeFileSync(REVIEW_FIXTURE, `${JSON.stringify({ base: '5eae6bf7', seeds: reviewResults }, null, 2)}\n`);
+});
+
+describe('#735 review differential: foreign copies and normalized writes', { timeout: 180_000 }, () => {
+  it.each(REVIEW_SEEDS)('seed %i', async (seed) => {
+    const random = seeded(seed);
+    const pick = <T,>(items: readonly T[]): T => items[Math.floor(random() * items.length)] as T;
+    await open(ORIGINAL);
+    serveWrites(random() < 0.5 ? 'request' : 'response');
+    let normalizeFrom = Number.POSITIVE_INFINITY;
+    storeAs = (index, content) => (index === normalizeFrom ? `${content}${NORMALIZED}` : content);
+    let foreign = 0;
+    const steps: string[] = [];
+    for (let step = 0; step < 8; step += 1) {
+      const op = pick(REVIEW_OPS);
+      steps.push(op);
+      if (op === 'type') key(pick(['a', 'b', 'c']));
+      else if (op === 'undo') undo();
+      else if (op === 'redo') redo();
+      else if (op === 'idle') await advance(pick([50, SERIALIZE_PAUSE, 800, 800, 3500]));
+      else if (op === 'land') {
+        if (held.length > 0) await settleWrite();
+      } else if (op === 'blur') await act(async () => window.dispatchEvent(new Event('blur')));
+      else if (op === 'adopt') {
+        foreign += 1;
+        await foreignCopy(withTyped(`F${foreign}`), `2026-11-14T1${foreign}:00:00.000Z`);
+      } else normalizeFrom = attempts.length;
+    }
+    const ending = pick(ENDINGS);
+    steps.push(ending);
+    const finalDraft = getMarkdown(current()).trimEnd();
+    if (ending === 'navigate') {
+      await act(async () => {
+        void mocks.blocker?.shouldBlockFn();
+      });
+    } else if (ending === 'pagehide') {
+      await act(async () => window.dispatchEvent(new Event('pagehide')));
+      await unmount();
+    } else if (ending === 'unmount') await unmount();
+    await drain();
+    const result = { writes: mocks.update.mock.calls.length, stored: server.content.trimEnd() === finalDraft };
+    reviewResults[seed] = result;
+    const main = MAIN_REVIEW[seed];
+    if (RECORDING_REVIEW) return;
+    expect({ steps, main, writes: result.writes <= (main?.writes ?? -1), stored: result.stored || main?.stored === false }).toEqual({
+      steps,
+      main,
+      writes: true,
+      stored: true,
+    });
   });
 });
