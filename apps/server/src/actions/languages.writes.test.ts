@@ -75,4 +75,23 @@ describe('language write serialization', () => {
       expect(current.config).toStrictEqual({ ...CHROME, seo: { metaTitle: '', metaDescription: '', socialImage: '/og/ar.png', allowIndex: true } });
     });
   });
+
+  // The dashboard's Footer form sends a language's copyright only: the trimmed
+  // text, or `footer: null` to fall back to the project's.
+  describe("the Footer form's language saves", () => {
+    const OTHERS = { navbar: { ctaLabel: 'ابدأ' }, banner: { message: 'إعلان' }, search: { placeholder: 'ابحث' }, seo: { metaTitle: 'توثيق' } };
+    const save = (config: unknown) => updateLanguage('project', 'ar', updateLanguageBody.parse(JSON.parse(JSON.stringify({ config }))));
+
+    it('stores the copyright and keeps the SEO and every other chrome section', async () => {
+      current.config = structuredClone(OTHERS);
+      await save({ footer: { copyright: '© أكمي' } });
+      expect(current.config).toStrictEqual({ ...OTHERS, footer: { copyright: '© أكمي' } });
+    });
+
+    it('footer: null drops the override only', async () => {
+      current.config = { ...structuredClone(OTHERS), footer: { copyright: '© أكمي' } };
+      await save({ footer: null });
+      expect(current.config).toStrictEqual(OTHERS);
+    });
+  });
 });

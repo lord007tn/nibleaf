@@ -659,3 +659,43 @@ describe('updateProject: saving SEO from the dashboard form', () => {
     expect(updateProjectBody.safeParse({ config: { seo: { ...SEO, socialImage: 'javascript:alert(1)' } } }).success).toBe(false);
   });
 });
+
+// The dashboard's Footer form sends `config.footer` as JSON: every text it
+// holds, trimmed, a cleared one as '' (the reader shows no link and an empty
+// copyright line), and the badge as chosen.
+describe('updateProject: clearing saved footer values', () => {
+  const FOOTER = { copyright: '© Acme', github: 'https://github.com/acme', x: 'https://x.com/acme', linkedin: '/company', madeWithBadge: false };
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, seo: { metaTitle: 'Docs' }, banner: { enabled: true, message: 'Sale' } };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), footer: { ...FOOTER } };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (footer: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { footer } }))));
+
+  it.each(['copyright', 'github', 'x', 'linkedin'] as const)('stores a cleared %s as "" and keeps the badge and every other section', async (key) => {
+    const readback = await save({ ...FOOTER, [key]: '' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { ...FOOTER, [key]: '' } });
+    expect(readback).toMatchObject({ config: { footer: { ...FOOTER, [key]: '' } } });
+  });
+
+  it('stores every text cleared with the badge still off', async () => {
+    await save({ copyright: '', github: '', x: '', linkedin: '', madeWithBadge: false });
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { copyright: '', github: '', x: '', linkedin: '', madeWithBadge: false } });
+  });
+
+  it('keeps a key the patch leaves out: why a cleared value must be sent as ""', async () => {
+    // JSON drops `undefined`: what the old form's "blank → undefined" put on the wire.
+    await save({ ...FOOTER, github: undefined, madeWithBadge: true });
+    expect(stored.footer).toStrictEqual({ ...FOOTER, madeWithBadge: true });
+  });
+});
