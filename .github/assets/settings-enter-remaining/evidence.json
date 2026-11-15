@@ -1,0 +1,403 @@
+{
+  "environment": "Component fixture: the real Add-ons and Visibility & access settings screens (before: main’s form components; after: this branch) with the real design system and EN/AR catalogs; fictional site; API answered by interception, every request recorded; site access fixed to Admin; trusted CDP key events in headless Chromium; not the signed-in dashboard or production; no screen reader was run",
+  "baseline": "ef2c289bf1945006b0aa08e2aa434a7893098326",
+  "head": "e3fe29d5fd67bcb771ac59780d9a83d478ccf7c2",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/features/addons/components/addon-settings-form.tsx",
+    "apps/app/src/features/reader-access/components/readers-section.tsx",
+    "apps/app/src/features/reader-access/components/advanced-access.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "enter-addons-before-en-1440.png",
+      "family": "addons",
+      "screen": "addons",
+      "locale": "en",
+      "width": 1440,
+      "key": "settings.addons.editUrl.label",
+      "text": "https://github.com/fieldnotes/handbook/edit/main/{path}",
+      "phase": "before",
+      "dir": "ltr",
+      "overflow": false,
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/addons/edit-suggestions",
+            "body": {
+              "config": {
+                "urlTemplate": "https://github.com/fieldnotes/handbook/edit/main/{path}"
+              },
+              "expectedRevision": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "enter-addons-after-en-1440.png",
+      "family": "addons",
+      "screen": "addons",
+      "locale": "en",
+      "width": 1440,
+      "key": "settings.addons.editUrl.label",
+      "text": "https://github.com/fieldnotes/handbook/edit/main/{path}",
+      "phase": "after",
+      "dir": "ltr",
+      "overflow": false,
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/addons/edit-suggestions",
+            "body": {
+              "config": {
+                "urlTemplate": "https://github.com/fieldnotes/handbook/edit/main/{path}"
+              },
+              "expectedRevision": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "enter-email-domains-before-ar-390.png",
+      "family": "email-domains",
+      "screen": "readers",
+      "locale": "ar",
+      "width": 390,
+      "key": "settings.visibility.domains.label",
+      "text": "fieldnotes.example",
+      "phase": "before",
+      "dir": "rtl",
+      "overflow": false,
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PUT",
+            "path": "/api/app/projects/site-fieldnotes/reader-access/domains",
+            "body": { "domains": ["fieldnotes.example"] }
+          }
+        ]
+      }
+    },
+    {
+      "file": "enter-email-domains-after-ar-390.png",
+      "family": "email-domains",
+      "screen": "readers",
+      "locale": "ar",
+      "width": 390,
+      "key": "settings.visibility.domains.label",
+      "text": "fieldnotes.example",
+      "phase": "after",
+      "dir": "rtl",
+      "overflow": false,
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "تم الحفظ",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PUT",
+            "path": "/api/app/projects/site-fieldnotes/reader-access/domains",
+            "body": { "domains": ["fieldnotes.example"] }
+          }
+        ]
+      }
+    },
+    {
+      "file": "enter-jwt-before-en-390.png",
+      "family": "jwt",
+      "screen": "readers",
+      "locale": "en",
+      "width": 390,
+      "key": "settings.visibility.jwt.audience",
+      "text": "fieldnotes-handbook-v2",
+      "advanced": true,
+      "phase": "before",
+      "dir": "ltr",
+      "overflow": false,
+      "afterEnter": {
+        "dirtySources": ["_r_0_", "_r_7_"],
+        "saveBarShown": true,
+        "status": "",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": []
+      }
+    },
+    {
+      "file": "enter-jwt-after-en-390.png",
+      "family": "jwt",
+      "screen": "readers",
+      "locale": "en",
+      "width": 390,
+      "key": "settings.visibility.jwt.audience",
+      "text": "fieldnotes-handbook-v2",
+      "advanced": true,
+      "phase": "after",
+      "dir": "ltr",
+      "overflow": false,
+      "afterEnter": {
+        "dirtySources": ["_r_0_", "_r_7_"],
+        "saveBarShown": true,
+        "status": "",
+        "confirmationOpen": true,
+        "toasts": [],
+        "focused": "button",
+        "writes": []
+      }
+    },
+    {
+      "file": "enter-jwt-before-ar-1440.png",
+      "family": "jwt",
+      "screen": "readers",
+      "locale": "ar",
+      "width": 1440,
+      "key": "settings.visibility.jwt.audience",
+      "text": "fieldnotes-handbook-v2",
+      "advanced": true,
+      "phase": "before",
+      "dir": "rtl",
+      "overflow": false,
+      "afterEnter": {
+        "dirtySources": ["_r_0_", "_r_7_"],
+        "saveBarShown": true,
+        "status": "",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": []
+      }
+    },
+    {
+      "file": "enter-jwt-after-ar-1440.png",
+      "family": "jwt",
+      "screen": "readers",
+      "locale": "ar",
+      "width": 1440,
+      "key": "settings.visibility.jwt.audience",
+      "text": "fieldnotes-handbook-v2",
+      "advanced": true,
+      "phase": "after",
+      "dir": "rtl",
+      "overflow": false,
+      "afterEnter": {
+        "dirtySources": ["_r_0_", "_r_7_"],
+        "saveBarShown": true,
+        "status": "",
+        "confirmationOpen": true,
+        "toasts": [],
+        "focused": "button",
+        "writes": []
+      }
+    }
+  ],
+  "recording": {
+    "file": "flow-after-en-1440.webm",
+    "locale": "en",
+    "width": 1440,
+    "steps": [
+      {
+        "step": "Add-ons: typed an edit link, Shift+Enter: nothing sent",
+        "dirtySources": ["_r_1e_"],
+        "saveBarShown": true,
+        "status": "",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": []
+      },
+      {
+        "step": "Add-ons: Enter twice: one write for this add-on, then \"Saved\"",
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/addons/edit-suggestions",
+            "body": {
+              "config": {
+                "urlTemplate": "https://github.com/fieldnotes/handbook/edit/main/{path}"
+              },
+              "expectedRevision": 2
+            }
+          }
+        ]
+      },
+      {
+        "step": "Add-ons: Enter in the clean form: nothing sent",
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/addons/edit-suggestions",
+            "body": {
+              "config": {
+                "urlTemplate": "https://github.com/fieldnotes/handbook/edit/main/{path}"
+              },
+              "expectedRevision": 2
+            }
+          }
+        ]
+      },
+      {
+        "step": "Allowed domains: Enter saves the domain, then \"Saved\"",
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/addons/edit-suggestions",
+            "body": {
+              "config": {
+                "urlTemplate": "https://github.com/fieldnotes/handbook/edit/main/{path}"
+              },
+              "expectedRevision": 2
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/app/projects/site-fieldnotes/reader-access/domains",
+            "body": { "domains": ["fieldnotes.example"] }
+          }
+        ]
+      },
+      {
+        "step": "JWT: Enter opens the confirmation; nothing sent, nothing said",
+        "dirtySources": ["_r_0_", "_r_7_"],
+        "saveBarShown": true,
+        "status": "",
+        "confirmationOpen": true,
+        "toasts": [],
+        "focused": "button",
+        "writes": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/addons/edit-suggestions",
+            "body": {
+              "config": {
+                "urlTemplate": "https://github.com/fieldnotes/handbook/edit/main/{path}"
+              },
+              "expectedRevision": 2
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/app/projects/site-fieldnotes/reader-access/domains",
+            "body": { "domains": ["fieldnotes.example"] }
+          }
+        ]
+      },
+      {
+        "step": "JWT: Escape cancels; the edit stays and the bar stays up",
+        "dirtySources": ["_r_0_", "_r_7_"],
+        "saveBarShown": true,
+        "status": "",
+        "confirmationOpen": false,
+        "toasts": [],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/addons/edit-suggestions",
+            "body": {
+              "config": {
+                "urlTemplate": "https://github.com/fieldnotes/handbook/edit/main/{path}"
+              },
+              "expectedRevision": 2
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/app/projects/site-fieldnotes/reader-access/domains",
+            "body": { "domains": ["fieldnotes.example"] }
+          }
+        ]
+      },
+      {
+        "step": "JWT: Enter again, then Enter on Save in the confirmation: one write and the saved toast",
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "",
+        "confirmationOpen": false,
+        "toasts": ["JWT configuration saved."],
+        "focused": "input",
+        "writes": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/addons/edit-suggestions",
+            "body": {
+              "config": {
+                "urlTemplate": "https://github.com/fieldnotes/handbook/edit/main/{path}"
+              },
+              "expectedRevision": 2
+            }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/app/projects/site-fieldnotes/reader-access/domains",
+            "body": { "domains": ["fieldnotes.example"] }
+          },
+          {
+            "method": "PUT",
+            "path": "/api/app/projects/site-fieldnotes/reader-access/jwt",
+            "body": {
+              "enabled": true,
+              "issuer": "https://portal.example.com",
+              "audience": "fieldnotes-handbook-v2",
+              "jwksUrl": "https://portal.example.com/.well-known/jwks.json",
+              "publicJwks": null,
+              "subjectClaim": "sub",
+              "emailClaim": "email",
+              "nameClaim": "name",
+              "groupsClaim": "groups",
+              "claimMapping": {},
+              "sessionTtlMinutes": 480,
+              "maxTokenAgeSeconds": 300,
+              "clockToleranceSecs": 30
+            }
+          }
+        ]
+      }
+    ],
+    "pageErrors": []
+  }
+}

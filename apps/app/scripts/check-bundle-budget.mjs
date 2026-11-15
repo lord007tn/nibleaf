@@ -63,11 +63,18 @@ const profiles = {
 // (sonner, its icons and theme glue, ~13.8 KiB) mounts after hydration instead of
 // with the page (components/deferred-toaster.tsx). Measured 359.41 and 361.06 KiB
 // (about 368,036 and 369,725 bytes); the margin is ~1 KiB.
+// auth-sign-in 369_100 → 324_100, auth-sign-up 370_800 → 327_100 (#711): the
+// published-docs routes' head() and headers() import their SEO helpers when they
+// run, the root reads the no-flash theme script from its own small module, and the
+// reader routes' pending component only renders the skeleton the reader chrome
+// hands down. Product pages no longer load the reader's SEO, theme, redirect and
+// chrome-copy chunks (about 44 KiB). Measured with #703 on main: 322,990 and
+// 326,001 bytes (CI); the margin is ~1 KiB.
 const gzipBudgets = {
   'public-docs': 345_100,
   'public-docs-index': 345_100,
-  'auth-sign-in': 369_100,
-  'auth-sign-up': 370_800,
+  'auth-sign-in': 324_100,
+  'auth-sign-up': 327_100,
 };
 
 /** The published-docs profiles: the dashboard, auth and marketing boundaries
