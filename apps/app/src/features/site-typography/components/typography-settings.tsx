@@ -135,7 +135,8 @@ function TypographyForm({ project }: { project: Project }) {
           <form.Field key={name} name={name}>
             {(field) => (
               <FormField<string> control="field" description={t(hint)} field={field} label={t(label)}>
-                {(control) => <FontSelect control={control} options={fontOptions(name, field.state.value)} />}
+                {/* The site's saved font stays listed, so picking another and coming back needs no Discard. */}
+                {(control) => <FontSelect control={control} options={fontOptions(name, draft.baseline[name])} />}
               </FormField>
             )}
           </form.Field>

@@ -204,6 +204,14 @@ describe('TypographySettings: the draft', () => {
     expect(region()).toBeNull();
   });
 
+  it("keeps the site's own font in its picker after another is picked, so going back is clean", async () => {
+    await pickFont('headingFont', 'Inter');
+    expect(region()).not.toBeNull();
+    await pickFont('headingFont', 'Merriweather');
+    expect(shown()).toEqual(showing(SAVED));
+    expect(region()).toBeNull();
+  });
+
   it('saves only what changed as a config.typography patch, then is clean on the server-confirmed values', async () => {
     await pickFont('codeFont', 'JetBrains Mono');
     await preset('article');
