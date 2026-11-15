@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture in headless Chromium: the real AppProviders (Sonner toast host), SaveRegion and Site settings → Analytics form with the real design system and EN/AR catalogs, in a stand-in dashboard frame; fictional site; the config PATCH answered by interception (network failure, 409, 500, then success); touch emulated for phone layouts; on-screen keyboard simulated by overriding visualViewport.height; not the signed-in dashboard, not production, not a physical phone",
-  "baseline": "94296fda439ae40193b270a874e470f8373972e8",
-  "head": "85d544064328690d1246ece964b4bd60b93e37d1",
+  "baseline": "9fe273ca84f6437eb894c9333d4cfecb1861965c",
+  "head": "5a06f9db9d0263f6cd9430c3f412911f03277847",
   "pr703": "e8b7b6a3ccef22af28f0babb1bba9f2ef9919b19",
   "uncommitted": [],
   "swappedForBefore": ["apps/app/src/components/app-providers.tsx"],

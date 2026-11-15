@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { toast } from 'sonner';
@@ -33,7 +33,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-async function hydrate(page: React.ReactNode) {
+async function hydrate(page: ReactNode) {
   container = document.createElement('div');
   container.innerHTML = renderToString(page);
   document.body.append(container);

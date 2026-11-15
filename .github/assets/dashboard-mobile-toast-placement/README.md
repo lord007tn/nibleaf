@@ -1,7 +1,7 @@
 # Dashboard toasts on phones: clear of Save and Discard
 
 **Local component fixture. This is not the signed-in dashboard, not production, and not a physical phone.** Before
-(`main@94296fda`) and after (`85d54406`) captures. They use the real `AppProviders` (Sonner's toast host), the real
+(`main@9fe273ca`) and after (`5a06f9db`) captures. They use the real `AppProviders` (Sonner's toast host), the real
 SaveRegion and the real Site settings → Analytics form, in a stand-in dashboard frame: a sticky 48px header and the
 `PageContainer` column. The site is fictional. "Before" swaps in main's `app-providers.tsx` and nothing else. A third
 phase, `after-703`, also swaps in PR #703's deferred toast host (`e8b7b6a3`) and is measured but not screenshotted.
