@@ -486,6 +486,8 @@ describe('call-to-action hover in the header and on the not-found page', () => {
       expect(button.classes, button.name).toContain('bg-primary');
       expect(button.classes, button.name).toContain('text-primary-foreground');
       expect(button.classes, button.name).not.toMatch(/hover:opacity-/);
+      // Only the fill transitions: transition-colors would also fade the focus outline in.
+      expect(button.classes, button.name).toContain('transition-[background-color]');
     }
   });
 
