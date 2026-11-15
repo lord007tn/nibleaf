@@ -63,6 +63,9 @@ export function createEditorSaveQueue<T>(save: (draft: PageDraft) => Promise<T>,
       return result;
     },
     hasPending: () => pending > 0,
+    /** The last draft sent that has not settled yet: what the server holds once
+     *  every pending write lands. Undefined when nothing is pending. */
+    pendingDraft: (): PageDraft | undefined => latest?.draft,
     settled: () => tail,
     resolveConflict: (id: string, revision: string) => {
       revisions.set(id, { revision, bases: new Set([revision]) });
