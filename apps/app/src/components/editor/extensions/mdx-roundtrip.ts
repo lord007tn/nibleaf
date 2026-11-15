@@ -517,6 +517,21 @@ const decodeAttributeValue = (value: string): string =>
 const escapeHtmlAttribute = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** A blank line, as the Markdown parser reads one: a line of spaces and tabs at most,
+ *  with `\r\n` (never split in two) or a lone `\r` read as a line break too. */
+const BLANK_LINE = /(?:\r\n|\r(?!\n)|\n)[ \t]*(?:\r\n|\r(?!\n)|\n)/;
+
+/**
+ * A component opener's attribute value for the HTML the editor parses (#721). The
+ * opener's HTML is read as a Markdown HTML block, or inline HTML in its paragraph,
+ * and a blank line ends either one: the opener would be cut there and its component
+ * dropped. So a value holding a blank line has its line breaks written as character
+ * references, and the opener's HTML holds none; the DOM decodes them, so the editor
+ * holds the value exactly as written. Any other value is written as before.
+ */
+const escapeOpenerAttribute = (value: string): string =>
+  BLANK_LINE.test(value) ? escapeHtmlAttribute(value).replace(/\r/g, '&#13;').replace(/\n/g, '&#10;') : escapeHtmlAttribute(value);
+
 const lineIsFence = (line: string): { marker: string; length: number } | null => {
   const match = /^\s*(`{3,}|~{3,})/.exec(line);
   return match?.[1] ? { marker: match[1][0] ?? '`', length: match[1].length } : null;
@@ -1070,7 +1085,7 @@ function videoEmbedPlaceholder(range: SourceRange, frame: { open: TagToken; clos
   const embeds = scanAuthoredEmbeds(inner);
   const embed = embeds[0];
   if (embeds.length !== 1 || !embed?.closed || inner.slice(0, embed.start).trim() || inner.slice(embed.end).trim()) return null;
-  return `<${VIDEO_EMBED_ELEMENT} data-source="${encodeMdxSource(range.source)}" data-frame-open="${frameOpen}" data-frame-close="${frameClose}" data-caption="${escapeHtmlAttribute(caption)}"></${VIDEO_EMBED_ELEMENT}>`;
+  return `<${VIDEO_EMBED_ELEMENT} data-source="${encodeMdxSource(range.source)}" data-frame-open="${frameOpen}" data-frame-close="${frameClose}" data-caption="${escapeOpenerAttribute(caption)}"></${VIDEO_EMBED_ELEMENT}>`;
 }
 
 function placeholder(range: SourceRange): string {
@@ -1084,7 +1099,7 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
   const known = definition.attrs
     .map((name) => {
       const value = effective[name];
-      return value === '' || value === false || value == null ? '' : ` data-${name}="${escapeHtmlAttribute(String(value))}"`;
+      return value === '' || value === false || value == null ? '' : ` data-${name}="${escapeOpenerAttribute(String(value))}"`;
     })
     .join('');
   return ` data-mdx-source-open="${encodeMdxSource(open.raw)}" data-mdx-source-close="${encodeMdxSource(close?.raw ?? '')}" data-mdx-source-original="${encodeMdxSource(
@@ -1231,7 +1246,7 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
     const close = closeIndex == null ? undefined : tokens[closeIndex];
     const wrapper = definition.inline ? 'span' : 'div';
     const marker = definition.calloutVariant
-      ? ` data-callout="" data-variant="${escapeHtmlAttribute(
+      ? ` data-callout="" data-variant="${escapeOpenerAttribute(
           definition.canonical === 'Callout'
             ? String(attributeValue(parseAttributes(token.raw, token.name), 'type') ?? definition.calloutVariant)
             : definition.calloutVariant,

@@ -34,6 +34,18 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
+  it('prepares a page of components with blank lines inside their values in one pass (#721)', () => {
+    const blankValues = (n: number) => '<Card title="a\n\nb" href={`x\n  \ny`}>\n\nBody\n\n</Card>\n\n'.repeat(n);
+    const [small, large] = growthMs(parse, blankValues(250), blankValues(1000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  it('prepares one value holding n blank lines in one pass (#721)', () => {
+    const longValue = (n: number) => `<Card title="${'a\n\n'.repeat(n)}">\n\nBody\n\n</Card>\n`;
+    const [small, large] = growthMs(parse, longValue(5000), longValue(20_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   // Tags that never close: each `<` after the first must not rescan the rest of the page.
   it.each([
     ['<iframe ', '<iframe '],

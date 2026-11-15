@@ -20,6 +20,15 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * inside values, unterminated values, adjacent attributes, self-closing, inline and
  * nested forms; and the serializer corpus's pages (#693).
  *
+ * The one change since is #721: a component whose attribute value, as the editor
+ * reads it, holds a blank line is kept, where main dropped it and the whole rest of
+ * the page with it. Here that is a quoted value read with backslash escapes past
+ * `\"` and across the blank line after it (`title="Old\"⏎>⏎⏎<b title="`). Such an
+ * opener ends where those escapes end it, so the text between that end and the
+ * MDX grammar's is still rewritten: reading non-Frame values with the grammar is
+ * #714. Each such page keeps its opener and everything from its closing tag on,
+ * saves to a fixed point, and is counted.
+ *
  * `__fixtures__/non-frame-main.json` holds a digest of main's result for each page;
  * it was made by running this file against main's editor with
  * `WRITE_NON_FRAME_MAIN=1`. Regenerate it only when non-Frame reading changes on
@@ -30,6 +39,8 @@ const SEED = 0x57_9a_11_0e;
 const PER_COMPONENT = 40;
 /** Each component occurs on at least this many generated pages. */
 const MIN_PAGES = 20;
+/** A blank line inside a value: a line of spaces and tabs at most. */
+const BLANK_LINE = /\n[ \t]*\n/;
 const FIXTURE = resolve(import.meta.dirname, '__fixtures__/non-frame-main.json');
 
 /** Every supported component but Frame, with the attribute an edit sets; then the
@@ -144,13 +155,16 @@ describe('pages without a Frame read as on main', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
 
-  /** The page's nodes, its save, and its save after the first node with `key` has it set to `Edited`. */
-  const digest = (page: string, key: string): string => {
+  /** The page's nodes, its save, and its save after the first node with `key` has it
+   *  set to `Edited`; and whether a node holds an attribute value with a blank line. */
+  const digest = (page: string, key: string): { digest: string; saved: string; blankLineValue: boolean } => {
     editor.commands.setContent(page, { emitUpdate: false });
     const nodes: string[] = [];
+    let blankLineValue = false;
     let target: { pos: number; attrs: Record<string, unknown> } | undefined;
     editor.state.doc.descendants((node, pos) => {
       nodes.push(node.type.name);
+      blankLineValue ||= Object.values(node.attrs).some((value) => typeof value === 'string' && BLANK_LINE.test(value));
       if (!target && key in node.attrs) target = { pos, attrs: node.attrs };
     });
     const saved = getMarkdown(editor);
@@ -159,16 +173,29 @@ describe('pages without a Frame read as on main', () => {
       editor.view.dispatch(editor.state.tr.setNodeMarkup(target.pos, undefined, { ...target.attrs, [key]: 'Edited' }));
       edited = getMarkdown(editor);
     }
-    return createHash('sha256').update(JSON.stringify({ nodes, saved, edited })).digest('hex').slice(0, 16);
+    return { digest: createHash('sha256').update(JSON.stringify({ nodes, saved, edited })).digest('hex').slice(0, 16), saved, blankLineValue };
   };
 
-  it(`gives main’s nodes, save and edited save for all ${pages.length} pages`, () => {
-    const digests = pages.map(({ page, key }) => digest(page, key));
+  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #721’s`, () => {
+    const results = pages.map(({ page, key }) => digest(page, key));
+    const digests = results.map((result) => result.digest);
     if (process.env.WRITE_NON_FRAME_MAIN) writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
     expect(main.pages).toBe(pages.length);
-    const differences = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [pages[index]?.page]));
-    console.info(`[frame-main-differential] ${pages.length} pages, ${differences.length} differences`);
+    const changed = results.flatMap((result, index) =>
+      result.digest === main.digests[index] ? [] : [{ ...result, page: pages[index]?.page ?? '' }],
+    );
+    // #721: the component and the rest of the page are kept, and the save is a fixed point.
+    const kept = changed.filter((result) => result.blankLineValue);
+    const lost = kept.filter(({ page, saved }) => {
+      const opener = page.slice(0, page.indexOf('"', page.indexOf('="') + 2) + 1);
+      const fromClose = page.slice(page.indexOf('\n\n</') + 2);
+      return !saved.startsWith(opener) || !saved.endsWith(fromClose) || digest(saved, 'title').saved !== saved;
+    });
+    const differences = changed.filter((result) => !result.blankLineValue).map((result) => result.page);
+    console.info(`[frame-main-differential] ${pages.length} pages, ${differences.length} differences, ${kept.length} kept by #721`);
     expect(differences.slice(0, 3)).toEqual([]);
+    expect(lost.map((result) => result.page)).toEqual([]);
+    expect(kept.length).toBe(4);
   }, 600_000);
 });
