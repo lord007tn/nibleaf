@@ -57,6 +57,7 @@ failed saves expanded, it fails with a list of problems when:
   behind.
 
 Sonner keeps reporting `data-y-position="bottom"` throughout: #715 moves the stack with CSS, which selects on it.
-`verify.json` records the Sonner version and whether the deferred toast host (#703) is on the tree; while #703 is
-unmerged, the rows measure the eager host, and the file says so. The jsdom side of the same contract, reading Sonner's
-rendered host and its own stylesheet, is in `apps/app/src/components/app-providers.test.tsx`.
+`verify.json` records the Sonner version and whether the toast host is deferred. Since #703 it loads after
+hydration; each row waits for its live region before the first toast, so the rows measure that real deferred host.
+The jsdom side of the same contract, reading Sonner's rendered host and its own stylesheet, is in
+`apps/app/src/components/app-providers.test.tsx`.

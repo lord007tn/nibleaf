@@ -434,7 +434,7 @@ window.__unmountFixture = () => root.unmount();
   /** `--verify`: #715's placement on this tree, in EN and AR, with no media. */
   async function verifyPlacement(browser, attempted) {
     const providers = await readFile(resolve(app, 'src/components/localized-product-providers.tsx'), 'utf8');
-    // #703 loads the host after hydration: once merged, the providers stop importing the design system's Toaster directly.
+    // Since #703 the host loads after hydration (DeferredToaster); a tree whose providers import the design system's Toaster mounts it eagerly.
     const deferredHost = !providers.includes("'@nibleaf/design-system/components/ui/sonner'");
     // The installed Sonner (the workspace installs hoisted, see pnpm-workspace.yaml).
     const sonner = JSON.parse(await readFile(resolve(root, 'node_modules/sonner/package.json'), 'utf8')).version;
@@ -534,14 +534,14 @@ window.__unmountFixture = () => root.unmount();
       sonner,
       deferredHost: deferredHost
         ? 'on this tree: every row waited for the host region before the first toast'
-        : 'not on this tree (#703 unmerged): rows measure the eager host',
+        : 'not on this tree (before #703): rows measure the eager host',
       attempted: attempted.length,
       failed,
       rows,
     });
     assert.deepEqual(failed, [], 'placement problems (also in verify.json)');
     console.log(
-      `${rows.length} placement rows pass (Sonner ${sonner}); deferred host ${deferredHost ? 'verified' : 'not on this tree (#703 unmerged)'}; verify.json written, no media`,
+      `${rows.length} placement rows pass (Sonner ${sonner}); deferred host ${deferredHost ? 'verified' : 'not on this tree (before #703)'}; verify.json written, no media`,
     );
   }
 

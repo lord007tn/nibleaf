@@ -13,6 +13,12 @@ import { LocalizedProductProviders } from './localized-product-providers';
 // checked in a real browser: .github/assets/dashboard-mobile-toast-placement.
 // jsdom does no layout, so these tests pin the DOM and the rules that geometry rests on.
 
+/**
+ * The toast host loads after hydration, when the browser is idle (deferred-toaster.tsx), and shows the toasts raised before it
+ * arrived. Waiting for it is that public behaviour; the margin covers the first, uncached import of its chunk.
+ */
+const hostSettles = { timeout: 5000 };
+
 let root: Root | undefined;
 let container: HTMLDivElement | undefined;
 
@@ -77,7 +83,7 @@ async function renderDashboardToast(locale: 'en' | 'ar') {
   await act(async () => {
     toast.error('Could not save');
   });
-  await vi.waitFor(() => expect(container?.querySelector('[data-sonner-toast]')).not.toBeNull());
+  await vi.waitFor(() => expect(container?.querySelector('[data-sonner-toast]')).not.toBeNull(), hostSettles);
   const scope = container?.querySelector('[data-dashboard-toasts]');
   const host = scope?.querySelector<HTMLElement>('[data-sonner-toaster]');
   const item = host?.querySelector<HTMLElement>('[data-sonner-toast]');
@@ -154,7 +160,7 @@ it('mounts one toast host, inside the dashboard scope, and leaves toasts in its 
   await act(async () => {
     toast.error('Could not save');
   });
-  await vi.waitFor(() => expect(container?.querySelector('[data-sonner-toast]')).not.toBeNull());
+  await vi.waitFor(() => expect(container?.querySelector('[data-sonner-toast]')).not.toBeNull(), hostSettles);
   expect(container?.querySelectorAll('section[aria-live]')).toHaveLength(1);
   const host = container?.querySelector('[data-sonner-toaster]');
   expect(host?.closest('[data-dashboard-toasts]')).not.toBeNull();
@@ -275,7 +281,7 @@ it('keeps the auth surfaces’ toast host outside the dashboard scope', async ()
   await act(async () => {
     toast('Code sent');
   });
-  await vi.waitFor(() => expect(container?.querySelector('[data-sonner-toaster]')).not.toBeNull());
+  await vi.waitFor(() => expect(container?.querySelector('[data-sonner-toaster]')).not.toBeNull(), hostSettles);
   expect(container?.querySelector('[data-dashboard-toasts]')).toBeNull();
   expect(dashboardRules()).toEqual([]);
 });
