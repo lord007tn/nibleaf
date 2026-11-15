@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCENT_TEXT_CONTRAST,
+  accentTextContrast,
   applyThemeTemplateConfig,
   canonicalThemeTemplateJson,
+  channelsContrast,
+  channelsHex,
   contrastRatio,
   inspectThemeTemplateInput,
+  mixOklab,
+  mixOklabChannels,
   previewThemeConfigChanges,
   readableAccentText,
   readableCodeAccent,
@@ -33,6 +38,35 @@ const onTint = (color: string, background: string, weight: number) => {
   const tint = luminance(rgb(background).map((value, index) => value * (1 - weight) + (rgb(color)[index] ?? 0) * weight));
   return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
 };
+
+describe('mixOklab', () => {
+  // Checked against Chromium's rendering in tests/integration/theme-contrast/oklab-mix.mjs.
+  it('mixes in OKLab as `color-mix(in oklab, <color> <share>, <other>)` does', () => {
+    expect(mixOklab('#000000', '#ffffff', 0.72)).toBe('#292929');
+    expect(mixOklab('#5546e8', '#ffffff', 0.72)).toBe('#7c81f3');
+    expect(mixOklab('#0b3d91', '#ffffff', 0.55)).toBe('#7694c5');
+  });
+
+  it('returns either end at 100% and 0%, and leaves a value that is not a hex untouched', () => {
+    expect(mixOklab('#b96a3d', '#ffffff', 1)).toBe('#b96a3d');
+    expect(mixOklab('#b96a3d', '#ffffff', 0)).toBe('#ffffff');
+    expect(mixOklab('#abc', '#ffffff', 1)).toBe('#aabbcc');
+    expect(mixOklab('var(--x)', '#ffffff', 0.5)).toBe('var(--x)');
+  });
+
+  it('keeps the fraction the browser keeps, so a colour just under AA is not rounded over the line (#744)', () => {
+    const channels = mixOklabChannels('#2d25e3', '#ffffff', 0.72);
+    expect(channels).not.toBeNull();
+    const mixed = channels as NonNullable<typeof channels>;
+    expect(channelsHex(mixed)).toBe('#5874f1');
+    expect(mixed.some((value) => !Number.isInteger(value))).toBe(true);
+    // On its own 10% tint over #0a0a0a: AA once rounded, short of it as drawn.
+    expect(accentTextContrast([0x58, 0x74, 0xf1], '#0a0a0a').tint).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(accentTextContrast(mixed, '#0a0a0a').tint).toBeLessThan(ACCENT_TEXT_CONTRAST);
+    expect(channelsContrast(mixed, '#0a0a0a')).toBeCloseTo(contrastRatio('#5874f1', '#0a0a0a'), 1);
+    expect(mixOklabChannels('var(--x)', '#ffffff', 0.5)).toBeNull();
+  });
+});
 
 describe('readableOnBackground', () => {
   it('reaches the target on a mid-tone background by trying the other side too', () => {
