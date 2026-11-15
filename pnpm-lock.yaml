@@ -442,12 +442,6 @@ importers:
       jsdom:
         specifier: ^31.0.0
         version: 31.0.0(@noble/hashes@2.4.0)
-      micromark:
-        specifier: 4.0.2
-        version: 4.0.2
-      micromark-extension-mdxjs:
-        specifier: 3.0.0
-        version: 3.0.0
       nitro:
         specifier: 3.0.260903-beta
         version: 3.0.260903-beta

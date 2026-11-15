@@ -5,20 +5,15 @@ import main from './__fixtures__/jsx-openers-main.json';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
- * Generated component opening tags (valid MDX, as the MDX compiler accepts it, and
+ * For every generated opening tag (valid MDX, as the MDX compiler accepts it, and
  * malformed: Unicode and namespaced names, spread attributes, `a.b`, `x::y`,
- * backslashes before quotes), against main's results (#579 reads openers with the
- * MDX grammar, `./extensions/jsx-attributes`):
- *
- * - A page MDX compiles with no backslash in its value gives what main gives: the
- *   same nodes, the same saved page, and the same page after the title or caption
- *   is edited.
- * - A page MDX compiles with a backslash in its value (`title="Old\"`, the title
- *   `Old\`): main dropped the component or misread its attributes. It now loads as
- *   the component, saves byte for byte, and an edit rewrites only that value.
- * - A page MDX rejects (`a.b="x"`, `x::y="1"`, `"a \"b\" c"`) loads as one opaque
- *   block from the opener to its closing tag and saves byte for byte. Main
- *   structured some of these and dropped others.
+ * backslashes before quotes), the editor gives what main gives: the same nodes,
+ * the same saved page, and the same page after the title or caption is edited.
+ * The one change is #579: a Frame's quoted values are read with the reader's HTML
+ * rules, with no backslash escapes, so a Frame whose caption holds a backslash
+ * (`caption="Old\"`, the caption `Old\`) is kept, saved byte for byte, and an
+ * edit rewrites only the caption, to its first matching quote. Main dropped most
+ * of these Frames.
  *
  * `__fixtures__/jsx-openers-main.json` holds main's results (main 14209455) and
  * whether `@mdx-js/mdx` compiles each page; it was made by running this generator
@@ -58,12 +53,6 @@ const pages = COMPONENTS.flatMap(([tag, key]) =>
     FOLLOWERS.map((follower) => ({ tag, key, value, source: `Intro.\n\n<${tag} ${key}=${value}${follower}>\n\nBody\n\n</${tag}>` })),
   ),
 );
-const COMPONENT_NODE: Record<(typeof COMPONENTS)[number][0], string> = {
-  Card: 'mdxCard',
-  Step: 'mdxStep',
-  Accordion: 'mdxAccordion',
-  Frame: 'mdxFrame',
-};
 
 interface Result {
   nodes: string[];
@@ -96,35 +85,24 @@ describe('component opening tags, as main reads them', () => {
     expect(main.filter((entry) => entry.valid).length).toBeGreaterThanOrEqual(214);
   });
 
-  it(`gives main’s results, or the grammar’s where main misread, for all ${pages.length} pages`, () => {
+  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, except #579’s Frames`, () => {
     const differences: Array<{ source: string; expected: Result; head: Result }> = [];
-    const counts = { asMain: 0, backslashRead: 0, rejectedOpaque: 0 };
+    let frames = 0;
     for (const [index, { tag, key, value, source }] of pages.entries()) {
       const fromMain = main[index] as (typeof main)[number];
       const head = read(source, key);
-      let expected: Result;
-      if (fromMain.valid && !value.includes('\\')) {
-        expected = { nodes: fromMain.nodes, saved: fromMain.saved, edited: fromMain.edited };
-        counts.asMain++;
-      } else if (fromMain.valid) {
-        // The component, its value read with no escapes, edited in place.
+      let expected: Result = { nodes: fromMain.nodes, saved: fromMain.saved, edited: fromMain.edited };
+      if (tag === 'Frame' && value.includes('\\')) {
+        frames++;
         expected = {
-          nodes: ['paragraph', 'text', COMPONENT_NODE[tag], 'paragraph', 'text', 'paragraph'],
+          nodes: ['paragraph', 'text', 'mdxFrame', 'paragraph', 'text', 'paragraph'],
           saved: source,
-          edited: source.replace(`${key}=${value}`, `${key}="Edited"`),
+          edited: source.replace(/caption="[^"]*"/, 'caption="Edited"'),
         };
-        counts.backslashRead++;
-      } else {
-        // One opaque node and no component: a block, or inline where Markdown reads the
-        // opener's line as a paragraph (`title="a \"b\" c"` isn't an HTML tag to it).
-        const opaque = head.nodes.filter((node) => node.startsWith('mdxOpaque')).length === 1 && !head.nodes.includes(COMPONENT_NODE[tag]);
-        expected = { nodes: opaque ? head.nodes : ['one opaque node, no component'], saved: source, edited: null };
-        counts.rejectedOpaque++;
       }
       if (JSON.stringify(head) !== JSON.stringify(expected)) differences.push({ source, expected, head });
     }
     expect(differences.slice(0, 3)).toEqual([]);
-    expect(counts.backslashRead).toBeGreaterThan(0);
-    console.info(`[jsx-openers-match-main] ${JSON.stringify(counts)}`);
+    expect(frames).toBe(51);
   }, 60_000);
 });
