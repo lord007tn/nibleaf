@@ -162,15 +162,15 @@ export function reconcileServerChange<T extends DraftValues>({
  * differs from that baseline, so values the form took from the server are
  * not edits. Without a response, those keys confirm that baseline.
  *
- * A refetch during the save can bring a value the response can't rewind: one
- * that is neither what the save started from nor what it sent (compared in
- * sent space), so only someone else's write explains it. Such a key confirms
- * the reached value, not the response. Its edits are judged as above: a value
- * the person changed since the save stays, dirty, with its conflict, and
- * "theirs" is the reached value; the value the save sent is the save's own and
- * takes it, as any server change to a clean field. A reached value equal to
- * where the save started or to what it sent proves nothing newer (a refetch
- * from before the save, or the save's own echo): the response wins.
+ * A refetch during the save can show a value that is neither what the save
+ * started from, nor what it sent, nor what the response confirms (compared in
+ * sent space): someone else's write from before or after the save, or the
+ * server normalizing differently. Values can't order it against the response,
+ * so it is never resolved silently. Where the form holds another value for
+ * that key (the one sent, an edit, a "Keep mine"), the form keeps it, dirty,
+ * against the refetched value as baseline: a conflict reported during the save
+ * survives, and "theirs" is the value the person saw. Anywhere else the
+ * response is confirmed, as when nothing was refetched.
  *
  * During a transforming save, a key the person hasn't changed since is judged
  * in sent space by what the save sent for it, and is also confirmed when that
@@ -193,14 +193,22 @@ export function reconcileSaveSuccess<T extends DraftValues>({
   const keys = keysOf(submitted, current, ...(during ? [during.baseline] : []));
   const reachedSent = during && inSentSpace(during.save, during.baseline);
   const fromSent = during && inSentSpace(during.save, during.save.from);
-  const superseded = new Set(
-    keys.filter((key) => reachedSent && !deepEqual(reachedSent[key], fromSent?.[key]) && !deepEqual(reachedSent[key], during?.save.values[key])),
-  );
   const responded = confirmed ?? (during ? (Object.fromEntries(keys.map((key) => [key, reference(key)])) as T) : submitted);
+  const respondedSent = during && inSentSpace(during.save, responded);
+  const agreesWithReached = during && agreesWith(current, during.baseline, during.save);
+  const contested = new Set(
+    keys.filter(
+      (key) =>
+        reachedSent &&
+        ![fromSent?.[key], during?.save.values[key], respondedSent?.[key]].some((known) => deepEqual(reachedSent[key], known)) &&
+        !agreesWithReached?.(key),
+    ),
+  );
   const baseline =
-    superseded.size === 0 ? responded : ({ ...responded, ...Object.fromEntries([...superseded].map((key) => [key, during?.baseline[key]])) } as T);
+    contested.size === 0 ? responded : ({ ...responded, ...Object.fromEntries([...contested].map((key) => [key, during?.baseline[key]])) } as T);
   const agreesWithNew = agreesWith(current, baseline, during?.save);
   const edited = (key: string) => {
+    if (contested.has(key)) return true;
     if (!untouched(during?.save, current, key)) return !deepEqual(current[key], reference(key));
     const sentSpaceReference = awaiting(key) ? submitted[key] : reachedSent?.[key];
     return !deepEqual(during?.save.values[key], sentSpaceReference) && !agreesWithNew(key);

@@ -60,12 +60,13 @@ type ActiveSave<T extends DraftValues> = { id: number; generation: number; pendi
  *   the form's value for it is the person's (sent or newer), and the echo is
  *   never a conflict. After the echo the key follows the normal rules;
  * - after a save, edits made while it was in flight survive and stay dirty;
- * - a save's response never rewinds a value a refetch brought during the
- *   save that only someone else's write explains (neither where the save
- *   started nor what it sent): that key confirms the refetched value. An edit
- *   made since the save keeps its conflict, with "theirs" that value. A refetch
- *   that renders only after `succeeded` (TanStack batches observer updates) is
- *   reconciled then, as any server change, and ends the same way;
+ * - a save's response never silently overrides a value a refetch showed
+ *   during the save that is neither where the save started, nor what it sent,
+ *   nor what the response confirms: where the form holds another value for
+ *   that key (sent, edited or kept), it stays, dirty, against the refetched
+ *   value, so the conflict survives and "theirs" is the value the person saw.
+ *   A refetch that renders only after `succeeded` (TanStack batches observer
+ *   updates) is reconciled then, as any server change;
  * - `isDirty` compares the form with the confirmed baseline, nothing else.
  *
  * Pass `toSent` when the submit handler sends a transformed payload (rows

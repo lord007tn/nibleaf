@@ -189,7 +189,7 @@ describe('a response that arrives after a refetch already landed (#743)', () => 
   const succeed = ({ baseline, current, save }: ReturnType<typeof play>, confirmed?: Values) =>
     reconcileSaveSuccess({ submitted: save.values, current, confirmed, during: { save, baseline } });
 
-  it('confirms someone else’s value, not the response, and keeps the newer edit as one', () => {
+  it('keeps the newer edit against the refetched value, which "theirs" then takes', () => {
     const state = play({ ...sent, name: 'Newer' }, [{ ...base, name: 'Theirs' }]);
     expect(state.conflicts).toEqual(['name']);
     const result = succeed(state, sent);
@@ -198,12 +198,20 @@ describe('a response that arrives after a refetch already landed (#743)', () => 
     expect(resolveConflict({ ...result, key: 'name', choice: 'theirs' }).name).toBe('Theirs');
   });
 
-  it('confirms someone else’s value over the sent one the person left alone, and over an unsent key', () => {
+  it('keeps the sent value against the refetched one, and confirms the response where the form took the refetched value', () => {
+    // Values can't tell whether 'Theirs' was written before the save (and the
+    // PATCH overwrote it) or after: never adopted silently.
     const state = play(sent, [{ ...base, name: 'Theirs', slug: 'theirs' }]);
     expect(state.conflicts).toEqual(['name']);
     const result = succeed(state, sent);
-    expect(result.baseline).toEqual({ ...base, name: 'Theirs', slug: 'theirs' });
-    expect(result.current).toEqual(result.baseline);
+    expect(result.baseline).toEqual({ ...base, name: 'Theirs' });
+    expect(result.current).toEqual(sent);
+  });
+
+  it('confirms the response, as without the refetch, when it agrees with the refetched value', () => {
+    const state = play(sent, [{ ...base, name: 'Theirs' }, { ...base, name: 'Later' }]);
+    const result = succeed(state, { ...base, name: 'Later' });
+    expect(result).toEqual({ baseline: { ...base, name: 'Later' }, current: { ...base, name: 'Later' } });
   });
 
   it('lets the response win over a refetch from before the save, the save’s own echo, and a stale one after it', () => {
@@ -229,7 +237,7 @@ describe('a response that arrives after a refetch already landed (#743)', () => 
     expect(fold([sent])).toEqual({ baseline: sent, current: sent });
     const theirs = fold([{ ...base, name: 'Theirs' }]);
     expect(theirs.baseline.name).toBe('Theirs');
-    expect(theirs.current.name).toBe('Theirs');
+    expect(theirs.current.name).toBe('  Sent  ');
   });
 });
 

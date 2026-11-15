@@ -67,7 +67,9 @@ return (
 - **`save.succeeded(confirmed)` takes this request's own response** (or nothing), never a snapshot read from the
   query cache. Let the mutation await its query's refetch: the refetched value reaches the form through `source`,
   before or after the response, and is reconciled there for edits and conflicts. A refetched value that is neither
-  what the save started from nor what it sent is someone else's, and the response never rewinds it.
+  what the save started from, nor what it sent, nor what the response confirms can't be ordered against the response
+  (another writer, before or after the save, or different server normalization). The response never overrides it
+  silently: the person's value stays, dirty, against it, with the conflict.
 - **Always submit through `draft.submit()`**, never `form.handleSubmit()`. Only one save runs at a time, and a second
   Save, Enter or Cmd+S during a save is refused. Map a server field error only if the field still holds the value that
   was sent, and only while `save.isCurrent()`.
