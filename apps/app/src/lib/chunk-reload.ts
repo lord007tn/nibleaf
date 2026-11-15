@@ -33,7 +33,8 @@ function reloadOnChunkLoadFailure(event: Event): void {
   // Decide one task later, once the importer has seen the error (Vite rethrows
   // this same error to it right after the event): a load the page can do
   // without (runOptionalLoad) claims its own failure and falls back, so the
-  // page isn't reloaded over it. Any other chunk failing still reloads.
+  // page isn't reloaded over it. Each event consumes at most one claim, so a
+  // required importer sharing the same error still gets normal recovery.
   const payload = (event as Event & { payload?: unknown }).payload;
   const asset = failedAsset(event);
   setTimeout(() => {

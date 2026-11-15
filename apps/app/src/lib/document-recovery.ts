@@ -88,20 +88,25 @@ export function onlySpeculativeLoads(): boolean {
   return speculativeLoads > 0 && !navigationPending;
 }
 
-/** Errors from loads the page can do without, set by runOptionalLoad. */
-const optionalFailures = new WeakSet<object>();
+/** One claim per optional rejection: Vite may reuse an error across importers. */
+const optionalFailures = new WeakMap<object, number>();
 
 /** Runs a load the page has a fallback for (an optional picker or toast host).
  *  Its own failure never reloads the page: the importer sees the error and
  *  falls back. A different chunk failing meanwhile still recovers as usual. */
 export function runOptionalLoad<T>(load: () => Promise<T>): Promise<T> {
   return load().catch((error: unknown) => {
-    if (error !== null && typeof error === 'object') optionalFailures.add(error);
+    if (error !== null && typeof error === 'object') optionalFailures.set(error, (optionalFailures.get(error) ?? 0) + 1);
     throw error;
   });
 }
 
-/** Whether this preload error came from a runOptionalLoad load. */
+/** Consumes one optional-load claim for this preload event, if any remain. */
 export function isOptionalLoadFailure(error: unknown): boolean {
-  return error !== null && typeof error === 'object' && optionalFailures.has(error);
+  if (error === null || typeof error !== 'object') return false;
+  const claims = optionalFailures.get(error) ?? 0;
+  if (!claims) return false;
+  if (claims === 1) optionalFailures.delete(error);
+  else optionalFailures.set(error, claims - 1);
+  return true;
 }
