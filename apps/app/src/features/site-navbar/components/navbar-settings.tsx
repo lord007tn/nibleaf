@@ -43,9 +43,7 @@ import {
   type RowList,
   removeRow,
   restoreRow,
-  type StoredCta,
   sentNavbarValues,
-  storedCta,
 } from '../model/navbar';
 
 /** Props for an address or icon-name field: no autocorrect, left to right in every locale. */
@@ -107,37 +105,22 @@ function NavbarForm({ project }: { project: Project }) {
   const scopeKind = activeLanguage ? 'language' : 'project';
   const identity = [project.id, 'navbar', activeLanguage?.id ?? PROJECT_SCOPE] as const;
 
-  // The CTA texts the server holds for each site: what the project query read,
-  // plus what each successful save's own response stored. The response counts
-  // even when the refetch after it failed, so clearing a CTA saved moments ago
-  // still sends ''. A text stays held once stored: the navbar merge never
-  // removes a key. Never read from the draft.
-  const savedCta = useRef(new Map<string, Set<string>>());
-  const storedNow = (): StoredCta =>
-    new Set([...storedCta(projectNavbar), ...(savedCta.current.get(project.id) ?? [])] as Array<'ctaLabel' | 'ctaUrl'>);
-
+  // Whether the last confirmed save left nothing to save or resolve (`succeeded`'s answer).
+  const settled = useRef(true);
   const { form, ...draft } = useServerDraftForm<NavbarValues>({
     identity,
     source,
     // The save sends trimmed CTA text, lists without blank rows and trimmed icons
     // (from a language, the CTA label and lists only); judge its echo by that.
-    toSent: (value) => sentNavbarValues(scopeKind, value, storedNow()),
+    toSent: (value) => sentNavbarValues(scopeKind, value),
     onSubmit: async (value, save) => {
-      const stored = storedNow();
-      if (navbarProblems(scopeKind, value, stored).length > 0) {
+      if (navbarProblems(scopeKind, value).length > 0) {
         save.failed();
         return 'invalid';
       }
-      const siteId = project.id;
       try {
-        if (activeLanguage) {
-          save.succeeded(await saveLanguage(activeLanguage.id, value, projectNavbar));
-        } else {
-          const saved = await saveProject(value, stored);
-          // Recorded for the site the save was for, even if the form has moved on since.
-          savedCta.current.set(siteId, new Set([...(savedCta.current.get(siteId) ?? []), ...saved.stored]));
-          save.succeeded(saved.values);
-        }
+        const confirmed = activeLanguage ? await saveLanguage(activeLanguage.id, value, projectNavbar) : await saveProject(value);
+        settled.current = save.succeeded(confirmed);
         return 'saved';
       } catch (error) {
         save.failed();
@@ -151,9 +134,6 @@ function NavbarForm({ project }: { project: Project }) {
   // Fields and rows that were left: their problems show, as a field's do once blurred.
   const [left, setLeft] = useState<ReadonlySet<string>>(NOTHING_LEFT);
   const { offer: offerUndo, retire: retireUndo } = useRemovedRowUndo(draft.baseline, JSON.stringify(identity));
-  // Once the server's values replace the baseline, positions no longer mean the rows that were left.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs for each new baseline
-  useEffect(() => setLeft(NOTHING_LEFT), [draft.baseline]);
   const retire = useCallback(() => {
     retireUndo();
     setLeft(NOTHING_LEFT);
@@ -163,10 +143,17 @@ function NavbarForm({ project }: { project: Project }) {
   // Save, Enter and Ctrl+S all come through here. The page's save bar disables
   // Save while saving, so 'busy' only means "nothing new to report".
   const submit = useCallback(async () => {
+    settled.current = true;
     const outcome = await submitDraft();
-    if (outcome === 'saved') retire();
+    // A save never brings a removed row back. When it left the draft unsettled
+    // (edits made during it, or a value changed elsewhere to resolve), the draft,
+    // its conflict and its shown problems all stay.
+    if (outcome === 'saved') {
+      if (settled.current) retire();
+      else retireUndo();
+    }
     return outcome === 'busy' ? 'failed' : outcome;
-  }, [retire, submitDraft]);
+  }, [retire, retireUndo, submitDraft]);
   const discard = useCallback(() => {
     if (isSaving) return;
     discardDraft();
@@ -182,10 +169,13 @@ function NavbarForm({ project }: { project: Project }) {
   const values = useStore(form.store, (state) => state.values);
   const submitted = useStore(form.store, (state) => state.submissionAttempts > 0);
   const problemId = useId();
-  const problems = navbarProblems(scopeKind, values, storedNow());
+  const problems = navbarProblems(scopeKind, values);
   const shown = problems
     .map((problem, index) => ({ ...problem, id: `${problemId}-${index}` }))
-    .filter((problem) => submitted || (problem.rows.length === 0 ? left.has(problem.key) : problem.rows.some((row) => left.has(rowKey(problem.key as RowList, row)))));
+    .filter(
+      (problem) =>
+        submitted || (problem.rows.length === 0 ? left.has(problem.key) : problem.rows.some((row) => left.has(rowKey(problem.key as RowList, row)))),
+    );
   const ctaProblems = (key: 'ctaLabel' | 'ctaUrl') => shown.filter((problem) => problem.key === key);
   const rowProblems = (list: RowList, row: number) => shown.filter((problem) => problem.key === list && problem.rows.includes(row));
 
@@ -198,8 +188,14 @@ function NavbarForm({ project }: { project: Project }) {
     if (!target) return;
     focusNext.current = null;
     const selector =
-      target.control === 'add' ? `[data-navbar-add="${target.list}"]` : `[data-navbar-row="${rowKey(target.list, target.row)}"] [data-navbar-${target.control}]`;
-    formRef.current?.querySelector<HTMLElement>(selector)?.focus();
+      target.control === 'add'
+        ? `[data-navbar-add="${target.list}"]`
+        : `[data-navbar-row="${rowKey(target.list, target.row)}"] [data-navbar-${target.control}]`;
+    const element = formRef.current?.querySelector<HTMLElement>(selector);
+    element?.focus();
+    // After Undo, focus leaves the toast, and Sonner hands it back to whatever
+    // had it before the toast (#751): take it once more, from outside the toast.
+    if (element && document.activeElement !== element) element.focus();
   });
 
   type Rows = NavRow[] | AnchorRow[];
@@ -282,11 +278,7 @@ function NavbarForm({ project }: { project: Project }) {
 
       <form.Field name="ctaLabel">
         {(field) => (
-          <CtaField
-            hint={t('settings.navbar.ctaLabel.hint')}
-            label={t('settings.navbar.ctaLabel.label')}
-            problems={ctaProblems('ctaLabel')}
-          >
+          <CtaField hint={t('settings.navbar.ctaLabel.hint')} label={t('settings.navbar.ctaLabel.label')} problems={ctaProblems('ctaLabel')}>
             {(props) => (
               <Input
                 {...props}
@@ -349,8 +341,18 @@ function NavbarForm({ project }: { project: Project }) {
       <div className="mt-6">
         {activeLanguage ? (
           <>
-            <ToggleRow checked={values.showSearch} disabled hint={t('settings.chrome.scope.globalField')} title={t('settings.navbar.showSearch.title')} />
-            <ToggleRow checked={values.changelog} disabled hint={t('settings.chrome.scope.globalField')} title={t('settings.navbar.changelog.title')} />
+            <ToggleRow
+              checked={values.showSearch}
+              disabled
+              hint={t('settings.chrome.scope.globalField')}
+              title={t('settings.navbar.showSearch.title')}
+            />
+            <ToggleRow
+              checked={values.changelog}
+              disabled
+              hint={t('settings.chrome.scope.globalField')}
+              title={t('settings.navbar.changelog.title')}
+            />
           </>
         ) : (
           <>
@@ -413,9 +415,7 @@ function CtaField({
 
 /** The validator's words for the shown problems, each with the id its field points at. */
 function ProblemText({ problems }: { problems: ShownProblem[] }) {
-  return problems.map((problem) => (
-    <FieldError className="mt-1.5" dir="auto" errors={[problem.message]} id={problem.id} key={problem.id} />
-  ));
+  return problems.map((problem) => <FieldError className="mt-1.5" dir="auto" errors={[problem.message]} id={problem.id} key={problem.id} />);
 }
 
 /** One list (links, tabs or anchors): its heading, its rows and Add. */
@@ -467,7 +467,13 @@ function RowListSection({
           ))}
         </DataList>
       ) : null}
-      <Button className={cn('border-dashed text-muted-foreground', rows.length === 0 && 'mt-2')} data-navbar-add={list} onClick={onAdd} type="button" variant="outline">
+      <Button
+        className={cn('border-dashed text-muted-foreground', rows.length === 0 && 'mt-2')}
+        data-navbar-add={list}
+        onClick={onAdd}
+        type="button"
+        variant="outline"
+      >
         <Plus aria-hidden className="size-4" />
         {t(`settings.navbar.${list}.add`)}
       </Button>
@@ -526,20 +532,28 @@ function NavRowItem({
             : '@min-[30rem]/navrow:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]',
         )}
       >
-        <RowField htmlFor={`${id}-label`} label={t('settings.banner.linkLabel.label')}>
+        <RowFieldBox htmlFor={`${id}-label`} label={t('settings.banner.linkLabel.label')}>
           <Input {...input('label')} dir={textDir} lang={lang} placeholder={t(`settings.navbar.${list}.labelPlaceholder`)} value={row.label} />
-        </RowField>
-        <RowField
-          className={anchor ? '@min-[36rem]/navrow:col-start-2 @min-[36rem]/navrow:row-start-1' : '@min-[30rem]/navrow:col-start-2 @min-[30rem]/navrow:row-start-1'}
+        </RowFieldBox>
+        <RowFieldBox
+          className={
+            anchor
+              ? '@min-[36rem]/navrow:col-start-2 @min-[36rem]/navrow:row-start-1'
+              : '@min-[30rem]/navrow:col-start-2 @min-[30rem]/navrow:row-start-1'
+          }
           htmlFor={`${id}-href`}
           label={t('editor.format.linkPrompt')}
         >
           <Input {...input('href')} {...CODE_INPUT} className="font-mono" inputMode="url" placeholder={HREF_PLACEHOLDER[list]} value={row.href} />
-        </RowField>
+        </RowFieldBox>
         {anchor ? (
-          <RowField className="@min-[36rem]/navrow:col-start-3 @min-[36rem]/navrow:row-start-1" htmlFor={`${id}-icon`} label={t('settings.general.icon.label')}>
+          <RowFieldBox
+            className="@min-[36rem]/navrow:col-start-3 @min-[36rem]/navrow:row-start-1"
+            htmlFor={`${id}-icon`}
+            label={t('settings.general.icon.label')}
+          >
             <Input {...input('icon')} {...CODE_INPUT} placeholder={t('settings.navbar.anchors.iconPlaceholder')} value={(row as AnchorRow).icon} />
-          </RowField>
+          </RowFieldBox>
         ) : null}
         <IconButton
           aria-labelledby={`${id}-remove ${id}-identity`}
@@ -565,7 +579,7 @@ function NavRowItem({
 }
 
 /** A row's field: a small persistent label over its input. */
-function RowField({ label, htmlFor, className, children }: { label: string; htmlFor: string; className?: string; children: ReactNode }) {
+function RowFieldBox({ label, htmlFor, className, children }: { label: string; htmlFor: string; className?: string; children: ReactNode }) {
   return (
     <div className={cn('col-start-1 flex min-w-0 flex-col gap-1', className)}>
       <label className="text-muted-foreground text-xs" htmlFor={htmlFor}>

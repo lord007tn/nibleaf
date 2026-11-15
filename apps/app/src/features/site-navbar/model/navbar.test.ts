@@ -16,7 +16,6 @@ import {
   removeRow,
   restoreRow,
   sentNavbarValues,
-  storedCta,
 } from './navbar';
 
 /** As stored: every field set, rows with and without `external`, an anchor with and without an icon. */
@@ -36,7 +35,6 @@ const STORED: NavbarConfig = {
   showSearch: false,
   changelog: true,
 };
-const NOTHING_STORED = storedCta(undefined);
 
 /**
  * The API's config merge (apps/server/src/actions/projects.ts `mergeConfig`):
@@ -56,7 +54,7 @@ const mergeConfig = (existing: Record<string, unknown>, incoming: Record<string,
 };
 /** A project save as the API takes it: through real JSON and `updateProjectBody`, merged into what is stored, refetched. */
 const saveProject = (stored: NavbarConfig | undefined, values: NavbarValues) => {
-  const body = updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar: projectNavbarPatch(values, storedCta(stored)) } })));
+  const body = updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar: projectNavbarPatch(values) } })));
   const config = JSON.parse(JSON.stringify(mergeConfig(stored ? { navbar: stored } : {}, body.config ?? {}))) as { navbar: NavbarConfig };
   return config.navbar;
 };
@@ -98,20 +96,18 @@ describe('navbarValues', () => {
 
 describe('projectNavbarPatch', () => {
   it('sends every list, so removing the last row of each sends []', () => {
-    const patch = projectNavbarPatch({ ...navbarValues(STORED), links: [], tabs: [], anchors: [] }, storedCta(STORED));
+    const patch = projectNavbarPatch({ ...navbarValues(STORED), links: [], tabs: [], anchors: [] });
     expect(patch).toMatchObject({ links: [], tabs: [], anchors: [] });
     expect(saveProject(STORED, { ...navbarValues(STORED), links: [], tabs: [], anchors: [] })).toMatchObject({ links: [], tabs: [], anchors: [] });
   });
 
-  it('trims the CTA; a cleared stored CTA text is sent as "", a never-stored blank one is left out', () => {
-    expect(projectNavbarPatch({ ...navbarValues(STORED), ctaLabel: '  Start  ', ctaUrl: '   ' }, storedCta(STORED))).toMatchObject({
+  it('always sends both CTA texts, trimmed, a blank one as ""', () => {
+    expect(projectNavbarPatch({ ...navbarValues(STORED), ctaLabel: '  Start  ', ctaUrl: '   ' })).toMatchObject({
       ctaLabel: 'Start',
       ctaUrl: '',
     });
-    const fresh = projectNavbarPatch({ ...navbarValues(undefined), ctaLabel: ' ' }, NOTHING_STORED);
-    expect('ctaLabel' in fresh || 'ctaUrl' in fresh).toBe(false);
-    // A stored '' is still held: clearing again sends '' again.
-    expect(projectNavbarPatch(navbarValues({ ctaLabel: '' }), storedCta({ ctaLabel: '' }))).toMatchObject({ ctaLabel: '' });
+    // Whether or not the server ever held one: a site without a CTA sends '' too.
+    expect(projectNavbarPatch(navbarValues(undefined))).toMatchObject({ ctaLabel: '', ctaUrl: '' });
   });
 
   it('keeps row text as typed, in order, with `external` true, false or absent; only fully blank rows are left out', () => {
@@ -145,7 +141,7 @@ describe('projectNavbarPatch', () => {
   });
 
   it('sends both switches as chosen, so a switch-only edit saves', () => {
-    expect(projectNavbarPatch({ ...navbarValues(STORED), showSearch: true, changelog: false }, storedCta(STORED))).toMatchObject({
+    expect(projectNavbarPatch({ ...navbarValues(STORED), showSearch: true, changelog: false })).toMatchObject({
       showSearch: true,
       changelog: false,
     });
@@ -170,7 +166,11 @@ describe('a save through the real validator and merge', () => {
     const draft: NavbarValues = {
       ctaLabel: '  Start ',
       ctaUrl: '',
-      links: [{ label: ' Docs', href: '/docs ' }, { label: '', href: '' }, { label: 'Half', href: '' }],
+      links: [
+        { label: ' Docs', href: '/docs ' },
+        { label: '', href: '' },
+        { label: 'Half', href: '' },
+      ],
       tabs: [],
       anchors: [
         { label: 'A', href: '/a', icon: ' users ', external: false },
@@ -180,15 +180,18 @@ describe('a save through the real validator and merge', () => {
       changelog: false,
     };
     const stored = saveProject(STORED, draft);
-    expect(navbarValues(stored)).toStrictEqual(sentNavbarValues('project', draft, storedCta(STORED)));
+    expect(navbarValues(stored)).toStrictEqual(sentNavbarValues('project', draft));
     // Saving what was read back sends the same thing again.
     expect(saveProject(stored, navbarValues(stored))).toStrictEqual(stored);
   });
 
-  it('keeps the other config sections and an untouched never-stored CTA', () => {
-    const body = updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar: projectNavbarPatch(navbarValues(undefined), NOTHING_STORED) } })));
+  it('keeps the other config sections; a CTA never set is stored as "" and reads the same', () => {
+    const body = updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar: projectNavbarPatch(navbarValues(undefined)) } })));
     const merged = mergeConfig({ footer: { copyright: '© Acme' } }, body.config ?? {});
-    expect(merged).toStrictEqual({ footer: { copyright: '© Acme' }, navbar: { links: [], tabs: [], anchors: [], showSearch: true, changelog: false } });
+    expect(merged).toStrictEqual({
+      footer: { copyright: '© Acme' },
+      navbar: { ctaLabel: '', ctaUrl: '', links: [], tabs: [], anchors: [], showSearch: true, changelog: false },
+    });
   });
 });
 
@@ -196,7 +199,13 @@ describe('languageNavbarConfig', () => {
   const projectValues = navbarValues(STORED);
 
   it('sends the full override with its non-empty pieces only, and never the global fields', () => {
-    const config = languageNavbarConfig({ ...projectValues, ctaLabel: ' احجز ', links: [{ label: 'التوثيق', href: '/docs' }], tabs: [], anchors: [] });
+    const config = languageNavbarConfig({
+      ...projectValues,
+      ctaLabel: ' احجز ',
+      links: [{ label: 'التوثيق', href: '/docs' }],
+      tabs: [],
+      anchors: [],
+    });
     expect(config).toStrictEqual({ navbar: { ctaLabel: 'احجز', links: [{ label: 'التوثيق', href: '/docs' }] } });
     expect(updateLanguageBody.safeParse({ config }).success).toBe(true);
   });
@@ -217,7 +226,7 @@ describe('languageNavbarConfig', () => {
 
   it("`sentNavbarValues` for a language: the cleaned pieces, the project's global fields untouched", () => {
     const draft = { ...projectValues, ctaLabel: ' احجز ', links: [{ label: '', href: '' }], tabs: [{ label: 'أدلة', href: '/guides' }], anchors: [] };
-    expect(sentNavbarValues('language', draft, NOTHING_STORED)).toStrictEqual({
+    expect(sentNavbarValues('language', draft)).toStrictEqual({
       ...projectValues,
       ctaLabel: 'احجز',
       links: [],
@@ -231,39 +240,46 @@ describe('navbarProblems', () => {
   const clean = navbarValues(STORED);
 
   it('accepts the stored navbar, half-filled rows, blank rows and relative, mailto and tel addresses', () => {
-    const values = { ...clean, links: [...clean.links, { label: 'Half', href: '' }, { label: '', href: '' }, { label: 'Call', href: 'tel:+15550100' }] };
-    expect(navbarProblems('project', values, storedCta(STORED))).toStrictEqual([]);
+    const values = {
+      ...clean,
+      links: [...clean.links, { label: 'Half', href: '' }, { label: '', href: '' }, { label: 'Call', href: 'tel:+15550100' }],
+    };
+    expect(navbarProblems('project', values)).toStrictEqual([]);
   });
 
   it('refuses a dangerous scheme at the draft row that has it, past blank rows', () => {
-    const links = [{ label: '', href: '' }, { label: 'Docs', href: '/docs' }, { label: 'Bad', href: ' javascript:alert(1)' }];
-    const [problem, ...rest] = navbarProblems('project', { ...clean, links }, storedCta(STORED));
+    const links = [
+      { label: '', href: '' },
+      { label: 'Docs', href: '/docs' },
+      { label: 'Bad', href: ' javascript:alert(1)' },
+    ];
+    const [problem, ...rest] = navbarProblems('project', { ...clean, links });
     expect(rest).toStrictEqual([]);
     expect(problem).toMatchObject({ key: 'links', rows: [2], fields: ['href'], message: 'Unsupported URL scheme.' });
   });
 
   it('refuses a dangerous CTA URL in the project scope; a language scope never sends it', () => {
     const values = { ...clean, ctaUrl: 'data:text/html,hi' };
-    expect(navbarProblems('project', values, storedCta(STORED))).toMatchObject([{ key: 'ctaUrl', rows: [], fields: [] }]);
-    expect(navbarProblems('language', values, NOTHING_STORED)).toStrictEqual([]);
+    expect(navbarProblems('project', values)).toMatchObject([{ key: 'ctaUrl', rows: [], fields: [] }]);
+    expect(navbarProblems('language', values)).toStrictEqual([]);
   });
 
   it('too many rows point at the rows past the cap', () => {
     const tabs = Array.from({ length: 12 }, (_, index) => ({ label: `Tab ${index}`, href: `/t${index}` }));
-    expect(navbarProblems('project', { ...clean, tabs: [{ label: '', href: '' }, ...tabs] }, storedCta(STORED))).toMatchObject([
+    expect(navbarProblems('project', { ...clean, tabs: [{ label: '', href: '' }, ...tabs] })).toMatchObject([
       { key: 'tabs', rows: [11, 12], fields: ['label', 'href'] },
     ]);
-    expect(navbarProblems('language', { ...clean, tabs }, NOTHING_STORED)).toMatchObject([{ key: 'tabs', rows: [10, 11] }]);
+    expect(navbarProblems('language', { ...clean, tabs })).toMatchObject([{ key: 'tabs', rows: [10, 11] }]);
   });
 
   it('an anchor icon over 40 characters is refused on its icon', () => {
     const anchors = [{ label: 'A', href: '/a', icon: 'x'.repeat(41) }];
-    expect(navbarProblems('project', { ...clean, anchors }, storedCta(STORED))).toMatchObject([{ key: 'anchors', rows: [0], fields: ['icon'] }]);
+    expect(navbarProblems('project', { ...clean, anchors })).toMatchObject([{ key: 'anchors', rows: [0], fields: ['icon'] }]);
   });
 });
 
 describe('row edits', () => {
-  it('Add appends a blank row; an edit keeps the row\'s other fields and `external`', () => {
+  it("Add appends a blank row; an edit keeps the row's other fields and `external`", () => {
     const rows = addRow([{ label: 'A', href: '/a', icon: 'x', external: true }], { label: '', href: '', icon: '' });
     expect(rows).toHaveLength(2);
     expect(editRow(rows, 0, 'label', 'B')[0]).toStrictEqual({ label: 'B', href: '/a', icon: 'x', external: true });

@@ -22,14 +22,20 @@ vi.mock('sonner', async (importOriginal) => {
   const actual = await importOriginal<typeof import('sonner')>();
   const toast = Object.assign((message: string, options?: { action?: { onClick: (event: unknown) => void } }) => {
     const action = options?.action;
-    if (action) mocks.undoActions.push(() => action.onClick({ defaultPrevented: false, preventDefault() {} }));
+    if (action) mocks.undoActions.push(() => action.onClick({}));
     return actual.toast(message, options as never);
   }, actual.toast);
   return { ...actual, toast };
 });
 vi.mock('@/hooks/api', () => ({
   useLanguages: () => ({ data: mocks.languages, isPending: false }),
-  useUpdateProjectConfig: () => ({ mutateAsync: mocks.updateProject, isPending: false }),
+  useUpdateProjectConfig: () => ({
+    mutateAsync: mocks.updateProject,
+    // main's form saved through `mutate` (saveConfigSection); kept so this suite also runs against it.
+    mutate: (variables: unknown, options: { onSuccess: () => void; onError: (error: unknown) => void }) =>
+      Promise.resolve(mocks.updateProject(variables)).then(options.onSuccess, options.onError),
+    isPending: false,
+  }),
   useUpdateLanguage: () => ({ mutateAsync: mocks.updateLanguage, isPending: false }),
 }));
 vi.mock('@/hooks/api/errors', () => ({ friendlyErrorMessage: (_t: unknown, _error: unknown, fallback: string) => `friendly:${fallback}` }));
@@ -128,10 +134,13 @@ const listOf = (list: List) => {
   return heading ? container.querySelector<HTMLElement>(`[aria-labelledby="${heading.id}"]`) : null;
 };
 const rowsOf = (list: List) => [...(listOf(list)?.querySelectorAll('li') ?? [])];
-const labelInput = (list: List, row: number) => labelled('settings.banner.linkLabel.label', rowsOf(list)[row] ?? document.createElement('i'))[0] ?? null;
+const labelInput = (list: List, row: number) =>
+  labelled('settings.banner.linkLabel.label', rowsOf(list)[row] ?? document.createElement('i'))[0] ?? null;
 const hrefInput = (list: List, row: number) => labelled('editor.format.linkPrompt', rowsOf(list)[row] ?? document.createElement('i'))[0] ?? null;
 const iconInput = (row: number) => labelled('settings.general.icon.label', rowsOf('anchors')[row] ?? document.createElement('i'))[0] ?? null;
-const removeButton = (list: List, row: number) => rowsOf(list)[row]?.querySelector<HTMLButtonElement>('button') ?? null;
+// Found by their own label, so the regression tests also run against main's component.
+const removeButtons = (list: List) => [...container.querySelectorAll<HTMLButtonElement>(`button[aria-label="settings.navbar.${list}.remove"]`)];
+const removeButton = (list: List, row: number) => removeButtons(list)[row] ?? null;
 const addButton = (list: List) => buttonNamed(`settings.navbar.${list}.add`);
 const shown = (list: List) => rowsOf(list).map((_, row) => [labelInput(list, row)?.value, hrefInput(list, row)?.value]);
 const toggle = (title: string) => {
@@ -179,7 +188,22 @@ const answerDialog = (confirm: boolean) => {
 const lastSent = (mock: typeof mocks.updateProject) => JSON.parse(JSON.stringify(mock.mock.calls.at(-1)?.[0]));
 const sentNavbar = () => lastSent(mocks.updateProject).config.navbar;
 /** The Undo button of the newest toast on screen (the real Sonner toast). */
-const undoOnScreen = () => [...document.querySelectorAll<HTMLButtonElement>('[data-sonner-toast] button')].find((b) => b.textContent === 'settings.theme.undo') ?? null;
+const undoOnScreen = () =>
+  [...document.querySelectorAll<HTMLButtonElement>('[data-sonner-toast]:not([data-removed="true"]) button')].find(
+    (button) => button.textContent === 'settings.theme.undo',
+  ) ?? null;
+/** Undo as a person takes it: focus moves into the toast (a click or its hotkey), then the button is pressed. */
+const pressUndo = () =>
+  act(async () => {
+    const undo = undoOnScreen();
+    if (!undo) throw new Error('No Undo on screen');
+    undo.focus();
+    undo.click();
+  });
+/** Lets Sonner apply what it queued: it adds a toast on a timer and dismisses one on an animation frame. */
+const toastsSettled = async () => {
+  for (let tick = 0; tick < 10; tick += 1) await act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
+};
 /** Clicks the newest offered Undo, even after its toast left the screen (a click during its exit). */
 const clickLateUndo = () =>
   act(async () => {
@@ -249,51 +273,65 @@ describe('NavbarSettings — the project scope saves', () => {
     expect(sentNavbar()).toMatchObject({ ctaLabel: '', ctaUrl: '' });
   });
 
-  it('a never-stored blank CTA stays left out', async () => {
+  it('a site without a CTA sends "" for both texts, which the reader shows as no CTA, like before', async () => {
     storeWhatWasSent({ links: [] });
     await render(site({ links: [] }));
     await click(changelogSwitch());
     await save();
-    expect(sentNavbar()).toStrictEqual({ links: [], tabs: [], anchors: [], showSearch: true, changelog: true });
+    expect(sentNavbar()).toStrictEqual({ ctaLabel: '', ctaUrl: '', links: [], tabs: [], anchors: [], showSearch: true, changelog: true });
   });
 
-  it("CTA saved, the refetch fails, then cleared: presence comes from the save's own response, so '' is sent", async () => {
-    // The PATCH stores the CTA; the project query keeps the old (absent) navbar because its refetch failed.
+  it("CTA saved, its refetch fails, a scope round trip, then cleared: '' is sent, with no record of what was stored", async () => {
+    mocks.languages = [ENGLISH, arabic()];
+    // The PATCH stores the CTA; the project query keeps the old navbar because its refetch failed.
     storeWhatWasSent({ links: [] });
     await render(site({ links: [] }));
     await type(ctaLabel(), 'Start');
     await type(ctaUrl(), '/start');
     await save();
     expect(sentNavbar()).toMatchObject({ ctaLabel: 'Start', ctaUrl: '/start' });
-    expect(region()).toBeNull();
+    await chooseScope('العربية');
+    await chooseScope('settings.chrome.scope.default');
+    // The stale query shows no CTA, so clearing means saving: the draft is the same either way.
+    await type(ctaLabel(), 'x');
     await type(ctaLabel(), '');
-    await type(ctaUrl(), '');
+    await click(changelogSwitch());
     await save();
     expect(sentNavbar()).toMatchObject({ ctaLabel: '', ctaUrl: '' });
   });
 
-  it("a late CTA save counts for its own site only: another site's never-stored CTA stays left out", async () => {
+  it('a newer read without the CTA wins over an earlier save: editing another field sends what that read shows', async () => {
+    storeWhatWasSent({ links: [] });
+    await render(site({ links: [] }));
+    await type(ctaLabel(), 'Start');
+    await save();
+    // Someone else cleared the CTA afterwards; the form is clean, so it shows their read.
+    await render(site({ links: [], ctaLabel: '' }));
+    expect(ctaLabel().value).toBe('');
+    await click(searchSwitch());
+    await save();
+    expect(sentNavbar()).toMatchObject({ ctaLabel: '', ctaUrl: '', showSearch: false });
+  });
+
+  it("a late save for one site never reaches another site's form or payload (A → B → A)", async () => {
     const pending = deferred<Project>();
     mocks.updateProject.mockReturnValueOnce(pending.promise);
     await render(site({ links: [] }, 'site-a'));
     await type(ctaLabel(), 'Start');
     await save();
     // The host shows another site before the save answers.
-    await render(site({ links: [] }, 'site-b'));
+    await render(site({ ctaLabel: 'B', links: [] }, 'site-b'));
     await act(async () => pending.resolve(site({ ctaLabel: 'Start', links: [] }, 'site-a')));
-    expect(ctaLabel().value).toBe('');
-    storeWhatWasSent({ links: [] }, 'site-b');
+    expect(ctaLabel().value).toBe('B');
+    expect(region()).toBeNull();
+    expect(status()).not.toBe('common.saved');
+    storeWhatWasSent({ ctaLabel: 'B', links: [] }, 'site-b');
     await click(changelogSwitch());
     await save();
-    expect('ctaLabel' in sentNavbar()).toBe(false);
-    // Back on site A, whose query still says absent: the late response said stored.
-    storeWhatWasSent({ links: [] }, 'site-a');
-    await render(site({ links: [] }, 'site-a'));
-    await type(ctaLabel(), 'x');
-    await type(ctaLabel(), '');
-    await click(changelogSwitch());
-    await save();
-    expect(sentNavbar()).toMatchObject({ ctaLabel: '' });
+    expect(sentNavbar()).toMatchObject({ ctaLabel: 'B', changelog: true });
+    // Back on site A: its own read, clean.
+    await render(site({ ctaLabel: 'Start', links: [] }, 'site-a'));
+    expect([ctaLabel().value, region()]).toEqual(['Start', null]);
   });
 
   it('removing the last row of every list sends [] for each; kept rows keep their metadata', async () => {
@@ -370,7 +408,7 @@ describe('NavbarSettings — the project scope saves', () => {
     expect(shown('links')).toEqual([['Blog', 'https://blog.example.com']]);
     expect(document.body.textContent).toContain('friendly:settings.saveError');
     expect(status()).not.toBe('common.saved');
-    await click(undoOnScreen());
+    await pressUndo();
     expect(shown('links')[0]).toEqual(['Docs', '/docs']);
   });
 
@@ -387,6 +425,36 @@ describe('NavbarSettings — the project scope saves', () => {
     expect(labelInput('links', 0)?.value).toBe('Documentation');
     expect(rowsOf('tabs')).toHaveLength(2);
     expect(region()).not.toBeNull();
+  });
+
+  it('a save that leaves the draft unsettled keeps it and its conflict on screen', async () => {
+    const pending = deferred<Project>();
+    mocks.updateProject.mockReturnValueOnce(pending.promise);
+    await render(site());
+    await type(ctaLabel(), 'Sent');
+    await save();
+    await type(ctaLabel(), 'Newer');
+    // Someone else's save renders before ours answers.
+    await render(site({ ...SAVED, ctaLabel: 'Theirs' }));
+    expect(conflict()).toBe(true);
+    await act(async () => pending.resolve(site({ ...SAVED, ctaLabel: 'Sent' })));
+    expect(ctaLabel().value).toBe('Newer');
+    expect(conflict()).toBe(true);
+    expect(region()).not.toBeNull();
+    await click(buttonNamed('forms.useTheirs'));
+    expect(ctaLabel().value).toBe('Theirs');
+  });
+
+  it('another site starts clean, and coming back shows that site as stored (A → B → A)', async () => {
+    await render(site(SAVED, 'site-a'));
+    await type(ctaLabel(), 'Draft for A');
+    await click(removeButton('links', 0));
+    await render(site({ ctaLabel: 'B', links: [] }, 'site-b'));
+    expect([ctaLabel().value, rowsOf('links').length, region()]).toEqual(['B', 0, null]);
+    await render(site(SAVED, 'site-a'));
+    expect([ctaLabel().value, rowsOf('links').length, region()]).toEqual(['Book a demo', 2, null]);
+    await clickLateUndo();
+    expect(rowsOf('links')).toHaveLength(2);
   });
 
   it('a real change elsewhere offers Use theirs and Keep mine', async () => {
@@ -475,7 +543,7 @@ describe('NavbarSettings — Undo', () => {
     await click(removeButton('links', 1));
     expect(document.activeElement).toBe(removeButton('links', 1));
     await type(labelInput('links', 0), 'Documentation');
-    await click(undoOnScreen());
+    await pressUndo();
     expect(shown('links')).toEqual([
       ['Documentation', '/docs'],
       ['Blog', 'https://blog.example.com'],
@@ -493,7 +561,7 @@ describe('NavbarSettings — Undo', () => {
     await click(removeButton('anchors', 0));
     expect(rowsOf('anchors')).toHaveLength(0);
     expect(document.activeElement).toBe(addButton('anchors'));
-    await click(undoOnScreen());
+    await pressUndo();
     expect(iconInput(0)?.value).toBe('users');
     expect(document.activeElement).toBe(labelInput('anchors', 0));
   });
@@ -504,9 +572,10 @@ describe('NavbarSettings — Undo', () => {
     await click(removeButton('links', 0));
     await pressEnter(ctaLabel());
     expect(sentNavbar().links).toHaveLength(1);
-    expect(undoOnScreen()).toBeNull();
     await clickLateUndo();
-    expect(shown('links')).toEqual([['Blog', 'https://blog.example.com']]);
+    expect(removeButtons('links')).toHaveLength(1);
+    await toastsSettled();
+    expect(undoOnScreen()).toBeNull();
     expect(region()).toBeNull();
   });
 
@@ -603,7 +672,7 @@ describe('NavbarSettings — saving keys, lock and refusal', () => {
     const described = document.getElementById(hrefInput('links', 1)?.getAttribute('aria-describedby') ?? '');
     expect(described?.textContent).toBe('Unsupported URL scheme.');
     storeWhatWasSent();
-    await type(hrefInput('links', 1), 'https://blog.example.com');
+    await type(hrefInput('links', 1), 'https://blog.example.com/news');
     expect(container.querySelector('[aria-invalid="true"]')).toBeNull();
     await pressSaveShortcut();
     expect(mocks.updateProject).toHaveBeenCalledTimes(1);

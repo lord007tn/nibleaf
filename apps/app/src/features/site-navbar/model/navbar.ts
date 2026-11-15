@@ -53,10 +53,6 @@ export const ROW_LISTS: readonly RowList[] = ['links', 'tabs', 'anchors'];
 export type RowField = 'label' | 'href' | 'icon';
 
 type CtaKey = 'ctaLabel' | 'ctaUrl';
-const CTA_KEYS: readonly CtaKey[] = ['ctaLabel', 'ctaUrl'];
-
-/** The CTA texts the server holds for the project, so clearing one sends `''` (see `projectNavbarPatch`). */
-export type StoredCta = ReadonlySet<CtaKey>;
 
 /** The scope the picker selects: the project ("default") or a language id. */
 export const PROJECT_SCOPE = 'default';
@@ -86,11 +82,6 @@ export function languageNavbarValues(
   return { ...navbarValues(projectNavbar), ctaLabel: own.ctaLabel, links: own.links, tabs: own.tabs, anchors: own.anchors };
 }
 
-/** Which CTA texts a stored navbar holds, `''` included. */
-export function storedCta(navbar: NavbarConfig | null | undefined): Set<CtaKey> {
-  return new Set(CTA_KEYS.filter((key) => navbar?.[key] !== undefined));
-}
-
 const isBlankRow = (row: NavRow) => !row.label.trim() && !row.href.trim();
 
 /** A list as a save sends it: fully blank rows left out; every other row in order, its text as typed, with its `external`. */
@@ -101,28 +92,28 @@ export const cleanAnchors = (rows: readonly AnchorRow[]): StoredAnchor[] =>
   rows.filter((row) => !isBlankRow(row)).map((row) => ({ ...navRow(row), ...(row.icon.trim() ? { icon: row.icon.trim() } : {}) }));
 
 /**
- * The project scope's `config.navbar` patch.
+ * The project scope's `config.navbar` patch: every field, so the save states
+ * the whole navbar.
  *
  * The lists are always sent, so removing the last row sends `[]`, and both
- * switches are sent as chosen. Each CTA text is trimmed. A blank one is sent
- * as `''` when the server holds a value for it (`stored`): the API merges
- * `navbar` key by key and keeps any key a patch leaves out, so an omitted text
- * would come back after the save. The reader shows the CTA only when both
- * texts are non-empty, so `''` hides it. A text the server never held stays
- * left out.
+ * switches are sent as chosen. Both CTA texts are always sent, trimmed, a
+ * blank one as `''`: the API merges `navbar` key by key and keeps any key a
+ * patch leaves out, so an omitted text would come back after the save. No
+ * reader tells `''` from a CTA never set: the published navbar shows the CTA
+ * only when both texts are non-empty, and a language's override only lays its
+ * non-empty texts over the project's. So nothing needs to know whether the
+ * server held a text before.
  */
-export function projectNavbarPatch(values: NavbarValues, stored: StoredCta): NavbarConfig {
-  const patch: NavbarConfig = {};
-  for (const key of CTA_KEYS) {
-    const text = values[key].trim();
-    if (text || stored.has(key)) patch[key] = text;
-  }
-  patch.links = cleanRows(values.links);
-  patch.tabs = cleanRows(values.tabs);
-  patch.anchors = cleanAnchors(values.anchors);
-  patch.showSearch = values.showSearch;
-  patch.changelog = values.changelog;
-  return patch;
+export function projectNavbarPatch(values: NavbarValues): NavbarConfig {
+  return {
+    ctaLabel: values.ctaLabel.trim(),
+    ctaUrl: values.ctaUrl.trim(),
+    links: cleanRows(values.links),
+    tabs: cleanRows(values.tabs),
+    anchors: cleanAnchors(values.anchors),
+    showSearch: values.showSearch,
+    changelog: values.changelog,
+  };
 }
 
 /**
@@ -152,8 +143,8 @@ export function languageNavbarConfig(values: NavbarValues): { navbar: LanguageNa
  * rows is recognised as the save's own echo. A language save leaves the
  * global fields as they are.
  */
-export function sentNavbarValues(scope: 'project' | 'language', values: NavbarValues, stored: StoredCta): NavbarValues {
-  if (scope === 'project') return navbarValues(projectNavbarPatch(values, stored));
+export function sentNavbarValues(scope: 'project' | 'language', values: NavbarValues): NavbarValues {
+  if (scope === 'project') return navbarValues(projectNavbarPatch(values));
   const { ctaLabel, links, tabs, anchors } = languageNavbarValues(languageNavbarConfig(values).navbar, null);
   return { ...values, ctaLabel, links, tabs, anchors };
 }
@@ -201,17 +192,18 @@ const keptRows = (rows: readonly NavRow[]) => rows.flatMap((row, index) => (isBl
  * Each problem points at the draft fields that fix it. Too many rows names no
  * row, so it points at the rows past the cap.
  */
-export function navbarProblems(scope: 'project' | 'language', values: NavbarValues, stored: StoredCta): NavbarProblem[] {
+export function navbarProblems(scope: 'project' | 'language', values: NavbarValues): NavbarProblem[] {
   const result =
     scope === 'project'
-      ? projectNavbarSchema.safeParse(projectNavbarPatch(values, stored))
+      ? projectNavbarSchema.safeParse(projectNavbarPatch(values))
       : languageNavbarSchema.safeParse(languageNavbarConfig(values).navbar);
   if (result.success) return [];
   return result.error.issues.map((issue) => {
     const [key, position, field] = issue.path as [CtaKey | RowList, number | undefined, RowField | undefined];
     if (key === 'ctaLabel' || key === 'ctaUrl') return { key, rows: [], fields: [], message: issue.message };
     const kept = keptRows(values[key]);
-    const rows = position === undefined ? kept.slice(issue.code === 'too_big' && 'maximum' in issue ? Number(issue.maximum) : 0) : [kept[position] ?? 0];
+    const rows =
+      position === undefined ? kept.slice(issue.code === 'too_big' && 'maximum' in issue ? Number(issue.maximum) : 0) : [kept[position] ?? 0];
     return { key, rows, fields: field ? [field] : ['label', 'href'], message: issue.message };
   });
 }
