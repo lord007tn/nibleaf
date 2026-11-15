@@ -32,9 +32,8 @@ live-region contract, **not a screen-reader speech certification**. No assistive
 
 | Files | What it shows |
 | --- | --- |
-| `settlement-{en,ar}-{1440,390}.png` | Three panels, light theme: (1) main, a title saved with Enter while " (beta)" was typed during the request: the live region says **Saved** though the bar still shows unsaved changes; (2) this branch, same steps: **Unsaved changes**, bar and draft kept; (3) this branch, a clean save: **Saved**, bar gone. |
+| `settlement-{1440,390}.png` | One sheet per width, an EN row and an AR row, light theme. Each row has three panels: (1) main, a title saved with Enter while " (beta)" was typed during the request: the live region says **Saved** though the bar still shows unsaved changes; (2) this branch, same steps: **Unsaved changes**, bar and draft kept; (3) this branch, a clean save: **Saved**, bar gone. |
 | `flow-en-1440.webm` | This branch: the steps are listed below. |
-| `main-tests.txt` | The new `save-region-settlement.test.tsx` run against main's provider: 17 of 28 fail; the 11 that pass are behaviour kept as it was. |
 | `evidence.json` | Per-step live-region text, its value history, the bar, the title, the conflict callout and every request. |
 
 ## The recording, step by step
@@ -50,6 +49,15 @@ live-region contract, **not a screen-reader speech certification**. No assistive
    "changed elsewhere" callout appears, and the region says "Unsaved changes", not "Saved".
 6. "Use their version": nothing is left, so the bar closes. "Unsaved changes" clears silently, and no "Saved" is
    invented for a choice that sent nothing.
+
+## The new tests against main
+
+`apps/app/src/lib/forms/save-region-settlement.test.tsx` uses the real `useServerDraftForm` and `SaveRegionProvider`.
+Run against main's `save-region.tsx` (nothing else swapped), 17 of its 28 tests fail. Among them are the #759
+reproduction (Sent → refetch Theirs → success keeps the conflict: main says "Saved"), edits during a save, "Keep
+mine", Enter while another form is dirty, and the stale (replaced, unmounted, A → B → A) cases. The 11 that pass are
+behaviour kept as it was: clean save, normalized echo, pristine no-op, failure, invalid, busy, deferred, all-clean
+multi-form, invalid stopping the run, mixed deferred, and identity switch during the save.
 
 ## Limits
 

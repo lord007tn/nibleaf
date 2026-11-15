@@ -1,13 +1,13 @@
 {
   "environment": "Component fixture: the real SEO section (useServerDraftForm + SaveRegion) with the real design system, EN/AR catalogs, project query and config mutation; before = main’s lib/forms/save-region.tsx, after = this branch; fictional site; project GET and config PATCH answered by interception; live region read from the DOM (not screen-reader speech); not the signed-in dashboard or production",
   "baseline": "e904f936e7ff4d7d630544718cfea03b478531a6",
-  "head": "c8e629ead7cb378f931e19bd6bf5fedffb5e59f8",
+  "head": "27fe608afff759344468fbbfc7f2a3fd48f01e6d",
   "uncommitted": [],
   "swappedForBefore": ["apps/app/src/lib/forms/save-region.tsx"],
   "attempted": 0,
   "captures": [
     {
-      "file": "settlement-en-1440.png",
+      "file": "settlement-1440.png",
       "locale": "en",
       "width": 1440,
       "theme": "light",
@@ -145,145 +145,7 @@
       }
     },
     {
-      "file": "settlement-en-390.png",
-      "locale": "en",
-      "width": 390,
-      "theme": "light",
-      "beforeUnsettled": {
-        "phase": "before",
-        "dir": "ltr",
-        "liveRegion": {
-          "text": "Saved",
-          "role": "status",
-          "live": "polite",
-          "count": 1
-        },
-        "statusHistory": ["", "Saved"],
-        "saveBar": true,
-        "title": "Handbook Guides (beta)",
-        "conflict": false,
-        "overflow": false,
-        "requests": [
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Docs"
-          },
-          { "call": "GET /api/app/projects/site-1/languages" },
-          {
-            "call": "PATCH /api/app/projects/site-1",
-            "body": {
-              "config": {
-                "seo": {
-                  "metaTitle": "Handbook Guides",
-                  "metaDescription": "Everything the Handbook team writes down.",
-                  "socialImage": "",
-                  "allowIndex": true
-                }
-              }
-            }
-          },
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Guides"
-          },
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Guides"
-          }
-        ],
-        "pageErrors": []
-      },
-      "afterUnsettled": {
-        "phase": "after",
-        "dir": "ltr",
-        "liveRegion": {
-          "text": "Unsaved changes",
-          "role": "status",
-          "live": "polite",
-          "count": 1
-        },
-        "statusHistory": ["", "Unsaved changes"],
-        "saveBar": true,
-        "title": "Handbook Guides (beta)",
-        "conflict": false,
-        "overflow": false,
-        "requests": [
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Docs"
-          },
-          { "call": "GET /api/app/projects/site-1/languages" },
-          {
-            "call": "PATCH /api/app/projects/site-1",
-            "body": {
-              "config": {
-                "seo": {
-                  "metaTitle": "Handbook Guides",
-                  "metaDescription": "Everything the Handbook team writes down.",
-                  "socialImage": "",
-                  "allowIndex": true
-                }
-              }
-            }
-          },
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Guides"
-          },
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Guides"
-          }
-        ],
-        "pageErrors": []
-      },
-      "afterClean": {
-        "phase": "after",
-        "dir": "ltr",
-        "liveRegion": {
-          "text": "Saved",
-          "role": "status",
-          "live": "polite",
-          "count": 1
-        },
-        "statusHistory": ["", "Saved"],
-        "saveBar": false,
-        "title": "Handbook Library",
-        "conflict": false,
-        "overflow": false,
-        "requests": [
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Docs"
-          },
-          { "call": "GET /api/app/projects/site-1/languages" },
-          {
-            "call": "PATCH /api/app/projects/site-1",
-            "body": {
-              "config": {
-                "seo": {
-                  "metaTitle": "Handbook Library",
-                  "metaDescription": "Everything the Handbook team writes down.",
-                  "socialImage": "",
-                  "allowIndex": true
-                }
-              }
-            }
-          },
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Library"
-          },
-          {
-            "call": "GET /api/app/projects/site-1",
-            "metaTitle": "Handbook Library"
-          }
-        ],
-        "pageErrors": []
-      }
-    },
-    {
-      "file": "settlement-ar-1440.png",
+      "file": "settlement-1440.png",
       "locale": "ar",
       "width": 1440,
       "theme": "light",
@@ -421,7 +283,145 @@
       }
     },
     {
-      "file": "settlement-ar-390.png",
+      "file": "settlement-390.png",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "beforeUnsettled": {
+        "phase": "before",
+        "dir": "ltr",
+        "liveRegion": {
+          "text": "Saved",
+          "role": "status",
+          "live": "polite",
+          "count": 1
+        },
+        "statusHistory": ["", "Saved"],
+        "saveBar": true,
+        "title": "Handbook Guides (beta)",
+        "conflict": false,
+        "overflow": false,
+        "requests": [
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Docs"
+          },
+          { "call": "GET /api/app/projects/site-1/languages" },
+          {
+            "call": "PATCH /api/app/projects/site-1",
+            "body": {
+              "config": {
+                "seo": {
+                  "metaTitle": "Handbook Guides",
+                  "metaDescription": "Everything the Handbook team writes down.",
+                  "socialImage": "",
+                  "allowIndex": true
+                }
+              }
+            }
+          },
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Guides"
+          },
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Guides"
+          }
+        ],
+        "pageErrors": []
+      },
+      "afterUnsettled": {
+        "phase": "after",
+        "dir": "ltr",
+        "liveRegion": {
+          "text": "Unsaved changes",
+          "role": "status",
+          "live": "polite",
+          "count": 1
+        },
+        "statusHistory": ["", "Unsaved changes"],
+        "saveBar": true,
+        "title": "Handbook Guides (beta)",
+        "conflict": false,
+        "overflow": false,
+        "requests": [
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Docs"
+          },
+          { "call": "GET /api/app/projects/site-1/languages" },
+          {
+            "call": "PATCH /api/app/projects/site-1",
+            "body": {
+              "config": {
+                "seo": {
+                  "metaTitle": "Handbook Guides",
+                  "metaDescription": "Everything the Handbook team writes down.",
+                  "socialImage": "",
+                  "allowIndex": true
+                }
+              }
+            }
+          },
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Guides"
+          },
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Guides"
+          }
+        ],
+        "pageErrors": []
+      },
+      "afterClean": {
+        "phase": "after",
+        "dir": "ltr",
+        "liveRegion": {
+          "text": "Saved",
+          "role": "status",
+          "live": "polite",
+          "count": 1
+        },
+        "statusHistory": ["", "Saved"],
+        "saveBar": false,
+        "title": "Handbook Library",
+        "conflict": false,
+        "overflow": false,
+        "requests": [
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Docs"
+          },
+          { "call": "GET /api/app/projects/site-1/languages" },
+          {
+            "call": "PATCH /api/app/projects/site-1",
+            "body": {
+              "config": {
+                "seo": {
+                  "metaTitle": "Handbook Library",
+                  "metaDescription": "Everything the Handbook team writes down.",
+                  "socialImage": "",
+                  "allowIndex": true
+                }
+              }
+            }
+          },
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Library"
+          },
+          {
+            "call": "GET /api/app/projects/site-1",
+            "metaTitle": "Handbook Library"
+          }
+        ],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "settlement-390.png",
       "locale": "ar",
       "width": 390,
       "theme": "light",

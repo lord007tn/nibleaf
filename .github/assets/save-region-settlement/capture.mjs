@@ -256,10 +256,17 @@ createRoot(document.getElementById('root')!).render(
   const captures = [];
   const recordings = [];
   await withLocalOnlyBrowser({ allowedHosts: [hostKey(origin)] }, async ({ browser, attempted }) => {
-    // Per locale and width: an edit typed during the save, on main and on this
-    // branch, then a clean save on this branch.
-    for (const locale of ['en', 'ar'])
-      for (const width of [1440, 390]) {
+    // Per width, one sheet with an EN row and an AR row: an edit typed during the
+    // save, on main and on this branch, then a clean save on this branch.
+    const caption = {
+      beforeUnsettled: 'before (main): edit typed during the save',
+      afterUnsettled: 'after (this branch): edit typed during the save',
+      afterClean: 'after (this branch): clean save',
+    };
+    const img = (buffer) => `data:image/png;base64,${buffer.toString('base64')}`;
+    for (const width of [1440, 390]) {
+      const rows = [];
+      for (const locale of ['en', 'ar']) {
         const shots = [];
         const seen = {};
         for (const [key, phase, extra] of [
@@ -279,7 +286,7 @@ createRoot(document.getElementById('root')!).render(
           // One status region (the toaster's notification list is the page's other, unrelated live region).
           assert.equal(seen[key].liveRegion.count, 1, 'one status region');
           assert.equal(requests.filter(({ call }) => call.startsWith('PATCH')).length, 1);
-          shots.push({ key, phase, buffer: await page.screenshot({ fullPage: true, animations: 'disabled' }) });
+          shots.push({ key, buffer: await page.screenshot({ fullPage: true, animations: 'disabled' }) });
           await context.close();
         }
         const t = catalogs[locale];
@@ -293,31 +300,27 @@ createRoot(document.getElementById('root')!).render(
         assert.equal(seen.afterClean.liveRegion.text, t.common_saved);
         assert.equal(seen.afterClean.saveBar, false);
         assert.ok(!seen.afterClean.statusHistory.includes(t.forms_unsavedchanges));
-
-        const file = `settlement-${locale}-${width}.png`;
-        const caption = {
-          beforeUnsettled: 'before (main): edit typed during the save',
-          afterUnsettled: 'after (this branch): edit typed during the save',
-          afterClean: 'after (this branch): clean save',
-        };
-        const sheet = await browser.newContext({ viewport: { width: width * 3 + 64, height: 600 }, deviceScaleFactor: 1 });
-        const sheetPage = await sheet.newPage();
-        const img = (buffer) => `data:image/png;base64,${buffer.toString('base64')}`;
-        await sheetPage.setContent(
-          `<body style="margin:0;padding:16px;background:#e5e5e5;font:13px system-ui,sans-serif;color:#111">
-<div style="margin-bottom:8px"><b>Component fixture</b> (not the dashboard, not production) · Site configuration → SEO · ${locale.toUpperCase()} · ${width}px · light. The dashed strip is fixture instrumentation reading the SaveRegion's polite live region (DOM text, not screen-reader speech).</div>
-<div style="display:flex;gap:16px;align-items:flex-start">${shots
+        rows.push(
+          `<div style="margin:12px 0 4px"><b>${locale.toUpperCase()}</b></div><div style="display:flex;gap:16px;align-items:flex-start">${shots
             .map(
               ({ key, buffer }) =>
                 `<figure style="margin:0"><figcaption style="margin-bottom:4px">${caption[key]} · live region: <b>“${seen[key].liveRegion.text}”</b></figcaption><img src="${img(buffer)}" width="${width}"></figure>`,
             )
-            .join('')}</div></body>`,
+            .join('')}</div>`,
         );
-        await sheetPage.waitForFunction(() => [...document.images].every((image) => image.complete));
-        await sheetPage.screenshot({ path: resolve(import.meta.dirname, file), fullPage: true });
-        await sheet.close();
-        captures.push({ file, locale, width, theme: 'light', ...seen });
+        captures.push({ file: `settlement-${width}.png`, locale, width, theme: 'light', ...seen });
       }
+      const sheet = await browser.newContext({ viewport: { width: width * 3 + 64, height: 600 }, deviceScaleFactor: 1 });
+      const sheetPage = await sheet.newPage();
+      await sheetPage.setContent(
+        `<body style="margin:0;padding:16px;background:#e5e5e5;font:13px system-ui,sans-serif;color:#111">
+<div><b>Component fixture</b> (not the dashboard, not production) · Site configuration → SEO · ${width}px · light. The dashed strip is fixture instrumentation reading the SaveRegion's polite live region (DOM text, not screen-reader speech).</div>
+${rows.join('')}</body>`,
+      );
+      await sheetPage.waitForFunction(() => [...document.images].every((image) => image.complete));
+      await sheetPage.screenshot({ path: resolve(import.meta.dirname, `settlement-${width}.png`), fullPage: true });
+      await sheet.close();
+    }
 
     // This branch, EN 1440: edit during a save → "Unsaved changes"; Save again → "Saved"; a new edit takes "Saved" back
     // silently; someone else's change during a save → conflict and "Unsaved changes"; Use theirs → cleared, no "Saved".
@@ -411,7 +414,7 @@ createRoot(document.getElementById('root')!).render(
       recordings,
     });
   });
-  console.log(`${captures.length} capture sheets and ${recordings.length} recording; no overflow, page errors or outside requests`);
+  console.log(`${captures.length} captures on 2 sheets and ${recordings.length} recording; no overflow, page errors or outside requests`);
 } finally {
   if (harness) {
     assert.ok(harness.startsWith(`${app}${sep}`));
