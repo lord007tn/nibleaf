@@ -17,9 +17,11 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * - Where the compiler reads the opener, the editor reads the same attributes:
  *   names, value kinds and value spans, statement-level JavaScript inside `{…}`
  *   included (block bodies, `;`, declarations, getters, classes, labels), and the
- *   component stays editable. The one exception is a `/` or `<` inside `{…}` that may
- *   start a regular expression or a JSX element, which the editor doesn't read and
- *   keeps whole as written.
+ *   component stays editable: keywords as property names, shifts and comparisons,
+ *   division after function and class expressions, regular expressions after
+ *   `return`, `typeof`, `(`, `,`, `=`. The one exception is a JSX element inside
+ *   `{…}`, or a `/` read differently as a regular expression and as division (after
+ *   `yield`), which the editor doesn't read and keeps whole as written.
  * - Where the compiler rejects it, so does the editor's reader, except where only the
  *   JavaScript inside a `{…}` is invalid (checked by swapping each value for a valid
  *   one): the editor reads it as an expression value and keeps it byte for byte.
@@ -142,17 +144,53 @@ function corpus(seed = SEED, count = COUNT): Case[] {
       `new class { constructor() { this.v = ${a}; } }()`,
       `() => { if (a) { return; } ; ; return ${a} }`,
       '[1, 2].map((n) => { const d = n * 2; return d; })',
+      // Keywords as property names, shift and comparison operators.
+      'obj.return / 2',
+      `a.typeof / b + ${a}`,
+      'x?.in / 2',
+      'a.class / a.if',
+      'a << b',
+      `(a <<= 1) <= ${a}`,
+      'a < b && b >= c',
+      'a >>> 1',
+      // Function and class expressions, then division.
+      '(function () {}) / 2',
+      'function () {} / 2',
+      '() => { const x = function () {} / 2; return x; }',
+      'class {} / 2',
+      '() => { const C = class { m() {} } / 2; return C; }',
+      // Regular expressions after return, typeof, (, ",", =, a statement's ) or }.
+      '() => { return /a"}/.test(s); }',
+      "typeof /x'/",
+      'f(/}`/, 1)',
+      '[1, /"/]',
+      '(r = /\\//g)',
+      '/[/"]/.source',
+      '() => { if (a) /x"/.test(b); }',
+      "() => { function f() {} /'/.test(s) }",
+      // Division after ), ], identifiers and numbers.
+      '(a) / 2',
+      '[1][0] / 2',
+      'a / b / c',
+      `4 / 2 / ${a}`,
     ] as const);
   };
+  /** Values the editor reads differently both ways, or JSX: unread, kept whole. */
+  const undecided = (): string => {
+    unread = true;
+    return pick(['function* () { yield /"/; }', 'cond ? <A /> : null', '[<b key="}">x</b>]'] as const);
+  };
   const expressionValue = () => {
-    if (chance(25)) return `{${pick(['', ' ', '\n  '] as const)}${jsShape()}}`;
+    if (chance(4)) return `{${undecided()}}`;
+    if (chance(30)) return `{${pick(['', ' ', '\n  '] as const)}${jsShape()}}`;
     if (chance(84)) {
       const space = pick(['', ' ', '\n  '] as const);
       return `{${space}${expression()}${space}}`;
     }
     // biome-ignore lint/suspicious/noTemplateCurlyInString: generated MDX, a template literal left open.
     const broken = pick(['{}', '{ }', '{/* c */}', '{"}', '{a', '{(}', '{...a}', '{"a\nb"}', '{`a${b`}', '{/}/}', '{<b>x</b>}', '{a // }'] as const);
-    if (broken === '{/}/}' || broken === '{<b>x</b>}') unread = true;
+    // `{/}/}` is a regular expression, read; `{<b>x</b>}` is JSX, unread.
+    if (broken === '{<b>x</b>}') unread = true;
     return broken;
   };
   const spread = () =>
@@ -320,8 +358,9 @@ describe('component openers: the editor reads what the MDX compiler reads', () =
           counts.acceptedUnread++;
           const char = entry.page[editor.at] ?? '';
           unreadAt[char] = (unreadAt[char] ?? 0) + 1;
-          // Only a `/` or `<` that may start a regular expression or a JSX element.
-          if (char !== '/' && char !== '<') disagreements.push({ opener: entry.opener, compiler, editor });
+          // Only JSX, or a `/` read differently as a regular expression and as division:
+          // the values the generator made so (`undecided`), at a `/` or `<`.
+          if ((char !== '/' && char !== '<') || !entry.unread) disagreements.push({ opener: entry.opener, compiler, editor });
         } else disagreements.push({ opener: entry.opener, compiler, editor });
       } else if (isJsxTagFailure(editor)) counts.rejectedRejected++;
       // The compiler reads the same tag up to its `>` and rejects the page after it
@@ -361,6 +400,10 @@ describe('component openers: the editor reads what the MDX compiler reads', () =
     expect(reads(/function\* |async \(\)/)).toBeGreaterThan(10); // generator and async functions
     expect(reads(/outer: for/)).toBeGreaterThan(5); // a labelled statement
     expect(reads(/const v = [^\n]*\n {2}return v\n/)).toBeGreaterThan(5); // ASI
+    expect(reads(/obj\.return \/ 2|x\?\.in \/ 2|a\.class \/ a\.if/)).toBeGreaterThan(10); // keywords as property names
+    expect(reads(/a << b|a >>> 1|<<= 1|b >= c/)).toBeGreaterThan(10); // shift and comparison
+    expect(reads(/function \(\) \{\} \/ 2|class (\{ m\(\) \{\} \} |\{\} )\/ 2/)).toBeGreaterThan(10); // function and class expressions, then division
+    expect(reads(/return \/a"\}\/|typeof \/x'\/|f\(\/\}`\/|\[1, \/"\/\]|if \(a\) \/x"\//)).toBeGreaterThan(10); // regular expressions
   });
 });
 

@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { parse, postprocess, preprocess } from 'micromark';
+import { mdxjs } from 'micromark-extension-mdxjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
@@ -194,11 +196,145 @@ describe('openers the MDX compiler rejects', () => {
     cycles(page);
   });
 
-  it('keeps an opener whose value never closes, from its < to the end of the page', () => {
-    const page = `Intro.\n\n<Frame caption="Old data-lightbox>\n  <iframe src=x></iframe>\n</Frame>\n\nOutro.`;
+  it('keeps an opener whose value never closes through its closing tag, and what follows editable', () => {
+    const component = '<Frame caption="Old data-lightbox>\n  <iframe src=x></iframe>\n</Frame>';
+    const page = `Intro.\n\n${component}\n\n## Later heading\n\nOutro.`;
     const editor = open(page);
-    expect(nodes(editor, 'mdxOpaqueBlock').map(({ node }) => node.attrs.source)).toEqual([page.slice(page.indexOf('<Frame'))]);
-    expect(types(editor)).toContain('paragraph');
+    expect(nodes(editor, 'mdxOpaqueBlock').map(({ node }) => node.attrs.source)).toEqual([component]);
+    expect(nodes(editor, 'heading').map(({ node }) => node.textContent)).toEqual(['Later heading']);
     cycles(page);
+  });
+});
+
+/** The first JSX tag as the MDX compiler's tokenizer reads it: its name and attribute names, or null if it rejects the page. */
+function compilerTag(page: string): { name: string; attributes: string[] } | null {
+  let events: ReturnType<typeof postprocess>;
+  try {
+    events = postprocess(
+      parse({ extensions: [mdxjs()] })
+        .document()
+        .write(preprocess()(page, undefined, true)),
+    );
+  } catch {
+    return null;
+  }
+  let name = '';
+  const attributes: string[] = [];
+  for (const [kind, token] of events) {
+    if (kind !== 'enter') continue;
+    const slice = page.slice(token.start.offset, token.end.offset);
+    // The MDX extension's token types aren't in micromark's own type map.
+    const type: string = token.type;
+    if (type === 'mdxJsxFlowTagNamePrimary' && !name) name = slice;
+    else if (type === 'mdxJsxFlowTagAttributeNamePrimary') attributes.push(slice);
+    else if (type === 'mdxJsxFlowTagExpressionAttribute') attributes.push('{…}');
+    else if (type === 'mdxJsxFlowTag' && name) break;
+  }
+  return { name, attributes };
+}
+
+describe('clearing or editing an attribute next to another (#695 review)', () => {
+  it.each([
+    ['after a quoted value with a backslash', '<Card title="Old\\"href="/docs">', '<Card href="/docs">', 'title="Old\\"'],
+    ['after a quoted value', '<Card hidden title="Old"href="/docs">', '<Card hidden href="/docs">', 'title="Old"'],
+    ['after an expression', '<Card data-x={1}title="Old"href="/docs">', '<Card data-x={1} href="/docs">', 'title="Old"'],
+    ['after a boolean, before a spread', '<Card hidden title="Old"{...props}>', '<Card hidden {...props}>', 'title="Old"'],
+    ['first, right after the name', '<Card title="Old"data-x={1}>', '<Card data-x={1}>', 'title="Old"'],
+    ['last, before />', '<Card href="/docs"title="Old"/>', '<Card href="/docs"/>', 'title="Old"'],
+    ['last, before >', '<Card href="/docs"title="Old">', '<Card href="/docs">', 'title="Old"'],
+    ['on its own line', '<Card\n  title="Old"\n  href="/docs"\n>', '<Card\n  href="/docs"\n>', 'title="Old"'],
+  ])('%s: clearing keeps the name and the other attributes, and an edit rewrites only the value', (_name, opener, cleared, title) => {
+    const tail = opener.endsWith('/>') ? '' : '\n\nBody\n\n</Card>';
+    const page = `Intro.\n\n${opener}${tail}\n\nOutro.`;
+    const before = compilerTag(page);
+    expect(before?.name).toBe('Card');
+
+    const editor = open(page);
+    setAttributes(editor, 'mdxCard', { title: '' });
+    const clearedPage = getMarkdown(editor);
+    expect(clearedPage).toBe(page.replace(opener, cleared));
+    expect(compilerTag(clearedPage)).toEqual({ name: 'Card', attributes: before?.attributes.filter((attribute) => attribute !== 'title') });
+
+    const edited = open(page);
+    setAttributes(edited, 'mdxCard', { title: 'Edited' });
+    const editedPage = getMarkdown(edited);
+    expect(editedPage).toBe(page.replace(title, 'title="Edited"'));
+    expect(compilerTag(editedPage)).toEqual(before);
+  });
+
+  it('switches a boolean on next to another attribute without joining them', () => {
+    const page = 'Intro.\n\n<Accordion defaultOpen={false}title="Old">\n\nBody\n\n</Accordion>\n\nOutro.';
+    const editor = open(page);
+    setAttributes(editor, 'mdxAccordion', { defaultOpen: true });
+    const saved = getMarkdown(editor);
+    expect(saved).toBe(page.replace('defaultOpen={false}title', 'defaultOpen title'));
+    expect(compilerTag(saved)).toEqual({ name: 'Accordion', attributes: ['defaultOpen', 'title'] });
+  });
+});
+
+describe('an opener the editor keeps whole stays inside its component (#695 review)', () => {
+  it.each([
+    ['a double quote', '/"/'],
+    ['a single quote', "/'/"],
+    ['a backtick', '/`/'],
+    ['a closing brace', '/}/'],
+  ])('reads a regular expression holding %s, and keeps the heading and the next Card editable', (_name, regex) => {
+    const page = `Intro.\n\n<Card title="Tour" data-extra={${regex}}>\n\nBody\n\n</Card>\n\n## Later heading\n\n<Card title="Next">\n\nMore\n\n</Card>`;
+    const editor = open(page);
+    expect(nodes(editor, 'mdxCard').map(({ node }) => node.attrs.title)).toEqual(['Tour', 'Next']);
+    expect(nodes(editor, 'heading').map(({ node }) => node.textContent)).toEqual(['Later heading']);
+    cycles(page);
+  });
+
+  it.each([
+    ['a regular expression with a quote, in a rejected opener', '<Card title="Tour" data-extra={/"/} a.b="x">'],
+    ['a regular expression with a brace, in a rejected opener', '<Card title="Tour" data-extra={/}/} a.b="x">'],
+    ['JSX with a quoted brace', '<Card title="Tour" data-extra={<b title="}">x</b>}>'],
+    ['JSX with a backtick', '<Card title="Tour" data-extra={<b>`</b>}>'],
+    ['an expression that never closes', '<Card title="Tour" data-extra={"x">'],
+  ])('keeps an opener with %s to its own component, and the heading and next Card editable', (_name, opener) => {
+    const component = `${opener}\n\nBody\n\n</Card>`;
+    const page = `Intro.\n\n${component}\n\n## Later heading\n\n<Card title="Next">\n\nMore\n\n</Card>`;
+    const editor = open(page);
+    const opaque = [...nodes(editor, 'mdxOpaqueBlock'), ...nodes(editor, 'mdxOpaqueInline')].map(({ node }) => node.attrs.source);
+    expect(opaque).toEqual([component]);
+    expect(nodes(editor, 'heading').map(({ node }) => node.textContent)).toEqual(['Later heading']);
+    expect(nodes(editor, 'mdxCard').map(({ node }) => node.attrs.title)).toEqual(['Next']);
+    cycles(page);
+  });
+});
+
+describe('division, shifts and regular expressions decided by the previous token (#695 review)', () => {
+  it.each([
+    ['Card', 'mdxCard', 'title', '\n\nBody\n\n'],
+    ['Step', 'mdxStep', 'title', '\n\nBody\n\n'],
+    ['Accordion', 'mdxAccordion', 'title', '\n\nBody\n\n'],
+    ['Frame', 'mdxFrame', 'caption', '\n\n![Diagram](/diagram.png)\n\n'],
+  ])('keeps a %s editable for each, and an edit rewrites only that attribute', (tag, type, key, body) => {
+    for (const expression of [
+      'obj.return / 2',
+      'a << b',
+      '() => { const x = function () {} / 2; return x; }',
+      'a.typeof / b',
+      'x?.in / 2',
+      'a <= b',
+      '(a <<= 1)',
+      '(function () {}) / 2',
+      'class {} / 2',
+      '() => { return /"}/.test(s); }',
+      "[1, /'/]",
+      '() => { if (a) /x"/.test(b); }',
+      '(a) / 2 / [1][0]',
+    ]) {
+      const page = `Intro.\n\n<${tag} ${key}="Tour" data-extra={${expression}} data-keep="yes">${body}</${tag}>\n\nOutro.`;
+      const editor = open(page);
+      expect(
+        nodes(editor, type).map(({ node }) => node.attrs[key]),
+        expression,
+      ).toEqual(['Tour']);
+      expect(getMarkdown(editor), expression).toBe(page);
+      setAttributes(editor, type, { [key]: 'Edited' });
+      expect(getMarkdown(editor), expression).toBe(page.replace(`${key}="Tour"`, `${key}="Edited"`));
+    }
   });
 });

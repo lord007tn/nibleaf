@@ -450,14 +450,11 @@ interface TagToken {
   editorMarkup?: boolean;
   /** Lowercase HTML the editor keeps opaque (see classifyHtml). */
   rawHtml?: boolean;
-  /** A raw-text element (`<script>`) with no closing tag: its text runs to the end of the page.
-   *  Also a component opener whose value or tag never ends (see scanTags). */
+  /** A raw-text element (`<script>`) with no closing tag: its text runs to the end of the page. */
   runsToEnd?: boolean;
   /** A supported component's opener the editor can't read with the MDX grammar (see
    *  `./jsx-attributes`): kept whole, with its children, byte for byte. */
   malformed?: boolean;
-  /** How far reading a malformed opener got: its `>`, or where the grammar stopped. */
-  reach?: number;
 }
 
 interface SourceRange {
@@ -725,10 +722,16 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   const opened: number[] = [];
   // The first `</name` at or after the last search for it, or -1 for none.
   const closers = new Map<string, number>();
-  // How far a failed grammar read got. An opener inside that text is kept as written
-  // without reading it again (the compiler rejected the page there already), so the
-  // grammar reads each character at most once.
-  let grammarReach = 0;
+  // Each supported component's openers and closing tags, found once per name.
+  const tagIndexes = new Map<string, ComponentTagIndex>();
+  const tagIndex = (name: string): ComponentTagIndex => {
+    let found = tagIndexes.get(name);
+    if (!found) {
+      found = componentTagIndex(source, name, mask);
+      tagIndexes.set(name, found);
+    }
+    return found;
+  };
   for (let i = 0; i < source.length; i++) {
     if (source[i] !== '<' || mask[i]) continue;
     if (comments && source.startsWith('<!--', i)) {
@@ -748,48 +751,27 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     const name = nameMatch[0];
     const isHtml = !/^[A-Z]/.test(name);
     cursor += name.length;
-    // A supported component's opener is read with the MDX grammar (#579). One it can't
-    // read is kept whole, byte for byte (see unsupportedRanges), to where the compiler's
-    // lexical structure ends it (`looseJsxTagEnd`), or from its `<` to the end of the
-    // page when that never comes, as the compiler reads a value that never closes (and
-    // the scan stops: nothing after it is read as a tag).
+    // A supported component's opener is read with the MDX grammar (#579), up to the
+    // next opener of its name at most, so each character is read once. One it can't
+    // read is kept whole, byte for byte, and never past its component (see
+    // malformedOpenerEnd).
     const component = !isHtml && !closing && Boolean(SUPPORTED_MDX_COMPONENTS[name.toLowerCase()]) && !HTML_ELEMENT_ALIASES.has(name);
+    const index = component ? tagIndex(name) : undefined;
     // MDX also reads a spread right after a component's name (`<Frame{...props}>`).
-    if (!/[\s/>]/.test(source[cursor] ?? '') && (isHtml || closing || source[cursor] !== '{')) {
-      // For MDX `<Frame\` is a tag it rejects; for the editor, text it would rewrite.
-      if (component)
-        tokens.push({
-          start: i,
-          end: cursor,
-          name,
-          raw: source.slice(i, cursor),
-          closing: false,
-          selfClosing: false,
-          html: false,
-          malformed: true,
-          reach: cursor,
-        });
-      continue;
-    }
-    const grammar = component && i >= grammarReach ? readJsxOpeningTag(source, i) : undefined;
-    if (grammar) grammarReach = isJsxTagFailure(grammar) ? grammar.at : grammar.end;
+    const separated = /[\s/>]/.test(source[cursor] ?? '') || (!isHtml && !closing && source[cursor] === '{');
+    if (!separated && !index) continue;
+    const grammar = index && separated ? readJsxOpeningTag(source, i, firstAfter(index.openers, i) ?? source.length) : undefined;
     if (grammar && !isJsxTagFailure(grammar) && grammar.name === name) {
       const raw = source.slice(i, grammar.end);
       tokens.push({ start: i, end: grammar.end, name, raw, closing: false, selfClosing: grammar.selfClosing, html: false });
       i = grammar.end - 1;
       continue;
     }
-    if (component) {
-      // An opener the grammar rejects ends where the compiler's lexical structure ends
-      // it (a `>` in a value or a comment doesn't), or it never does.
-      const end = grammar && isJsxTagFailure(grammar) && grammar.eof ? -1 : looseJsxTagEnd(source, i);
-      if (end < 0) {
-        tokens.push(unendedOpener(source, i, name));
-        break;
-      }
+    if (index) {
+      // For MDX `<Frame\` is a tag it rejects too; for the editor, text it would rewrite.
+      const { end, whole } = malformedOpenerEnd(source, i, index);
       const raw = source.slice(i, end);
-      const reach = Math.max(end, grammar && isJsxTagFailure(grammar) ? grammar.at : 0);
-      tokens.push({ start: i, end, name, raw, closing: false, selfClosing: /\/\s*>$/.test(raw), html: false, malformed: true, reach });
+      tokens.push({ start: i, end, name, raw, closing: false, selfClosing: whole || /\/\s*>$/.test(raw), html: false, malformed: true });
       i = end - 1;
       continue;
     }
@@ -878,18 +860,88 @@ function blockEnd(source: string, at: number): number {
   return found ? Math.max(at, found.index) : source.length;
 }
 
-/** A component opener that never ends: kept from its `<` to the end of the page. */
-const unendedOpener = (source: string, start: number, name: string): TagToken => ({
-  start,
-  end: source.length,
-  name,
-  raw: source.slice(start),
-  closing: false,
-  selfClosing: false,
-  html: false,
-  malformed: true,
-  runsToEnd: true,
-});
+/** Where a component's openers (`<Card`) and closing tags (`</Card>`) start, outside code, in order. */
+interface ComponentTagIndex {
+  openers: number[];
+  closerStarts: number[];
+  closerEnds: number[];
+}
+
+function componentTagIndex(source: string, name: string, mask: Uint8Array): ComponentTagIndex {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const openers: number[] = [];
+  const closerStarts: number[] = [];
+  const closerEnds: number[] = [];
+  for (const match of source.matchAll(new RegExp(`<${escaped}(?![\\w.:-])`, 'g'))) if (!mask[match.index]) openers.push(match.index);
+  for (const match of source.matchAll(new RegExp(`</${escaped}\\s*>`, 'g'))) {
+    if (mask[match.index]) continue;
+    closerStarts.push(match.index);
+    closerEnds.push(match.index + match[0].length);
+  }
+  return { openers, closerStarts, closerEnds };
+}
+
+/** The index of the first of the sorted `starts` after `at`, by binary search. */
+function indexAfter(starts: readonly number[], at: number): number {
+  let low = 0;
+  let high = starts.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if ((starts[middle] ?? 0) <= at) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
+const firstAfter = (starts: readonly number[], at: number): number | undefined => starts[indexAfter(starts, at)];
+
+/**
+ * Where a component opener the grammar can't read is kept to, never past its own
+ * component, so what follows loads as it does on main:
+ * - one with a closing tag before the next opener of its name, through that tag
+ *   (`whole`: the component, children included);
+ * - otherwise (self-closing, or never closed) from its tag's end as the compiler's
+ *   lexical structure finds it, or as main's reader did, to the end of its Markdown
+ *   block.
+ * Each read stops at the next opener or closing tag of its name.
+ */
+function malformedOpenerEnd(source: string, start: number, index: ComponentTagIndex): { end: number; whole: boolean } {
+  const nextOpener = firstAfter(index.openers, start) ?? source.length;
+  const closeIndex = indexAfter(index.closerStarts, start);
+  const closeStart = index.closerStarts[closeIndex];
+  const close = closeStart === undefined ? undefined : { start: closeStart, end: index.closerEnds[closeIndex] ?? closeStart };
+  const bound = Math.min(nextOpener, close?.start ?? source.length);
+  const tagEnd = looseJsxTagEnd(source, start, bound);
+  // With no closing tag, the rest of the opener's Markdown block goes with it: where
+  // a rejected tag's `>` is depends on rules the compiler rejected, and text after it
+  // on its lines would be rewritten. A blank line, or the next tag of its name, ends it.
+  const toBlockEnd = (end: number) => ({ end: Math.max(end, Math.min(blockEnd(source, end), bound)), whole: false });
+  if (tagEnd >= 0 && /\/\s*>$/.test(source.slice(start, tagEnd))) return toBlockEnd(tagEnd);
+  if (close && close.start < nextOpener) return { end: close.end, whole: true };
+  if (tagEnd >= 0) return toBlockEnd(tagEnd);
+  const lenient = mainTagEnd(source, start, bound);
+  return toBlockEnd(lenient >= 0 ? lenient : start + 1);
+}
+
+/** Where main's reader ended a component tag (quotes with backslash escapes, `{…}`
+ *  counted), or -1 when it found no `>` before `bound`. */
+function mainTagEnd(source: string, start: number, bound: number): number {
+  let quote = '';
+  let escaped = false;
+  let braces = 0;
+  for (let i = start + 1; i < bound; i++) {
+    const char = source[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === quote) quote = '';
+    } else if (char === '"' || char === "'" || char === '`') quote = char;
+    else if (char === '{') braces++;
+    else if (char === '}') braces = Math.max(0, braces - 1);
+    else if (char === '>' && braces === 0) return i + 1;
+  }
+  return -1;
+}
 
 /** Pair each closing tag with the latest unpaired opening tag of the same name. */
 function tagPairs(tokens: TagToken[]): Map<number, number> {
@@ -922,10 +974,7 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
       continue;
     const closeIndex = token.closing ? undefined : pairs.get(i);
     const close = closeIndex == null ? undefined : tokens[closeIndex];
-    let end = close?.end ?? (token.runsToEnd ? source.length : token.end);
-    // A malformed opener is kept through the end of its Markdown block at least: where
-    // its `>` is, and so the rest of its line, depends on rules the compiler rejected.
-    if (token.malformed && token.reach !== undefined) end = Math.max(end, blockEnd(source, token.reach));
+    const end = close?.end ?? (token.runsToEnd ? source.length : token.end);
     ranges.push(sourceRange(source, layout, { start: token.start, end }, token.name));
     if (!token.closing) coveredUntil = end;
   }
@@ -1408,13 +1457,17 @@ export function replaceOpeningAttribute(raw: string, componentName: string, name
   const existing = attrs.find((attr) => attr.name.toLowerCase() === name.toLowerCase());
   const remove = value == null || value === '' || value === false;
   if (existing) {
+    const after = raw.slice(existing.end);
+    // What follows may touch the attribute (`title="Old"href="/docs"`, which MDX
+    // reads): where it starts another attribute, a space keeps the two apart.
+    const separator = /^[\s/>]/.test(after) || after === '' ? '' : ' ';
     // A removed attribute takes the space before it along, so no double space is left.
-    if (remove) return `${raw.slice(0, existing.start).trimEnd()}${raw.slice(existing.end)}`;
+    if (remove) return `${raw.slice(0, existing.start).trimEnd()}${separator}${after}`;
     const rendered =
       value === true
-        ? existing.name
+        ? `${existing.name}${separator}`
         : `${existing.name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
-    return `${raw.slice(0, existing.start)}${rendered}${raw.slice(existing.end)}`;
+    return `${raw.slice(0, existing.start)}${rendered}${after}`;
   }
   if (remove) return raw;
   const insertAt = raw.search(/\/?>\s*$/);
