@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigDirtyProvider } from '@/components/project-settings/shared';
 import type { OpenApiConfiguration } from '@/hooks/api';
+import { queryKeys } from '@/hooks/api/query-keys';
 import { OpenApiSettings } from './openapi-settings';
 
 const mocks = vi.hoisted(() => ({
@@ -34,6 +36,7 @@ const saved: OpenApiConfiguration = {
   source: { type: 'url', url: 'https://api.example.com/openapi.yaml' },
 };
 
+let queryClient: QueryClient;
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 let dirty: Set<string>;
@@ -42,19 +45,23 @@ let dirty: Set<string>;
 const render = () =>
   act(async () =>
     root.render(
-      <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
-        <OpenApiSettings projectId="site-1" />
-      </ConfigDirtyProvider>,
+      <QueryClientProvider client={queryClient}>
+        <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
+          <OpenApiSettings projectId="site-1" />
+        </ConfigDirtyProvider>
+      </QueryClientProvider>,
     ),
   );
 /** The server's configuration changes and the query refetches it. */
 const refetch = (next: OpenApiConfiguration | null) => {
   mocks.data = next;
+  queryClient.setQueryData(queryKeys.openapi.detail('site-1'), next);
   return render();
 };
 
 beforeEach(() => {
   mocks.data = saved;
+  queryClient = new QueryClient();
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -63,6 +70,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   await act(async () => root.unmount());
+  queryClient.clear();
   container.remove();
   vi.clearAllMocks();
 });
@@ -141,6 +149,28 @@ describe('OpenApiSettings draft', () => {
     expect(field('openapi-title').value).toBe('Billing API');
     expect(field('openapi-path').value).toBe('billing');
     expect(dirty.size).toBe(0);
+  });
+
+  it('re-syncs from the server when its refetch lands before the save resolves', async () => {
+    let finish!: () => void;
+    mocks.upsert.mockImplementation(() => new Promise<void>((resolve) => (finish = resolve)));
+    await render();
+    await click('settings.openapi.edit');
+    await type(field('openapi-path'), 'Billing');
+    await act(async () => void button('common.save').click());
+
+    // The mutation's invalidation refetches first: the server stored the path its own way.
+    await refetch({ ...saved, path: 'billing', contentHash: 'hash-2' });
+    await act(async () => finish());
+    await render();
+
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('settings.openapi.saved');
+    expect(container.querySelector('#openapi-title')).toBeNull();
+    expect(container.textContent).toContain('/billing');
+    expect(dirty.size).toBe(0);
+    await click('settings.openapi.edit');
+    expect(field('openapi-path').value).toBe('billing');
+    expect(container.textContent).not.toContain('forms.changedElsewhere');
   });
 
   it('empties an uploaded document after saving it', async () => {

@@ -49,7 +49,7 @@ export function OpenApiSettings({ projectId }: { projectId: string }) {
 function OpenApiForm({ projectId, current }: { projectId: string; current: OpenApiConfiguration | null }) {
   const t = useT();
   const confirm = useConfirm();
-  const save = useSaveSiteOpenApi(projectId);
+  const { save } = useSaveSiteOpenApi(projectId);
   const sync = useSyncSiteOpenApi(projectId);
   const remove = useRemoveSiteOpenApi(projectId);
   const defaultTitle = t('settings.openapi');
@@ -63,8 +63,9 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
     source,
     onSubmit: async (value, outcome) => {
       try {
-        await save.mutateAsync(openApiUpsertBody(value));
-        const confirmed = confirmedOpenApiValues(outcome.baseline, value);
+        const stored = await save(openApiUpsertBody(value));
+        // The server's own values when its refetch came back; else what was sent, as it stores it.
+        const confirmed = stored ? openApiValues(stored, defaultTitle) : confirmedOpenApiValues(outcome.baseline, value);
         outcome.succeeded(confirmed);
         toast.success(t('settings.openapi.saved'));
         if (value.sourceType === 'upload') setFilename('');
