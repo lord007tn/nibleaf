@@ -3,7 +3,7 @@ import { growthMs, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/shared
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { annotateFences } from './fence-source';
-import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
+import { buildEditorExtensions, getMarkdown, seedMarkdown } from './tiptap-editor';
 
 type MarkdownStorage = { markdown: { parser: { parse(content: string): unknown; md: { parse(source: string, env: object): unknown } } } };
 
@@ -105,6 +105,45 @@ describe.runIf(growthTestsEnabled)('code fence source growth', () => {
     const [small, large] = growthMs(parse, groupedFences(250), groupedFences(1000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
+});
+
+const QUOTE_32 = '> '.repeat(32);
+/** `n` fences in one quote nested 32 levels deep (#612). */
+const deeplyQuotedFences = (n: number) => `${QUOTE_32}\`\`\`js\n${QUOTE_32}x\n${QUOTE_32}\`\`\`\n${QUOTE_32}\n`.repeat(n);
+/** `n` fences, one after another at the top of the page (#612). */
+const siblingFences = (n: number) => '```js\nx\n```\n\n'.repeat(n);
+
+// Saving: only getMarkdown is timed, on pages loaded beforehand (#612). Every block
+// used to read back or copy the whole output written before it.
+describe.runIf(growthTestsEnabled)('saving pages of fences, growth (#612)', () => {
+  const pages = new Map<string, Editor>();
+  const loaded = (source: string) => {
+    const page = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+    seedMarkdown(page, source);
+    pages.set(source, page);
+    return page;
+  };
+  afterAll(() => {
+    for (const page of pages.values()) page.destroy();
+  });
+
+  it.each([
+    ['list item fences', itemFences, 2000],
+    ['fences under 32 quote levels', deeplyQuotedFences, 500],
+    ['sibling fences', siblingFences, 2000],
+  ] as const)(
+    'saves a page of %s in one pass',
+    (_name, shape, n) => {
+      const small = loaded(shape(n));
+      const large = loaded(shape(4 * n));
+      // Main: 39.7 → 1,868 ms, 24.1 → 997 ms and 6.8 → 130 ms per call (#612).
+      const [smallMs, largeMs] = growthMs(getMarkdown, small, large, { budgetMs: 60_000 });
+      console.info(`#612 save growth, ${_name}: ${smallMs.toFixed(1)} → ${largeMs.toFixed(1)} ms (limit ${linearGrowthLimit(smallMs).toFixed(1)})`);
+      expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+      // Loading the two pages takes seconds on a loaded runner, before any timing.
+    },
+    120_000,
+  );
 });
 
 /** `n` fences, then one with no closing line, which runs to the end of the page (#602). */
