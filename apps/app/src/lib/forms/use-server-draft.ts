@@ -42,6 +42,22 @@ export type DraftSave<T extends DraftValues> = {
 export type DraftSubmitResult = 'saved' | 'invalid' | 'failed' | 'busy';
 
 /**
+ * Where the draft stands right now, read from the form itself rather than
+ * from the last render: a save's `'saved'` only says the request went
+ * through, while this says whether anything is left.
+ */
+export type DraftSettlement = {
+  /**
+   * No save in flight and the form matches what the server last confirmed:
+   * nothing left to save or resolve (a conflict only stays where the form
+   * differs from the baseline).
+   */
+  settled: boolean;
+  /** Changes whenever the form starts over for another identity, so an earlier result can tell it no longer applies. */
+  generation: number;
+};
+
+/**
  * The one save in flight: which identity generation it belongs to and, once
  * its request is sent, what it sent and which of those keys the server has
  * echoed (see `PendingSave`).
@@ -254,6 +270,14 @@ export function useServerDraftForm<T extends DraftValues>({
     form.reset(baselineRef.current);
   }, [form]);
 
+  const settlement = useCallback(
+    (): DraftSettlement => ({
+      settled: !activeRef.current && !isDraftDirty(form.state.values as T, baselineRef.current),
+      generation: generationRef.current,
+    }),
+    [form],
+  );
+
   const resolveConflict = useCallback(
     (key: keyof T & string, choice: 'theirs' | 'mine') => {
       applyValues(resolveConflictValues({ baseline: baselineRef.current, current: form.state.values as T, key, choice }));
@@ -262,5 +286,5 @@ export function useServerDraftForm<T extends DraftValues>({
     [applyValues, form],
   );
 
-  return { form, baseline, isDirty, isSaving, conflicts, submit, discard, resolveConflict };
+  return { form, baseline, isDirty, isSaving, conflicts, submit, discard, resolveConflict, settlement };
 }

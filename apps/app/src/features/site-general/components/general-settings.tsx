@@ -109,7 +109,13 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  const formProps = useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-general', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   const required = (value: string) => (nameProblem(value) ? t('validation.required', { label: t('settings.general.name.label') }) : undefined);
   const slugMessage = (value: string) => {

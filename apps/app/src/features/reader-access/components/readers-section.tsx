@@ -243,6 +243,7 @@ function EmailDomainsForm({ projectId, data, status }: Props) {
     isSubmitting: draft.isSaving,
     submit,
     discard: draft.discard,
+    settlement: draft.settlement,
   });
 
   return (

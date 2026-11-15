@@ -13,28 +13,52 @@ import {
   useState,
 } from 'react';
 import { DirtyStateReporter } from '@/components/project-settings/shared';
+import type { DraftSettlement } from './use-server-draft';
 
 /**
  * What one explicit-save form tells the page's SaveRegion
  * (operations/ui-overhaul.md §5.3). `submit` runs the form's own submit and
- * resolves `'saved'`, `'invalid'` (validation stopped it), `'failed'` (the
- * server refused; the form showed why) or `'deferred'`: the form asked the
- * person first (a confirmation) and saves itself once they answer, so the bar
- * moves on without waiting and without saying "Saved" for it.
+ * resolves `'saved'` (the server accepted the request), `'invalid'`
+ * (validation stopped it), `'failed'` (the server refused; the form showed
+ * why) or `'deferred'`: the form asked the person first (a confirmation) and
+ * saves itself once they answer, so the bar moves on without waiting and
+ * without saying "Saved" for it.
+ *
+ * `settlement` reads the form as it is now (`useServerDraftForm`'s
+ * `settlement`). An accepted request can still leave an edit made during it,
+ * or a conflict, so once the saves end the region says "Saved" only when
+ * every registered form is settled. `submit` still resolves `'saved'` for an
+ * accepted request either way.
+ *
+ * A hand-written `settlement` must be stable, read live state covering all of
+ * the form's unsaved state, return a real identity generation, and change
+ * only together with `isDirty` or `isSubmitting` (UI_GUIDE.md).
  */
 export type SaveRegionForm = {
   isDirty: boolean;
   isSubmitting: boolean;
   submit: () => Promise<'saved' | 'invalid' | 'failed' | 'deferred'>;
   discard: () => void;
+  settlement: () => DraftSettlement;
 };
 
+/** One mounted form's registration; `instance` tells a remounted form with the same id apart. */
+type Registered = SaveRegionForm & { instance: object };
+
 type Registry = {
-  register: (id: string, form: SaveRegionForm) => void;
-  unregister: (id: string) => void;
+  register: (id: string, form: Registered) => void;
+  unregister: (id: string, instance: object) => void;
   /** Saves one form the way Save does, focusing an invalid field inside `root`. */
-  saveForm: (form: SaveRegionForm, root: HTMLFormElement) => Promise<void>;
+  saveForm: (id: string, root: HTMLFormElement) => Promise<void>;
 };
+
+/**
+ * What the region last announced: after a save, every registered form
+ * settled (`saved`), or the save went through but something is left to save
+ * or resolve (`unsettled`); or validation stopped it (`invalid`).
+ */
+type Status = '' | 'saved' | 'unsettled' | 'invalid';
+const STATUS_KEY = { saved: 'common.saved', unsettled: 'forms.unsavedChanges', invalid: 'forms.fixHighlighted' } as const;
 
 const SaveRegionContext = createContext<Registry | null>(null);
 
@@ -64,11 +88,12 @@ export function useSaveRegionForm(id: string, form: SaveRegionForm) {
   const registry = useContext(SaveRegionContext);
   if (!registry) throw new Error('useSaveRegionForm must be used inside SaveRegionProvider');
   const { register, unregister, saveForm } = registry;
-  const { isDirty, isSubmitting, submit, discard } = form;
+  const { isDirty, isSubmitting, submit, discard, settlement } = form;
+  const [instance] = useState(() => ({}));
   useEffect(() => {
-    register(id, { isDirty, isSubmitting, submit, discard });
-  }, [discard, id, isDirty, isSubmitting, register, submit]);
-  useEffect(() => () => unregister(id), [id, unregister]);
+    register(id, { isDirty, isSubmitting, submit, discard, settlement, instance });
+  }, [discard, id, instance, isDirty, isSubmitting, register, settlement, submit]);
+  useEffect(() => () => unregister(id, instance), [id, instance, unregister]);
 
   // Implicit submission happens in the same task as its keydown, so a key that
   // must not save only has to be remembered until the task ends. The key
@@ -88,9 +113,9 @@ export function useSaveRegionForm(id: string, form: SaveRegionForm) {
       if (event.target !== event.currentTarget) return;
       event.preventDefault();
       if (ignoreSubmit.current) return;
-      void saveForm({ isDirty, isSubmitting, submit, discard }, event.currentTarget);
+      void saveForm(id, event.currentTarget);
     },
-    [discard, isDirty, isSubmitting, saveForm, submit],
+    [id, saveForm],
   );
   return { onKeyDown, onSubmit };
 }
@@ -139,21 +164,29 @@ function useKeyboardOpen() {
  */
 export function SaveRegionProvider({ children }: { children: ReactNode }) {
   const t = useT();
-  const [forms, setForms] = useState<ReadonlyMap<string, SaveRegionForm>>(() => new Map());
-  const [status, setStatus] = useState<string>('');
+  // `forms` is what renders (the bar, the leave guard); `live` holds the
+  // registrations as they are now, which a save reads when it ends.
+  const [forms, setForms] = useState<ReadonlyMap<string, Registered>>(() => new Map());
+  const live = useRef(new Map<string, Registered>());
+  const [status, setStatus] = useState<Status>('');
   const [running, setRunning] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const keyboardOpen = useKeyboardOpen();
 
-  const register = useCallback((id: string, form: SaveRegionForm) => {
+  const allSettled = useCallback(() => [...live.current.values()].every((form) => form.settlement().settled), []);
+
+  const register = useCallback((id: string, form: Registered) => {
+    live.current.set(id, form);
     setForms((previous) => {
-      const existing = previous.get(id);
+      const current = previous.get(id);
       if (
-        existing &&
-        existing.isDirty === form.isDirty &&
-        existing.isSubmitting === form.isSubmitting &&
-        existing.submit === form.submit &&
-        existing.discard === form.discard
+        current &&
+        current.instance === form.instance &&
+        current.isDirty === form.isDirty &&
+        current.isSubmitting === form.isSubmitting &&
+        current.submit === form.submit &&
+        current.discard === form.discard &&
+        current.settlement === form.settlement
       ) {
         return previous;
       }
@@ -162,14 +195,27 @@ export function SaveRegionProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
-  const unregister = useCallback((id: string) => {
+  const unregister = useCallback((id: string, instance: object) => {
+    // A form remounted under the same id has registered itself already: leave it.
+    if (live.current.get(id)?.instance !== instance) return;
+    live.current.delete(id);
     setForms((previous) => {
-      if (!previous.has(id)) return previous;
+      if (previous.get(id)?.instance !== instance) return previous;
       const next = new Map(previous);
       next.delete(id);
       return next;
     });
   }, []);
+
+  // What was announced must stay true of the forms as they are now, read live
+  // on every render (every change to a form's dirty or saving state renders
+  // here, completion included). An edit takes "Saved" back, even one that
+  // landed before its form's clean state rendered; "Unsaved changes" goes once
+  // nothing is left. Both silently, and before a stale claim renders.
+  if (status === 'saved' || status === 'unsettled') {
+    const settledNow = allSettled();
+    if (status === 'saved' ? !settledNow : settledNow) setStatus('');
+  }
 
   const dirtyForms = [...forms.values()].filter((form) => form.isDirty);
   const anyDirty = dirtyForms.length > 0;
@@ -178,43 +224,65 @@ export function SaveRegionProvider({ children }: { children: ReactNode }) {
   // typed the value back to what was saved: the request can still change it.
   const unsettled = anyDirty || saving;
 
-  /** Submits `pending` in order and reports the outcome; an invalid one focuses its first field inside `root`. */
+  /**
+   * Submits the forms registered as `pending`, in order, and reports the
+   * outcome; an invalid one focuses its first field inside `root`. A form that
+   * unmounted, or has nothing left to save by its turn, is skipped.
+   *
+   * "Saved" is decided from the forms' live settlement when the last submit
+   * returns, never from the rendered dirty flags, which catch up a render
+   * later. Every form saved must still be the same form on the same identity,
+   * and every registered form, saved or not, must be settled; otherwise a
+   * save that went through says "Unsaved changes".
+   */
   const run = useCallback(
-    async (pending: SaveRegionForm[], root: ParentNode | null) => {
+    async (pending: string[], root: ParentNode | null) => {
       if (running || pending.length === 0) return;
       setRunning(true);
       setStatus('');
       try {
         let deferred = false;
-        for (const form of pending) {
+        const saved: Array<{ id: string; instance: object; generation: number }> = [];
+        for (const id of pending) {
+          const form = live.current.get(id);
+          if (!form) continue;
+          const { settled, generation } = form.settlement();
+          if (settled) continue;
           const result = await form.submit();
           if (result === 'deferred') {
             deferred = true;
             continue;
           }
           if (result === 'invalid') {
-            setStatus(t('forms.fixHighlighted'));
+            setStatus('invalid');
             focusFirstInvalid(root);
             return;
           }
           if (result === 'failed') return;
+          saved.push({ id, instance: form.instance, generation });
         }
-        if (!deferred) setStatus(t('common.saved'));
+        if (deferred || saved.length === 0) return;
+        // A save for a form since replaced, or for an identity it has since left (site A → B → A), says nothing here.
+        const current = saved.every(({ id, instance, generation }) => {
+          const form = live.current.get(id);
+          return form?.instance === instance && form.settlement().generation === generation;
+        });
+        if (current) setStatus(allSettled() ? 'saved' : 'unsettled');
       } finally {
         setRunning(false);
       }
     },
-    [running, t],
+    [allSettled, running],
   );
   const save = useCallback(
     () =>
       run(
-        [...forms.values()].filter((form) => form.isDirty),
+        [...live.current].filter(([, form]) => form.isDirty).map(([id]) => id),
         rootRef.current,
       ),
-    [forms, run],
+    [run],
   );
-  const saveForm = useCallback((form: SaveRegionForm, root: HTMLFormElement) => run(form.isDirty ? [form] : [], root), [run]);
+  const saveForm = useCallback((id: string, root: HTMLFormElement) => run(live.current.get(id)?.isDirty ? [id] : [], root), [run]);
   const registry = useMemo(() => ({ register, unregister, saveForm }), [register, unregister, saveForm]);
 
   const discard = useCallback(() => {
@@ -254,7 +322,7 @@ export function SaveRegionProvider({ children }: { children: ReactNode }) {
         saveLabel={t('common.save')}
         saving={saving}
         savingLabel={t('common.saving')}
-        status={status}
+        status={status ? t(STATUS_KEY[status]) : ''}
       />
     </SaveRegionContext.Provider>
   );

@@ -93,7 +93,13 @@ function FooterForm({ project }: { project: Project }) {
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
   // Enter in a single-line field saves this form through the bar's own run: same lock, status and focus.
-  const formProps = useSaveRegionForm('site-footer', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-footer', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   // Switching scope asks first while there are edits, or a save that can still change them.
   const { guard, setDirty } = useScopeDirtyGuard();

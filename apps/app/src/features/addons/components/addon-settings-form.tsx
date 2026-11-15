@@ -98,6 +98,7 @@ function useAddonDraft<T extends DraftValues>(
     isSubmitting: draft.isSaving,
     submit,
     discard: draft.discard,
+    settlement: draft.settlement,
   });
   return { form, draft, formProps };
 }

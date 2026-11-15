@@ -74,6 +74,7 @@ const blur = (el: HTMLElement) =>
 const region = () => container.querySelector('[data-slot="save-region"]');
 const regionButton = (name: string) => [...(region()?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.includes(name));
 const save = () => act(async () => regionButton('common.save')?.click());
+const barStatus = () => container.querySelector('[role="status"]')?.textContent;
 const errorOf = (el: HTMLElement) =>
   (el.getAttribute('aria-describedby') ?? '')
     .split(' ')
@@ -110,7 +111,7 @@ describe('GeneralSettings', () => {
     expect(name.getAttribute('aria-invalid')).toBeNull();
   });
 
-  it('keeps text typed during a slow save, and the unsaved-changes guard with it', async () => {
+  it('keeps text typed during a slow save, and the unsaved-changes guard with it, saying "Saved" only once nothing is left', async () => {
     const first = deferred();
     mocks.updateProject.mockReturnValueOnce(first.promise);
     const name = input('settings.general.name.label');
@@ -122,6 +123,8 @@ describe('GeneralSettings', () => {
     expect(name.value).toBe('AB');
     expect(dirty.size).toBeGreaterThan(0);
     expect(region()).not.toBeNull();
+    // The request went through, but "AB" is still unsaved (#759).
+    expect(barStatus()).toBe('forms.unsavedChanges');
 
     mocks.updateProject.mockResolvedValueOnce(undefined);
     await save();
@@ -129,6 +132,7 @@ describe('GeneralSettings', () => {
     expect(name.value).toBe('AB');
     expect(dirty.size).toBe(0);
     expect(region()).toBeNull();
+    expect(barStatus()).toBe('common.saved');
   });
 
   it('keeps the save bar and the leave guard up until a pending save settles, even if the text goes back', async () => {

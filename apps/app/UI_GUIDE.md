@@ -51,7 +51,13 @@ Use the design-system primitives. Never hand-write a card.
 ```tsx
 const { form, ...draft } = useServerDraftForm({ identity: [projectId, 'general'], source, onSubmit: saveValues });
 // saveValues returns 'saved' | 'invalid' | 'failed' and calls save.succeeded(confirmed) on success.
-const formProps = useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+const formProps = useSaveRegionForm('site-general', {
+  isDirty: draft.isDirty,
+  isSubmitting: draft.isSaving,
+  submit, // draft.submit with 'busy' mapped to 'failed'
+  discard: draft.discard,
+  settlement: draft.settlement,
+});
 
 return (
   <form noValidate {...formProps}>
@@ -79,6 +85,27 @@ return (
 - **Wrap the screen in `SaveRegionProvider`.** The bar appears only while something is dirty. It saves with Save,
   Enter or Cmd/Ctrl+S, and an invalid save focuses the first highlighted field. It also reports to the route's
   unsaved-changes guard.
+- **"Saved" means nothing is left to save or resolve, not just that the request went through.** The submit you pass
+  resolves `'saved'` when the server accepted the request, even if `succeeded` returned false. Pass
+  `settlement: draft.settlement` too. When the saves end, the bar reads every registered form's live settlement:
+  - it announces `common.saved` only when all of them are settled;
+  - after an edit made during the save, a kept conflict, "Keep mine", or another form still dirty, it announces
+    `forms.unsavedChanges`, keeps the bar and keeps the draft.
+
+  Failed, invalid, deferred (a confirmation that saves later) or stale saves never say "Saved". A stale save is one for
+  a form that was replaced, or moved to another identity since. A new edit silently takes back an earlier "Saved".
+  Settling forms without a save (Discard, "Use theirs") silently clears "Unsaved changes" and never says "Saved". The
+  bar's status is the page's one save announcement: don't add another.
+
+  If you write your own `settlement` instead of passing `draft.settlement` (a form with authored state outside the
+  draft, like Theme):
+  - **Keep it stable** (`useCallback`). A new function each render re-registers the form with the bar every render.
+  - **Read live state** (refs, the form store), not render state, and cover everything that counts as unsaved:
+    `settled` is true only with no save in flight and nothing left to save or resolve anywhere in the form.
+  - **Return a real `generation`**: the draft's, or one that changes whenever the form starts over for another site,
+    language or other identity. Never a constant. The bar uses it to drop results for an identity the form has left.
+  - **Keep `isDirty` and `isSubmitting` in step with it.** The bar re-checks its status against every form's
+    settlement when a registration changes, so a settlement that changes without either flag changing is not seen.
 - **Enter saves the form it was pressed in.** Spread the props `useSaveRegionForm` returns on the `<form>` and render
   `<SaveRegionSubmit />` inside it. HTML submits a form on Enter only if it has a submit button or a single text field;
   this hidden one is never a Tab stop or announced. Plain Enter in an editable single-line field then saves that form

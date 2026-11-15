@@ -63,7 +63,13 @@ function AnalyticsForm({ project }: { project: Project }) {
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  const formProps = useSaveRegionForm('site-analytics', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-analytics', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   const ga4Message = (value: string) => (ga4Problem(value) ? t('settings.analytics.ga4.error') : undefined);
   const plausibleMessage = (value: string) => (plausibleProblem(value) ? t('settings.analytics.plausible.error') : undefined);

@@ -449,7 +449,7 @@ describe('AddonsSettings', () => {
       }
     });
 
-    it('saves only the add-on it was pressed in, through the bar, and says so', async () => {
+    it('saves only the add-on it was pressed in, through the bar, and does not call the page saved while another holds an edit', async () => {
       const privacy = inputFor('site.analyticsConsentPrivacy');
       await type(privacy, 'https://acme.test/privacy');
       await type(template(), 'https://github.com/acme/docs/edit/main/{path}');
@@ -460,7 +460,7 @@ describe('AddonsSettings', () => {
         addonId: 'edit-suggestions',
         body: { config: { urlTemplate: 'https://github.com/acme/docs/edit/main/{path}' }, expectedRevision: 2 },
       });
-      expect(barStatus()).toBe('common.saved');
+      expect(barStatus()).toBe('forms.unsavedChanges');
       // The consent banner's edit is untouched and still waits for Save.
       expect(privacy.value).toBe('https://acme.test/privacy');
       expect(region()).not.toBeNull();
