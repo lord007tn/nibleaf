@@ -131,6 +131,40 @@ describe('the attribute forms MDX reads', () => {
   });
 });
 
+describe('statement-level JavaScript inside a value', () => {
+  it.each([
+    ['Card', 'mdxCard', 'title', '\n\nBody\n\n'],
+    ['Step', 'mdxStep', 'title', '\n\nBody\n\n'],
+    ['Accordion', 'mdxAccordion', 'title', '\n\nBody\n\n'],
+    ['Frame', 'mdxFrame', 'caption', '\n\n![Diagram](/diagram.png)\n\n'],
+  ])('keeps a %s with a function body editable, and an edit rewrites only that attribute', (tag, type, key, body) => {
+    const page = `Intro.\n\n<${tag} ${key}="Tour" data-extra={() => { return 1; }} data-keep="yes">${body}</${tag}>\n\nOutro.`;
+    const editor = open(page);
+    expect(nodes(editor, type).map(({ node }) => node.attrs[key])).toEqual(['Tour']);
+    cycles(page);
+    setAttributes(editor, type, { [key]: 'Edited' });
+    expect(getMarkdown(editor)).toBe(page.replace(`${key}="Tour"`, `${key}="Edited"`));
+  });
+
+  it.each([
+    ['a declaration and ASI', '{() => {\n  const v = 1\n  return v\n}}'],
+    ['a named function in an IIFE', '{(function () { function inner(x) { return x; } return inner(2); })()}'],
+    ['getters, setters and methods', '{{ get v() { return 1; }, set v(x) {}, m() { return 2; } }}'],
+    ['a class body', '{class { static s = 1; m() { return this.s; } }}'],
+    ['a labelled loop', '{() => { outer: for (;;) { break outer; } }}'],
+    ['async and generator functions', '{[async () => { await x; }, function* () { yield 1; }]}'],
+    ['a comment before the closing brace', '{() => { return 1; /* } */ }}'],
+    ['a block, then division of an object', '{() => { if (a) { return; } return { n: 4 }.n / 2; }}'],
+  ])('keeps a Card with %s editable', (_name, value) => {
+    const page = `Intro.\n\n<Card title="Tour" data-extra=${value} data-keep="yes">\n\nBody\n\n</Card>\n\nOutro.`;
+    const editor = open(page);
+    expect(nodes(editor, 'mdxCard').map(({ node }) => node.attrs.title)).toEqual(['Tour']);
+    cycles(page);
+    setAttributes(editor, 'mdxCard', { title: 'Edited' });
+    expect(getMarkdown(editor)).toBe(page.replace('title="Tour"', 'title="Edited"'));
+  });
+});
+
 describe('a blank line inside a value', () => {
   it.each([
     ['a quoted caption', '<Frame caption="Old\\\n\nnew" data-lightbox>', 'Old\\\n\nnew'],

@@ -15,9 +15,9 @@
  * brackets, strings, template literals and comments, which is where this reader
  * ends it. A regular expression or JSX inside the braces can't be told apart from
  * division or `<` without a JavaScript parser, so either one is left unread
- * (`unmodelled`): the caller keeps the whole component as written, byte for byte.
- * So does any opener the compiler rejects. The reader doesn't check that the code
- * inside braces is valid JavaScript; it keeps it as written.
+ * (`unmodelled`): the caller keeps the whole component as written, byte for byte,
+ * as it does an opener whose tag the compiler rejects. The code inside braces is
+ * checked only for structure, never as JavaScript: the editor keeps it as written.
  */
 
 type JsxAttribute = {
@@ -187,29 +187,36 @@ function readTag(source: string, start: number): JsxOpeningTag {
 type Frame = '{' | '(' | '[' | '`' | '${';
 const CLOSER: Record<string, Frame> = { '}': '{', ')': '(', ']': '[' };
 
-/** The token before the current one: what may follow it. */
-type Previous = 'start' | 'operand' | 'operator' | 'open' | 'comma';
+/** The token before a `/` or `<`: an operand (an object literal's `}` too) makes it
+ *  division or less-than; a block's `}` leaves it open, as does anything else, where
+ *  it may start a regular expression or a JSX element. */
+type Previous = 'start' | 'operand' | 'brace' | 'other';
+/** Keywords a block may follow (`else {`, `try {`). */
+const BLOCK_KEYWORDS = new Set(['else', 'try', 'finally', 'do']);
 
 /**
  * The end (after its `}`) of the `{…}` opening at `open`. A spread holds one
  * `...value`, a value anything but a leading `...`; neither may be empty (only
- * whitespace and comments), as the compiler requires. Token by token, it also
- * rejects what acorn always rejects there: an operator right before a closing
- * bracket, two operands in a row, a backslash outside strings and identifiers.
+ * whitespace and comments), as the compiler requires.
+ *
+ * Only structure is checked, and only what acorn rejects in every context fails:
+ * an unclosed string, template literal, comment or bracket, a closing bracket of
+ * the wrong kind, a line break inside a string. Statements, `;`, declarations,
+ * getters, class bodies and the like are read as written: the editor keeps the
+ * code byte for byte and never edits it. A regular expression or JSX element, which
+ * would need a JavaScript parser to find, is left unread (`unmodelled`).
  */
 function expressionEnd(source: string, open: number, spread: boolean, fail: (at: number, unmodelled?: boolean) => never): number {
   const stack: Frame[] = [];
   let i = open + 1;
   let content = false;
   let previous: Previous = 'start';
-  // `>`s in a row after an operand (`>`, `>>`, `>>>`), or 3 after `=>`.
-  let greater = 0;
+  // Whether a `{` here opens a block (after `)`, `=>`, `;`, `else`, or another
+  // block's `{` or `}`) rather than an object literal, and which open `{` are blocks.
+  let blockNext = false;
+  const blocks: boolean[] = [];
   // A comma at the top of a spread: only whitespace and comments may follow it.
   let topComma = false;
-  const operandStart = (at: number) => {
-    if (previous === 'operand') fail(at);
-    previous = 'operand';
-  };
   for (;;) {
     const char = source[i];
     if (char === undefined) return fail(source.length);
@@ -223,7 +230,7 @@ function expressionEnd(source: string, open: number, spread: boolean, fail: (at:
         i++;
       } else if (char === '$' && source[i + 1] === '{') {
         stack.push('${');
-        previous = 'open';
+        previous = 'start';
         i += 2;
       } else i++;
       continue;
@@ -242,9 +249,8 @@ function expressionEnd(source: string, open: number, spread: boolean, fail: (at:
       i = close + 2;
       continue;
     }
-    if (char !== '>') greater = 0;
     if (char === '}' && stack.length === 0) {
-      if (!content || previous === 'operator') return fail(i);
+      if (!content) return fail(i);
       return i + 1;
     }
     if (stack.length === 0) {
@@ -255,7 +261,6 @@ function expressionEnd(source: string, open: number, spread: boolean, fail: (at:
       if (spread && char === ',') topComma = true;
     }
     if (char === '"' || char === "'") {
-      operandStart(i);
       i++;
       for (;;) {
         const inner = source[i];
@@ -269,73 +274,68 @@ function expressionEnd(source: string, open: number, spread: boolean, fail: (at:
           if (inner === char) break;
         }
       }
+      previous = 'operand';
+      blockNext = false;
       continue;
     }
     if (char === '`') {
-      // After an operand, a tagged template.
       stack.push('`');
+      blockNext = false;
       i++;
       continue;
     }
     if (char === '{' || char === '(' || char === '[') {
       stack.push(char);
-      previous = 'open';
+      if (char === '{') blocks.push(blockNext);
+      else blockNext = false;
+      previous = 'start';
       i++;
       continue;
     }
     if (char === '}' || char === ')' || char === ']') {
       const opened = stack.pop();
-      if ((opened !== CLOSER[char] && !(char === '}' && opened === '${')) || previous === 'operator') return fail(i);
-      previous = 'operand';
+      if (opened !== CLOSER[char] && !(char === '}' && opened === '${')) return fail(i);
+      const block = opened === '{' && blocks.pop() === true;
+      previous = block ? 'brace' : 'operand';
+      blockNext = block || char === ')';
       i++;
       continue;
     }
     if (char === '/' || char === '<') {
       // A regular expression or a JSX element: unread.
       if (previous !== 'operand') return fail(i, true);
-      previous = 'operator';
+      previous = 'other';
+      blockNext = false;
       i++;
-      continue;
-    }
-    if (char === '>') {
-      // After an operand, or continuing `>>`/`>>>`, or ending `=>`; acorn rejects any other.
-      if (previous === 'operand') greater = 1;
-      else if (source[i - 1] === '>' && greater > 0 && greater < 3) greater++;
-      else if (source[i - 1] === '=') greater = 3;
-      else return fail(i);
-      previous = 'operator';
-      i++;
-      continue;
-    }
-    if ((char === '+' || char === '-') && source[i + 1] === char && previous === 'operand') {
-      // Postfix `++`/`--`: still an operand.
-      i += 2;
       continue;
     }
     const point = String.fromCodePoint(source.codePointAt(i) ?? 0);
     if (ID_START.test(point) || char === '#' || char === '\\') {
       const from = i;
       for (let next = point; next; next = String.fromCodePoint(source.codePointAt(i) ?? 0)) {
-        // Outside strings, templates and comments a backslash only starts an
-        // identifier's `\u` escape; anywhere else acorn rejects it.
-        if (next === '\\') {
-          const unicodeEscape = UNICODE_ESCAPE.exec(source.slice(i, i + 12));
-          if (!unicodeEscape) return fail(i);
-          i += unicodeEscape[0].length;
-        } else if (i === from ? ID_START.test(next) || next === '#' : JS_ID_CONTINUE.test(next)) i += next.length;
+        if (next === '\\') i += UNICODE_ESCAPE.exec(source.slice(i, i + 12))?.[0].length ?? 1;
+        else if (i === from ? ID_START.test(next) || next === '#' : JS_ID_CONTINUE.test(next)) i += next.length;
         else break;
       }
-      if (OPERATOR_KEYWORDS.has(source.slice(from, i))) previous = 'operator';
-      else operandStart(from);
+      const word = source.slice(from, i);
+      previous = OPERATOR_KEYWORDS.has(word) ? 'other' : 'operand';
+      blockNext = BLOCK_KEYWORDS.has(word);
       continue;
     }
     if (/[0-9]/.test(char) || (char === '.' && /[0-9]/.test(source[i + 1] ?? ''))) {
-      operandStart(i);
       while (i < source.length && /[\w.]/.test(source[i] ?? '')) i++;
+      previous = 'operand';
+      blockNext = false;
       continue;
     }
-    // Any other punctuation is an operator; a comma may also come before a closing bracket.
-    previous = char === ',' ? 'comma' : 'operator';
+    // Postfix `++`/`--` leave an operand before them.
+    if ((char === '+' || char === '-') && source[i + 1] === char && previous === 'operand') {
+      i += 2;
+      continue;
+    }
+    // A `{` after `;` or an arrow's `=>` opens a block.
+    blockNext = char === ';' || (char === '>' && source[i - 1] === '=');
+    previous = 'other';
     i++;
   }
 }

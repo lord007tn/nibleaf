@@ -15,10 +15,14 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * inside expressions, unterminated values, `>` inside values, invalid names.
  *
  * - Where the compiler reads the opener, the editor reads the same attributes:
- *   names, value kinds and value spans. The one exception is a regular expression
- *   or JSX element inside `{…}` (generated on purpose, flagged), which the editor
- *   doesn't read and keeps whole as written.
- * - Where the compiler rejects it, so does the editor's reader.
+ *   names, value kinds and value spans, statement-level JavaScript inside `{…}`
+ *   included (block bodies, `;`, declarations, getters, classes, labels), and the
+ *   component stays editable. The one exception is a `/` or `<` inside `{…}` that may
+ *   start a regular expression or a JSX element, which the editor doesn't read and
+ *   keeps whole as written.
+ * - Where the compiler rejects it, so does the editor's reader, except where only the
+ *   JavaScript inside a `{…}` is invalid (checked by swapping each value for a valid
+ *   one): the editor reads it as an expression value and keeps it byte for byte.
  * - Every generated page (the opener around an embed, an image or text) loads and
  *   saves byte for byte, and a rejected or unread opener loads as an opaque block
  *   starting at its `<`, never as the component.
@@ -29,7 +33,7 @@ type MarkdownStorage = { markdown: { parser: { parse(content: string): unknown; 
 const SEED = 0x57_9f_3a_c1;
 const COUNT = 4096;
 
-type Case = { opener: string; name: string; page: string; start: number; selfClosing: boolean; unread: boolean };
+type Case = { opener: string; name: string; page: string; start: number; selfClosing: boolean; unread: boolean; embed: boolean };
 
 /** The corpus: `COUNT` pages from the shared xorshift (see `@nibleaf/shared/testing/fence-cases`). */
 function corpus(seed = SEED, count = COUNT): Case[] {
@@ -113,8 +117,36 @@ function corpus(seed = SEED, count = COUNT): Case[] {
         return a;
     }
   };
+  /** Statement-level JavaScript inside `{…}`: block bodies, declarations, `;`, ASI,
+   *  getters and setters, classes, async and generator functions, labels. */
+  const jsShape = (): string => {
+    const a = atom(1);
+    return pick([
+      `() => { return ${a}; }`,
+      `() => {\n  const v = ${a}\n  return v\n}`,
+      `(function () { function inner(x) { return x; } return inner(${a}); })()`,
+      '(function named(x) { return x })',
+      `function named() { return ${a} }`,
+      `{ get v() { return ${a}; }, set v(x) {}, m() { return 1; } }`,
+      `() => { { let x = ${a}; } if (x) { return 1 } else { return 2 } }`,
+      `() => { for (let i = 0; i < 3; i++) { if (i) break; } return ${a}; }`,
+      `class { static s = ${a}; m() { return this.s; } get g() { return 1 } }`,
+      `async () => { await ${a}; }`,
+      `function* () { yield ${a}; }`,
+      '() => { outer: for (;;) { break outer; } }',
+      `() => { return ${a}; /* } */ }`,
+      `() => { return ${a} // }\n}`,
+      `() => ({ k: ${a} })`,
+      `(x) => { switch (x) { case 1: return ${a}; default: return 0; } }`,
+      `() => { try { return ${a} } catch (e) { return e } finally {} }`,
+      `new class { constructor() { this.v = ${a}; } }()`,
+      `() => { if (a) { return; } ; ; return ${a} }`,
+      '[1, 2].map((n) => { const d = n * 2; return d; })',
+    ] as const);
+  };
   const expressionValue = () => {
-    if (chance(88)) {
+    if (chance(25)) return `{${pick(['', ' ', '\n  '] as const)}${jsShape()}}`;
+    if (chance(84)) {
       const space = pick(['', ' ', '\n  '] as const);
       return `{${space}${expression()}${space}}`;
     }
@@ -188,7 +220,7 @@ function corpus(seed = SEED, count = COUNT): Case[] {
     ] as const);
     const component = selfClosing ? opener : `${opener}${body}</${name}>`;
     const page = `Intro.\n\n${component}\n\nOutro.`;
-    cases.push({ opener, name, page, start: page.indexOf('<'), selfClosing, unread });
+    cases.push({ opener, name, page, start: page.indexOf('<'), selfClosing, unread, embed: body.includes('<iframe') });
   }
   return cases;
 }
@@ -251,28 +283,56 @@ function editorAttributes(page: string, start: number) {
   };
 }
 
+/**
+ * Whether the compiler rejects the page only for the JavaScript inside the `{…}`
+ * values the editor read: with each swapped for a valid one (`{0}`, a spread for
+ * `{...a}`), it reads the same attribute names and kinds. The editor never edits
+ * that code, and keeps it byte for byte; the component stays editable.
+ */
+function rejectedForJavaScriptOnly(page: string, reading: { attributes: Attribute[]; end: number }): boolean {
+  const values = reading.attributes.filter((attr) => attr.kind === 'expression' || attr.kind === 'spread');
+  if (values.length === 0) return false;
+  let swapped = page;
+  for (const attr of [...values].reverse()) {
+    const [start, end] = attr.value ?? [0, 0];
+    swapped = `${swapped.slice(0, start)}${attr.kind === 'spread' ? '{...a}' : '{0}'}${swapped.slice(end)}`;
+  }
+  const shape = (attributes: Attribute[]) => attributes.map((attr) => `${attr.kind}:${attr.name}`).join(' ');
+  const tagEnd = reading.end + swapped.length - page.length;
+  const compiled = compilerAttributes(swapped) ?? compilerAttributes(swapped.slice(0, tagEnd));
+  return compiled !== null && compiled.end === tagEnd && shape(compiled.attributes) === shape(reading.attributes);
+}
+
 const cases = corpus();
 const verdicts = cases.map((entry) => ({ entry, compiler: compilerAttributes(entry.page), editor: editorAttributes(entry.page, entry.start) }));
 
 describe('component openers: the editor reads what the MDX compiler reads', () => {
   it(`agrees with the compiler’s tokenizer on all ${COUNT} generated openers`, () => {
-    const counts = { acceptedAgreed: 0, acceptedUnread: 0, rejectedRejected: 0, rejectedAfterOpener: 0 };
+    const counts = { acceptedAgreed: 0, acceptedUnread: 0, rejectedRejected: 0, rejectedAfterOpener: 0, rejectedJavaScriptOnly: 0 };
+    const unreadAt: Record<string, number> = {};
     const disagreements: unknown[] = [];
     for (const { entry, compiler, editor } of verdicts) {
       const same = (reading: typeof compiler) => !isJsxTagFailure(editor) && JSON.stringify(editor) === JSON.stringify(reading);
       if (compiler) {
         if (same(compiler)) counts.acceptedAgreed++;
         // A regular expression or JSX inside `{…}`: unread, kept whole (see the round trip).
-        else if (isJsxTagFailure(editor) && editor.unmodelled) counts.acceptedUnread++;
-        else disagreements.push({ opener: entry.opener, compiler, editor });
+        else if (isJsxTagFailure(editor) && editor.unmodelled) {
+          counts.acceptedUnread++;
+          const char = entry.page[editor.at] ?? '';
+          unreadAt[char] = (unreadAt[char] ?? 0) + 1;
+          // Only a `/` or `<` that may start a regular expression or a JSX element.
+          if (char !== '/' && char !== '<') disagreements.push({ opener: entry.opener, compiler, editor });
+        } else disagreements.push({ opener: entry.opener, compiler, editor });
       } else if (isJsxTagFailure(editor)) counts.rejectedRejected++;
       // The compiler reads the same tag up to its `>` and rejects the page after it
       // (text after the tag on its line, an expression on the next): the opener agrees.
       else if (same(compilerAttributes(entry.page.slice(0, editor.end)))) counts.rejectedAfterOpener++;
+      // Only the code inside a `{…}` is invalid: read as an expression value, kept as written.
+      else if (rejectedForJavaScriptOnly(entry.page, editor)) counts.rejectedJavaScriptOnly++;
       else disagreements.push({ opener: entry.opener, compiler: 'rejected', editor });
     }
     expect(disagreements.slice(0, 5)).toEqual([]);
-    console.info(`[jsx-attribute-oracle] ${JSON.stringify(counts)}`);
+    console.info(`[jsx-attribute-oracle] ${JSON.stringify(counts)} unread at ${JSON.stringify(unreadAt)}`);
     // The corpus exercises both sides, and most of it is read.
     expect(counts.acceptedAgreed).toBeGreaterThan(COUNT * 0.4);
     expect(counts.rejectedRejected).toBeGreaterThan(COUNT * 0.15);
@@ -291,6 +351,16 @@ describe('component openers: the editor reads what the MDX compiler reads', () =
     expect(has(/\/\s*>$/)).toBeGreaterThan(200); // self-closing
     expect(has(/[=]\{[^}]*\/\*/)).toBeGreaterThan(20); // a comment inside an expression
     expect(has(/[=]\{[^}]*`/)).toBeGreaterThan(20); // a template literal inside an expression
+    // Statement-level JavaScript inside `{…}`, read by both.
+    const read = verdicts.filter(({ compiler, editor }) => compiler && !isJsxTagFailure(editor)).map(({ entry }) => entry.opener);
+    const reads = (pattern: RegExp) => read.filter((opener) => pattern.test(opener)).length;
+    expect(reads(/[=]> \{/)).toBeGreaterThan(100); // an arrow function with a block body
+    expect(reads(/return [^;]*;/)).toBeGreaterThan(50); // `return …;`
+    expect(reads(/\{ get v\(\)/)).toBeGreaterThan(10); // getters, setters and methods
+    expect(reads(/class \{/)).toBeGreaterThan(10); // class bodies
+    expect(reads(/function\* |async \(\)/)).toBeGreaterThan(10); // generator and async functions
+    expect(reads(/outer: for/)).toBeGreaterThan(5); // a labelled statement
+    expect(reads(/const v = [^\n]*\n {2}return v\n/)).toBeGreaterThan(5); // ASI
   });
 });
 
@@ -319,7 +389,7 @@ describe('every generated page loads and saves byte for byte', () => {
   });
 
   it(`round-trips all ${COUNT} pages, and keeps every opener the editor doesn't read whole`, () => {
-    const counts = { pages: 0, byteIdentical: 0, opaqueAsRequired: 0, reshaped: 0 };
+    const counts = { pages: 0, byteIdentical: 0, opaqueAsRequired: 0, editable: 0, reshaped: 0 };
     const failures: unknown[] = [];
     for (const { entry, editor: reading } of verdicts) {
       // A mutation that ends the tag early (`<Frame c>aption=…`) or adds or removes its
@@ -337,14 +407,20 @@ describe('every generated page loads and saves byte for byte', () => {
       const saved = getMarkdown(editor);
       if (saved === entry.page) counts.byteIdentical++;
       else failures.push({ page: entry.page, saved });
-      if (!isJsxTagFailure(reading)) continue;
-      // Rejected, or unread: an opaque block from the opener's `<`, and no component node.
       const sources: string[] = [];
       let component = false;
       editor.state.doc.descendants((node) => {
         if (node.type.name === 'mdxOpaqueBlock' || node.type.name === 'mdxOpaqueInline') sources.push(String(node.attrs.source));
         if (COMPONENT_NODES.has(node.type.name)) component = true;
       });
+      if (!isJsxTagFailure(reading)) {
+        // Read: the component is a node the writer edits. (Around an embed, #573's
+        // rules still decide: a Card or an expression caption keeps it opaque.)
+        if (component) counts.editable++;
+        else if (!entry.embed) failures.push({ page: entry.page, editable: false });
+        continue;
+      }
+      // Rejected, or unread: an opaque block from the opener's `<`, and no component node.
       if (!component && sources.some((source) => entry.page.startsWith(source, entry.start) && source.length > 0)) counts.opaqueAsRequired++;
       else failures.push({ page: entry.page, opaque: sources, component });
     }
