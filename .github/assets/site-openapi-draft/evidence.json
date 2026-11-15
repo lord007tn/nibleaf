@@ -1,0 +1,192 @@
+{
+  "environment": "Isolated section specimens: real OpenAPI section components on a seeded TanStack Query cache; not the full dashboard or production",
+  "baseline": "da1a096ee1274d9e11c23cdd973799ab3596eeee",
+  "head": "c7cf274728d7dd4b288e1f6cb59e9f9bf7c519d2",
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "summary-after-en-1440.png",
+      "scene": "summary",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "dir": "ltr",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "refetch-before-en-1440.png",
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "dir": "ltr",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Payments API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "refetch-after-en-1440.png",
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "dir": "ltr",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Billing API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "conflict-after-en-1440.png",
+      "scene": "conflict",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "dir": "ltr",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Billing API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "summary-after-en-390.png",
+      "scene": "summary",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "dir": "ltr",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "refetch-before-en-390.png",
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "dir": "ltr",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Payments API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "refetch-after-en-390.png",
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "dir": "ltr",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Billing API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "conflict-after-en-390.png",
+      "scene": "conflict",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "dir": "ltr",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Billing API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "summary-after-ar-1440.png",
+      "scene": "summary",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "dir": "rtl",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "refetch-before-ar-1440.png",
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "dir": "rtl",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Payments API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "refetch-after-ar-1440.png",
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "dir": "rtl",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Billing API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "conflict-after-ar-1440.png",
+      "scene": "conflict",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "dir": "rtl",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Billing API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "summary-after-ar-390.png",
+      "scene": "summary",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "dir": "rtl",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "refetch-before-ar-390.png",
+      "scene": "refetch",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "dir": "rtl",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Payments API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "refetch-after-ar-390.png",
+      "scene": "refetch",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "dir": "rtl",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Billing API",
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "conflict-after-ar-390.png",
+      "scene": "conflict",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "dir": "rtl",
+      "typedTitle": "Billing API",
+      "titleAfterRefetch": "Billing API",
+      "errors": [],
+      "overflow": false
+    }
+  ]
+}
