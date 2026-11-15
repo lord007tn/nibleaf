@@ -213,6 +213,18 @@ describe('settling Undo when the baseline moves', () => {
     ]);
   });
 
+  it('an entry made after its save’s echo, already on the baseline, still takes the normalized values', () => {
+    const legacy = values({ version: 1, colors: { light: { canvas: '#fafafa' } } }, 'dark');
+    const stored = values({ version: 1, colors: { light: { canvas: '#fafafa' } }, preset: 'harbor' }, 'dark');
+    const mark = { id: 4, submitted: legacy, reached: [stored] };
+    const afterEcho: HistoryEntry = { values: legacy, baseline: stored, save: 4 };
+    const settled = settleHistory([afterEcho], stored, mark);
+    expect(settled).toStrictEqual([{ values: stored, baseline: stored, save: 4, moved: true }]);
+    // Once reconciled it stays as it is; before its save reached this baseline it is left alone.
+    expect(settleHistory(settled, stored, mark)).toBe(settled);
+    expect(settleHistory([afterEcho], stored, { ...mark, reached: [] })).toStrictEqual([afterEcho]);
+  });
+
   it('a moved entry follows the server’s normalization once more (the effective preset Keep mine sent)', () => {
     const legacy = values({ version: 1, colors: { light: { canvas: '#fafafa' } } }, 'dark');
     const sent = values({ version: 1, colors: { light: { canvas: '#fafafa' } }, preset: 'harbor' }, 'dark');

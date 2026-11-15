@@ -213,10 +213,15 @@ export function usableHistory(history: readonly HistoryEntry[], baseline: ThemeV
  */
 export function settleHistory(history: HistoryEntry[], baseline: ThemeValues, mark?: SaveMark): HistoryEntry[] {
   let changed = false;
+  const reached = Boolean(mark?.reached.some((value) => deepEqual(value, baseline)));
   const next = history.flatMap((entry): HistoryEntry[] => {
-    if (deepEqual(entry.baseline, baseline)) return [entry];
+    const ofSave = reached && mark !== undefined && entry.save === mark.id;
+    // An entry of that save is reconciled once, even one already on this
+    // baseline (made after its echo): its snapshot still holds the draft's
+    // values from before the server normalized them.
+    if (deepEqual(entry.baseline, baseline) && (entry.moved || !ofSave)) return [entry];
     changed = true;
-    if (!mark || entry.save !== mark.id || !mark.reached.some((value) => deepEqual(value, baseline))) return [];
+    if (!(ofSave && mark)) return [];
     const left = entry.moved ? entry.baseline : mark.submitted;
     const keys = ['theme', 'appearance'] as const;
     const values = Object.fromEntries(

@@ -1,6 +1,7 @@
 import { type QueryFunction, type QueryKey, useQueryClient } from '@tanstack/react-query';
 import { type Project, useExportProjectTheme, useImportProjectTheme, useUpdateProjectConfig } from '@/hooks/api';
 import { projectQueryOptions } from '@/hooks/api/query-options';
+import { deepEqual } from '@/lib/forms/server-draft';
 import { type ThemeValues, themeConfigPatch, themeValues } from '../model/theme';
 
 /**
@@ -37,28 +38,35 @@ export function useThemeExchange(projectId: string) {
 
   const preview = (template: unknown, mode: 'merge' | 'replace') => importTheme.mutateAsync({ template, mode, apply: false });
   /**
-   * The project, from a read this call starts and can tell apart. Any read in
-   * flight is cancelled first (one started before the write could answer with
-   * what was there before it), then this read goes out with a query function
-   * that records its own answer. It resolves that answer, and rejects when the
-   * read fails or is cancelled: TanStack resolves a cancelled read with the
-   * previous data, which is never taken for this one's.
+   * The project, from a read this call starts and the query cache adopted. Any
+   * read in flight is cancelled first (one started before the write could
+   * answer with what was there before it), then this read goes out with a
+   * query function that keeps its own answer and abort signal. It resolves
+   * only when that read was not aborted and the query settled holding that
+   * answer. It rejects when the read failed, or was cancelled or
+   * superseded at any point, even after its request answered: TanStack then
+   * keeps (or restores) other data, and the form never sees this answer.
    */
   const readProject = async () => {
     const options = projectQueryOptions(projectId);
     const read = options.queryFn as QueryFunction<Project, QueryKey>;
-    let answered: Project | undefined;
+    let answered: { project: Project; signal: AbortSignal } | undefined;
     await queryClient.cancelQueries({ queryKey: options.queryKey, exact: true });
     await queryClient.fetchQuery({
       ...options,
       staleTime: 0,
       queryFn: async (context) => {
-        answered = await read(context);
-        return answered;
+        const project = await read(context);
+        answered = { project, signal: context.signal };
+        return project;
       },
     });
-    if (!answered) throw new Error('The project read was cancelled.');
-    return answered;
+    const state = queryClient.getQueryState(options.queryKey);
+    // Structural sharing may keep the cache's own objects for equal parts, so the answer is compared by value.
+    if (!answered || answered.signal.aborted || state?.status !== 'success' || !deepEqual(state.data, answered.project)) {
+      throw new Error('The project read was not adopted.');
+    }
+    return answered.project;
   };
   const apply = async (template: unknown, mode: 'merge' | 'replace') => {
     const result = await importTheme.mutateAsync({ template, mode, apply: true });

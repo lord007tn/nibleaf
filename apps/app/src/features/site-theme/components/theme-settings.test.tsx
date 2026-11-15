@@ -32,6 +32,31 @@ vi.mock('@nibleaf/design-system/components/ui/save-region', async (importOrigina
     },
   };
 });
+const reads = vi.hoisted(() => ({ cancelAfterAnswer: undefined as (() => void) | undefined }));
+// The project read, as the app makes it, with one hook: `reads.cancelAfterAnswer`
+// cancels the next live read after its request answered, before TanStack takes the answer.
+vi.mock('@/hooks/api/query-options', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/api/query-options')>();
+  return {
+    ...actual,
+    projectQueryOptions: (projectId: string | undefined) => {
+      const options = actual.projectQueryOptions(projectId);
+      const read = options.queryFn as (context: { signal: AbortSignal }) => Promise<unknown>;
+      return {
+        ...options,
+        queryFn: async (context: { signal: AbortSignal }) => {
+          const project = await read(context);
+          const cancel = reads.cancelAfterAnswer;
+          if (cancel && !context.signal.aborted) {
+            reads.cancelAfterAnswer = undefined;
+            cancel();
+          }
+          return project;
+        },
+      } as never;
+    },
+  };
+});
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, translateFn: (key: string) => key }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 vi.mock('@tanstack/react-router', () => ({ useBlocker: () => undefined }));
@@ -208,6 +233,7 @@ async function open(config: Config = { ...SIBLINGS, styling: { ...STYLING }, the
 
 beforeEach(() => {
   statuses.length = 0;
+  reads.cancelAfterAnswer = undefined;
   server = {
     config: { 'site-1': {}, 'site-2': { theme: { version: 1, preset: 'manuscript' }, styling: { theme: 'light' } } },
     failReads: new Set(),
@@ -784,7 +810,43 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     await finished();
   };
 
-  it('Apply never takes a cancelled read for a readback, even when the clock says the cache is fresh', async () => {
+  it('Apply never takes a read cancelled after its request answered (before TanStack took it) for a readback', async () => {
+    await open();
+    // The import changes typography only: a read that answers carries Georgia, the cache keeps Inter.
+    await typeTemplate(
+      JSON.stringify({
+        kind: THEME_TEMPLATE_KIND,
+        version: 1,
+        metadata: AUTHORED.metadata,
+        config: { theme: { version: 1, preset: 'signal', colors: AUTHORED.colors }, typography: { bodyFont: 'Georgia' } },
+      }),
+    );
+    await click(buttonNamed('settings.theme.previewImport'));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('preview'));
+    await setColor('canvas', '#fdfdfd');
+    const held = gate();
+    server.holdImport = held.promise;
+    await click(buttonNamed('settings.theme.applyImport'));
+    await answer('discard');
+    await vi.waitFor(() => expect(applies()).toHaveLength(1));
+    reads.cancelAfterAnswer = () => void queryClient.cancelQueries({ queryKey: projectQueryOptions('site-1').queryKey });
+    await held.open();
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    await finished();
+    expect(reads.cancelAfterAnswer).toBeUndefined();
+    expect(server.config['site-1'].typography).toStrictEqual({ bodyFont: 'Georgia' });
+    expect(queryClient.getQueryData<Project>(projectQueryOptions('site-1').queryKey)?.config?.typography).toStrictEqual({ bodyFont: 'Inter' });
+    expect(toast.success).not.toHaveBeenCalledWith('settings.theme.import.applied');
+    expect(toast.warning).toHaveBeenCalledTimes(1);
+    expect(color('canvas').value).toBe('#fdfdfd');
+    expect(region()).not.toBeNull();
+    // Refresh's read is taken: the agreed discard happens on it.
+    await refreshFromWarning();
+    expect(color('canvas').value).not.toBe('#fdfdfd');
+    expect(region()).toBeNull();
+  });
+
+  it('Apply never takes a read cancelled before its request answered, even when the clock says the cache is fresh', async () => {
     // A clock that doesn't move: the cache's last update looks as new as the write.
     vi.spyOn(Date, 'now').mockReturnValue(Date.now());
     await open();
@@ -860,6 +922,28 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     await undo();
     expect(shownAppearance()).toBe('settings.styling.theme.light');
     expect(activePreset()).toBe('manuscript');
+    expect(region()).toBeNull();
+  });
+
+  it('Undo of an edit made after a Keep mine save’s echo, still during the save, settles clean on the stored preset', async () => {
+    const legacy = { version: 1, colors: { light: { canvas: '#fdfdfd' } } };
+    await open({ styling: { theme: 'dark' }, theme: structuredClone(legacy) });
+    await setColor('canvas', '#fafafa');
+    await elsewhere((config) => ({ ...config, theme: { ...legacy, preset: 'signal' } }));
+    await click(buttonNamed('forms.keepMine'));
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await startSave();
+    // A read echoes what the PATCH stored (Harbor, made explicit) before the PATCH answers…
+    await elsewhere((config) => config);
+    // …and only then is the appearance edited, still during the save.
+    await appearance('light');
+    await patch.open();
+    await finished();
+    expect(storedTheme()).toMatchObject({ preset: 'harbor' });
+    await undo();
+    expect(shownAppearance()).toBe('settings.styling.theme.dark');
+    expect(activePreset()).toBe('harbor');
     expect(region()).toBeNull();
   });
 

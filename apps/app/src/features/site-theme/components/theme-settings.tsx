@@ -199,8 +199,6 @@ function ThemeForm({ project }: { project: Project }) {
    * failed). See `discardIfRead`.
    */
   const discardOnRead = useRef<{ since: number; identity: string; read?: ThemeValues } | undefined>(undefined);
-  const markNow = useRef(mark);
-  markNow.current = mark;
 
   const retire = useCallback(() => {
     setHistory([]);
@@ -298,10 +296,11 @@ function ThemeForm({ project }: { project: Project }) {
 
   // The baseline moved (a read, a save's echo or answer): retire the Undo it
   // overtakes, and finish a discard waiting for the form to hold its read.
+  // A save's answer (its mark) reconciles the entries made during it, as the baseline it reached does.
   useEffect(() => {
-    setHistory((items) => settleHistory(items, draft.baseline, markNow.current));
+    setHistory((items) => settleHistory(items, draft.baseline, mark));
     discardIfRead();
-  }, [discardIfRead, draft.baseline]);
+  }, [discardIfRead, draft.baseline, mark]);
   const leave = (key: string) => setLeft((previous) => (previous.has(key) ? previous : new Set(previous).add(key)));
 
   return (
