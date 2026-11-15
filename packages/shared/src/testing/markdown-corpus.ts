@@ -33,7 +33,8 @@ export const markdownCorpus = (root: string): Array<[name: string, source: strin
     else if (value && typeof value === 'object') for (const [key, child] of Object.entries(value)) strings(child, `${at}.${key}`);
   };
   for (const file of readdirSync(join(root, 'packages/shared/src/__fixtures__'))
-    .filter((name) => name.endsWith('.json') && !name.startsWith('markdown-code.corpus'))
+    // Export baselines record code/output samples, not additional reader pages.
+    .filter((name) => name.endsWith('.json') && !name.startsWith('markdown-code.corpus') && !name.startsWith('markdown-export.'))
     .sort())
     strings(JSON.parse(read(`packages/shared/src/__fixtures__/${file}`)), `packages/shared/src/__fixtures__/${file}`);
   return documents;
