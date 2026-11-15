@@ -99,7 +99,7 @@ function BannerForm({ project }: { project: Project }) {
     <form noValidate {...formProps}>
       <SaveRegionSubmit />
       <SectionHeader icon={<Megaphone className="size-4" />} title={t('settings.banner.title')} />
-      <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.banner.description')}</p>
+      <p className="mb-4 text-muted-foreground text-sm leading-relaxed">{t('settings.banner.description')}</p>
       <LanguageScopePicker
         defaultLanguage={defaultLanguage}
         guard={guard}
