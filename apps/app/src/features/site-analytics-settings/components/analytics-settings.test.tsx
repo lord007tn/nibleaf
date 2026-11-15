@@ -144,6 +144,27 @@ describe('AnalyticsSettings', () => {
     expect(region()).not.toBeNull();
   });
 
+  // The form has two text fields and no submit button, where browsers don't submit on Enter by themselves.
+  it('submits on Enter in an id field: errors first, then the save', async () => {
+    const enter = (el: HTMLElement) =>
+      act(async () => {
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      });
+    await type(plausible(), 'not a domain');
+    await enter(plausible());
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(errorOf(plausible())).toBe('settings.analytics.plausible.error');
+    expect(document.activeElement).toBe(plausible());
+
+    mocks.update.mockResolvedValueOnce(saved({ ga4: 'G-ABC123', plausible: 'docs.acme.com' }));
+    await type(plausible(), 'docs.acme.com');
+    await enter(plausible());
+    expect(mocks.update).toHaveBeenCalledWith({
+      config: { analytics: { ga4: 'G-ABC123', plausible: 'docs.acme.com', campaignDimensions: false, storePublicSearchTerms: false } },
+    });
+    expect(region()).toBeNull();
+  });
+
   it('makes the form dirty with a switch alone, and discards it', async () => {
     await click(campaign());
     expect(checked(campaign())).toBe(true);

@@ -4,7 +4,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { SettingsSection, SettingsSectionBody } from '@nibleaf/design-system/components/ui/settings-section';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { useT } from '@nibleaf/i18n/react';
-import { useCallback, useMemo, useRef } from 'react';
+import { type KeyboardEvent, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { FormField } from '@/components/ui/form-field';
 import type { Project } from '@/hooks/api';
@@ -27,8 +27,25 @@ export function AnalyticsSettings({ project }: { project: Project }) {
   );
 }
 
+/**
+ * Browsers skip implicit submission in a form with two text fields and no
+ * submit button (Save is in the page's bar), so Enter in a field submits here.
+ */
+const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+  event.preventDefault();
+  event.currentTarget.form?.requestSubmit();
+};
+
 /** Identifiers are Latin and read left to right in every locale. */
-const identifierProps = { autoCapitalize: 'off', autoComplete: 'off', className: 'font-mono text-sm', dir: 'ltr', spellCheck: false } as const;
+const identifierProps = {
+  autoCapitalize: 'off',
+  autoComplete: 'off',
+  className: 'font-mono text-sm',
+  dir: 'ltr',
+  onKeyDown: submitOnEnter,
+  spellCheck: false,
+} as const;
 
 function AnalyticsForm({ project }: { project: Project }) {
   const t = useT();
