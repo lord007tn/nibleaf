@@ -1,14 +1,16 @@
 // Catalog copy specimens, not full dashboard or production captures.
 // No server, account, key, or external request is used.
+// BASELINE and OUT let a follow-up reuse the harness without replacing earlier evidence.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { acquireDevstackLock, withLocalOnlyBrowser } from '../../../tests/integration/lib/capture-env.mjs';
 import { writeEvidenceJson } from '../../../tests/integration/lib/evidence-json.mjs';
 
 const root = resolve(import.meta.dirname, '../../..');
-const baseline = 'da1a096ee1274d9e11c23cdd973799ab3596eeee';
+const baseline = process.env.BASELINE ?? 'da1a096ee1274d9e11c23cdd973799ab3596eeee';
+const output = resolve(root, process.env.OUT ?? '.github/assets/dashboard-copy-followups');
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const keys = [
   'settings_import_ghost_title',
@@ -22,7 +24,9 @@ const keys = [
 const escapeHtml = (text) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const lock = await acquireDevstackLock('dashboard copy follow-ups: isolated catalog specimens');
 try {
+  await mkdir(output, { recursive: true });
   const captures = [];
+  const changedKeys = {};
   await withLocalOnlyBrowser({ allowedHosts: [] }, async ({ browser, attempted }) => {
     for (const locale of ['en', 'ar', 'zh-CN']) {
       const path = `packages/i18n/messages/${locale}.json`;
@@ -30,6 +34,7 @@ try {
         before: JSON.parse(git('show', `${baseline}:${path}`)),
         after: JSON.parse(await readFile(resolve(root, path), 'utf8')),
       };
+      changedKeys[locale] = keys.filter((key) => catalogs.before[key] !== catalogs.after[key]);
       for (const phase of ['before', 'after'])
         for (const theme of ['light', 'dark'])
           for (const width of [1440, 390]) {
@@ -54,7 +59,7 @@ try {
               assert.equal(overflow, false);
               assert.deepEqual(errors, []);
               const file = `${phase}-${locale}-${theme}-${width}.png`;
-              await page.screenshot({ path: resolve(import.meta.dirname, file), fullPage: true, animations: 'disabled' });
+              await page.screenshot({ path: resolve(output, file), fullPage: true, animations: 'disabled' });
               captures.push({ file, locale, phase, theme, width, overflow, errors });
             } finally {
               await context.close();
@@ -62,12 +67,14 @@ try {
           }
     }
     assert.equal(attempted.length, 0);
-    await writeEvidenceJson(resolve(import.meta.dirname, 'evidence.json'), {
-      environment: 'Isolated catalog copy specimens; system fonts; not the dashboard or production. Arabic is an unchanged RTL control.',
+    await writeEvidenceJson(resolve(output, 'evidence.json'), {
+      environment:
+        'Isolated catalog copy specimens; system fonts; not the dashboard or production. changedKeys identifies the edits in each captured locale.',
       baseline,
       sourceHead: git('rev-parse', 'HEAD'),
       uncommitted: git('status', '--porcelain'),
       keys,
+      changedKeys,
       outsideAttempts: attempted.length,
       browser: 'Repository local-only Playwright wrapper; installed headless Chromium',
       captures,
