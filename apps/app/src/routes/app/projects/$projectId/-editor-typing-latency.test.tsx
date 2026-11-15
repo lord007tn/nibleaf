@@ -1051,9 +1051,21 @@ const publish = async () => {
 };
 const leaves: Array<[string, () => Promise<void>]> = [
   ['the editor unmounts', unmount],
-  ['the page is closed (pagehide)', () => act(async () => window.dispatchEvent(new Event('pagehide')))],
+  [
+    'the page is closed (pagehide)',
+    () =>
+      act(async () => {
+        window.dispatchEvent(new Event('pagehide'));
+      }),
+  ],
   ['the tab is hidden', () => act(async () => hideTab())],
-  ['the window loses focus', () => act(async () => window.dispatchEvent(new Event('blur')))],
+  [
+    'the window loses focus',
+    () =>
+      act(async () => {
+        window.dispatchEvent(new Event('blur'));
+      }),
+  ],
   // Staying: the autosave's own timer flushes the draft while the write is held.
   ['the author stays on the page', () => advance(5000)],
 ];
