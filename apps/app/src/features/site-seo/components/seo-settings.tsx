@@ -8,7 +8,13 @@ import { useT } from '@nibleaf/i18n/react';
 import { SearchCheck, Upload } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { LanguageScopePicker, SectionHeader, sortLanguagesDefaultFirst, useScopeDirtyGuard } from '@/components/project-settings/shared';
+import {
+  FIELD_TEXTAREA,
+  LanguageScopePicker,
+  SectionHeader,
+  sortLanguagesDefaultFirst,
+  useScopeDirtyGuard,
+} from '@/components/project-settings/shared';
 import { FormField, type FormFieldControl } from '@/components/ui/form-field';
 import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
@@ -174,7 +180,7 @@ function SeoForm({ project }: { project: Project }) {
               {({ controlProps, value, onValueChange }) => (
                 <Textarea
                   {...controlProps}
-                  className="min-h-21"
+                  className={FIELD_TEXTAREA}
                   dir={textDir}
                   onChange={(event) => onValueChange(event.target.value)}
                   placeholder={placeholders.metaDescription}
