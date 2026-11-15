@@ -139,7 +139,13 @@ function SearchForm({
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  const formProps = useSaveRegionForm('site-search', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-search', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   const { disabled } = decisionProps(fieldsDecision(status));
   const maxResultsMessage = (value: string) =>

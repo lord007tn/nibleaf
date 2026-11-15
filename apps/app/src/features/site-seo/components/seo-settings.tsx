@@ -95,7 +95,7 @@ function SeoForm({ project }: { project: Project }) {
     forget();
   }, [discardDraft, forget, isSaving]);
   // Enter in a single-line field saves this form through the bar's own run; the description keeps its newline.
-  const formProps = useSaveRegionForm('site-seo', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard });
+  const formProps = useSaveRegionForm('site-seo', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard, settlement: draft.settlement });
 
   // Switching scope asks first while there are edits, or a save that can still change them.
   const { guard, setDirty } = useScopeDirtyGuard();

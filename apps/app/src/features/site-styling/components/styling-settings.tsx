@@ -125,7 +125,13 @@ function StylingForm({ project }: { project: Project }) {
     setReveal(() => HIDDEN);
     setTransient(() => null);
   }, [discardDraft, isSaving, setReveal, setTransient]);
-  const formProps = useSaveRegionForm('site-styling', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard });
+  const formProps = useSaveRegionForm('site-styling', {
+    isDirty: draft.isDirty,
+    isSubmitting: isSaving,
+    submit,
+    discard,
+    settlement: draft.settlement,
+  });
 
   const values = useStore(form.store, (state) => state.values);
   const color = values.primaryColor;

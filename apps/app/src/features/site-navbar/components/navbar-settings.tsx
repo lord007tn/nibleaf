@@ -177,7 +177,13 @@ function NavbarForm({ project }: { project: Project }) {
     discardDraft();
     retire();
   }, [discardDraft, isSaving, retire]);
-  const formProps = useSaveRegionForm('site-navbar', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard });
+  const formProps = useSaveRegionForm('site-navbar', {
+    isDirty: draft.isDirty,
+    isSubmitting: isSaving,
+    submit,
+    discard,
+    settlement: draft.settlement,
+  });
 
   // Switching scope asks first while there are edits, or a save that can still change them.
   const { guard, setDirty } = useScopeDirtyGuard();

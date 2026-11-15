@@ -103,7 +103,13 @@ function RedirectsForm({ project }: { project: Project }) {
     discardDraft();
     retire();
   }, [discardDraft, isSaving, retire]);
-  const formProps = useSaveRegionForm('site-redirects', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard });
+  const formProps = useSaveRegionForm('site-redirects', {
+    isDirty: draft.isDirty,
+    isSubmitting: isSaving,
+    submit,
+    discard,
+    settlement: draft.settlement,
+  });
 
   const rows = useStore(form.store, (state) => state.values.redirects);
   const submitted = useStore(form.store, (state) => state.submissionAttempts > 0);

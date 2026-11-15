@@ -90,7 +90,13 @@ function BrandingForm({ project }: { project: Project }) {
     forget();
   }, [discardDraft, forget, isSaving]);
   // Enter in a path or URL field saves this form through the bar's own run (only while dirty).
-  const formProps = useSaveRegionForm('site-branding', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard });
+  const formProps = useSaveRegionForm('site-branding', {
+    isDirty: draft.isDirty,
+    isSubmitting: isSaving,
+    submit,
+    discard,
+    settlement: draft.settlement,
+  });
 
   return (
     <form className="flex flex-col gap-6" noValidate {...formProps}>
