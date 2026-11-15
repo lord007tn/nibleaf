@@ -14,7 +14,7 @@ import {
 import type { ProjectConfig } from '@nibleaf/validators';
 import type { CSSProperties } from 'react';
 
-export { type SiteAppearance, siteAppearance, siteThemeNoFlashScript } from '@/lib/site-theme-bootstrap';
+export { siteAppearance, siteThemeNoFlashScript } from '@/lib/site-theme-bootstrap';
 
 const safeTokens = (tokens: ThemeColorTokens, fallback: ThemeColorTokens): ThemeColorTokens =>
   Object.fromEntries(
