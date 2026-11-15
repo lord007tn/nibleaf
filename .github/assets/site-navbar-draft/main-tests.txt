@@ -1,0 +1,56 @@
+The component suite (apps/app/src/features/site-navbar/components/navbar-settings.test.tsx) run against main's
+navbar-section.tsx at 36de1597a (with the two compact field tokens it imported from shared.tsx inlined), swapped in
+for the new component. Most failures are structure main never had (row field labels, the save bar, validation, the
+changed-fields-only payload). Three real regressions are shown in detail at the end.
+
+ × NavbarSettings — fields and names > shows the stored navbar with every row field labelled, addresses and icons left to right, and no save bar
+ × NavbarSettings — fields and names > computes each field name from its label and each Remove name from its row
+ × NavbarSettings — the project scope saves > sends only what changed: a cleared CTA text as "", an untouched field not at all
+ × NavbarSettings — the project scope saves > another writer's CTA, set during this save whose refetch then fails, survives a later link-only save
+ × NavbarSettings — the project scope saves > CTA saved and its refetch fails: clearing it in the same scope sends "", judged against the confirmed save
+ × NavbarSettings — the project scope saves > CTA saved, its refetch fails, a scope round trip: an edit elsewhere leaves the stored CTA alone
+ × NavbarSettings — the project scope saves > a newer read without the CTA wins over an earlier save: editing another field sends only that field
+ × NavbarSettings — the project scope saves > a late save for one site never reaches another site's form or payload (A → B → A)
+ × NavbarSettings — the project scope saves > removing the last row of every list sends [] for each; kept rows keep their metadata
+ × NavbarSettings — the project scope saves > sends row text as typed, drops only fully blank rows, sends half-filled ones and trims the icon
+ × NavbarSettings — the project scope saves > a switch-only edit dirties, saves the explicit value and discards back
+ × NavbarSettings — the project scope saves > a refetched switch updates a clean form, and a dirty one keeps its edit
+ × NavbarSettings — the project scope saves > a failed save keeps the draft and its Undo, says why once, and claims nothing
+ × NavbarSettings — the project scope saves > edits and a new blank row made during a save survive it and stay unsaved
+ × NavbarSettings — the project scope saves > a save that leaves the draft unsettled keeps it and its conflict on screen
+ × NavbarSettings — the project scope saves > another site starts clean, and coming back shows that site as stored (A → B → A)
+ × NavbarSettings — the project scope saves > a real change elsewhere offers Use theirs and Keep mine
+ × NavbarSettings — a language scope > shows the project's CTA URL and switches read-only, and writes labels in the language's direction
+ ✓ NavbarSettings — a language scope > saves the full override with its non-empty pieces only, never a global field
+ ✓ NavbarSettings — a language scope > every piece emptied sends navbar: null, so the language falls back to the project navbar
+ ✓ NavbarSettings — a language scope > asks before leaving a dirty scope; staying keeps the draft, leaving starts the other scope clean
+ × NavbarSettings — Undo > Add, Remove and Undo keep focus in the list, and Undo restores the row as it was beside newer edits
+ × NavbarSettings — Undo > removing the only row moves focus to Add; Undo puts an anchor back with its icon
+ × NavbarSettings — Undo > a late Undo after a successful save restores nothing
+ × NavbarSettings — Undo > a late Undo after a refetch, a discard, Use theirs, a scope change or a site change restores nothing
+ × NavbarSettings — Undo > Use theirs retires Undo for the list it replaces
+ ✓ NavbarSettings — Undo > Undo is gone once the section unmounts
+ × NavbarSettings — saving keys, lock and refusal > Enter in a field and Ctrl+S save once; IME, Shift+Enter and Alt+Ctrl+S do not
+ × NavbarSettings — saving keys, lock and refusal > one save at a time: Ctrl+S during a save sends nothing more
+ × NavbarSettings — saving keys, lock and refusal > a refused address is never sent: the field is marked and focused, with the validator saying why
+ × NavbarSettings — saving keys, lock and refusal > a problem shows once its field is left, not while typing in an untouched form
+⎯⎯⎯⎯⎯⎯ Failed Tests 27 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  27 failed | 4 passed (31)
+
+--- the regressions, in detail ---
+     × sends only what changed: a cleared CTA text as "", an untouched field not at all
+     × CTA saved and its refetch fails: clearing it in the same scope sends "", judged against the confirmed save
+     × a late Undo after a successful save restores nothing
+AssertionError: expected { …(6) } to strictly equal { ctaLabel: '' }
+ ❯ src/features/site-navbar/components/navbar-settings.test.tsx:281:26
+AssertionError: expected { ctaLabel: 'Start', links: [], …(4) } to strictly equal { ctaLabel: '' }
+ ❯ src/features/site-navbar/components/navbar-settings.test.tsx:321:26
+AssertionError: expected [ <button …(5)>…(1)</button>, …(1) ] to have a length of 1 but got 2
+ ❯ src/features/site-navbar/components/navbar-settings.test.tsx:622:36
+
+What the three show on main:
+- Clearing the stored CTA label: main's body carries six navbar keys and no ctaLabel (its "blank → undefined", which
+  JSON drops), so the API's one-level merge keeps "Book a demo".
+- Clearing a CTA just saved (refetch failed): main never sends the clear; the last body on the wire is still the first
+  save's (ctaLabel "Start").
+- A late Undo after a successful save puts the deleted link back into the saved draft (2 rows instead of 1).

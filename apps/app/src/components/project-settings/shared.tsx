@@ -7,9 +7,7 @@ import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import type { MessageKey } from '@nibleaf/i18n';
-import { translateFn, useT } from '@nibleaf/i18n/react';
-import type { ProjectConfigUpdate } from '@nibleaf/validators';
+import { useT } from '@nibleaf/i18n/react';
 import { useBlocker } from '@tanstack/react-router';
 import {
   cloneElement,
@@ -26,13 +24,6 @@ import {
   useState,
 } from 'react';
 import { toast } from 'sonner';
-import { friendlyErrorMessage } from '@/hooks/api/errors';
-
-type ConfigMutation = {
-  mutate: (vars: { config: ProjectConfigUpdate }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
-};
-
-const localizedFn = (key: MessageKey): string => translateFn(key);
 
 const ConfigDirtyContext = createContext<((source: string, dirty: boolean) => void) | null>(null);
 
@@ -80,30 +71,6 @@ export function useSettingsDirtyGuard() {
     enableBeforeUnload: isDirty,
   });
   return report;
-}
-
-/**
- * Wraps `useUpdateProjectConfig(...).mutate` in a promise + toast so a TanStack
- * Form `onSubmit` can `await` it. The server deep-merges section-level config,
- * so callers pass just the one section they own (e.g. `{ footer: {...} }`).
- */
-export function saveConfigSection(update: ConfigMutation, config: ProjectConfigUpdate) {
-  return new Promise<void>((resolve) => {
-    update.mutate(
-      { config },
-      {
-        onSuccess: () => {
-          toast.success(localizedFn('common.saved'));
-          resolve();
-        },
-        // Signed out, no permission, someone else saved first…: say which, not just "couldn't save".
-        onError: (error) => {
-          toast.error(friendlyErrorMessage(translateFn, error, 'settings.saveError'));
-          resolve();
-        },
-      },
-    );
-  });
 }
 
 /**
@@ -444,12 +411,6 @@ export function SaveBar({
 export const FIELD_INPUT = 'text-sm';
 export const FIELD_MONO = 'font-mono text-sm';
 export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
-
-/** Dense list-row inputs (variable/redirect/navbar rows): shorter and tighter.
- *  They always sit inside a bordered list container, so they carry a solid
- *  background and read as wells instead of border-on-border frames. */
-export const FIELD_COMPACT = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background text-[13px]';
-export const FIELD_COMPACT_MONO = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background font-mono text-[13px]';
 
 export function useDraftRowUndo() {
   const t = useT();
