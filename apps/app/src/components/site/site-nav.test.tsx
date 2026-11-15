@@ -291,6 +291,26 @@ describe('SiteNav long titles', () => {
     expect(tag?.className).not.toMatch(/\b(shrink-0|ms-auto)\b/);
   });
 
+  it('drops the tag tint on an active row, which already draws it, and keeps it elsewhere (#678)', () => {
+    const tagIn = (currentPath: string) => {
+      const container = document.createElement('div');
+      container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath={currentPath} toggleLabel="Toggle subpages" />);
+      return container.querySelector<HTMLElement>('[data-nav-tag]');
+    };
+    // Active: the row's own bg-primary/10 is the only tint; a ring keeps the tag distinct.
+    const active = tagIn('ai');
+    expect(active?.closest('a')?.getAttribute('aria-current')).toBe('page');
+    expect(active?.closest('a')?.className).toContain('bg-primary/10');
+    expect(active?.className).not.toContain('bg-primary/10');
+    expect(active?.className).toMatch(/\bring-1\b/);
+    expect(active?.className).toContain('text-primary');
+    // Inactive: unchanged, the tag carries its own tint and no ring.
+    const inactive = tagIn('leaf');
+    expect(inactive?.closest('a')?.hasAttribute('aria-current')).toBe(false);
+    expect(inactive?.className).toContain('bg-primary/10');
+    expect(inactive?.className).not.toMatch(/\bring-/);
+  });
+
   it('shows the whole title on hover or focus only when two lines are not enough', async () => {
     const container = document.createElement('div');
     document.body.append(container);

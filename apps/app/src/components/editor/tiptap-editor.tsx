@@ -3,7 +3,6 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { type Locale, type MessageKey, translateFn } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { type Editor, Extension } from '@tiptap/core';
-import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { DragHandle, type DragHandleProps } from '@tiptap/extension-drag-handle-react';
 import Highlight from '@tiptap/extension-highlight';
@@ -46,7 +45,18 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from 'lucide-react';
-import { type ComponentType, type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ComponentType,
+  type CSSProperties,
+  type MutableRefObject,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { type CommentAnchor, EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
@@ -55,8 +65,10 @@ import { type EditorLinks, useEditorLinks } from './editor-links';
 import { seedPageContent } from './editor-sections';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
 import { BlockImage, LegacyImage } from './extensions/block-image';
+import { CachedCharacterCount } from './extensions/cached-character-count';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CleanPaste } from './extensions/clean-paste';
+import { codeBlockHighlightPlugin, type LowlightLike } from './extensions/code-block-highlight';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
 import { FixHighlight } from './extensions/fix-highlight';
 import { ImageControls } from './extensions/image-controls';
@@ -134,6 +146,16 @@ function getCounts(editor: Editor): { words: number; characters: number } {
 /** CodeBlockLowlight that mirrors the chosen language onto the <pre> as `data-language`,
  * so the dark chrome's label bar (CSS ::before) can display it. */
 const CodeBlock = CodeBlockLowlight.extend({
+  // One highlighting plugin that re-highlights only the code blocks an edit
+  // touches, in place of CodeBlockLowlight's (which this extension inherited
+  // twice) — see code-block-highlight.ts.
+  addProseMirrorPlugins() {
+    const inherited = (this.parent?.() ?? []).filter((plugin) => !(plugin as unknown as { key: string }).key.startsWith('lowlight$'));
+    return [
+      ...inherited,
+      codeBlockHighlightPlugin({ name: this.name, lowlight: this.options.lowlight as LowlightLike, defaultLanguage: this.options.defaultLanguage }),
+    ];
+  },
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -372,7 +394,7 @@ export function buildEditorExtensions({
     TableRow,
     AlignedTableHeader,
     AlignedTableCell,
-    CharacterCount,
+    CachedCharacterCount,
     Callout,
     ...mdxNodes,
     VideoEmbed,
@@ -673,11 +695,33 @@ function EditorFooter({ editor, documentMode = false }: { editor: Editor; docume
   );
 }
 
+/** The editor's unserialized edit, for the page that owns the draft (P2-ED-005). */
+export interface EditorDraftHandle {
+  /** Serialize a pending edit now; the Markdown reaches `onChange` before this returns. */
+  flush: () => void;
+  /** True while an edit has not been serialized yet. */
+  pending: () => boolean;
+}
+
+/** How long typing pauses before a deferred edit is serialized for the page. */
+const DEFERRED_EMIT_IDLE_MS = 300;
+
 interface TiptapEditorProps {
   /** Markdown source — the single source of truth. */
   value: string;
-  /** Called with updated Markdown on every editor change. */
+  /** Called with updated Markdown on every editor change (with `onEdit`: when a
+   *  pending edit is serialized). */
   onChange: (markdown: string) => void;
+  /**
+   * Defer serialization (P2-ED-005). Serializing a large page on every keystroke
+   * made typing lag, so with `onEdit` a keystroke only calls it. The page is
+   * serialized and sent to `onChange` once typing pauses
+   * (`DEFERRED_EMIT_IDLE_MS`), when the editor loses focus, before the editor is
+   * replaced or unmounted, and whenever the owner calls `draftRef.current.flush()`.
+   */
+  onEdit?: () => void;
+  /** Set while the editor is mounted (see `EditorDraftHandle`). */
+  draftRef?: MutableRefObject<EditorDraftHandle | null>;
   /** Upload a pasted/dropped/picked image, returning its hosted URL (or null). */
   onUpload?: ImageUploader;
   dir?: 'ltr' | 'rtl';
@@ -726,6 +770,8 @@ export function TiptapEditor({
   onAddComment,
   variant = 'visual',
   titleSlot,
+  onEdit,
+  draftRef,
 }: TiptapEditorProps) {
   const lastEmitted = useRef<string>(value);
   // The Markdown last seeded and its serialization: an edit back to it emits the source.
@@ -734,6 +780,27 @@ export function TiptapEditor({
   // newer value arrived never re-applies the stale one.
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
+  const onEditRef = useRef(onEdit);
+  onEditRef.current = onEdit;
+  // The editor instance holding an edit not serialized yet (deferred mode only).
+  const pendingEdit = useRef<Editor | null>(null);
+  const emitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const dropPendingEdit = useCallback(() => {
+    clearTimeout(emitTimer.current);
+    emitTimer.current = undefined;
+    pendingEdit.current = null;
+  }, []);
+  /** Serialize a deferred edit and hand it to `onChange`, as an eager edit is. */
+  const emitPendingEdit = useCallback(() => {
+    const pendingEditor = pendingEdit.current;
+    dropPendingEdit();
+    if (!pendingEditor) return;
+    const markdown = markdownToEmit(loaded.current, getMarkdown(pendingEditor));
+    lastEmitted.current = markdown;
+    // An editor created before the owner re-renders seeds this, not the stale value.
+    valueRef.current = markdown;
+    onChangeRef.current(markdown);
+  }, [dropPendingEdit]);
   const onUploadRef = useRef(onUpload);
   const editorRef = useRef<Editor | null>(null);
   // Comment state read by the CommentDecorations plugin + the click handler.
@@ -789,6 +856,10 @@ export function TiptapEditor({
         locale: scaffoldLocaleOf({ lang, dir }),
       }),
       content: value,
+      // The editor is about to be replaced (its direction, language or variant
+      // changed): its deferred edit must reach the page before it goes.
+      onDestroy: () => emitPendingEdit(),
+      onBlur: () => emitPendingEdit(),
       onCreate: ({ editor }) => {
         editorRef.current = editor;
         // Seed once with the markdown source (StarterKit treats string content as HTML;
@@ -806,6 +877,15 @@ export function TiptapEditor({
       onUpdate: ({ editor, transaction }) => {
         // Only the writer's own changes reach the draft (see editor-change-origin.ts).
         if (!isUserDocChange(transaction)) return;
+        const notifyEdit = onEditRef.current;
+        if (notifyEdit) {
+          // Deferred: note the edit; it is serialized later (see `onEdit`).
+          pendingEdit.current = editor;
+          clearTimeout(emitTimer.current);
+          emitTimer.current = setTimeout(emitPendingEdit, DEFERRED_EMIT_IDLE_MS);
+          notifyEdit();
+          return;
+        }
         const markdown = markdownToEmit(loaded.current, getMarkdown(editor));
         lastEmitted.current = markdown;
         onChangeRef.current(markdown);
@@ -868,6 +948,9 @@ export function TiptapEditor({
     }
     if (value !== lastEmitted.current) {
       lastEmitted.current = value;
+      // A new value from outside replaces the document, edits included, as it did
+      // when every edit was serialized at once.
+      dropPendingEdit();
       // `emitUpdate: false` so re-seeding doesn't bounce back through onChange. Deferred
       // to a microtask so NodeView remounts don't flushSync inside React's commit.
       // Reads the latest value so an earlier queued re-seed can't win over a newer one.
@@ -878,7 +961,20 @@ export function TiptapEditor({
         }
       });
     }
-  }, [value, editor]);
+  }, [value, editor, dropPendingEdit]);
+
+  // The owner's handle on a deferred edit. Unmounting serializes it first: this
+  // runs before the owner's own unmount effects, which save the draft.
+  useLayoutEffect(() => {
+    if (!draftRef) return;
+    draftRef.current = { flush: emitPendingEdit, pending: () => pendingEdit.current !== null };
+    return () => {
+      emitPendingEdit();
+      draftRef.current = null;
+    };
+  }, [draftRef, emitPendingEdit]);
+  // Without a handle, still serialize a deferred edit when the editor unmounts.
+  useLayoutEffect(() => () => emitPendingEdit(), [emitPendingEdit]);
 
   // Keep editability in sync. Review mode stays contenteditable so ProseMirror
   // receives exact text selections; mutation handlers above make it read-only.

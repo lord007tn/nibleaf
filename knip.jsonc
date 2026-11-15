@@ -11,6 +11,7 @@
     },
     ".": {
       "entry": [
+        ".github/assets/*/capture.mjs",
         ".github/assets/org-default-cloud-copy/capture.mjs",
         ".github/assets/dashboard-copy-followups/capture.mjs",
         ".github/assets/site-openapi-draft/capture.mjs",
