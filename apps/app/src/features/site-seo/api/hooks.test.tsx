@@ -16,8 +16,15 @@ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
  * checked by the route's own validator; what the server stores from it is the
  * server's business (`apps/server/src/actions/{projects,languages.writes}.test.ts`
  * run the real merges). Answers are fixed per test, and every call is logged.
+ * `patched` answers the PATCH with a different entity than later reads (someone
+ * else saved in between); `failReadsAfterPatch` makes the save's refetch fail.
  */
-function fakeApi(answers: { project: unknown; language: unknown }) {
+function fakeApi(answers: {
+  project: unknown;
+  language: unknown;
+  patched?: { project?: unknown; language?: unknown };
+  failReadsAfterPatch?: boolean;
+}) {
   const log: string[] = [];
   const bodies: unknown[] = [];
   vi.stubGlobal(
@@ -29,9 +36,14 @@ function fakeApi(answers: { project: unknown; language: unknown }) {
       if (request.method === 'PATCH') {
         const body = await request.json();
         bodies.push(body);
-        if (path.endsWith('/languages/ar')) updateLanguageBody.parse(body);
-        else updateProjectBody.parse(body);
+        if (path.endsWith('/languages/ar')) {
+          updateLanguageBody.parse(body);
+          return Response.json({ data: answers.patched?.language ?? answers.language });
+        }
+        updateProjectBody.parse(body);
+        return Response.json({ data: answers.patched?.project ?? answers.project });
       }
+      if (answers.failReadsAfterPatch && bodies.length > 0) return Response.json({ error: { message: 'Unavailable' } }, { status: 503 });
       if (path === '/api/app/projects/site-1') return Response.json({ data: answers.project });
       if (path === '/api/app/projects/site-1/languages') return Response.json({ data: [answers.language] });
       if (path === '/api/app/projects/site-1/languages/ar') return Response.json({ data: answers.language });
@@ -72,6 +84,58 @@ async function mount() {
 const BLANK = { metaTitle: '', metaDescription: '', socialImage: '', allowIndex: true };
 
 describe('useSaveSeo over the real client', () => {
+  it('confirms with the save’s own refetch when it is newer than the PATCH response (someone else saved in between)', async () => {
+    const sent = { metaTitle: 'Sent', metaDescription: '', socialImage: '', allowIndex: true };
+    const theirs = { ...sent, metaTitle: 'Theirs' };
+    fakeApi({
+      project: { id: 'site-1', config: { seo: theirs } },
+      language: { id: 'ar', config: null },
+      patched: { project: { id: 'site-1', config: { seo: sent } } },
+    });
+    const hook = await mount();
+    let confirmed: unknown;
+    await act(async () => {
+      confirmed = await hook.save.saveProject({ ...sent, metaTitle: '  Sent  ' });
+    });
+    expect(confirmed).toStrictEqual(theirs);
+  });
+
+  it('does the same for a language: its refetched row, not the PATCH response', async () => {
+    const sent = { metaTitle: 'توثيق', metaDescription: '', socialImage: '', allowIndex: true };
+    const theirs = { ...sent, metaTitle: 'عنوانهم' };
+    fakeApi({
+      project: { id: 'site-1', config: {} },
+      language: { id: 'ar', config: { seo: theirs } },
+      patched: { language: { id: 'ar', config: { seo: sent } } },
+    });
+    const hook = await mount();
+    let confirmed: unknown;
+    await act(async () => {
+      confirmed = await hook.save.saveLanguage('ar', sent);
+    });
+    expect(confirmed).toStrictEqual(theirs);
+  });
+
+  it.each(['project', 'language'] as const)(
+    'falls back to the %s PATCH response when the refetch fails, never to the data from before the save',
+    async (scope) => {
+      const before = { metaTitle: 'Before', metaDescription: '', socialImage: '', allowIndex: true };
+      const sent = { ...before, metaTitle: 'Sent' };
+      fakeApi({
+        project: { id: 'site-1', config: { seo: before } },
+        language: { id: 'ar', config: { seo: before } },
+        patched: { project: { id: 'site-1', config: { seo: sent } }, language: { id: 'ar', config: { seo: sent } } },
+        failReadsAfterPatch: true,
+      });
+      const hook = await mount();
+      let confirmed: unknown;
+      await act(async () => {
+        confirmed = scope === 'project' ? await hook.save.saveProject(sent) : await hook.save.saveLanguage('ar', sent);
+      });
+      expect(confirmed).toStrictEqual(sent);
+    },
+  );
+
   it('sends the project SEO with cleared text as "" and resolves the stored SEO after the refetch', async () => {
     const stored = { metaTitle: 'Docs', metaDescription: '', socialImage: '/og/cover.png', allowIndex: false };
     const api = fakeApi({ project: { id: 'site-1', config: { navbar: { ctaLabel: 'Start' }, seo: stored } }, language: { id: 'ar', config: null } });
