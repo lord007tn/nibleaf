@@ -60,6 +60,7 @@ vi.mock('@/hooks/api', () => ({
   useExportProjectTheme: () => mutation,
 }));
 vi.mock('@tanstack/react-router', () => ({ useBlocker: () => undefined }));
+vi.mock('@/services/api-origin', () => ({ apiOrigin: () => 'http://dashboard.test' }));
 vi.mock('@/lib/site-theme', () => ({
   projectThemeVariables: () => ({}),
   projectThemeStyle: () => ({}),
