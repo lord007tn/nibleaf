@@ -5,7 +5,8 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/auth-messages', () => ({ useAuthLocale: () => ({ locale: 'en', setLocale: vi.fn(), t: (key: string) => key }) }));
+const locale = vi.hoisted(() => ({ set: vi.fn() }));
+vi.mock('@/lib/auth-messages', () => ({ useAuthLocale: () => ({ locale: 'en', setLocale: locale.set, t: (key: string) => key }) }));
 const loader = vi.hoisted(() => ({ load: vi.fn() }));
 vi.mock('@/components/interface-language-picker', () => ({ loadInterfaceLanguagePicker: loader.load }));
 
@@ -25,6 +26,7 @@ const realPicker = async () =>
 let root: ReturnType<typeof createRoot> | undefined;
 beforeEach(() => {
   loader.load.mockReset();
+  locale.set.mockReset();
   // A download that takes a moment, like a real chunk.
   loader.load.mockImplementation(() => new Promise((done) => setTimeout(() => done(realPicker()), 20)));
 });
@@ -86,19 +88,24 @@ describe('InterfaceLanguageButton', () => {
     expect(loader.load).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the page when the download fails, says so, and asks again on the next press', async () => {
+  it('falls back to a plain language select, with focus, when the download fails (offline)', async () => {
     loader.load.mockRejectedValueOnce(new TypeError('Failed to fetch dynamically imported module'));
     const button = await mount();
     button.focus();
     await act(async () => button.click());
-    await act(async () => Promise.resolve());
+    await vi.waitFor(() => expect(document.querySelector('select')).not.toBeNull());
+    const select = document.querySelector('select') as HTMLSelectElement;
     expect(dialog()).toBeNull();
-    expect(button.isConnected).toBe(true);
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('auth.error.tryAgain');
-
-    await act(async () => button.click());
-    await vi.waitFor(() => expect(dialog()).not.toBeNull(), { timeout: 10_000 });
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('');
+    expect(button.isConnected).toBe(false);
+    expect(document.activeElement).toBe(select);
+    expect(select.getAttribute('aria-label')).toBe('account.language');
+    expect(select.value).toBe('en');
+    expect([...select.options].map((option) => option.value)).toContain('ar');
+    await act(async () => {
+      select.value = 'ar';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(locale.set).toHaveBeenCalledWith('ar');
   });
 
   it('ignores a failed preload on hover or focus', async () => {
@@ -107,6 +114,8 @@ describe('InterfaceLanguageButton', () => {
     await act(async () => button.focus());
     await act(async () => Promise.resolve());
     expect(dialog()).toBeNull();
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('');
+    // A failed preload alone changes nothing: the button stays, and a press asks again.
+    expect(document.querySelector('select')).toBeNull();
+    expect(button.isConnected).toBe(true);
   });
 });
