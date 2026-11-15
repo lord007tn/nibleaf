@@ -213,6 +213,50 @@ describe('BrandingSettings: the draft', () => {
     expect(mocks.update).toHaveBeenLastCalledWith({ config: { branding: { logoHref: 'https://during.example' } } });
   });
 
+  describe("a save's own refetch, which the config mutation awaits before it resolves", () => {
+    /**
+     * Saves `/sent.svg` over `/old.svg`, types `newer` while the save runs, then
+     * delivers the save's own refetch (the stored `/sent.svg`) before the
+     * mutation resolves, as `useUpdateProjectConfig` does.
+     */
+    const saveThenEditThenRefetch = async (newer: string) => {
+      await render(site({ ...SAVED, favicon: '/old.svg' }));
+      const request = deferred<Project>();
+      mocks.update.mockReturnValueOnce(request.promise);
+      await type(input('favicon'), '/sent.svg');
+      await save();
+      await type(input('favicon'), newer);
+      await render(site({ ...SAVED, favicon: '/sent.svg' }));
+      expect(input('favicon').value).toBe(newer);
+      await act(async () => request.resolve(site({ ...SAVED, favicon: '/sent.svg' })));
+    };
+
+    it('keeps a value typed back to the old one during the save, dirty, and saves it next', async () => {
+      await saveThenEditThenRefetch('/old.svg');
+      expect(mocks.update).toHaveBeenCalledWith({ config: { branding: { favicon: '/sent.svg' } } });
+      expect(input('favicon').value).toBe('/old.svg');
+      expect(region()).not.toBeNull();
+      expect(dirty.size).toBe(1);
+      expect(container.textContent).not.toContain('forms.changedElsewhere');
+      mocks.update.mockResolvedValueOnce(site({ ...SAVED, favicon: '/old.svg' }));
+      await save();
+      expect(mocks.update).toHaveBeenLastCalledWith({ config: { branding: { favicon: '/old.svg' } } });
+      expect(region()).toBeNull();
+    });
+
+    it('keeps a newer different value typed during the save, dirty, with no false conflict', async () => {
+      await saveThenEditThenRefetch('/newer.svg');
+      expect(input('favicon').value).toBe('/newer.svg');
+      expect(region()).not.toBeNull();
+      expect(dirty.size).toBe(1);
+      expect(container.textContent).not.toContain('forms.changedElsewhere');
+      mocks.update.mockResolvedValueOnce(site({ ...SAVED, favicon: '/newer.svg' }));
+      await save();
+      expect(mocks.update).toHaveBeenLastCalledWith({ config: { branding: { favicon: '/newer.svg' } } });
+      expect(region()).toBeNull();
+    });
+  });
+
   it("leaves another site alone when the first site's save settles after the switch", async () => {
     const request = deferred<Project>();
     mocks.update.mockReturnValueOnce(request.promise);
