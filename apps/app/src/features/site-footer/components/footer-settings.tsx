@@ -3,7 +3,7 @@ import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { PanelBottom } from 'lucide-react';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   FIELD_INPUT,
@@ -20,15 +20,7 @@ import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useFooterLanguages, useSaveFooter } from '../api/hooks';
-import {
-  type FooterConfig,
-  type FooterValues,
-  footerValues,
-  knownStoredFooter,
-  languageFooterValues,
-  PROJECT_SCOPE,
-  sentFooterValues,
-} from '../model/footer';
+import { type FooterValues, footerValues, languageFooterValues, PROJECT_SCOPE, sentFooterValues } from '../model/footer';
 
 /** The social links: addresses, read left to right in every locale. */
 const SOCIAL = [
@@ -70,37 +62,19 @@ function FooterForm({ project }: { project: Project }) {
     [activeLanguage, override, projectFooter],
   );
   const scopeKind = activeLanguage ? 'language' : 'project';
-  const identity = [project.id, 'footer', activeLanguage?.id ?? PROJECT_SCOPE];
-  const identityKey = JSON.stringify(identity);
-
-  // The project footer a successful save of this draft showed stored, so a
-  // failed refetch can't hide a text the server now holds. It belongs to this
-  // draft: forgotten on any change of site or scope (A → B → A included), and a
-  // save that has left its draft never records one.
-  const confirmedStored = useRef<FooterConfig | undefined>(undefined);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new site or scope starts from what the project query says.
-  useLayoutEffect(() => {
-    confirmedStored.current = undefined;
-  }, [identityKey]);
-  const stored = () => knownStoredFooter(projectFooter, confirmedStored.current);
 
   const { form, ...draft } = useServerDraftForm<FooterValues>({
-    identity,
+    identity: [project.id, 'footer', activeLanguage?.id ?? PROJECT_SCOPE],
     source,
     // The save sends trimmed text (and, from a language, the copyright only); judge its echo by that.
-    toSent: (value) => sentFooterValues(scopeKind, value, stored()),
+    // Which texts are stored comes from the project query alone (see `useSaveFooter`).
+    toSent: (value) => sentFooterValues(scopeKind, value, projectFooter),
     // `succeeded()` says whether the draft settled clean. Footer has nothing to
     // close or collapse: an unclean save (an edit made meanwhile, or a conflict)
     // stays on screen, dirty, with its conflict to resolve.
     onSubmit: async (value, save) => {
       try {
-        if (activeLanguage) {
-          save.succeeded(await saveLanguage(activeLanguage.id, value, projectFooter));
-        } else {
-          const result = await saveProject(value, stored());
-          if (save.isCurrent()) confirmedStored.current = knownStoredFooter(result.stored, confirmedStored.current);
-          save.succeeded(result.values);
-        }
+        save.succeeded(activeLanguage ? await saveLanguage(activeLanguage.id, value, projectFooter) : await saveProject(value, projectFooter));
         return 'saved';
       } catch (error) {
         save.failed();

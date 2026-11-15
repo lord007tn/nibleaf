@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -60,15 +61,19 @@ function deferred<T>() {
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 let dirty: Set<string>;
+let queryClient: QueryClient;
 
 const render = (project: Project) =>
   act(async () =>
     root.render(
-      <ConfirmProvider>
-        <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
-          <FooterSettings project={project} />
-        </ConfigDirtyProvider>
-      </ConfirmProvider>,
+      // An empty query cache: these tests hand the form its project directly (see footer-settings.source.test.tsx).
+      <QueryClientProvider client={queryClient}>
+        <ConfirmProvider>
+          <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
+            <FooterSettings project={project} />
+          </ConfigDirtyProvider>
+        </ConfirmProvider>
+      </QueryClientProvider>,
     ),
   );
 
@@ -78,6 +83,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   dirty = new Set();
+  queryClient = new QueryClient();
 });
 
 afterEach(async () => {
@@ -312,70 +318,6 @@ describe("FooterSettings: a save's own refetch, which the mutation awaits before
     await saveThenRefetch(' https://github.com/acme-labs ', () => type(input('github'), 'https://github.com/newer'), theirs);
     await click(buttonNamed('forms.useTheirs'));
     expect(input('github').value).toBe(theirs);
-  });
-});
-
-describe('FooterSettings: a save whose follow-up refetch failed', () => {
-  // The PATCH stores the text and answers with the stored footer, but the
-  // project query is never refetched: its footer still lacks the text.
-  it.each([
-    ['copyright', 'New line'],
-    ['x', 'https://x.com/acme'],
-  ] as const)('a newly stored %s, cleared next, is still sent as ""', async (key, text) => {
-    const READ = { github: 'https://github.com/acme' };
-    await render(site(READ, 'site-b'));
-    mocks.updateProject.mockResolvedValueOnce(site({ ...READ, [key]: text, madeWithBadge: true }, 'site-b'));
-    await type(input(key), text);
-    await save();
-    expect(input(key).value).toBe(text);
-    expect(region()).toBeNull();
-
-    mocks.updateProject.mockResolvedValueOnce(site({ ...READ, [key]: '', madeWithBadge: true }, 'site-b'));
-    await type(input(key), '');
-    await save();
-    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { ...READ, [key]: '', madeWithBadge: true } } });
-    expect(input(key).value).toBe('');
-    expect(region()).toBeNull();
-  });
-
-  it('what a save showed stored stays with its own site and draft; a late result from the previous site counts for neither', async () => {
-    await render(site({}, 'site-a'));
-    const late = deferred<Project>();
-    mocks.updateProject.mockReturnValueOnce(late.promise);
-    await type(input('copyright'), 'A line');
-    await save();
-    await render(site({}, 'site-b'));
-    await act(async () => late.resolve(site({ copyright: 'A line', madeWithBadge: true }, 'site-a')));
-
-    // Site B never stored a copyright: a save there leaves it out.
-    mocks.updateProject.mockResolvedValueOnce(site({ x: 'https://x.com/b', madeWithBadge: true }, 'site-b'));
-    await type(input('x'), 'https://x.com/b');
-    await save();
-    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { x: 'https://x.com/b', madeWithBadge: true } } });
-
-    // Back on site A, still read without a copyright: the late result wasn't
-    // recorded, so a save there can't clear a copyright the form never showed.
-    await render(site({}, 'site-a'));
-    mocks.updateProject.mockResolvedValueOnce(site({ copyright: 'A line', x: 'https://x.com/a', madeWithBadge: true }, 'site-a'));
-    await type(input('x'), 'https://x.com/a');
-    await save();
-    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { x: 'https://x.com/a', madeWithBadge: true } } });
-  });
-
-  it('a scope round trip (A → B → A) starts again from what the project query says', async () => {
-    mocks.languages = [ENGLISH, french()];
-    await render(site({}));
-    mocks.updateProject.mockResolvedValueOnce(site({ copyright: 'Stored', madeWithBadge: true }));
-    await type(input('copyright'), 'Stored');
-    await save();
-    await chooseScope('Français');
-    await chooseScope('settings.chrome.scope.default');
-    // The query (never refetched) shows no copyright, so none is cleared behind the form's back.
-    expect(input('copyright').value).toBe('');
-    mocks.updateProject.mockResolvedValueOnce(site({ copyright: 'Stored', x: 'https://x.com/acme', madeWithBadge: true }));
-    await type(input('x'), 'https://x.com/acme');
-    await save();
-    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { x: 'https://x.com/acme', madeWithBadge: true } } });
   });
 });
 

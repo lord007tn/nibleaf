@@ -16,7 +16,8 @@ AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { 
 == this branch
       Tests  4 passed | 19 skipped (23)
 
-Review round (P2): 'a save whose follow-up refetch failed' (same file), run against this PR's first head fa495036 and the fix.
+Review round 2 (P2): 'a save whose follow-up refetch failed' (then in footer-settings.test.tsx), run against this PR's first head fa495036 and that round's fix.
+Round 3 replaced that fix and moved these cases into footer-settings.source.test.tsx (below).
 The PATCH stores the text, the project query is not refetched, then the text is cleared and saved.
 
 == fa495036
@@ -28,3 +29,18 @@ The two site/scope identity tests pass on both heads: they guard the fix's scope
 
 == the fix
       Tests  4 passed
+
+Review round 3 (P2a, P2b): features/site-footer/components/footer-settings.source.test.tsx, real queries and mutations over a stand-in API,
+run against 6c37f857 (the per-form presence record) and this fix (the project query as the only source).
+
+== 6c37f857
+     × P2a: a scope round trip after a failed refetch still clears what the save stored 162ms
+     × P2b: a fresh read without a text the form saved before is authoritative: another field’s save leaves it out 106ms
+AssertionError: expected '' to be 'Stored' // Object.is equality
+AssertionError: expected { x: 'https://x.com/handbook', …(1) } to strictly equal { copyright: '', …(2) }
+AssertionError: expected { copyright: '', …(2) } to strictly equal { x: 'https://x.com/handbook', …(1) }
+      Tests  2 failed | 7 skipped (9)
+(P2a: after the scope round trip the form reads the stale query, and the clear is left out; P2b: the old record re-adds a copyright a fresh read no longer has.)
+
+== the fix
+      Tests  9 passed (9)

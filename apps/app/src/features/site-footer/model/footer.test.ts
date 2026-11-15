@@ -1,14 +1,6 @@
 import { updateLanguageBody, updateProjectBody } from '@nibleaf/validators';
 import { describe, expect, it } from 'vitest';
-import {
-  type FooterValues,
-  footerValues,
-  knownStoredFooter,
-  languageFooterConfig,
-  languageFooterValues,
-  projectFooterPatch,
-  sentFooterValues,
-} from './footer';
+import { type FooterValues, footerValues, languageFooterConfig, languageFooterValues, projectFooterPatch, sentFooterValues } from './footer';
 
 const STORED = { copyright: '© Acme', github: 'https://github.com/acme', x: 'https://x.com/acme', linkedin: '/company', madeWithBadge: false };
 const values = (overrides: Partial<FooterValues> = {}): FooterValues => ({ ...footerValues(STORED), ...overrides });
@@ -58,23 +50,6 @@ describe('projectFooterPatch', () => {
       expect(onTheWire(projectFooterPatch(values({ github }), STORED))?.github).toBe(github);
     }
     expect(() => onTheWire(projectFooterPatch(values({ x: 'javascript:alert(1)' }), STORED))).toThrow();
-  });
-});
-
-describe('knownStoredFooter', () => {
-  it("adds the text keys a save's response showed stored to what the query read, and keeps the query's values", () => {
-    const known = knownStoredFooter({ github: 'https://github.com/acme' }, { copyright: 'New line', github: 'old', madeWithBadge: false });
-    expect(known).toStrictEqual({ github: 'https://github.com/acme', copyright: 'New line' });
-    expect(projectFooterPatch(footerValues({ github: 'https://github.com/acme' }), known)).toStrictEqual({
-      copyright: '',
-      github: 'https://github.com/acme',
-      madeWithBadge: true,
-    });
-  });
-
-  it('is the query alone when no save confirmed anything', () => {
-    expect(knownStoredFooter({ x: '' }, undefined)).toStrictEqual({ x: '' });
-    expect(knownStoredFooter(undefined, undefined)).toStrictEqual({});
   });
 });
 
