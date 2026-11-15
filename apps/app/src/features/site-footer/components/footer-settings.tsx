@@ -19,7 +19,7 @@ import type { Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
-import { useFooterLanguages, useSaveFooter } from '../api/hooks';
+import { useFooterLanguages, useRefreshStaleProject, useSaveFooter } from '../api/hooks';
 import { type FooterValues, footerValues, languageFooterValues, PROJECT_SCOPE, sentFooterValues } from '../model/footer';
 
 /** The social links: addresses, read left to right in every locale. */
@@ -50,6 +50,7 @@ function FooterForm({ project }: { project: Project }) {
   const t = useT();
   const { data: languages } = useFooterLanguages(project.id);
   const { saveProject, saveLanguage } = useSaveFooter(project.id);
+  const refreshStaleProject = useRefreshStaleProject(project.id);
   const ordered = sortLanguagesDefaultFirst(languages ?? []);
   const defaultLanguage = ordered.find((language) => language.isDefault);
   const extraLanguages = ordered.filter((language) => !language.isDefault);
@@ -67,14 +68,14 @@ function FooterForm({ project }: { project: Project }) {
     identity: [project.id, 'footer', activeLanguage?.id ?? PROJECT_SCOPE],
     source,
     // The save sends trimmed text (and, from a language, the copyright only); judge its echo by that.
-    // Which texts are stored comes from the project query alone (see `useSaveFooter`).
-    toSent: (value) => sentFooterValues(scopeKind, value, projectFooter),
+    toSent: (value) => sentFooterValues(scopeKind, value),
     // `succeeded()` says whether the draft settled clean. Footer has nothing to
     // close or collapse: an unclean save (an edit made meanwhile, or a conflict)
     // stays on screen, dirty, with its conflict to resolve.
     onSubmit: async (value, save) => {
       try {
-        save.succeeded(activeLanguage ? await saveLanguage(activeLanguage.id, value, projectFooter) : await saveProject(value, projectFooter));
+        // A project save sends only what changed from the baseline this save started from.
+        save.succeeded(activeLanguage ? await saveLanguage(activeLanguage.id, value, projectFooter) : await saveProject(value, save.baseline));
         return 'saved';
       } catch (error) {
         save.failed();
@@ -108,7 +109,11 @@ function FooterForm({ project }: { project: Project }) {
         guard={guard}
         hint={t('settings.footer.scope.hint')}
         languages={extraLanguages}
-        onChange={setScope}
+        onChange={(next) => {
+          setScope(next);
+          // The new scope's draft starts from the project query: read it again if a failed refetch left it stale.
+          refreshStaleProject();
+        }}
         value={scope}
       />
 

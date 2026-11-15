@@ -44,3 +44,15 @@ AssertionError: expected { copyright: '', …(2) } to strictly equal { x: 'https
 
 == the fix
       Tests  9 passed (9)
+
+Review round 4 (finding 1, new contract): footer-settings.source.test.tsx, real queries and mutations over a stand-in API,
+run against cbaa0360 (round 3: full payload, presence from the cache) and this head (only the changed keys are sent).
+
+== cbaa0360
+     × finding 1: another writer's link that a read brings during the save survives a LinkedIn-only save after the refetch failed 125ms
+AssertionError: expected { copyright: '© New', x: '', …(2) } to strictly equal { linkedin: '/company/handbook' }
+(round 3 sends x: '' for a link the form shows blank after #750 confirmed the save's answer, deleting the other writer's link.
+The file's other cases also fail there, mostly because round 3 sent the whole footer.)
+
+== this head
+      Tests  15 passed (15)   (the LinkedIn-only save sends { linkedin } and the other writer's X survives)

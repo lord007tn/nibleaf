@@ -20,36 +20,49 @@ describe('footerValues', () => {
   });
 });
 
-describe('projectFooterPatch', () => {
-  it('trims every text and keeps the badge choice', () => {
-    expect(projectFooterPatch(values({ copyright: '  © Acme 2026 ', github: ' https://github.com/acme ' }), STORED)).toStrictEqual({
-      ...STORED,
-      copyright: '© Acme 2026',
+describe('projectFooterPatch: only what changed', () => {
+  const BASE = footerValues(STORED);
+
+  it('sends nothing for an untouched draft, and only the changed keys otherwise, trimmed', () => {
+    expect(projectFooterPatch(BASE, BASE)).toStrictEqual({});
+    expect(projectFooterPatch(values({ copyright: '  © Acme 2026 ' }), BASE)).toStrictEqual({ copyright: '© Acme 2026' });
+  });
+
+  it.each(['copyright', 'github', 'x', 'linkedin'] as const)('a cleared %s is sent as "" alone and survives the validator', (key) => {
+    const patch = projectFooterPatch(values({ [key]: '   ' }), BASE);
+    expect(patch).toStrictEqual({ [key]: '' });
+    expect(onTheWire(patch)).toStrictEqual({ [key]: '' });
+  });
+
+  it('clears all four texts at once without sending the badge it left alone', () => {
+    expect(onTheWire(projectFooterPatch(values({ copyright: '', github: '', x: '', linkedin: '' }), BASE))).toStrictEqual({
+      copyright: '',
+      github: '',
+      x: '',
+      linkedin: '',
     });
   });
 
-  it.each(['copyright', 'github', 'x', 'linkedin'] as const)('a cleared stored %s is sent as "" and survives the validator', (key) => {
-    const patch = projectFooterPatch(values({ [key]: '   ' }), STORED);
-    expect(patch[key]).toBe('');
-    expect(onTheWire(patch)).toStrictEqual({ ...STORED, [key]: '' });
+  it('sends the badge only when switched, as an explicit true or false', () => {
+    expect(projectFooterPatch(values({ madeWithBadge: true }), BASE)).toStrictEqual({ madeWithBadge: true });
+    expect(projectFooterPatch(footerValues({ madeWithBadge: false }), footerValues({}))).toStrictEqual({ madeWithBadge: false });
   });
 
-  it('clears all four texts at once, keeping an explicit badge false', () => {
-    const patch = projectFooterPatch(values({ copyright: '', github: '', x: '', linkedin: '' }), STORED);
-    expect(onTheWire(patch)).toStrictEqual({ copyright: '', github: '', x: '', linkedin: '', madeWithBadge: false });
+  it('never sends a key the person left alone: a never-set copyright stays unset, typed then cleared included', () => {
+    const neverSet = footerValues({ github: 'https://github.com/acme' });
+    expect(projectFooterPatch({ ...neverSet, x: 'https://x.com/acme' }, neverSet)).toStrictEqual({ x: 'https://x.com/acme' });
+    expect(projectFooterPatch({ ...neverSet, copyright: '   ' }, neverSet)).toStrictEqual({});
   });
 
-  it('leaves out a text the project never stored, so the automatic copyright line stays', () => {
-    const patch = projectFooterPatch(footerValues({ github: 'https://github.com/acme' }), { github: 'https://github.com/acme' });
-    expect(patch).toStrictEqual({ github: 'https://github.com/acme', madeWithBadge: true });
-    expect('copyright' in patch).toBe(false);
+  it('a whitespace-only change to a stored text sends nothing', () => {
+    expect(projectFooterPatch(values({ github: ' https://github.com/acme ' }), BASE)).toStrictEqual({});
   });
 
   it('keeps the URL contract: relative and absolute addresses pass, an unsafe scheme is refused', () => {
-    for (const github of ['/team', 'https://github.com/acme', 'mailto:team@acme.example', '#contact']) {
-      expect(onTheWire(projectFooterPatch(values({ github }), STORED))?.github).toBe(github);
+    for (const github of ['/team', 'https://github.com/acme-labs', 'mailto:team@acme.example', '#contact']) {
+      expect(onTheWire(projectFooterPatch(values({ github }), BASE))?.github).toBe(github);
     }
-    expect(() => onTheWire(projectFooterPatch(values({ x: 'javascript:alert(1)' }), STORED))).toThrow();
+    expect(() => onTheWire(projectFooterPatch(values({ x: 'javascript:alert(1)' }), BASE))).toThrow();
   });
 });
 
@@ -69,8 +82,8 @@ describe('languageFooterConfig', () => {
 });
 
 describe('sentFooterValues', () => {
-  it('reads back what a project save stores: trimmed, cleared as blank', () => {
-    expect(sentFooterValues('project', values({ copyright: ' New ', x: ' ' }), STORED)).toStrictEqual({
+  it('reads back what a project save stores: every text trimmed, a cleared one blank', () => {
+    expect(sentFooterValues('project', values({ copyright: ' New ', x: ' ' }))).toStrictEqual({
       ...footerValues(STORED),
       copyright: 'New',
       x: '',
@@ -79,6 +92,6 @@ describe('sentFooterValues', () => {
 
   it('a language save changes the copyright only', () => {
     const draft = values({ copyright: ' © أكمي ' });
-    expect(sentFooterValues('language', draft, STORED)).toStrictEqual({ ...draft, copyright: '© أكمي' });
+    expect(sentFooterValues('language', draft)).toStrictEqual({ ...draft, copyright: '© أكمي' });
   });
 });

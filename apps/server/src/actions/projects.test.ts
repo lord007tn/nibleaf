@@ -660,9 +660,9 @@ describe('updateProject: saving SEO from the dashboard form', () => {
   });
 });
 
-// The dashboard's Footer form sends `config.footer` as JSON: every text it
-// holds, trimmed, a cleared one as '' (the reader shows no link and an empty
-// copyright line), and the badge as chosen.
+// The dashboard's Footer form sends `config.footer` as JSON with only the keys
+// the person changed: a text trimmed, a cleared one as '' (the reader shows no
+// link and an empty copyright line), the badge only when switched.
 describe('updateProject: clearing saved footer values', () => {
   const FOOTER = { copyright: '© Acme', github: 'https://github.com/acme', x: 'https://x.com/acme', linkedin: '/company', madeWithBadge: false };
   const SIBLINGS = { navbar: { ctaLabel: 'Start' }, seo: { metaTitle: 'Docs' }, banner: { enabled: true, message: 'Sale' } };
@@ -691,6 +691,16 @@ describe('updateProject: clearing saved footer values', () => {
   it('stores every text cleared with the badge still off', async () => {
     await save({ copyright: '', github: '', x: '', linkedin: '', madeWithBadge: false });
     expect(stored).toStrictEqual({ ...SIBLINGS, footer: { copyright: '', github: '', x: '', linkedin: '', madeWithBadge: false } });
+  });
+
+  it('a partial patch (the form sends only what changed) sets those keys and keeps every other key, the badge and other sections', async () => {
+    const readback = await save({ linkedin: '' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { ...FOOTER, linkedin: '' } });
+    expect(readback).toMatchObject({ config: { footer: { ...FOOTER, linkedin: '' } } });
+    await save({ madeWithBadge: true });
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { ...FOOTER, linkedin: '', madeWithBadge: true } });
+    await save({});
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { ...FOOTER, linkedin: '', madeWithBadge: true } });
   });
 
   it('keeps a key the patch leaves out: why a cleared value must be sent as ""', async () => {

@@ -303,8 +303,9 @@ createRoot(document.getElementById('root')!).render(
     const at = (prefix) => steps.find(({ step }) => step.startsWith(prefix));
     assert.deepEqual(errors, []);
     assert.equal(patches.length, 4);
-    assert.deepEqual(patches[0].body, { config: { footer: { ...savedFooter, copyright: '', github: '', madeWithBadge: true } } });
-    assert.equal(patches[1].body.config.footer.madeWithBadge, false);
+    // A project save sends only the keys the person changed.
+    assert.deepEqual(patches[0].body, { config: { footer: { copyright: '', github: '' } } });
+    assert.deepEqual(patches[1].body, { config: { footer: { madeWithBadge: false } } });
     assert.deepEqual(patches[2].body, { config: { footer: { copyright: '© ٢٠٢٦ هاندبوك' } } });
     assert.deepEqual(patches[3].body, { config: { footer: null } });
     assert.equal(at('saved and refetched').saveButtonVisible, false);

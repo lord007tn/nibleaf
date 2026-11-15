@@ -46,23 +46,39 @@ export function languageFooterValues(
 }
 
 /**
- * The project scope's `config.footer` patch: each text trimmed, and the badge
- * as chosen (an explicit `false` hides it).
- *
- * A text left blank is sent as `''` when the project has a stored value for
- * it: the server merges `footer` key by key and keeps any key a patch leaves
- * out, so an omitted text would come back after the save. The reader shows
- * a stored `''` as no link, and as an empty copyright line. A text the project
- * never stored stays left out, so a site that never set a copyright keeps the
- * reader's automatic "© year name" line when another footer field is saved.
+ * The project scope's values as a save sends them: every text trimmed. A pure
+ * transform (the draft hook also applies it to the baseline and to refetched
+ * values), so a key counts as changed exactly when its trimmed value differs.
  */
-export function projectFooterPatch(values: FooterValues, stored: FooterConfig | null | undefined): FooterConfig {
+const trimmedFooter = (values: FooterValues): FooterValues => ({
+  copyright: values.copyright.trim(),
+  github: values.github.trim(),
+  x: values.x.trim(),
+  linkedin: values.linkedin.trim(),
+  madeWithBadge: values.madeWithBadge,
+});
+
+/**
+ * The project scope's `config.footer` patch: only the keys the person changed
+ * from `baseline` (what the server last confirmed for this draft), each text
+ * trimmed. A text cleared to blank is sent as `''` (the server merges `footer`
+ * key by key and keeps any key a patch leaves out; the reader shows a stored
+ * `''` as no link, and as an empty copyright line). The badge is sent only
+ * when switched, as an explicit `true` or `false`.
+ *
+ * A key the person didn't change is never sent, so the server keeps whatever
+ * it holds there: another writer's link, or no copyright at all, which keeps
+ * the reader's automatic "© year name" line. Typing into a blank field and
+ * clearing it again changes nothing, so nothing is sent for it.
+ */
+export function projectFooterPatch(values: FooterValues, baseline: FooterValues): FooterConfig {
+  const sent = trimmedFooter(values);
+  const from = trimmedFooter(baseline);
   const patch: FooterConfig = {};
   for (const key of TEXT_KEYS) {
-    const text = values[key].trim();
-    if (text || stored?.[key] !== undefined) patch[key] = text;
+    if (sent[key] !== from[key]) patch[key] = sent[key];
   }
-  patch.madeWithBadge = values.madeWithBadge;
+  if (sent.madeWithBadge !== from.madeWithBadge) patch.madeWithBadge = sent.madeWithBadge;
   return patch;
 }
 
@@ -79,11 +95,12 @@ export function languageFooterConfig(values: FooterValues): { footer: LanguageFo
 
 /**
  * The values a save of `values` stores in its scope, read back as the form
- * reads them. The draft hook records this as what the save sent, so the
- * server echoing the trimmed text is recognised as the save's own echo. A
+ * reads them; the draft hook's `toSent`. A project save stores the changed
+ * keys trimmed and keeps the rest as the server holds them, which for an
+ * unchanged key is the baseline the form shows: so all texts trimmed. A
  * language save sends the copyright only: the global fields stay as they are.
  */
-export function sentFooterValues(scope: 'project' | 'language', values: FooterValues, stored: FooterConfig | null | undefined): FooterValues {
+export function sentFooterValues(scope: 'project' | 'language', values: FooterValues): FooterValues {
   if (scope === 'language') return { ...values, copyright: languageFooterConfig(values).footer?.copyright ?? '' };
-  return footerValues(projectFooterPatch(values, stored));
+  return trimmedFooter(values);
 }

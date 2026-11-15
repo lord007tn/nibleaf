@@ -38,9 +38,10 @@ after the run.
 whether Save shows, the save bar's status, the request count and the fixture's stored footer.
 
 1. Default scope, pristine: no save bar.
-2. The GitHub link and the copyright are cleared, then Save: one `PATCH` with `github: ""` and `copyright: ""`, a refetch
+2. The GitHub link and the copyright are cleared, then Save: one `PATCH` with only `github: ""` and `copyright: ""` (a project
+   save sends only the keys the person changed), a refetch
    of the project, the status says "Saved", and the form is clean on the stored blanks.
-3. The badge is turned off: the toggle alone shows the save bar. Saved as `madeWithBadge: false`.
+3. The badge is turned off: the toggle alone shows the save bar. Saved as `{ "madeWithBadge": false }` alone.
 4. The Arabic scope: links and badge read-only. A padded Arabic copyright is saved as
    `{ "config": { "footer": { "copyright": "…" } } }`, trimmed, with no social link or badge in it.
 5. It is cleared and saved: `{ "config": { "footer": null } }`. The Arabic SEO and banner are kept.

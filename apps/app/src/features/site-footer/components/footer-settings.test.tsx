@@ -169,7 +169,8 @@ describe('FooterSettings: the project scope', () => {
     expect(dirty.size).toBe(1);
     mocks.updateProject.mockResolvedValueOnce(site({ ...SAVED, madeWithBadge: false }));
     await save();
-    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { ...SAVED, madeWithBadge: false } } });
+    // Only the switched badge is sent: untouched keys stay whatever the server holds.
+    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { madeWithBadge: false } } });
     expect(values().madeWithBadge).toBe(false);
     expect(region()).toBeNull();
     expect(dirty.size).toBe(0);
@@ -178,12 +179,13 @@ describe('FooterSettings: the project scope', () => {
   });
 
   // The regression: the old form sent a blank as `undefined`, which JSON drops, so the server kept the old value.
-  it.each(['copyright', 'github', 'x', 'linkedin'] as const)('clears a stored %s by sending "", trimmed with the rest', async (name) => {
+  it.each(['copyright', 'github', 'x', 'linkedin'] as const)('clears a stored %s by sending "", and only what changed', async (name) => {
     await type(input(name), '   ');
     if (name !== 'copyright') await type(input('copyright'), '  © Acme  ');
     mocks.updateProject.mockResolvedValueOnce(site({ ...SAVED, [name]: '', madeWithBadge: true }));
     await save();
-    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { ...ALL, [name]: '' } } });
+    // A whitespace-only change to the copyright is no change.
+    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { [name]: '' } } });
     expect(input(name).value).toBe('');
     expect(region()).toBeNull();
   });
@@ -193,9 +195,7 @@ describe('FooterSettings: the project scope', () => {
     await type(input('x'), 'https://x.com/acme');
     mocks.updateProject.mockResolvedValueOnce(site({ github: 'https://github.com/acme', x: 'https://x.com/acme', madeWithBadge: true }, 'site-b'));
     await save();
-    expect(lastSent(mocks.updateProject)).toStrictEqual({
-      config: { footer: { github: 'https://github.com/acme', x: 'https://x.com/acme', madeWithBadge: true } },
-    });
+    expect(lastSent(mocks.updateProject)).toStrictEqual({ config: { footer: { x: 'https://x.com/acme' } } });
   });
 
   it('keeps the edits and says why once when the save fails', async () => {
