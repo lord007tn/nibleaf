@@ -620,6 +620,63 @@ describe('updateProject: clearing saved banner text', () => {
   });
 });
 
+// The dashboard's Navbar form sends `config.navbar` as JSON: every list (an
+// emptied one as []), both switches, and each CTA text trimmed, a cleared one
+// the site held as '' (the reader shows the CTA only when both are non-empty).
+describe('updateProject: clearing saved navbar values', () => {
+  const NAVBAR = {
+    ctaLabel: 'Book a demo',
+    ctaUrl: 'https://example.com/demo',
+    links: [{ label: 'Blog', href: 'https://blog.example.com', external: true }],
+    tabs: [{ label: 'Guides', href: '/guides' }],
+    anchors: [{ label: 'Community', href: '/community', icon: 'users' }],
+    showSearch: false,
+    changelog: true,
+  };
+  const SIBLINGS = { footer: { copyright: '© Acme' }, seo: { metaTitle: 'Docs' }, redirects: [{ from: '/old', to: '/new' }] };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), navbar: structuredClone(NAVBAR) };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (navbar: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar } }))));
+
+  it('stores cleared CTA texts as "" and emptied lists as [], keeps the switches and every other section, and reads it back', async () => {
+    const sent = { ...NAVBAR, ctaLabel: '', ctaUrl: '', links: [], tabs: [], anchors: [] };
+    const readback = await save(sent);
+    expect(stored).toStrictEqual({ ...SIBLINGS, navbar: sent });
+    expect(readback).toMatchObject({ config: { navbar: sent } });
+  });
+
+  it('keeps row text as sent and `external` true or false', async () => {
+    const links = [
+      { label: '  Docs ', href: ' /docs ', external: false },
+      { label: 'Half', href: '' },
+    ];
+    await save({ ...NAVBAR, links });
+    expect((stored.navbar as typeof NAVBAR).links).toStrictEqual(links);
+  });
+
+  it('keeps every field and list a patch leaves out: the form sends only what changed', async () => {
+    await save({ ctaLabel: 'Talk to sales' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, navbar: { ...NAVBAR, ctaLabel: 'Talk to sales' } });
+  });
+
+  it('keeps a CTA text the patch leaves out: why a cleared one must be sent as ""', async () => {
+    await save({ ...NAVBAR, ctaLabel: undefined, showSearch: true });
+    expect(stored.navbar).toStrictEqual({ ...NAVBAR, showSearch: true });
+  });
+});
+
 // The dashboard's SEO form sends all four `config.seo` values as JSON, a
 // cleared text as '' (the reader treats it as unset).
 describe('updateProject: saving SEO from the dashboard form', () => {

@@ -49,6 +49,30 @@ describe('language write serialization', () => {
     expect(current.enabled).toBe(true);
   });
 
+  // The dashboard's Navbar form sends a language's FULL navbar override (the
+  // CTA label and lists it sets), or `navbar: null` to fall back to the project's.
+  describe("the Navbar form's language saves", () => {
+    const OTHERS = { footer: { copyright: '© أكمي' }, banner: { message: 'إعلان' }, search: { placeholder: 'ابحث' }, seo: { metaTitle: 'توثيق' } };
+    const save = (config: unknown) => updateLanguage('project', 'ar', updateLanguageBody.parse(JSON.parse(JSON.stringify({ config }))));
+
+    it('replaces the stored override whole and keeps the SEO and every other chrome section', async () => {
+      current.config = { ...structuredClone(OTHERS), navbar: { ctaLabel: 'ابدأ', tabs: [{ label: 'أدلة', href: '/guides' }] } };
+      await save({ navbar: { links: [{ label: 'التوثيق', href: '/docs', external: false }] } });
+      expect(current.config).toStrictEqual({ ...OTHERS, navbar: { links: [{ label: 'التوثيق', href: '/docs', external: false }] } });
+    });
+
+    it('navbar: null drops the override only', async () => {
+      current.config = { ...structuredClone(OTHERS), navbar: { ctaLabel: 'ابدأ' } };
+      await save({ navbar: null });
+      expect(current.config).toStrictEqual(OTHERS);
+    });
+
+    it('refuses a global field in a language override', () => {
+      expect(updateLanguageBody.safeParse({ config: { navbar: { ctaUrl: '/x' } } }).success).toBe(false);
+      expect(updateLanguageBody.safeParse({ config: { navbar: { showSearch: false } } }).success).toBe(false);
+    });
+  });
+
   // The dashboard's SEO form sends the language's SEO as JSON: all four values
   // with cleared text as '', or `config: null` when nothing is left to override.
   describe("the SEO form's language saves", () => {
