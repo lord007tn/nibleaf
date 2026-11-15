@@ -161,6 +161,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The untranslated catalog tests compare changed English with the PR base.
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-ci
 
