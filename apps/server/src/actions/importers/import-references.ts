@@ -14,6 +14,22 @@ const escaped = (source: string, index: number): boolean => {
 
 const TITLE_CLOSERS: Record<string, string> = { '"': '"', "'": "'", '(': ')' };
 
+/** Reject a simple unterminated angle destination before retaining its pairs.
+ * Stop at brackets, nesting or escapes: those need the ordinary pairing pass.
+ * No candidate label can start in the scanned span, so these lookaheads don't
+ * overlap, even when the next `>` is far away or absent. */
+const invalidAngleEnd = (source: string, open: number): number => {
+  let index = open + 1;
+  while (/\s/.test(source[index] ?? '')) index++;
+  if (source[index] !== '<') return -1;
+  for (index++; index < source.length; index++) {
+    const char = source[index];
+    if (char === ')') return index;
+    if (char === '>' || char === '[' || char === ']' || char === '(' || char === '\\') return -1;
+  }
+  return -1;
+};
+
 /** The destination between a link's parentheses, or undefined when they aren't valid link syntax. */
 const readDestination = (source: string, open: number, close: number) => {
   let start = open + 1;
@@ -39,8 +55,12 @@ export const markdownReferences = (source: string): ImportReference[] => {
       continue;
     }
     if (character === '[') brackets.push(index);
-    else if (character === ']' && brackets.length) labels.set(index, brackets.pop() ?? 0);
-    else if (character === '(') parentheses.push(index);
+    else if (character === ']' && brackets.length) {
+      const label = brackets.pop() ?? 0;
+      const invalidEnd = source[index + 1] === '(' ? invalidAngleEnd(source, index + 1) : -1;
+      if (invalidEnd !== -1) index = invalidEnd;
+      else labels.set(index, label);
+    } else if (character === '(') parentheses.push(index);
     else if (character === ')' && parentheses.length) destinations.set(parentheses.pop() ?? 0, index);
   }
   const references: ImportReference[] = [];

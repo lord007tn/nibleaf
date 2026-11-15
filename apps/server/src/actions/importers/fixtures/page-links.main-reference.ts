@@ -4,7 +4,8 @@ import { importSiteHref } from '@nibleaf/shared/site-links';
 import { safeDecodeUri as safeDecode } from '../gitbook-markdown';
 import { decodeImportEntities } from '../import-fidelity';
 import { protectImportCode } from '../import-markdown-code';
-import { markdownReferences, replaceImportReferences } from '../import-references';
+import { replaceImportReferences } from '../import-references';
+import { markdownReferences } from './page-links.main-references';
 
 const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
 
