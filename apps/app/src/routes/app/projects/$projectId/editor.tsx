@@ -79,7 +79,7 @@ import { type PublishFixArrival, PublishFixBar } from '@/components/editor/publi
 import { NeverPublishedBanner, PagePublishStateBar, type SaveState, SaveStatus } from '@/components/editor/save-status';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree, shownRowName } from '@/components/editor/sortable-page-tree';
-import { TiptapEditor } from '@/components/editor/tiptap-editor';
+import { type EditorDraftHandle, TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { aiAssistPageId, useAiAssistSession } from '@/components/editor/use-ai-assist-session';
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
@@ -510,7 +510,29 @@ function EditorPage() {
   // with a draft that belongs to a different page than `page`: the editor below
   // is keyed by page id and mounts straight onto the right document, and the
   // autosave effect can never observe the previous page's body under the new id.
-  const hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page);
+  // The page editor serializes an edit only when typing pauses, the page is
+  // saved, or something needs the text (P2-ED-005): `content` can lag the
+  // document by an unserialized edit. `draftRef` follows each serialization at
+  // once (`setEditorContent`), so a save or flush reads the current text.
+  const editorDraftRef = useRef<EditorDraftHandle | null>(null);
+  const draftRef = useRef({ synced, draft: { title, content }, page });
+  // The editor's last serialization, to tell its changes to `content` from others'.
+  const editorEmittedRef = useRef<string | null>(null);
+  const setEditorContent = (markdown: string) => {
+    editorEmittedRef.current = markdown;
+    draftRef.current = { ...draftRef.current, draft: { ...draftRef.current.draft, content: markdown } };
+    setContent(markdown);
+  };
+  /** Bring an unserialized edit into the draft now. */
+  const flushEditorDraft = () => editorDraftRef.current?.flush();
+  let hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page);
+  if (hydration && synced?.id === hydration.id && editorDraftRef.current?.pending()) {
+    // A fresher server copy arrived while the editor holds an edit `content`
+    // doesn't have yet. Serialize it first: it makes the draft dirty, and a dirty
+    // draft is never re-seeded over.
+    flushEditorDraft();
+    hydration = nextHydration({ synced, draft: draftRef.current.draft, conflicted: conflictedPageId === page?.id }, page);
+  }
   if (hydration) {
     setSynced(hydration);
     setTitle(hydration.title);
@@ -532,7 +554,6 @@ function EditorPage() {
     onContentChange: setContent,
     openPage: openPageForAi,
   });
-  const draftRef = useRef({ synced, draft: { title, content }, page });
   const updatePageRef = useRef(updatePage);
   // Read the publish state straight from the query cache at save time: a publish
   // that just went live (or is still running) must stop the address from following
@@ -547,6 +568,11 @@ function EditorPage() {
   // edit does, and Retry still can. A successful save or a new server revision
   // clears it: the same text may fit against another stored body.
   const tooLargeDraftRef = useRef<{ id: string; revision: string | undefined; title: string; content: string; error: unknown } | null>(null);
+  // What decides whether a draft may be saved, for the lazy draft read below.
+  const autosaveGateRef = useRef({ canEditContent, conflictedPageId, status });
+  useLayoutEffect(() => {
+    autosaveGateRef.current = { canEditContent, conflictedPageId, status };
+  });
   useLayoutEffect(() => {
     draftRef.current = { synced, draft: { title, content }, page };
     updatePageRef.current = updatePage;
@@ -614,9 +640,65 @@ function EditorPage() {
   // The queue settles status for every write, including flushes on unmount; the
   // throttle handles a failed write's rejection.
   const saveDraft = useSaveThrottle((draft: PageDraft) => saveQueue.save(draft), samePageDraft);
+  // The draft a save or flush just sent after serializing the editor's edit: the
+  // autosave effect then sees that very draft arrive, and must not queue it again.
+  const sentRef = useRef<PageDraft | null>(null);
+  // The draft the autosave effect saw last, to tell an editor serialization apart.
+  const lastAutosaveInputRef = useRef<PageDraft | null>(null);
+  /**
+   * The draft to save now, read when a lazily paced save is due (see
+   * `onEditorEdit`). Serializes the editor's pending edit first. Null when the
+   * draft must not be saved, under the same rules as the autosave effect.
+   */
+  const readAutosaveDraft = (): PageDraft | null => {
+    const before = draftRef.current.draft.content;
+    flushEditorDraft();
+    const { page: current, synced: currentSynced, draft } = draftRef.current;
+    const gate = autosaveGateRef.current;
+    const conflicted = gate.conflictedPageId === current?.id;
+    if (!current || !gate.canEditContent || !shouldAutosave({ synced: currentSynced, draft, conflicted }, current)) return null;
+    const refused = tooLargeDraftRef.current;
+    if (refused && refused.id === current.id && refused.revision === currentSynced?.updatedAt && refused.title === draft.title && refused.content === draft.content) {
+      return null;
+    }
+    const next: PageDraft = { id: current.id, ...draft, expectedUpdatedAt: currentSynced?.updatedAt };
+    sentRef.current = draft.content === before ? null : next;
+    return next;
+  };
+  /**
+   * A keystroke in the page editor (P2-ED-005). The editor no longer serializes
+   * the page for each one: the save is paced from the keystrokes' times, and the
+   * draft is read when the save is due or a flush runs. Edge: undoing back to the
+   * stored text and typing again before the editor serializes (a pause of
+   * `DEFERRED_EMIT_IDLE_MS`) keeps the first change's time, where the draft was
+   * clean in between before; a long burst may then save up to that much sooner.
+   */
+  const onEditorEdit = () => {
+    const gate = autosaveGateRef.current;
+    const current = draftRef.current.page;
+    if (!current || !gate.canEditContent) return;
+    saveDraft.maybeExecuteLazy(readAutosaveDraft);
+    // As the autosave effect said when every keystroke changed `content`.
+    if (gate.conflictedPageId !== current.id && draftRef.current.synced?.id === current.id && gate.status !== 'saving') {
+      gate.status = 'saving';
+      setStatus('saving');
+    }
+  };
 
   // Hydration pins every draft to its page, including intentional empty bodies.
   useEffect(() => {
+    const editorDraft = editorDraftRef.current;
+    if (editorDraft?.pending()) {
+      // The editor holds an edit `content` doesn't have yet: bring it in first.
+      // When it changes `content`, this effect runs again with it.
+      editorDraft.flush();
+      if (draftRef.current.draft.content !== content) return;
+    }
+    const input: PageDraft | null = page ? { id: page.id, title, content, expectedUpdatedAt: synced?.updatedAt } : null;
+    const previousInput = lastAutosaveInputRef.current;
+    lastAutosaveInputRef.current = input;
+    const sent = sentRef.current;
+    sentRef.current = null;
     if (!page || !canEditContent || !shouldAutosave({ synced, draft: { title, content }, conflicted: conflictedPageId === page.id }, page)) {
       // Undoing back to the server copy must cancel an older queued draft.
       saveDraft.cancel();
@@ -635,10 +717,25 @@ function EditorPage() {
       return;
     }
     setStatus('saving');
-    saveDraft.maybeExecute({ id: page.id, title, content, expectedUpdatedAt: synced?.updatedAt });
+    const draft = input as PageDraft;
+    // Just sent by the save or flush that serialized it: nothing left to queue.
+    if (sent && samePageDraft(sent, draft)) return;
+    const serializedByEditor =
+      content === editorEmittedRef.current &&
+      previousInput !== null &&
+      previousInput.id === draft.id &&
+      previousInput.title === draft.title &&
+      previousInput.expectedUpdatedAt === draft.expectedUpdatedAt;
+    // The editor serialized edits whose keystrokes already paced the save: the
+    // save keeps its time. Any other change is a new change, as before.
+    if (serializedByEditor) saveDraft.settle(draft);
+    else saveDraft.maybeExecute(draft);
   }, [title, content, page, synced, saveDraft, canEditContent, conflictedPageId, saveQueue.hasPending]);
 
   const flushCurrentDraft = async () => {
+    const before = draftRef.current.draft.content;
+    flushEditorDraft();
+    const serialized = draftRef.current.draft.content !== before;
     saveDraft.cancel();
     let current = draftRef.current;
     if (!current.page || current.synced?.id !== current.page.id) {
@@ -655,10 +752,16 @@ function EditorPage() {
     const pageId = current.page.id;
     // Typing while a slow request runs must also reach the server before a
     // navigation or publish can proceed.
+    let fresh = serialized;
     for (;;) {
       const snapshot: PageDraft = { id: pageId, ...current.draft, expectedUpdatedAt: current.synced?.updatedAt };
+      if (fresh) sentRef.current = snapshot;
       setStatus('saving');
       await saveQueue.save(snapshot);
+      // Typing during the request: serialize it, so the loop saves it too.
+      const latest = draftRef.current.draft.content;
+      flushEditorDraft();
+      fresh = draftRef.current.draft.content !== latest;
       current = draftRef.current;
       if (current.page?.id !== snapshot.id || (current.draft.title === snapshot.title && current.draft.content === snapshot.content)) return;
       saveDraft.cancel();
@@ -682,6 +785,7 @@ function EditorPage() {
 
   useBlocker({
     shouldBlockFn: async () => {
+      flushEditorDraft();
       // Made a Viewer with unsaved changes: saving would be refused on every try,
       // so ask once. Staying keeps the text on screen to copy; leaving discards it.
       if (draftUnsavable(viewOnly, draftRef.current, draftRef.current.page)) {
@@ -704,7 +808,11 @@ function EditorPage() {
         return true;
       }
     },
-    enableBeforeUnload: () => shouldAutosave(draftRef.current, draftRef.current.page) || status === 'saving' || configDirtySources.current.size > 0,
+    enableBeforeUnload: () =>
+      Boolean(editorDraftRef.current?.pending()) ||
+      shouldAutosave(draftRef.current, draftRef.current.page) ||
+      status === 'saving' ||
+      configDirtySources.current.size > 0,
   });
 
   const configIsSaved = () => {
@@ -1813,7 +1921,10 @@ function EditorPage() {
               arrival={fixArrival}
               canvas={() => canvasRef.current}
               group={Boolean(selectedGroup)}
-              markdown={() => draftRef.current.draft.content}
+              markdown={() => {
+                flushEditorDraft();
+                return draftRef.current.draft.content;
+              }}
               onEditSource={
                 canEditContent
                   ? () => {
@@ -1897,6 +2008,8 @@ function EditorPage() {
                         void runAfterSavingDraft({ action: () => undefined });
                         return;
                       }
+                      // The review compares the current text: serialize a pending edit first.
+                      flushEditorDraft();
                       void pageQuery
                         .refetch()
                         .then((result) => {
@@ -2101,7 +2214,9 @@ function EditorPage() {
                         // Remounts once access is known, so block controls render for that access.
                         key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
                         value={content}
-                        onChange={canEditContent ? setContent : ignoreEdit}
+                        onChange={canEditContent ? setEditorContent : ignoreEdit}
+                        onEdit={onEditorEdit}
+                        draftRef={editorDraftRef}
                         editable={canEditContent}
                         className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
                         dir={activeLangDir}

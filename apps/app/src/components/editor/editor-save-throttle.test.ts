@@ -134,3 +134,127 @@ describe('createSaveThrottle', () => {
     expect(result.saves.map((save) => save.at)).toEqual([700, 1400]);
   });
 });
+
+/*
+ * P2-ED-005: a keystroke no longer hands over a draft. It says the page changed
+ * (`maybeExecuteLazy`), and the draft is read when the save is due or a flush
+ * runs. Each schedule below is run twice, once handing over a draft per
+ * keystroke (as before) and once lazily, and must save at the same moments with
+ * the same drafts, while reading the draft only once per save.
+ */
+describe('createSaveThrottle: a lazily read draft (P2-ED-005)', () => {
+  /** One keystroke per entry of `gaps` (the ms after it), eagerly or lazily. */
+  function run(gaps: number[], lazy: boolean, after = 20_000) {
+    const result = setup();
+    let text = '';
+    let reads = 0;
+    const read = () => {
+      reads += 1;
+      return text;
+    };
+    for (const gap of gaps) {
+      text += 'x';
+      if (lazy) result.throttle.maybeExecuteLazy(read);
+      else result.throttle.maybeExecute(text);
+      result.time.advance(gap);
+    }
+    result.time.advance(after);
+    return { saves: result.saves, reads };
+  }
+  const schedules: Array<[string, number[]]> = [
+    ['one character a second for 12 s (idle, minimum interval)', Array(12).fill(1000)],
+    ['a burst of 60 characters 50 ms apart', Array(60).fill(50)],
+    ['typing 200 ms apart for 25 s (maximum wait)', Array(125).fill(200)],
+    ['typing 500 ms apart for 25 s (no pause long enough)', Array(50).fill(500)],
+    ['bursts and pauses', [100, 100, 900, 50, 50, 50, 3000, 200, 200, 200, 200, 4000, 10, 10, 700, 699, 701]],
+  ];
+  it.each(schedules)('%s: the same saves, and one read per save', (_name, gaps) => {
+    const eager = run(gaps, false);
+    const lazy = run(gaps, true);
+    expect(lazy.saves).toEqual(eager.saves);
+    expect(lazy.saves.length).toBeGreaterThan(0);
+    expect(lazy.reads).toBe(lazy.saves.length);
+  });
+
+  it('reads nothing until the save is due; flush reads and saves at once', () => {
+    const result = setup();
+    let reads = 0;
+    result.throttle.maybeExecuteLazy(() => {
+      reads += 1;
+      return 'a';
+    });
+    result.time.advance(699);
+    expect(reads).toBe(0);
+    result.throttle.flush();
+    expect(reads).toBe(1);
+    expect(result.saves).toEqual([{ at: 699, draft: 'a' }]);
+    result.throttle.flush();
+    expect(reads).toBe(1);
+  });
+
+  it('a read that finds nothing to save saves nothing, and does not count as a save', () => {
+    const result = setup();
+    result.throttle.maybeExecuteLazy(() => null);
+    result.time.advance(700);
+    expect(result.saves).toEqual([]);
+    // No save at 700, so no minimum interval from it: the next one goes after the pause.
+    result.throttle.maybeExecuteLazy(() => 'b');
+    result.time.advance(700);
+    expect(result.saves).toEqual([{ at: 1400, draft: 'b' }]);
+  });
+
+  it('settle: the draft the pending change now reads keeps the save at its time', () => {
+    const result = setup();
+    result.throttle.maybeExecuteLazy(() => 'a');
+    result.time.advance(300);
+    result.throttle.settle('a');
+    result.time.advance(400);
+    expect(result.saves).toEqual([{ at: 700, draft: 'a' }]);
+  });
+
+  it('settle with nothing pending is a new change', () => {
+    const result = setup();
+    result.throttle.settle('a');
+    result.time.advance(700);
+    expect(result.saves).toEqual([{ at: 700, draft: 'a' }]);
+  });
+
+  it('an eager draft while a lazy change is pending: a new change, saved with the lazily read draft', () => {
+    const result = setup();
+    let text = 'a';
+    result.throttle.maybeExecuteLazy(() => text);
+    result.time.advance(500);
+    // The title changed: a new change, and the save reads the latest draft.
+    result.throttle.maybeExecute('stale');
+    text = 'ab';
+    result.time.advance(699);
+    expect(result.saves).toEqual([]);
+    result.time.advance(1);
+    expect(result.saves).toEqual([{ at: 1200, draft: 'ab' }]);
+  });
+
+  it('the same eager draft again while a lazy change is pending keeps its time', () => {
+    const result = setup();
+    result.throttle.maybeExecute('a');
+    result.time.advance(100);
+    result.throttle.maybeExecuteLazy(() => 'ab');
+    result.time.advance(300);
+    // Re-sent unchanged (the page was refetched): not a change.
+    result.throttle.maybeExecute('a');
+    result.time.advance(400);
+    expect(result.saves).toEqual([{ at: 800, draft: 'ab' }]);
+  });
+
+  it('cancel drops a lazy change without reading it', () => {
+    const result = setup();
+    let reads = 0;
+    result.throttle.maybeExecuteLazy(() => {
+      reads += 1;
+      return 'a';
+    });
+    result.throttle.cancel();
+    result.time.advance(20_000);
+    expect(reads).toBe(0);
+    expect(result.saves).toEqual([]);
+  });
+});
