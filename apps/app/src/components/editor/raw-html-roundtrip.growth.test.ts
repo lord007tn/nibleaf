@@ -216,8 +216,17 @@ describe.runIf(growthTestsEnabled)('pages that end in an unclosed block, growth'
   });
 
   // Each unread fence used to walk all the Notes around it: 14x for 4x the page.
+  // One call of the large page takes tens of ms, so by default each large sample
+  // was that single call scaled up 4x, and one garbage collection inside it read
+  // as 10-11x on CI (9.8x, 10.0x, 11.3x). Four large calls a sample and medians of
+  // five weigh a pause as it is. The work itself grows 4.0x (characters read
+  // and regex work alike), and the bound is unchanged.
   it('prepares nested components each holding an indented fence in one pass', () => {
-    const [small, large] = growthMs(parse, nestedIndentedFences(2000), nestedIndentedFences(8000), { budgetMs: 60_000 });
+    const [small, large] = growthMs(parse, nestedIndentedFences(2000), nestedIndentedFences(8000), {
+      budgetMs: 60_000,
+      samples: 5,
+      largeRuns: 4,
+    });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 

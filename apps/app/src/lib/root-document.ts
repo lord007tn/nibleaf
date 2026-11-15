@@ -6,7 +6,7 @@ import { matchSiteLanguagePrefix } from '@nibleaf/shared/site-language';
 import { type RouterState, useRouterState } from '@tanstack/react-router';
 import { useState, useSyncExternalStore } from 'react';
 import type { SiteShell } from '@/hooks/api/types';
-import { type SiteAppearance, siteAppearance } from '@/lib/site-theme';
+import { type SiteAppearance, siteAppearance } from '@/lib/site-theme-bootstrap';
 
 declare module '@tanstack/react-router' {
   interface StaticDataRouteOption {

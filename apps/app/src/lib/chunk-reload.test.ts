@@ -37,9 +37,12 @@ function dispatchChunkError(error: Error) {
 }
 function failChunkLoad(error: Error) {
   const event = dispatchChunkError(error);
-  // The listener decides one task later, after the importer has seen the error.
-  vi.runOnlyPendingTimers();
   if (!event.defaultPrevented) throw error;
+}
+
+/** Each importer handles the same rejected CSS preload with its own Vite event. */
+function importWithCssPreload(preload: Promise<void>) {
+  return preload.catch((error: Error) => failChunkLoad(error));
 }
 
 /** Load a fresh document on the same session storage and register the handler there. */
@@ -70,6 +73,7 @@ describe('reload once after a chunk fails to load', () => {
     expect(calls.every(([type]) => type === 'vite:preloadError')).toBe(true);
     expect(new Set(calls.map(([, listener]) => listener)).size).toBe(1);
     expect(() => failChunkLoad(chunkError())).toThrow();
+    vi.runOnlyPendingTimers();
     expect(page.reload).toHaveBeenCalledTimes(1);
   });
 
@@ -77,6 +81,7 @@ describe('reload once after a chunk fails to load', () => {
     const storage = memoryStorage();
     const first = openDocument(storage);
     expect(() => failChunkLoad(chunkError())).toThrow();
+    vi.runOnlyPendingTimers();
     expect(first.reload).toHaveBeenCalledTimes(1);
 
     // Each reloaded document fails on the same chunk more than 30 seconds later.
@@ -86,6 +91,7 @@ describe('reload once after a chunk fails to load', () => {
       const repeat = chunkError();
       // The error reaches the router, which renders the route's error component.
       expect(() => failChunkLoad(repeat)).toThrow(repeat);
+      vi.runOnlyPendingTimers();
       expect(next.reload).not.toHaveBeenCalled();
     }
   });
@@ -94,10 +100,13 @@ describe('reload once after a chunk fails to load', () => {
     const storage = memoryStorage();
     const first = openDocument(storage);
     expect(() => failChunkLoad(chunkError('editor-OLD.js'))).toThrow();
+    vi.runOnlyPendingTimers();
     const second = openDocument(storage);
     expect(() => failChunkLoad(chunkError('settings-OLD.js'))).toThrow();
+    vi.runOnlyPendingTimers();
     const third = openDocument(storage);
     expect(() => failChunkLoad(chunkError('analytics-OLD.js'))).toThrow();
+    vi.runOnlyPendingTimers();
 
     expect(first.reload).toHaveBeenCalledTimes(1);
     expect(second.reload).toHaveBeenCalledTimes(1);
@@ -109,11 +118,13 @@ describe('reload once after a chunk fails to load', () => {
     const first = openDocument(storage);
     expect(() => failChunkLoad(chunkError('editor-OLD.js'))).toThrow();
     expect(() => failChunkLoad(chunkError('editor-OLD.css'))).toThrow();
+    vi.runOnlyPendingTimers();
     expect(first.reload).toHaveBeenCalledTimes(1);
 
     // The second slot is still free for a later failure on the reloaded page.
     const second = openDocument(storage);
     expect(() => failChunkLoad(chunkError('settings-OLD.js'))).toThrow();
+    vi.runOnlyPendingTimers();
     expect(second.reload).toHaveBeenCalledTimes(1);
   });
 
@@ -129,11 +140,13 @@ describe('reload once after a chunk fails to load', () => {
     );
     // Cancelled, so Vite doesn't rethrow into a prefetch nobody awaits.
     expect(() => failChunkLoad(chunkError('next-page-OLD.js'))).not.toThrow();
+    vi.runOnlyPendingTimers();
     expect(page.reload).not.toHaveBeenCalled();
 
     // Once the reader opens a page, a chunk failure is theirs and reloads.
     setNavigationPending(true);
     expect(() => failChunkLoad(chunkError('next-page-OLD.js'))).toThrow();
+    vi.runOnlyPendingTimers();
     expect(page.reload).toHaveBeenCalledTimes(1);
     setNavigationPending(false);
     finish();
@@ -145,10 +158,48 @@ describe('reload once after a chunk fails to load', () => {
     const error = chunkError('picker-OLD.js');
     // Vite dispatches the event, then rethrows the same error to the importer.
     const optional = runOptionalLoad(async () => {
-      const event = dispatchChunkError(error);
-      if (!event.defaultPrevented) throw error;
+      failChunkLoad(error);
     });
     await expect(optional).rejects.toBe(error);
+    vi.runOnlyPendingTimers();
+    expect(page.reload).not.toHaveBeenCalled();
+  });
+
+  it('never reloads for an optional rejected CSS preload dispatched before the importer catches it', async () => {
+    const page = openDocument(memoryStorage());
+    const error = new Error('Unable to preload CSS for /assets/picker-OLD.css');
+    const optional = runOptionalLoad(() => importWithCssPreload(Promise.reject(error)));
+    await expect(optional).rejects.toBe(error);
+    expect(page.reload).not.toHaveBeenCalled();
+    vi.runOnlyPendingTimers();
+    expect(page.reload).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('reloads once for shared CSS with one optional and one required importer (optional first: %s)', async (optionalFirst) => {
+    const page = openDocument(memoryStorage());
+    const error = new Error('Unable to preload CSS for /assets/shared-OLD.css');
+    const preload = Promise.reject<void>(error);
+    const optional = () => runOptionalLoad(() => importWithCssPreload(preload));
+    const required = () => importWithCssPreload(preload);
+    const loads = optionalFirst ? [optional(), required()] : [required(), optional()];
+    expect(await Promise.allSettled(loads)).toEqual([
+      { status: 'rejected', reason: error },
+      { status: 'rejected', reason: error },
+    ]);
+    expect(page.reload).not.toHaveBeenCalled();
+    vi.runOnlyPendingTimers();
+    expect(page.reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('never reloads for two optional importers sharing the same rejected CSS preload', async () => {
+    const page = openDocument(memoryStorage());
+    const error = new Error('Unable to preload CSS for /assets/shared-OLD.css');
+    const preload = Promise.reject<void>(error);
+    const loads = [runOptionalLoad(() => importWithCssPreload(preload)), runOptionalLoad(() => importWithCssPreload(preload))];
+    expect(await Promise.allSettled(loads)).toEqual([
+      { status: 'rejected', reason: error },
+      { status: 'rejected', reason: error },
+    ]);
     vi.runOnlyPendingTimers();
     expect(page.reload).not.toHaveBeenCalled();
   });
@@ -163,6 +214,7 @@ describe('reload once after a chunk fails to load', () => {
         }),
     );
     expect(() => failChunkLoad(chunkError('sign-up-route-OLD.js'))).toThrow();
+    vi.runOnlyPendingTimers();
     expect(page.reload).toHaveBeenCalledTimes(1);
     finish();
     await optional;
@@ -177,6 +229,7 @@ describe('reload once after a chunk fails to load', () => {
 
     const error = chunkError();
     expect(() => failChunkLoad(error)).toThrow(error);
+    vi.runOnlyPendingTimers();
     expect(reload).not.toHaveBeenCalled();
   });
 });

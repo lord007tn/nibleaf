@@ -85,8 +85,8 @@ describe('API-only homepages', () => {
     mocks.getSite.mockResolvedValue({ ...fixture, activeLanguage, activeVersion });
     const data = await load(path);
     expect(data).toMatchObject({ kind: 'openapi', site: { activeLanguage, activeVersion } });
-    const head = SplatRoute.options.head as (input: unknown) => { links: Array<{ rel: string; href: string }> };
-    expect(head({ loaderData: data, params: { projectId: 'api-only' }, match: {}, matches: [] }).links).toContainEqual({
+    const head = SplatRoute.options.head as (input: unknown) => Promise<{ links: Array<{ rel: string; href: string }> }>;
+    expect((await head({ loaderData: data, params: { projectId: 'api-only' }, match: {}, matches: [] })).links).toContainEqual({
       rel: 'canonical',
       href: `http://localhost:4310${canonical}`,
     });

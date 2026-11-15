@@ -1,4 +1,6 @@
 import {
+  ACCENT_TEXT_CONTRAST,
+  contrastRatio,
   type ResolvedTheme,
   readableAccentText,
   readableCodeAccent,
@@ -13,6 +15,8 @@ import {
 } from '@nibleaf/shared/themes';
 import type { ProjectConfig } from '@nibleaf/validators';
 import type { CSSProperties } from 'react';
+
+export { siteAppearance, siteThemeNoFlashScript } from '@/lib/site-theme-bootstrap';
 
 const safeTokens = (tokens: ThemeColorTokens, fallback: ThemeColorTokens): ThemeColorTokens =>
   Object.fromEntries(
@@ -107,6 +111,33 @@ const legacyTokenDeclarations = (accent: string, brand: string): string =>
     '--theme-footer-muted:#707070',
   ].join(';');
 
+/** The mobile nav drawer is a popover on the raised surface (`bg-popover`), not
+ * the canvas the accent is shaded for, so its active row (`text-primary` on
+ * `bg-primary/10`) can fall short there: #b96a3d on Harbor dark read 3.81:1 (#726).
+ * The drawer gets the nearest shade that reads on that surface and its tint,
+ * with on-accent text that still reads on the shade; null when the canvas
+ * shade already reads there, so most sites' CSS is unchanged. */
+const drawerAccent = (tokens: ThemeColorTokens): { primary: string; foreground: string } | null => {
+  const primary = readableAccentText(tokens.accent, tokens.surfaceRaised);
+  if (primary === tokens.accent) return null;
+  const foreground = contrastRatio(tokens.accentForeground, primary) >= ACCENT_TEXT_CONTRAST ? tokens.accentForeground : readableOnAccent(primary);
+  return { primary, foreground };
+};
+
+/** The drawer's accent rules, light then dark. Both are written when either mode
+ * needs a shade, since the light rule would otherwise apply in dark too. */
+const drawerAccentRules = (light: ThemeColorTokens, dark: ThemeColorTokens): string[] => {
+  const lightShade = drawerAccent(light);
+  const darkShade = drawerAccent(dark);
+  if (!lightShade && !darkShade) return [];
+  const declarations = (tokens: ThemeColorTokens, shade: { primary: string; foreground: string } | null) =>
+    `--primary:${shade?.primary ?? tokens.accent};--primary-foreground:${shade?.foreground ?? tokens.accentForeground}`;
+  return [
+    `[data-site-drawer]{${declarations(light, lightShade)}}`,
+    `:root.dark [data-site-drawer],.nibleaf-site-chrome.dark [data-site-drawer]{${declarations(dark, darkShade)}}`,
+  ];
+};
+
 /** The design system's light canvas (packages/design-system globals.css), which pre-v1 sites draw on. */
 const LEGACY_LIGHT_CANVAS = '#fafafa';
 /** The design system's dark on-primary text, which dark pre-v1 sites have always used. */
@@ -125,28 +156,6 @@ const authoredAccents = (config: ProjectConfig | null | undefined, preset: Resol
     dark: safeTokens(authored.colors.dark, preset.colors.dark).accent,
   };
 };
-
-const inlineScriptJson = (value: string): string =>
-  JSON.stringify(value)
-    .replaceAll('<', '\\u003c')
-    .replaceAll('>', '\\u003e')
-    .replaceAll('&', '\\u0026')
-    .replaceAll('\u2028', '\\u2028')
-    .replaceAll('\u2029', '\\u2029');
-
-export type SiteAppearance = 'light' | 'dark' | 'system';
-
-/** The appearance a published site opens in until the reader picks one. A site
- * whose owner never chose follows the reader's device, as nibleaf.com does
- * (PUB-004); an explicit 'light' or 'dark' still wins. The reader, the no-flash
- * script and the theme settings all read it here, so they can't disagree. */
-export const siteAppearance = (config?: Pick<ProjectConfig, 'styling'> | null): SiteAppearance => config?.styling?.theme ?? 'system';
-
-/** Run after the dashboard bootstrap in `<head>` so a published site's stored
- * appearance wins before CSS paints. Inputs are JSON-encoded and the default is
- * already constrained by ProjectConfig's appearance enum. */
-export const siteThemeNoFlashScript = (projectId: string, configured: SiteAppearance = 'system'): string =>
-  `(function(){try{var k='nibleaf.site.theme.'+${inlineScriptJson(projectId)};var s=localStorage.getItem(k);var c=${inlineScriptJson(configured)};var d=s==='dark'||(s!=='light'&&(c==='dark'||(c==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)));var r=d?'dark':'light';var e=document.documentElement;e.classList.remove('light','dark');e.classList.add(r);e.style.colorScheme=r;}catch(_){}})();`;
 
 export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const theme = resolveProjectTheme(config);
@@ -177,6 +186,7 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
         // light palette and descendants inherit those values, so they are bound
         // again here (h5/h6 and rules use them).
         `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:var(--theme-code-accent);--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
+        ...drawerAccentRules(light, dark),
       ]
     : [
         `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent, legacyBrand)};--primary:${legacyAccent};--primary-foreground:${legacyAccentForeground};--theme-accent-foreground:${legacyAccentForeground};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
