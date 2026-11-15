@@ -1,0 +1,17 @@
+Regression: 'clears a stored <key> by sending ""' (features/site-footer/components/footer-settings.test.tsx)
+run against main's footer-section.tsx (c0e72c2d5), its mutation mocked with mutate() as main calls it, then against this branch.
+
+== main's component
+     × clears a stored copyright by sending "", trimmed with the rest 63ms
+     × clears a stored github by sending "", trimmed with the rest 19ms
+     × clears a stored x by sending "", trimmed with the rest 10ms
+     × clears a stored linkedin by sending "", trimmed with the rest 9ms
+AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { config: { footer: { …(5) } } }
+AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { config: { footer: { …(5) } } }
+AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { config: { footer: { …(5) } } }
+AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { config: { footer: { …(5) } } }
+      Tests  4 failed | 19 skipped (23)
+(main sends 4 footer keys: the cleared one is `undefined`, which JSON drops, so the server keeps the old value.)
+
+== this branch
+      Tests  4 passed | 19 skipped (23)
