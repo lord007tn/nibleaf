@@ -83,7 +83,7 @@ export function SiteBanner({
             rel="noreferrer"
             className="inline-flex cursor-pointer items-center gap-1 font-semibold underline underline-offset-4 hover:opacity-90"
           >
-            <span dir="auto">{banner.linkLabel ?? t('viewDetails')}</span>
+            <span dir="auto">{banner.linkLabel?.trim() || t('viewDetails')}</span>
             <ExternalLink className="size-3" aria-hidden />
           </a>
         ) : null}
