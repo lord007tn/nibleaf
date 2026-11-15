@@ -1,9 +1,9 @@
 {
   "environment": "The placement check of capture.mjs --verify: the same component fixture in headless Chromium, current tree only, light theme, three failed saves expanded; no screenshots or videos",
-  "head": "e2331f83b6e7fb2f8c06679d54053c320937f581",
+  "head": "c2a0d98fd92a3cb13e8bb479772d67f9dd16708e",
   "uncommitted": [],
   "sonner": "2.0.8",
-  "deferredHost": "not on this tree (#703 unmerged): rows measure the eager host",
+  "deferredHost": "on this tree: every row waited for the host region before the first toast",
   "attempted": 0,
   "failed": [],
   "rows": [
