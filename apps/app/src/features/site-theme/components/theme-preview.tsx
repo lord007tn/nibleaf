@@ -138,7 +138,7 @@ export function ThemeOptionSelect<T extends ThemeOption>({
   const items = options.map((option) => ({ value: option, label: t(THEME_OPTION_MESSAGE_KEYS[option]) }));
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[12.5px]" htmlFor={id}>
+      <Label className="text-xs" htmlFor={id}>
         {label}
       </Label>
       <Select

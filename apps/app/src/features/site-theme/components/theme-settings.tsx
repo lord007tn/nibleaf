@@ -284,7 +284,7 @@ function ThemeForm({ project }: { project: Project }) {
                 <ThemePresetThumbnail presetId={presetId} />
                 <strong>{t(`settings.theme.preset.${presetId}.name`)}</strong>
                 <span className="mt-1 block text-muted-foreground text-xs leading-relaxed">{t(`settings.theme.preset.${presetId}.description`)}</span>
-                <span className="mt-2 block text-[11px] text-primary">{t(`settings.theme.preset.${presetId}.rationale`)}</span>
+                <span className="mt-2 block text-primary text-xs">{t(`settings.theme.preset.${presetId}.rationale`)}</span>
               </button>
             );
           })}
@@ -364,7 +364,7 @@ function ThemeForm({ project }: { project: Project }) {
           {THEME_COLOR_KEYS.map((key) => {
             const invalid = invalidToken(key);
             return (
-              <label className="grid gap-1.5 text-[12.5px]" key={key}>
+              <label className="grid gap-1.5 text-xs" key={key}>
                 <span className="font-medium">{t(`settings.theme.color.${key}`)}</span>
                 <span
                   className={cn('flex items-center gap-2 rounded-md border bg-background p-1.5', invalid ? 'border-destructive' : 'border-input')}

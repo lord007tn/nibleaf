@@ -118,7 +118,7 @@ const SECTIONS = ['colors', 'layout', 'components'] as const;
  * draft's theme, not a mix of the two. Optional parts the baseline doesn't
  * have are never added.
  */
-export function sentTheme(theme: NibleafThemeConfig, baseline: NibleafThemeConfig | undefined): NibleafThemeConfig {
+function sentTheme(theme: NibleafThemeConfig, baseline: NibleafThemeConfig | undefined): NibleafThemeConfig {
   const emptied = SECTIONS.filter((part) => baseline?.[part] !== undefined && theme[part] === undefined);
   return emptied.length === 0 ? theme : { ...theme, ...Object.fromEntries(emptied.map((part) => [part, {}])) };
 }
