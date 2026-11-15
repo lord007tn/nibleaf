@@ -11,7 +11,7 @@
  * - a stored radius replaces the theme's `layout.radius`; with none stored, the
  *   theme's radius applies (its `layout.radius`, else its preset's). The form
  *   shows that inherited radius as such, and any radius the person chooses,
- *   even the one inherited, is stored for this website: a later theme change
+ *   even the one inherited, is stored for this site: a later theme change
  *   no longer moves it.
  * The appearance (`config.styling.theme`) belongs to the Theme section and is
  * never part of this form.
@@ -33,7 +33,7 @@ export type StylingPatch = { primaryColor?: string; radius?: Radius };
  * - `primaryColor`: `''` when none is stored; `#rrggbb` (lowercase) when the
  *   text is a color; otherwise the text as typed, which is never sent.
  * - `radius`: `''` when none is stored (the theme's applies), else the
- *   website's own radius: stored, or chosen in this draft.
+ *   site's own radius: stored, or chosen in this draft.
  */
 export type StylingValues = { primaryColor: string; radius: Radius | '' };
 
@@ -75,7 +75,7 @@ export const shownColor = (value: string): string | null => (value === '' ? SHOW
  */
 export const inheritedRadius = (theme: ThemeOwnedProjectConfig['theme']): Radius => resolveTheme({ theme }).layout.radius;
 
-/** The radius the control shows: the website's own, else the inherited one. */
+/** The radius the control shows: the site's own, else the inherited one. */
 export const shownRadius = (value: Radius | '', inherited: Radius): Radius => (value === '' ? inherited : value);
 
 /** `config.styling` read as the form's values. A stored short color reads as its long form. */
@@ -110,8 +110,9 @@ export const colorProblem = (value: string): 'invalidHex' | null => (value === '
  * key and keeps every key a patch leaves out, so an untouched color, radius or
  * appearance stays as stored, including another writer's. A radius chosen
  * over an unset one is sent even when it equals the inherited radius: the
- * choice is what stores it. `config.theme` and `styling.theme` are never sent. A value that can't be stored (`''`, or text
- * that is not a color) is never sent either; the form refuses the latter first.
+ * choice is what stores it. `config.theme` and `styling.theme` are never sent.
+ * A value that can't be stored (`''`, or text that is not a color) is never
+ * sent either; the form refuses the latter first.
  */
 export function stylingPatch(values: StylingValues, baseline: StylingValues): StylingPatch {
   const patch: StylingPatch = {};
