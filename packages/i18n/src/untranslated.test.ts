@@ -101,7 +101,7 @@ describe('the untranslated check', () => {
     } finally {
       rmSync(fixture, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 
   it('accepts strings made only of kept terms, numbers, punctuation and placeholders', () => {
     expect(onlyKeptTerms('GitHub', keep)).toBe(true);

@@ -1,0 +1,235 @@
+{
+  "environment": "Isolated catalog copy specimens; system fonts; not the dashboard or production. Arabic is an unchanged RTL control.",
+  "baseline": "da1a096ee1274d9e11c23cdd973799ab3596eeee",
+  "sourceHead": "567fcdad9195fa16af0b9f45aff970629fbb66c2",
+  "uncommitted": "M .github/assets/dashboard-copy-followups/capture.mjs\n?? .github/assets/dashboard-copy-followups/after-ar-dark-1440.png\n?? .github/assets/dashboard-copy-followups/after-ar-dark-390.png\n?? .github/assets/dashboard-copy-followups/after-ar-light-1440.png\n?? .github/assets/dashboard-copy-followups/after-ar-light-390.png\n?? .github/assets/dashboard-copy-followups/after-en-dark-1440.png\n?? .github/assets/dashboard-copy-followups/after-en-dark-390.png\n?? .github/assets/dashboard-copy-followups/after-en-light-1440.png\n?? .github/assets/dashboard-copy-followups/after-en-light-390.png\n?? .github/assets/dashboard-copy-followups/after-zh-CN-dark-1440.png\n?? .github/assets/dashboard-copy-followups/after-zh-CN-dark-390.png\n?? .github/assets/dashboard-copy-followups/after-zh-CN-light-1440.png\n?? .github/assets/dashboard-copy-followups/after-zh-CN-light-390.png\n?? .github/assets/dashboard-copy-followups/before-ar-dark-1440.png\n?? .github/assets/dashboard-copy-followups/before-ar-dark-390.png\n?? .github/assets/dashboard-copy-followups/before-ar-light-1440.png\n?? .github/assets/dashboard-copy-followups/before-ar-light-390.png\n?? .github/assets/dashboard-copy-followups/before-en-dark-1440.png\n?? .github/assets/dashboard-copy-followups/before-en-dark-390.png\n?? .github/assets/dashboard-copy-followups/before-en-light-1440.png\n?? .github/assets/dashboard-copy-followups/before-en-light-390.png\n?? .github/assets/dashboard-copy-followups/before-zh-CN-dark-1440.png\n?? .github/assets/dashboard-copy-followups/before-zh-CN-dark-390.png\n?? .github/assets/dashboard-copy-followups/before-zh-CN-light-1440.png\n?? .github/assets/dashboard-copy-followups/before-zh-CN-light-390.png",
+  "keys": [
+    "settings_import_ghost_title",
+    "settings_import_ghost_url",
+    "oauth_project_noprojects",
+    "settings_aiassistants_noaccess",
+    "settings_smartai_scope",
+    "settings_smartai_step_enable",
+    "settings_smartai_modelsverified"
+  ],
+  "outsideAttempts": 0,
+  "browser": "Repository local-only Playwright wrapper; installed headless Chromium",
+  "captures": [
+    {
+      "file": "before-en-light-1440.png",
+      "locale": "en",
+      "phase": "before",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-en-light-390.png",
+      "locale": "en",
+      "phase": "before",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-en-dark-1440.png",
+      "locale": "en",
+      "phase": "before",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-en-dark-390.png",
+      "locale": "en",
+      "phase": "before",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-en-light-1440.png",
+      "locale": "en",
+      "phase": "after",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-en-light-390.png",
+      "locale": "en",
+      "phase": "after",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-en-dark-1440.png",
+      "locale": "en",
+      "phase": "after",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-en-dark-390.png",
+      "locale": "en",
+      "phase": "after",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-ar-light-1440.png",
+      "locale": "ar",
+      "phase": "before",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-ar-light-390.png",
+      "locale": "ar",
+      "phase": "before",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-ar-dark-1440.png",
+      "locale": "ar",
+      "phase": "before",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-ar-dark-390.png",
+      "locale": "ar",
+      "phase": "before",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-ar-light-1440.png",
+      "locale": "ar",
+      "phase": "after",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-ar-light-390.png",
+      "locale": "ar",
+      "phase": "after",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-ar-dark-1440.png",
+      "locale": "ar",
+      "phase": "after",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-ar-dark-390.png",
+      "locale": "ar",
+      "phase": "after",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-zh-CN-light-1440.png",
+      "locale": "zh-CN",
+      "phase": "before",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-zh-CN-light-390.png",
+      "locale": "zh-CN",
+      "phase": "before",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-zh-CN-dark-1440.png",
+      "locale": "zh-CN",
+      "phase": "before",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-zh-CN-dark-390.png",
+      "locale": "zh-CN",
+      "phase": "before",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-zh-CN-light-1440.png",
+      "locale": "zh-CN",
+      "phase": "after",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-zh-CN-light-390.png",
+      "locale": "zh-CN",
+      "phase": "after",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-zh-CN-dark-1440.png",
+      "locale": "zh-CN",
+      "phase": "after",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-zh-CN-dark-390.png",
+      "locale": "zh-CN",
+      "phase": "after",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}
