@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture: the real Themes section (before: main; after: this branch) with the real design system, EN/AR catalogs, project query and mutations, the theme import and export mutations, ConfirmProvider and Sonner, in an editor-canvas frame; a fictional site and template; the project GET, PATCH (merged like the API) and template endpoints (on the shared theme functions) answered by interception; not the signed-in dashboard or production",
   "baseline": "e904f936e7ff4d7d630544718cfea03b478531a6",
-  "head": "9c571930b29113b328fd0123f5a8e7494a37ca74",
+  "head": "5bb25664472e0242d6681a5a0495f9e8dbe77a69",
   "uncommitted": [],
   "swappedForBefore": [
     "apps/app/src/components/project-settings/theme-section.tsx"
@@ -478,9 +478,7 @@
           "dialog": null,
           "importResult": "preview",
           "undoEnabled": false,
-          "toasts": [
-            "Draft theme saved. Publish when you are ready for readers to receive it."
-          ],
+          "toasts": [],
           "saveBar": false,
           "status": "",
           "overflow": false
