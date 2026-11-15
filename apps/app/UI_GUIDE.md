@@ -64,6 +64,10 @@ return (
 - **`source`** is the normalized editable values from the query (`toValues(query.data)`). The hook keeps the form in
   step with the server and never drops an edit. Fields the person hasn't touched take server changes. Edits made
   during a save survive it. Fields both sides changed show a "Use theirs / Keep mine" callout.
+- **`save.succeeded(confirmed)` takes this request's own response** (or nothing), never a snapshot read from the
+  query cache. Let the mutation await its query's refetch: the refetched value reaches the form through `source`,
+  before or after the response, and is reconciled there for edits and conflicts. A refetched value that is neither
+  what the save started from nor what it sent is someone else's, and the response never rewinds it.
 - **Always submit through `draft.submit()`**, never `form.handleSubmit()`. Only one save runs at a time, and a second
   Save, Enter or Cmd+S during a save is refused. Map a server field error only if the field still holds the value that
   was sent, and only while `save.isCurrent()`.

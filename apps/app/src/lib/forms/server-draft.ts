@@ -41,6 +41,7 @@ export const editedKeys = <T extends DraftValues>(current: T, baseline: T) =>
 
 /**
  * A save in flight, fixed when its request is sent:
+ * - `from`: the baseline it was sent from;
  * - `values`: what it sent (`toSent` of the form's values, when given);
  * - `raw`: the form's values it was sent from;
  * - `toSent`: the transform, when the form sends a transformed payload;
@@ -51,6 +52,7 @@ export const editedKeys = <T extends DraftValues>(current: T, baseline: T) =>
  *   A key joins once and never leaves for the rest of the save.
  */
 export type PendingSave<T extends DraftValues> = {
+  from: T;
   values: T;
   raw: T;
   toSent?: (values: T) => T;
@@ -60,7 +62,7 @@ export type PendingSave<T extends DraftValues> = {
 
 export const startSave = <T extends DraftValues>(baseline: T, raw: T, toSent?: (values: T) => T): PendingSave<T> => {
   const values = toSent ? toSent(raw) : raw;
-  return { values, raw, toSent, sent: new Set(editedKeys(values, toSent ? toSent(baseline) : baseline)), echoed: new Set() };
+  return { from: baseline, values, raw, toSent, sent: new Set(editedKeys(values, toSent ? toSent(baseline) : baseline)), echoed: new Set() };
 };
 
 /** A sent key the server hasn't echoed yet: the form holds the person's pending value for it. */
@@ -160,6 +162,16 @@ export function reconcileServerChange<T extends DraftValues>({
  * differs from that baseline, so values the form took from the server are
  * not edits. Without a response, those keys confirm that baseline.
  *
+ * A refetch during the save can bring a value the response can't rewind: one
+ * that is neither what the save started from nor what it sent (compared in
+ * sent space), so only someone else's write explains it. Such a key confirms
+ * the reached value, not the response. Its edits are judged as above: a value
+ * the person changed since the save stays, dirty, with its conflict, and
+ * "theirs" is the reached value; the value the save sent is the save's own and
+ * takes it, as any server change to a clean field. A reached value equal to
+ * where the save started or to what it sent proves nothing newer (a refetch
+ * from before the save, or the save's own echo): the response wins.
+ *
  * During a transforming save, a key the person hasn't changed since is judged
  * in sent space by what the save sent for it, and is also confirmed when that
  * agrees with the new baseline: a value `toSent` normalized is confirmed,
@@ -179,8 +191,14 @@ export function reconcileSaveSuccess<T extends DraftValues>({
   const awaiting = (key: string) => !during || awaitingEcho(during.save, key);
   const reference = (key: string) => (awaiting(key) ? submitted[key] : during?.baseline[key]);
   const keys = keysOf(submitted, current, ...(during ? [during.baseline] : []));
-  const baseline = confirmed ?? (during ? (Object.fromEntries(keys.map((key) => [key, reference(key)])) as T) : submitted);
   const reachedSent = during && inSentSpace(during.save, during.baseline);
+  const fromSent = during && inSentSpace(during.save, during.save.from);
+  const superseded = new Set(
+    keys.filter((key) => reachedSent && !deepEqual(reachedSent[key], fromSent?.[key]) && !deepEqual(reachedSent[key], during?.save.values[key])),
+  );
+  const responded = confirmed ?? (during ? (Object.fromEntries(keys.map((key) => [key, reference(key)])) as T) : submitted);
+  const baseline =
+    superseded.size === 0 ? responded : ({ ...responded, ...Object.fromEntries([...superseded].map((key) => [key, during?.baseline[key]])) } as T);
   const agreesWithNew = agreesWith(current, baseline, during?.save);
   const edited = (key: string) => {
     if (!untouched(during?.save, current, key)) return !deepEqual(current[key], reference(key));

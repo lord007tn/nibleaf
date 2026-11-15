@@ -16,7 +16,12 @@ import {
 export type DraftSave<T extends DraftValues> = {
   /** The baseline the save is relative to (what the server last confirmed when it started). */
   baseline: T;
-  /** Call after the server confirmed. Pass its normalized values when it returned them. */
+  /**
+   * Call after the server confirmed. Pass its normalized values when it
+   * returned them: this request's own response, never a snapshot read from the
+   * query cache. Server data reaches the form only through `source`, where it is
+   * reconciled for edits and conflicts.
+   */
   succeeded: (confirmed?: T) => void;
   /** Call after a failed save: nothing is confirmed and the edits stay. */
   failed: () => void;
@@ -55,6 +60,12 @@ type ActiveSave<T extends DraftValues> = { id: number; generation: number; pendi
  *   the form's value for it is the person's (sent or newer), and the echo is
  *   never a conflict. After the echo the key follows the normal rules;
  * - after a save, edits made while it was in flight survive and stay dirty;
+ * - a save's response never rewinds a value a refetch brought during the
+ *   save that only someone else's write explains (neither where the save
+ *   started nor what it sent): that key confirms the refetched value. An edit
+ *   made since the save keeps its conflict, with "theirs" that value. A refetch
+ *   that renders only after `succeeded` (TanStack batches observer updates) is
+ *   reconciled then, as any server change, and ends the same way;
  * - `isDirty` compares the form with the confirmed baseline, nothing else.
  *
  * Pass `toSent` when the submit handler sends a transformed payload (rows
