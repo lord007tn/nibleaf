@@ -411,11 +411,24 @@ const errorOf = (input: HTMLInputElement) => {
   const id = input.getAttribute('aria-describedby');
   return id ? (document.getElementById(id)?.textContent ?? null) : null;
 };
-/** A real keydown on the field, as the browser dispatches it. */
-const press = (input: HTMLInputElement, init: KeyboardEventInit = {}) =>
-  act(async () => {
+/**
+ * Enter as the browser delivers it: the keydown on the field, then, in the same
+ * task, the click on the form's default button that implicit submission makes.
+ * jsdom has no implicit submission, so the test makes that click itself.
+ */
+const press = async (input: HTMLInputElement, init: KeyboardEventInit = {}) => {
+  await act(async () => {
     input.focus();
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+    input.form?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+  });
+  // Each keypress is its own task in a browser: let the adapter forget an ignored key before the next one.
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 5)));
+};
+/** Cmd/Ctrl+S, which the page's SaveRegion listens for on the document. */
+const pressSaveShortcut = () =>
+  act(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }));
   });
 
 describe('BannerSettings — link address', () => {
@@ -465,35 +478,61 @@ describe('BannerSettings — link address', () => {
   });
 });
 
-/** What the page's polite status regions currently say: the SaveRegion's and the form's own. */
+/** What the page's polite status regions say. The SaveRegion's is the only one. */
 const announced = () => [...document.querySelectorAll('[role="status"]')].map((region) => region.textContent?.trim()).filter(Boolean);
 
 describe('BannerSettings — Enter', () => {
-  it('Enter in a single-line field saves once, even pressed again while the save is in flight', async () => {
+  it('saves through the hidden default button, once, even pressed again during the save, and the bar says Saved', async () => {
     const pending = deferred<unknown>();
     mocks.updateProject.mockReturnValue(pending.promise);
     await render(projectWith(PROJECT_BANNER));
+    const defaults = container.querySelectorAll<HTMLButtonElement>('form button[type="submit"]');
+    expect(defaults).toHaveLength(1);
+    expect(defaults[0]?.hidden).toBe(true);
+
     await type(message(), 'Summer sale');
     await press(message());
     await press(linkLabel());
     await press(linkUrl());
     expect(mocks.updateProject).toHaveBeenCalledTimes(1);
     expect(mocks.updateProject).toHaveBeenCalledWith({ config: { banner: { ...PROJECT_BANNER, message: 'Summer sale' } } });
-    expect(announced()).not.toContain('common.saved');
+    expect(announced()).toEqual([]);
     await act(async () => pending.resolve({ id: 'site-1', config: { banner: { ...PROJECT_BANNER, message: 'Summer sale' } } }));
     expect(saveRegion()).toBeNull();
-    // No toast on success: the polite status says it, as the page's Save does.
+    // The SaveRegion's own polite status, and no success toast.
     expect(announced()).toEqual(['common.saved']);
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
-  it('a failed Enter save announces nothing as saved and keeps the draft', async () => {
+  it('sends nothing while clean, and leaves modified Enter and IME keys alone', async () => {
+    mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
+    await render(projectWith(PROJECT_BANNER));
+    await press(message());
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+
+    await type(message(), 'セール');
+    const ignored: KeyboardEventInit[] = [
+      { isComposing: true },
+      { key: 'Process', keyCode: 229 },
+      { shiftKey: true },
+      { altKey: true },
+      { ctrlKey: true },
+      { metaKey: true },
+    ];
+    for (const init of ignored) await press(message(), init);
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+
+    await press(message());
+    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed Enter save keeps the draft, toasts once and says nothing about saving', async () => {
     mocks.updateProject.mockRejectedValueOnce(new Error('offline'));
     await render(projectWith(PROJECT_BANNER));
     await type(message(), 'Summer sale');
     await press(message());
     expect(mocks.toastError).toHaveBeenCalledTimes(1);
-    expect(announced()).not.toContain('common.saved');
+    expect(announced()).toEqual([]);
     expect(message().value).toBe('Summer sale');
     expect(saveRegion()).not.toBeNull();
   });
@@ -509,24 +548,11 @@ describe('BannerSettings — Enter', () => {
     expect(mocks.updateProject).toHaveBeenLastCalledWith({ config: { banner: { ...PROJECT_BANNER, linkUrl: 'tel:+123456789' } } });
     expect(announced()).toEqual(['common.saved']);
   });
+});
 
-  it('leaves Enter alone during an IME composition, with a modifier, and while nothing changed', async () => {
+describe('BannerSettings — one status for Enter, Save, Ctrl+S and Discard', () => {
+  it('an invalid Enter, then a fix saved with Save: only Saved remains', async () => {
     mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
-    await render(projectWith(PROJECT_BANNER));
-    await press(message());
-    expect(mocks.updateProject).not.toHaveBeenCalled();
-
-    await type(message(), 'セール');
-    await press(message(), { isComposing: true });
-    await press(message(), { keyCode: 229 });
-    for (const modifier of ['shiftKey', 'altKey', 'ctrlKey', 'metaKey'] as const) await press(message(), { [modifier]: true });
-    expect(mocks.updateProject).not.toHaveBeenCalled();
-
-    await press(message());
-    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
-  });
-
-  it('Enter with an invalid address saves nothing and moves to the field', async () => {
     await render(projectWith(PROJECT_BANNER));
     await type(linkUrl(), 'pricing');
     await press(message());
@@ -534,5 +560,49 @@ describe('BannerSettings — Enter', () => {
     expect(document.activeElement).toBe(linkUrl());
     expect(errorOf(linkUrl())).toBe('settings.addons.url.invalid');
     expect(announced()).toEqual(['forms.fixHighlighted']);
+
+    await type(linkUrl(), 'https://acme.test/pricing');
+    await save();
+    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+    expect(announced()).toEqual(['common.saved']);
+  });
+
+  it('an invalid Enter, then a fix saved with Ctrl+S: only Saved remains', async () => {
+    mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
+    await render(projectWith(PROJECT_BANNER));
+    await type(linkUrl(), '/pricing');
+    await press(linkUrl());
+    expect(announced()).toEqual(['forms.fixHighlighted']);
+
+    await type(linkUrl(), 'https://acme.test/pricing');
+    await pressSaveShortcut();
+    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+    expect(announced()).toEqual(['common.saved']);
+  });
+
+  it('an Enter save, then a failed save from the bar: nothing still claims Saved', async () => {
+    mocks.updateProject.mockImplementationOnce(async ({ config }) => ({ id: 'site-1', config })).mockRejectedValueOnce(new Error('offline'));
+    await render(projectWith(PROJECT_BANNER));
+    await type(message(), 'Summer sale');
+    await press(message());
+    expect(announced()).toEqual(['common.saved']);
+
+    await type(message(), 'Winter sale');
+    await save();
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+    expect(announced()).toEqual([]);
+    expect(message().value).toBe('Winter sale');
+    expect(saveRegion()).not.toBeNull();
+  });
+
+  it('Discard clears the status after an invalid Enter', async () => {
+    await render(projectWith(PROJECT_BANNER));
+    await type(linkUrl(), 'pricing');
+    await press(message());
+    expect(announced()).toEqual(['forms.fixHighlighted']);
+    await discard();
+    expect(announced()).toEqual([]);
+    expect(linkUrl().value).toBe('https://acme.test/sale');
+    expect(saveRegion()).toBeNull();
   });
 });

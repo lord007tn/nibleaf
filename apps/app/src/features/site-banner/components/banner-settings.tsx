@@ -5,7 +5,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
 import { Megaphone } from 'lucide-react';
-import { type KeyboardEvent, useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useLayoutEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   FIELD_INPUT,
@@ -19,28 +19,13 @@ import {
 import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { errorMessages, fieldErrorsVisible, validateOnBlurThenChange, withoutStaleErrors } from '@/lib/forms/field-errors';
-import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useBannerLanguages, useSaveBanner } from '../api/hooks';
 import { type BannerValues, inheritedPlaceholders, languageBannerValues, linkUrlProblem, PROJECT_SCOPE, projectBannerValues } from '../model/banner';
 
 /** The `dir` for text written in a content language, independent of the interface locale. */
 const dirOf = (language: Pick<Language, 'direction'> | undefined) => (language ? (language.direction === 'RTL' ? 'rtl' : 'ltr') : 'auto');
-
-/**
- * Enter in a single-line field saves, as it did when the form had its own
- * Save button: Save now lives in the page's bar, outside the form, so the
- * browser no longer submits on Enter. An IME composition and modified Enter
- * are left alone. A second Enter during a save reaches the draft's lock and
- * sends nothing. The form's submit handler then reports the outcome as the
- * page's Save does. Moves to the shared Enter adapter in lib/forms once it lands.
- */
-const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
-  if (event.key !== 'Enter' || event.nativeEvent.isComposing || event.keyCode === 229) return;
-  if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
-  event.preventDefault();
-  event.currentTarget.form?.requestSubmit();
-};
 
 /**
  * Site configuration → Banner, in Settings → Appearance and the editor's
@@ -94,7 +79,8 @@ function BannerForm({ project }: { project: Project }) {
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  useSaveRegionForm('site-banner', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  // Enter in a single-line field saves this form through the bar's own run: same lock, status and focus.
+  const formProps = useSaveRegionForm('site-banner', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   // Switching scope asks first while there are edits, or a save that can still change them.
   const { guard, setDirty } = useScopeDirtyGuard();
@@ -103,18 +89,6 @@ function BannerForm({ project }: { project: Project }) {
 
   const enabled = useStore(form.store, (state) => state.values.enabled);
   const submissionAttempts = useStore(form.store, (state) => state.submissionAttempts);
-  const formRef = useRef<HTMLFormElement>(null);
-  // What an Enter save announces: the same words, and the same politeness, as the page's Save.
-  const [enterStatus, setEnterStatus] = useState('');
-  const saveFromEnter = async () => {
-    setEnterStatus('');
-    const outcome = await submit();
-    if (outcome === 'saved') setEnterStatus(t('common.saved'));
-    if (outcome === 'invalid') {
-      setEnterStatus(t('forms.fixHighlighted'));
-      focusFirstInvalid(formRef.current);
-    }
-  };
   const linkUrlId = useId();
   const linkUrlMessage = (value: string) => (linkUrlProblem(value) ? t('settings.addons.url.invalid') : undefined);
   const placeholders = activeLanguage ? inheritedPlaceholders(projectBanner) : {};
@@ -122,17 +96,8 @@ function BannerForm({ project }: { project: Project }) {
   const contentDir = dirOf(contentLanguage);
 
   return (
-    <form
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (draft.isDirty) void saveFromEnter();
-      }}
-      ref={formRef}
-    >
-      <div aria-live="polite" className="sr-only" role="status">
-        {enterStatus}
-      </div>
+    <form noValidate {...formProps}>
+      <SaveRegionSubmit />
       <SectionHeader icon={<Megaphone className="size-4" />} title={t('settings.banner.title')} />
       <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.banner.description')}</p>
       <LanguageScopePicker
@@ -200,7 +165,6 @@ function BannerForm({ project }: { project: Project }) {
                     lang={contentLanguage?.code}
                     onBlur={field.handleBlur}
                     onChange={(event) => field.handleChange(event.target.value)}
-                    onKeyDown={submitOnEnter}
                     placeholder={placeholders.message ?? t('settings.banner.message.placeholder')}
                     value={field.state.value}
                   />
@@ -216,7 +180,6 @@ function BannerForm({ project }: { project: Project }) {
                     lang={contentLanguage?.code}
                     onBlur={field.handleBlur}
                     onChange={(event) => field.handleChange(event.target.value)}
-                    onKeyDown={submitOnEnter}
                     placeholder={placeholders.linkLabel ?? t('settings.banner.linkLabel.placeholder')}
                     value={field.state.value}
                   />
@@ -240,7 +203,6 @@ function BannerForm({ project }: { project: Project }) {
                         field.setMeta((meta) => withoutStaleErrors(meta));
                         field.handleChange(event.target.value);
                       }}
-                      onKeyDown={submitOnEnter}
                       placeholder={placeholders.linkUrl ?? t('settings.banner.linkUrl.placeholder')}
                       type="url"
                       value={field.state.value}
