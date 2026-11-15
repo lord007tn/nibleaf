@@ -1,5 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
+import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import { blockDirection } from '@nibleaf/shared/script-direction';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type ComponentProps, Suspense, startTransition, useEffect, useState } from 'react';
@@ -7,6 +8,7 @@ import { SiteChatPageAction } from '@/components/site/ai-chat/provider';
 import { type ContentLanguageAttributes, chromeLanguageAttributes, contentLanguageAttributes } from '@/components/site/content-language';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { LanguageFallbackNotice } from '@/components/site/language-fallback-notice';
+import { PageActions } from '@/components/site/page-actions';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { ArticleBodySkeleton } from '@/components/site/site-article-skeleton';
 import { useSiteReader } from '@/components/site/site-reader-context';
@@ -16,7 +18,9 @@ import { articleStats } from '@/lib/article-stats';
 import { HydrationIsland } from '@/lib/hydration-modules';
 import { articleMarkdownModule } from '@/lib/reader-hydration-modules';
 import { formatUpdated } from '@/lib/reader-text';
+import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref } from '@/lib/site-paths';
+import { canonicalSiteBase } from '@/lib/site-seo';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
 const ARTICLE_MODULES = [articleMarkdownModule];
@@ -248,7 +252,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         <LanguageFallbackNotice
           requested={chromeLanguage.lang}
           shown={language}
-          href={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix })}
+          href={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix, languages: data.languages })}
           attributes={chromeLanguage}
           languages={reader?.languages}
           text={readerText}
@@ -273,7 +277,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
                   </span>
                 ) : (
                   <a
-                    href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+                    href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
                     className="transition-opacity hover:opacity-80"
                     dir={blockDirection(crumb.title)}
                     lang={contentLanguage.lang}
@@ -286,9 +290,26 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           </ol>
         </nav>
       ) : null}
-      <h1 tabIndex={-1} className="outline-none font-semibold text-3xl tracking-tight md:text-4xl" dir={blockDirection(page.title)}>
-        {page.title}
-      </h1>
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <h1 tabIndex={-1} className="min-w-0 outline-none font-semibold text-3xl tracking-tight md:text-4xl" dir={blockDirection(page.title)}>
+          {page.title}
+        </h1>
+        {/* Only on a page with a public Markdown twin (the rule the server's
+            `.md` endpoint and the discovery header use): never on a private
+            site, where Copy page would copy private text and the AI actions
+            would hand its URL to a third party. The twin is served in the
+            page's own language, so a fallback page links its English twin
+            (the reader's ?lang= answers 404), with the controls labelled in
+            the reader's language and direction. */}
+        {isPublicMarkdownPage(data) ? (
+          <PageActions
+            pageHref={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix, languages: data.languages })}
+            lang={readerLanguage}
+            attributes={chromeLanguage}
+            className="md:mt-1.5"
+          />
+        ) : null}
+      </div>
       {page.description ? (
         <p className="mt-3 text-lg text-muted-foreground" dir={blockDirection(page.description)}>
           {page.description}
@@ -341,9 +362,20 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
       ) : null}
       <ArticleBody
         content={page.content}
+        imageDimensions={page.imageDimensions}
         language={readerLanguage}
         chromeLanguage={chromeLanguage}
-        site={{ projectId, lang: readerLanguage, defaultLanguage, version: versionPrefix }}
+        site={{
+          projectId,
+          lang: readerLanguage,
+          defaultLanguage,
+          version: versionPrefix,
+          path: page.path,
+          origin: new URL(
+            canonicalSiteBase(projectId, { primaryDomain: data.project.primaryDomain, slug: data.project.slug, requestOrigin: customDomainOrigin() }),
+          ).origin,
+          languages: data.languages,
+        }}
       />
 
       <SiteChatPageAction title={page.title} path={page.path} lang={language} />
@@ -370,7 +402,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         >
           {prev ? (
             <a
-              href={siteHref(projectId, prev.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+              href={siteHref(projectId, prev.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
               rel="prev"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
@@ -387,7 +419,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
           {next ? (
             <a
-              href={siteHref(projectId, next.path, { lang: readerNavigationLanguage, version: versionPrefix })}
+              href={siteHref(projectId, next.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
               rel="next"
               className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >

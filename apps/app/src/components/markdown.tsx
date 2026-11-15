@@ -1,8 +1,9 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
+import type { PathLanguage } from '@nibleaf/shared/site-language';
 import type { LanguageFn } from 'highlight.js';
-import { type ComponentProps, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { type ComponentProps, createContext, Suspense, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
@@ -27,7 +28,8 @@ import { ScrollTable, TableCell, TableHeaderCell } from '@/components/site/scrol
 import { lazyHighlightLanguages, lazyHighlightLanguagesNamed } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, HydrationIsland } from '@/lib/hydration-modules';
 import { highlightLanguageModule, mathMarkdownModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
-import { siteHref, siteLanguageParam } from '@/lib/site-paths';
+import { authoredSiteHref } from '@/lib/site-authored-paths';
+import { isCustomDomainSite, siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
  *  root-relative doc links (`/guide`) to the site's base path so they don't
@@ -37,10 +39,14 @@ export interface SiteLinkContext {
   lang?: string;
   defaultLanguage?: string;
   version?: string;
+  path?: string;
+  origin?: string;
+  languages?: readonly PathLanguage[];
 }
 
 export interface MarkdownProps {
   content: string;
+  imageDimensions?: Record<string, { width: number; height: number }>;
   className?: string;
   site?: SiteLinkContext;
   /** Grammars beyond the core set, loaded for this content (see `Markdown`). */
@@ -72,13 +78,30 @@ export function resolveDocHref(href: string | undefined, site: SiteLinkContext |
   if (!href || !site) {
     return href;
   }
-  if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || /^([a-z][\w+.-]*:)?\/\//i.test(href)) {
-    return href;
+  if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('//')) return href;
+  let internal = href;
+  const authored = /^[a-z][\w+.-]*:/i.test(href);
+  if (authored) {
+    try {
+      const url = new URL(href);
+      if (url.origin !== site.origin && (typeof window === 'undefined' || url.origin !== window.location.origin)) return href;
+      const platform = !isCustomDomainSite(site.projectId);
+      const project = /^\/sites\/([^/]+)(?:\/|$)/.exec(url.pathname)?.[1];
+      if (platform && project !== site.projectId) return href;
+      const pathname = platform ? url.pathname.slice(`/sites/${site.projectId}`.length) || '/' : url.pathname;
+      internal = `${pathname}${url.search}${url.hash}`;
+    } catch {
+      return href;
+    }
   }
-  if (href.startsWith('/')) {
-    return siteHref(site.projectId, href, { lang: siteLanguageParam(site.lang, site.defaultLanguage), version: site.version });
-  }
-  return href;
+  const basePath = site.path ?? '';
+  const url = new URL(internal, `https://site.invalid/${basePath}`);
+  return (authored ? authoredSiteHref : siteHref)(site.projectId, `${url.pathname}${url.search}${url.hash}`, {
+    lang: siteLanguageParam(site.lang, site.defaultLanguage),
+    version: site.version,
+    defaultLanguage: site.defaultLanguage,
+    languages: site.languages,
+  });
 }
 
 // Base document typography (sizes, spacing, rhythm) is owned by typeset.css —
@@ -98,10 +121,55 @@ const htmlComponents: Components = {
   h3: ({ node: _node, ...props }) => <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
   h4: ({ node: _node, ...props }) => <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
   pre: Pre,
+  li: TaskListItem,
+  input: TaskCheckbox,
   // Authored classes (light/dark image pairs) add to the default frame, and an
   // image without alt text is marked decorative instead of losing the attribute.
   img: ({ node: _node, ...props }) => <img {...props} alt={props.alt ?? ''} className={cn('rounded-xl border border-border', props.className)} />,
 };
+
+/** Text of a hast node, without nested lists (a sub-task names its own box).
+ *  An image counts as its alt text, so an image-only task is named too. */
+function itemText(
+  node: { type: string; value?: string; tagName?: string; properties?: { alt?: unknown }; children?: unknown[] } | undefined,
+): string {
+  if (!node) return '';
+  if (node.type === 'text') return node.value ?? '';
+  if (node.tagName === 'img') return typeof node.properties?.alt === 'string' ? ` ${node.properties.alt} ` : '';
+  if (node.tagName === 'ul' || node.tagName === 'ol' || node.tagName === 'input') return '';
+  return ((node.children ?? []) as (typeof node)[]).map(itemText).join('');
+}
+
+/** The name for the checkbox of the nearest task item. Every list item sets it
+ *  (a plain item to nothing), so a sub-item never borrows its parent's name. */
+const TaskItemLabel = createContext<string | undefined>(undefined);
+
+/** GFM task items: the read-only checkbox is named by the item's text, so a
+ *  screen reader says "Sandbox shipment booked, checkbox, checked" rather than
+ *  an unnamed checkbox (P3-PUB-025; axe `label`). Other items pass through. */
+function TaskListItem({ node, children, ...props }: ComponentProps<'li'> & { node?: { children?: unknown[] } }) {
+  const isTask = props.className?.split(/\s+/).includes('task-list-item');
+  const label = isTask
+    ? itemText(node as Parameters<typeof itemText>[0])
+        .replace(/\s+/g, ' ')
+        .trim() || undefined
+    : undefined;
+  return (
+    <li {...props}>
+      <TaskItemLabel.Provider value={label}>{children}</TaskItemLabel.Provider>
+    </li>
+  );
+}
+
+/** A task item's checkbox, wherever it sits in the item: a tight list puts it
+ *  directly in the <li>, a loose one inside the item's first paragraph. A box
+ *  that already has a name of its own (an authored `title`, `aria-label` or
+ *  `aria-labelledby` in raw HTML) keeps it. */
+function TaskCheckbox({ node: _node, ...props }: ComponentProps<'input'> & { node?: unknown }) {
+  const label = useContext(TaskItemLabel);
+  const named = Boolean(props['aria-label'] || props['aria-labelledby'] || props.title);
+  return <input {...props} aria-label={named || props.type !== 'checkbox' ? props['aria-label'] : label} />;
+}
 
 /** Anchor renderer, built per site-context. Heading self-links (added by
  *  rehype-autolink-headings with the `heading-anchor` class) keep the heading's
@@ -244,14 +312,24 @@ function MarkdownContent(props: MarkdownProps) {
   );
 }
 
-function MarkdownBody({ content, className, site, highlightGrammars, rich, math }: MarkdownProps & { rich: boolean; math: boolean }) {
+function MarkdownBody({
+  content,
+  imageDimensions,
+  className,
+  site,
+  highlightGrammars,
+  rich,
+  math,
+}: MarkdownProps & { rich: boolean; math: boolean }) {
   if (rich) {
     // The router loads the rich chunk before hydrating markup it rendered, and
     // the reader's loaders before navigating. Until it loads, hydrating keeps
     // the server's markup and a client render shows the plain renderer, which
     // keeps the text readable; so does a chunk that never loads. Only the
     // server render suspends, waiting for the chunk.
-    const plain = <MarkdownRenderer content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
+    const plain = (
+      <MarkdownRenderer content={content} imageDimensions={imageDimensions} className={className} site={site} highlightGrammars={highlightGrammars} />
+    );
     return (
       <Suspense fallback={plain}>
         <HydrationIsland
@@ -266,6 +344,7 @@ function MarkdownBody({ content, className, site, highlightGrammars, rich, math 
             return (
               <Rich
                 content={content}
+                imageDimensions={imageDimensions}
                 className={className}
                 site={site}
                 highlightGrammars={highlightGrammars}
@@ -277,11 +356,14 @@ function MarkdownBody({ content, className, site, highlightGrammars, rich, math 
       </Suspense>
     );
   }
-  return <MarkdownRenderer content={content} className={className} site={site} highlightGrammars={highlightGrammars} />;
+  return (
+    <MarkdownRenderer content={content} imageDimensions={imageDimensions} className={className} site={site} highlightGrammars={highlightGrammars} />
+  );
 }
 
 export function MarkdownRenderer({
   content,
+  imageDimensions,
   className,
   site,
   highlightGrammars,
@@ -348,7 +430,7 @@ export function MarkdownRenderer({
           rehypeAuthoredComponentProps,
           // Before the sanitizer: it reads authored sizes and light/dark classes
           // to pick the image that loads at once; the rest load as the reader scrolls.
-          rehypeImageLoading,
+          [rehypeImageLoading, imageDimensions],
           [rehypeSanitize, sanitizeSchema],
           ...afterSanitizePlugins,
           rehypeMermaid,

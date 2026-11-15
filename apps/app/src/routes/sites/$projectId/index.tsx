@@ -6,7 +6,7 @@ import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { isCustomDomainSite } from '@/lib/site-paths';
+import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead, pageMarkdownHeaders, readerFallbackHead, siteLanguageFromMatches, unavailableSiteHeadFromMatches } from '@/lib/site-seo';
 
@@ -32,9 +32,13 @@ export const Route = createFileRoute('/sites/$projectId/')({
       // reference a useful home URL instead of returning a root 404.
       const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } }).catch(() => null);
       if (site?.openapi) {
-        const prefix = isCustomDomainSite(params.projectId) ? '' : `/sites/${params.projectId}`;
-        const query = deps.lang ? `?lang=${encodeURIComponent(deps.lang)}` : '';
-        throw redirect({ href: `${prefix}/${site.openapi.path}${query}`, statusCode: 302 });
+        throw redirect({
+          href: siteHref(params.projectId, site.openapi.path, {
+            lang: siteLanguageParam(deps.lang, site.languages.find((item) => item.isDefault)?.code),
+            languages: site.languages,
+          }),
+          statusCode: 302,
+        });
       }
       // Honor a configured redirect for the site root before the not-found
       // state. Mark the SSR response 404 so this soft-404 returns the right

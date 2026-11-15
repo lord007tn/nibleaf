@@ -98,6 +98,18 @@ async function renderReader(url: string, ready: string) {
 }
 
 describe('reader language and access', () => {
+  it('migrates old client URLs without losing hashes and keeps prefixes during navigation', async () => {
+    const container = await renderReader('/sites/docs/next/moved-page?lang=ar&tab=cli#install', '[data-site-not-found]');
+    expect(container.router.state.location.href).toBe('/sites/docs/ar/next/moved-page?tab=cli#install');
+    await act(async () => {
+      await container.router.navigate({ href: '/sites/docs/ar/next/another' });
+    });
+    expect(container.router.state.location.href).toBe('/sites/docs/ar/next/another');
+    expect(mocks.getSitePage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: { projectId: 'docs', path: 'next/another', language: 'ar', version: 'next' } }),
+    );
+  });
+
   it('switches language on a page with no known translation without leaving it or its version', async () => {
     const container = await renderReader('/sites/docs/next/moved-page?lang=ar', '[data-site-not-found]');
     await act(async () => container.querySelector<HTMLButtonElement>('[data-switch-language="en"]')?.click());

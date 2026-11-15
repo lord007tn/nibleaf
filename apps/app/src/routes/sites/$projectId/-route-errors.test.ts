@@ -47,7 +47,20 @@ describe('published reader route input', () => {
   });
 
   it('loads the site shell for a malformed percent path instead of throwing', async () => {
-    mocks.getSite.mockResolvedValueOnce(Response.json({ data: { project: { id: 'qa-site' } } }));
+    mocks.getSite.mockResolvedValueOnce(
+      Response.json({
+        data: {
+          project: { id: 'qa-site' },
+          languages: [
+            { code: 'en', isDefault: true },
+            { code: 'ar', isDefault: false },
+          ],
+          versions: [{ id: 'main', slug: 'main', isDefault: true }],
+          activeLanguage: 'ar',
+          activeVersion: 'main',
+        },
+      }),
+    );
 
     await expect(load('qa-site', '/sites/qa-site/%E0%A4/guide')).resolves.toMatchObject({ site: { project: { id: 'qa-site' } } });
     expect(mocks.getSite).toHaveBeenCalledExactlyOnceWith({ param: { id: 'qa-site' }, query: { lang: 'ar', version: '%E0%A4' } });

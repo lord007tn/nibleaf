@@ -3,7 +3,7 @@ import { PassThrough } from 'node:stream';
 import { siteT } from '@nibleaf/i18n/site';
 import { siteContentT } from '@nibleaf/i18n/site-content';
 import { act, type ReactNode } from 'react';
-import { hydrateRoot, type Root } from 'react-dom/client';
+import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToPipeableStream } from 'react-dom/server';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SitePage } from '@/hooks/api/types';
@@ -151,7 +151,7 @@ describe('language fallback notice', () => {
       await renderPage(data, { ...shell('fr'), languages: [...(shell('fr').languages ?? []), { code: 'fr', direction: 'LTR' }] })
     ).querySelector('[role="note"]');
     expect(note?.getAttribute('lang')).toBe('fr');
-    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/sites/docs/next/blog/add-new-reservation-2?lang=ar');
+    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/sites/docs/ar/next/blog/add-new-reservation-2');
   });
 
   it.each([
@@ -286,12 +286,56 @@ describe('everything around a fallback article follows the reader (#481)', () =>
     expect(desktop?.querySelector('ul')?.getAttribute('dir')).toBe('ltr');
   });
 
+  it('labels the page actions in Arabic, right to left, and copies the English page it shows', async () => {
+    const fetchMock = vi.fn(async () => new Response('# Add a new reservation', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(async () => undefined) } });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          <SiteReaderContext.Provider value={shell('ar')}>
+            <SitePageView projectId="docs" lang="ar" data={page()} />
+          </SiteReaderContext.Provider>,
+        ),
+      );
+      const actions = host.querySelector('[data-page-actions]');
+      expect(actions?.getAttribute('lang')).toBe('ar');
+      expect(actions?.getAttribute('dir')).toBe('rtl');
+      const copy = host.querySelector<HTMLButtonElement>('[data-page-actions] button');
+      expect(copy).not.toBeNull();
+      await act(async () => copy?.click());
+      // The Markdown twin of the English page shown, not ?lang=ar (which answers 404).
+      expect(fetchMock).toHaveBeenCalledWith('/sites/docs/blog/add-new-reservation-2.md', expect.anything());
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each([
+    ['a private site', 'private', null],
+    ['a noindex page', 'public', { seo: { noindex: true } }],
+  ] as const)('offers no page actions on %s, so nothing private is copied or sent to an AI', async (_case, visibility, pageConfig) => {
+    const base = page();
+    const data = page({
+      project: { ...base.project, config: { ...base.project.config, visibility } },
+      page: { ...base.page, config: pageConfig } as SitePage['page'],
+    });
+    const view = await renderPage(data, shell('en'));
+    expect(view.querySelector('h1')).not.toBeNull();
+    expect(view.querySelector('[data-page-actions]')).toBeNull();
+  });
+
   it('keeps the reader in Arabic on the next page they open', async () => {
     const view = await renderPage(fallback(), shell('ar'));
     const hrefs = [...view.querySelectorAll(`nav[aria-label="${ar('breadcrumb')}"] a, [data-theme-region="pager"] a`)].map((link) =>
       link.getAttribute('href'),
     );
-    expect(hrefs).toEqual(['/sites/docs/front-desk?lang=ar', '/sites/docs/find-a-guest?lang=ar', '/sites/docs/cancel-a-reservation?lang=ar']);
+    expect(hrefs).toEqual(['/sites/docs/ar/front-desk', '/sites/docs/ar/find-a-guest', '/sites/docs/ar/cancel-a-reservation']);
   });
 
   it('shows a section (group or category) in the breadcrumbs as text, not a link to its first page', async () => {
@@ -333,7 +377,7 @@ describe('everything around a fallback article follows the reader (#481)', () =>
     const data = page({ page: { ...page().page, content } });
     await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(content);
     const view = await renderPage(data, shell('ar'));
-    expect(view.querySelector('article a[href*="front-desk"]')?.getAttribute('href')).toBe('/sites/docs/front-desk?lang=ar');
+    expect(view.querySelector('article a[href*="front-desk"]')?.getAttribute('href')).toBe('/sites/docs/ar/front-desk');
     const sectionLink = view.querySelector('button.reader-section-link');
     expect(sectionLink?.getAttribute('lang')).toBe('ar');
     expect(sectionLink?.getAttribute('aria-label')).toBe(siteContentT('ar')('copySectionLink'));

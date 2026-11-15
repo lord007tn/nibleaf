@@ -76,6 +76,7 @@
     "lucide-react": "^1.70.0",
     "mdast-util-from-markdown": "^2.0.3",
     "mermaid": "^12.3.0",
+    "prosemirror-markdown": "1.13.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",

@@ -11,8 +11,10 @@ interface TranscriptSource {
   anchor?: string;
 }
 
+// Saved conversations lack the frozen snapshot's collision policy. The legacy
+// query lets the reader choose its current canonical prefix without guessing.
 export const transcriptSourceHref = (projectId: string, source: TranscriptSource, language: string, version?: string) =>
-  `${siteHref(projectId, source.path, { lang: language, version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
+  `${siteHref(projectId, source.path, { version })}?lang=${encodeURIComponent(language)}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
 
 /** Render only saved citations, never model-provided links or HTML. */
 export function TranscriptAnswer({

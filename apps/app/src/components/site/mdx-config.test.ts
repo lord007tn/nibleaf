@@ -274,8 +274,9 @@ describe('reader config derived from the component registry', () => {
     expect(star).toEqual([...(defaultStar ?? []), 'className', 'id']);
     expect(pre).toEqual([...(defaultPre ?? []), 'dataTitle', 'dataLang']);
     expect(code).toEqual([['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang']);
-    // How an image loads, limited to the values browsers define.
-    expect(img).toEqual([...(defaultImg ?? []), ['loading', 'eager', 'lazy'], ['decoding', 'sync', 'async', 'auto']]);
+    // Its intrinsic size, so the page reserves its space (PUB-013), and how it
+    // loads, limited to the values browsers define.
+    expect(img).toEqual([...(defaultImg ?? []), 'width', 'height', ['loading', 'eager', 'lazy'], ['decoding', 'sync', 'async', 'auto']]);
     for (const [tag, attributes] of Object.entries(MEDIA_ATTRIBUTES)) expect(rest[tag], tag).toEqual(attributes);
     for (const [tag, attributes] of Object.entries(defaultRest)) {
       if (!(tag in COMPONENT_ATTRIBUTES) && !(tag in MEDIA_ATTRIBUTES)) expect(rest[tag], tag).toEqual(attributes);

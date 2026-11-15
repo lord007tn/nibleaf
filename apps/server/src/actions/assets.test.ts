@@ -5,6 +5,9 @@ vi.mock('@nibleaf/storage/keys', () => ({ keys: () => ({ STORAGE_PROVIDER: mocks
 const mocks = vi.hoisted(() => ({
   provider: 's3',
   headObject: vi.fn(),
+  storedImageDimensions: vi.fn(),
+  imageDimensions: vi.fn(),
+  upsert: vi.fn(),
   deleteObject: vi.fn(),
   create: vi.fn(),
   findUnique: vi.fn(),
@@ -29,7 +32,7 @@ const pending = () => ({
 });
 vi.mock('@nibleaf/database', () => ({
   prisma: {
-    asset: { create: mocks.create, findUnique: mocks.findUnique },
+    asset: { create: mocks.create, findUnique: mocks.findUnique, upsert: mocks.upsert },
     pendingAssetUpload: {
       aggregate: mocks.pendingAggregate,
       create: mocks.pendingCreate,
@@ -46,6 +49,8 @@ vi.mock('@nibleaf/database', () => ({
 vi.mock('@nibleaf/storage', () => ({
   UPLOAD_PRESIGN_EXPIRES_IN_SECONDS: 600,
   headObject: mocks.headObject,
+  storedImageDimensions: mocks.storedImageDimensions,
+  imageDimensions: mocks.imageDimensions,
   deleteObject: mocks.deleteObject,
   presignPutUrl: mocks.presignPutUrl,
   putObject: vi.fn(),
@@ -53,7 +58,7 @@ vi.mock('@nibleaf/storage', () => ({
 }));
 vi.mock('./projects', () => ({ assertProjectInOrg: mocks.assertProjectInOrg }));
 
-import { confirmAsset, presignAsset } from './assets';
+import { confirmAsset, presignAsset, storeAsset } from './assets';
 import { transactionLock } from './transaction-lock.test-helper';
 
 const body = { key: 'projects/project/assets/file.png', contentType: 'image/png', size: 1024 };
@@ -63,6 +68,7 @@ describe('asset confirmation', () => {
     vi.resetAllMocks();
     mocks.provider = 's3';
     mocks.headObject.mockResolvedValue({ ContentLength: 1024, ContentType: 'image/png' });
+    mocks.storedImageDimensions.mockResolvedValue(null);
     mocks.findUnique.mockResolvedValue(null);
     mocks.deleteObject.mockResolvedValue(undefined);
     mocks.create.mockResolvedValue(confirmed);
@@ -100,6 +106,26 @@ describe('asset confirmation', () => {
   it('records validated object metadata', async () => {
     await confirmAsset('org', 'project', 'user', body);
     expect(mocks.create).toHaveBeenCalledWith({ data: expect.objectContaining({ size: 1024, contentType: 'image/png' }) });
+  });
+
+  it('records intrinsic sizes after validating a browser upload', async () => {
+    mocks.storedImageDimensions.mockResolvedValue({ width: 1313, height: 900 });
+    await confirmAsset('org', 'project', 'user', body);
+    expect(mocks.storedImageDimensions).toHaveBeenCalledWith(body.key);
+    expect(mocks.create).toHaveBeenCalledWith({ data: expect.objectContaining({ width: 1313, height: 900 }) });
+  });
+
+  it('captures server-stored bytes and clears stale dimensions if replacement bytes cannot be parsed', async () => {
+    mocks.imageDimensions.mockReturnValueOnce({ width: 950, height: 600 }).mockReturnValueOnce(null);
+    const input = { projectId: 'project', filename: 'fixture.png', contentType: 'image/png', bytes: new Uint8Array([1]), importId: 'source' };
+    await storeAsset(input);
+    expect(mocks.upsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ update: { contentType: 'image/png', size: 1, width: 950, height: 600 } }),
+    );
+    await expect(storeAsset(input)).resolves.toBeUndefined();
+    expect(mocks.upsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({ update: { contentType: 'image/png', size: 1, width: null, height: null } }),
+    );
   });
 
   it('does storage I/O once before an atomic database-only write batch', async () => {

@@ -64,6 +64,7 @@ export type ChatOptions = {
   lang?: string;
   version?: string;
   defaultLanguage?: string;
+  languages?: ReadonlyArray<{ code: string; pathPrefix?: string }>;
   direction: 'ltr' | 'rtl';
   config: ProjectConfig | null;
   /** How many days the server keeps question text for this site; null or

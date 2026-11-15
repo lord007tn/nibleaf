@@ -225,8 +225,8 @@ describe('Markdown renderer — Mintlify component parity', () => {
     expect(html).toContain('data-theme-component="related-content"');
     expect(html).toContain('Authentication');
     expect(html).toContain('Secure the API');
-    expect(html).toContain('href="/sites/reader-test/authentication?lang=en"');
-    expect(html).toContain('href="/sites/reader-test/errors?lang=en"');
+    expect(html).toContain('href="/sites/reader-test/en/authentication"');
+    expect(html).toContain('href="/sites/reader-test/en/errors"');
     expect(html).not.toMatch(/<a[^>]*>\s*<a/i);
   });
 
@@ -285,7 +285,7 @@ describe('Markdown renderer — Mintlify component parity', () => {
     const html = await render('<Callout type="tip">\n**Bold guidance** with [details](/guide).\n</Callout>', 'en');
     expect(html).toContain('data-theme-component="callout"');
     expect(html).toContain('<strong>Bold guidance</strong>');
-    expect(html).toContain('href="/sites/reader-test/guide?lang=en"');
+    expect(html).toContain('href="/sites/reader-test/en/guide"');
   });
 
   it('localizes code controls and default MDX labels for an Arabic reader', async () => {

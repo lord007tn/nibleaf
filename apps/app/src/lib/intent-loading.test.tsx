@@ -53,7 +53,8 @@ it('renders the header language menu as its trigger alone, and opens the menu a 
 
   await act(async () => serverTrigger?.click());
   await settle();
-  const arabic = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'العربية');
+  // The language menu is a radio menu: its items announce which language is current.
+  const arabic = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((item) => item.textContent === 'العربية');
   expect(arabic).toBeDefined();
   await act(async () => arabic?.click());
   expect(onChange).toHaveBeenCalledWith('ar');

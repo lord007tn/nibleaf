@@ -6,7 +6,6 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
 import {
-  accentTextAdjustments,
   MAX_THEME_TEMPLATE_BYTES,
   type NibleafThemeConfig,
   resolveTheme,
@@ -24,6 +23,7 @@ import type { ProjectConfig } from '@nibleaf/validators';
 import { Download, FileJson, LayoutTemplate, RotateCcw, Undo2, Upload } from 'lucide-react';
 import { type ChangeEvent, type CSSProperties, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { accentTextAdjustments } from '@/components/project-settings/accent-text-adjustments';
 import { DocumentationStudioPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { type Project, type ProjectThemeImportResult, useExportProjectTheme, useImportProjectTheme, useUpdateProjectConfig } from '@/hooks/api';
 import { projectThemeStyle, projectThemeVariables, siteAppearance } from '@/lib/site-theme';
@@ -311,7 +311,7 @@ export function ThemeSection({ project }: { project: Project }) {
   const resolved = resolveTheme(config);
   const authored = resolveTheme(config, { authoredAccent: true });
   const contrastIssues = themeContrastIssues(authored);
-  const accentAdjustments = accentTextAdjustments(config);
+  const accentAdjustments = accentTextAdjustments(authored, resolved);
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(saved);
 
   const importTheme = (template: unknown, apply: boolean) => {

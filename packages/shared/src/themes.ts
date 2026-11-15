@@ -547,28 +547,6 @@ export const resolveTheme = (config?: ThemeOwnedProjectConfig | null, options: {
   };
 };
 
-export interface AccentTextAdjustment {
-  mode: 'light' | 'dark';
-  from: string;
-  fromRatio: number;
-  to: string;
-  toRatio: number;
-}
-
-/** Where the published site draws the accent darker or lighter than authored,
- * so links and buttons pass AA: shown beside the theme's colours. */
-export const accentTextAdjustments = (config?: ThemeOwnedProjectConfig | null): AccentTextAdjustment[] => {
-  const authored = resolveTheme(config, { authoredAccent: true });
-  const applied = resolveTheme(config);
-  return (['light', 'dark'] as const).flatMap((mode) => {
-    const from = normalizeHex(authored.colors[mode].accent);
-    const to = applied.colors[mode].accent;
-    if (from === to) return [];
-    const canvas = applied.colors[mode].canvas;
-    return [{ mode, from, fromRatio: contrastRatio(from, canvas), to, toRatio: contrastRatio(to, canvas) }];
-  });
-};
-
 export interface ThemeContrastIssue {
   mode: 'light' | 'dark';
   pair: string;

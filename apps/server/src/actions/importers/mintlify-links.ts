@@ -16,7 +16,7 @@ const trimSlashes = (value: string): string => {
   return value.slice(0, end);
 };
 
-const normalizedSourcePath = (value: string): string =>
+export const normalizedSourcePath = (value: string): string =>
   posix
     .normalize(trimSlashes(value.replace(/^\/+/, '').replace(/\.(?:md|mdx)$/i, '')))
     .replace(/^\.\//, '')
@@ -183,6 +183,26 @@ export const rewriteMintlifyInternalLinks = (
     languageRoutes?: ReadonlyMap<string, ReadonlyMap<string, string>>;
   } = {},
 ): string => {
+  const maps = [routes, ...(options.languageRoutes?.values() ?? [])];
+  if (!maps.some((map) => map.size) && !options.onUnresolved) return content;
+  if (!content.includes('](') && !content.includes(']:') && !/href/i.test(content)) return content;
+  // Basenames also cover relative links and Nibleaf /pages/ aliases. Encoded
+  // text and directory-only relative destinations are conservatively parsed.
+  const candidate =
+    content.includes('%') ||
+    content.includes('&') ||
+    /(?:\]\(|\]:|href\s*=\s*["'])\s*\.{1,2}(?=[/#?\s)"']|$)/i.test(content) ||
+    maps.some((map) =>
+      [...map].some(([source, target]) =>
+        [source, splitSuffix(target).path].some((path) => {
+          const basename = posix.basename(path);
+          return basename === '.' ? true : Boolean(basename && content.includes(basename));
+        }),
+      ),
+    );
+  // Validation and fidelity reporting must still read real destinations even
+  // when the rewrite-only fast path cannot match an imported source.
+  if (!candidate && !options.onUnresolved) return content;
   const protectedCode = protectImportCode(content);
   const appPageTarget = createAppPageLookup();
   const rewrite = (original: string): string => {

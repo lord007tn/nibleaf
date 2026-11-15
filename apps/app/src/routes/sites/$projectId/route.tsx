@@ -4,7 +4,9 @@ import { isRtl as isRtlLocale, resolveLocale } from '@nibleaf/i18n/locales';
 import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
-import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
+import { blockDirection } from '@nibleaf/shared/script-direction';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
+import { createFileRoute, Outlet, redirect, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
@@ -32,7 +34,7 @@ import { publishedSiteLogo } from '@/lib/site-branding';
 import { siteEmoji } from '@/lib/site-emoji';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
+import { isCustomDomainSite, safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
 import { readerFallbackHead, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme, siteAppearance } from '@/lib/site-theme';
@@ -46,11 +48,12 @@ export const Route = createFileRoute('/sites/$projectId')({
   // The active language lives in the URL so it survives reloads and is shareable.
   validateSearch: (search) => z.object({ lang: z.string().min(1).optional().catch(undefined), ask: askSearchSchema }).parse(search),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
-  // Version changes explicitly invalidate this shell; ordinary page clicks reuse it.
-  shouldReload: false,
+  // The language now lives in the pathname. Refresh the shell on path changes
+  // so client navigation resolves the same language/version as SSR.
+  shouldReload: true,
   // Fetch the site shell on the server so the chrome (nav, branding) is in the
   // initial HTML; the result also feeds site-level SEO tags via head(). The
-  // first path segment is passed as a version candidate so versioned URLs
+  // first segment after a language prefix selects the version, so versioned URLs
   // (`/sites/:id/v2/...`) SSR with that version's nav — the server ignores
   // candidates that aren't real version slugs.
   loader: async ({ params, deps, location }) => {
@@ -58,7 +61,29 @@ export const Route = createFileRoute('/sites/$projectId')({
       const rest = siteRoutePath(location.pathname).replace(/\/+$/, '');
       const segment = rest.split('/')[0];
       const candidate = segment && rest !== 'changelog' ? safeDecode(segment) : undefined;
-      const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
+      let site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
+      const { parseSiteLanguagePath: parsePath } = await import('@nibleaf/shared/site-language-prefix');
+      const parsed = parsePath(rest, site.languages);
+      const target =
+        deps.lang !== undefined || parsed.language?.isDefault
+          ? (await import('@/lib/site-language-path')).resolveLanguagePathRedirect({
+              splat: rest,
+              languages: site.languages,
+              projectId: params.projectId,
+              isCustomDomain: isCustomDomainSite(params.projectId),
+              search: location.searchStr,
+              hash: location.hash,
+            })
+          : null;
+      if (target) throw redirect({ href: target, statusCode: 308, replace: true });
+      const language = parsed.language?.code ?? deps.lang;
+      // A language homepage (`/ar`, `/~lang/ar`) has no path after the prefix, so
+      // no version segment: send none rather than an empty slug the API rejects.
+      const version = parsed.path.split('/')[0] || undefined;
+      const requestedVersion = site.versions.find((item) => item.slug === version) ?? site.versions.find((item) => item.isDefault);
+      if (parsed.language && (site.activeLanguage !== language || site.activeVersion !== requestedVersion?.slug)) {
+        site = await getSiteFn({ data: { projectId: params.projectId, language, version } });
+      }
       return { site, siteOrigin: customDomainOrigin() };
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
@@ -118,7 +143,7 @@ function LinkedinIcon({ className }: { className?: string }) {
 
 function SiteChrome() {
   const { projectId } = Route.useParams();
-  const { lang, ask } = Route.useSearch();
+  const { ask } = Route.useSearch();
   const loaderData = Route.useLoaderData();
   const site = loaderData.site;
   const unavailable = 'unavailable' in loaderData ? loaderData.unavailable : undefined;
@@ -147,7 +172,9 @@ function SiteChrome() {
   const searchShortcut = useSearchShortcutLabel();
   const committedLocation = useRouterState({ select: (s) => s.resolvedLocation ?? s.location });
   const pathname = committedLocation.pathname;
-  const currentPath = safeDecode(siteRoutePath(pathname)).replace(/\/+$/, '');
+  const parsedPath = parseSiteLanguagePath(siteRoutePath(pathname), site?.languages ?? []);
+  const lang = parsedPath.language?.code ?? (committedLocation.search as { lang?: string }).lang;
+  const currentPath = safeDecode(parsedPath.path);
   const isChangelog = currentPath === 'changelog';
   const currentVersion = site?.versions.find((item) => item.slug === site.activeVersion) ?? site?.versions.find((item) => item.isDefault);
   const pathVersion = site?.versions.find((item) => item.slug === currentPath.split('/')[0]);
@@ -186,7 +213,7 @@ function SiteChrome() {
   }, [languages, lang, site?.activeLanguage]);
   const isRtl = activeLanguage?.direction === 'RTL';
   const defaultLanguage = languages.find((language) => language.isDefault)?.code;
-  const committedLanguage = (committedLocation.search as { lang?: string }).lang;
+  const committedLanguage = lang;
   const analyticsLanguage = languages.find((language) => language.code === committedLanguage)?.code ?? defaultLanguage;
   const navigationLanguage = siteLanguageParam(activeLanguage?.code, defaultLanguage);
   // Chrome strings follow the active language so an Arabic site reads Arabic.
@@ -296,7 +323,7 @@ function SiteChrome() {
   const showSearch = config?.navbar?.showSearch !== false;
   // Outlet content (the site 404) links home and opens search through this.
   const readerLanguage = activeLanguage?.code;
-  const readerHomeHref = siteHref(projectId, '', { lang: navigationLanguage, version: activeVersionPrefix });
+  const readerHomeHref = siteHref(projectId, '', { lang: navigationLanguage, version: activeVersionPrefix, languages, defaultLanguage });
   // React Compiler memoizes this value; a manual useMemo here blocks compilation.
   const readerContext: SiteReaderContextValue = {
     lang: readerLanguage,
@@ -361,6 +388,7 @@ function SiteChrome() {
   const themeCss = projectThemeCss(config);
   // The active language may localize the site name (brand + footer copyright).
   const siteName = site?.languageConfig?.name || site?.project.name;
+  const footerCopyright = footer?.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim();
   const brandInner = (
     <>
       {logo ? (
@@ -387,7 +415,7 @@ function SiteChrome() {
     const targetLanguage = siteLanguageParam(code, defaultLanguage);
     const alternate = pageAlternates.find((item) => item.code === code && item.path);
     if (!isChangelog && alternate?.path) {
-      navigate({ href: siteHref(projectId, alternate.path, { lang: targetLanguage, version: activeVersionPrefix }) });
+      navigate({ href: siteHref(projectId, alternate.path, { lang: targetLanguage, version: activeVersionPrefix, languages, defaultLanguage }) });
       return;
     }
     // No known translation path (the changelog, the API reference, a 404, an
@@ -395,16 +423,16 @@ function SiteChrome() {
     // the same URL, version prefix included, in the other language. A
     // search-only navigate from this layout route would resolve to the site
     // root instead.
-    navigate({ href: siteHref(projectId, currentPath, { lang: targetLanguage }) });
+    navigate({ href: siteHref(projectId, currentPath, { lang: targetLanguage, languages, defaultLanguage }) });
   };
   const changeVersion = (slug: string) => {
     const defaultVersion = versions.find((item) => item.isDefault);
     const targetPrefix = defaultVersion?.slug === slug ? '' : slug;
     const targetPath = [targetPrefix, isChangelog ? '' : contentPath].filter(Boolean).join('/');
-    navigate({ href: siteHref(projectId, targetPath, { lang: navigationLanguage }) });
+    navigate({ href: siteHref(projectId, targetPath, { lang: navigationLanguage, languages, defaultLanguage }) });
   };
   const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
-  const sitePath = (path = '') => siteHref(projectId, path, { lang: navigationLanguage, version: activeVersionPrefix });
+  const sitePath = (path = '') => siteHref(projectId, path, { lang: navigationLanguage, version: activeVersionPrefix, languages, defaultLanguage });
   const searchSuggestions = leadingPages(site.nav ?? [], 5).map((node) => ({
     title: node.title,
     path: node.path,
@@ -449,7 +477,9 @@ function SiteChrome() {
   // keep the active language/version) so `/guides`-style links work on both
   // path-based (/sites/:id) and custom-domain serving.
   const resolveNavHref = (href: string): string =>
-    href.startsWith('/') && !href.startsWith('//') ? siteHref(projectId, href, { lang: navigationLanguage, version: activeVersionPrefix }) : href;
+    href.startsWith('/') && !href.startsWith('//')
+      ? siteHref(projectId, href, { lang: navigationLanguage, version: activeVersionPrefix, languages, defaultLanguage })
+      : href;
   const isNavActive = (href: string): boolean => {
     if (!href.startsWith('/') || href.startsWith('//')) {
       return false;
@@ -462,7 +492,14 @@ function SiteChrome() {
   // the mobile drawer render the same list.
   const headerLinks = [
     ...(config?.navbar?.changelog === true
-      ? [{ label: t('changelog'), href: siteHref(projectId, 'changelog', { lang: navigationLanguage }), active: isChangelog, external: false }]
+      ? [
+          {
+            label: t('changelog'),
+            href: siteHref(projectId, 'changelog', { lang: navigationLanguage, languages, defaultLanguage }),
+            active: isChangelog,
+            external: false,
+          },
+        ]
       : []),
     ...navLinks.map((link) => ({
       label: link.label,
@@ -506,6 +543,7 @@ function SiteChrome() {
               questionRetentionDays: site?.capabilities?.questionRetentionDays,
               lang: activeLanguage?.code,
               defaultLanguage,
+              languages,
               direction: isRtl ? 'rtl' : 'ltr',
               version: activeVersionPrefix,
               config,
@@ -613,7 +651,7 @@ function SiteChrome() {
                           rel={link.external ? 'noreferrer' : undefined}
                           aria-current={link.active ? 'page' : undefined}
                           className={cn(
-                            'inline-flex items-center gap-1 transition-colors',
+                            'inline-flex min-h-6 items-center gap-1 transition-colors',
                             link.active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground',
                           )}
                         >
@@ -687,24 +725,28 @@ function SiteChrome() {
             navigationLabels={{ showAll: t('navShowAll'), showLess: t('navShowLess') }}
             navigation={
               <>
+                {/* Its own named landmark: the sidebar box around it is a plain
+                    div, so these links would otherwise sit outside every landmark. */}
                 {navAnchors.length > 0 ? (
-                  <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
-                    {navAnchors.map((anchor) => (
-                      <li key={`${anchor.label}-${anchor.href}`}>
-                        <a
-                          href={resolveNavHref(anchor.href)}
-                          target={anchor.external ? '_blank' : undefined}
-                          rel={anchor.external ? 'noreferrer' : undefined}
-                          className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
-                        >
-                          <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
-                            {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
-                          </span>
-                          <span className="truncate">{anchor.label}</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+                  <nav aria-label={t('quickLinks')}>
+                    <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
+                      {navAnchors.map((anchor) => (
+                        <li key={`${anchor.label}-${anchor.href}`}>
+                          <a
+                            href={resolveNavHref(anchor.href)}
+                            target={anchor.external ? '_blank' : undefined}
+                            rel={anchor.external ? 'noreferrer' : undefined}
+                            className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
+                          >
+                            <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
+                              {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
+                            </span>
+                            <span className="truncate">{anchor.label}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
                 ) : null}
                 <SiteNav
                   nodes={site.nav ?? []}
@@ -733,7 +775,8 @@ function SiteChrome() {
                       className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row"
                       data-theme-region="footer"
                     >
-                      <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim()}</span>
+                      {/* Isolated and laid out by its own script, like the rest of the chrome (PUB-015). */}
+                      <span dir={blockDirection(footerCopyright)}>{footerCopyright}</span>
                       <div className="flex items-center gap-1">
                         {footer.github ? (
                           <a
