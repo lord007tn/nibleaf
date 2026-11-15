@@ -99,7 +99,12 @@ function NavLink({
           className={cn(
             // Touch screens get 44px rows; mouse and trackpad keep the dense list.
             'relative flex min-w-0 flex-1 items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors pointer-coarse:min-h-11 pointer-coarse:items-center',
-            active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+            // On hover the title turns to the foreground, and so does a tag: its
+            // small accent text on its own tint over the hover wash fell below AA
+            // (#731), while the foreground reads on any of these surfaces.
+            active
+              ? 'bg-primary/10 font-medium text-primary'
+              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground hover:[&_[data-nav-tag]]:text-foreground',
             // Entries in a railed list recolor their segment of the rail when active.
             rail && active && 'before:absolute before:-start-[13px] before:inset-y-1 before:w-[1.5px] before:rounded-full before:bg-primary',
           )}
