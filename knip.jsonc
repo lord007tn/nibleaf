@@ -22,6 +22,7 @@
         ".github/assets/banner-clear-saved-text/capture.mjs",
         ".github/assets/settings-enter-remaining/capture.mjs",
         ".github/assets/site-branding-draft/capture.mjs",
+        ".github/assets/site-typography-draft/capture.mjs",
         "tests/integration/editor-p2/browser.mjs",
         "tests/integration/import-fidelity/browser.mjs",
         "tests/integration/import-fidelity/local-only-node.mjs",
