@@ -81,7 +81,7 @@ Inline: **Beta**, [Start](/start), API (Application programming interface), , 10
 
 Expression {props.version} and a stray } brace. <Unknown onclick="run()">Unknown stays text</Unknown>.
 
-<script>alert('never')</script>
+&lt;script>alert('never')&lt;/script>
 
 > An authored quote & a [safe link](/a) and an [unsafe one](javascript:alert(1)).
 

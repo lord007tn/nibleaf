@@ -5,7 +5,7 @@ import { lazy, Suspense } from 'react';
 import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
 import { SiteNotFound } from '@/components/site/site-not-found';
 import { SitePageView } from '@/components/site/site-page-view';
-import { useSiteReader } from '@/components/site/site-reader-context';
+import { SiteReaderPending, useSiteReader } from '@/components/site/site-reader-context';
 import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
@@ -13,16 +13,6 @@ import type { SitePage } from '@/hooks/api/types';
 import { isPublicReaderSite } from '@/lib/reader-site-access';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
-import { redirectIfConfigured } from '@/lib/site-redirects';
-import {
-  pageHead,
-  pageMarkdownHeaders,
-  readerFallbackHead,
-  siteChangelogHead,
-  siteLanguageFromMatches,
-  sitePageUrl,
-  unavailableSiteHeadFromMatches,
-} from '@/lib/site-seo';
 
 const ChangelogView = lazy(() => import('@/components/site/site-changelog').then((module) => ({ default: module.SiteChangelogView })));
 
@@ -38,7 +28,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   // Opening another page keeps the reader chrome and shows an article-shaped
   // placeholder (after the router's short pending delay) instead of a
   // full-screen loader.
-  pendingComponent: SiteArticleSkeleton,
+  pendingComponent: SiteReaderPending,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // On a public site, a page shown in the last 30 s (the page query's stale time)
   // is still fresh: Back and Forward reuse it instead of running the loader
@@ -104,6 +94,8 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       // Page didn't resolve — honor a configured redirect (throws a 308) before
       // falling back to the not-found state. Mark the SSR response 404 so this
       // soft-404 returns the right status (the head also carries robots noindex).
+      // Imported here, not at the top: only a missing page reads the redirect rules.
+      const { redirectIfConfigured } = await import('@/lib/site-redirects');
       await redirectIfConfigured(
         params.projectId,
         path,
@@ -158,8 +150,14 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   },
   // Lets the server entry add the Markdown `Link` header from this already
   // loaded page instead of rendering the page a second time to find out.
-  headers: ({ loaderData }) => pageMarkdownHeaders(loaderData?.kind === 'page' ? loaderData.page : null, loaderData?.lang),
-  head: ({ loaderData, params, match, matches }) => {
+  headers: async ({ loaderData }) =>
+    (await import('@/lib/site-seo')).pageMarkdownHeaders(loaderData?.kind === 'page' ? loaderData.page : null, loaderData?.lang),
+  // The SEO helpers load with the reader, not in every page's entry chunk (see
+  // the parent route's head()).
+  head: async ({ loaderData, params, match, matches }) => {
+    const { pageHead, readerFallbackHead, siteChangelogHead, siteLanguageFromMatches, sitePageUrl, unavailableSiteHeadFromMatches } = await import(
+      '@/lib/site-seo'
+    );
     // A page that failed to load (not a 404) still gets the site's name as its title.
     if (match.status === 'error') return readerFallbackHead(matches, siteLanguageFromMatches(matches));
     const unavailable = unavailableSiteHeadFromMatches(matches);
