@@ -197,6 +197,8 @@ let queryClient: QueryClient;
 let showSite: (site: Site) => void;
 const downloads: Blob[] = [];
 
+/** Whether the section is keyed by site, as the editor's Configuration panel renders it (a site switch remounts it). */
+let keyedBySite = false;
 function Canvas() {
   const [site, setSite] = useState<Site>('site-1');
   showSite = setSite;
@@ -204,7 +206,8 @@ function Canvas() {
 }
 function Section({ site }: { site: Site }) {
   const { data } = useQuery(projectQueryOptions(site));
-  return data ? <ThemeSection project={data as Project} /> : null;
+  if (!data) return null;
+  return keyedBySite ? <ThemeSection key={site} project={data as Project} /> : <ThemeSection project={data as Project} />;
 }
 
 /** The site's own theme: Signal with an authored accent and metadata, beside Styling's colour and radius. */
@@ -232,6 +235,7 @@ async function open(config: Config = { ...SIBLINGS, styling: { ...STYLING }, the
 }
 
 beforeEach(() => {
+  keyedBySite = false;
   statuses.length = 0;
   reads.cancelAfterAnswer = undefined;
   server = {
@@ -1044,6 +1048,29 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     await refreshFromWarning();
     expect(activePreset()).toBe('manuscript');
     expect(region()).toBeNull();
+  });
+
+  it('a save still running when the editor remounts the site (A → B → A) keeps its turn: Apply waits for it', async () => {
+    keyedBySite = true;
+    await open();
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await preset('manuscript');
+    await startSave();
+    await act(async () => showSite('site-2'));
+    await settle();
+    await act(async () => showSite('site-1'));
+    await settle();
+    await previewTemplate('harbor');
+    await click(buttonNamed('settings.theme.applyImport'));
+    await settle();
+    expect(applies()).toHaveLength(0);
+    await patch.open();
+    await finished();
+    await click(buttonNamed('settings.theme.applyImport'));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    expect(applies()).toHaveLength(1);
+    expect(storedTheme()).toMatchObject({ preset: 'harbor' });
   });
 
   it('Undo made against a server value never comes back when the server returns to it (A → B → A)', async () => {

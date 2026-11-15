@@ -43,6 +43,14 @@ import { useMounted } from './use-mounted';
 const NOTHING_LEFT: ReadonlySet<string> = new Set();
 
 /**
+ * The theme write in flight for each site (a save or an import), kept outside
+ * the form: the editor remounts the section per site, and a save for site A
+ * still running when A's form mounts again (A → B → A) must keep its turn.
+ * A write leaves only when it settles, and only its own entry.
+ */
+const writes = new Map<string, Operation>();
+
+/**
  * Site configuration → Themes, in the editor's Configuration tab. One
  * explicit-save draft holds the authored theme and the default appearance;
  * the page's save bar saves or discards it. The preview language, preview mode
@@ -130,24 +138,22 @@ function ThemeForm({ project }: { project: Project }) {
   }
   const edits = useRef(0);
 
-  // Save and Apply both write the theme: one at a time, owned synchronously so
-  // neither can start between the other's check and its request. Each releases
-  // only its own operation, and one still running for another site never
-  // blocks this one.
+  // Save and Apply both write the theme: one at a time per site, owned
+  // synchronously so neither can start between the other's check and its
+  // request (see `writes`). Each releases only its own operation, and one still
+  // running for another site never blocks this one.
   const identityNow = useRef(identityKey);
   identityNow.current = identityKey;
-  const operation = useRef<Operation | null>(null);
-  const busy = useCallback(() => operation.current !== null && operation.current.identity === identityNow.current, []);
-  const acquire = useCallback(
-    (kind: Operation['kind']) => {
-      if (busy()) return null;
-      operation.current = { kind, identity: identityNow.current };
-      return operation.current;
-    },
-    [busy],
-  );
+  const busy = useCallback(() => writes.has(identityNow.current), []);
+  const acquire = useCallback((kind: Operation['kind']) => {
+    const identity = identityNow.current;
+    if (writes.has(identity)) return null;
+    const owned = { kind, identity };
+    writes.set(identity, owned);
+    return owned;
+  }, []);
   const release = useCallback((owned: Operation) => {
-    if (operation.current === owned) operation.current = null;
+    if (writes.get(owned.identity) === owned) writes.delete(owned.identity);
   }, []);
 
   const [previewMode, setPreviewMode] = useState<ColorMode>(() => (source.appearance === 'dark' ? 'dark' : 'light'));
