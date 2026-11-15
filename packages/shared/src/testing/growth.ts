@@ -27,13 +27,55 @@
  * `vary(input, rep)` gives each call a fresh but equivalent input (append a
  * trailing comment, say), for work behind a cache or memo; `rep` is unique
  * across the whole measurement. Keep it O(1): it runs inside the timed loop.
+ *
+ * When one call of the small input already takes `minMs`, the repeat count stays
+ * at 4 and each large sample is a single call, scaled up 4x: a garbage collection
+ * or scheduler pause inside that one call counts four times over, and one bad
+ * large sample of three is all the median can absorb. Rows whose single calls
+ * are that long (a page of thousands of nested components) can ask for
+ * `largeRuns` calls of the large input per sample (the small input then runs
+ * 4 * largeRuns times) and an odd number of `samples` for the medians. Neither
+ * changes what is compared, only how much a single pause weighs.
  */
 export interface GrowthOptions<T> {
   minMs?: number;
   /** Wall time the whole measurement may take before it gives up (default 2 s). */
   budgetMs?: number;
   vary?: (input: T, rep: number) => T;
+  /** Paired samples behind each median, odd (default 3). */
+  samples?: number;
+  /** The fewest calls of the large input in each sample (default 1). */
+  largeRuns?: number;
 }
+
+/** Checks `samples` and `largeRuns`, returning the starting repeat count. */
+const sampling = (samples: number, largeRuns: number): number => {
+  if (!Number.isInteger(samples) || samples < 3 || samples % 2 === 0)
+    throw new Error(`growth samples must be an odd integer of at least 3, not ${samples}`);
+  if (!Number.isInteger(largeRuns) || largeRuns < 1) throw new Error(`growth largeRuns must be a positive integer, not ${largeRuns}`);
+  // At least 4, so the large input can run a quarter as often (see timeLarge).
+  return 4 * largeRuns;
+};
+/** The middle of an odd number of samples. */
+const median = (values: number[]): number => [...values].sort((a, b) => a - b)[(values.length - 1) >> 1] ?? 0;
+
+/** The size of a growth input, for the log line: a string's or array's length, a
+ *  Map's or Set's size, or what `{ size }`/`{ length }` reports. */
+const sizeOf = (input: unknown): string => {
+  if (typeof input === 'string' || Array.isArray(input)) return String(input.length);
+  if (input instanceof Map || input instanceof Set) return String(input.size);
+  const size = (input as { size?: unknown; length?: unknown } | null)?.size ?? (input as { length?: unknown } | null)?.length;
+  return typeof size === 'number' ? String(size) : '?';
+};
+
+/** Every measurement logs its sizes, medians, ratio and runs per sample through
+ *  console.info, so CI history shows how close each row runs to its bound (the
+ *  limit ratio for linearGrowthLimit is 8 + 20 / small). */
+const logGrowth = (small: unknown, large: unknown, [smallMs, largeMs]: [number, number], repeat: number, largeRuns: number) => {
+  console.info(
+    `growth n=${sizeOf(small)} / 4n=${sizeOf(large)}: ${smallMs.toFixed(2)} ms / ${largeMs.toFixed(2)} ms (${(largeMs / smallMs).toFixed(2)}x; ${repeat} / ${largeRuns} runs per sample)`,
+  );
+};
 
 /**
  * Growth tests compare timings, so they run on their own, one file at a time
@@ -53,11 +95,10 @@ export const growthMs = <T>(
   run: (input: T) => unknown,
   small: T,
   large: T,
-  { minMs = 4, budgetMs = 2000, vary }: GrowthOptions<T> = {},
+  { minMs = 4, budgetMs = 2000, vary, samples = 3, largeRuns = 1 }: GrowthOptions<T> = {},
 ): [number, number] => {
+  let repeat = sampling(samples, largeRuns);
   const deadline = performance.now() + budgetMs;
-  // At least 4, so the large input can run a quarter as often (see timeLarge).
-  let repeat = 4;
   let rep = 0;
   // Every result is kept and read below, so the engine can never drop a timed call as unused.
   let sink: unknown;
@@ -75,7 +116,6 @@ export const growthMs = <T>(
     const count = Math.max(1, Math.round(repeat / 4));
     return (time(large, count) * repeat) / count;
   };
-  const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
   // Warm both inputs first, so the repeat count is sized on warm (JIT-compiled) runs.
   timeSmall();
   timeLarge();
@@ -85,7 +125,7 @@ export const growthMs = <T>(
   for (;;) {
     timeLarge();
     const times: [number[], number[]] = [[], []];
-    for (let round = 0; round < 3; round += 1) {
+    for (let round = 0; round < samples; round += 1) {
       if (round % 2 === 0) {
         times[0].push(timeSmall());
         times[1].push(timeLarge());
@@ -96,7 +136,10 @@ export const growthMs = <T>(
     }
     if (sink === UNREACHABLE) throw new Error('unreachable');
     const result: [number, number] = [median(times[0]), median(times[1])];
-    if (result[0] >= minMs) return result;
+    if (result[0] >= minMs) {
+      logGrowth(small, large, result, repeat, Math.max(1, Math.round(repeat / 4)));
+      return result;
+    }
     if (performance.now() >= deadline || repeat >= MAX_REPEAT) {
       throw new Error(
         `growthMs calibration failed: the small input stayed under ${minMs} ms (${result[0].toFixed(2)} ms at ${repeat} repeats) within ${budgetMs} ms`,
@@ -112,10 +155,10 @@ export const growthMsAsync = async <T>(
   run: (input: T) => Promise<unknown>,
   small: T,
   large: T,
-  { minMs = 4, budgetMs = 2000, vary }: GrowthOptions<T> = {},
+  { minMs = 4, budgetMs = 2000, vary, samples = 3, largeRuns = 1 }: GrowthOptions<T> = {},
 ): Promise<[number, number]> => {
+  let repeat = sampling(samples, largeRuns);
   const deadline = performance.now() + budgetMs;
-  let repeat = 4;
   let rep = 0;
   let sink: unknown;
   const time = async (input: T, count: number) => {
@@ -132,7 +175,6 @@ export const growthMsAsync = async <T>(
     const count = Math.max(1, Math.round(repeat / 4));
     return ((await time(large, count)) * repeat) / count;
   };
-  const median = (values: number[]) => [...values].sort((a, b) => a - b)[1] ?? 0;
   await timeSmall();
   await timeLarge();
   for (let first = await timeSmall(); first < minMs && repeat < MAX_REPEAT && performance.now() < deadline; first = await timeSmall()) {
@@ -141,7 +183,7 @@ export const growthMsAsync = async <T>(
   for (;;) {
     await timeLarge();
     const times: [number[], number[]] = [[], []];
-    for (let round = 0; round < 3; round += 1) {
+    for (let round = 0; round < samples; round += 1) {
       if (round % 2 === 0) {
         times[0].push(await timeSmall());
         times[1].push(await timeLarge());
@@ -152,7 +194,10 @@ export const growthMsAsync = async <T>(
     }
     if (sink === UNREACHABLE) throw new Error('unreachable');
     const result: [number, number] = [median(times[0]), median(times[1])];
-    if (result[0] >= minMs) return result;
+    if (result[0] >= minMs) {
+      logGrowth(small, large, result, repeat, Math.max(1, Math.round(repeat / 4)));
+      return result;
+    }
     if (performance.now() >= deadline || repeat >= MAX_REPEAT) {
       throw new Error(
         `growthMsAsync calibration failed: the small input stayed under ${minMs} ms (${result[0].toFixed(2)} ms at ${repeat} repeats) within ${budgetMs} ms`,

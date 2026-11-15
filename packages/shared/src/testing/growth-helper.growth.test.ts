@@ -34,6 +34,17 @@ describe.runIf(growthTestsEnabled)('growth bounds', () => {
     const [linearSmall, linearLarge] = growthMs(linear, 'a'.repeat(50_000), 'a'.repeat(200_000), { minMs: 30 });
     expect(linearLarge).toBeGreaterThan(constantGrowthLimit(linearSmall));
   });
+
+  // The setting the editor's longest rows use (one large call of tens of ms):
+  // spreading a pause over more calls and samples must not let quadratic work by.
+  it('pass linear work and fail quadratic work with four large calls per sample and medians of five', () => {
+    const options = { samples: 5, largeRuns: 4, budgetMs: 20_000 };
+    const [linearSmall, linearLarge] = growthMs(linear, 'a'.repeat(50_000), 'a'.repeat(200_000), options);
+    expect(linearLarge).toBeLessThanOrEqual(linearGrowthLimit(linearSmall));
+    // About 4 ms a call on the small input: the regime where the default leaves one large call per sample.
+    const [quadraticSmall, quadraticLarge] = growthMs(quadratic, 'a'.repeat(3000), 'a'.repeat(12_000), options);
+    expect(quadraticLarge).toBeGreaterThan(linearGrowthLimit(quadraticSmall));
+  });
 });
 
 /** Busy work for about `ms` milliseconds. */
@@ -101,6 +112,25 @@ describe.runIf(growthTestsEnabled)('growth calibration', () => {
     calls.small = 0;
     calls.large = 0;
     check(await growthMsAsync(async (input: string) => work(input), 'a', 'aaaa'));
+  });
+
+  it('runs the large input largeRuns times in every sample, and takes the median of samples', async () => {
+    const calls = { small: 0, large: 0 };
+    // Each small call alone fills minMs, which would leave the large side one call per sample.
+    const work = (input: string) => {
+      calls[input.length === 1 ? 'small' : 'large'] += 1;
+      return spin(5 * input.length);
+    };
+    growthMs(work, 'a', 'aaaa', { samples: 5, largeRuns: 4 });
+    // Two warmups and five samples, four large calls each, and sixteen small calls a sample.
+    expect(calls.large).toBe(4 * 7);
+    expect(calls.small).toBe(16 * 7);
+    calls.small = 0;
+    calls.large = 0;
+    await growthMsAsync(async (input: string) => work(input), 'a', 'aaaa', { samples: 5, largeRuns: 4 });
+    expect(calls.large).toBe(4 * 7);
+    expect(() => growthMs(work, 'a', 'aaaa', { samples: 4 })).toThrow(/odd integer/);
+    expect(() => growthMs(work, 'a', 'aaaa', { largeRuns: 0 })).toThrow(/positive integer/);
   });
 
   it('gives every call a fresh input when asked, with a counter unique across the measurement', () => {
