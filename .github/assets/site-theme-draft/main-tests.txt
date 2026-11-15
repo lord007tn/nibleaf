@@ -1,5 +1,5 @@
 The lifecycle suite (apps/app/src/features/site-theme/components/theme-settings.test.tsx) run against main's
-theme-section.tsx at 27b4003d1, swapped in for the compatibility entry it imports. Most failures are
+theme-section.tsx at 27b4003d1 (unchanged at e904f936e, the merge base after merging main), swapped in for the compatibility entry it imports. Most failures are
 structure main never had (the save bar, Undo boundaries, marked colours, the import confirmation). Two real
 regressions are shown in detail at the end.
 
