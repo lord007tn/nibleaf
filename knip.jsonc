@@ -16,6 +16,7 @@
         ".github/assets/site-openapi-draft/capture.mjs",
         ".github/assets/site-analytics-settings/capture.mjs",
         ".github/assets/settings-native-enter-submit/capture.mjs",
+        ".github/assets/site-banner-draft/capture.mjs",
         "tests/integration/editor-p2/browser.mjs",
         "tests/integration/import-fidelity/browser.mjs",
         "tests/integration/import-fidelity/local-only-node.mjs",
