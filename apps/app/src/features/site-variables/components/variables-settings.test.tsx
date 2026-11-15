@@ -36,6 +36,8 @@ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
 const pairs = (...list: Array<[string, string]>): VariablePair[] => list.map(([key, value]) => ({ key, value }));
 const SAVED = pairs(['product', 'Acme'], ['version', '2.0'], ['support', 'help@acme.test']);
+/** What the server stores for SAVED with the first value edited (and an unnamed row left out). */
+const ECHOED = pairs(['product', 'Acme Cloud'], ['version', '2.0'], ['support', 'help@acme.test']);
 const projectWith = (variables: VariablePair[] | undefined, id = 'site-1', extra: Record<string, unknown> = {}) =>
   ({ id, config: { theme: { preset: 'nib' }, ...extra, ...(variables ? { variables } : {}) } }) as unknown as Project;
 /** The server stores what it was sent and answers with the whole project. */
@@ -295,8 +297,7 @@ describe('VariablesSettings — saving', () => {
   });
 
   it('a save that left out a blank-key row settles on the stored rows, even when its refetch lands first', async () => {
-    // The refetch can't match the draft (it lacks the unnamed row), so the whole
-    // list may read as changed elsewhere until the save confirms; then it settles.
+    // The save sends only named rows (toSent), so its refetch is its own echo, not someone else's change.
     const pending = deferred<Project>();
     mocks.updateProject.mockReturnValueOnce(pending.promise);
     await render(projectWith(SAVED));
@@ -304,12 +305,68 @@ describe('VariablesSettings — saving', () => {
     await click(addButton());
     await type(valueInput(3), 'no name');
     await save();
-    const stored = pairs(['product', 'Acme Cloud'], ['version', '2.0'], ['support', 'help@acme.test']);
-    await render(projectWith(stored));
-    await act(async () => pending.resolve(projectWith(stored)));
-    expect(shown()).toEqual(stored.map(({ key, value }) => [key, value]));
+    await render(projectWith(ECHOED));
+    expect(conflictShown()).toBe(false);
+    await act(async () => pending.resolve(projectWith(ECHOED)));
+    expect(shown()).toEqual(ECHOED.map(({ key, value }) => [key, value]));
     expect(conflictShown()).toBe(false);
     expect(saveRegion()).toBeNull();
+  });
+
+  /**
+   * A save with an unnamed row in the draft, its own refetch rendered before it
+   * resolves, and an edit made in between: the echo is never "changed
+   * elsewhere", and the newer edit stays, unsaved.
+   */
+  const saveEchoedFirstThenEdited = async () => {
+    const pending = deferred<Project>();
+    mocks.updateProject.mockReturnValueOnce(pending.promise);
+    await render(projectWith(SAVED));
+    await type(valueInput(0), 'Acme Cloud');
+    await click(addButton());
+    await type(valueInput(3), 'no name');
+    await save();
+    expect(mocks.updateProject).toHaveBeenCalledWith({ config: { variables: ECHOED } });
+    await render(projectWith(ECHOED));
+    expect(conflictShown()).toBe(false);
+    await type(valueInput(1), '3.0');
+    return pending;
+  };
+  const EDITED_DURING_SAVE = [
+    ['product', 'Acme Cloud'],
+    ['version', '3.0'],
+    ['support', 'help@acme.test'],
+    ['', 'no name'],
+  ];
+
+  it('its own echo, then an edit during the save, then success: no conflict, and the edit stays unsaved', async () => {
+    const pending = await saveEchoedFirstThenEdited();
+    await act(async () => pending.resolve(projectWith(ECHOED)));
+    expect(conflictShown()).toBe(false);
+    expect(document.body.textContent).not.toContain('forms.useTheirs');
+    expect(shown()).toEqual(EDITED_DURING_SAVE);
+    expect(saveRegion()).not.toBeNull();
+    // A later refetch of the same list is still not a conflict.
+    await render(projectWith([...ECHOED]));
+    expect(conflictShown()).toBe(false);
+
+    storeWhatWasSent();
+    await save();
+    expect(mocks.updateProject).toHaveBeenLastCalledWith({
+      config: { variables: pairs(['product', 'Acme Cloud'], ['version', '3.0'], ['support', 'help@acme.test']) },
+    });
+  });
+
+  it('its own echo, then an edit during the save, then failure: no conflict, and the edit stays unsaved', async () => {
+    const pending = await saveEchoedFirstThenEdited();
+    await act(async () => pending.reject(new Error('offline')));
+    expect(mocks.toast.error).toHaveBeenCalledTimes(1);
+    expect(conflictShown()).toBe(false);
+    expect(document.body.textContent).not.toContain('forms.useTheirs');
+    expect(shown()).toEqual(EDITED_DURING_SAVE);
+    expect(saveRegion()).not.toBeNull();
+    await render(projectWith([...ECHOED]));
+    expect(conflictShown()).toBe(false);
   });
 
   it('edits made during the save survive it and stay unsaved; a second save waits its turn', async () => {

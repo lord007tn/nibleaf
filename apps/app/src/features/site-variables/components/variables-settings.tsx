@@ -16,7 +16,7 @@ import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useSaveVariables } from '../api/hooks';
-import { addRow, removeRow, restoreRow, type VariablePair, type VariablesValues, variablesValues } from '../model/variables';
+import { addRow, removeRow, restoreRow, type VariablePair, type VariablesValues, variablesPatch, variablesValues } from '../model/variables';
 
 /**
  * Site configuration → Variables, in the editor's Configuration tab and
@@ -32,6 +32,9 @@ export function VariablesSettings({ project }: { project: Project }) {
   );
 }
 
+/** What a save sends for the draft: the rows `variablesPatch` keeps. */
+const sentVariables = (values: VariablesValues): VariablesValues => ({ variables: variablesPatch(values) });
+
 /** Where focus goes once the rows have re-rendered. */
 type FocusTarget = { row: number; control: 'key' | 'remove' } | 'add';
 
@@ -43,6 +46,8 @@ function VariablesForm({ project }: { project: Project }) {
   const { form, ...draft } = useServerDraftForm<VariablesValues>({
     identity: [project.id, 'variables'],
     source,
+    // The save sends rows with a name only, so its own refetch echoes that list, not the draft.
+    toSent: sentVariables,
     onSubmit: async (value, save) => {
       try {
         save.succeeded(await saveVariables(value));
