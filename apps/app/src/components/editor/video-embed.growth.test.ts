@@ -12,6 +12,10 @@ const blocks = (n: number) =>
   `${I}\n\n<Frame caption="Tour">\n  ${I}\n</Frame>\n\n<video controls src="https://cdn.example.com/a.mp4"></video>\n\n`.repeat(n);
 /** `n` embeds the shared scanner rejects (a `<` in a value), each kept opaque. */
 const rejected = (n: number) => `${I.replace('Tour', 'a < b')}\n\n`.repeat(n);
+/** `n` Frames whose caption ends in a backslash, read with no escapes (#579). */
+const backslashFrames = (n: number) => `<Frame caption="Old\\" data-lightbox>\n  ${I}\n</Frame>\n\n`.repeat(n);
+/** `n` unclosed tags and values in a row: each scan must not read the rest of the page again. */
+const unclosed = (tag: string, key: string) => (n: number) => `<iframe <${tag} ${key}=" <span { `.repeat(n);
 
 // Timing bounds, run on their own (pnpm test:growth; see @nibleaf/shared/testing/growth).
 describe.runIf(growthTestsEnabled)('Video block recognition growth', () => {
@@ -28,6 +32,20 @@ describe.runIf(growthTestsEnabled)('Video block recognition growth', () => {
 
   it('keeps embeds the scanner rejects opaque in one pass', () => {
     const [small, large] = growthMs(parse, rejected(1000), rejected(4000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  it('reads Frames whose caption ends in a backslash in linear time', () => {
+    const [small, large] = growthMs(parse, backslashFrames(300), backslashFrames(1200), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  it.each([
+    ['Card', 'title'],
+    ['Frame', 'caption'],
+  ])('scans unclosed %s openers in linear time', (tag, key) => {
+    const page = unclosed(tag, key);
+    const [small, large] = growthMs(parse, page(1000), page(4000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 });

@@ -1,0 +1,54 @@
+# variables-settings.test.tsx run against main's component
+# (origin/main afa096e7a: apps/app/src/components/project-settings/variables-section.tsx).
+# Same file and assertions; only the import, and a mutate() shim for main's saveConfigSection, differ.
+#
+# Most failures are behaviour main never had (the page's save bar, Discard, the conflict notice, focus
+# after Add/Remove, the empty state). The stale-Undo test saves with Enter, which main also handles,
+# so its failure is a real regression: after a save and its refetch, a late click on main's Undo toast
+# puts the deleted row back into the saved draft.
+
+   ❯ VariablesSettings — rows (5)
+     × shows the stored pairs in order, names left to right and values in their own direction, with no save bar
+     × with nothing stored, explains variables and offers Add in an empty state
+     × Add, typing, Remove and Undo change only the draft; nothing is sent until Save
+     × removing a middle row keeps the neighbours' edits and order, and Undo puts it back in place
+     × removing the only row shows the empty state and moves focus to Add
+   ❯ VariablesSettings — saving (7)
+     × sends the whole list: blank-key rows left out, everything else exactly as typed
+     × Discard puts the saved rows back and retires a pending Undo
+     × a failed save keeps the draft and its Undo, says so once, and can be retried
+     × a completed save retires the Undo: after the refetch, a late click restores nothing
+     × a save that left out a blank-key row settles on the stored rows, even when its refetch lands first
+     × edits made during the save survive it and stay unsaved; a second save waits its turn
+   ❯ VariablesSettings — server changes (5)
+     × a different list while dirty keeps the draft whole and asks: Use theirs, or Keep mine
+     × a removed row is never restored into rows the server replaced
+     × another site starts clean; the first site's Undo and save never reach it
+   ❯ VariablesSettings — Enter and Ctrl+S (4)
+     × Enter saves through the hidden default button, once, and the bar says Saved
+     × sends nothing on Enter while clean, nor for modified or composing Enter
+     × Enter during a save starts nothing more
+     × Ctrl+S saves and retires a pending Undo like Save
+      Tests  18 failed | 3 passed (21)
+
+# The stale-Undo regression in detail:
+ FAIL  variables-settings.test.tsx (against main) > VariablesSettings — saving > a completed save retires the Undo: after the refetch, a late click restores nothing
+AssertionError: expected [ [ 'product', 'Acme' ], …(2) ] to deeply equal [ [ 'version', '2.0' ], …(1) ]
+
+- Expected
++ Received
+
+@@ -1,7 +1,11 @@
+  [
+    [
++     "product",
++     "Acme",
++   ],
++   [
+      "version",
+      "2.0",
+    ],
+    [
+      "support",
+
+ ❯ variables-settings.test.tsx (against main)
