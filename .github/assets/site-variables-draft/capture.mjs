@@ -148,7 +148,10 @@ createRoot(document.getElementById('root')!).render(
   const state = async (page, locale) => ({
     dir: await page.evaluate(() => document.documentElement.dir),
     rows: await Promise.all(
-      (await keyFields(page, locale).all()).map(async (key, index) => [await key.inputValue(), await valueFields(page, locale).nth(index).inputValue()]),
+      (await keyFields(page, locale).all()).map(async (key, index) => [
+        await key.inputValue(),
+        await valueFields(page, locale).nth(index).inputValue(),
+      ]),
     ),
     keyDir: await keyFields(page, locale).evaluateAll((inputs) => [...new Set(inputs.map((input) => input.dir))]),
     valueDir: await valueFields(page, locale).evaluateAll((inputs) => [...new Set(inputs.map((input) => input.dir))]),
@@ -170,7 +173,14 @@ createRoot(document.getElementById('root')!).render(
       .locator('[data-slot="save-region"]')
       .isVisible()
       .catch(() => false),
-    status: (await page.locator('[data-slot="save-region"] [role="status"]').allInnerTexts().catch(() => [])).join(' ').trim(),
+    status: (
+      await page
+        .locator('[data-slot="save-region"] [role="status"]')
+        .allInnerTexts()
+        .catch(() => [])
+    )
+      .join(' ')
+      .trim(),
     overflow: await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
   });
 
@@ -257,10 +267,15 @@ createRoot(document.getElementById('root')!).render(
     await pause(400);
     await note('Enter on Remove: the row is gone, focus on the next row’s Remove, Undo offered');
 
-    // Sonner's hotkey moves focus to the toasts; Tab reaches Undo.
+    // Sonner's hotkey moves focus to the toasts; Tab (past the toast itself) reaches Undo.
     await page.keyboard.press('Alt+KeyT');
-    await page.keyboard.press('Tab');
-    await note('Alt+T, Tab: focus on the toast’s Undo');
+    let tabs = 0;
+    while (tabs < 4 && (await page.evaluate(() => document.activeElement?.textContent?.trim())) !== catalogs[locale].settings_theme_undo) {
+      await page.keyboard.press('Tab');
+      tabs += 1;
+    }
+    await note(`Alt+T, Tab ×${tabs}: focus on the toast’s Undo`);
+    assert.equal(steps.at(-1).focused, catalogs[locale].settings_theme_undo);
     await page.keyboard.press('Enter');
     await pause(400);
     await note('Enter on Undo: the row is back in place, the new row kept');
