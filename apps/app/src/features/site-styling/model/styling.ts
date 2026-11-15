@@ -14,7 +14,7 @@
  * never part of this form.
  */
 
-export const RADII = ['sharp', 'rounded', 'pill'] as const;
+const RADII = ['sharp', 'rounded', 'pill'] as const;
 export type Radius = (typeof RADII)[number];
 
 /** `config.styling` as the API stores it. */
@@ -33,7 +33,7 @@ export type StylingValues = { primaryColor: string; radius: Radius | '' };
 
 /** What the controls show for an unset color and radius (as the form always has). */
 export const SHOWN_DEFAULT_COLOR = '#5546e8';
-export const SHOWN_DEFAULT_RADIUS: Radius = 'rounded';
+const SHOWN_DEFAULT_RADIUS: Radius = 'rounded';
 
 export const PRESETS = ['#5546e8', '#0ea5e9', '#16a34a', '#22c55e', '#eab308', '#ea580c', '#ef4444', '#db2777', '#a855f7', '#0f172a'] as const;
 
