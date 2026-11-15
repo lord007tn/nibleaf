@@ -658,7 +658,13 @@ function EditorPage() {
     const conflicted = gate.conflictedPageId === current?.id;
     if (!current || !gate.canEditContent || !shouldAutosave({ synced: currentSynced, draft, conflicted }, current)) return null;
     const refused = tooLargeDraftRef.current;
-    if (refused && refused.id === current.id && refused.revision === currentSynced?.updatedAt && refused.title === draft.title && refused.content === draft.content) {
+    if (
+      refused &&
+      refused.id === current.id &&
+      refused.revision === currentSynced?.updatedAt &&
+      refused.title === draft.title &&
+      refused.content === draft.content
+    ) {
       return null;
     }
     const next: PageDraft = { id: current.id, ...draft, expectedUpdatedAt: currentSynced?.updatedAt };

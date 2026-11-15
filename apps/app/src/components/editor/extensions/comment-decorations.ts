@@ -21,7 +21,7 @@ export interface CommentDecorationOptions {
 }
 
 /** The default `idleMs`. */
-export const COMMENT_REANCHOR_IDLE_MS = 300;
+const COMMENT_REANCHOR_IDLE_MS = 300;
 
 const commentKey = new PluginKey<CommentDecorationState>('nibleaf-comment-decorations');
 
@@ -79,7 +79,7 @@ export function findQuoteRange(doc: PMNode, quote: string): { from: number; to: 
 
 /** The highlight decorations for `comments` in `doc`, found from scratch. The
  *  document's text is built once for all of them. */
-export function commentDecorations(doc: PMNode, comments: CommentMarker[], activeId: string | null): DecorationSet {
+function commentDecorations(doc: PMNode, comments: CommentMarker[], activeId: string | null): DecorationSet {
   const open = comments.filter((comment) => !comment.resolved && comment.quote.trim());
   if (open.length === 0) {
     return DecorationSet.empty;
@@ -154,7 +154,8 @@ export const CommentDecorations = Extension.create<CommentDecorationOptions>({
     const current = () => {
       const comments = options.getComments();
       const activeId = options.getActiveId();
-      if (!read || read.comments !== comments || read.activeId !== activeId) read = { comments, activeId, signature: signatureOf(comments, activeId) };
+      if (!read || read.comments !== comments || read.activeId !== activeId)
+        read = { comments, activeId, signature: signatureOf(comments, activeId) };
       return read;
     };
     const find = (doc: PMNode): CommentDecorationState => {

@@ -162,10 +162,10 @@ describe('createSaveThrottle: a lazily read draft (P2-ED-005)', () => {
     return { saves: result.saves, reads };
   }
   const schedules: Array<[string, number[]]> = [
-    ['one character a second for 12 s (idle, minimum interval)', Array(12).fill(1000)],
-    ['a burst of 60 characters 50 ms apart', Array(60).fill(50)],
-    ['typing 200 ms apart for 25 s (maximum wait)', Array(125).fill(200)],
-    ['typing 500 ms apart for 25 s (no pause long enough)', Array(50).fill(500)],
+    ['one character a second for 12 s (idle, minimum interval)', new Array(12).fill(1000)],
+    ['a burst of 60 characters 50 ms apart', new Array(60).fill(50)],
+    ['typing 200 ms apart for 25 s (maximum wait)', new Array(125).fill(200)],
+    ['typing 500 ms apart for 25 s (no pause long enough)', new Array(50).fill(500)],
     ['bursts and pauses', [100, 100, 900, 50, 50, 50, 3000, 200, 200, 200, 200, 4000, 10, 10, 700, 699, 701]],
   ];
   it.each(schedules)('%s: the same saves, and one read per save', (_name, gaps) => {

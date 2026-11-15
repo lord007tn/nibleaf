@@ -17,7 +17,7 @@ import { Fragment, type Node as PMNode } from '@tiptap/pm/model';
  *   and no word spans two of them.
  */
 
-export interface TextCounts {
+interface TextCounts {
   words: number;
   characters: number;
 }
@@ -44,7 +44,7 @@ function countBlock(block: PMNode): TextCounts {
 }
 
 /** The words and characters CharacterCount reports for `doc`, from cached block counts. */
-export function countText(doc: PMNode): TextCounts {
+function countText(doc: PMNode): TextCounts {
   let counts = documentCounts.get(doc);
   if (!counts) {
     let words = 0;
@@ -71,8 +71,8 @@ export const CachedCharacterCount = CharacterCount.extend({
   addOptions() {
     return { ...(this.parent?.() as CharacterCountOptions), textCounter: countCharacters, wordCounter: countWords };
   },
-  onBeforeCreate() {
-    this.parent?.();
+  onBeforeCreate(event) {
+    this.parent?.(event);
     const storage = this.storage as { words: (options?: CountOptions) => number; characters: (options?: CountOptions) => number };
     const ownWords = storage.words;
     const ownCharacters = storage.characters;

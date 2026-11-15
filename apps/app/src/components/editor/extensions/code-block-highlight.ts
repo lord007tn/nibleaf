@@ -44,7 +44,7 @@ function parseNodes(nodes: LowlightNode[], className: string[] = []): Array<{ te
 const highlightNodes = (result: LowlightTree): LowlightNode[] => result.value || result.children || [];
 
 /** The highlight decorations of one code block at `pos`, as CodeBlockLowlight makes them. */
-export function codeBlockDecorations(block: PMNode, pos: number, lowlight: LowlightLike, defaultLanguage: string | null | undefined): Decoration[] {
+function codeBlockDecorations(block: PMNode, pos: number, lowlight: LowlightLike, defaultLanguage: string | null | undefined): Decoration[] {
   const decorations: Decoration[] = [];
   let from = pos + 1;
   const language = block.attrs.language || defaultLanguage;
@@ -66,7 +66,7 @@ interface HighlightOptions {
 }
 
 /** Every code block's highlights: what CodeBlockLowlight computes for a document. */
-export function documentHighlights(doc: PMNode, { name, lowlight, defaultLanguage }: HighlightOptions): DecorationSet {
+function documentHighlights(doc: PMNode, { name, lowlight, defaultLanguage }: HighlightOptions): DecorationSet {
   const decorations: Decoration[] = [];
   doc.descendants((node, pos) => {
     if (node.type.name === name) decorations.push(...codeBlockDecorations(node, pos, lowlight, defaultLanguage));
@@ -96,7 +96,7 @@ function changedRanges(tr: Transaction): Array<{ from: number; to: number }> {
 }
 
 /** `previous` brought up to date with `tr`: the touched code blocks highlighted again, the rest mapped. */
-export function updateHighlights(previous: DecorationSet, tr: Transaction, options: HighlightOptions): DecorationSet {
+function updateHighlights(previous: DecorationSet, tr: Transaction, options: HighlightOptions): DecorationSet {
   if (!tr.docChanged) return previous;
   const { doc } = tr;
   // Every textblock an edit touched: code blocks are highlighted again, and any
@@ -109,7 +109,7 @@ export function updateHighlights(previous: DecorationSet, tr: Transaction, optio
       return false;
     });
   }
-  let next = previous.map(tr.mapping, doc);
+  const next = previous.map(tr.mapping, doc);
   if (touched.size === 0) return next;
   const stale: Decoration[] = [];
   const fresh: Decoration[] = [];

@@ -65,8 +65,8 @@ import { type EditorLinks, useEditorLinks } from './editor-links';
 import { seedPageContent } from './editor-sections';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
 import { BlockImage, LegacyImage } from './extensions/block-image';
-import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CachedCharacterCount } from './extensions/cached-character-count';
+import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CleanPaste } from './extensions/clean-paste';
 import { codeBlockHighlightPlugin, type LowlightLike } from './extensions/code-block-highlight';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
@@ -704,7 +704,7 @@ export interface EditorDraftHandle {
 }
 
 /** How long typing pauses before a deferred edit is serialized for the page. */
-export const DEFERRED_EMIT_IDLE_MS = 300;
+const DEFERRED_EMIT_IDLE_MS = 300;
 
 interface TiptapEditorProps {
   /** Markdown source — the single source of truth. */

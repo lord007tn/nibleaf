@@ -4,17 +4,24 @@
  * must not change. Each check compares what the editor shows with what the
  * previous code computed from scratch, over seeded documents and seeded edits:
  * - word and character counts: CharacterCount's own whole-document count;
- * - code highlighting: CodeBlockLowlight's own plugin, computed for the document;
+ * - code highlighting: CodeBlockLowlight's own plugin, computed for the document,
+ *   and, while the writer types with the caret in a code block, that plugin as it
+ *   updates itself keystroke by keystroke;
  * - comment highlights: the previous search, one `findQuoteRange` per comment.
- * These read only the editor's public surfaces, so they pass on the code before
- * the change too (guards). The one check that does not is named so: the code
- * block highlighting plugin is installed once, not twice.
+ * These read only the editor's public surfaces, so most pass on the code before
+ * the change too (guards). Two kinds do not, and are named so:
+ * - the code block highlighting plugin is installed once, not twice;
+ * - an edit away from the caret (a programmatic insert, an attribute step, some
+ *   seeded edits): CodeBlockLowlight re-highlights only when the caret is in a
+ *   code block, so before the change such an edit left a block's highlights stale
+ *   until the next edit with the caret in it. The new plugin re-highlights every
+ *   block an edit touches, so it always equals the from-scratch highlighting.
  */
 import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor } from '@tiptap/core';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { type Plugin, TextSelection } from '@tiptap/pm/state';
+import { EditorState, type Plugin, TextSelection, type Transaction } from '@tiptap/pm/state';
 import type { DecorationSet, EditorView } from '@tiptap/pm/view';
 import { common, createLowlight } from 'lowlight';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,11 +34,11 @@ import { buildEditorExtensions } from './tiptap-editor';
 function random(seed: number) {
   let state = seed >>> 0;
   const next = () => {
-    state = (state + 0x6d2b79f5) >>> 0;
+    state = (state + 0x6d_2b_79_f5) >>> 0;
     let t = state;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
   const int = (max: number) => Math.floor(next() * max);
   const pick = <T>(items: readonly T[]): T => items[int(items.length)] as T;
@@ -40,7 +47,15 @@ function random(seed: number) {
 
 const WORDS = ['alpha', 'beta', 'gamma', 'delta', 'regular', 'hard-wrapped', 'كلمة', 'عربية', 'naïve', 'x', '—', '2026', 'emoji🙂'];
 const LANGUAGES = ['ts', 'js', 'json', 'bash', 'python', 'css', 'not-a-language', ''];
-const CODE = ['const a = 1;', 'function f(x) { return x * 2 }', '{"key": [1, 2, null]}', 'echo "$HOME" | grep -v x', 'def g():\n    return None', '.a > b { color: red }', '<div class="x">y</div>'];
+const CODE = [
+  'const a = 1;',
+  'function f(x) { return x * 2 }',
+  '{"key": [1, 2, null]}',
+  'echo "$HOME" | grep -v x',
+  'def g():\n    return None',
+  '.a > b { color: red }',
+  '<div class="x">y</div>',
+];
 
 /** A seeded Markdown page with the blocks the editor knows. */
 function generatedPage(seed: number): string {
@@ -232,7 +247,38 @@ describe('code highlighting equals CodeBlockLowlight’s', () => {
     expect(highlightPlugins(load('```ts\nconst a = 1;\n```'))).toHaveLength(1);
   });
 
-  it.each(PAGES)('%s, and after 40 seeded edits', (_name, markdown) => {
+  it.each(PAGES)('%s, keystrokes with the caret in each code block: equal to CodeBlockLowlight’s plugin as it updates itself', (_name, markdown) => {
+    const editor = load(markdown);
+    // CodeBlockLowlight's plugin, fed the editor's transactions, as the code before the change ran it.
+    let mirror = EditorState.create({ doc: editor.state.doc, selection: editor.state.selection, plugins: reference ? [reference] : [] });
+    const follow = ({ transaction, appendedTransactions }: { transaction: Transaction; appendedTransactions: Transaction[] }) => {
+      for (const tr of [transaction, ...appendedTransactions]) mirror = mirror.apply(tr);
+    };
+    editor.on('transaction', follow);
+    const blocks: number[] = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'codeBlock') blocks.push(pos);
+    });
+    for (const [index] of blocks.entries()) {
+      for (const text of ['x', ' ', '(', '"', 'y', '\n']) {
+        // Find the block again: earlier keystrokes moved it.
+        let at = -1;
+        let seen = 0;
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name === 'codeBlock' && seen++ === index) at = pos + node.nodeSize - 1;
+        });
+        editor.commands.setTextSelection(at);
+        editor.view.dispatch(editor.state.tr.insertText(text));
+        const want = normalize(reference?.getState(mirror) as DecorationSet);
+        for (const plugin of highlightPlugins(editor)) expect(normalize(plugin.getState(editor.state) as DecorationSet)).toEqual(want);
+        expect(want).toEqual(expected(editor));
+        count('highlight (caret in block)');
+      }
+    }
+    editor.off('transaction', follow);
+  });
+
+  it.each(PAGES)('%s, and after 40 seeded edits (some away from the caret: stale before the change)', (_name, markdown) => {
     const editor = load(markdown);
     check(editor);
     const r = random(markdown.length + 7);
@@ -251,12 +297,25 @@ describe('code highlighting equals CodeBlockLowlight’s', () => {
     });
     return at;
   };
-  const page = ['Intro paragraph.', '```ts\nconst a = 1;\nlet b = "two";\n```', 'Between.', '```json\n{"a": [1, 2]}\n```', '```\necho plain\n```', 'Outro.'].join('\n\n');
+  const page = [
+    'Intro paragraph.',
+    '```ts\nconst a = 1;\nlet b = "two";\n```',
+    'Between.',
+    '```json\n{"a": [1, 2]}\n```',
+    '```\necho plain\n```',
+    'Outro.',
+  ].join('\n\n');
 
   it.each<[string, (editor: Editor) => void]>([
-    ['typing in a code block', (editor) => editor.view.dispatch(editor.state.tr.insertText(' + 1', firstCodeBlock(editor) + 12))],
+    [
+      'typing in a code block, away from the caret (stale before the change)',
+      (editor) => editor.view.dispatch(editor.state.tr.insertText(' + 1', firstCodeBlock(editor) + 12)),
+    ],
     ['typing in a paragraph', (editor) => editor.view.dispatch(editor.state.tr.insertText('more ', 1))],
-    ['a new line in a code block', (editor) => editor.view.dispatch(editor.state.tr.insertText('\nconst c = [];', firstCodeBlock(editor) + 13))],
+    [
+      'a new line in a code block, away from the caret (stale before the change)',
+      (editor) => editor.view.dispatch(editor.state.tr.insertText('\nconst c = [];', firstCodeBlock(editor) + 13)),
+    ],
     [
       'changing the language',
       (editor) => {
@@ -265,7 +324,7 @@ describe('code highlighting equals CodeBlockLowlight’s', () => {
       },
     ],
     [
-      'setting the language with an attribute step',
+      'setting the language with an attribute step (stale before the change)',
       (editor) => editor.view.dispatch(editor.state.tr.setNodeAttribute(firstCodeBlock(editor), 'language', 'bash')),
     ],
     [
@@ -326,14 +385,18 @@ describe('comment highlights equal the previous search, once typing pauses', () 
           {
             from: range.from,
             to: range.to,
-            attrs: { class: comment.id === activeId ? 'pl-comment-highlight pl-comment-active' : 'pl-comment-highlight', 'data-comment-id': comment.id },
+            attrs: {
+              class: comment.id === activeId ? 'pl-comment-highlight pl-comment-active' : 'pl-comment-highlight',
+              'data-comment-id': comment.id,
+            },
           },
         ];
       })
       .sort((a, b) => a.from - b.from || a.to - b.to);
   const shown = (editor: Editor) => {
     const plugin = editor.state.plugins.find((item) => (item as unknown as { key: string }).key.startsWith('nibleaf-comment-decorations$'));
-    const set = (plugin?.props.decorations as (this: Plugin, state: typeof editor.state) => DecorationSet).call(plugin as Plugin, editor.state);
+    if (!plugin) throw new Error('No comment highlight plugin');
+    const set = (plugin.props.decorations as (this: Plugin, state: typeof editor.state) => DecorationSet).call(plugin, editor.state);
     return set
       .find()
       .map((decoration) => ({ from: decoration.from, to: decoration.to, attrs: (decoration as unknown as { type: { attrs: unknown } }).type.attrs }))

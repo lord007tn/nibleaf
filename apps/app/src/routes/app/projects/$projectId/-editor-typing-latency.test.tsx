@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => ({
   history: null as null | { onRestored: (page: Record<string, unknown>) => void },
   comments: [] as Array<{ id: string; resolved: boolean; anchor: { quote: string } }>,
   tree: null as unknown,
+  publish: null as null | { beforePublish: () => Promise<boolean> },
   /** The route's unsupported-tag scans: how many, and the characters scanned. */
   scan: { calls: 0, chars: 0 },
 }));
@@ -108,7 +109,12 @@ vi.mock('@/hooks/api/query-options', () => ({
 vi.mock('@/hooks/api/route-prefetch', () => ({ prefetchScopedPages: vi.fn() }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-1' } }, isPending: false }) }));
-vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
+vi.mock('@/layouts/project', () => ({
+  PublishControl: (props: { beforePublish: () => Promise<boolean> }) => {
+    mocks.publish = props;
+    return null;
+  },
+}));
 vi.mock('@/components/editor/use-media-query', () => ({ useMediaQuery: () => true }));
 vi.mock('@/components/editor/use-delete-page', () => ({ useDeletePageFlow: () => vi.fn() }));
 vi.mock('@/components/editor/page-trash-button', () => ({ PageTrashButton: () => null }));
@@ -216,7 +222,12 @@ const pageOf = (id: string, content: string) => ({
 });
 
 const tree = () => (
-  <Profiler id="editor-route" onRender={() => (work.commits += 1)}>
+  <Profiler
+    id="editor-route"
+    onRender={() => {
+      work.commits += 1;
+    }}
+  >
     <EditorRoute />
   </Profiler>
 );
@@ -272,12 +283,12 @@ async function typeSlowly(count: number, every: number) {
 }
 /** The page as saved after `typed` was added to the end of its first paragraph
  *  (an edited paragraph is saved on one line; the others keep their breaks). */
-const FIRST_PARAGRAPH = 'Every paragraph on this page is wrapped by hand, the way most Markdown in a Git\nrepository is. Opening it must not change a byte.';
+const FIRST_PARAGRAPH =
+  'Every paragraph on this page is wrapped by hand, the way most Markdown in a Git\nrepository is. Opening it must not change a byte.';
 const withTyped = (typed: string) => HARD_WRAPPED_EN.replace(FIRST_PARAGRAPH, `${FIRST_PARAGRAPH.replace('\n', ' ')}${typed}`);
 
 /** Saves as [ms since `start`, characters typed], for comparing schedules. */
-const saves = (start: number) =>
-  server.patches.map((patch) => [patch.at - start, (patch.content.match(/a byte\.(x*)/)?.[1] ?? '').length] as const);
+const saves = (start: number) => server.patches.map((patch) => [patch.at - start, (patch.content.match(/a byte\.(x*)/)?.[1] ?? '').length] as const);
 
 beforeEach(() => {
   session += 1;
@@ -308,12 +319,14 @@ beforeEach(() => {
   mocks.blocker = null;
   mocks.ai = null;
   mocks.update.mockReset();
-  mocks.update.mockImplementation(async ({ pageId, body }: { pageId: string; body: { content: string; expectedUpdatedAt?: string; title: string } }) => {
-    server.patches.push({ at: Date.now(), content: body.content, expectedUpdatedAt: body.expectedUpdatedAt });
-    server = { ...server, content: body.content, updatedAt: new Date().toISOString() };
-    const page = mocks.pages.find((item) => item.id === pageId) ?? mocks.page;
-    return { ...page, title: body.title, content: body.content, updatedAt: server.updatedAt };
-  });
+  mocks.update.mockImplementation(
+    async ({ pageId, body }: { pageId: string; body: { content: string; expectedUpdatedAt?: string; title: string } }) => {
+      server.patches.push({ at: Date.now(), content: body.content, expectedUpdatedAt: body.expectedUpdatedAt });
+      server = { ...server, content: body.content, updatedAt: new Date().toISOString() };
+      const page = mocks.pages.find((item) => item.id === pageId) ?? mocks.page;
+      return { ...page, title: body.title, content: body.content, updatedAt: server.updatedAt };
+    },
+  );
 });
 
 afterEach(async () => {
@@ -591,6 +604,64 @@ describe('saves keep their moments and their content (P2-ED-005)', { timeout: RO
     expect(server.patches).toHaveLength(1);
   });
 
+  it('publishing right after a keystroke: saved before the publish, with it', async () => {
+    await open(HARD_WRAPPED_EN);
+    const start = Date.now();
+    key();
+    await advance(20);
+    let ready: boolean | undefined;
+    await act(async () => {
+      ready = await mocks.publish?.beforePublish();
+    });
+    expect(ready).toBe(true);
+    expect(saves(start)).toEqual([[20, 1]]);
+    await advance(15_000);
+    expect(server.patches).toHaveLength(1);
+  });
+
+  it('previewing right after a keystroke: saved before the preview opens, with it', async () => {
+    const preview = { opener: {} as unknown, location: { replace: vi.fn() }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(preview as unknown as Window);
+    await open(HARD_WRAPPED_EN);
+    const start = Date.now();
+    key();
+    await advance(20);
+    const button = container.querySelector<HTMLButtonElement>('button[aria-label="project.preview"]');
+    if (!button) throw new Error('No Preview button');
+    await act(async () => button.click());
+    await advance(0);
+    expect(saves(start)).toEqual([[20, 1]]);
+    expect(preview.location.replace).toHaveBeenCalledOnce();
+    await advance(15_000);
+    expect(server.patches).toHaveLength(1);
+  });
+
+  it('the editor losing focus serializes at once: AI assist reads the text without waiting for the pause', async () => {
+    await open(HARD_WRAPPED_EN);
+    key('B');
+    // Focus moves elsewhere (jsdom does not move focus off a contenteditable itself).
+    await act(async () => current().view.dom.dispatchEvent(new FocusEvent('blur')));
+    await advance(0);
+    expect((mocks.ai as unknown as { content: string } | null)?.content).toBe(withTyped('B'));
+    expect(server.patches).toEqual([]);
+    await advance(1000);
+    expect(server.patches.map((patch) => patch.content)).toEqual([withTyped('B')]);
+  });
+
+  it('edge (documented; differs from before): undo to the stored text, then type again before the editor serializes, keeps the first change time', async () => {
+    await open(HARD_WRAPPED_EN);
+    const start = Date.now();
+    key('x');
+    await advance(100);
+    act(() => current().commands.undo());
+    await advance(100);
+    // Before, the undo made the draft clean and the next keystroke started a new
+    // 10 s maximum wait (first save at 10.2 s). The undo is not serialized now
+    // before the next keystroke, so the wait runs from the first change.
+    await typeSlowly(24, 500);
+    expect(saves(start)[0]?.[0]).toBe(10_000);
+  });
+
   it('transactions that are not edits (selection, redraws, comment changes, focus) never save', async () => {
     mocks.comments = [{ id: 'c1', resolved: false, anchor: { quote: 'paragraph' } }];
     await open(HARD_WRAPPED_EN);
@@ -661,7 +732,9 @@ describe('saves keep their moments and their content (P2-ED-005)', { timeout: RO
   it('turning the toolbar on right after a keystroke (the editor is rebuilt) keeps it', async () => {
     await open(HARD_WRAPPED_EN);
     key('T');
-    const toggle = [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find((item) => item.textContent?.includes('editor.showToolbar'));
+    const toggle = [...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find((item) =>
+      item.textContent?.includes('editor.showToolbar'),
+    );
     if (!toggle) throw new Error('No toolbar item');
     await act(async () => toggle.click());
     await advance(5000);
