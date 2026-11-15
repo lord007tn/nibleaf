@@ -13,6 +13,7 @@
       "entry": [
         ".github/assets/org-default-cloud-copy/capture.mjs",
         ".github/assets/dashboard-copy-followups/capture.mjs",
+        ".github/assets/site-openapi-draft/capture.mjs",
         "tests/integration/editor-p2/browser.mjs",
         "tests/integration/import-fidelity/browser.mjs",
         "tests/integration/import-fidelity/local-only-node.mjs",

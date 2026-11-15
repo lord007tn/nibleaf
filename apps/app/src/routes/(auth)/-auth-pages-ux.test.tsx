@@ -58,7 +58,7 @@ vi.mock('@/hooks/api/query-options', () => ({
   getPublicMetaQueryOptions: () => ({ queryKey: ['public', 'meta'], queryFn: () => new Promise(() => undefined), staleTime: 300_000 }),
 }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ loadRouteData: vi.fn() }));
-vi.mock('@/components/interface-language-dialog', () => ({ InterfaceLanguageButton: () => <button type="button">language</button> }));
+vi.mock('@/components/interface-language-button', () => ({ InterfaceLanguageButton: () => <button type="button">language</button> }));
 vi.mock('@/services/auth-client', () => ({
   authClient: { emailOtp: { sendVerificationOtp: mocks.send }, signIn: { emailOtp: mocks.verify } },
   signIn: { social: vi.fn() },

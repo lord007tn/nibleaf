@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { CheckboxField } from '@nibleaf/design-system/components/ui/checkbox';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
@@ -10,35 +11,45 @@ import { type FormEvent, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { SecretInput } from '@/components/secret-input';
 import { useAiKeyConnection, useAiKeyModels, useSaveAiKey } from '../api/hooks';
+import type { AiKeyProvider } from '../model/ai';
+import {
+  checkRequest,
+  modelOptions,
+  type ProviderKeySaveBlock,
+  type ProviderKeyStep,
+  providerForForm,
+  providerFormKey,
+  providerKeyFormState,
+  saveRequest,
+} from '../model/provider-key-form';
+
+const STEP_LABEL: Record<ProviderKeyStep, MessageKey> = {
+  key: 'settings.smartAi.step.key',
+  check: 'settings.smartAi.step.check',
+  model: 'settings.smartAi.step.model',
+  save: 'settings.smartAi.step.save',
+};
+
+const SAVE_BLOCK: Record<ProviderKeySaveBlock, MessageKey> = {
+  encryption: 'settings.smartAi.why.encryption',
+  pasteKey: 'settings.smartAi.why.pasteKey',
+  chooseModel: 'settings.smartAi.why.chooseModel',
+  replace: 'settings.smartAi.why.replace',
+};
 
 /*
  * A site's own OpenAI or OpenRouter key, inside its source card on the AI
  * answers page: paste the key, check it (which loads its models), choose a
  * model, save. Choosing the source is the card's radio, not this form.
  * PR 4 of operations/ux/ai-and-integrations.md replaces it with one dialog.
+ * What the form shows and sends is decided in `model/provider-key-form.ts`.
  * Failed requests are toasted once, in plain words, by the mutations.
  */
-export function ProviderKeyForm({
-  projectId,
-  providerId,
-  onSaved,
-}: {
-  projectId: string;
-  providerId: 'openai' | 'openrouter';
-  onSaved?: () => void;
-}) {
+export function ProviderKeyForm({ projectId, providerId, onSaved }: { projectId: string; providerId: AiKeyProvider; onSaved?: () => void }) {
   const query = useAiKeyConnection(projectId, providerId);
   if (!query.data) return <Skeleton aria-hidden className="h-40 w-full" />;
-  const { connection, canSave } = query.data;
-  const provider: WorkspaceAiProvider = connection ?? {
-    id: providerId,
-    configured: false,
-    revision: 0,
-    verified: false,
-    verifiedAt: null,
-    answerModel: null,
-  };
-  return <KeyForm canSave={canSave} key={`${provider.id}:${provider.revision}`} onSaved={onSaved} projectId={projectId} provider={provider} />;
+  const provider = providerForForm(providerId, query.data.connection);
+  return <KeyForm canSave={query.data.canSave} key={providerFormKey(provider)} onSaved={onSaved} projectId={projectId} provider={provider} />;
 }
 
 function KeyForm({
@@ -59,62 +70,43 @@ function KeyForm({
   const [replace, setReplace] = useState(false);
   const models = useAiKeyModels(projectId);
   const save = useSaveAiKey(projectId);
-  const options = models.data?.models ?? (provider.answerModel ? [{ id: provider.answerModel }] : []);
-  const pending = save.isPending || models.isPending;
-  const keyEntered = Boolean(apiKey.trim());
-  const saved = provider.configured && !keyEntered && answerModel === (provider.answerModel ?? '');
-  // The setup in order, each step ticked once it is done, so an empty model list
-  // or a disabled Save is never a mystery.
-  const steps: ReadonlyArray<{ key: string; label: MessageKey; done: boolean }> = [
-    { key: 'key', label: 'settings.smartAi.step.key', done: provider.configured || keyEntered },
-    { key: 'check', label: 'settings.smartAi.step.check', done: models.isSuccess || provider.verified },
-    { key: 'model', label: 'settings.smartAi.step.model', done: Boolean(answerModel) },
-    { key: 'save', label: 'settings.smartAi.step.save', done: saved },
-  ];
-  // Why Save can't be pressed yet, in plain words.
-  const saveBlocked: MessageKey | null = !canSave
-    ? 'settings.smartAi.why.encryption'
-    : !provider.configured && !keyEntered
-      ? 'settings.smartAi.why.pasteKey'
-      : !answerModel
-        ? 'settings.smartAi.why.chooseModel'
-        : provider.configured && keyEntered && !replace
-          ? 'settings.smartAi.why.replace'
-          : null;
+  const options = modelOptions(models.data?.models, provider);
+  const form = providerKeyFormState({
+    provider,
+    canSave,
+    apiKey,
+    answerModel,
+    replace,
+    checked: models.isSuccess,
+    busy: save.isPending || models.isPending,
+    modelCount: options.length,
+  });
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    save.mutate(
-      {
-        providerId: provider.id,
-        answerModel,
-        expectedRevision: provider.revision,
-        ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
-        ...(replace ? { replaceCredential: true } : {}),
+    // No onError here: the mutation toasts its own failure, once.
+    save.mutate(saveRequest({ provider, apiKey, answerModel, replace }), {
+      onSuccess: () => {
+        setApiKey('');
+        models.reset();
+        toast.success(t('common.saved'));
+        onSaved?.();
       },
-      {
-        onSuccess: () => {
-          setApiKey('');
-          models.reset();
-          toast.success(t('common.saved'));
-          onSaved?.();
-        },
-      },
-    );
+    });
   };
   return (
     <div className="min-w-0 space-y-4 rounded-lg border bg-muted/20 p-4" data-testid="ai-key-form">
       <ol aria-label={t('settings.smartAi.step.title')} className="space-y-1.5 text-xs" data-testid="smart-ai-steps">
-        {steps.map((step, index) => (
-          <li className="flex items-start gap-2" data-done={step.done || undefined} key={step.key}>
+        {form.steps.map(({ step, done }, index) => (
+          <li className="flex items-start gap-2" data-done={done || undefined} key={step}>
             <span
               aria-hidden
-              className={`grid size-4.5 shrink-0 place-items-center rounded-full border text-xs tabular-nums ${step.done ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
+              className={`grid size-4.5 shrink-0 place-items-center rounded-full border text-xs tabular-nums ${done ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
             >
-              {step.done ? <Check className="size-3" /> : index + 1}
+              {done ? <Check className="size-3" /> : index + 1}
             </span>
-            <span className={step.done ? 'text-muted-foreground' : undefined}>
-              {t(step.label)}
-              {step.done ? <span className="sr-only"> ({t('settings.smartAi.step.done')})</span> : null}
+            <span className={done ? 'text-muted-foreground' : undefined}>
+              {t(STEP_LABEL[step])}
+              {done ? <span className="sr-only"> ({t('settings.smartAi.step.done')})</span> : null}
             </span>
           </li>
         ))}
@@ -123,28 +115,34 @@ function KeyForm({
         <div className="space-y-2">
           <Label htmlFor={`${id}-key`}>{t('settings.smartAi.apiKey')}</Label>
           <SecretInput
-            disabled={pending || !canSave}
+            disabled={!form.keyEnabled}
             id={`${id}-key`}
             name="ai-provider-api-key"
             onChange={(event) => {
+              // A new key makes the checked model list, and a model chosen from it, stale.
               setApiKey(event.target.value);
               models.reset();
               setAnswerModel(provider.answerModel ?? '');
             }}
             value={apiKey}
           />
-          <p className="text-muted-foreground text-xs">{t(provider.configured ? 'settings.smartAi.keepKey' : 'settings.smartAi.keyHint')}</p>
+          <p className="text-muted-foreground text-xs" id={`${id}-key-hint`}>
+            {t(provider.configured ? 'settings.smartAi.keepKey' : 'settings.smartAi.keyHint')}
+          </p>
         </div>
-        {provider.configured && apiKey ? (
-          <label className="flex items-start gap-2 text-sm">
-            <input checked={replace} className="mt-1" onChange={(event) => setReplace(event.target.checked)} type="checkbox" />
-            {t('settings.smartAi.replaceCredential')}
-          </label>
+        {form.showReplaceConsent ? (
+          // The key hint above already says a new key needs this consent, so it describes the box rather than repeating under it.
+          <CheckboxField
+            aria-describedby={`${id}-key-hint`}
+            checked={replace}
+            label={t('settings.smartAi.replaceCredential')}
+            onCheckedChange={setReplace}
+          />
         ) : null}
         <Button
-          disabled={pending || (!apiKey.trim() && !provider.configured)}
+          disabled={!form.canCheck}
           loading={models.isPending}
-          onClick={() => models.mutate({ providerId: provider.id, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) })}
+          onClick={() => models.mutate(checkRequest(provider, apiKey))}
           type="button"
           variant="outline"
         >
@@ -157,7 +155,7 @@ function KeyForm({
             onValueChange={(value) => setAnswerModel(value ?? '')}
             value={answerModel}
           >
-            <SelectTrigger className="w-full min-w-0" disabled={pending || options.length === 0} id={`${id}-model`}>
+            <SelectTrigger className="w-full min-w-0" disabled={!form.modelEnabled} id={`${id}-model`}>
               <SelectValue placeholder={t('settings.smartAi.chooseModel')} />
             </SelectTrigger>
             <SelectContent>
@@ -175,16 +173,16 @@ function KeyForm({
           </p>
         ) : null}
         <Button
-          aria-describedby={saveBlocked && !saved ? `${id}-save-why` : undefined}
-          disabled={pending || saveBlocked !== null}
+          aria-describedby={form.shownSaveBlock ? `${id}-save-why` : undefined}
+          disabled={!form.canSubmit}
           loading={save.isPending}
           type="submit"
         >
           {t('common.save')}
         </Button>
-        {saveBlocked && !saved ? (
+        {form.shownSaveBlock ? (
           <p className="text-muted-foreground text-xs" id={`${id}-save-why`}>
-            {t(saveBlocked)}
+            {t(SAVE_BLOCK[form.shownSaveBlock])}
           </p>
         ) : null}
       </form>
