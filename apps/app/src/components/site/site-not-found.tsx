@@ -29,7 +29,9 @@ export function SiteNotFound() {
             onFocus={preloadSiteSearch}
             onPointerEnter={preloadSiteSearch}
             onTouchStart={preloadSiteSearch}
-            className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-5 font-medium text-primary-foreground text-sm shadow-sm transition-opacity hover:opacity-90"
+            // Hover moves the fill towards the foreground, away from its label, so the
+            // pair only gains contrast; fading the whole button dropped below AA.
+            className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-5 font-medium text-primary-foreground text-sm shadow-sm transition-colors hover:bg-[color-mix(in_oklab,var(--primary)_85%,var(--foreground))]"
           >
             <Search className="size-4" aria-hidden />
             {t('notFoundSearch')}
