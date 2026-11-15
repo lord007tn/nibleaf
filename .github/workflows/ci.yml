@@ -61,6 +61,15 @@ jobs:
           # Preview from the latest stable release tag, like a real release does. A
           # fixed old tag made changelogen's git log outgrow execSync's 1 MiB buffer.
           from=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude 'v*-*' HEAD)
+          # A long gap since that tag overflows the same buffer (#695's run 43718457364),
+          # so start at the newer of the tag and HEAD~150. The tag stays the floor: keep it
+          # when it is newer, when history is shorter than 150 commits, or when shallow.
+          recent=$(git rev-list --max-count=150 HEAD | tail -n 1)
+          if [ "$(git rev-parse --is-shallow-repository)" = false ] && [ -n "$recent" ] \
+            && [ "$(git rev-parse "$from^{commit}")" != "$recent" ] \
+            && git merge-base --is-ancestor "$from" "$recent"; then
+            from=$recent
+          fi
           pnpm release:notes:dry -- --from "$from" --to HEAD --version v0.2.1 --output "$RUNNER_TEMP/release-notes-preview.md"
 
       - name: Test production email diagnostic boundaries
