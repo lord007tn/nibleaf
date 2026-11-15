@@ -1,0 +1,745 @@
+{
+  "environment": "Component fixture: the real Footer section (features/site-footer, through its compatibility re-export) with the real design system, EN/AR catalogs, project and language queries and both save mutations, in an editor-canvas frame; fictional site and Arabic language; GETs and PATCHes answered by interception; not the signed-in dashboard or production",
+  "head": "fc73048ed5157c9e073c7a2371d1877497cc6f18",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "project-cleared-en-1440.png",
+      "scene": "project-cleared",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "fields": {
+        "copyright": "",
+        "github": "",
+        "x": "https://x.com/handbookdocs",
+        "linkedin": "/company/handbook",
+        "madeWithBadge": true
+      },
+      "fieldDir": {
+        "copyright": "auto",
+        "github": "ltr",
+        "x": "ltr",
+        "linkedin": "ltr"
+      },
+      "disabled": {
+        "copyright": false,
+        "github": false,
+        "x": false,
+        "linkedin": false
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "arabic-scope-en-1440.png",
+      "scene": "arabic-scope",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "fields": {
+        "copyright": "© ٢٠٢٦ هاندبوك",
+        "github": "https://github.com/handbook-docs",
+        "x": "https://x.com/handbookdocs",
+        "linkedin": "/company/handbook",
+        "madeWithBadge": true
+      },
+      "fieldDir": {
+        "copyright": "rtl",
+        "github": "ltr",
+        "x": "ltr",
+        "linkedin": "ltr"
+      },
+      "disabled": {
+        "copyright": false,
+        "github": true,
+        "x": true,
+        "linkedin": true
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages",
+        "GET /api/app/projects/site-1"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "project-cleared-en-390.png",
+      "scene": "project-cleared",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "fields": {
+        "copyright": "",
+        "github": "",
+        "x": "https://x.com/handbookdocs",
+        "linkedin": "/company/handbook",
+        "madeWithBadge": true
+      },
+      "fieldDir": {
+        "copyright": "auto",
+        "github": "ltr",
+        "x": "ltr",
+        "linkedin": "ltr"
+      },
+      "disabled": {
+        "copyright": false,
+        "github": false,
+        "x": false,
+        "linkedin": false
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "arabic-scope-en-390.png",
+      "scene": "arabic-scope",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "fields": {
+        "copyright": "© ٢٠٢٦ هاندبوك",
+        "github": "https://github.com/handbook-docs",
+        "x": "https://x.com/handbookdocs",
+        "linkedin": "/company/handbook",
+        "madeWithBadge": true
+      },
+      "fieldDir": {
+        "copyright": "rtl",
+        "github": "ltr",
+        "x": "ltr",
+        "linkedin": "ltr"
+      },
+      "disabled": {
+        "copyright": false,
+        "github": true,
+        "x": true,
+        "linkedin": true
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages",
+        "GET /api/app/projects/site-1"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "project-cleared-ar-1440.png",
+      "scene": "project-cleared",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "fields": {
+        "copyright": "",
+        "github": "",
+        "x": "https://x.com/handbookdocs",
+        "linkedin": "/company/handbook",
+        "madeWithBadge": true
+      },
+      "fieldDir": {
+        "copyright": "auto",
+        "github": "ltr",
+        "x": "ltr",
+        "linkedin": "ltr"
+      },
+      "disabled": {
+        "copyright": false,
+        "github": false,
+        "x": false,
+        "linkedin": false
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "arabic-scope-ar-1440.png",
+      "scene": "arabic-scope",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "fields": {
+        "copyright": "© ٢٠٢٦ هاندبوك",
+        "github": "https://github.com/handbook-docs",
+        "x": "https://x.com/handbookdocs",
+        "linkedin": "/company/handbook",
+        "madeWithBadge": true
+      },
+      "fieldDir": {
+        "copyright": "rtl",
+        "github": "ltr",
+        "x": "ltr",
+        "linkedin": "ltr"
+      },
+      "disabled": {
+        "copyright": false,
+        "github": true,
+        "x": true,
+        "linkedin": true
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages",
+        "GET /api/app/projects/site-1"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "project-cleared-ar-390.png",
+      "scene": "project-cleared",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "fields": {
+        "copyright": "",
+        "github": "",
+        "x": "https://x.com/handbookdocs",
+        "linkedin": "/company/handbook",
+        "madeWithBadge": true
+      },
+      "fieldDir": {
+        "copyright": "auto",
+        "github": "ltr",
+        "x": "ltr",
+        "linkedin": "ltr"
+      },
+      "disabled": {
+        "copyright": false,
+        "github": false,
+        "x": false,
+        "linkedin": false
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages"
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "arabic-scope-ar-390.png",
+      "scene": "arabic-scope",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "fields": {
+        "copyright": "© ٢٠٢٦ هاندبوك",
+        "github": "https://github.com/handbook-docs",
+        "x": "https://x.com/handbookdocs",
+        "linkedin": "/company/handbook",
+        "madeWithBadge": true
+      },
+      "fieldDir": {
+        "copyright": "rtl",
+        "github": "ltr",
+        "x": "ltr",
+        "linkedin": "ltr"
+      },
+      "disabled": {
+        "copyright": false,
+        "github": true,
+        "x": true,
+        "linkedin": true
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "status": "",
+      "overflow": false,
+      "requests": [
+        "GET /api/app/projects/site-1",
+        "GET /api/app/projects/site-1/languages",
+        "GET /api/app/projects/site-1"
+      ],
+      "pageErrors": []
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1/languages" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": { "config": { "footer": { "copyright": "", "github": "" } } }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": { "config": { "footer": { "madeWithBadge": false } } }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1/languages/ar",
+          "body": { "config": { "footer": { "copyright": "© ٢٠٢٦ هاندبوك" } } }
+        },
+        { "call": "GET /api/app/projects/site-1/languages" },
+        {
+          "call": "PATCH /api/app/projects/site-1/languages/ar",
+          "body": { "config": { "footer": null } }
+        },
+        { "call": "GET /api/app/projects/site-1/languages" },
+        { "call": "GET /api/app/projects/site-1" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: Default scope, pristine, no save bar",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "© 2026 Handbook Ltd.",
+            "github": "https://github.com/handbook-docs",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": true
+          },
+          "fieldDir": {
+            "copyright": "auto",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": false,
+            "x": false,
+            "linkedin": false
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 2,
+          "server": {
+            "footer": {
+              "copyright": "© 2026 Handbook Ltd.",
+              "github": "https://github.com/handbook-docs",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook"
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        },
+        {
+          "step": "cleared the GitHub link and the copyright",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "   ",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": true
+          },
+          "fieldDir": {
+            "copyright": "auto",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": false,
+            "x": false,
+            "linkedin": false
+          },
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 2,
+          "server": {
+            "footer": {
+              "copyright": "© 2026 Handbook Ltd.",
+              "github": "https://github.com/handbook-docs",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook"
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        },
+        {
+          "step": "Save pressed: saving",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "   ",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": true
+          },
+          "fieldDir": {
+            "copyright": "auto",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": false,
+            "x": false,
+            "linkedin": false
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 3,
+          "server": {
+            "footer": {
+              "copyright": "© 2026 Handbook Ltd.",
+              "github": "https://github.com/handbook-docs",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook"
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        },
+        {
+          "step": "saved and refetched: both stored as \"\", the form clean on them",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": true
+          },
+          "fieldDir": {
+            "copyright": "auto",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": false,
+            "x": false,
+            "linkedin": false
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 5,
+          "server": {
+            "footer": {
+              "copyright": "",
+              "github": "",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook"
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        },
+        {
+          "step": "turned the badge off: the toggle alone makes the draft dirty",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": false
+          },
+          "fieldDir": {
+            "copyright": "auto",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": false,
+            "x": false,
+            "linkedin": false
+          },
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 5,
+          "server": {
+            "footer": {
+              "copyright": "",
+              "github": "",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook"
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        },
+        {
+          "step": "saved: the badge is stored as an explicit false",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": false
+          },
+          "fieldDir": {
+            "copyright": "auto",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": false,
+            "x": false,
+            "linkedin": false
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 8,
+          "server": {
+            "footer": {
+              "copyright": "",
+              "github": "",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook",
+              "madeWithBadge": false
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        },
+        {
+          "step": "switched to the Arabic scope: links and badge read-only, global",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": false
+          },
+          "fieldDir": {
+            "copyright": "rtl",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": true,
+            "x": true,
+            "linkedin": true
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 9,
+          "server": {
+            "footer": {
+              "copyright": "",
+              "github": "",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook",
+              "madeWithBadge": false
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        },
+        {
+          "step": "saved the Arabic copyright: only the copyright is sent, trimmed",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "© ٢٠٢٦ هاندبوك",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": false
+          },
+          "fieldDir": {
+            "copyright": "rtl",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": true,
+            "x": true,
+            "linkedin": true
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 11,
+          "server": {
+            "footer": {
+              "copyright": "",
+              "github": "",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook",
+              "madeWithBadge": false
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" },
+              "footer": { "copyright": "© ٢٠٢٦ هاندبوك" }
+            }
+          }
+        },
+        {
+          "step": "cleared it and saved: footer null, the Arabic SEO and banner kept",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": false
+          },
+          "fieldDir": {
+            "copyright": "rtl",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": true,
+            "x": true,
+            "linkedin": true
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 13,
+          "server": {
+            "footer": {
+              "copyright": "",
+              "github": "",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook",
+              "madeWithBadge": false
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        },
+        {
+          "step": "back to Default: the stored project footer",
+          "dir": "ltr",
+          "fields": {
+            "copyright": "",
+            "github": "",
+            "x": "https://x.com/handbookdocs",
+            "linkedin": "/company/handbook",
+            "madeWithBadge": false
+          },
+          "fieldDir": {
+            "copyright": "auto",
+            "github": "ltr",
+            "x": "ltr",
+            "linkedin": "ltr"
+          },
+          "disabled": {
+            "copyright": false,
+            "github": false,
+            "x": false,
+            "linkedin": false
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 14,
+          "server": {
+            "footer": {
+              "copyright": "",
+              "github": "",
+              "x": "https://x.com/handbookdocs",
+              "linkedin": "/company/handbook",
+              "madeWithBadge": false
+            },
+            "arabic": {
+              "seo": { "metaTitle": "دليل هاندبوك" },
+              "banner": { "message": "إعلان تجريبي" }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
