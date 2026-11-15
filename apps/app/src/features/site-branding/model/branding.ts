@@ -5,7 +5,7 @@
  */
 
 /** The fields an upload can fill; the logo destination is typed only. */
-export const UPLOAD_FIELDS = ['logoLight', 'logoDark', 'favicon'] as const;
+const UPLOAD_FIELDS = ['logoLight', 'logoDark', 'favicon'] as const;
 export type UploadField = (typeof UPLOAD_FIELDS)[number];
 
 /** Everything the Branding form edits, in one place, so "dirty" has one meaning. */
