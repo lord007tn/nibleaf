@@ -1140,7 +1140,8 @@ describe('useServerDraftForm: a payload transformed before sending (toSent)', ()
           const expected = await outcome(history, false, end);
           const actual = await outcome(history, true, end);
           // Typed spaces stay as the person's edit against someone else's value, the last one seen.
-          if (typedSpacesOnly && history.server.at(-1) === 'T') expect(actual).toEqual({ name: history.baseline.trim(), conflict: true, dirty: true });
+          if (typedSpacesOnly && history.server.at(-1) === 'T')
+            expect(actual).toEqual({ name: history.baseline.trim(), conflict: true, dirty: true });
           else expect(actual).toEqual(expected);
         }
       });

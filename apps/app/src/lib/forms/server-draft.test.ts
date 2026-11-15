@@ -209,7 +209,10 @@ describe('a response that arrives after a refetch already landed (#743)', () => 
   });
 
   it('confirms the response, as without the refetch, when it agrees with the refetched value', () => {
-    const state = play(sent, [{ ...base, name: 'Theirs' }, { ...base, name: 'Later' }]);
+    const state = play(sent, [
+      { ...base, name: 'Theirs' },
+      { ...base, name: 'Later' },
+    ]);
     const result = succeed(state, { ...base, name: 'Later' });
     expect(result).toEqual({ baseline: { ...base, name: 'Later' }, current: { ...base, name: 'Later' } });
   });
