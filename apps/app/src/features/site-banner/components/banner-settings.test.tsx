@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
+import { updateProjectBody } from '@nibleaf/validators';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -152,14 +153,14 @@ describe('BannerSettings — project scope', () => {
     expect(mocks.reportDirty).toHaveBeenLastCalledWith(expect.any(String), false);
   });
 
-  it('trims text and leaves cleared text out of the patch', async () => {
+  it('trims text and sends cleared text as an empty string', async () => {
     mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
     await render(projectWith(PROJECT_BANNER));
     await type(message(), '  Summer sale  ');
     await type(linkLabel(), '   ');
     await save();
     expect(mocks.updateProject).toHaveBeenCalledWith({
-      config: { banner: { enabled: true, dismissible: true, message: 'Summer sale', linkLabel: undefined, linkUrl: 'https://acme.test/sale' } },
+      config: { banner: { enabled: true, dismissible: true, message: 'Summer sale', linkLabel: '', linkUrl: 'https://acme.test/sale' } },
     });
   });
 
@@ -253,6 +254,93 @@ describe('BannerSettings — project scope', () => {
     expect(message().lang).toBe('ar');
     expect(linkLabel().dir).toBe('rtl');
     expect(linkUrl().dir).toBe('ltr');
+  });
+});
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * PATCH /projects/:id as the server answers it: the body goes through JSON and
+ * the route's own validator, then merges into the stored config like the
+ * server's `mergeConfig` (an object section one level deep, keeping any key the
+ * patch leaves out; `apps/server/src/actions/projects.test.ts` runs the real one).
+ */
+function fakeServer(config: Record<string, unknown>) {
+  const server = { config: structuredClone(config), requests: [] as unknown[] };
+  mocks.updateProject.mockImplementation(async (body: unknown) => {
+    const request = updateProjectBody.parse(JSON.parse(JSON.stringify(body)));
+    server.requests.push(request);
+    for (const [key, value] of Object.entries(request.config ?? {})) {
+      const stored = server.config[key];
+      server.config[key] = isPlainObject(value) ? { ...(isPlainObject(stored) ? stored : {}), ...value } : value;
+    }
+    return { id: 'site-1', config: structuredClone(server.config) };
+  });
+  return server;
+}
+const projectFrom = (config: Record<string, unknown>) => ({ id: 'site-1', config: structuredClone(config) }) as unknown as Project;
+const remount = async (project: Project) => {
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await render(project);
+};
+
+describe('BannerSettings — clearing saved text', () => {
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, seo: { metaTitle: 'Docs' }, redirects: [{ from: '/old', to: '/new' }] };
+  const fields = { message, linkLabel, linkUrl } as const;
+
+  it.each(['message', 'linkLabel', 'linkUrl'] as const)('a cleared %s stays cleared after the save, a refetch and a remount', async (key) => {
+    const server = fakeServer({ ...SIBLINGS, banner: PROJECT_BANNER });
+    await render(projectFrom(server.config));
+    await type(fields[key](), '');
+    await save();
+
+    const cleared = { ...PROJECT_BANNER, [key]: '' };
+    expect(server.requests).toEqual([{ config: { banner: cleared } }]);
+    expect(server.config).toEqual({ ...SIBLINGS, banner: cleared });
+    expect(fields[key]().value).toBe('');
+    expect(saveRegion()).toBeNull();
+
+    // The project query refetches after the save; then the page is opened again.
+    await render(projectFrom(server.config));
+    expect(fields[key]().value).toBe('');
+    await remount(projectFrom(server.config));
+    for (const name of ['message', 'linkLabel', 'linkUrl'] as const) expect(fields[name]().value).toBe(cleared[name]);
+    expect(isOn(enabledSwitch())).toBe(true);
+    expect(isOn(dismissibleSwitch())).toBe(true);
+    expect(saveRegion()).toBeNull();
+  });
+
+  it('stores whitespace-only text as empty and trims the rest, keeping toggles and other sections', async () => {
+    const server = fakeServer({ ...SIBLINGS, banner: { ...PROJECT_BANNER, dismissible: false } });
+    await render(projectFrom(server.config));
+    await type(message(), '   ');
+    await type(linkLabel(), ' \t ');
+    await type(linkUrl(), '  tel:+123456789  ');
+    await save();
+    expect(server.config).toEqual({
+      ...SIBLINGS,
+      banner: { enabled: true, dismissible: false, message: '', linkLabel: '', linkUrl: 'tel:+123456789' },
+    });
+    await remount(projectFrom(server.config));
+    expect([message().value, linkLabel().value, linkUrl().value]).toEqual(['', '', 'tel:+123456789']);
+    expect(isOn(dismissibleSwitch())).toBe(false);
+  });
+
+  it('a failed save keeps the cleared field, and the retry clears it', async () => {
+    const server = fakeServer({ ...SIBLINGS, banner: PROJECT_BANNER });
+    mocks.updateProject.mockRejectedValueOnce(new Error('offline'));
+    await render(projectFrom(server.config));
+    await type(linkLabel(), '');
+    await save();
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+    expect(linkLabel().value).toBe('');
+    expect(saveRegion()).not.toBeNull();
+    expect(server.config.banner).toEqual(PROJECT_BANNER);
+
+    await save();
+    expect(server.config.banner).toEqual({ ...PROJECT_BANNER, linkLabel: '' });
+    expect(saveRegion()).toBeNull();
   });
 });
 

@@ -36,15 +36,15 @@ beforeEach(() => {
 });
 
 describe('published changelog route', () => {
-  it('gives a missing site not-found metadata without a canonical or feed link', () => {
+  it('gives a missing site not-found metadata without a canonical or feed link', async () => {
     const head = Route.options.head as unknown as (input: {
       loaderData?: unknown;
       params: { projectId: string };
       match: { status: string };
       matches: [];
-    }) => Record<string, unknown>;
+    }) => Promise<Record<string, unknown>>;
 
-    const missing = head({ params: { projectId: 'missing-site' }, match: { status: 'notFound' }, matches: [] });
+    const missing = await head({ params: { projectId: 'missing-site' }, match: { status: 'notFound' }, matches: [] });
     expect(missing.links).toBeUndefined();
     expect(missing.meta).toContainEqual({ name: 'robots', content: 'noindex,nofollow' });
   });

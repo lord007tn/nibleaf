@@ -53,8 +53,15 @@ async function hydrateArabicServerHtml() {
   container.innerHTML = renderToString(page());
   document.body.append(container);
   const before = container.textContent;
+  // Every change to the visible text. The toast host mounts after hydration
+  // (components/deferred-toaster.tsx) and adds an empty live region, not text.
   const changes: string[] = [];
-  const observer = new MutationObserver(() => changes.push(container?.textContent ?? ''));
+  let lastText = before;
+  const observer = new MutationObserver(() => {
+    const text = container?.textContent ?? '';
+    if (text !== lastText) changes.push(text);
+    lastText = text;
+  });
   observer.observe(container, { childList: true, characterData: true, subtree: true });
   const documentChanges: string[] = [];
   const documentObserver = new MutationObserver((records) => documentChanges.push(...records.map((record) => record.attributeName ?? '')));

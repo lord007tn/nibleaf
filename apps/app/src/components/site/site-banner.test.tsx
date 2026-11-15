@@ -112,3 +112,45 @@ describe('SiteBanner without a dismissal flash', () => {
     expect(host.querySelector('button')?.className).toContain('size-11');
   });
 });
+
+describe('SiteBanner text the author cleared', () => {
+  const render = (banner: Parameters<typeof SiteBanner>[0]['banner'], lang?: string) => {
+    const host = document.createElement('div');
+    host.innerHTML = renderToString(<SiteBanner banner={banner} lang={lang} projectId="docs" />);
+    return host;
+  };
+  const SAVED = { enabled: true, message: 'Spring sale', linkLabel: 'See plans', linkUrl: 'https://example.com/pricing' };
+
+  it.each(['', '   '])('hides the banner when the message is %j', (message) => {
+    expect(render({ ...SAVED, message }).textContent).toBe('');
+  });
+
+  it.each(['', undefined])('shows the message without a link when the address is %j', (linkUrl) => {
+    const host = render({ ...SAVED, linkUrl });
+    expect(host.textContent).toContain('Spring sale');
+    expect(host.querySelector('a')).toBeNull();
+  });
+
+  it.each([
+    ['en', '', 'View details'],
+    ['en', '  \t', 'View details'],
+    ['en', undefined, 'View details'],
+    ['ar', '', 'عرض التفاصيل'],
+    ['ar', '   ', 'عرض التفاصيل'],
+  ])('names a link whose label is blank with the %s fallback (label %j)', (lang, linkLabel, fallback) => {
+    const link = render({ ...SAVED, linkLabel }, lang).querySelector('a');
+    expect(link?.getAttribute('href')).toBe('https://example.com/pricing');
+    // The accessible name is the visible text: the icon is hidden from assistive tech.
+    expect(link?.textContent).toBe(fallback);
+    expect(link?.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('keeps an authored label as written', () => {
+    for (const lang of ['en', 'ar']) {
+      expect(render({ ...SAVED, linkLabel: 'See plans' }, lang).querySelector('a')?.textContent).toBe('See plans');
+      expect(render({ ...SAVED, linkLabel: 'عرض الخطط', linkUrl: 'mailto:team@example.com' }, lang).querySelector('a')?.textContent).toBe(
+        'عرض الخطط',
+      );
+    }
+  });
+});

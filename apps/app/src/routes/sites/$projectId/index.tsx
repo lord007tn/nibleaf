@@ -1,20 +1,18 @@
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
-import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
 import { SiteNotFound } from '@/components/site/site-not-found';
 import { SitePageView } from '@/components/site/site-page-view';
+import { SiteReaderPending } from '@/components/site/site-reader-context';
 import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
-import { redirectIfConfigured } from '@/lib/site-redirects';
-import { pageHead, pageMarkdownHeaders, readerFallbackHead, siteLanguageFromMatches, unavailableSiteHeadFromMatches } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/')({
   component: SiteHome,
   // Missing pages stay inside the documentation, in the site's language.
   notFoundComponent: SiteNotFound,
-  pendingComponent: SiteArticleSkeleton,
+  pendingComponent: SiteReaderPending,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Empty path resolves to the site's first page server-side (content + SEO).
   loader: async ({ params, deps, context: { queryClient } }) => {
@@ -43,6 +41,8 @@ export const Route = createFileRoute('/sites/$projectId/')({
       // Honor a configured redirect for the site root before the not-found
       // state. Mark the SSR response 404 so this soft-404 returns the right
       // status (the head also carries robots noindex).
+      // Imported here, not at the top: only a missing page reads the redirect rules.
+      const { redirectIfConfigured } = await import('@/lib/site-redirects');
       await redirectIfConfigured(params.projectId, '', deps.lang);
       // Throw the router's not-found sentinel so TanStack owns the final HTTP
       // status. Mutating the response from inside this streamed loader produced
@@ -50,17 +50,21 @@ export const Route = createFileRoute('/sites/$projectId/')({
       throw notFound();
     }
   },
-  headers: ({ loaderData }) => pageMarkdownHeaders(loaderData?.page, loaderData?.lang),
-  head: ({ loaderData, params, match, matches }) =>
-    match.status === 'error'
+  // The SEO helpers load with the reader, not in every page's entry chunk (see
+  // the parent route's head()).
+  headers: async ({ loaderData }) => (await import('@/lib/site-seo')).pageMarkdownHeaders(loaderData?.page, loaderData?.lang),
+  head: async ({ loaderData, params, match, matches }) => {
+    const { pageHead, readerFallbackHead, siteLanguageFromMatches, unavailableSiteHeadFromMatches } = await import('@/lib/site-seo');
+    return match.status === 'error'
       ? readerFallbackHead(matches, siteLanguageFromMatches(matches))
       : (unavailableSiteHeadFromMatches(matches) ??
-        pageHead(
-          loaderData?.page ?? null,
-          params.projectId,
-          loaderData ? loaderData.lang : siteLanguageFromMatches(matches),
-          loaderData?.siteOrigin,
-        )),
+          pageHead(
+            loaderData?.page ?? null,
+            params.projectId,
+            loaderData ? loaderData.lang : siteLanguageFromMatches(matches),
+            loaderData?.siteOrigin,
+          ));
+  },
 });
 
 function SiteHome() {

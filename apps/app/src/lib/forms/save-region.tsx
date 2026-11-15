@@ -110,7 +110,7 @@ export function SaveRegionSubmit() {
 }
 
 /** Focuses the first field marked invalid inside `root`, scrolling it into view. */
-export function focusFirstInvalid(root: ParentNode | null | undefined) {
+function focusFirstInvalid(root: ParentNode | null | undefined) {
   const field = root?.querySelector<HTMLElement>('[aria-invalid="true"]');
   if (!field) return false;
   field.focus({ preventScroll: true });

@@ -100,14 +100,19 @@ export function linkUrlProblem(value: string): 'invalid' | undefined {
   }
 }
 
-/** The project scope's `config.banner` patch: both toggles, and each text trimmed or left out when empty. */
+/**
+ * The project scope's `config.banner` patch: both toggles and all three texts,
+ * trimmed. A cleared text is sent as `''`, never left out: the server merges
+ * the banner one level deep and keeps any key the patch omits, so an omitted
+ * text would come back after the save. The reader treats `''` as unset.
+ */
 export function projectBannerPatch(values: BannerValues): BannerConfig {
   return {
     enabled: values.enabled,
     dismissible: values.dismissible,
-    message: values.message.trim() || undefined,
-    linkLabel: values.linkLabel.trim() || undefined,
-    linkUrl: values.linkUrl.trim() || undefined,
+    message: values.message.trim(),
+    linkLabel: values.linkLabel.trim(),
+    linkUrl: values.linkUrl.trim(),
   };
 }
 

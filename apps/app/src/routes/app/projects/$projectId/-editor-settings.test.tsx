@@ -34,7 +34,9 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
 vi.mock('@/components/editor/editor-save-throttle', () => ({
-  useSaveThrottle: () => ({ maybeExecute: mocks.schedule, cancel: vi.fn(), flush: vi.fn() }),
+  // `settle` is how an editor serialization reaches the saver (P2-ED-005); with
+  // nothing pending it schedules the draft exactly as `maybeExecute` does.
+  useSaveThrottle: () => ({ maybeExecute: mocks.schedule, settle: mocks.schedule, maybeExecuteLazy: vi.fn(), cancel: vi.fn(), flush: vi.fn() }),
 }));
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({}),
