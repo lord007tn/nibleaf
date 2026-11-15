@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deepEqual, editedKeys, isDraftDirty, reconcileSaveSuccess, reconcileServerChange, resolveConflict } from './server-draft';
+import { deepEqual, editedKeys, isDraftDirty, reconcileSaveSuccess, reconcileServerChange, resolveConflict, startSave } from './server-draft';
 
 type Values = { name: string; slug: string; tags: string[]; meta: { title: string } };
 const base: Values = { name: 'Docs', slug: 'docs', tags: ['a'], meta: { title: 'T' } };
@@ -58,6 +58,77 @@ describe('a server change while editing (rule 2)', () => {
   });
 });
 
+describe('a server change during a save (rule 2 with the save’s state)', () => {
+  const sent = { ...base, name: 'Sent' };
+  const save = startSave(base, sent);
+
+  it('records the keys the save changed, once', () => {
+    expect([...save.sent]).toEqual(['name']);
+    expect([...save.echoed]).toEqual([]);
+  });
+
+  it('keeps a value typed back to the baseline when the save’s own echo arrives', () => {
+    const change = reconcileServerChange({ baseline: base, current: base, next: sent, save });
+    expect(change.current.name).toBe('Docs');
+    expect(change.baseline.name).toBe('Sent');
+    expect(change.conflicts).toEqual([]);
+    expect([...(change.save?.echoed ?? [])]).toEqual(['name']);
+  });
+
+  it('keeps a newer value and does not report the echo as a conflict', () => {
+    const change = reconcileServerChange({ baseline: base, current: { ...base, name: 'Newer' }, next: sent, save });
+    expect(change.current.name).toBe('Newer');
+    expect(change.conflicts).toEqual([]);
+  });
+
+  it('keeps the sent value when the refetch predates the save', () => {
+    const change = reconcileServerChange({ baseline: base, current: sent, next: { ...base, slug: 'help' }, save });
+    expect(change.current).toEqual({ ...sent, slug: 'help' });
+    expect(change.conflicts).toEqual([]);
+    expect([...(change.save?.echoed ?? [])]).toEqual([]);
+  });
+
+  it('still takes and reports someone else’s changes', () => {
+    const change = reconcileServerChange({ baseline: base, current: sent, next: { ...base, name: 'Theirs', slug: 'help' }, save });
+    expect(change.current).toEqual({ ...sent, slug: 'help' });
+    expect(change.conflicts).toEqual(['name']);
+  });
+
+  it('judges unsent keys against the moving baseline', () => {
+    // A first refetch moved the slug; the save never touched it.
+    const change = reconcileServerChange({
+      baseline: { ...base, slug: 'two' },
+      current: { ...sent, slug: 'two' },
+      next: { ...sent, slug: 'three' },
+      save,
+    });
+    expect(change.current).toEqual({ ...sent, slug: 'three' });
+    expect(change.conflicts).toEqual([]);
+  });
+
+  it('keeps a key echoed for the rest of the save, so each later change is taken', () => {
+    const echo = reconcileServerChange({ baseline: base, current: sent, next: sent, save });
+    const theirs = reconcileServerChange({ baseline: echo.baseline, current: echo.current, next: { ...base, name: 'T' }, save: echo.save });
+    const later = reconcileServerChange({ baseline: theirs.baseline, current: theirs.current, next: { ...base, name: 'U' }, save: theirs.save });
+    expect(theirs.current.name).toBe('T');
+    expect(later.current.name).toBe('U');
+    expect(later.conflicts).toEqual([]);
+    expect([...(later.save?.echoed ?? [])]).toEqual(['name']);
+  });
+
+  it('protects an edit made after the echo with a conflict', () => {
+    const echo = reconcileServerChange({ baseline: base, current: sent, next: sent, save });
+    const change = reconcileServerChange({
+      baseline: echo.baseline,
+      current: { ...sent, name: 'Mine' },
+      next: { ...base, name: 'T' },
+      save: echo.save,
+    });
+    expect(change.current.name).toBe('Mine');
+    expect(change.conflicts).toEqual(['name']);
+  });
+});
+
 describe('a successful save (rule 3)', () => {
   it('confirms what was sent', () => {
     const submitted = { ...base, name: 'Help' };
@@ -79,6 +150,28 @@ describe('a successful save (rule 3)', () => {
     expect(result.baseline.name).toBe('A');
     expect(result.current.name).toBe('AB');
     expect(isDraftDirty(result.current, result.baseline)).toBe(true);
+  });
+});
+
+describe('a successful save after refetches (rule 3 with the save’s state)', () => {
+  const sent = { ...base, name: 'Sent' };
+
+  it('confirms values the form took from the server, not just what was sent', () => {
+    const save = { ...startSave(base, sent), echoed: new Set(['name']) };
+    const reached = { ...base, name: 'T', slug: 'two' };
+    const result = reconcileSaveSuccess({ submitted: sent, current: reached, during: { save, baseline: reached } });
+    expect(result.baseline).toEqual(reached);
+    expect(isDraftDirty(result.current, result.baseline)).toBe(false);
+  });
+
+  it('keeps an edit that differs from what was sent, or from the baseline after the echo', () => {
+    const awaiting = startSave(base, sent);
+    const before = reconcileSaveSuccess({ submitted: sent, current: base, confirmed: sent, during: { save: awaiting, baseline: base } });
+    expect(before.current.name).toBe('Docs');
+    const echoed = { ...awaiting, echoed: new Set(['name']) };
+    const after = reconcileSaveSuccess({ submitted: sent, current: base, confirmed: sent, during: { save: echoed, baseline: sent } });
+    expect(after.current.name).toBe('Docs');
+    expect(isDraftDirty(after.current, after.baseline)).toBe(true);
   });
 });
 

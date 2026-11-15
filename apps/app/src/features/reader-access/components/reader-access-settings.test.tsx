@@ -193,6 +193,18 @@ const submitFormOf = (el: HTMLElement) =>
   act(async () => {
     el.closest('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   });
+/**
+ * Enter in a field: the key reaches the field's form, then the browser's
+ * implicit submission clicks that form's default button (if it has one).
+ */
+const pressEnterIn = (el: HTMLElement, init: KeyboardEventInit = {}) =>
+  act(async () => {
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+    el.closest('form')?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+/** The save bar's polite status; it stays mounted after the bar hides, as the page's last live region. */
+const barStatus = () => [...container.querySelectorAll('[role="status"]')].at(-1)?.textContent;
 const errorOf = (el: HTMLElement) =>
   (el.getAttribute('aria-describedby') ?? '')
     .split(' ')
@@ -713,6 +725,164 @@ describe('advanced access', () => {
     await confirmDialog();
     expect(mocks.m.emergency.mutateAsync).toHaveBeenCalled();
     expect(mocks.toast.success).toHaveBeenCalledWith('settings.authentication.reader.emergencySuccess');
+  });
+});
+
+describe('Enter in a reader setting', () => {
+  it('saves the allowed domains it was pressed in, and says so, leaving the invitation alone', async () => {
+    mocks.m.saveDomains.mutateAsync.mockResolvedValue({ domains: ['partner.example'] });
+    await render();
+    const emails = field('settings.visibility.invite.label');
+    await type(emails, 'lee@example.com');
+    const domains = field('settings.visibility.domains.label');
+    await type(domains, '@Partner.Example');
+    await pressEnterIn(domains);
+    expect(mocks.m.saveDomains.mutateAsync).toHaveBeenCalledOnce();
+    expect(mocks.m.saveDomains.mutateAsync).toHaveBeenCalledWith({ domains: ['partner.example'] });
+    expect(domains.value).toBe('partner.example');
+    expect(barStatus()).toBe('common.saved');
+    expect(region()).toBeNull();
+    expect(mocks.m.inviteOne.mutateAsync).not.toHaveBeenCalled();
+    expect(emails.value).toBe('lee@example.com');
+  });
+
+  it('sends no domains that are not domains, focuses the field and says what to fix', async () => {
+    await render();
+    const domains = field('settings.visibility.domains.label');
+    await type(domains, 'acme.com, Gmail.com');
+    await act(async () => field('settings.visibility.invite.label').focus());
+    await pressEnterIn(domains);
+    expect(mocks.m.saveDomains.mutateAsync).not.toHaveBeenCalled();
+    expect(errorOf(domains)).toBe('settings.visibility.domains.publicProvider {"domain":"gmail.com"}');
+    expect(document.activeElement).toBe(domains);
+    expect(barStatus()).toBe('forms.fixHighlighted');
+  });
+
+  it('claims nothing for unchanged domains, a refused save, or a save already running', async () => {
+    await render();
+    const domains = field('settings.visibility.domains.label');
+    await pressEnterIn(domains);
+    expect(mocks.m.saveDomains.mutateAsync).not.toHaveBeenCalled();
+
+    mocks.m.saveDomains.mutateAsync.mockRejectedValueOnce(new Error('boom'));
+    await type(domains, 'partner.example');
+    await pressEnterIn(domains);
+    expect(mocks.toast.error).toHaveBeenCalledWith('settings.saveError');
+    expect(barStatus()).toBe('');
+    expect(region()).not.toBeNull();
+
+    const pending = deferred<{ domains: string[] }>();
+    mocks.m.saveDomains.mutateAsync.mockReturnValueOnce(pending.promise);
+    await pressEnterIn(domains);
+    await pressEnterIn(domains);
+    expect(mocks.m.saveDomains.mutateAsync).toHaveBeenCalledTimes(2);
+    expect(barStatus()).toBe('');
+    await act(async () => pending.resolve({ domains: ['partner.example'] }));
+    expect(barStatus()).toBe('common.saved');
+  });
+
+  // Non-admins get no reader controls at all; while access is unknown they are shown locked.
+  it('changes nothing while the reader controls are locked', async () => {
+    mocks.status = 'pending';
+    await render();
+    const domains = field('settings.visibility.domains.label');
+    expect(domains.disabled).toBe(true);
+    await pressEnterIn(domains);
+    expect(mocks.m.saveDomains.mutateAsync).not.toHaveBeenCalled();
+    expect(region()).toBeNull();
+  });
+
+  it('asks before a JWT change on Enter, saving nothing and claiming nothing until confirmed', async () => {
+    const pending = deferred<undefined>();
+    mocks.m.saveJwt.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await openAdvanced();
+    const audience = field('settings.visibility.jwt.audience');
+    await type(audience, 'docs-v2');
+    await pressEnterIn(audience);
+    expect(dialog()?.textContent).toContain('settings.visibility.jwt.impact.audience');
+    expect(mocks.m.saveJwt.mutateAsync).not.toHaveBeenCalled();
+    expect(region()?.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(barStatus()).toBe('');
+
+    await confirmDialog();
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledOnce();
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ audience: 'docs-v2' }));
+    await act(async () => pending.resolve(undefined));
+    expect(mocks.toast.success).toHaveBeenCalledWith('settings.authentication.reader.jwtSaved');
+    expect(region()).toBeNull();
+    // The confirmation reported it; the bar never claims a save it did not run.
+    expect(barStatus()).toBe('');
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the JWT edit when the confirmation opened by Enter is cancelled', async () => {
+    await render();
+    await openAdvanced();
+    const issuer = field('settings.visibility.jwt.issuer');
+    await type(issuer, 'https://login.acme.example');
+    await pressEnterIn(issuer);
+    await act(async () => button(dialog() ?? document, 'common.cancel')?.click());
+    expect(mocks.m.saveJwt.mutateAsync).not.toHaveBeenCalled();
+    expect(issuer.value).toBe('https://login.acme.example');
+    expect(region()).not.toBeNull();
+    expect(barStatus()).toBe('');
+  });
+
+  it('keeps a refused JWT save in the dialog after Enter, with the edit kept', async () => {
+    mocks.m.saveJwt.mutateAsync.mockRejectedValueOnce(new Error('boom'));
+    await render();
+    await openAdvanced();
+    const issuer = field('settings.visibility.jwt.issuer');
+    await type(issuer, 'https://login.acme.example');
+    await pressEnterIn(issuer);
+    await confirmDialog();
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledOnce();
+    expect(dialog()?.querySelector('[data-slot="action-dialog-error"]')?.textContent).toBe('settings.saveError');
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(issuer.value).toBe('https://login.acme.example');
+    expect(barStatus()).toBe('');
+  });
+
+  it('keeps Enter in the JSON boxes, the token tester and the confirmation out of the JWT save', async () => {
+    await render();
+    await openAdvanced();
+    // A newline in a key set, or a token being tested, never saves or asks.
+    const keys = field('settings.visibility.jwt.publicJwks');
+    await type(keys, '{"keys": []}');
+    await pressEnterIn(keys);
+    const token = field('settings.authentication.reader.jwtTest');
+    await type(token, 'header.payload.signature');
+    await pressEnterIn(token);
+    expect(dialog()).toBeNull();
+    expect(mocks.m.saveJwt.mutateAsync).not.toHaveBeenCalled();
+    expect(mocks.m.testJwt.mutateAsync).not.toHaveBeenCalled();
+
+    // The confirmation's own form (in a portal) submits only itself: one request, no second confirmation.
+    mocks.m.saveJwt.mutateAsync.mockResolvedValue(undefined);
+    await type(keys, '');
+    const audience = field('settings.visibility.jwt.audience');
+    await type(audience, 'docs-v2');
+    await pressEnterIn(audience);
+    const confirmForm = dialog()?.querySelector('form');
+    if (!confirmForm) throw new Error('Expected the confirmation form');
+    await act(async () => confirmForm.requestSubmit());
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledOnce();
+    expect(dialog()).toBeNull();
+  });
+
+  it('focuses a JWT field to fix on Enter and sends nothing', async () => {
+    await render();
+    await openAdvanced();
+    const jwksUrl = field('settings.visibility.jwt.jwksUrl');
+    await type(jwksUrl, '');
+    await pressEnterIn(field('settings.visibility.jwt.groupsClaim'));
+    expect(mocks.m.saveJwt.mutateAsync).not.toHaveBeenCalled();
+    expect(dialog()).toBeNull();
+    expect(errorOf(jwksUrl)).toBe('settings.visibility.jwt.error.keySource');
+    expect(document.activeElement).toBe(jwksUrl);
+    expect(barStatus()).toBe('forms.fixHighlighted');
   });
 });
 
