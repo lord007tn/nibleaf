@@ -45,14 +45,17 @@ async function hydrate(page: React.ReactNode) {
 }
 
 /** Every style rule on the page that reaches for the dashboard scope, with the media query it sits in (Sonner adds its own sheet). */
-const dashboardRules = () =>
-  [...document.styleSheets]
-    .flatMap((sheet) => [...sheet.cssRules])
-    .flatMap((rule) =>
-      rule instanceof CSSMediaRule ? [...rule.cssRules].map((inner) => ({ media: rule.media.mediaText, rule: inner })) : [{ media: null, rule }],
-    )
-    .filter(({ rule }) => rule instanceof CSSStyleRule && rule.selectorText.includes('data-dashboard-toasts'))
-    .map(({ media, rule }) => ({ media, rule: rule as CSSStyleRule }));
+const dashboardRules = () => {
+  const found: { media: string | null; rule: CSSStyleRule }[] = [];
+  const visit = (rules: CSSRuleList, media: string | null) => {
+    for (const rule of rules) {
+      if (rule instanceof CSSMediaRule) visit(rule.cssRules, rule.media.mediaText);
+      else if (rule instanceof CSSStyleRule && rule.selectorText.includes('data-dashboard-toasts')) found.push({ media, rule });
+    }
+  };
+  for (const sheet of document.styleSheets) visit(sheet.cssRules, null);
+  return found;
+};
 
 it('hydrates the dashboard toast scope from the server render without a mismatch', async () => {
   const errors = await hydrate(
@@ -81,21 +84,25 @@ it('mounts one toast host, inside the dashboard scope, and leaves toasts in its 
   expect(host?.textContent).toContain('Could not save');
 });
 
-it('moves only bottom-anchored toasts, only at Sonner’s phone width, only inside the dashboard scope, and never hides them', async () => {
+it('moves only bottom-anchored toasts, only on phones, only inside the dashboard scope, and never hides them', async () => {
   await hydrate(
     <AppProviders>
       <p>Dashboard</p>
     </AppProviders>,
   );
+  const phones = '(max-width: 600px), (pointer: coarse) and (max-height: 500px)';
+  const toaster = '[data-dashboard-toasts] [data-sonner-toaster][data-y-position="bottom"]';
   const rules = dashboardRules();
-  expect(rules.map(({ media }) => media)).toEqual(['(max-width: 600px)', '(max-width: 600px)']);
-  expect(rules.map(({ rule }) => rule.selectorText)).toEqual([
-    '[data-dashboard-toasts] [data-sonner-toaster][data-y-position="bottom"]',
-    '[data-dashboard-toasts] [data-sonner-toast][data-y-position="bottom"]',
+  expect(rules.map(({ media, rule }) => [media, rule.selectorText])).toEqual([
+    [phones, toaster],
+    [phones, '[data-dashboard-toasts] [data-sonner-toast][data-y-position="bottom"]'],
+    // In Sonner's full-width phone layout, its phone offset.
+    ['(max-width: 600px)', toaster],
   ]);
   // Position and stacking direction only: nothing that hides a toast or lets taps through it.
-  expect(rules.flatMap(({ rule }) => [...rule.style]).sort()).toEqual(['--lift', 'bottom', 'bottom', 'top', 'top']);
-  expect(rules[0]?.rule.style.top).toContain('env(safe-area-inset-top');
+  expect(rules.flatMap(({ rule }) => [...rule.style]).sort()).toEqual(['--lift', 'bottom', 'bottom', 'top', 'top', 'top']);
+  expect(rules[0]?.rule.style.top).toBe('calc(var(--offset-top) + env(safe-area-inset-top, 0px))');
+  expect(rules[2]?.rule.style.top).toBe('calc(var(--mobile-offset-top) + env(safe-area-inset-top, 0px))');
 });
 
 it('leaves nothing behind when the dashboard unmounts', async () => {
