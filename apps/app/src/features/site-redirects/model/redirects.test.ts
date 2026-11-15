@@ -83,7 +83,11 @@ describe('redirectsPatch', () => {
 
 describe('a save through the API', () => {
   it('clearing the last rule sends [], and the refetch has no rules while other settings stay', () => {
-    const stored = { theme: { preset: 'nib' }, variables: [{ key: 'product', value: 'Acme' }], redirects: [{ from: '/old', to: '/new', generated: true }] };
+    const stored = {
+      theme: { preset: 'nib' },
+      variables: [{ key: 'product', value: 'Acme' }],
+      redirects: [{ from: '/old', to: '/new', generated: true }],
+    };
     const { rows } = removeRow(redirectsValues(stored).redirects, 0);
     expect(redirectProblems(rows)).toEqual([]);
     const { body, refetched } = saveThroughApi(stored, rows);
