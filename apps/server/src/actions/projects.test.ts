@@ -619,3 +619,43 @@ describe('updateProject: clearing saved banner text', () => {
     expect(stored.banner).toStrictEqual(BANNER);
   });
 });
+
+// The dashboard's SEO form sends all four `config.seo` values as JSON, a
+// cleared text as '' (the reader treats it as unset).
+describe('updateProject: saving SEO from the dashboard form', () => {
+  const SEO = { metaTitle: 'Docs', metaDescription: 'All of it', socialImage: '/og/cover.png', allowIndex: false };
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, banner: { enabled: true, message: 'Sale' } };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), seo: { ...SEO } };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (seo: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { seo } }))));
+
+  it.each(['metaTitle', 'metaDescription', 'socialImage'] as const)('stores a cleared %s as "" and keeps the other sections', async (key) => {
+    const readback = await save({ ...SEO, [key]: '' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, seo: { ...SEO, [key]: '' } });
+    expect(readback).toMatchObject({ config: { seo: { ...SEO, [key]: '' } } });
+  });
+
+  it('stores indexing turned back on', async () => {
+    await save({ ...SEO, allowIndex: true });
+    expect(stored.seo).toStrictEqual({ ...SEO, allowIndex: true });
+  });
+
+  it('accepts a relative or absolute social image, and refuses an unsafe scheme', () => {
+    for (const socialImage of ['/og/cover.png', 'https://cdn.example/og.png']) {
+      expect(updateProjectBody.safeParse({ config: { seo: { ...SEO, socialImage } } }).success).toBe(true);
+    }
+    expect(updateProjectBody.safeParse({ config: { seo: { ...SEO, socialImage: 'javascript:alert(1)' } } }).success).toBe(false);
+  });
+});
