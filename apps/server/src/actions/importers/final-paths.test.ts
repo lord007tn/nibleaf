@@ -6,11 +6,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { componentLinkFixtures } from './fixtures/component-links';
 import { extendedImportWrappers } from './fixtures/link-discovery-extended';
 import { linkDiscoveryRepros } from './fixtures/link-discovery-repros';
-import { traceLinkDiscovery } from './fixtures/link-discovery-trace';
+import { traceLinkDiscovery, withMainLinkScanner } from './fixtures/link-discovery-trace';
 import { rewriteMainInternalLinks } from './fixtures/page-links.main-reference';
-import { convertGitBookMarkdown } from './gitbook-markdown';
+import { convertGitBookMarkdown as convertHeadGitBookMarkdown } from './gitbook-markdown';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
+
+const convertGitBookMarkdown = (...args: Parameters<typeof convertHeadGitBookMarkdown>) => {
+  const convert = () => convertHeadGitBookMarkdown(...args);
+  const head = convert();
+  expect(head, 'GitBook conversion and fidelity must equal main').toEqual(withMainLinkScanner(convert));
+  return head;
+};
 
 interface Row {
   id: string;
@@ -533,6 +540,7 @@ it('independent generated collision imports across all containers', async () => 
   }> = [];
   let codeChanges = 0;
   let cases = 0;
+  let rewrittenLinks = 0;
   for (const kind of ['mintlify', 'gitbook'] as const)
     for (let i = 0; i < 128; i++) {
       mem.rows = [];
@@ -571,7 +579,9 @@ it('independent generated collision imports across all containers', async () => 
       const mainTrace = traceLinkDiscovery(rewriteMainInternalLinks, converted, 'docs/intro', routes);
       const headTrace = traceLinkDiscovery(rewriteMintlifyInternalLinks, converted, 'docs/intro', routes);
       expect(headTrace.visits).toEqual(mainTrace.visits);
-      expect(headTrace.reports).toEqual(expect.arrayContaining(mainTrace.reports));
+      expect(headTrace.rewrites).toEqual(mainTrace.rewrites);
+      rewrittenLinks += headTrace.rewrites.length;
+      expect(headTrace.reports).toEqual(mainTrace.reports);
       let expected = mainTrace.output;
       if (mintlify) expected = normalizeMintlifyMdx(expected);
       if (stored !== expected) failures.push({ kind, i, collision, aTarget: aTarget.path, bTarget: bTarget.path, source, expected, stored });
@@ -584,7 +594,7 @@ it('independent generated collision imports across all containers', async () => 
         codeChanges++;
       cases++;
     }
-  console.info('seeded full imports', { seed: '0x663618', cases, misses: failures.length, codeChanges });
+  console.info('seeded full imports', { seed: '0x663618', cases, rewrittenLinks, misses: failures.length, codeChanges });
   expect(failures.slice(0, 1)).toEqual([]);
   expect(codeChanges).toBe(0);
 }, 60_000);
@@ -631,6 +641,8 @@ describe('round 6: full-import discovery matches main with and without collision
         const main = traceLinkDiscovery(rewriteMainInternalLinks, converted, 'intro', new Map([['next', target]]));
         const head = traceLinkDiscovery(rewriteMintlifyInternalLinks, converted, 'intro', new Map([['next', target]]));
         expect(head.visits).toEqual(main.visits);
+        expect(head.rewrites).toEqual(main.rewrites);
+        expect(head.reports).toEqual(main.reports);
         const expected = mintlify ? normalizeMintlifyMdx(main.output) : main.output;
         expect(mem.rows.find((row) => row.path === 'intro')?.content).toBe(expected);
         expect(expected).toContain(`[Go](${target}?x=1#part)`);
@@ -639,7 +651,8 @@ describe('round 6: full-import discovery matches main with and without collision
         const missedMain = traceLinkDiscovery(rewriteMainInternalLinks, missing, 'intro', new Map());
         const missedHead = traceLinkDiscovery(rewriteMintlifyInternalLinks, missing, 'intro', new Map());
         expect(missedHead.visits).toEqual(missedMain.visits);
-        expect(missedHead.reports).toEqual(expect.arrayContaining(missedMain.reports));
+        expect(missedHead.rewrites).toEqual(missedMain.rewrites);
+        expect(missedHead.reports).toEqual(missedMain.reports);
         expect(missedHead.reports).toContain('/missing?x=1#part');
       });
     }
@@ -647,6 +660,7 @@ describe('round 6: full-import discovery matches main with and without collision
 
 it('round-6 reviewer extended matrix: 44 full imports have identical discovery offsets and code', async () => {
   let cases = 0;
+  let rewrittenLinks = 0;
   for (const kind of ['mintlify', 'gitbook'] as const)
     for (const collision of [false, true])
       for (const [open, close] of extendedImportWrappers) {
@@ -679,12 +693,14 @@ it('round-6 reviewer extended matrix: 44 full imports have identical discovery o
         const main = traceLinkDiscovery(rewriteMainInternalLinks, converted, 'docs/intro', routes);
         const head = traceLinkDiscovery(rewriteMintlifyInternalLinks, converted, 'docs/intro', routes);
         expect(head.visits).toEqual(main.visits);
-        expect(head.reports).toEqual(expect.arrayContaining(main.reports));
+        expect(head.rewrites).toEqual(main.rewrites);
+        rewrittenLinks += head.rewrites.length;
+        expect(head.reports).toEqual(main.reports);
         expect(stored).toBe(mintlify ? normalizeMintlifyMdx(main.output) : main.output);
         expect(stored).toContain('`[Code](/next)`');
         expect(stored).toContain('~~~md\n[Code](/next)\n~~~');
         cases++;
       }
   expect(cases).toBe(44);
-  console.info('reviewer extended imports', { cases, offsetMismatches: 0, codeChanges: 0, reportLosses: 0, exceptions: [] });
+  console.info('reviewer extended imports', { cases, rewrittenLinks, offsetMismatches: 0, codeChanges: 0, reportLosses: 0, exceptions: [] });
 }, 60_000);
