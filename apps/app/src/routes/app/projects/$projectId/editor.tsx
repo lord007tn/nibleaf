@@ -60,6 +60,7 @@ import {
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
+  shouldSaveDraft,
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
@@ -656,7 +657,8 @@ function EditorPage() {
     const { page: current, synced: currentSynced, draft } = draftRef.current;
     const gate = autosaveGateRef.current;
     const conflicted = gate.conflictedPageId === current?.id;
-    if (!current || !gate.canEditContent || !shouldAutosave({ synced: currentSynced, draft, conflicted }, current)) return null;
+    if (!current || !gate.canEditContent || !shouldSaveDraft({ synced: currentSynced, draft, conflicted }, current, saveQueue.pendingDraft()))
+      return null;
     const refused = tooLargeDraftRef.current;
     if (
       refused &&
@@ -705,8 +707,14 @@ function EditorPage() {
     lastAutosaveInputRef.current = input;
     const sent = sentRef.current;
     sentRef.current = null;
-    if (!page || !canEditContent || !shouldAutosave({ synced, draft: { title, content }, conflicted: conflictedPageId === page.id }, page)) {
-      // Undoing back to the server copy must cancel an older queued draft.
+    // A write still in flight stores its own draft: undoing back to the stored
+    // text then still needs saving after it (#728).
+    if (
+      !page ||
+      !canEditContent ||
+      !shouldSaveDraft({ synced, draft: { title, content }, conflicted: conflictedPageId === page.id }, page, saveQueue.pendingDraft())
+    ) {
+      // Undoing back to the server copy (with no other write pending) must cancel an older queued draft.
       saveDraft.cancel();
       if (!saveQueue.hasPending()) setStatus((current) => (current === 'saving' ? 'saved' : current));
       return;
@@ -736,7 +744,7 @@ function EditorPage() {
     // save keeps its time. Any other change is a new change, as before.
     if (serializedByEditor) saveDraft.settle(draft);
     else saveDraft.maybeExecute(draft);
-  }, [title, content, page, synced, saveDraft, canEditContent, conflictedPageId, saveQueue.hasPending]);
+  }, [title, content, page, synced, saveDraft, canEditContent, conflictedPageId, saveQueue.hasPending, saveQueue.pendingDraft]);
 
   const flushCurrentDraft = async () => {
     const before = draftRef.current.draft.content;
