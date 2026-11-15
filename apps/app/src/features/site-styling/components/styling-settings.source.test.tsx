@@ -287,6 +287,35 @@ describe('StylingSettings follows the server', () => {
     expect(region()).toBeNull();
   });
 
+  it('the sliders keep their exact position through their own save, and follow the source once it moves: black → green → black, then lightness alone', async () => {
+    await open({ styling: { primaryColor: '#ef4444' } });
+    const hsl = () => [slider('hue').value, slider('saturation').value, slider('lightness').value];
+    await setValue(slider('hue'), '200');
+    await setValue(slider('saturation'), '80');
+    await setValue(slider('lightness'), '0');
+    expect(hex().value).toBe('#000000');
+    await save();
+    expect(lastPatch()?.config).toStrictEqual({ styling: { primaryColor: '#000000' } });
+    // Its own echo leaves the sliders where the person put them.
+    expect(hsl()).toStrictEqual(['200', '80', '0']);
+
+    elsewhere('site-1', (config) => ({ ...config, styling: { primaryColor: '#00ff00' } }));
+    await read();
+    expect(hsl()).toStrictEqual(['120', '100', '50']);
+    elsewhere('site-1', (config) => ({ ...config, styling: { primaryColor: '#000000' } }));
+    await read();
+    // Black again, from the source: its own HSL, not the earlier slider position.
+    expect(hsl()).toStrictEqual(['0', '0', '0']);
+
+    await setValue(slider('lightness'), '50');
+    expect(hex().value).toBe('#808080');
+    await save();
+    expect(lastPatch()?.config).toStrictEqual({ styling: { primaryColor: '#808080' } });
+    expect(server.config['site-1'].styling).toStrictEqual({ primaryColor: '#808080' });
+    expect(hex().value).toBe('#808080');
+    expect(region()).toBeNull();
+  });
+
   it('A → B → A: a save that completes after the switch shows nowhere else, and each site sends only its own change', async () => {
     await open({ styling: { primaryColor: '#5546e8' } });
     server.config['site-2'] = { styling: { primaryColor: '#0ea5e9', radius: 'sharp' } };

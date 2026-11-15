@@ -74,8 +74,8 @@ const HIDDEN: Reveal = { left: false, attempted: false };
  * How the controls show the draft's color while the person is working on it:
  * the text as typed (`#ABC` for `#aabbcc`) and the slider position (hue 360,
  * or the hue of a gray). It applies only while the draft still holds `value`,
- * the color it was made for, so an outside change (a refetch, Use theirs,
- * Discard) shows that color instead, never a stale one.
+ * the color it was made for: an outside change (a refetch, Use theirs,
+ * Discard) shows that color instead and ends it, never a stale one.
  */
 type Transient = { value: string; text?: string; hsl?: Hsl };
 
@@ -130,6 +130,10 @@ function StylingForm({ project }: { project: Project }) {
   const values = useStore(form.store, (state) => state.values);
   const color = values.primaryColor;
   const shown = shownColor(color);
+  // The exact view lasts only while the draft keeps holding its color: once
+  // the draft moves to another color it is dropped, so the same color coming
+  // back later (from the server, say) shows its own HSL, not a stale position.
+  if (transient && transient.value !== color) setTransient(() => null);
   const own = transient?.value === color ? transient : null;
   const hsl = own?.hsl ?? hexToHsl(shown ?? SHOWN_DEFAULT_COLOR) ?? { h: 0, s: 0, l: 0 };
   const text = own?.text ?? (shown ?? color).toUpperCase();
