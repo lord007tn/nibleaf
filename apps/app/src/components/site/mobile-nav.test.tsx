@@ -65,6 +65,8 @@ it.each([false, true])(
     let drawer = document.querySelector('[data-slot="sheet-content"]');
     expect(drawer?.getAttribute('dir')).toBe(isRtl ? 'rtl' : 'ltr');
     expect(drawer?.getAttribute('data-side')).toBe(isRtl ? 'right' : 'left');
+    // The theme scopes the drawer's accent shade to this attribute (#726).
+    expect(drawer?.hasAttribute('data-site-drawer')).toBe(true);
     const close = drawer?.querySelector<HTMLButtonElement>('[data-slot="sheet-close"]');
     expect(close?.textContent).toBe(isRtl ? 'إغلاق' : 'Close');
     expect(drawer?.hasAttribute('closelabel')).toBe(false);

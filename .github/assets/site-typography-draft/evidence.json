@@ -1,0 +1,294 @@
+{
+  "environment": "Component fixture: the real Typography section (before: main; after: this branch) with the real design system, typeset CSS, EN/AR catalogs, project query and config mutation, in an editor-canvas frame; fictional site; project GET and config PATCH (one-level merge like the API) answered by interception; not the signed-in dashboard or production",
+  "baseline": "8e67481c7132e97c6708d30b9a56b12c60ae8a96",
+  "head": "037e67999aa1f864c8f303c4dab401b7554ee170",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/components/project-settings/typography-section.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "pristine-before-en-1440.png",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fonts": ["Merriweather", "Inter", "Fira Code"],
+      "pressed": ["15", "1.6", "Snug"],
+      "preview": {
+        "font-size": "15px",
+        "--typeset-leading": "1.6",
+        "--typeset-flow": "1em",
+        "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "overflow": false,
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-after-en-1440.png",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fonts": ["Merriweather", "Inter", "Fira Code"],
+      "pressed": ["Compact", "15", "1.6", "Snug"],
+      "preview": {
+        "font-size": "15px",
+        "--typeset-leading": "1.6",
+        "--typeset-flow": "1em",
+        "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+      },
+      "toasts": [],
+      "saveButtonVisible": false,
+      "overflow": false,
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-before-en-390.png",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fonts": ["Merriweather", "Inter", "Fira Code"],
+      "pressed": ["15", "1.6", "Snug"],
+      "preview": {
+        "font-size": "15px",
+        "--typeset-leading": "1.6",
+        "--typeset-flow": "1em",
+        "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "overflow": false,
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-after-en-390.png",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "ltr",
+      "fonts": ["Merriweather", "Inter", "Fira Code"],
+      "pressed": ["Compact", "15", "1.6", "Snug"],
+      "preview": {
+        "font-size": "15px",
+        "--typeset-leading": "1.6",
+        "--typeset-flow": "1em",
+        "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+      },
+      "toasts": [],
+      "saveButtonVisible": false,
+      "overflow": false,
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-before-ar-1440.png",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fonts": ["Merriweather", "Inter", "Fira Code"],
+      "pressed": ["15", "1.6", "متقارب"],
+      "preview": {
+        "font-size": "15px",
+        "--typeset-leading": "1.6",
+        "--typeset-flow": "1em",
+        "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "overflow": false,
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-after-ar-1440.png",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fonts": ["Merriweather", "Inter", "Fira Code"],
+      "pressed": ["مضغوط", "15", "1.6", "متقارب"],
+      "preview": {
+        "font-size": "15px",
+        "--typeset-leading": "1.6",
+        "--typeset-flow": "1em",
+        "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+      },
+      "toasts": [],
+      "saveButtonVisible": false,
+      "overflow": false,
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-before-ar-390.png",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fonts": ["Merriweather", "Inter", "Fira Code"],
+      "pressed": ["15", "1.6", "متقارب"],
+      "preview": {
+        "font-size": "15px",
+        "--typeset-leading": "1.6",
+        "--typeset-flow": "1em",
+        "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+      },
+      "toasts": [],
+      "saveButtonVisible": true,
+      "overflow": false,
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": []
+    },
+    {
+      "file": "pristine-after-ar-390.png",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "themes": ["light", "dark"],
+      "dir": "rtl",
+      "fonts": ["Merriweather", "Inter", "Fira Code"],
+      "pressed": ["مضغوط", "15", "1.6", "متقارب"],
+      "preview": {
+        "font-size": "15px",
+        "--typeset-leading": "1.6",
+        "--typeset-flow": "1em",
+        "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+      },
+      "toasts": [],
+      "saveButtonVisible": false,
+      "overflow": false,
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": []
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-after-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": {
+            "config": {
+              "typography": {
+                "baseSize": "17",
+                "leading": "1.9",
+                "flow": "1.5"
+              }
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" }
+      ],
+      "serverAfter": {
+        "typography": {
+          "headingFont": "Merriweather",
+          "bodyFont": "Inter",
+          "codeFont": "Fira Code",
+          "baseSize": "17",
+          "leading": "1.9",
+          "flow": "1.5"
+        },
+        "branding": { "favicon": "/favicon.svg" }
+      },
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: the saved values, Compact pressed (it matches 15 / 1.6 / Snug), no save bar",
+          "dir": "ltr",
+          "fonts": ["Merriweather", "Inter", "Fira Code"],
+          "pressed": ["Compact", "15", "1.6", "Snug"],
+          "preview": {
+            "font-size": "15px",
+            "--typeset-leading": "1.6",
+            "--typeset-flow": "1em",
+            "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "overflow": false
+        },
+        {
+          "step": "Article preset: only size, line height and block spacing change; the preview follows; nothing is saved",
+          "dir": "ltr",
+          "fonts": ["Merriweather", "Inter", "Fira Code"],
+          "pressed": ["Article", "17", "2.0", "Roomy"],
+          "preview": {
+            "font-size": "17px",
+            "--typeset-leading": "2",
+            "--typeset-flow": "1.5em",
+            "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+          },
+          "toasts": [],
+          "saveButtonVisible": true,
+          "overflow": false
+        },
+        {
+          "step": "line height set to 1.9 by hand: no preset is pressed any more; the preview follows",
+          "dir": "ltr",
+          "fonts": ["Merriweather", "Inter", "Fira Code"],
+          "pressed": ["17", "1.9", "Roomy"],
+          "preview": {
+            "font-size": "17px",
+            "--typeset-leading": "1.9",
+            "--typeset-flow": "1.5em",
+            "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+          },
+          "toasts": [],
+          "saveButtonVisible": true,
+          "overflow": false
+        },
+        {
+          "step": "Save pressed: saving",
+          "dir": "ltr",
+          "fonts": ["Merriweather", "Inter", "Fira Code"],
+          "pressed": ["17", "1.9", "Roomy"],
+          "preview": {
+            "font-size": "17px",
+            "--typeset-leading": "1.9",
+            "--typeset-flow": "1.5em",
+            "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "overflow": false
+        },
+        {
+          "step": "saved and refetched: the form shows what the server holds, no save bar",
+          "dir": "ltr",
+          "fonts": ["Merriweather", "Inter", "Fira Code"],
+          "pressed": ["17", "1.9", "Roomy"],
+          "preview": {
+            "font-size": "17px",
+            "--typeset-leading": "1.9",
+            "--typeset-flow": "1.5em",
+            "--typeset-font-heading": "'Merriweather', var(--font-sans, sans-serif)"
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "overflow": false
+        }
+      ]
+    }
+  ]
+}

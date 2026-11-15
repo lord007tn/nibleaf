@@ -123,7 +123,13 @@ function NavLink({
             </span>
             {node.tag ? (
               <span
-                className="max-w-full break-words rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase leading-none tracking-wide"
+                className={cn(
+                  'max-w-full break-words rounded-full px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase leading-none tracking-wide',
+                  // The accent shade is chosen to read on one 10% tint. An active
+                  // row already draws it, so the tag outlines itself instead of
+                  // stacking a second tint under its small text (#678).
+                  active ? 'ring-1 ring-primary/40 ring-inset' : 'bg-primary/10',
+                )}
                 data-nav-tag
                 dir={blockDirection(node.tag)}
               >
