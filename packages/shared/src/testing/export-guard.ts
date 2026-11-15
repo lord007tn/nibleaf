@@ -8,10 +8,11 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { mayHaveActiveExportHtml } from '../export-html';
+import { authoredExportText, exportTextInOrder } from '../export-html-source';
 import { captureExportStructure, compareExportStructure, type ExportStructure, exportSourceLines } from '../export-structure';
 import { normalizeMdxBlocks } from '../reader-markdown';
 import { readerSanitizeSchema } from '../reader-sanitize';
-import { inspectRenderedExport, newlyLiveFeatures, visibleExportText } from './export-oracle';
+import { inspectRenderedExport, newlyLiveFeatures } from './export-oracle';
 
 /** @public Used by `__fixtures__/markdown-export.guard.generate.mjs`, which knip.jsonc keeps out of analysis. */
 export const EXPORT_BASELINE_REVISION = '2cf12d3fe325057c586fd1f6abd05247a1af6813';
@@ -268,7 +269,7 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
           expandedCases.push(index * 2 + target);
         }
         for (const range of structure.rescue ?? structure.literal ?? [])
-          if (!analysis.visible.includes(visibleExportText(structure.source.slice(range.from, range.to)))) {
+          if (!exportTextInOrder(authoredExportText(structure.source.slice(range.from, range.to)), analysis.visible)) {
             tally.fallbackTextLoss++;
             failures.push({ index, target, reason: 'fallback lost visible source text' });
           }
@@ -277,6 +278,10 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       if (newFeatures) {
         tally.newlyLiveFeatures += newFeatures;
         failures.push({ index, target, reason: 'newly live HTML handler or URL' });
+      }
+      if (comparison && !comparison.visibleTextPreserved) {
+        tally.fallbackTextLoss++;
+        failures.push({ index, target, reason: 'owned author text is not visible in the rendered DOM' });
       }
       if (comparison?.unpreservable && !comparison.outsideCodeStable) {
         tally.changedCode++;

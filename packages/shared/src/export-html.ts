@@ -1,5 +1,12 @@
 import type Token from 'markdown-it/lib/token.mjs';
-import { mayHaveActiveExportHtml, parseExportTokens, readExportHtml, renderedExportText } from './export-html-source';
+import {
+  authoredExportText,
+  exportTextEnd,
+  mayHaveActiveExportHtml,
+  parseExportTokens,
+  readExportHtml,
+  renderedExportText,
+} from './export-html-source';
 import {
   captureExportStructure,
   compareExportStructure,
@@ -159,9 +166,9 @@ const literalizeRun = (source: string, state: NonNullable<ReturnType<typeof read
             .map((token) => token.content)
             .join('')
         : source.slice(range.from, range.to).replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD');
-    const found = visible.indexOf(expected, visibleAt);
-    if (found < 0) return literalExportText(model);
-    visibleAt = found + expected.length;
+    const end = exportTextEnd(authoredExportText(expected), visible, visibleAt);
+    if (end < 0) return literalExportText(model);
+    visibleAt = end;
   }
   return output;
 };

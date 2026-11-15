@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
+import { authoredExportText, exportTextInOrder } from './export-html-source';
 import { captureExportStructure, compareExportStructure } from './export-structure';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
-import { inspectExport, newlyLiveFeatures, visibleExportText } from './testing/export-oracle';
+import { inspectExport, newlyLiveFeatures } from './testing/export-oracle';
 
 const mode = vi.hoisted(() => ({ main: false }));
 vi.mock('./export-html', async (original) => {
@@ -34,7 +35,8 @@ it.each([
     expect(comparison.preserved).toBe(true);
     expect(comparison.outsideCodeStable).toBe(true);
     if (comparison.unpreservable)
-      for (const range of model.rescue ?? model.literal ?? []) expect(after.text).toContain(visibleExportText(baseline.slice(range.from, range.to)));
+      for (const range of model.rescue ?? model.literal ?? [])
+        expect(exportTextInOrder(authoredExportText(baseline.slice(range.from, range.to)), after.text)).toBe(true);
   }
 });
 

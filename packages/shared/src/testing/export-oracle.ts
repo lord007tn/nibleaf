@@ -48,4 +48,6 @@ export const newlyLiveFeatures = (before: string[], after: string[]): number => 
   }
   return count;
 };
-export const visibleExportText = (text: string) => text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD');
+
+// Decode references in authored source, without interpreting source markup.
+export const authoredVisibleText = (source: string): string => inspectRenderedExport(source.replaceAll('\0', '\uFFFD').replaceAll('<', '&#60;')).text;

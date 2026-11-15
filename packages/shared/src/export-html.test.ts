@@ -3,11 +3,12 @@ import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import { expect, it, vi } from 'vitest';
 import followingBaseline from './__fixtures__/markdown-export.following.main.json';
 import { escapeDisallowedExportHtml as safe } from './export-html';
+import { authoredExportText, exportTextInOrder } from './export-html-source';
 import { captureExportStructure, compareExportStructure } from './export-structure';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 import { exportCodeSamples, renderedActiveHtml } from './testing/export-guard';
 import { exportFollowingBlockCases } from './testing/export-guard-cases';
-import { inspectExport, newlyLiveFeatures, visibleExportText } from './testing/export-oracle';
+import { inspectExport, newlyLiveFeatures } from './testing/export-oracle';
 
 const mode = vi.hoisted(() => ({ main: false }));
 vi.mock('./export-html', async (original) => {
@@ -34,7 +35,8 @@ const rescued = (baseline: string, output: string) => {
   expect(comparison.preserved).toBe(true);
   expect(comparison.outsideCodeStable).toBe(true);
   if (comparison.unpreservable)
-    for (const range of model.rescue ?? model.literal ?? []) expect(after.text).toContain(visibleExportText(baseline.slice(range.from, range.to)));
+    for (const range of model.rescue ?? model.literal ?? [])
+      expect(exportTextInOrder(authoredExportText(baseline.slice(range.from, range.to)), after.text)).toBe(true);
   return comparison.unpreservable;
 };
 

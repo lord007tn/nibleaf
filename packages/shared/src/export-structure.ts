@@ -1,5 +1,5 @@
 import type Token from 'markdown-it/lib/token.mjs';
-import { readExportHtml } from './export-html-source';
+import { authoredExportText, exportTextEnd, readExportHtml, renderedExportText } from './export-html-source';
 
 type LineMap = [number, number] | null;
 type Code = [string, string, string, string];
@@ -169,7 +169,7 @@ export const literalExportText = (main: ExportStructure): string => {
   let cursor = 0;
   for (const range of main.rescue ?? main.literal ?? []) {
     chunks.push(main.source.slice(cursor, range.from));
-    const value = Array.from(main.source.slice(range.from, range.to), (c) =>
+    const value = Array.from(authoredExportText(main.source.slice(range.from, range.to)), (c) =>
       (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c.codePointAt(0) ?? 0) > 127 ? c : `&#${c.codePointAt(0)};`,
     ).join('');
     // A whole root block is owned here: the literal paragraph starts and ends
@@ -359,10 +359,28 @@ export const compareExportStructure = (main: ExportStructure, output: string, to
     }
     outsideCodeStable &&= JSON.stringify(expected) === JSON.stringify(current.blocks.flatMap((block) => block.code ?? []));
   }
+  // The author-text invariant uses source, not serializer artifacts. For
+  // example, main can show '--&gt;' for authored '-->' in malformed raw text;
+  // only the authored '-->' is required. References the author wrote decode
+  // once. Actual DOM text is checked; matching encoded fallback bytes cannot
+  // prove that an earlier unterminated attribute has not hidden the text.
+  const visible = unpreservable ? renderedExportText(output) : '';
+  let visibleAt = 0;
+  let visibleTextPreserved = true;
+  if (unpreservable)
+    for (const range of main.rescue ?? main.literal ?? []) {
+      const end = exportTextEnd(authoredExportText(main.source.slice(range.from, range.to)), visible, visibleAt);
+      if (end < 0) {
+        visibleTextPreserved = false;
+        break;
+      }
+      visibleAt = end;
+    }
   const expanded = unpreservable && JSON.stringify(main.rescue ?? []) !== JSON.stringify(main.literal ?? []);
   return {
     equal: equal && preserved,
-    preserved: preserved || unpreservable,
+    preserved: (preserved || unpreservable) && visibleTextPreserved,
+    visibleTextPreserved,
     unpreservable,
     expanded,
     outsideCodeStable,

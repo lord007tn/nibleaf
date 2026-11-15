@@ -242,6 +242,10 @@ export const readExportHtml = (source: string) => {
   const endAt = new Int32Array(html.length);
   for (const bound of renderedBounds) endAt.fill(bound.end, bound.from, bound.to);
   for (const span of spans) for (let at = span.from; at < span.to; at++) originalAt[at] = span.positions[at - span.from] ?? -1;
+  // A start tag spanning renderer-generated markup was unterminated in the
+  // author's HTML token. Prefix counts keep every context lookup constant-time.
+  const generatedBefore = new Uint32Array(html.length + 1);
+  for (let at = 0; at < html.length; at++) generatedBefore[at + 1] = (generatedBefore[at] ?? 0) + Number((originalAt[at] ?? -1) < 0);
   const active: Array<[number, number]> = [];
   let risky = spans.some((span) => span.token.content.includes('<!') || span.token.content.includes('<?'));
   const hidden = new Int32Array(source.length + 1);
@@ -313,7 +317,12 @@ export const readExportHtml = (source: string) => {
             if (first != null && last != null) active.push([first, last + 1]);
           }
       }
-      if (from >= 0 && !loc.endTag && node.tagName !== 'embed') risky = true;
+      const opening = loc.startTag;
+      const malformedOpening = opening && (generatedBefore[opening.endOffset] ?? 0) > (generatedBefore[opening.startOffset] ?? 0);
+      if (from >= 0 && ((!loc.endTag && node.tagName !== 'embed') || malformedOpening)) risky = true;
+      // Own the earlier malformed opener; a normal unclosed element does not
+      // need to consume following code merely because its closing tag is absent.
+      if (from >= 0 && malformedOpening) hide(from, Math.max(from + 1, sourceEnd(loc.endOffset)));
       if (from >= 0 && [...rawText, 'select', 'template', 'svg', 'math', 'table', 'frameset'].includes(node.tagName)) {
         risky = true;
         hide(from, loc.endTag ? sourceEnd(loc.endTag.endOffset) : source.length);
@@ -363,3 +372,24 @@ export const renderedExportText = (source: string): string => {
   }
   return text.join('');
 };
+
+/** Decode only references the author wrote. Escape literal '<' first so the
+ * decoder reads source as text, never as markup. Renderer-created spellings
+ * are absent here: authored '-->' stays '-->', even if main rendered it as
+ * the literal '--&gt;' inside a malformed raw-text context. */
+export const authoredExportText = (source: string): string => {
+  const literal = source.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD').replaceAll('<', '&lt;');
+  return parseFragment(literal)
+    .childNodes.map((node) => (node.nodeName === '#text' && 'value' in node ? node.value : ''))
+    .join('');
+};
+export const exportTextEnd = (expected: string, actual: string, start = 0): number => {
+  let cursor = start;
+  for (const character of expected) {
+    const at = actual.indexOf(character, cursor);
+    if (at < 0) return -1;
+    cursor = at + character.length;
+  }
+  return cursor;
+};
+export const exportTextInOrder = (expected: string, actual: string): boolean => exportTextEnd(expected, actual) >= 0;

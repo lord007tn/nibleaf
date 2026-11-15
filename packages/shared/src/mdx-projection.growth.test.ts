@@ -13,6 +13,11 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
   it.each([
     ['ordinary code-heavy text (round 4)', (n: number) => 'a ` b '.repeat(n), 10_000],
     ['bounded tight-list export', (n: number) => '- <script></script>\n      CODE\n- NEXT\n'.repeat(n), 100],
+    [
+      'malformed attribute ownership and authored entities',
+      (n: number) => '> <div title="\n2. <script>BODY</script>\n   FOLLOW &lt;AUTHOR&gt; &amp;\n'.repeat(n),
+      100,
+    ],
     ['unclosed raw-text content', (n: number) => `<script>\n${'<img onerror="INERT()"> [LINK](data:text/html,INERT)\n'.repeat(n)}`, 200],
     ['HTML/code boundary invariants', (n: number) => '<pre><script></script>\n    <object>CODE</object>\n\n</pre>\n\n'.repeat(n), 100],
     ['unclosed tags', (n: number) => '<Note title="x" '.repeat(n), 100],
@@ -48,6 +53,13 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
       const project = (source: string) => [md(source), portable(source)];
       const [small, large] = growthMs(project, build(n), build(4 * n), { minMs: 20 });
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+      if (label === 'malformed attribute ownership and authored entities') {
+        for (const output of project(build(n))) {
+          const rendered = inspectExport(output);
+          expect(rendered.elements).toBe(0);
+          expect(rendered.text).toContain('FOLLOW <AUTHOR> &');
+        }
+      }
       if (label === 'bounded tight-list export') {
         const output = inspectExport(portable(build(n)));
         expect(output.elements).toBe(0);

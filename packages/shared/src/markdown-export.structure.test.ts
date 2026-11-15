@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, it, vi } from 'vitest';
+import { authoredExportText, exportTextInOrder } from './export-html-source';
 import { captureExportStructure, compareExportStructure, exportSourceLines } from './export-structure';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
-import { inspectExport as inspect, newlyLiveFeatures, visibleExportText } from './testing/export-oracle';
+import { inspectExport as inspect, newlyLiveFeatures } from './testing/export-oracle';
 import { reviewedExportCases } from './testing/export-review-cases';
 import { expandedExportStructureCases, exportContentHazardCases, exportInertContextCases } from './testing/export-structure-cases';
 import { markdownCorpus } from './testing/markdown-corpus';
@@ -71,7 +72,7 @@ it.each([
             failures.push({ index, target, reason: 'new expanded rescue' });
           if (!allowedFallbacks.has(index * 2 + target) && failures.length < 8) failures.push({ index, target, reason: 'new unpreservable shape' });
           for (const range of model.rescue ?? model.literal ?? [])
-            if (!after.text.includes(visibleExportText(baseline.slice(range.from, range.to)))) {
+            if (!exportTextInOrder(authoredExportText(baseline.slice(range.from, range.to)), after.text)) {
               totals.textLoss++;
               if (failures.length < 8) failures.push({ index, target, reason: 'fallback lost visible text' });
             }
@@ -87,7 +88,7 @@ it.each([
                     .map((token) => token.content)
                     .join('')
                 : baseline.slice(range.from, range.to);
-            if (!after.text.includes(visibleExportText(expected))) {
+            if (!exportTextInOrder(authoredExportText(expected), after.text)) {
               totals.textLoss++;
               if (failures.length < 8) failures.push({ index, target, reason: 'literal run lost visible text' });
             }
