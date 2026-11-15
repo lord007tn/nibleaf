@@ -201,9 +201,10 @@ createRoot(document.getElementById('root')!).render(
         const loaded = await Promise.all(rows.map(async (row) => ({ ...row, before: await load(row.before), after: await load(row.after) })));
         const gap = 24;
         const band = 40;
+        const rowBand = 60;
         const column = Math.max(...loaded.flatMap((row) => [row.before.width, row.after.width]));
         const width = column * 2 + gap * 3;
-        const height = band + loaded.reduce((sum, row) => sum + band + Math.max(row.before.height, row.after.height) + gap, gap);
+        const height = band + loaded.reduce((sum, row) => sum + rowBand + Math.max(row.before.height, row.after.height) + gap, gap);
         const canvas = Object.assign(document.createElement('canvas'), { width, height });
         const draw = canvas.getContext('2d');
         draw.fillStyle = '#e5e7eb';
@@ -213,12 +214,15 @@ createRoot(document.getElementById('root')!).render(
         draw.fillText(title, gap, 28);
         let y = band + gap;
         for (const row of loaded) {
+          // The scene across the sheet, then each column's phase: narrow columns can't hold both.
+          draw.font = 'bold 16px sans-serif';
+          draw.fillText(row.label, gap, y + 20, width - gap * 2);
           draw.font = '16px sans-serif';
-          draw.fillText(`Before (main) · ${row.label}`, gap, y + 24);
-          draw.fillText(`After (this PR) · ${row.label}`, gap * 2 + column, y + 24);
-          draw.drawImage(row.before, gap, y + band);
-          draw.drawImage(row.after, gap * 2 + column, y + band);
-          y += band + Math.max(row.before.height, row.after.height) + gap;
+          draw.fillText('Before (main)', gap, y + 46);
+          draw.fillText('After (this PR)', gap * 2 + column, y + 46);
+          draw.drawImage(row.before, gap, y + rowBand);
+          draw.drawImage(row.after, gap * 2 + column, y + rowBand);
+          y += rowBand + Math.max(row.before.height, row.after.height) + gap;
         }
         return canvas.toDataURL('image/png').split(',')[1];
       },
