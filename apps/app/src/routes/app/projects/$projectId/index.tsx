@@ -36,6 +36,7 @@ import { ViewOnlyBanner } from '@/components/project/view-only-notice';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PageStatusBadge, PendingChangesNotice } from '@/features/publish/components/pending-changes';
 import { pageLiveStatus } from '@/features/publish/model/pending';
+import { recentPages, siteOverview } from '@/features/site-overview/model/overview';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import {
   friendlyErrorMessage,
@@ -91,52 +92,38 @@ function SiteOverviewPage() {
   const deploymentsQuery = useDeployments(projectId);
   const { data: deployments, isPending: deploymentsPending } = deploymentsQuery;
   const { data: domains } = useDomains(projectId);
-  // A failed request is unknown, never "no pages" or "0 members": those read as lost content.
-  const pagesFailed = pagesQuery.isError && !pages;
-  const membersFailed = membersQuery.isError && !members;
   // Domain settings are for Admins; while that's unknown, show neither variant.
   const { status: settingsAccess, edit: editAccess } = useProjectAdminStatus(projectId);
   // Viewers read the site: they open the pages to read, and nothing here offers them a publish.
   const viewOnly = editAccess === 'viewOnly';
-  const deploymentsFailed = deploymentsQuery.isError && !deployments;
   const analyticsQuery = useProjectAnalytics(projectId, range);
   const { data: analytics, isPending: analyticsPending, isError: analyticsError } = analyticsQuery;
-  const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
   // The same check the top bar's Publish count reads: what the live site is missing.
   const { data: pendingChanges } = usePendingChanges(projectId);
 
-  const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
+  const overview = siteOverview({
+    project,
+    projectPending,
+    pages,
+    pagesError: pagesQuery.isError,
+    members,
+    membersError: membersQuery.isError,
+    deployments,
+    deploymentsPending,
+    deploymentsError: deploymentsQuery.isError,
+    domains,
+    analytics,
+    analyticsError,
+    viewOnly,
+  });
+  const { pagesFailed, membersFailed, deploymentsFailed, latestDeployment, failedDeployment, liveDomain, connectingDomain, analyticsUnknown } =
+    overview;
   const canManageSettings = settingsAccess === 'admin';
-  const memberCount = members?.members.length ?? 0;
-  // From the site itself, not the deployments list: that list is the newest 50
-  // attempts (failed and pending included), so it can't count publishes or tell
-  // whether an older version is still live.
-  const deployCount = project?.readyPublishes ?? null;
-  const latestDeployment = deployments?.[0];
-  // A publish that just went live shows in the (polled) list before the site is re-read.
-  const hasReadyDeployment = (project?.readyPublishes ?? 0) > 0 || (deployments ?? []).some((deployment) => deployment.status === 'READY');
-  // "Never published" only once the site itself says so; until then it's unknown.
-  const neverPublished = !hasReadyDeployment && project?.readyPublishes === 0;
-  const publishFailed = latestDeployment?.status === 'FAILED';
-  // Only a domain whose DNS and HTTPS both work opens the docs; one still connecting
-  // (or broken) would greet the owner with a browser error, so link the default address.
-  const primaryDomain = pickLiveDomain(domains ?? []);
-  const connectingDomain = primaryDomain ? undefined : domains?.[0];
-  const liveDomain = primaryDomain?.domain;
   // The publish dialog uses this same resolver, including its internal URL fallback.
   const liveHref = canonicalSiteBase(projectId, { slug: project?.slug, primaryDomain: liveDomain });
   // Against the equal window right before this one; hidden when either side isn't known.
-  const viewsDelta = analyticsUnknown
-    ? null
-    : compareDelta({ value: analytics?.comparableTotalViews ?? null, previous: analytics?.previousTotalViews ?? null }, 'count');
-  const recentPages = useMemo(
-    () =>
-      (pages ?? [])
-        .filter((p) => p.kind === 'PAGE')
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-        .slice(0, 6),
-    [pages],
-  );
+  const viewsDelta = overview.viewsComparison ? compareDelta(overview.viewsComparison, 'count') : null;
+  const recent = useMemo(() => recentPages(pages), [pages]);
 
   return (
     <div className="w-full px-6 py-8 xl:px-10">
@@ -164,7 +151,7 @@ function SiteOverviewPage() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Before the first publish there's nothing live to visit, so offer the
               draft preview instead of a link to an empty site. */}
-          {hasReadyDeployment ? (
+          {overview.publishing === 'live' ? (
             <Button
               nativeButton={false}
               render={<a href={liveHref} target="_blank" rel="noreferrer" aria-label={t('overview.viewSite')} />}
@@ -173,7 +160,7 @@ function SiteOverviewPage() {
             >
               <Eye className="size-3.5" /> {t('overview.viewSite')}
             </Button>
-          ) : neverPublished ? (
+          ) : overview.publishing === 'neverPublished' ? (
             <Button
               nativeButton={false}
               render={<Link aria-label={t('project.previewDraftAria')} params={{ projectId }} to="/app/projects/$projectId/preview" />}
@@ -193,18 +180,16 @@ function SiteOverviewPage() {
 
       {/* Publish-failure triage: what blocked the last publish, with per-page
           links into the editor and a grammar-only "Publish anyway" escape hatch. */}
-      {publishFailed && latestDeployment ? (
-        <PublishFailureCard deployment={latestDeployment} pages={pages ?? []} projectId={projectId} viewOnly={viewOnly} />
-      ) : null}
+      {failedDeployment ? <PublishFailureCard deployment={failedDeployment} pages={pages ?? []} projectId={projectId} viewOnly={viewOnly} /> : null}
 
       {/* First-publish nudge: shown until the site has one READY deployment.
           Hidden while the latest attempt is FAILED (the failure card leads). */}
-      {deployments && neverPublished && !publishFailed && !viewOnly ? (
+      {overview.showFirstPublishNudge ? (
         <PublishNudge
           projectId={projectId}
           settingsAccess={settingsAccess}
           permissionError={
-            membersQuery.isError && !members ? (
+            membersFailed ? (
               <p className="mt-1 flex flex-wrap items-center gap-x-1 text-xs">
                 <span>{t('overview.nudge.permissionsError')}</span>
                 <Button
@@ -231,14 +216,14 @@ function SiteOverviewPage() {
             </span>
             <div className="min-w-0">
               <div className="font-semibold text-sm">{t('overview.live.title')}</div>
-              {hasReadyDeployment ? (
+              {overview.liveCard === 'live' ? (
                 <>
                   <a className="block truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
                     <bdi dir="ltr">{liveDomain ?? liveHref}</bdi>
                   </a>
                   {connectingDomain ? (
                     <p className="mt-1 text-muted-foreground text-xs">
-                      {t('overview.live.domainConnecting', { domain: isolate(connectingDomain.domain) })}
+                      {t('overview.live.domainConnecting', { domain: isolate(connectingDomain) })}
                       {settingsAccess === 'admin' ? (
                         <>
                           {' '}
@@ -257,9 +242,9 @@ function SiteOverviewPage() {
                     </p>
                   ) : null}
                 </>
-              ) : projectPending || (deploymentsPending && !neverPublished) ? (
+              ) : overview.liveCard === 'loading' ? (
                 <Skeleton className="mt-1 h-4 w-40" />
-              ) : !neverPublished ? (
+              ) : overview.liveCard === 'loadError' ? (
                 <p className="text-muted-foreground text-sm">{t('overview.live.loadError')}</p>
               ) : (
                 <>
@@ -371,20 +356,20 @@ function SiteOverviewPage() {
       <div className={cn('mt-6', STAT_GRID)}>
         <StatCard
           label={t('overview.stats.pages')}
-          value={pagesFailed ? null : pageCount}
+          value={overview.pageCount}
           icon={<FileText className="size-4" />}
           loading={pagesPending && !pagesFailed}
         />
         <StatCard
           label={t('overview.stats.members')}
-          value={membersFailed ? null : memberCount}
+          value={overview.memberCount}
           icon={<Users className="size-4" />}
           loading={membersPending && !membersFailed}
         />
-        <StatCard label={t('overview.stats.deploys')} value={deployCount} icon={<Rocket className="size-4" />} loading={projectPending} />
+        <StatCard label={t('overview.stats.deploys')} value={overview.publishCount} icon={<Rocket className="size-4" />} loading={projectPending} />
         <StatCard
           label={t('overview.stats.pageviews')}
-          value={analytics?.totalViews ?? null}
+          value={overview.totalViews}
           icon={<BarChart3 className="size-4" />}
           delta={viewsDelta}
           hint={viewsDelta ? t('analytics.vsPrevious') : undefined}
@@ -462,7 +447,7 @@ function SiteOverviewPage() {
                 </TableBody>
               </Table>
             </div>
-          ) : recentPages.length === 0 ? (
+          ) : recent.length === 0 ? (
             <p className="px-5 py-8 text-center text-muted-foreground text-sm">{t('overview.noPages')}</p>
           ) : (
             <Table>
@@ -474,7 +459,7 @@ function SiteOverviewPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentPages.map((page) => {
+                {recent.map((page) => {
                   const status = pageLiveStatus(page.id, pendingChanges);
                   return (
                     <TableRow key={page.id} className="relative">
@@ -523,7 +508,7 @@ function SiteOverviewPage() {
               to="/app/projects/$projectId/settings"
             />
           </ManageRow>
-          {membersQuery.isError && !members ? (
+          {membersFailed ? (
             <QueryErrorState onRetry={() => void membersQuery.refetch()} retrying={membersQuery.isFetching} />
           ) : settingsAccess === 'pending' ? (
             <div aria-busy="true" className="space-y-3">

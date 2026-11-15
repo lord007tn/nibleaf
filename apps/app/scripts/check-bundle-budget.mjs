@@ -55,12 +55,15 @@ const profiles = {
 // message in every locale shipped with the sign-in form (translateFn's catalog
 // import). The auth pages translate through @nibleaf/i18n/scoped now; measured
 // 398,182 and 399,872 bytes, with ~2 KiB of margin.
+// auth-sign-in 402_000 → 383_100, auth-sign-up 403_000 → 384_800 (#697): the
+// auth layout's language button loads its picker dialog (cmdk and its dialog
+// helpers, ~17 KiB) on first open instead of with the page. Measured 382,003 and
+// 383,693 bytes; the margin is ~1 KiB, which also takes back #613's raise.
 const gzipBudgets = {
   'public-docs': 345_100,
   'public-docs-index': 345_100,
-  'auth-sign-in': 402_000,
-  // 402,000 → 403,000: #674 (Arabic pricing) and #613 (accent contrast helpers in the shared themes chunk) together took sign-up to 402,212.
-  'auth-sign-up': 403_000,
+  'auth-sign-in': 383_100,
+  'auth-sign-up': 384_800,
 };
 
 /** The published-docs profiles: the dashboard, auth and marketing boundaries
