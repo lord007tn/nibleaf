@@ -4,13 +4,13 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { SettingsSection, SettingsSectionBody } from '@nibleaf/design-system/components/ui/settings-section';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { useT } from '@nibleaf/i18n/react';
-import { type KeyboardEvent, useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { FormField } from '@/components/ui/form-field';
 import type { Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { validateOnBlurThenChange } from '@/lib/forms/field-errors';
-import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useSaveAnalytics } from '../api/hooks';
 import { type AnalyticsValues, analyticsValues, ga4Problem, plausibleProblem } from '../model/analytics';
@@ -27,23 +27,12 @@ export function AnalyticsSettings({ project }: { project: Project }) {
   );
 }
 
-/**
- * Browsers skip implicit submission in a form with two text fields and no
- * submit button (Save is in the page's bar), so Enter in a field submits here.
- */
-const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
-  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
-  event.preventDefault();
-  event.currentTarget.form?.requestSubmit();
-};
-
 /** Identifiers are Latin and read left to right in every locale. */
 const identifierProps = {
   autoCapitalize: 'off',
   autoComplete: 'off',
   className: 'font-mono text-sm',
   dir: 'ltr',
-  onKeyDown: submitOnEnter,
   spellCheck: false,
 } as const;
 
@@ -51,7 +40,6 @@ function AnalyticsForm({ project }: { project: Project }) {
   const t = useT();
   const { save } = useSaveAnalytics(project.id);
   const source = useMemo(() => analyticsValues(project.config), [project.config]);
-  const formRef = useRef<HTMLFormElement>(null);
 
   const { form, ...draft } = useServerDraftForm<AnalyticsValues>({
     identity: [project.id, 'analytics'],
@@ -75,22 +63,14 @@ function AnalyticsForm({ project }: { project: Project }) {
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  useSaveRegionForm('site-analytics', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-analytics', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   const ga4Message = (value: string) => (ga4Problem(value) ? t('settings.analytics.ga4.error') : undefined);
   const plausibleMessage = (value: string) => (plausibleProblem(value) ? t('settings.analytics.plausible.error') : undefined);
 
   return (
-    <form
-      className="flex flex-col gap-6"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!draft.isDirty) return;
-        void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
-      }}
-      ref={formRef}
-    >
+    <form className="flex flex-col gap-6" noValidate {...formProps}>
+      <SaveRegionSubmit />
       {draft.conflicts.length > 0 ? (
         <Callout
           action={
