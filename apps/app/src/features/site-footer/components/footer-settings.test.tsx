@@ -299,12 +299,15 @@ describe("FooterSettings: a save's own refetch, which the mutation awaits before
     expect(await saveThenRefetch(' https://github.com/acme-labs ', () => type(input('github'), 'https://github.com/newer'), theirs)).toBe(true);
     expect(input('github').value).toBe('https://github.com/newer');
     expect(conflict()).toBe(true);
+    // The save settled unclean (`succeeded()` was false): the draft stays open, dirty and unresolved.
+    expect(region()).not.toBeNull();
+    expect(dirty.size).toBe(1);
+    expect(buttonNamed('forms.useTheirs')).toBeTruthy();
   });
 
-  // #743 (shared, every useServerDraftForm adopter, fixed separately): the
-  // mutation resolves with its PATCH response after the refetch already brought
-  // theirs, so the confirmed baseline rewinds and "Use theirs" takes the PATCH's value.
-  it.fails('… and "Use theirs" then takes their link, not the save’s own PATCH response (#743)', async () => {
+  // #743: the mutation resolves with its PATCH response after the refetch
+  // already brought theirs; the response must not rewind the confirmed baseline.
+  it('… and "Use theirs" then takes their link, not the save’s own PATCH response (#743)', async () => {
     const theirs = 'https://github.com/theirs';
     await saveThenRefetch(' https://github.com/acme-labs ', () => type(input('github'), 'https://github.com/newer'), theirs);
     await click(buttonNamed('forms.useTheirs'));

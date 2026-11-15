@@ -89,6 +89,9 @@ function FooterForm({ project }: { project: Project }) {
     source,
     // The save sends trimmed text (and, from a language, the copyright only); judge its echo by that.
     toSent: (value) => sentFooterValues(scopeKind, value, stored()),
+    // `succeeded()` says whether the draft settled clean. Footer has nothing to
+    // close or collapse: an unclean save (an edit made meanwhile, or a conflict)
+    // stays on screen, dirty, with its conflict to resolve.
     onSubmit: async (value, save) => {
       try {
         if (activeLanguage) {
