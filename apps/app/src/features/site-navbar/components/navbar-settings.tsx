@@ -202,9 +202,8 @@ function NavbarForm({ project }: { project: Project }) {
   const readRows = (list: RowList) => form.getFieldValue(list) as Rows;
   const setRows = (list: RowList, rows: Rows) => (form.setFieldValue as (field: RowList, value: Rows) => void)(list, rows);
   const add = (list: RowList) => {
-    const rows = readRows(list) as AnchorRow[];
-    const next = addRow(rows, list === 'anchors' ? { label: '', href: '', icon: '' } : ({ label: '', href: '' } as AnchorRow));
-    setRows(list, next);
+    const next = addRow<NavRow>(readRows(list), list === 'anchors' ? { label: '', href: '', icon: '' } : { label: '', href: '' });
+    setRows(list, next as Rows);
     focusNext.current = { list, row: next.length - 1, control: 'label' };
   };
   const remove = (list: RowList, index: number) => {

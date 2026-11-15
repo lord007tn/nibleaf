@@ -445,12 +445,6 @@ export const FIELD_INPUT = 'text-sm';
 export const FIELD_MONO = 'font-mono text-sm';
 export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
 
-/** Dense list-row inputs (variable/redirect/navbar rows): shorter and tighter.
- *  They always sit inside a bordered list container, so they carry a solid
- *  background and read as wells instead of border-on-border frames. */
-export const FIELD_COMPACT = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background text-[13px]';
-export const FIELD_COMPACT_MONO = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background font-mono text-[13px]';
-
 export function useDraftRowUndo() {
   const t = useT();
   const toastId = useRef<string | number | undefined>(undefined);
