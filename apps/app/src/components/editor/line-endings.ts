@@ -14,7 +14,9 @@
  * at all is not touched: it saves exactly as before.
  *
  * A lone CR is a line ending, as CommonMark and markdown-it read it, and is kept
- * like the others; it is never written into a line's text.
+ * like the others; it is never written into a line's text. It is never written
+ * before an empty line and an LF either, which would read as one CRLF and lose
+ * that line: a save always reads back line for line as the serializer wrote it.
  *
  * Lines are matched the way a line diff finds them: the lines the source and the
  * save start and end with, then lines found once in each, in order, and around
@@ -148,16 +150,34 @@ function longestIncreasing(pairs: ReadonlyArray<[number, number]>): Array<[numbe
  */
 export function restoreLineEndings(source: SourceLineEndings | null, saved: string): string {
   if (!source) return saved;
+  const restored = putBackLineEndings(source, saved);
+  // The save reads back as the serializer wrote it, line for line; if it ever
+  // didn't, LF is saved rather than a page that loses a line.
+  return normalizeLineEndings(restored) === saved ? restored : saved;
+}
+
+/** `restoreLineEndings` without its read-back check (tested on its own). */
+export function putBackLineEndings(source: SourceLineEndings, saved: string): string {
   if (saved === source.normalized) return source.source;
   const lines = saved.split('\n');
   const match = matchLines(source.lines, lines);
   const last = source.lines.length - 1;
+  const endings: LineEnding[] = [];
+  for (let index = 0; index < lines.length - 1; index++) {
+    const at = match[index] as number;
+    endings.push(at >= 0 && at < last ? (source.endings[at] as LineEnding) : source.dominant);
+  }
+  // A lone CR, an empty line and an LF read as one CRLF: the empty line would be
+  // lost on the next load. That CR takes the page's ending instead (LF when the
+  // page's ending is CR).
+  const apart: LineEnding = source.dominant === '\r' ? '\n' : source.dominant;
+  for (let index = endings.length - 2; index >= 0; index--) {
+    if (endings[index] === '\r' && lines[index + 1] === '' && endings[index + 1] === '\n') endings[index] = apart;
+  }
   const pieces: string[] = [];
   for (const [index, line] of lines.entries()) {
     pieces.push(line);
-    if (index === lines.length - 1) break;
-    const at = match[index] as number;
-    pieces.push(at >= 0 && at < last ? (source.endings[at] as LineEnding) : source.dominant);
+    if (index < endings.length) pieces.push(endings[index] as LineEnding);
   }
   return pieces.join('');
 }

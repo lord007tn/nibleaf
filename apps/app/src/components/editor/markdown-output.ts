@@ -298,11 +298,13 @@ export const LinearMarkdown = Markdown.extend({
       ...commands,
       // Markdown set as the document (a page load, a re-seed) is read with LF, and
       // its endings are kept for the save. Anything else set has no source to keep.
+      // A dry run (`editor.can().setContent(…)`, no `dispatch`) sets nothing, as
+      // core `setContent` replaces nothing then.
       setContent:
         (content: unknown, ...rest: unknown[]) =>
-        (props: { editor: Editor }) => {
+        (props: { editor: Editor; dispatch?: unknown }) => {
           const markdown = typeof content === 'string';
-          markdownStorage(props.editor).lineEndings = markdown ? readLineEndings(content) : null;
+          if (props.dispatch) markdownStorage(props.editor).lineEndings = markdown ? readLineEndings(content) : null;
           return setContent(markdown ? normalizeLineEndings(content) : content, ...rest)(props);
         },
     } as never;

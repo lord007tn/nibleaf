@@ -29,3 +29,18 @@ describe('editor Markdown output: exact boundaries', () => {
     expect(getMarkdown(editor).trim()).toBe(expected);
   });
 });
+
+describe('a page’s line endings across a dry run of setContent (#702)', () => {
+  const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+  afterAll(() => editor.destroy());
+
+  it('`editor.can().setContent(…)` replaces nothing, so the page keeps its CRLF endings', () => {
+    const page = 'One.\r\n\r\nTwo.\r\n\r\nThree.';
+    editor.commands.setContent(page, { emitUpdate: false });
+    // TipTap runs a capability check without `dispatch`: no document is set.
+    expect(editor.can().setContent('Other.')).toBe(true);
+    expect(getMarkdown(editor)).toBe(page);
+    editor.view.dispatch(editor.state.tr.insertText('Edited ', 1));
+    expect(getMarkdown(editor)).toBe('Edited One.\r\n\r\nTwo.\r\n\r\nThree.');
+  });
+});

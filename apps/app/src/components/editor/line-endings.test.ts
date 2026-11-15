@@ -55,6 +55,19 @@ describe('putting the endings back on a save (#702)', () => {
     expect(restored).toBe(source.replace('line 0\n', 'changed 0\r\n').replace(/line 199$/, 'changed 199'));
   });
 
+  it('a lone CR is never put before an empty line and an LF, which would read as one CRLF', () => {
+    // A paragraph break inserted after `a`: the CR after `a`, then the new empty
+    // line's LF, would read back as `a\r\nb`, losing the break.
+    const saved = 'a\n\nb\n\nc';
+    const restored = restoreLineEndings(readLineEndings('a\rb\n\nc'), saved);
+    expect(normalizeLineEndings(restored)).toBe(saved);
+    expect(restored).toBe('a\n\nb\n\nc');
+    // On a page whose most common ending is CRLF, that CR takes CRLF.
+    const crlf = restoreLineEndings(readLineEndings('a\rx\n\nb\r\nc\r\nd'), 'a\n\nb\nc\nd');
+    expect(crlf).toBe('a\r\n\nb\r\nc\r\nd');
+    expect(normalizeLineEndings(crlf)).toBe('a\n\nb\nc\nd');
+  });
+
   it('blank lines and repeated lines between edits still match in order', () => {
     const source = readLineEndings('# A\n\nx\r\n\r\n# B\n\nx\r\n\r\nend');
     expect(restoreLineEndings(source, '# A!\n\nx\n\n# B\n\nx\n\nend!')).toBe('# A!\r\n\nx\r\n\r\n# B\n\nx\r\n\r\nend!');
