@@ -58,7 +58,11 @@ let server: {
   failPatch: boolean;
   failImport: boolean;
   holdPatch?: Promise<void>;
+  /** Held before a PATCH merges, so another writer can change the site first. */
+  holdMerge?: Promise<void>;
   holdImport?: Promise<void>;
+  /** Held after a GET read the site, before it answers. */
+  holdRead?: Promise<void>;
   patches: Array<{ site: Site; config: Config }>;
   imports: Array<{ site: Site; apply: boolean; mode: string }>;
   exports: number;
@@ -123,10 +127,16 @@ function stubApi() {
       }
       if (request.method === 'GET') {
         if (server.failReads.has(site)) return Response.json({ error: { message: 'offline' } }, { status: 503 });
+        if (server.holdRead) {
+          const answer = project(site);
+          await server.holdRead;
+          return Response.json({ data: answer });
+        }
         return Response.json({ data: project(site) });
       }
       const { config } = (await request.json()) as { config: Config };
       server.patches.push({ site, config });
+      await server.holdMerge;
       if (server.failPatch) return Response.json({ error: { message: 'down' } }, { status: 500 });
       server.config[site] = mergeConfig(server.config[site], config);
       const answer = project(site);
@@ -753,6 +763,112 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     return { file, resolve: (text: string) => act(async () => resolve(text)), reject: () => act(async () => reject(new Error('NotReadableError'))) };
   };
 
+  /** Clicks Refresh on the newest "applied, not read back" warning, and lets its read land. */
+  const refreshFromWarning = async () => {
+    const options = vi.mocked(toast.warning).mock.calls.at(-1)?.[1] as { action: { onClick: () => void } } | undefined;
+    if (!options) throw new Error('No warning with Refresh');
+    await act(async () => options.action.onClick());
+    await finished();
+  };
+
+  it('Apply never takes a cancelled read for a readback, even when the clock says the cache is fresh', async () => {
+    // A clock that doesn't move: the cache's last update looks as new as the write.
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now());
+    await open();
+    await previewTemplate();
+    await setColor('canvas', '#fdfdfd');
+    const read = gate();
+    server.holdRead = read.promise;
+    await click(buttonNamed('settings.theme.applyImport'));
+    await answer('discard');
+    await vi.waitFor(() => expect(applies()).toHaveLength(1));
+    // The read after the write is cancelled before it answers.
+    await act(() => queryClient.cancelQueries({ queryKey: projectQueryOptions('site-1').queryKey }));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    server.holdRead = undefined;
+    await read.open();
+    await settle();
+    expect(storedTheme()).toMatchObject({ preset: 'manuscript' });
+    expect(toast.success).not.toHaveBeenCalledWith('settings.theme.import.applied');
+    expect(toast.warning).toHaveBeenCalledTimes(1);
+    expect(color('canvas').value).toBe('#fdfdfd');
+    expect(activePreset()).toBe('signal');
+    // Refresh's own read brings the import: the agreed discard happens on it.
+    await refreshFromWarning();
+    expect(activePreset()).toBe('manuscript');
+    expect(region()).toBeNull();
+  });
+
+  it('a read that returns the same theme still finishes the agreed discard (the import changed typography only)', async () => {
+    await open();
+    await typeTemplate(
+      JSON.stringify({
+        kind: THEME_TEMPLATE_KIND,
+        version: 1,
+        metadata: AUTHORED.metadata,
+        config: { theme: { version: 1, preset: 'signal', colors: AUTHORED.colors }, typography: { bodyFont: 'Georgia' } },
+      }),
+    );
+    await click(buttonNamed('settings.theme.previewImport'));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('preview'));
+    await setColor('canvas', '#fdfdfd');
+    const held = gate();
+    server.holdImport = held.promise;
+    await click(buttonNamed('settings.theme.applyImport'));
+    await answer('discard');
+    await vi.waitFor(() => expect(applies()).toHaveLength(1));
+    server.failReads.add('site-1');
+    await held.open();
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    await finished();
+    expect(server.config['site-1'].typography).toStrictEqual({ bodyFont: 'Georgia' });
+    expect(storedTheme()).toStrictEqual(AUTHORED);
+    expect(region()).not.toBeNull();
+    server.failReads.delete('site-1');
+    await refreshFromWarning();
+    expect(color('canvas').value).not.toBe('#fdfdfd');
+    expect(region()).toBeNull();
+  });
+
+  it('Undo of an edit made during an appearance-only save takes the theme someone else stored meanwhile', async () => {
+    await open();
+    await appearance('light');
+    const merge = gate();
+    server.holdMerge = merge.promise;
+    await startSave();
+    // During the save: the appearance changes again, and someone else stores Manuscript before the PATCH merges.
+    await appearance('system');
+    server.config['site-1'] = { ...server.config['site-1'], theme: { version: 1, preset: 'manuscript' } };
+    await merge.open();
+    await finished();
+    expect(lastPatch()).toStrictEqual({ styling: { theme: 'light' } });
+    expect(activePreset()).toBe('manuscript');
+    expect(shownAppearance()).toBe('settings.styling.theme.system');
+    await undo();
+    expect(shownAppearance()).toBe('settings.styling.theme.light');
+    expect(activePreset()).toBe('manuscript');
+    expect(region()).toBeNull();
+  });
+
+  it('Undo of an edit made during a Keep mine save follows the effective preset the save stored', async () => {
+    const legacy = { version: 1, colors: { light: { canvas: '#fdfdfd' } } };
+    await open({ styling: { theme: 'dark' }, theme: structuredClone(legacy) });
+    await setColor('canvas', '#fafafa');
+    await elsewhere((config) => ({ ...config, theme: { ...legacy, preset: 'signal' } }));
+    await click(buttonNamed('forms.keepMine'));
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await startSave();
+    await appearance('light');
+    await patch.open();
+    await finished();
+    expect(storedTheme()).toMatchObject({ preset: 'harbor' });
+    await undo();
+    expect(shownAppearance()).toBe('settings.styling.theme.dark');
+    expect(activePreset()).toBe('harbor');
+    expect(region()).toBeNull();
+  });
+
   it('Keep mine on a legacy theme without a preset keeps Harbor over another writer’s Signal, and settles clean', async () => {
     const legacy = { version: 1, colors: { light: { canvas: '#fdfdfd' } } };
     await open({ styling: { theme: 'dark' }, theme: structuredClone(legacy) });
@@ -828,7 +944,7 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     expect(color('canvas').value).toBe('#fdfdfd');
     expect(activePreset()).toBe('signal');
     server.failReads.delete('site-1');
-    await elsewhere((config) => config);
+    await refreshFromWarning();
     expect(activePreset()).toBe('manuscript');
     expect(region()).toBeNull();
   });
@@ -870,6 +986,7 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     await chooseFile(unreadable.file);
     await unreadable.reject();
     expect(textarea().value).toBe('kept');
+    expect(toast.error).toHaveBeenCalledWith('settings.theme.import.previewError');
     expect(toast.error).toHaveBeenCalledTimes(1);
     await chooseFile({ size: 10 ** 9, text: () => Promise.resolve('never read') });
     expect(textarea().value).toBe('kept');

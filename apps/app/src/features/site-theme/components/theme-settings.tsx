@@ -93,11 +93,11 @@ function ThemeForm({ project }: { project: Project }) {
       const id = saveIds.current;
       const sent = sentThemeValues(value, save.baseline);
       activeSave.current = id;
-      setMark({ id, reached: [sent] });
+      setMark({ id, submitted: value, reached: [sent] });
       try {
         const confirmed = await saveTheme(value, save.baseline);
         // Before the answer becomes the baseline, so edits made during this save move onto it.
-        if (save.isCurrent()) setMark((current) => (current?.id === id ? { id, reached: [sent, confirmed] } : current));
+        if (save.isCurrent()) setMark((current) => (current?.id === id ? { ...current, reached: [sent, confirmed] } : current));
         settled.current = save.succeeded(confirmed);
         if (save.isCurrent() && mounted.current) toast.success(t('settings.theme.savedDraft'));
         return 'saved';
@@ -193,8 +193,12 @@ function ThemeForm({ project }: { project: Project }) {
   };
   const canUndo = usableHistory(history, draft.baseline, mark).length > 0;
 
-  // Edits the person agreed to discard for an import whose readback failed: discarded once a read brings the import.
-  const discardOnReadback = useRef<{ since: number; identity: string } | undefined>(undefined);
+  /**
+   * Edits the person agreed to discard for an import, and `read`: what a read
+   * made after the write returned for this form (none yet when that read
+   * failed). See `discardIfRead`.
+   */
+  const discardOnRead = useRef<{ since: number; identity: string; read?: ThemeValues } | undefined>(undefined);
   const markNow = useRef(mark);
   markNow.current = mark;
 
@@ -240,35 +244,48 @@ function ThemeForm({ project }: { project: Project }) {
   const formProps = useSaveRegionForm('site-theme', { isDirty: draft.isDirty, isSubmitting: isSaving || applying, submit, discard });
 
   /**
-   * An import was written over edits the person agreed to discard. They go once
-   * the form shows the import (a read after the write), and only if nothing
-   * was edited since; until then the draft stays as it is.
+   * An import was written over edits the person agreed to discard. They go
+   * once a read made after the write has answered and the form's baseline holds
+   * what it returned (the form adopts a read on its next render), equal values
+   * included; and only if nothing was edited since and the site is the same.
+   * Until then the draft stays as it is.
    */
+  const discardIfRead = useCallback(() => {
+    const waiting = discardOnRead.current;
+    if (!waiting?.read) return;
+    if (waiting.identity !== identityNow.current || edits.current !== waiting.since) {
+      discardOnRead.current = undefined;
+      return;
+    }
+    if (!deepEqual(baselineNow.current, waiting.read)) return;
+    discardOnRead.current = undefined;
+    discardDraft();
+    retire();
+  }, [discardDraft, retire]);
   const discardAfterApply = useCallback(
-    (since: number, refreshed: boolean) => {
-      if (!refreshed) {
-        discardOnReadback.current = { since, identity: identityNow.current };
-        return;
-      }
-      if (edits.current !== since) return;
-      discardDraft();
-      retire();
+    (since: number, read: ThemeValues | undefined) => {
+      discardOnRead.current = { since, identity: identityNow.current, read };
+      discardIfRead();
     },
-    [discardDraft, retire],
+    [discardIfRead],
+  );
+  /** A later read (Refresh) answered with these values: it completes a discard still waiting for one. */
+  const readBack = useCallback(
+    (read: ThemeValues) => {
+      const waiting = discardOnRead.current;
+      if (!waiting) return;
+      discardOnRead.current = { ...waiting, read };
+      discardIfRead();
+    },
+    [discardIfRead],
   );
 
   // The baseline moved (a read, a save's echo or answer): retire the Undo it
-  // overtakes, and drop the edits waiting for an import's readback.
+  // overtakes, and finish a discard waiting for the form to hold its read.
   useEffect(() => {
     setHistory((items) => settleHistory(items, draft.baseline, markNow.current));
-    const waiting = discardOnReadback.current;
-    if (!waiting) return;
-    discardOnReadback.current = undefined;
-    // Another site's baseline brings nothing of this import; an edit since keeps the draft.
-    if (waiting.identity !== identityNow.current || edits.current !== waiting.since) return;
-    discardDraft();
-    retire();
-  }, [discardDraft, draft.baseline, retire]);
+    discardIfRead();
+  }, [discardIfRead, draft.baseline]);
   const leave = (key: string) => setLeft((previous) => (previous.has(key) ? previous : new Set(previous).add(key)));
 
   return (
@@ -520,6 +537,7 @@ function ThemeForm({ project }: { project: Project }) {
         key={project.id}
         onApplyingChange={setApplying}
         projectId={project.id}
+        readBack={readBack}
         release={release}
         slug={project.slug}
       />

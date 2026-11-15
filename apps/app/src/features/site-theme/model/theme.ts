@@ -178,10 +178,13 @@ export const tokenKey = (mode: ColorMode, key: ThemeColorKey) => `${mode}:${key}
  * save: once the server holds what that save sent (its echo, or its
  * response), entries made during it are still on the same footing, and stay.
  */
-export type HistoryEntry = { values: ThemeValues; baseline: ThemeValues; save?: number };
+export type HistoryEntry = { values: ThemeValues; baseline: ThemeValues; save?: number; moved?: true };
 
-/** A save, and the baselines it can leave the draft on (what it sent, then what the server answered). */
-export type SaveMark = { id: number; reached: ThemeValues[] };
+/**
+ * A save: the draft it was made from (`submitted`), and the baselines it can
+ * leave the draft on (what it sent, then what the server answered).
+ */
+export type SaveMark = { id: number; submitted: ThemeValues; reached: ThemeValues[] };
 
 export const HISTORY_LIMIT = 20;
 
@@ -201,17 +204,25 @@ export function usableHistory(history: readonly HistoryEntry[], baseline: ThemeV
 /**
  * The history once the baseline has moved to `baseline`. Entries made on it
  * stay. Entries made during the save that reached it (its echo or its answer)
- * move onto it, so a later save that fails can't hide them. Every other entry
- * is retired for good: a server that later returns to an old value never
- * brings back the Undo made against it.
+ * move onto it, so a later save that fails can't hide them. Moving keeps the
+ * edits made during the save and takes the new baseline for every other key:
+ * a key still as the save left it (as submitted, or as an earlier move set it)
+ * takes what the server accepted, including someone else's value and the
+ * server's normalization. Every other entry is retired for good: a server that
+ * later returns to an old value never brings back the Undo made against it.
  */
 export function settleHistory(history: HistoryEntry[], baseline: ThemeValues, mark?: SaveMark): HistoryEntry[] {
   let changed = false;
-  const next = history.flatMap((entry) => {
+  const next = history.flatMap((entry): HistoryEntry[] => {
     if (deepEqual(entry.baseline, baseline)) return [entry];
     changed = true;
-    const reached = entry.save !== undefined && entry.save === mark?.id && mark.reached.some((value) => deepEqual(value, baseline));
-    return reached ? [{ ...entry, baseline }] : [];
+    if (!mark || entry.save !== mark.id || !mark.reached.some((value) => deepEqual(value, baseline))) return [];
+    const left = entry.moved ? entry.baseline : mark.submitted;
+    const keys = ['theme', 'appearance'] as const;
+    const values = Object.fromEntries(
+      keys.map((key) => [key, deepEqual(entry.values[key], left[key]) ? baseline[key] : entry.values[key]]),
+    ) as ThemeValues;
+    return [{ ...entry, values, baseline, moved: true }];
   });
   return changed ? next : history;
 }

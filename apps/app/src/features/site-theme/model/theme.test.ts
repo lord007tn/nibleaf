@@ -162,11 +162,11 @@ describe('Undo history', () => {
     const sent = values(AUTHORED, 'light');
     const history = [entry(1), entry(2, B0, 7), entry(3, sent, 7)];
     // The save's echo or response put the baseline on what it sent.
-    expect(usableHistory(history, sent, { id: 7, reached: [sent] })).toStrictEqual([entry(2, B0, 7), entry(3, sent, 7)]);
+    expect(usableHistory(history, sent, { id: 7, submitted: sent, reached: [sent] })).toStrictEqual([entry(2, B0, 7), entry(3, sent, 7)]);
     // Another save's mark keeps nothing from save 7 unless it is on its own baseline.
-    expect(usableHistory(history, sent, { id: 8, reached: [sent] })).toStrictEqual([entry(3, sent, 7)]);
+    expect(usableHistory(history, sent, { id: 8, submitted: sent, reached: [sent] })).toStrictEqual([entry(3, sent, 7)]);
     // A failed save leaves the baseline where it was: everything stays usable.
-    expect(usableHistory(history, B0, { id: 7, reached: [sent] })).toStrictEqual([entry(1), entry(2, B0, 7)]);
+    expect(usableHistory(history, B0, { id: 7, submitted: sent, reached: [sent] })).toStrictEqual([entry(1), entry(2, B0, 7)]);
   });
 });
 
@@ -188,15 +188,42 @@ describe('settling Undo when the baseline moves', () => {
   });
 
   it('moves edits made during a save onto the baseline it reached, so a failed retry keeps them', () => {
-    const sent = values(AUTHORED, 'light');
-    const history = [edit(1, A), edit(2, A, 7)];
-    const saved = settleHistory(history, sent, { id: 7, reached: [sent] });
-    expect(saved).toStrictEqual([edit(2, sent, 7)]);
+    // An appearance-only save sent `light`; during it, the density was edited (the entry is the draft before that).
+    const submitted = values(AUTHORED, 'light');
+    const before = edit(2, A, 7);
+    const history = [edit(1, A), { ...before, values: submitted }];
+    const saved = settleHistory(history, submitted, { id: 7, submitted, reached: [submitted] });
+    expect(saved).toStrictEqual([{ values: submitted, baseline: submitted, save: 7, moved: true }]);
     // A second save (id 8) fails: the baseline stays, so the moved entry stays usable.
-    expect(usableHistory(saved, sent, { id: 8, reached: [values(AUTHORED, 'system')] })).toStrictEqual(saved);
-    // The server's answer differing from what was sent moves it once more.
-    const answered = values({ ...AUTHORED, metadata: { name: 'Normalized', description: 'By the server' } }, 'light');
-    expect(settleHistory(saved, answered, { id: 7, reached: [sent, answered] })).toStrictEqual([edit(2, answered, 7)]);
+    expect(usableHistory(saved, submitted, { id: 8, submitted: A, reached: [values(AUTHORED, 'system')] })).toStrictEqual(saved);
+  });
+
+  it('a moved entry takes what the server accepted for keys the save left, and keeps the edits made during it', () => {
+    // Appearance-only save of `light`; before its PATCH merged, someone else changed the theme to Manuscript.
+    const submitted = values(AUTHORED, 'light');
+    const answered = values({ version: 1, preset: 'manuscript' }, 'light');
+    const mark = { id: 7, submitted, reached: [submitted, answered] };
+    // The draft before the person changed the appearance again during the save: as submitted.
+    const untouched: HistoryEntry = { values: submitted, baseline: A, save: 7 };
+    // The draft before a later edit, after the theme had been edited during the save.
+    const edited: HistoryEntry = { values: values({ ...AUTHORED, preset: 'harbor' }, 'light'), baseline: A, save: 7 };
+    expect(settleHistory([untouched, edited], answered, mark)).toStrictEqual([
+      { values: answered, baseline: answered, save: 7, moved: true },
+      { values: values({ ...AUTHORED, preset: 'harbor' }, 'light'), baseline: answered, save: 7, moved: true },
+    ]);
+  });
+
+  it('a moved entry follows the server’s normalization once more (the effective preset Keep mine sent)', () => {
+    const legacy = values({ version: 1, colors: { light: { canvas: '#fafafa' } } }, 'dark');
+    const sent = values({ version: 1, colors: { light: { canvas: '#fafafa' } }, preset: 'harbor' }, 'dark');
+    const mark = { id: 3, submitted: legacy, reached: [sent] };
+    const moved = settleHistory([{ values: legacy, baseline: values(AUTHORED, 'dark'), save: 3 }], sent, mark);
+    expect(moved).toStrictEqual([{ values: sent, baseline: sent, save: 3, moved: true }]);
+    // The answer adds descriptive metadata: an entry already moved follows it from where it was moved to.
+    const answered = values({ ...sent.theme, metadata: { name: 'Harbor', description: 'Kept' } }, 'dark');
+    expect(settleHistory(moved, answered, { ...mark, reached: [sent, answered] })).toStrictEqual([
+      { values: answered, baseline: answered, save: 3, moved: true },
+    ]);
   });
 });
 

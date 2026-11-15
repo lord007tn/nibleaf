@@ -1,6 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useExportProjectTheme, useImportProjectTheme, useUpdateProjectConfig } from '@/hooks/api';
-import { queryKeys } from '@/hooks/api/query-keys';
+import { type QueryFunction, type QueryKey, useQueryClient } from '@tanstack/react-query';
+import { type Project, useExportProjectTheme, useImportProjectTheme, useUpdateProjectConfig } from '@/hooks/api';
+import { projectQueryOptions } from '@/hooks/api/query-options';
 import { type ThemeValues, themeConfigPatch, themeValues } from '../model/theme';
 
 /**
@@ -22,12 +22,12 @@ export function useSaveTheme(projectId: string) {
  * The template exchange, on the existing endpoints:
  * - `preview` validates a template against the stored config and writes nothing;
  * - `apply` writes it at once (a server write, not part of the draft), then
- *   reads the project again. It resolves the server's answer and `refreshed`:
- *   whether that read succeeded after the write, so the form's source holds
- *   what was applied. A failed read never rejects: the write stands. The
- *   import can change typography, branding and Styling's sections too; the
- *   project query, not this result, brings those to their own forms;
- * - `refresh` reads the project again (after a failed read);
+ *   reads the project again. It resolves the server's answer and `readback`:
+ *   the project that read returned, or `undefined` when it failed or was
+ *   cancelled. A failed read never rejects: the write stands. The import can
+ *   change typography, branding and Styling's sections too; the project query,
+ *   not this result, brings those to their own forms;
+ * - `refresh` reads the project again and resolves it (rejects if that read fails);
  * - `exportTemplate` downloads what the server stores, never the draft.
  */
 export function useThemeExchange(projectId: string) {
@@ -36,17 +36,36 @@ export function useThemeExchange(projectId: string) {
   const queryClient = useQueryClient();
 
   const preview = (template: unknown, mode: 'merge' | 'replace') => importTheme.mutateAsync({ template, mode, apply: false });
-  const queryKey = queryKeys.projects.detail(projectId);
-  const apply = async (template: unknown, mode: 'merge' | 'replace') => {
-    const askedAt = Date.now();
-    const result = await importTheme.mutateAsync({ template, mode, apply: true });
-    // The mutation's invalidation cancelled any older read and started this one; join it.
-    await queryClient.refetchQueries({ queryKey, type: 'active' }, { cancelRefetch: false });
-    // Read back only if the last read succeeded, and answered after the write was asked for.
-    const read = queryClient.getQueryState(queryKey);
-    return { result, refreshed: read?.status === 'success' && read.dataUpdatedAt >= askedAt };
+  /**
+   * The project, from a read this call starts and can tell apart. Any read in
+   * flight is cancelled first (one started before the write could answer with
+   * what was there before it), then this read goes out with a query function
+   * that records its own answer. It resolves that answer, and rejects when the
+   * read fails or is cancelled: TanStack resolves a cancelled read with the
+   * previous data, which is never taken for this one's.
+   */
+  const readProject = async () => {
+    const options = projectQueryOptions(projectId);
+    const read = options.queryFn as QueryFunction<Project, QueryKey>;
+    let answered: Project | undefined;
+    await queryClient.cancelQueries({ queryKey: options.queryKey, exact: true });
+    await queryClient.fetchQuery({
+      ...options,
+      staleTime: 0,
+      queryFn: async (context) => {
+        answered = await read(context);
+        return answered;
+      },
+    });
+    if (!answered) throw new Error('The project read was cancelled.');
+    return answered;
   };
-  const refresh = () => queryClient.refetchQueries({ queryKey, type: 'active' });
+  const apply = async (template: unknown, mode: 'merge' | 'replace') => {
+    const result = await importTheme.mutateAsync({ template, mode, apply: true });
+    const readback = await readProject().catch(() => undefined);
+    return { result, readback };
+  };
+  const refresh = readProject;
   const exportTemplate = () => exportTheme.mutateAsync();
 
   return { preview, apply, refresh, exportTemplate };

@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Field, Segmented } from '@/components/project-settings/shared';
 import type { ProjectThemeImportResult } from '@/hooks/api';
 import { useThemeExchange } from '../api/hooks';
-import { readTemplateText } from '../model/theme';
+import { readTemplateText, type ThemeValues, themeValues } from '../model/theme';
 import { useMounted } from './use-mounted';
 
 type ImportMode = 'merge' | 'replace';
@@ -54,6 +54,7 @@ export function ThemeExchange({
   acquire,
   release,
   discardAfterApply,
+  readBack,
   onApplyingChange,
 }: {
   projectId: string;
@@ -65,8 +66,10 @@ export function ThemeExchange({
   /** Takes the form's write operation, or `null` while another write holds it. */
   acquire: (kind: Operation['kind']) => Operation | null;
   release: (owned: Operation) => void;
-  /** After an import was written over edits agreed to be discarded: `refreshed` says whether the form read it back. */
-  discardAfterApply: (mark: number, refreshed: boolean) => void;
+  /** After an import was written over edits agreed to be discarded: `read` is what the read after the write returned, if it succeeded. */
+  discardAfterApply: (mark: number, read: ThemeValues | undefined) => void;
+  /** A later read (Refresh) returned these values. */
+  readBack: (read: ThemeValues) => void;
   onApplyingChange: (applying: boolean) => void;
 }) {
   const t = useT();
@@ -141,7 +144,7 @@ export function ThemeExchange({
     try {
       contents = await file.text();
     } catch {
-      if (isCurrentText()) toast.error(t('settings.theme.import.invalidJson'));
+      if (isCurrentText()) toast.error(t('settings.theme.import.previewError'));
       return;
     }
     if (!isCurrentText()) return;
@@ -209,18 +212,31 @@ export function ThemeExchange({
     if (!(written && mounted.current)) return;
     // The server holds the template now. The edits the person agreed to discard
     // go once the form shows it; any made since stay, against the applied theme.
-    if (mark !== undefined) discardAfterApply(mark, written.refreshed);
+    const read = written.readback && themeValues(written.readback.config);
+    if (mark !== undefined) discardAfterApply(mark, read);
     if (request.current()) setShown({ template: asked.template, result: written.result });
-    if (written.refreshed) {
-      toast.success(t('settings.theme.import.applied'));
-      return;
-    }
-    // Written, but the site could not be read back: the form still shows what it had.
+    if (read) toast.success(t('settings.theme.import.applied'));
+    else notReadBack();
+  };
+
+  /** Written, but the site could not be read back: the form still shows what it had, until Refresh reads it. */
+  const notReadBack = () =>
     toast.warning(t('settings.theme.import.applied'), {
       description: t('settings.git.workflow.loadErrorHint'),
-      action: { label: t('common.refresh'), onClick: () => void exchange.refresh() },
+      action: {
+        label: t('common.refresh'),
+        onClick: () => {
+          exchange.refresh().then(
+            (project) => {
+              if (mounted.current) readBack(themeValues(project.config));
+            },
+            () => {
+              if (mounted.current) notReadBack();
+            },
+          );
+        },
+      },
     });
-  };
 
   const exportTheme = async () => {
     setExporting(true);
