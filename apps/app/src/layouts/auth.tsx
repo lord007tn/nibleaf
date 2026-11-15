@@ -1,7 +1,7 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { ArrowLeft, Cloud, Globe2, Languages, ShieldCheck } from 'lucide-react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
-import { InterfaceLanguageButton } from '@/components/interface-language-dialog';
+import { InterfaceLanguageButton } from '@/components/interface-language-button';
 import { useAuthT } from '@/lib/auth-messages';
 
 /**

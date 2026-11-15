@@ -226,6 +226,54 @@ describe('PageActions', () => {
     act(() => root.unmount());
   });
 
+  describe('the "Copied" tick', () => {
+    // Only timers are faked, so the fetch and clipboard promises still settle.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => new Response('# Webhooks', { status: 200 })),
+      );
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(async () => undefined) } });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+    const ticked = (host: HTMLElement) => host.querySelector('[data-page-actions] button svg')?.classList.contains('text-emerald-600');
+
+    it('restarts its 1.5 s window on a newer copy', async () => {
+      const host = document.createElement('div');
+      document.body.append(host);
+      const root = createRoot(host);
+      await act(async () => root.render(<PageActions pageHref="/guides/webhooks" lang="en" />));
+      await act(async () => host.querySelector('button')?.click());
+      expect(ticked(host)).toBe(true);
+      await act(async () => vi.advanceTimersByTime(1000));
+      await act(async () => host.querySelector('button')?.click());
+      // 2 s after the first copy, 1 s after the second: the first copy's timer
+      // must not clear the newer tick.
+      await act(async () => vi.advanceTimersByTime(1000));
+      expect(ticked(host)).toBe(true);
+      await act(async () => vi.advanceTimersByTime(500));
+      expect(ticked(host)).toBe(false);
+      act(() => root.unmount());
+    });
+
+    it('clears its timer on unmount, so nothing runs after the page is gone', async () => {
+      const host = document.createElement('div');
+      document.body.append(host);
+      const root = createRoot(host);
+      await act(async () => root.render(<PageActions pageHref="/guides/webhooks" lang="en" />));
+      await act(async () => host.querySelector('button')?.click());
+      // Let the live region's short announcement delay run; the tick's timer remains.
+      await act(async () => vi.advanceTimersByTime(50));
+      expect(ticked(host)).toBe(true);
+      expect(vi.getTimerCount()).toBe(1);
+      act(() => root.unmount());
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
   it('says when the page could not be copied', async () => {
     vi.stubGlobal(
       'fetch',
