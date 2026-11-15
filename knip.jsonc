@@ -12,6 +12,7 @@
     ".": {
       "entry": [
         ".github/assets/org-default-cloud-copy/capture.mjs",
+        ".github/assets/dashboard-copy-followups/capture.mjs",
         ".github/assets/site-openapi-draft/capture.mjs",
         "tests/integration/editor-p2/browser.mjs",
         "tests/integration/import-fidelity/browser.mjs",
@@ -53,7 +54,9 @@
         "scripts/editor-paste-and-title.fixture.tsx",
         "scripts/overview-first-publish.fixture.tsx",
         "scripts/site-owner-addresses.fixture.tsx",
-        "scripts/theme-contrast.fixture.tsx"
+        "scripts/theme-contrast.fixture.tsx",
+        // Run by hand to record main's serializer output for the differential (#612).
+        "src/components/editor/__fixtures__/serializer-differential.generate.mjs"
       ]
     },
     "packages/database": {
