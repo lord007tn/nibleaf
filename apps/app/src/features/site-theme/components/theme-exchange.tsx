@@ -68,7 +68,8 @@ export function ThemeExchange({
   const [mode, setMode] = useState<ImportMode>('merge');
   const [text, setText] = useState('');
   const [shown, setShown] = useState<Shown>();
-  const [pending, setPending] = useState<{ kind: 'preview' | 'apply'; id: number }>();
+  // The request whose answer the buttons wait on.
+  const [pending, setPending] = useState<number>();
   const [exporting, setExporting] = useState(false);
   // Bumped by every input change and every request: an answer applies only if
   // nothing was bumped after it was asked. Text has its own counter so a slow
@@ -102,7 +103,7 @@ export function ThemeExchange({
   );
 
   const settle = (id: number) => {
-    if (mounted.current) setPending((current) => (current?.id === id ? undefined : current));
+    if (mounted.current) setPending((current) => (current === id ? undefined : current));
   };
 
   const editText = (next: string) => {
@@ -139,7 +140,7 @@ export function ThemeExchange({
     }
     const request = nextRequest();
     setShown(undefined);
-    setPending({ kind: 'preview', id: request.id });
+    setPending(request.id);
     try {
       const result = await exchange.preview(read.template, mode);
       if (request.current()) setShown({ template: read.template, result });
@@ -166,7 +167,7 @@ export function ThemeExchange({
     }
     nextText();
     const request = nextRequest();
-    setPending({ kind: 'apply', id: request.id });
+    setPending(request.id);
     setApplying(true);
     try {
       const result = await exchange.apply(asked.template, asked.result.mode);
