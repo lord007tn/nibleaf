@@ -1,4 +1,5 @@
 import type { Transaction } from '@tiptap/pm/state';
+import { finalLineEnding } from './line-endings';
 
 /*
  * Which document changes are the writer's, and so may change the draft and save
@@ -41,11 +42,13 @@ export interface LoadedMarkdown {
 
 /**
  * The Markdown to emit for the document's current serialization (see above). The
- * serializer never ends a page with a newline; a page loaded with one keeps it,
- * so an edit doesn't also change the page's last line.
+ * serializer never ends a page with a newline; a page loaded with one keeps it
+ * (CRLF, LF or CR, as written: line-endings.ts), so an edit doesn't also change
+ * the page's last line.
  */
 export function markdownToEmit(loaded: LoadedMarkdown | null, serialized: string): string {
   if (!loaded) return serialized;
   if (serialized === loaded.serialized) return loaded.source;
-  return loaded.source.endsWith('\n') && serialized !== '' && !serialized.endsWith('\n') ? `${serialized}\n` : serialized;
+  const ending = finalLineEnding(loaded.source);
+  return ending && serialized !== '' && finalLineEnding(serialized) === '' ? `${serialized}${ending}` : serialized;
 }
