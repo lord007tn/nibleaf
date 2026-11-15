@@ -88,24 +88,29 @@ describe('InterfaceLanguageButton', () => {
     expect(loader.load).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to a plain language select, with focus, when the download fails (offline)', async () => {
+  it('falls back to a plain language list, with focus, when the download fails (offline)', async () => {
     loader.load.mockRejectedValueOnce(new TypeError('Failed to fetch dynamically imported module'));
     const button = await mount();
     button.focus();
     await act(async () => button.click());
-    await vi.waitFor(() => expect(document.querySelector('select')).not.toBeNull());
-    const select = document.querySelector('select') as HTMLSelectElement;
+    await vi.waitFor(() => expect(document.querySelector('details')).not.toBeNull());
+    const details = document.querySelector('details') as HTMLDetailsElement;
+    const summary = details.querySelector('summary') as HTMLElement;
     expect(dialog()).toBeNull();
     expect(button.isConnected).toBe(false);
-    expect(document.activeElement).toBe(select);
-    expect(select.getAttribute('aria-label')).toBe('account.language');
-    expect(select.value).toBe('en');
-    expect([...select.options].map((option) => option.value)).toContain('ar');
-    await act(async () => {
-      select.value = 'ar';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    expect(details.open).toBe(true);
+    expect(document.activeElement).toBe(summary);
+    expect(summary.getAttribute('aria-label')).toBe('account.language');
+    const options = [...details.querySelectorAll('li button')] as HTMLButtonElement[];
+    expect(options.length).toBeGreaterThan(1);
+    const named = (code: string) => options.find((option) => option.querySelector('bdi')?.lang === code);
+    expect(named('en')?.getAttribute('aria-current')).toBe('true');
+    const arabic = named('ar');
+    expect(arabic?.querySelector('bdi')?.dir).toBe('rtl');
+    await act(async () => arabic?.click());
     expect(locale.set).toHaveBeenCalledWith('ar');
+    expect(details.open).toBe(false);
+    expect(document.activeElement).toBe(summary);
   });
 
   it('ignores a failed preload on hover or focus', async () => {
@@ -115,7 +120,7 @@ describe('InterfaceLanguageButton', () => {
     await act(async () => Promise.resolve());
     expect(dialog()).toBeNull();
     // A failed preload alone changes nothing: the button stays, and a press asks again.
-    expect(document.querySelector('select')).toBeNull();
+    expect(document.querySelector('details')).toBeNull();
     expect(button.isConnected).toBe(true);
   });
 });
