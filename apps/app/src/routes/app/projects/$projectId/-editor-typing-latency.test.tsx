@@ -971,7 +971,12 @@ describe('#728: undo while an autosave is in flight', { timeout: ROUTE_TEST_TIME
 
   it.each<[string, () => Promise<void>]>([
     ['the editor unmounts', unmount],
-    ['the window loses focus', async () => act(async () => window.dispatchEvent(new Event('blur')))],
+    [
+      'the window loses focus',
+      async () => {
+        await act(async () => window.dispatchEvent(new Event('blur')));
+      },
+    ],
     [
       'the author navigates away',
       async () => {
