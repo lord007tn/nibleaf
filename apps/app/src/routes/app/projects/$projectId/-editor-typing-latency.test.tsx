@@ -742,3 +742,324 @@ describe('saves keep their moments and their content (P2-ED-005)', { timeout: RO
     expect(getMarkdown(current())).toBe(withTyped('T').trimEnd());
   });
 });
+
+/*
+ * #728: undoing back to the stored text while an autosave is in flight. The
+ * draft then compares clean with the stored copy, so no path saved it, and the
+ * older write landed with the undone text. Whenever a write is pending and the
+ * final draft differs from what it will store, the final draft is saved after it.
+ */
+type UpdateArgs = { pageId: string; body: { content: string; expectedUpdatedAt?: string; title: string } };
+/** Writes held in flight, oldest first; `settleWrite` lands (or fails) the oldest. */
+let held: Array<{ content: string; settle: (ok: boolean) => void }> = [];
+const settleWrite = async (ok = true) => {
+  const next = held.shift();
+  if (!next) throw new Error('No write is in flight');
+  await act(async () => next.settle(ok));
+  await advance(0);
+};
+/** Land every write, letting the clock run between them, until none is left. */
+async function drain() {
+  for (let round = 0; round < 20; round += 1) {
+    await advance(15_000);
+    if (held.length === 0) return;
+    await settleWrite();
+  }
+  throw new Error('The writes never settled');
+}
+/** Hold every write in flight until `settleWrite`; a failed one stores nothing. */
+function holdWrites() {
+  held = [];
+  const land = mocks.update.getMockImplementation() as (args: UpdateArgs) => Promise<unknown>;
+  mocks.update.mockImplementation(async (args: UpdateArgs) => {
+    const ok = await new Promise<boolean>((settle) => held.push({ content: args.body.content, settle }));
+    if (!ok) throw new Error('Network error');
+    return land(args);
+  });
+}
+const ORIGINAL = HARD_WRAPPED_EN;
+const unmount = async () => {
+  await act(async () => root.unmount());
+  mounted = false;
+};
+const undo = () => act(() => current().commands.undo());
+const redo = () => act(() => current().commands.redo());
+const hideTab = () => {
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+  document.dispatchEvent(new Event('visibilitychange'));
+  visibility.mockRestore();
+};
+/** Type `A` and let the autosave fire at 0.7 s: that write is now held in flight. */
+async function typeAndHoldTheSave() {
+  key('A');
+  await advance(700);
+  expect(held.map((write) => write.content)).toEqual([withTyped('A')]);
+}
+
+describe('#728: undo while an autosave is in flight', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  beforeEach(holdWrites);
+
+  it('regression: type, autosave in flight, undo, unmount at once, the write lands: the server holds the undone text', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    await unmount();
+    await settleWrite();
+    await drain();
+    expect(server.content).toBe(ORIGINAL);
+    expect(server.patches.map((patch) => patch.content)).toEqual([withTyped('A'), ORIGINAL]);
+  });
+
+  it('undo, then type again, then unmount: the new text is saved after the write', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    key('B');
+    await unmount();
+    await drain();
+    expect(server.content).toBe(withTyped('B'));
+  });
+
+  it('staying on the page: the undone text is saved after the write lands', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    await advance(5000);
+    await drain();
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it.each<[string, () => void]>([
+    ['the window loses focus', () => window.dispatchEvent(new Event('blur'))],
+    ['the tab is hidden', hideTab],
+    ['the page is closed (pagehide)', () => window.dispatchEvent(new Event('pagehide'))],
+  ])('%s after the undo: the undone text is sent as soon as the write lands, without waiting', async (_name, leave) => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    await act(async () => leave());
+    await settleWrite();
+    expect(held.map((write) => write.content)).toEqual([ORIGINAL]);
+    await settleWrite();
+    expect(server.content).toBe(ORIGINAL);
+    await advance(15_000);
+    expect(server.patches).toHaveLength(2);
+  });
+
+  it.each<[string, () => void]>([
+    ['the tab is hidden', hideTab],
+    ['the page is closed (pagehide)', () => window.dispatchEvent(new Event('pagehide'))],
+  ])('%s after the undo is serialized, then the editor unmounts before the write lands: the undone text is saved', async (_name, leave) => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    await advance(SERIALIZE_PAUSE);
+    await act(async () => leave());
+    await unmount();
+    await drain();
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('navigating away after the undo: the navigation waits for the write and the undone text', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    let blocked: Promise<boolean> | undefined;
+    await act(async () => {
+      blocked = mocks.blocker?.shouldBlockFn();
+    });
+    await settleWrite();
+    await settleWrite();
+    expect(await blocked).toBe(false);
+    expect(server.content).toBe(ORIGINAL);
+    await unmount();
+    await advance(15_000);
+    expect(server.patches).toHaveLength(2);
+  });
+
+  it('opening another page after the undo: the page left is saved with the undone text first', async () => {
+    const next = pageOf('page-2', 'The next page.');
+    await open(ORIGINAL, [next]);
+    await typeAndHoldTheSave();
+    undo();
+    await act(async () => (mocks.tree as { onSelect: (id: string) => void } | null)?.onSelect('page-2'));
+    await settleWrite();
+    await settleWrite();
+    expect(server.content).toBe(ORIGINAL);
+    mocks.page = next;
+    await rerender();
+    await drain();
+    expect(server.patches).toHaveLength(2);
+  });
+
+  it.each<[string, () => Promise<unknown>]>([
+    ['publishing', async () => expect(await mocks.publish?.beforePublish()).toBe(true)],
+    [
+      'previewing',
+      async () => {
+        const button = container.querySelector<HTMLButtonElement>('button[aria-label="project.preview"]');
+        if (!button) throw new Error('No Preview button');
+        button.click();
+      },
+    ],
+  ])('%s after the undo: the undone text is saved first', async (_name, run) => {
+    const preview = { opener: {} as unknown, location: { replace: vi.fn() }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(preview as unknown as Window);
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    let done: Promise<unknown> | undefined;
+    await act(async () => {
+      done = run();
+    });
+    await settleWrite();
+    await settleWrite();
+    await act(async () => done);
+    expect(server.content).toBe(ORIGINAL);
+    await advance(15_000);
+    expect(server.patches).toHaveLength(2);
+  });
+
+  it('the write in flight fails, after an undo and new text, then unmount: the new text still reaches the server', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    key('B');
+    await unmount();
+    await settleWrite(false);
+    await drain();
+    expect(server.content).toBe(withTyped('B'));
+  });
+
+  it('the write in flight fails after the undo, then unmount: the server keeps the stored text', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    await unmount();
+    await settleWrite(false);
+    await drain();
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('two quick undo/redo cycles ending on the undo, then unmount: the server holds the undone text', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    redo();
+    undo();
+    redo();
+    undo();
+    await unmount();
+    await drain();
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  it('two quick undo/redo cycles ending on the redo: the text is what the write stores, so nothing more is sent', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    redo();
+    await advance(SERIALIZE_PAUSE);
+    undo();
+    redo();
+    await act(async () => window.dispatchEvent(new Event('blur')));
+    await unmount();
+    await drain();
+    expect(server.content).toBe(withTyped('A'));
+    expect(server.patches).toHaveLength(1);
+  });
+
+  it.each<[string, () => Promise<void>]>([
+    ['the editor unmounts', unmount],
+    [
+      'the window loses focus',
+      async () => {
+        await act(async () => window.dispatchEvent(new Event('blur')));
+      },
+    ],
+    [
+      'the author navigates away',
+      async () => {
+        await act(async () => {
+          void mocks.blocker?.shouldBlockFn();
+        });
+      },
+    ],
+  ])('no undo, then %s: no second write of the same text', async (_name, leave) => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    await leave();
+    await drain();
+    expect(server.patches.map((patch) => patch.content)).toEqual([withTyped('A')]);
+  });
+
+  it('a newer server copy arrives during the write, after the undo, then unmount: the server holds the copy on screen', async () => {
+    await open(ORIGINAL);
+    await typeAndHoldTheSave();
+    undo();
+    await advance(SERIALIZE_PAUSE);
+    const fresh = ORIGINAL.replace('Opening it must not change a byte.', 'Opening it must not change a byte. From elsewhere.');
+    mocks.page = { ...mocks.page, content: fresh, updatedAt: '2026-11-14T10:00:00.000Z' };
+    mocks.pages = [mocks.page];
+    await rerender();
+    await advance(0);
+    expect(getMarkdown(current())).toContain('From elsewhere.');
+    await unmount();
+    await drain();
+    expect(server.content).toBe(fresh);
+  });
+});
+
+/** A small seeded generator (mulberry32), so a failing sequence can be replayed. */
+const seeded = (start: number) => {
+  let seed = start;
+  return () => {
+    seed = (seed + 0x6d_2b_79_f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
+  };
+};
+const SEEDS = Array.from({ length: 60 }, (_, index) => 728 + index * 7919);
+const OPS = ['type', 'type', 'undo', 'undo', 'undo', 'redo', 'idle', 'idle', 'land', 'blur', 'hide'] as const;
+const ENDINGS = ['unmount', 'pagehide', 'navigate', 'stay'] as const;
+
+describe('#728 differential: once every write settles, the server holds the final draft', { timeout: 180_000 }, () => {
+  beforeEach(holdWrites);
+
+  // Writes leave one at a time (the save queue), so "completion order" is when
+  // each lands among the edits and flushes: the `land` steps and the drain.
+  it.each(SEEDS)('seed %i', async (seed) => {
+    const random = seeded(seed);
+    const pick = <T,>(items: readonly T[]): T => items[Math.floor(random() * items.length)] as T;
+    await open(ORIGINAL);
+    const steps: string[] = [];
+    for (let step = 0; step < 8; step += 1) {
+      const op = pick(OPS);
+      steps.push(op);
+      if (op === 'type') key(pick(['a', 'b', 'c']));
+      else if (op === 'undo') undo();
+      else if (op === 'redo') redo();
+      else if (op === 'idle') await advance(pick([50, SERIALIZE_PAUSE, 800, 800, 3500]));
+      else if (op === 'land') {
+        if (held.length > 0) await settleWrite();
+      } else if (op === 'blur') await act(async () => window.dispatchEvent(new Event('blur')));
+      else await act(async () => hideTab());
+    }
+    const ending = pick(ENDINGS);
+    steps.push(ending);
+    const finalDraft = getMarkdown(current()).trimEnd();
+    let blocked: Promise<boolean> | undefined;
+    if (ending === 'navigate') {
+      await act(async () => {
+        blocked = mocks.blocker?.shouldBlockFn();
+      });
+    } else if (ending === 'pagehide') {
+      await act(async () => window.dispatchEvent(new Event('pagehide')));
+      await unmount();
+    } else if (ending === 'unmount') await unmount();
+    await drain();
+    if (blocked) expect(await blocked).toBe(false);
+    expect({ steps, server: server.content.trimEnd() }).toEqual({ steps, server: finalDraft });
+  });
+});

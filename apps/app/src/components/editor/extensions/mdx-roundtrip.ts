@@ -703,9 +703,10 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   // Positions where a tag scan outside quotes and braces is known to reach the end
   // of the page with no `>`: from there it reads the same text the same way, so a
   // later scan that gets there stops at once. Without this, every `<` after an
-  // unclosed tag rescanned the rest of the page. HTML and JSX quote differently,
-  // so each has its own. A scan marks the positions it passed when it fails.
-  const unclosable = { html: new Uint8Array(0), jsx: new Uint8Array(0) };
+  // unclosed tag rescanned the rest of the page. HTML, JSX and a Frame's opener
+  // quote differently, so each has its own. A scan marks the positions it passed
+  // when it fails.
+  const unclosable = { html: new Uint8Array(0), jsx: new Uint8Array(0), frame: new Uint8Array(0) };
   const passed: number[] = [];
   // Inside `{…}` every scan reads the same way (HTML or JSX, at any depth), so where
   // a `{` met outside quotes closes is fixed by its position: the position after
@@ -739,9 +740,12 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     let braces = 0;
     let escaped = false;
     // HTML attribute values have no backslash escapes (`title="Old\"` ends at that
-    // quote); only JSX and the JavaScript inside `{…}` do.
+    // quote), and nor do a Frame's quoted values (#579): `caption="Old\"` is the
+    // caption `Old\`, as the reader reads it. Only other JSX and the JavaScript
+    // inside `{…}` do.
     let escapes = true;
-    const kind = isHtml ? 'html' : 'jsx';
+    const frame = name === 'Frame' && !closing;
+    const kind = isHtml ? 'html' : frame ? 'frame' : 'jsx';
     if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
     const known = unclosable[kind];
     passed.length = 0;
@@ -763,7 +767,7 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
       }
       if (char === '"' || char === "'" || (char === '`' && (!isHtml || braces > 0))) {
         quote = char;
-        escapes = !isHtml || braces > 0;
+        escapes = braces > 0 || (!isHtml && !(frame && char !== '`'));
       } else if (char === '{') {
         const end = braceEnds.get(cursor);
         if (end === undefined) {
@@ -983,6 +987,8 @@ function keepRawHtml(
 
 function parseAttributes(raw: string, componentName: string): AttributeToken[] {
   const attrs: AttributeToken[] = [];
+  // A Frame's quoted values have no backslash escapes (see scanTags, #579).
+  const escapes = componentName !== 'Frame';
   let cursor = raw.indexOf(componentName) + componentName.length;
   const limit = raw.length - (raw.endsWith('/>') ? 2 : 1);
   while (cursor < limit) {
@@ -1003,7 +1009,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     const quote = raw[cursor];
     if (quote === '"' || quote === "'") {
       const valueStart = ++cursor;
-      while (cursor < limit && raw[cursor] !== quote) cursor += raw[cursor] === '\\' ? 2 : 1;
+      while (cursor < limit && raw[cursor] !== quote) cursor += escapes && raw[cursor] === '\\' ? 2 : 1;
       value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
@@ -1297,13 +1303,17 @@ export function replaceOpeningAttribute(raw: string, componentName: string, name
   const existing = attrs.find((attr) => attr.name.toLowerCase() === name.toLowerCase());
   const remove = value == null || value === '' || value === false;
   if (existing) {
+    const after = raw.slice(existing.end);
+    // What follows may touch the attribute (`hidden title="Old"href="/docs"`): where
+    // it starts another attribute, a space keeps the two apart.
+    const separator = after === '' || /^[\s/>]/.test(after) ? '' : ' ';
     // A removed attribute takes the space before it along, so no double space is left.
-    if (remove) return `${raw.slice(0, existing.start).trimEnd()}${raw.slice(existing.end)}`;
+    if (remove) return `${raw.slice(0, existing.start).trimEnd()}${separator}${after}`;
     const rendered =
       value === true
-        ? existing.name
+        ? `${existing.name}${separator}`
         : `${existing.name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
-    return `${raw.slice(0, existing.start)}${rendered}${raw.slice(existing.end)}`;
+    return `${raw.slice(0, existing.start)}${rendered}${after}`;
   }
   if (remove) return raw;
   const insertAt = raw.search(/\/?>\s*$/);

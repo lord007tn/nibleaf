@@ -5,12 +5,15 @@ import main from './__fixtures__/jsx-openers-main.json';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
- * This PR leaves component attributes as main reads them: #579 (a Frame caption
- * ending in a backslash) moves to its own PR, with a real JSX attribute grammar.
  * For every generated opening tag (valid MDX, as the MDX compiler accepts it, and
  * malformed: Unicode and namespaced names, spread attributes, `a.b`, `x::y`,
  * backslashes before quotes), the editor gives what main gives: the same nodes,
  * the same saved page, and the same page after the title or caption is edited.
+ * The one change is #579: a Frame's quoted values are read with the reader's HTML
+ * rules, with no backslash escapes, so a Frame whose caption holds a backslash
+ * (`caption="Old\"`, the caption `Old\`) is kept, saved byte for byte, and an
+ * edit rewrites only the caption, to its first matching quote. Main dropped most
+ * of these Frames.
  *
  * `__fixtures__/jsx-openers-main.json` holds main's results (main 14209455) and
  * whether `@mdx-js/mdx` compiles each page; it was made by running this generator
@@ -47,7 +50,7 @@ const FOLLOWERS = [
 /** Every page: a component whose opener is `<Tag key=VALUE FOLLOWER>`, with a body. */
 const pages = COMPONENTS.flatMap(([tag, key]) =>
   VALUES.flatMap((value) =>
-    FOLLOWERS.map((follower) => ({ tag, key, source: `Intro.\n\n<${tag} ${key}=${value}${follower}>\n\nBody\n\n</${tag}>` })),
+    FOLLOWERS.map((follower) => ({ tag, key, value, source: `Intro.\n\n<${tag} ${key}=${value}${follower}>\n\nBody\n\n</${tag}>` })),
   ),
 );
 
@@ -82,14 +85,24 @@ describe('component opening tags, as main reads them', () => {
     expect(main.filter((entry) => entry.valid).length).toBeGreaterThanOrEqual(214);
   });
 
-  it(`gives main’s nodes, save and edited save for all ${pages.length} pages`, () => {
-    const differences: Array<{ source: string; main: Result; head: Result }> = [];
-    for (const [index, { key, source }] of pages.entries()) {
-      const expected = main[index] as (typeof main)[number];
+  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, except #579’s Frames`, () => {
+    const differences: Array<{ source: string; expected: Result; head: Result }> = [];
+    let frames = 0;
+    for (const [index, { tag, key, value, source }] of pages.entries()) {
+      const fromMain = main[index] as (typeof main)[number];
       const head = read(source, key);
-      const fromMain: Result = { nodes: expected.nodes, saved: expected.saved, edited: expected.edited };
-      if (JSON.stringify(head) !== JSON.stringify(fromMain)) differences.push({ source, main: fromMain, head });
+      let expected: Result = { nodes: fromMain.nodes, saved: fromMain.saved, edited: fromMain.edited };
+      if (tag === 'Frame' && value.includes('\\')) {
+        frames++;
+        expected = {
+          nodes: ['paragraph', 'text', 'mdxFrame', 'paragraph', 'text', 'paragraph'],
+          saved: source,
+          edited: source.replace(/caption="[^"]*"/, 'caption="Edited"'),
+        };
+      }
+      if (JSON.stringify(head) !== JSON.stringify(expected)) differences.push({ source, expected, head });
     }
     expect(differences.slice(0, 3)).toEqual([]);
+    expect(frames).toBe(51);
   }, 60_000);
 });
