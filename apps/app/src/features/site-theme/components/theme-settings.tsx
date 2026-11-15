@@ -208,7 +208,17 @@ function ThemeForm({ project }: { project: Project }) {
     setSubmitted(false);
   }, []);
 
-  const { submit: submitDraft, discard: discardDraft, isSaving, resolveConflict } = draft;
+  const { submit: submitDraft, discard: discardDraft, isSaving, resolveConflict, settlement: draftSettlement } = draft;
+  /**
+   * What the page's save bar reads to decide "Saved": the draft's own
+   * settlement (theme and appearance, the form's only authored state), and not
+   * settled while an import is being applied, which writes the theme too and
+   * shows as submitting. Stable, live, and on the draft's identity generation.
+   */
+  const settlement = useCallback(() => {
+    const { settled, generation } = draftSettlement();
+    return { settled: settled && !busy(), generation };
+  }, [busy, draftSettlement]);
   // Save, Enter and Ctrl+S all come through here. The page's save bar disables
   // Save while saving, so 'busy' only means "nothing new to report".
   const submit = useCallback(async () => {
@@ -241,7 +251,13 @@ function ThemeForm({ project }: { project: Project }) {
     discardDraft();
     retire();
   }, [busy, discardDraft, isSaving, retire]);
-  const formProps = useSaveRegionForm('site-theme', { isDirty: draft.isDirty, isSubmitting: isSaving || applying, submit, discard });
+  const formProps = useSaveRegionForm('site-theme', {
+    isDirty: draft.isDirty,
+    isSubmitting: isSaving || applying,
+    submit,
+    discard,
+    settlement,
+  });
 
   /**
    * An import was written over edits the person agreed to discard. They go

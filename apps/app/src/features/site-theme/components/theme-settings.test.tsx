@@ -12,7 +12,7 @@ import {
 } from '@nibleaf/shared/themes';
 import { parseThemeTemplate } from '@nibleaf/validators';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { act, StrictMode, useState } from 'react';
+import { act, type ComponentProps, StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,6 +20,18 @@ import { ThemeSection } from '@/components/project-settings/theme-section';
 import type { Project } from '@/hooks/api';
 import { projectQueryOptions } from '@/hooks/api/query-options';
 
+const { statuses } = vi.hoisted(() => ({ statuses: [] as string[] }));
+// Every status the page's save bar renders, frame by frame, so a "Saved" that
+// shows for a single render before an effect takes it back is caught too.
+vi.mock('@nibleaf/design-system/components/ui/save-region', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@nibleaf/design-system/components/ui/save-region')>();
+  return {
+    SaveRegion: (props: ComponentProps<typeof actual.SaveRegion>) => {
+      statuses.push(String(props.status ?? ''));
+      return <actual.SaveRegion {...props} />;
+    },
+  };
+});
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, translateFn: (key: string) => key }));
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 vi.mock('@tanstack/react-router', () => ({ useBlocker: () => undefined }));
@@ -195,6 +207,7 @@ async function open(config: Config = { ...SIBLINGS, styling: { ...STYLING }, the
 }
 
 beforeEach(() => {
+  statuses.length = 0;
   server = {
     config: { 'site-1': {}, 'site-2': { theme: { version: 1, preset: 'manuscript' }, styling: { theme: 'light' } } },
     failReads: new Set(),
@@ -997,6 +1010,114 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     await stale.reject();
     expect(textarea().value).toBe('typed since');
     expect(toast.error).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the save bar says "Saved" only when nothing is left (#759 settlement)', () => {
+  /** What the bar's live region went through, each run of repeats once. */
+  const announced = () => statuses.filter((value, index) => index === 0 || value !== statuses[index - 1]);
+  const neverSaved = () => expect(announced()).not.toContain('common.saved');
+  const applies = () => server.imports.filter((entry) => entry.apply);
+  const previewTemplate = async () => {
+    await typeTemplate(template('manuscript'));
+    await click(buttonNamed('settings.theme.previewImport'));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('preview'));
+  };
+
+  it('a clean save says "Saved"', async () => {
+    await open();
+    await preset('manuscript');
+    await save();
+    expect(announced()).toContain('common.saved');
+    expect(region()).toBeNull();
+  });
+
+  it('an edit made during the save: "Unsaved changes", never "Saved", the bar and the edit kept', async () => {
+    await open();
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await preset('manuscript');
+    await startSave();
+    await appearance('light');
+    await patch.open();
+    await finished();
+    neverSaved();
+    expect(status()).toBe('forms.unsavedChanges');
+    expect(region()).not.toBeNull();
+    expect(shownAppearance()).toBe('settings.styling.theme.light');
+  });
+
+  it('a conflict left by the save: "Unsaved changes", never "Saved"; Use theirs clears it without claiming "Saved"', async () => {
+    await open();
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await preset('manuscript');
+    await startSave();
+    // Someone else stores Harbor after this PATCH merged; a read shows it before the PATCH answers.
+    await elsewhere((config) => ({ ...config, theme: { version: 1, preset: 'harbor' } }));
+    await patch.open();
+    await finished();
+    expect(conflict()).toBe(true);
+    neverSaved();
+    expect(status()).toBe('forms.unsavedChanges');
+    await click(buttonNamed('forms.useTheirs'));
+    expect(region()).toBeNull();
+    expect(status()).toBe('');
+    neverSaved();
+  });
+
+  it('Ctrl+S during an Apply announces nothing, and the Apply itself never says "Saved"', async () => {
+    await open();
+    await previewTemplate();
+    await setColor('canvas', '#fdfdfd');
+    const held = gate();
+    server.holdImport = held.promise;
+    await click(buttonNamed('settings.theme.applyImport'));
+    await answer('discard');
+    await vi.waitFor(() => expect(applies()).toHaveLength(1));
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+    });
+    await held.open();
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    await finished();
+    expect(server.patches).toHaveLength(0);
+    expect(region()).toBeNull();
+    neverSaved();
+  });
+
+  it('an Apply whose read failed keeps "Unsaved changes" out of a false "Saved" until Refresh settles it', async () => {
+    await open();
+    await previewTemplate();
+    // A save leaves an edit made during it: the bar says "Unsaved changes".
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await preset('harbor');
+    await startSave();
+    await setColor('canvas', '#fdfdfd');
+    await patch.open();
+    await finished();
+    server.holdPatch = undefined;
+    expect(status()).toBe('forms.unsavedChanges');
+    // Apply over that edit; the read after the write fails.
+    const held = gate();
+    server.holdImport = held.promise;
+    await click(buttonNamed('settings.theme.applyImport'));
+    await answer('discard');
+    await vi.waitFor(() => expect(applies()).toHaveLength(1));
+    server.failReads.add('site-1');
+    await held.open();
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    await finished();
+    expect(region()).not.toBeNull();
+    neverSaved();
+    server.failReads.delete('site-1');
+    const options = vi.mocked(toast.warning).mock.calls.at(-1)?.[1] as { action: { onClick: () => void } };
+    await act(async () => options.action.onClick());
+    await finished();
+    expect(region()).toBeNull();
+    expect(status()).toBe('');
+    neverSaved();
   });
 });
 
