@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import type { ImportReference } from '../import-references';
 import type { rewriteMainInternalLinks } from './page-links.main-reference';
+import { markdownReferences as mainReferences } from './page-links.main-references';
 
 interface DestinationVisit {
   page: string;
@@ -14,15 +15,18 @@ interface TraceState {
   offsets: Int32Array;
   bytes: Int32Array;
   visits: DestinationVisit[];
+  rewrites: Array<DestinationVisit & { target: string }>;
 }
 
-const trace = vi.hoisted(() => ({ active: undefined as TraceState | undefined }));
+const trace = vi.hoisted(() => ({ active: undefined as TraceState | undefined, mainScanner: false }));
 const href = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
 
 const record = (state: TraceState, start: number, end: number) => {
   const originalStart = state.offsets[start] ?? 0;
   const originalEnd = state.offsets[end] ?? originalStart;
-  state.visits.push({ page: state.page, byteOffset: state.bytes[originalStart] ?? 0, original: state.source.slice(originalStart, originalEnd) });
+  const visit = { page: state.page, byteOffset: state.bytes[originalStart] ?? 0, original: state.source.slice(originalStart, originalEnd) };
+  state.visits.push(visit);
+  return visit;
 };
 
 vi.mock('../import-markdown-code', async (original) => {
@@ -56,13 +60,15 @@ vi.mock('../import-references', async (original) => {
   const actual = await original<typeof import('../import-references')>();
   return {
     ...actual,
+    markdownReferences: (source: string) => (trace.mainScanner ? mainReferences(source) : actual.markdownReferences(source)),
     replaceImportReferences: (source: string, references: readonly ImportReference[], rewrite: (reference: ImportReference) => string) => {
       const state = trace.active;
       if (!state) return actual.replaceImportReferences(source, references, rewrite);
       const edits: Array<{ start: number; end: number; value: string }> = [];
       const output = actual.replaceImportReferences(source, references, (reference) => {
-        record(state, reference.start, reference.end);
+        const visit = record(state, reference.start, reference.end);
         const value = rewrite(reference);
+        if (value !== reference.value) state.rewrites.push({ ...visit, target: value });
         edits.push({ start: reference.start, end: reference.end, value });
         return value;
       });
@@ -85,6 +91,17 @@ vi.mock('../import-references', async (original) => {
   };
 });
 
+/** Run the unchanged GitBook converter with main's independent scanner too. */
+export const withMainLinkScanner = <T>(run: () => T): T => {
+  const previous = trace.mainScanner;
+  trace.mainScanner = true;
+  try {
+    return run();
+  } finally {
+    trace.mainScanner = previous;
+  }
+};
+
 /** Observe the real main/head traversal; no discovery code is reproduced here. */
 export const traceLinkDiscovery = (
   rewrite: typeof rewriteMainInternalLinks,
@@ -102,7 +119,7 @@ export const traceLinkDiscovery = (
     byte += Buffer.byteLength(point);
   }
   bytes[character] = byte;
-  const state: TraceState = { source, page, bytes, offsets: new Int32Array(), visits: [] };
+  const state: TraceState = { source, page, bytes, offsets: new Int32Array(), visits: [], rewrites: [] };
   const reports: string[] = [];
   const native = String.prototype.replace;
   const spy = vi.spyOn(String.prototype, 'replace').mockImplementation(function (this: string, ...args: Parameters<string['replace']>): string {
@@ -114,8 +131,11 @@ export const traceLinkDiscovery = (
           const before = String(parts[1]);
           const destination = String(parts[2]);
           const offset = Number(parts[4]) + before.length;
-          record(state, offset, offset + destination.length);
-          return Reflect.apply(replacement, undefined, parts);
+          const visit = record(state, offset, offset + destination.length);
+          const result = Reflect.apply(replacement, undefined, parts) as string;
+          const target = new RegExp(href.source, 'i').exec(result)?.[2];
+          if (target !== undefined && target !== destination) state.rewrites.push({ ...visit, target });
+          return result;
         },
       ]);
     }
@@ -127,7 +147,10 @@ export const traceLinkDiscovery = (
     const visits = [...new Map(state.visits.map((visit) => [JSON.stringify(visit), visit])).values()].sort(
       (left, right) => left.byteOffset - right.byteOffset || left.original.localeCompare(right.original),
     );
-    return { output, visits, reports };
+    const rewrites = [...new Map(state.rewrites.map((change) => [JSON.stringify(change), change])).values()].sort(
+      (left, right) => left.byteOffset - right.byteOffset || left.original.localeCompare(right.original) || left.target.localeCompare(right.target),
+    );
+    return { output, visits, rewrites, reports };
   } finally {
     trace.active = undefined;
     spy.mockRestore();

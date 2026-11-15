@@ -18,6 +18,11 @@ describe.runIf(growthTestsEnabled)('component link rewriting: growth', () => {
     ['nested components', (n: number) => `${'<Unknown>\n'.repeat(n)}[Go](/next)\n${'</Unknown>\n'.repeat(n)}`, 2000],
     ['two MiB unterminated labels', (n: number) => `${'['.repeat(n)}\n\n<Note>\n[Go](/next)\n</Note>`, 512 * 1024],
     ['two MiB angle destinations', (n: number) => `${'[a](<b)'.repeat(Math.ceil(n / 7)).slice(0, n)}\n\n<Note>\n[Go](/next)\n</Note>`, 512 * 1024],
+    [
+      'eight MiB angle destinations',
+      (n: number) => `${'[a](<b)'.repeat(Math.ceil(n / 7)).slice(0, n)}\n\n<Note>\n[Go](/next)\n</Note>`,
+      2 * 1024 * 1024,
+    ],
   ] as const)(
     'stays linear on %s',
     (label, build, size) => {
