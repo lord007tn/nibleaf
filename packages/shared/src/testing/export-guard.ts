@@ -7,12 +7,11 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
-import { mayHaveActiveExportHtml } from '../export-html';
 import { authoredExportText, exportTextInOrder } from '../export-html-source';
 import { captureExportStructure, compareExportStructure, type ExportStructure, exportSourceLines } from '../export-structure';
 import { normalizeMdxBlocks } from '../reader-markdown';
 import { readerSanitizeSchema } from '../reader-sanitize';
-import { inspectRenderedExport, newlyLiveFeatures } from './export-oracle';
+import { inspectRenderedExport, newlyLiveFeatures, oracleUnsafeAttribute } from './export-oracle';
 
 /** @public Used by `__fixtures__/markdown-export.guard.generate.mjs`, which knip.jsonc keeps out of analysis. */
 export const EXPORT_BASELINE_REVISION = '2cf12d3fe325057c586fd1f6abd05247a1af6813';
@@ -114,8 +113,13 @@ export const readerSanitizedActiveHtml = (source: string): number => {
   const pending: unknown[] = [tree];
   let active = 0;
   while (pending.length) {
-    const node = pending.pop() as { tagName?: string; children?: unknown[] };
+    const node = pending.pop() as { tagName?: string; children?: unknown[]; properties?: Record<string, unknown> };
     if (node.tagName && activeTags.includes(node.tagName)) active++;
+    if (node.tagName)
+      for (const [property, value] of Object.entries(node.properties ?? {})) {
+        const name = property === 'xLinkHref' ? 'xlink:href' : property.toLowerCase();
+        if (oracleUnsafeAttribute(name, Array.isArray(value) ? value.join(' ') : String(value), node.tagName)) active++;
+      }
     pending.push(...(node.children ?? []));
   }
   return active;
@@ -244,13 +248,9 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       tally.codeSamples += code.length;
       const unchanged = exportHash(output) === hash;
       if (active === 0) tally.inactiveChecks++;
-      // A matching committed inactive output already proves every preservation
-      // and activity assertion. No Markdown or reader parse is needed.
-      if (unchanged && active === 0) continue;
-      const mayBeActive = mayHaveActiveExportHtml(output);
-      // Any changed output is parsed: an empty code baseline must still reject
-      // code that the change introduced.
-      const analysis = !unchanged || mayBeActive || code.length ? analyzeExport(output, !unchanged || mayBeActive) : undefined;
+      // Every output reaches the full renderer/tree oracle, including unchanged
+      // outputs and source/token prefilter skips (#664's soundness contract).
+      const analysis = analyzeExport(output, true);
       const outputCode = analysis?.code ?? [];
       const expectedTokens = baseline.codeTokens[index]?.[target];
       const actualTokens = analysis?.codeTokens ?? [];

@@ -36,7 +36,8 @@
         "tests/integration/reader-search-latency/vitest.config.ts",
         "tests/integration/site-owner-addresses/browser.mjs",
         "tests/integration/ssr-locale-direction/capture.mjs",
-        "tests/integration/theme-contrast/browser.mjs"
+        "tests/integration/theme-contrast/browser.mjs",
+        "tests/integration/theme-contrast/oklab-mix.mjs"
       ]
     },
     "apps/server": {

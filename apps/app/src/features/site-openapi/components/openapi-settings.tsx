@@ -23,7 +23,6 @@ import {
 import { QueryErrorState } from '@/components/query-error-state';
 import type { OpenApiConfiguration } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
-import { deepEqual } from '@/lib/forms/server-draft';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useRemoveSiteOpenApi, useSaveSiteOpenApi, useSiteOpenApi, useSyncSiteOpenApi } from '../api/hooks';
 import {
@@ -67,11 +66,11 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
         // The server's own values when its refetch came back, including "no reference" if it was
         // removed meanwhile; else what was sent, as the server stores it.
         const confirmed = stored !== undefined ? openApiValues(stored, defaultTitle) : confirmedOpenApiValues(outcome.baseline, value);
-        outcome.succeeded(confirmed);
+        const settled = outcome.succeeded(confirmed);
         toast.success(t('settings.openapi.saved'));
         if (value.source.type === 'upload') setFilename('');
-        // Edits typed while the save was in flight stay open, and dirty, rather than hidden.
-        if (deepEqual(form.state.values, confirmed)) setEditing(false);
+        // Edits typed while the save was in flight, or a conflict, stay open rather than hidden.
+        if (settled) setEditing(false);
         return 'saved';
       } catch {
         outcome.failed();

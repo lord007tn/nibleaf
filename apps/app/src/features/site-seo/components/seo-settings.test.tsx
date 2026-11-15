@@ -338,9 +338,9 @@ describe("SeoSettings: a save's own refetch, which the mutation awaits before it
   });
 
   // #743 (shared, every useServerDraftForm adopter): the mutation resolves with
-  // its PATCH response ('Sent') after the refetch already brought 'Theirs', so
-  // the confirmed baseline rewinds to 'Sent' and "Use theirs" takes that.
-  it.fails('… and "Use theirs" then takes their title, not the save’s own PATCH response (#743)', async () => {
+  // its PATCH response ('Sent') after the refetch already brought 'Theirs'; the
+  // response must not rewind the confirmed baseline to 'Sent'.
+  it('… and "Use theirs" then takes their title, not the save’s own PATCH response (#743)', async () => {
     await saveThenEditThenRefetch('  Sent  ', () => type(input('metaTitle'), 'Newer'), 'Theirs');
     await click(buttonNamed('forms.useTheirs'));
     expect(input('metaTitle').value).toBe('Theirs');
@@ -379,7 +379,7 @@ describe("SeoSettings: a save's own refetch, which the mutation awaits before it
   });
 
   // #743, as above, in the language scope.
-  it.fails('… and in the language scope "Use theirs" then takes their title, not the PATCH response (#743)', async () => {
+  it('… and in the language scope "Use theirs" then takes their title, not the PATCH response (#743)', async () => {
     await saveLanguageThenEditThenRefetch('عنوانهم');
     await click(buttonNamed('forms.useTheirs'));
     expect(input('metaTitle').value).toBe('عنوانهم');

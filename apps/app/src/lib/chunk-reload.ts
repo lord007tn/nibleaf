@@ -12,7 +12,7 @@
  * skipped.
  */
 
-import { claimDocumentRecovery, isOptionalLoadFailure, onlySpeculativeLoads } from '@/lib/document-recovery';
+import { claimDocumentRecovery, isOptionalLoadFailure, onlySpeculativeLoads, registerPendingPreloadDecision } from '@/lib/document-recovery';
 
 /** The chunk or stylesheet that failed, from the preload error's message, or the page as a fallback. */
 function failedAsset(event: Event): string {
@@ -37,6 +37,7 @@ function reloadOnChunkLoadFailure(event: Event): void {
   // required importer sharing the same error still gets normal recovery.
   const payload = (event as Event & { payload?: unknown }).payload;
   const asset = failedAsset(event);
+  registerPendingPreloadDecision(payload);
   setTimeout(() => {
     if (isOptionalLoadFailure(payload)) return;
     // One budget with the reader's navigation fallback (lib/document-recovery.ts):
