@@ -12,7 +12,7 @@ import { slugify } from '@nibleaf/shared/utils';
 import { useStore } from '@tanstack/react-form';
 import { Link } from '@tanstack/react-router';
 import { Ban } from 'lucide-react';
-import { type ReactNode, useCallback, useId, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { LanguageOptionLabel, Segmented, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { FormField } from '@/components/ui/form-field';
@@ -21,7 +21,7 @@ import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { isolate } from '@/lib/bidi';
 import { validateOnBlurThenChange, withServerError } from '@/lib/forms/field-errors';
-import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useGeneralLanguages, useSaveGeneral } from '../api/hooks';
 import {
@@ -74,7 +74,6 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
   const source = useMemo(() => generalValues(project, languages), [project, languages]);
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>();
   const selectedLanguage = extraLanguages.find((language) => language.id === selectedLanguageId) ?? extraLanguages[0];
-  const formRef = useRef<HTMLFormElement>(null);
 
   const { form, ...draft } = useServerDraftForm<GeneralValues>({
     identity: [project.id, 'general'],
@@ -110,7 +109,7 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   const required = (value: string) => (nameProblem(value) ? t('validation.required', { label: t('settings.general.name.label') }) : undefined);
   const slugMessage = (value: string) => {
@@ -119,16 +118,8 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
   };
 
   return (
-    <form
-      className="me-auto flex w-full max-w-[47.5rem] flex-col gap-8"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!draft.isDirty) return;
-        void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
-      }}
-      ref={formRef}
-    >
+    <form className="me-auto flex w-full max-w-[47.5rem] flex-col gap-8" noValidate {...formProps}>
+      <SaveRegionSubmit />
       <PageHeader description={t('settings.general.summary')} title={t('settings.general.title')} />
 
       {draft.conflicts.length > 0 ? (

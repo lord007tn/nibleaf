@@ -258,6 +258,24 @@ describe('SearchSettings', () => {
     expect(region()).toBeNull();
   });
 
+  it('saves on Enter in a single-line field through the hidden default button, once, and sends nothing while clean', async () => {
+    const buttons = container.querySelectorAll<HTMLButtonElement>('form button[type="submit"]');
+    expect(buttons).toHaveLength(1);
+    const enter = buttons[0] as HTMLButtonElement;
+    expect(enter.hidden).toBe(true);
+    // The browser's implicit submission (Enter in a text field) clicks the form's default button.
+    await act(async () => enter.click());
+    expect(mocks.updateConfiguration).not.toHaveBeenCalled();
+    await type(input('settings.search.placeholder.label'), 'Find a guide');
+    await act(async () => {
+      enter.click();
+      enter.click();
+    });
+    expect(mocks.updateConfiguration).toHaveBeenCalledTimes(1);
+    expect(mocks.updateConfiguration).toHaveBeenCalledWith({ placeholder: 'Find a guide' });
+    expect(region()).toBeNull();
+  });
+
   it('discards every change, the switches included', async () => {
     const capture = controlFor('dashboard.ai.capture');
     await act(async () => capture.click());
