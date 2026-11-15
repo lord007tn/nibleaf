@@ -200,9 +200,10 @@ function NavbarForm({ project }: { project: Project }) {
 
   type Rows = NavRow[] | AnchorRow[];
   const readRows = (list: RowList) => form.getFieldValue(list) as Rows;
-  const setRows = (list: RowList, rows: Rows) => (form.setFieldValue as (field: RowList, value: Rows) => void)(list, rows);
+  const setRows = (list: RowList, rows: Rows) => (form.setFieldValue as unknown as (field: RowList, value: Rows) => void)(list, rows);
   const add = (list: RowList) => {
-    const next = addRow<NavRow>(readRows(list), list === 'anchors' ? { label: '', href: '', icon: '' } : { label: '', href: '' });
+    const anchor: AnchorRow = { label: '', href: '', icon: '' };
+    const next = addRow<NavRow>(readRows(list), list === 'anchors' ? anchor : { label: '', href: '' });
     setRows(list, next as Rows);
     focusNext.current = { list, row: next.length - 1, control: 'label' };
   };
