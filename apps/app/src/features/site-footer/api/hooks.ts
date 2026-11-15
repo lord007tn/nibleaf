@@ -17,10 +17,15 @@ export function useSaveFooter(projectId: string) {
   const updateProject = useUpdateProjectConfig(projectId);
   const updateLanguage = useUpdateLanguage(projectId);
 
-  /** `stored` is the project's footer as last read, so a blank text clears what it holds. */
+  /**
+   * `stored` is the project's footer as the form knows it, so a blank text
+   * clears what it holds. Resolves the stored values and the stored footer
+   * itself, whose keys say which texts the server now holds.
+   */
   const saveProject = async (values: FooterValues, stored: FooterConfig | null | undefined) => {
     const project = await updateProject.mutateAsync({ config: { footer: projectFooterPatch(values, stored) } });
-    return footerValues(project.config?.footer);
+    const footer = project.config?.footer;
+    return { values: footerValues(footer), stored: footer };
   };
 
   /** Sends the copyright only; `projectFooter` fills the read-only global fields of the result. */

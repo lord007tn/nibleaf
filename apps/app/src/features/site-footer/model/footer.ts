@@ -67,6 +67,22 @@ export function projectFooterPatch(values: FooterValues, stored: FooterConfig | 
 }
 
 /**
+ * The project footer as far as the form knows the server holds it: the
+ * project query's copy, plus any text key a successful save's response showed
+ * stored since this draft began (`confirmed`). Only which keys are present
+ * matters (see `projectFooterPatch`). It covers a save whose follow-up refetch
+ * failed: the query still lacks a text the server now stores, and clearing that
+ * text must still send `''`. The draft's own values never count as stored.
+ */
+export function knownStoredFooter(read: FooterConfig | null | undefined, confirmed: FooterConfig | null | undefined): FooterConfig {
+  const known: FooterConfig = { ...read };
+  for (const key of TEXT_KEYS) {
+    if (known[key] === undefined && confirmed?.[key] !== undefined) known[key] = confirmed[key];
+  }
+  return known;
+}
+
+/**
  * A language scope's `config` patch: `{ footer: { copyright } }` with the
  * trimmed text, or `{ footer: null }` when it is blank, so the language falls
  * back to the project's copyright. The server keeps the language's name,
