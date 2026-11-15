@@ -150,7 +150,7 @@ export default function SiteSearchDialog({
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   versionFilterEnabled?: boolean;
   /** The site's published languages, for the result-language filter. */
-  languages?: Array<{ code: string; label: string }>;
+  languages?: Array<{ code: string; label: string; pathPrefix?: string }>;
   /** config.search.filtersEnabled: offer the result-language filter when the
    * site publishes more than one language. Search covers every language by default. */
   filtersEnabled?: boolean;
@@ -345,6 +345,7 @@ export default function SiteSearchDialog({
       href: siteHref(projectId, path, {
         lang: siteLanguageParam(language ?? lang ?? defaultLanguage ?? '', defaultLanguage),
         version: options?.versionIndependent ? undefined : selectedVersion,
+        languages,
       }),
     });
   };

@@ -2,6 +2,7 @@ import { PassThrough } from 'node:stream';
 import type { ReactNode } from 'react';
 import { renderToPipeableStream, renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { resolveDocHref } from '@/components/markdown';
 import type { SitePage } from '@/hooks/api/types';
 import { DOCUMENTATION_THEME_TEMPLATES } from './documentation-theme-provider';
 import { SitePageView } from './site-page-view';
@@ -94,8 +95,8 @@ describe('published page presentation', () => {
       next: { title: 'Next', path: 'next' },
     });
     const html = await renderCompleteHtml(<SitePageView data={fixture} lang="ar" projectId="project-1" />);
-    expect(html).toContain('href="/sites/project-1/v2/sibling?lang=ar#setup"');
-    expect(html).toContain('href="/sites/project-1/v2/next?lang=ar"');
+    expect(html).toContain('href="/sites/project-1/ar/v2/sibling#setup"');
+    expect(html).toContain('href="/sites/project-1/ar/v2/next"');
   });
   it('reads Arabic article details grammatically, with a UTC date and a breadcrumb landmark', () => {
     // CI runs in UTC; a Riyadh clock (UTC+3) is where a local-time date shows the next day.
@@ -123,7 +124,7 @@ describe('published page presentation', () => {
     expect(html).toContain(
       new Intl.DateTimeFormat('ar-u-nu-latn', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date('2026-09-03T22:30:00.000Z')),
     );
-    expect(html).toMatch(/<nav class="mb-3" aria-label="مسار التنقّل"><ol[^>]*><li[^>]*><a href="\/sites\/project-1\/parent\?lang=ar"/);
+    expect(html).toMatch(/<nav class="mb-3" aria-label="مسار التنقّل"><ol[^>]*><li[^>]*><a href="\/sites\/project-1\/ar\/parent"/);
   });
 
   it('excludes literal image examples from article screenshot counts but counts prose images', () => {
@@ -249,4 +250,62 @@ describe('reader layout ergonomics', () => {
     expect(selectActiveHeading(headings, 1200, false)).toBe('refunds');
     expect(selectActiveHeading([], 100, true)).toBe('');
   });
+});
+
+it('keeps Arabic on relative and absolute internal article links', async () => {
+  const page = data();
+  const fixture = {
+    ...page,
+    activeLanguage: 'ar',
+    languages: [
+      { code: 'en', isDefault: true, path: 'guide/start' },
+      { code: 'ar', isDefault: false, path: 'guide/start' },
+    ],
+    page: { ...page.page, path: 'guide/start', content: '[Sibling](next#install)\n\n[Absolute](http://localhost:4310/sites/project-1/other)' },
+  };
+  const html = await renderCompleteHtml(<SitePageView projectId="project-1" data={fixture} lang="ar" />);
+  expect(html).toContain('href="/sites/project-1/ar/guide/next#install"');
+  expect(html).toContain('href="/sites/project-1/ar/other"');
+});
+
+it('keeps raw pager paths that equal the active version slug', async () => {
+  const fixture = data({
+    activeLanguage: 'ar',
+    activeVersion: 'v2',
+    versions: [...data().versions, { id: 'v2', name: 'v2', slug: 'v2', isDefault: false }],
+    next: { title: 'Version guide', path: 'v2' },
+  });
+  const html = await renderCompleteHtml(<SitePageView projectId="project-1" data={fixture} lang="ar" />);
+  expect(html).toContain('href="/sites/project-1/ar/v2/v2"');
+});
+it('leaves absolute links to another platform project untouched', async () => {
+  const href = 'http://localhost:4310/sites/other/guide?lang=ar#install';
+  const fixture = data({ page: { ...data().page, content: `[Other site](${href})` } });
+  const html = await renderCompleteHtml(<SitePageView projectId="project-1" data={fixture} />);
+  expect(html).toContain(`href="${href}"`);
+  expect(html).not.toContain('/sites/project-1/ar/sites/other');
+});
+
+it('does not rewrite another project on the matching app.nibleaf.com origin', () => {
+  const href = 'https://app.nibleaf.com/sites/other/guide?lang=ar#install';
+  expect(resolveDocHref(href, { projectId: 'p1', origin: 'https://app.nibleaf.com', lang: 'ar' })).toBe(href);
+});
+
+it.each(['/app', '/sign-in', '/sites/'])('leaves platform URLs outside this project untouched: %s', (path) => {
+  const href = `https://app.nibleaf.com${path}?lang=ar#install`;
+  expect(resolveDocHref(href, { projectId: 'p1', origin: 'https://app.nibleaf.com', lang: 'ar' })).toBe(href);
+});
+it('keeps raw article paths that look like a platform base', () => {
+  expect(resolveDocHref('/sites/p1/guide', { projectId: 'p1', lang: 'ar', defaultLanguage: 'en' })).toBe('/sites/p1/ar/sites/p1/guide');
+});
+it('rewrites an absolute project-home URL without reusing the current page path', () => {
+  expect(
+    resolveDocHref('https://app.nibleaf.com/sites/p1?lang=ar#install', {
+      projectId: 'p1',
+      origin: 'https://app.nibleaf.com',
+      path: 'guides/current',
+      defaultLanguage: 'en',
+      languages: [{ code: 'en', isDefault: true }, { code: 'ar' }],
+    }),
+  ).toBe('/sites/p1/ar#install');
 });

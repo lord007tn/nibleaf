@@ -2039,6 +2039,8 @@ model Asset {
   url         String
   contentType String
   size        Int
+  width       Int?
+  height      Int?
   createdById String?
   createdAt   DateTime @default(now())
 

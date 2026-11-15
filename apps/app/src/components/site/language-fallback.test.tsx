@@ -151,7 +151,7 @@ describe('language fallback notice', () => {
       await renderPage(data, { ...shell('fr'), languages: [...(shell('fr').languages ?? []), { code: 'fr', direction: 'LTR' }] })
     ).querySelector('[role="note"]');
     expect(note?.getAttribute('lang')).toBe('fr');
-    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/sites/docs/next/blog/add-new-reservation-2?lang=ar');
+    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/sites/docs/ar/next/blog/add-new-reservation-2');
   });
 
   it.each([
@@ -335,7 +335,7 @@ describe('everything around a fallback article follows the reader (#481)', () =>
     const hrefs = [...view.querySelectorAll(`nav[aria-label="${ar('breadcrumb')}"] a, [data-theme-region="pager"] a`)].map((link) =>
       link.getAttribute('href'),
     );
-    expect(hrefs).toEqual(['/sites/docs/front-desk?lang=ar', '/sites/docs/find-a-guest?lang=ar', '/sites/docs/cancel-a-reservation?lang=ar']);
+    expect(hrefs).toEqual(['/sites/docs/ar/front-desk', '/sites/docs/ar/find-a-guest', '/sites/docs/ar/cancel-a-reservation']);
   });
 
   it('shows a section (group or category) in the breadcrumbs as text, not a link to its first page', async () => {
@@ -377,7 +377,7 @@ describe('everything around a fallback article follows the reader (#481)', () =>
     const data = page({ page: { ...page().page, content } });
     await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(content);
     const view = await renderPage(data, shell('ar'));
-    expect(view.querySelector('article a[href*="front-desk"]')?.getAttribute('href')).toBe('/sites/docs/front-desk?lang=ar');
+    expect(view.querySelector('article a[href*="front-desk"]')?.getAttribute('href')).toBe('/sites/docs/ar/front-desk');
     const sectionLink = view.querySelector('button.reader-section-link');
     expect(sectionLink?.getAttribute('lang')).toBe('ar');
     expect(sectionLink?.getAttribute('aria-label')).toBe(siteContentT('ar')('copySectionLink'));

@@ -58,6 +58,8 @@ export interface SnapshotPage {
   icon: string | null;
   description: string | null;
   content: string;
+  /** Intrinsic sizes of stored images referenced by this published page. */
+  imageDimensions?: Record<string, { width: number; height: number }>;
   config: SnapshotPageConfig | null;
   /** Links this page to its translations in other languages (see Page.translationKey). */
   translationKey: string | null;
@@ -66,6 +68,8 @@ export interface SnapshotPage {
 }
 
 export interface SnapshotLanguage {
+  /** Derived serving metadata; computed from all paths, never author configuration. */
+  pathPrefix?: string;
   code: string;
   label: string;
   direction: 'LTR' | 'RTL';

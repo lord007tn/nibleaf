@@ -2904,6 +2904,7 @@ export const MESSAGE_IDS = {
   'site.languageCurrent': 'site_languagecurrent',
   'site.versionCurrent': 'site_versioncurrent',
   'site.siteLinks': 'site_sitelinks',
+  'site.quickLinks': 'site_quicklinks',
   'site.docsSections': 'site_docssections',
   'site.docsPages': 'site_docspages',
   'site.notFoundTitle': 'site_notfoundtitle',

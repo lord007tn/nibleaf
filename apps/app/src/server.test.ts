@@ -42,7 +42,15 @@ describe('published Markdown edge routing', () => {
         return upstream({ data: { projectId: 'project-1' } });
       }
       if (url.endsWith('/api/public/sites/project-1')) {
-        return upstream({ data: { project: { config: { visibility: 'public' }, primaryDomain: null } } });
+        return upstream({
+          data: {
+            project: { config: { visibility: 'public' }, primaryDomain: null },
+            languages: [
+              { code: 'en', isDefault: true },
+              { code: 'ar', isDefault: false },
+            ],
+          },
+        });
       }
       if (url.includes('/api/public/sites/project-1/markdown?')) return upstream('# المقدمة\n');
       throw new Error(`Unexpected URL: ${url}`);
@@ -93,7 +101,7 @@ describe('published Markdown edge routing', () => {
 
   it('decodes an Arabic pathname once before proxying and keeps its discovery URL singly encoded', async () => {
     const response = await server.fetch(
-      new Request('http://localhost:4310/sites/project-1/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9?lang=ar', {
+      new Request('http://localhost:4310/sites/project-1/ar/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9', {
         headers: { accept: 'text/markdown' },
       }),
     );
@@ -102,9 +110,9 @@ describe('published Markdown edge routing', () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('# المقدمة\n');
-    expect(proxiedUrl.searchParams.get('path')).toBe('/المقدمة');
+    expect(proxiedUrl.searchParams.get('path')).toBe('المقدمة');
     expect(proxiedUrl.searchParams.get('lang')).toBe('ar');
-    expect(response.headers.get('link')).toContain('/sites/project-1/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9.md?lang=ar');
+    expect(response.headers.get('link')).toContain('/sites/project-1/ar/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9.md');
     expect(response.headers.get('link')).not.toContain('%25D8');
   });
 
@@ -113,8 +121,8 @@ describe('published Markdown edge routing', () => {
     await server.fetch(new Request('https://docs-index-test.example/_index.md', { headers: { accept: 'text/markdown' } }));
 
     const markdownCalls = mocks.got.mock.calls.filter(([url]) => String(url).includes('/markdown?'));
-    expect(new URL(String(markdownCalls[0]?.[0])).searchParams.get('path')).toBe('/index');
-    expect(new URL(String(markdownCalls[1]?.[0])).searchParams.get('path')).toBe('/');
+    expect(new URL(String(markdownCalls[0]?.[0])).searchParams.get('path')).toBe('index');
+    expect(new URL(String(markdownCalls[1]?.[0])).searchParams.get('path')).toBe('');
   });
 
   describe.each(['https://client-origin.example', 'not-an-origin://[malformed'])('client site origin %s', (spoofed) => {
@@ -477,4 +485,271 @@ describe('/sites/<slug> on the platform host', () => {
     // Tried again, not answered from a remembered failure.
     expect(await resolveSiteSlug('fresh-slug')).toBe('cmsiteid0002');
   });
+});
+
+describe('published language path migration (HTTP edge)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.startHandler.mockImplementation(async () => new Response('<html>fixture</html>', { headers: { 'content-type': 'text/html' } }));
+    mocks.got.mockImplementation(async (target: string) => {
+      if (target.includes('/domains/resolve?')) return upstream({ data: { projectId: 'language-paths-014' } });
+      if (target.includes('/markdown?')) return upstream('# Arabic fixture');
+      if (target.endsWith('/api/public/sites/language-paths-014'))
+        return upstream({
+          data: {
+            project: { config: { visibility: 'public' }, primaryDomain: null },
+            languages: [
+              { code: 'en', isDefault: true },
+              { code: 'ar', isDefault: false },
+            ],
+          },
+        });
+      throw new Error(`Unexpected URL: ${target}`);
+    });
+  });
+  for (const origin of [
+    'http://localhost:4310/sites/language-paths-014',
+    'https://docs-language-paths.example',
+    'https://language-paths.nibleaf.com',
+  ]) {
+    for (const version of ['', 'v2/'])
+      for (const extension of ['', '.md'])
+        for (const language of ['en', 'ar']) {
+          it(`308 ${origin} ${version}guide${extension}?lang=${language}`, async () => {
+            const path = `${version}guide${extension}`;
+            const response = await server.fetch(new Request(`${origin}/${path}?lang=${language}&tab=cli&tag=a&tag=b`));
+            expect(response.status).toBe(308);
+            const base = origin.includes('/sites/') ? '/sites/language-paths-014' : '';
+            expect(response.headers.get('location')).toBe(`${base}/${language === 'ar' ? 'ar/' : ''}${path}?tab=cli&tag=a&tag=b`);
+            const follow = await server.fetch(new Request(new URL(response.headers.get('location') as string, origin)));
+            expect(follow.status).toBe(200);
+            expect(follow.headers.get('location')).toBeNull();
+          });
+        }
+    it(`keeps unknown language fallback on ${origin}`, async () => {
+      const response = await server.fetch(new Request(`${origin}/guide?lang=unknown`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get('location')).toBeNull();
+    });
+    for (const path of ['//evil.com', '/%2F%2Fevil.com', '/%5C%5Cevil.com', '/%252f%252fevil.com', '/a%5cb']) {
+      it(`cannot change origin with ${path} on ${origin}`, async () => {
+        const response = await server.fetch(new Request(`${origin}${path}?lang=ar`));
+        const location = response.headers.get('location');
+        if (location) expect(new URL(location, origin).origin).toBe(new URL(origin).origin);
+      });
+    }
+  }
+  it.each([
+    ['http://localhost:4310/sites/language-paths-014.md?lang=ar', '/sites/language-paths-014/ar.md'],
+    ['http://localhost:4310/sites/language-paths-014.md?lang=en', '/sites/language-paths-014.md'],
+    ['https://docs-language-paths.example/_index.md?lang=ar', '/ar.md'],
+    ['https://docs-language-paths.example/_index.md?lang=en', '/_index.md'],
+  ])('preserves the Markdown representation of a root migration: %s', async (url, target) => {
+    const response = await server.fetch(new Request(url));
+    expect(response.status).toBe(308);
+    expect(response.headers.get('location')).toBe(target);
+    const follow = await server.fetch(new Request(new URL(target, url)));
+    expect(follow.status).toBe(200);
+    expect(follow.headers.get('content-type')).toContain('text/markdown');
+  });
+  it('keeps binary OG language queries at their existing API endpoint', async () => {
+    mocks.got.mockImplementation(async (target: string) => {
+      if (target.includes('/og/')) return upstream(Buffer.from('png'));
+      return upstream({
+        data: {
+          project: { config: { visibility: 'public' }, primaryDomain: null },
+          languages: [
+            { code: 'en', isDefault: true },
+            { code: 'ar', isDefault: false },
+          ],
+        },
+      });
+    });
+    const response = await server.fetch(new Request('http://localhost:4310/sites/language-paths-014/og/guide.png?lang=ar'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('content-type')).toBe('image/png');
+  });
+  it('serves the localized changelog RSS alias without falling into the page router', async () => {
+    mocks.got.mockImplementation(async (target: string) => {
+      if (target.includes('/domains/resolve?')) return upstream({ data: { projectId: 'language-paths-014' } });
+      if (target.endsWith('/changelog/rss.xml')) return upstream('<rss>http://localhost:4310/sites/language-paths-014/changelog#release-v1</rss>');
+      return upstream({
+        data: {
+          project: { config: { visibility: 'public' }, primaryDomain: null },
+          languages: [
+            { code: 'en', isDefault: true },
+            { code: 'ar', isDefault: false },
+          ],
+        },
+      });
+    });
+    const response = await server.fetch(new Request('https://docs-language-paths.example/ar/changelog/rss.xml'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/rss+xml');
+    expect(await response.text()).toContain('https://docs-language-paths.example/ar/changelog#release-v1');
+    expect(mocks.startHandler).not.toHaveBeenCalled();
+  });
+  it('strips the prefix only for the Markdown API lookup and keeps discovery prefixed', async () => {
+    const response = await server.fetch(new Request('https://docs-language-paths.example/ar/v2/guide.md'));
+    expect(response.status).toBe(200);
+    const call = mocks.got.mock.calls.find(([target]) => String(target).includes('/markdown?'));
+    expect(String(call?.[0])).toContain('path=v2%2Fguide&lang=ar&version=v2');
+    expect(response.headers.get('link')).toContain('https://docs-language-paths.example/ar/v2/guide.md');
+  });
+});
+
+describe('published RSS language prefixes', () => {
+  for (const [name, pathPrefix] of [
+    ['default', ''],
+    ['normal', 'ar'],
+    ['collision', '~lang/ar'],
+    ['occupied', '~lang~/ar'],
+    ['occupied-twice', '~lang~~/ar'],
+  ]) {
+    const projectId = `rss-${name}`;
+    for (const origin of [`http://localhost:4310/sites/${projectId}`, `https://${projectId}.example`, `https://${projectId}.nibleaf.com`]) {
+      it(`keeps links and GUIDs on ${origin}/${pathPrefix}`, async () => {
+        vi.clearAllMocks();
+        const source = `http://localhost:4310/sites/${projectId}`;
+        mocks.got.mockImplementation(async (target: string) => {
+          if (target.includes('/domains/resolve?')) return upstream({ data: { projectId } });
+          if (target.endsWith('/changelog/rss.xml'))
+            return upstream(
+              `<rss><channel><link>${source}/changelog</link><item><link>${source}/changelog#release-v1</link><guid isPermaLink="true">${source}/changelog#release-v1</guid></item></channel></rss>`,
+            );
+          return upstream({
+            data: {
+              project: { config: { visibility: 'public' }, primaryDomain: null },
+              languages: [
+                { code: 'en', isDefault: true },
+                { code: 'ar', isDefault: false, pathPrefix: pathPrefix || '~lang/ar' },
+              ],
+            },
+          });
+        });
+        const base = `${origin}${pathPrefix ? `/${pathPrefix}` : ''}`;
+        const response = await server.fetch(new Request(`${base}/changelog/rss.xml`));
+        expect(response.status).toBe(200);
+        expect(response.headers.get('content-type')).toContain('application/rss+xml');
+        const body = await response.text();
+        expect(body).toContain(`<link>${base}/changelog</link>`);
+        expect(body).toContain(`<link>${base}/changelog#release-v1</link>`);
+        expect(body).toContain(`<guid isPermaLink="true">${base}/changelog#release-v1</guid>`);
+        expect(mocks.startHandler).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('language redirects isolate private and credential-dependent requests', () => {
+  const languages = [
+    { code: 'en', isDefault: true },
+    { code: 'ar', isDefault: false, pathPrefix: '~lang/ar' },
+  ];
+  const privateShell = { data: { project: { config: { visibility: 'private' }, primaryDomain: null }, languages } };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.startHandler.mockImplementation(async () => new Response('Private site', { status: 404 }));
+    mocks.got.mockImplementation(async (target: string, options?: { headers?: Record<string, string> }) => {
+      if (target.includes('/domains/resolve?')) return upstream({ data: { projectId: 'private-language-014' } });
+      const headers = options?.headers ?? {};
+      if (headers.cookie || headers.authorization) return upstream(privateShell);
+      return upstream({ error: { reason: 'private' } }, 404);
+    });
+  });
+  for (const base of ['http://localhost:4310/sites/private-language-014', 'https://private-language-014.example']) {
+    it.each<Record<string, string>>([{ cookie: 'site_session=fictional' }, { authorization: 'Bearer fictional-reader' }])(
+      `isolates an authenticated 308 on ${base}`,
+      async (headers) => {
+        const response = await server.fetch(new Request(`${base}/ar/guide?lang=ar&tab=cli`, { headers }));
+        expect(response.status).toBe(308);
+        expect(response.headers.get('location')).toBe(`${base.includes('/sites/') ? '/sites/private-language-014' : ''}/~lang/ar/ar/guide?tab=cli`);
+        expect(response.headers.get('cache-control')).toBe('private, no-store');
+        expect(response.headers.get('vary')?.toLowerCase()).toContain('cookie');
+        expect(response.headers.get('vary')?.toLowerCase()).toContain('authorization');
+        const anonymous = await server.fetch(new Request(`${base}/ar/guide?lang=ar`));
+        expect(anonymous.status).toBe(404);
+        expect(anonymous.headers.get('location')).toBeNull();
+      },
+    );
+  }
+  it.each(['http://localhost:4310/sites/markdown-collision-014', 'https://markdown-collision-014.example'])(
+    'keeps collision Markdown twins on %s',
+    async (base) => {
+      mocks.got.mockImplementation(async (target: string) => {
+        if (target.includes('/domains/resolve?')) return upstream({ data: { projectId: 'markdown-collision-014' } });
+        if (target.includes('/markdown?')) return upstream('# Collision guide');
+        return upstream({ data: { ...privateShell.data, project: { config: { visibility: 'public' }, primaryDomain: null } } });
+      });
+      const response = await server.fetch(new Request(`${base}/ar/guide.md?lang=ar&ref=source`));
+      expect(response.status).toBe(308);
+      const target = `${base.includes('/sites/') ? '/sites/markdown-collision-014' : ''}/~lang/ar/ar/guide.md?ref=source`;
+      expect(response.headers.get('location')).toBe(target);
+      const rendered = await server.fetch(new Request(new URL(target, base)));
+      expect(rendered.status).toBe(200);
+      expect(rendered.headers.get('location')).toBeNull();
+      expect(rendered.headers.get('content-type')).toContain('text/markdown');
+      const call = mocks.got.mock.calls.find(([url]) => String(url).includes('/markdown?'));
+      expect(new URL(String(call?.[0])).searchParams.get('path')).toBe('ar/guide');
+      expect(new URL(String(call?.[0])).searchParams.get('lang')).toBe('ar');
+    },
+  );
+  it('does not redirect anonymous private metadata even if an upstream returns a shell', async () => {
+    mocks.got.mockResolvedValue(upstream(privateShell));
+    const response = await server.fetch(new Request('http://localhost:4310/sites/anonymous-private-shell-014/guide?lang=ar'));
+    expect(response.status).toBe(404);
+    expect(response.headers.get('location')).toBeNull();
+  });
+  it.each(['http://localhost:4310/sites/private-primary-014', 'https://private-primary-014.example'])(
+    'does not reveal an anonymous private primary domain on %s',
+    async (base) => {
+      mocks.got.mockImplementation(async (target: string) =>
+        target.includes('/domains/resolve?')
+          ? upstream({ data: { projectId: 'private-primary-014' } })
+          : upstream({ data: { ...privateShell.data, project: { ...privateShell.data.project, primaryDomain: 'hidden-primary.example' } } }),
+      );
+      const response = await server.fetch(new Request(`${base}/guide?lang=ar`));
+      expect(response.status).toBe(404);
+      expect(response.headers.get('location')).toBeNull();
+    },
+  );
+  it('isolates redirects on public sites when the request carries credentials', async () => {
+    mocks.got.mockResolvedValue(upstream({ data: { ...privateShell.data, project: { config: { visibility: 'public' }, primaryDomain: null } } }));
+    const response = await server.fetch(
+      new Request('http://localhost:4310/sites/credentialed-public-014/guide?lang=ar', { headers: { cookie: 'site_session=fictional' } }),
+    );
+    expect(response.status).toBe(308);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('vary')?.toLowerCase()).toContain('cookie');
+  });
+  it('rechecks privacy before redirecting from previously cached public metadata', async () => {
+    let isPrivate = false;
+    mocks.startHandler.mockImplementation(async () => new Response('fixture', { status: isPrivate ? 404 : 200 }));
+    mocks.got.mockImplementation(async () =>
+      isPrivate ? upstream({}, 404) : upstream({ data: { project: { config: { visibility: 'public' }, primaryDomain: null }, languages } }),
+    );
+    const url = 'http://localhost:4310/sites/visibility-change-014/guide?lang=ar';
+    expect((await server.fetch(new Request(url))).status).toBe(308);
+    isPrivate = true;
+    const response = await server.fetch(new Request(url));
+    expect(response.status).toBe(404);
+    expect(response.headers.get('location')).toBeNull();
+  });
+});
+
+it('isolates credential-dependent redirects emitted by reader route loaders', async () => {
+  vi.clearAllMocks();
+  mocks.got.mockResolvedValue(
+    upstream({ data: { project: { config: { visibility: 'private' }, primaryDomain: null }, languages: [{ code: 'en', isDefault: true }] } }),
+  );
+  mocks.startHandler.mockResolvedValue(new Response(null, { status: 308, headers: { location: '/sites/private-alias-014/guide', vary: 'Accept' } }));
+  const response = await server.fetch(
+    new Request('http://localhost:4310/sites/private-alias-014/alias', { headers: { authorization: 'Bearer fictional-reader' } }),
+  );
+  expect(response.status).toBe(308);
+  expect(response.headers.get('cache-control')).toBe('private, no-store');
+  expect(response.headers.get('vary')).toContain('Accept');
+  expect(response.headers.get('vary')).toContain('Cookie');
+  expect(response.headers.get('vary')).toContain('Authorization');
 });

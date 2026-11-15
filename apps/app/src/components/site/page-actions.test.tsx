@@ -8,6 +8,10 @@ import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { askAiLinks, PageActions, pageMarkdownHref } from '@/components/site/page-actions';
+import { SitePageView } from '@/components/site/site-page-view';
+import type { SitePage } from '@/hooks/api/types';
+
+vi.mock('@/providers/site-analytics-provider', () => ({ useSiteAnalytics: () => ({ track: vi.fn() }) }));
 
 describe('pageMarkdownHref', () => {
   it('points at the Markdown twin and keeps the language and version', () => {
@@ -75,6 +79,63 @@ describe('PageActions', () => {
     expect(writeText).toHaveBeenCalledWith('# Webhooks\n');
     await vi.waitFor(() => expect(document.querySelector('[data-reader-announcer]')?.textContent).toBe('Page copied as Markdown'));
     act(() => root.unmount());
+  });
+
+  it.each(['~lang/ar', '~lang~/ar'])('copies the real page twin with the published prefix %s', async (pathPrefix) => {
+    window.history.replaceState(null, '', `/sites/docs/${pathPrefix}/v2/ar/guide`);
+    const fetch = vi.fn(async () => new Response('# Translated guide', { status: 200 }));
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal('fetch', fetch);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const data: SitePage = {
+      project: {
+        id: 'docs',
+        name: 'Docs',
+        slug: 'docs',
+        description: null,
+        config: { visibility: 'public', addons: { feedback: false, editSuggestions: false, issueLinks: false } },
+        primaryDomain: null,
+      },
+      page: {
+        id: 'guide',
+        title: 'Guide',
+        description: null,
+        excerpt: '',
+        icon: null,
+        path: 'ar/guide',
+        content: 'Translated guide',
+        headings: [],
+        config: null,
+        createdAt: '2026-11-14T00:00:00.000Z',
+        updatedAt: '2026-11-14T00:00:00.000Z',
+      },
+      activeLanguage: 'ar',
+      activeVersion: 'v2',
+      versions: [{ id: 'v2', name: 'V2', slug: 'v2', isDefault: false }],
+      languageConfig: null,
+      languages: [
+        { code: 'en', isDefault: true, path: 'ar/guide' },
+        { code: 'ar', isDefault: false, path: 'ar/guide', pathPrefix },
+      ],
+      breadcrumbs: [],
+      prev: null,
+      next: null,
+    };
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () => root.render(<SitePageView projectId="docs" lang="ar" data={data} />));
+      await act(async () => host.querySelector<HTMLButtonElement>('[data-page-actions] button')?.click());
+      expect(fetch).toHaveBeenCalledWith(
+        `/sites/docs/${pathPrefix}/v2/ar/guide.md`,
+        expect.objectContaining({ headers: { accept: 'text/markdown' } }),
+      );
+      expect(writeText).toHaveBeenCalledWith('# Translated guide');
+    } finally {
+      act(() => root.unmount());
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   it('lets the newest copy win: an earlier, slower copy never overwrites it', async () => {
