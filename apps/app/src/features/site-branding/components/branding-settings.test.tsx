@@ -350,3 +350,90 @@ describe('BrandingSettings: uploads', () => {
     expect(region()).not.toBeNull();
   });
 });
+
+describe('BrandingSettings: Enter', () => {
+  const defaultButton = () => container.querySelector('form button[type="submit"]') as HTMLButtonElement;
+  const status = () => container.querySelector('[role="status"]')?.textContent;
+  /** A keydown in the field, then the default-button click the browser's implicit submission makes in the same task. */
+  const enterIn = (el: HTMLInputElement, init: KeyboardEventInit = {}) =>
+    act(async () => {
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+      defaultButton().click();
+    });
+  /** Lets the adapter forget a key that must not save (it remembers it until the task ends). */
+  const nextTask = () => act(() => new Promise((resolve) => setTimeout(resolve, 5)));
+
+  it('has one default button, hidden, so Enter can submit a form of several fields', () => {
+    expect(container.querySelectorAll('form button[type="submit"]')).toHaveLength(1);
+    expect(defaultButton().hidden).toBe(true);
+  });
+
+  it.each(['logoHref', 'favicon'] as const)('saves once on Enter in the %s field, and the bar says Saved', async (name) => {
+    await type(input(name), '/entered.svg');
+    mocks.update.mockResolvedValueOnce(merged({ [name]: '/entered.svg' }));
+    await enterIn(input(name));
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update).toHaveBeenCalledWith({ config: { branding: { [name]: '/entered.svg' } } });
+    expect(status()).toBe('common.saved');
+    expect(region()).toBeNull();
+    expect(dirty.size).toBe(0);
+  });
+
+  it.each([
+    ['Shift+Enter', { shiftKey: true }],
+    ['Ctrl+Enter', { ctrlKey: true }],
+    ['Alt+Enter', { altKey: true }],
+    ['Cmd+Enter', { metaKey: true }],
+    ['Enter while an IME composition is open', { isComposing: true }],
+    ['the IME’s own key (229)', { key: 'Process', keyCode: 229 }],
+  ])('%s does not save', async (_, init) => {
+    await type(input('logoHref'), 'https://typed.example');
+    await enterIn(input('logoHref'), init);
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(region()).not.toBeNull();
+    // A plain Enter afterwards still saves, once.
+    await nextTask();
+    mocks.update.mockResolvedValueOnce(merged({ logoHref: 'https://typed.example' }));
+    await enterIn(input('logoHref'));
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends nothing on Enter while clean, also with an upload in flight, and the upload still only fills its field', async () => {
+    const upload = pendingUpload();
+    await choose('favicon');
+    await enterIn(input('logoLight'));
+    await enterIn(input('favicon'));
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    await upload.finish('https://cdn.example/assets/icon.png');
+    expect(input('favicon').value).toBe('https://cdn.example/assets/icon.png');
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(region()).not.toBeNull();
+  });
+
+  it('on Enter while dirty with an upload in flight, saves the draft as it is once, and starts no other upload', async () => {
+    const upload = pendingUpload();
+    await choose('logoDark');
+    await type(input('logoHref'), 'https://enter.example');
+    mocks.update.mockResolvedValueOnce(merged({ logoHref: 'https://enter.example' }));
+    await enterIn(input('logoHref'));
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.update).toHaveBeenCalledWith({ config: { branding: { logoHref: 'https://enter.example' } } });
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    await upload.finish('https://cdn.example/assets/dark.svg');
+    expect(input('logoDark').value).toBe('https://cdn.example/assets/dark.svg');
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends nothing more on Enter while a save is in flight', async () => {
+    const request = deferred<Project>();
+    mocks.update.mockReturnValueOnce(request.promise);
+    await type(input('favicon'), '/sent.svg');
+    await enterIn(input('favicon'));
+    await enterIn(input('favicon'));
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    await act(async () => request.resolve(merged({ favicon: '/sent.svg' })));
+    expect(status()).toBe('common.saved');
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+  });
+});

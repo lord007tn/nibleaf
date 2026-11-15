@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { FormField, type FormFieldControl } from '@/components/ui/form-field';
 import type { Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
-import { SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useSaveBranding, useUploadBrandingImage } from '../api/hooks';
 import { type BrandingValues, brandingValues, type UploadField, type UploadRequest, uploadResultAction } from '../model/branding';
@@ -89,17 +89,12 @@ function BrandingForm({ project }: { project: Project }) {
     discardDraft();
     forget();
   }, [discardDraft, forget, isSaving]);
-  useSaveRegionForm('site-branding', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard });
+  // Enter in a path or URL field saves this form through the bar's own run (only while dirty).
+  const formProps = useSaveRegionForm('site-branding', { isDirty: draft.isDirty, isSubmitting: isSaving, submit, discard });
 
   return (
-    <form
-      className="flex flex-col gap-6"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (draft.isDirty) void submit();
-      }}
-    >
+    <form className="flex flex-col gap-6" noValidate {...formProps}>
+      <SaveRegionSubmit />
       {draft.conflicts.length > 0 ? (
         <Callout
           action={
