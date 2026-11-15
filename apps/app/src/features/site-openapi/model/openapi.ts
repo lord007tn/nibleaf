@@ -4,24 +4,29 @@
  * `components/openapi-settings.tsx`; tested in `openapi.test.ts`.
  */
 
-import type { OpenApiConfiguration } from '@/hooks/api';
+/** A saved source, as the server reports it. An uploaded document is stored but never sent back. */
+export type OpenApiSavedSource = { type: 'upload' } | { type: 'url'; url: string } | { type: 'repository'; path: string };
 
-export type OpenApiSourceType = OpenApiConfiguration['source']['type'];
+/** The parts of the site's configuration the form reads. */
+type OpenApiConfigurationLike = { title: string; path: string; source: OpenApiSavedSource };
+
+export type OpenApiSourceType = OpenApiSavedSource['type'];
+
+/**
+ * The source being edited: its kind and its text (the pasted or uploaded
+ * document, the URL, or the repository path) as one value, so a server change
+ * replaces or keeps them together and the text never lands under another kind.
+ */
+export type OpenApiSourceDraft = { type: OpenApiSourceType; value: string };
 
 /** Everything the OpenAPI form edits, in one place, so "dirty" has one meaning. */
-export type OpenApiValues = {
-  title: string;
-  path: string;
-  sourceType: OpenApiSourceType;
-  /** The pasted or uploaded document, the URL, or the repository path, depending on `sourceType`. */
-  sourceValue: string;
-};
+export type OpenApiValues = { title: string; path: string; source: OpenApiSourceDraft };
 
 /** Where a new reference is published unless the person picks another path. */
 export const DEFAULT_OPENAPI_PATH = 'api-reference';
 
-/** The text a source is edited as: its URL or repository path. An uploaded document is never sent back, so it edits as empty. */
-export function sourceValueOf(source: OpenApiConfiguration['source']): string {
+/** The text a source is edited as: its URL or repository path. An uploaded document edits as empty. */
+export function sourceValueOf(source: OpenApiSavedSource): string {
   if (source.type === 'url') return source.url;
   if (source.type === 'repository') return source.path;
   return '';
@@ -31,24 +36,26 @@ export function sourceValueOf(source: OpenApiConfiguration['source']): string {
  * The form's values for the site's configuration. With none yet, a new
  * reference: `defaultTitle`, the default path, and an upload.
  */
-export function openApiValues(current: OpenApiConfiguration | null | undefined, defaultTitle: string): OpenApiValues {
-  if (!current) return { title: defaultTitle, path: DEFAULT_OPENAPI_PATH, sourceType: 'upload', sourceValue: '' };
-  return { title: current.title, path: current.path, sourceType: current.source.type, sourceValue: sourceValueOf(current.source) };
+export function openApiValues(current: OpenApiConfigurationLike | null | undefined, defaultTitle: string): OpenApiValues {
+  if (!current) return { title: defaultTitle, path: DEFAULT_OPENAPI_PATH, source: { type: 'upload', value: '' } };
+  return { title: current.title, path: current.path, source: { type: current.source.type, value: sourceValueOf(current.source) } };
 }
 
-/** The value a source field starts at when the person switches to `next`: the saved one if it is that type, else empty. */
-export const sourceValueFor = (current: OpenApiConfiguration | null | undefined, next: OpenApiSourceType) =>
-  current?.source.type === next ? sourceValueOf(current.source) : '';
+/** The source a switch to `next` starts at: the saved one if it is that kind, else empty. */
+export const switchSource = (current: OpenApiConfigurationLike | null | undefined, next: OpenApiSourceType): OpenApiSourceDraft => ({
+  type: next,
+  value: current?.source.type === next ? sourceValueOf(current.source) : '',
+});
 
 export type OpenApiSource = { type: 'upload'; content: string } | { type: 'url'; url: string } | { type: 'repository'; path: string };
 
 /** What a save sends. An empty source field sends no source, so the server keeps the saved one. */
 export function openApiUpsertBody(values: OpenApiValues): { title: string; path: string; source?: OpenApiSource } {
-  const value = values.sourceValue.trim();
+  const value = values.source.value.trim();
   let source: OpenApiSource | undefined;
   if (value) {
-    if (values.sourceType === 'upload') source = { type: 'upload', content: values.sourceValue };
-    else if (values.sourceType === 'url') source = { type: 'url', url: value };
+    if (values.source.type === 'upload') source = { type: 'upload', content: values.source.value };
+    else if (values.source.type === 'url') source = { type: 'url', url: value };
     else source = { type: 'repository', path: value };
   }
   return { title: values.title.trim(), path: values.path.trim(), source };
@@ -58,11 +65,11 @@ export function openApiUpsertBody(values: OpenApiValues): { title: string; path:
  * Whether Save can be pressed: a name and a path, and a source when there is
  * none yet or the person switched to another kind of source.
  */
-export function canSaveOpenApi(values: OpenApiValues, current: OpenApiConfiguration | null | undefined): boolean {
+export function canSaveOpenApi(values: OpenApiValues, current: OpenApiConfigurationLike | null | undefined): boolean {
   if (!values.title.trim() || !values.path.trim()) return false;
-  const hasSource = Boolean(values.sourceValue.trim());
+  const hasSource = Boolean(values.source.value.trim());
   if (!current) return hasSource;
-  return values.sourceType === current.source.type || hasSource;
+  return values.source.type === current.source.type || hasSource;
 }
 
 /**
@@ -72,6 +79,6 @@ export function canSaveOpenApi(values: OpenApiValues, current: OpenApiConfigurat
  */
 export function confirmedOpenApiValues(baseline: OpenApiValues, submitted: OpenApiValues): OpenApiValues {
   const { title, path, source } = openApiUpsertBody(submitted);
-  if (!source) return { title, path, sourceType: baseline.sourceType, sourceValue: baseline.sourceValue };
-  return { title, path, sourceType: source.type, sourceValue: source.type === 'upload' ? '' : sourceValueOf(source) };
+  if (!source) return { title, path, source: baseline.source };
+  return { title, path, source: { type: source.type, value: source.type === 'upload' ? '' : sourceValueOf(source) } };
 }

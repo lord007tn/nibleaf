@@ -1,79 +1,82 @@
 import { describe, expect, it } from 'vitest';
-import type { OpenApiConfiguration } from '@/hooks/api';
-import { isDraftDirty, reconcileSaveSuccess, reconcileServerChange } from '@/lib/forms/server-draft';
+import { isDraftDirty, reconcileSaveSuccess, reconcileServerChange, resolveConflict } from '@/lib/forms/server-draft';
 import {
   canSaveOpenApi,
   confirmedOpenApiValues,
   DEFAULT_OPENAPI_PATH,
+  type OpenApiSavedSource,
   type OpenApiValues,
   openApiUpsertBody,
   openApiValues,
-  sourceValueFor,
   sourceValueOf,
+  switchSource,
 } from './openapi';
 
-const config = (source: OpenApiConfiguration['source'], overrides: Partial<OpenApiConfiguration> = {}): OpenApiConfiguration => ({
+const URL_SOURCE = 'https://api.example.com/openapi.yaml';
+const config = (source: OpenApiSavedSource, overrides: Partial<{ title: string; path: string }> = {}) => ({
   title: 'Payments API',
   path: 'payments',
-  contentHash: 'hash',
-  updatedAt: '2026-11-01T10:00:00.000Z',
   source,
   ...overrides,
 });
-const urlConfig = config({ type: 'url', url: 'https://api.example.com/openapi.yaml' });
+const urlConfig = config({ type: 'url', url: URL_SOURCE });
 const values = (overrides: Partial<OpenApiValues> = {}): OpenApiValues => ({
   title: 'Payments API',
   path: 'payments',
-  sourceType: 'url',
-  sourceValue: 'https://api.example.com/openapi.yaml',
+  source: { type: 'url', value: URL_SOURCE },
   ...overrides,
 });
 
 describe('openApiValues', () => {
   it('starts a new reference with the default name, path and an upload', () => {
-    expect(openApiValues(null, 'OpenAPI')).toEqual({ title: 'OpenAPI', path: DEFAULT_OPENAPI_PATH, sourceType: 'upload', sourceValue: '' });
+    expect(openApiValues(null, 'OpenAPI')).toEqual({ title: 'OpenAPI', path: DEFAULT_OPENAPI_PATH, source: { type: 'upload', value: '' } });
     expect(openApiValues(undefined, 'OpenAPI').path).toBe('api-reference');
   });
 
   it('edits each saved source as its URL, its repository path, or nothing for an upload', () => {
     expect(openApiValues(urlConfig, 'OpenAPI')).toEqual(values());
-    expect(openApiValues(config({ type: 'repository', path: 'docs/openapi.yaml' }), 'OpenAPI').sourceValue).toBe('docs/openapi.yaml');
-    expect(openApiValues(config({ type: 'upload' }), 'OpenAPI')).toEqual(values({ sourceType: 'upload', sourceValue: '' }));
+    expect(openApiValues(config({ type: 'repository', path: 'docs/openapi.yaml' }), 'OpenAPI').source).toEqual({
+      type: 'repository',
+      value: 'docs/openapi.yaml',
+    });
+    expect(openApiValues(config({ type: 'upload' }), 'OpenAPI')).toEqual(values({ source: { type: 'upload', value: '' } }));
     expect(sourceValueOf({ type: 'upload' })).toBe('');
   });
 });
 
-describe('sourceValueFor', () => {
-  it('brings back the saved value when switching to the saved type, and empties otherwise', () => {
-    expect(sourceValueFor(urlConfig, 'url')).toBe('https://api.example.com/openapi.yaml');
-    expect(sourceValueFor(urlConfig, 'repository')).toBe('');
-    expect(sourceValueFor(urlConfig, 'upload')).toBe('');
-    expect(sourceValueFor(null, 'url')).toBe('');
+describe('switchSource', () => {
+  it('brings back the saved value when switching to the saved kind, and empties otherwise', () => {
+    expect(switchSource(urlConfig, 'url')).toEqual({ type: 'url', value: URL_SOURCE });
+    expect(switchSource(urlConfig, 'repository')).toEqual({ type: 'repository', value: '' });
+    expect(switchSource(urlConfig, 'upload')).toEqual({ type: 'upload', value: '' });
+    expect(switchSource(null, 'url')).toEqual({ type: 'url', value: '' });
   });
 });
 
 describe('openApiUpsertBody', () => {
   it('trims the name, path, URL and repository path', () => {
-    expect(openApiUpsertBody(values({ title: ' Payments ', path: ' payments ', sourceValue: ' https://x.test/o.yaml ' }))).toEqual({
-      title: 'Payments',
-      path: 'payments',
-      source: { type: 'url', url: 'https://x.test/o.yaml' },
-    });
-    expect(openApiUpsertBody(values({ sourceType: 'repository', sourceValue: ' docs/o.yaml ' })).source).toEqual({
+    expect(openApiUpsertBody(values({ title: ' Payments ', path: ' payments ', source: { type: 'url', value: ' https://x.test/o.yaml ' } }))).toEqual(
+      {
+        title: 'Payments',
+        path: 'payments',
+        source: { type: 'url', url: 'https://x.test/o.yaml' },
+      },
+    );
+    expect(openApiUpsertBody(values({ source: { type: 'repository', value: ' docs/o.yaml ' } })).source).toEqual({
       type: 'repository',
       path: 'docs/o.yaml',
     });
   });
 
   it('sends an uploaded document exactly as given', () => {
-    expect(openApiUpsertBody(values({ sourceType: 'upload', sourceValue: '  openapi: 3.1.0\n' })).source).toEqual({
+    expect(openApiUpsertBody(values({ source: { type: 'upload', value: '  openapi: 3.1.0\n' } })).source).toEqual({
       type: 'upload',
       content: '  openapi: 3.1.0\n',
     });
   });
 
   it('sends no source when the field is empty, so the server keeps the saved one', () => {
-    expect(openApiUpsertBody(values({ sourceType: 'upload', sourceValue: '   ' })).source).toBeUndefined();
+    expect(openApiUpsertBody(values({ source: { type: 'upload', value: '   ' } })).source).toBeUndefined();
   });
 });
 
@@ -86,31 +89,33 @@ describe('canSaveOpenApi', () => {
 
   it('needs a source for a new reference', () => {
     expect(canSaveOpenApi(openApiValues(null, 'OpenAPI'), null)).toBe(false);
-    expect(canSaveOpenApi({ ...openApiValues(null, 'OpenAPI'), sourceValue: 'openapi: 3.1.0' }, null)).toBe(true);
+    expect(canSaveOpenApi({ ...openApiValues(null, 'OpenAPI'), source: { type: 'upload', value: 'openapi: 3.1.0' } }, null)).toBe(true);
   });
 
   it('needs a source only when switching to another kind', () => {
     const upload = config({ type: 'upload' });
-    expect(canSaveOpenApi(values({ sourceType: 'upload', sourceValue: '' }), upload)).toBe(true);
-    expect(canSaveOpenApi(values({ sourceType: 'url', sourceValue: '' }), upload)).toBe(false);
-    expect(canSaveOpenApi(values({ sourceType: 'url', sourceValue: 'https://x.test' }), upload)).toBe(true);
+    expect(canSaveOpenApi(values({ source: { type: 'upload', value: '' } }), upload)).toBe(true);
+    expect(canSaveOpenApi(values({ source: { type: 'url', value: '' } }), upload)).toBe(false);
+    expect(canSaveOpenApi(values({ source: { type: 'url', value: 'https://x.test' } }), upload)).toBe(true);
   });
 });
 
 describe('confirmedOpenApiValues', () => {
   it('is what was sent, trimmed', () => {
-    const submitted = values({ title: ' Billing ', sourceValue: ' https://x.test/o.yaml ' });
-    expect(confirmedOpenApiValues(values(), submitted)).toEqual(values({ title: 'Billing', sourceValue: 'https://x.test/o.yaml' }));
+    const submitted = values({ title: ' Billing ', source: { type: 'url', value: ' https://x.test/o.yaml ' } });
+    expect(confirmedOpenApiValues(values(), submitted)).toEqual(
+      values({ title: 'Billing', source: { type: 'url', value: 'https://x.test/o.yaml' } }),
+    );
   });
 
   it('empties an uploaded document, which the server stores but never echoes', () => {
-    expect(confirmedOpenApiValues(values(), values({ sourceType: 'upload', sourceValue: 'openapi: 3.1.0' }))).toEqual(
-      values({ sourceType: 'upload', sourceValue: '' }),
+    expect(confirmedOpenApiValues(values(), values({ source: { type: 'upload', value: 'openapi: 3.1.0' } }))).toEqual(
+      values({ source: { type: 'upload', value: '' } }),
     );
   });
 
   it('keeps the saved source when none was sent', () => {
-    expect(confirmedOpenApiValues(values(), values({ title: 'Billing', sourceValue: '' }))).toEqual(values({ title: 'Billing' }));
+    expect(confirmedOpenApiValues(values(), values({ title: 'Billing', source: { type: 'url', value: '' } }))).toEqual(values({ title: 'Billing' }));
   });
 
   it('matches what the server then returns, so the refetch after a save leaves the form clean', () => {
@@ -122,10 +127,8 @@ describe('confirmedOpenApiValues', () => {
 
 describe('the OpenAPI draft across server changes', () => {
   it('keeps an edited field when a refetch changes others', () => {
-    const baseline = values();
-    const current = values({ title: 'Billing API' });
     const next = openApiValues(config(urlConfig.source, { path: 'payments-v2' }), 'OpenAPI');
-    const change = reconcileServerChange({ baseline, current, next });
+    const change = reconcileServerChange({ baseline: values(), current: values({ title: 'Billing API' }), next });
     expect(change.current).toEqual(values({ title: 'Billing API', path: 'payments-v2' }));
     expect(change.conflicts).toEqual([]);
     expect(isDraftDirty(change.current, change.baseline)).toBe(true);
@@ -137,10 +140,36 @@ describe('the OpenAPI draft across server changes', () => {
     expect(change.conflicts).toEqual(['path']);
   });
 
+  it('never puts a document under a URL: the kind and the text move together', () => {
+    const baseline = openApiValues(config({ type: 'upload' }), 'OpenAPI');
+    const current = { ...baseline, source: { type: 'upload' as const, value: 'openapi: 3.1.0' } };
+    // Meanwhile the server switched to a URL.
+    const next = openApiValues(urlConfig, 'OpenAPI');
+    const change = reconcileServerChange({ baseline, current, next });
+    expect(change.current.source).toEqual({ type: 'upload', value: 'openapi: 3.1.0' });
+    expect(change.conflicts).toEqual(['source']);
+    // Keep mine sends the document as an upload; use theirs takes the URL whole.
+    expect(openApiUpsertBody(resolveConflict({ baseline: change.baseline, current: change.current, key: 'source', choice: 'mine' })).source).toEqual({
+      type: 'upload',
+      content: 'openapi: 3.1.0',
+    });
+    expect(resolveConflict({ baseline: change.baseline, current: change.current, key: 'source', choice: 'theirs' }).source).toEqual({
+      type: 'url',
+      value: URL_SOURCE,
+    });
+  });
+
+  it('takes a server source change whole when the source wasn’t edited', () => {
+    const baseline = openApiValues(config({ type: 'upload' }), 'OpenAPI');
+    const change = reconcileServerChange({ baseline, current: { ...baseline, title: 'Billing API' }, next: openApiValues(urlConfig, 'OpenAPI') });
+    expect(change.current).toEqual(values({ title: 'Billing API' }));
+    expect(change.conflicts).toEqual([]);
+  });
+
   it('is clean after a confirmed upload save', () => {
-    const submitted = values({ sourceType: 'upload', sourceValue: 'openapi: 3.1.0' });
+    const submitted = values({ source: { type: 'upload', value: 'openapi: 3.1.0' } });
     const result = reconcileSaveSuccess({ submitted, current: submitted, confirmed: confirmedOpenApiValues(values(), submitted) });
     expect(isDraftDirty(result.current, result.baseline)).toBe(false);
-    expect(result.current.sourceValue).toBe('');
+    expect(result.current.source.value).toBe('');
   });
 });

@@ -93,6 +93,19 @@ const type = (el: HTMLInputElement | HTMLTextAreaElement, text: string) =>
     el.dispatchEvent(new Event('input', { bubbles: true }));
   });
 
+/** Makes the next save wait until the test settles it. */
+function pendingSave() {
+  const control: { finish: () => void; fail: (error: unknown) => void } = { finish: () => undefined, fail: () => undefined };
+  mocks.upsert.mockImplementation(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        control.finish = resolve;
+        control.fail = reject;
+      }),
+  );
+  return control;
+}
+
 describe('OpenApiSettings draft', () => {
   it('keeps the edits being made when a refetch brings other server changes', async () => {
     await render();
@@ -152,8 +165,7 @@ describe('OpenApiSettings draft', () => {
   });
 
   it('re-syncs from the server when its refetch lands before the save resolves', async () => {
-    let finish!: () => void;
-    mocks.upsert.mockImplementation(() => new Promise<void>((resolve) => (finish = resolve)));
+    const save = pendingSave();
     await render();
     await click('settings.openapi.edit');
     await type(field('openapi-path'), 'Billing');
@@ -161,7 +173,7 @@ describe('OpenApiSettings draft', () => {
 
     // The mutation's invalidation refetches first: the server stored the path its own way.
     await refetch({ ...saved, path: 'billing', contentHash: 'hash-2' });
-    await act(async () => finish());
+    await act(async () => save.finish());
     await render();
 
     expect(mocks.toastSuccess).toHaveBeenCalledWith('settings.openapi.saved');
@@ -171,6 +183,65 @@ describe('OpenApiSettings draft', () => {
     await click('settings.openapi.edit');
     expect(field('openapi-path').value).toBe('billing');
     expect(container.textContent).not.toContain('forms.changedElsewhere');
+  });
+
+  it('takes "no reference" when the refetch before the save resolves finds it removed', async () => {
+    const save = pendingSave();
+    await render();
+    await click('settings.openapi.edit');
+    await type(field('openapi-title'), 'Billing API');
+    await act(async () => void button('common.save').click());
+
+    // Another admin removed the reference; the refetch that follows the save says so.
+    await refetch(null);
+    await act(async () => save.finish());
+    await render();
+
+    expect(container.textContent).toContain('settings.openapi.emptyTitle');
+    expect(dirty.size).toBe(0);
+    await click('settings.openapi.add');
+    expect(field('openapi-title').value).toBe('settings.openapi');
+    expect(field('openapi-path').value).toBe('api-reference');
+  });
+
+  it('keeps Cancel disabled while saving, so a failed save leaves later edits in view', async () => {
+    const save = pendingSave();
+    mocks.toastError.mockClear();
+    await render();
+    await click('settings.openapi.edit');
+    await type(field('openapi-title'), 'Billing API');
+    await act(async () => void button('common.save').click());
+
+    expect(button('common.cancel').disabled).toBe(true);
+    await type(field('openapi-path'), 'billing');
+    await click('common.cancel');
+    expect(field('openapi-title').value).toBe('Billing API');
+
+    await act(async () => save.fail(new Error('boom')));
+    expect(mocks.toastError).toHaveBeenCalledTimes(1);
+    expect(button('common.cancel').disabled).toBe(false);
+    expect(field('openapi-title').value).toBe('Billing API');
+    expect(field('openapi-path').value).toBe('billing');
+    expect(dirty.size).toBe(1);
+    // Once it settled, Cancel discards as usual.
+    await click('common.cancel');
+    expect(dirty.size).toBe(0);
+  });
+
+  it('never sends a document as a URL after the server switched to one', async () => {
+    mocks.data = { ...saved, source: { type: 'upload' } };
+    mocks.upsert.mockResolvedValue({});
+    await render();
+    await click('settings.openapi.edit');
+    await type(container.querySelector('textarea') as HTMLTextAreaElement, 'openapi: 3.1.0');
+
+    await refetch({ ...saved, contentHash: 'hash-2' });
+    expect((container.querySelector('textarea') as HTMLTextAreaElement).value).toBe('openapi: 3.1.0');
+    expect(container.textContent).toContain('forms.changedElsewhere');
+    await click('forms.keepMine');
+    await click('common.save');
+
+    expect(mocks.upsert).toHaveBeenCalledWith({ title: 'Payments API', path: 'payments', source: { type: 'upload', content: 'openapi: 3.1.0' } });
   });
 
   it('empties an uploaded document after saving it', async () => {

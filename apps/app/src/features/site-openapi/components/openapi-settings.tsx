@@ -33,7 +33,7 @@ import {
   type OpenApiValues,
   openApiUpsertBody,
   openApiValues,
-  sourceValueFor,
+  switchSource,
 } from '../model/openapi';
 
 const MAX_FILE_BYTES = 5_000_000;
@@ -64,11 +64,12 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
     onSubmit: async (value, outcome) => {
       try {
         const stored = await save(openApiUpsertBody(value));
-        // The server's own values when its refetch came back; else what was sent, as it stores it.
-        const confirmed = stored ? openApiValues(stored, defaultTitle) : confirmedOpenApiValues(outcome.baseline, value);
+        // The server's own values when its refetch came back, including "no reference" if it was
+        // removed meanwhile; else what was sent, as the server stores it.
+        const confirmed = stored !== undefined ? openApiValues(stored, defaultTitle) : confirmedOpenApiValues(outcome.baseline, value);
         outcome.succeeded(confirmed);
         toast.success(t('settings.openapi.saved'));
-        if (value.sourceType === 'upload') setFilename('');
+        if (value.source.type === 'upload') setFilename('');
         // Edits typed while the save was in flight stay open, and dirty, rather than hidden.
         if (deepEqual(form.state.values, confirmed)) setEditing(false);
         return 'saved';
@@ -83,8 +84,7 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
   const set = <K extends keyof OpenApiValues>(key: K, value: OpenApiValues[K]) => form.setFieldValue(key, value as never);
 
   const changeSource = (next: OpenApiSourceType) => {
-    set('sourceType', next);
-    set('sourceValue', sourceValueFor(current, next));
+    set('source', switchSource(current, next));
     setFilename('');
   };
 
@@ -95,10 +95,12 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
       return;
     }
     setFilename(file.name);
-    set('sourceValue', await file.text());
+    set('source', { type: 'upload', value: await file.text() });
   };
 
+  // Disabled while saving: the save decides what the draft becomes, so nothing is discarded under it.
   const cancel = () => {
+    if (draft.isSaving) return;
     draft.discard();
     setFilename('');
     setEditing(false);
@@ -227,7 +229,7 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
           </Field>
           <Field label={t('settings.openapi.source')} hint={t('settings.openapi.sourceHint')}>
             <Segmented
-              value={values.sourceType}
+              value={values.source.type}
               onChange={changeSource}
               options={[
                 { value: 'upload', label: t('settings.openapi.source.upload') },
@@ -237,7 +239,7 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
             />
           </Field>
 
-          {values.sourceType === 'upload' ? (
+          {values.source.type === 'upload' ? (
             <div className="mb-6 rounded-lg border border-dashed p-4">
               <label className="flex cursor-pointer items-center gap-2 font-medium text-sm" htmlFor="openapi-file">
                 <FileUp className="size-4" /> {filename || t('settings.openapi.chooseFile')}
@@ -254,24 +256,24 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
                 className="mt-3 min-h-32 font-mono text-xs"
                 dir="ltr"
                 placeholder={t('settings.openapi.pastePlaceholder')}
-                value={values.sourceValue}
+                value={values.source.value}
                 onChange={(event) => {
-                  set('sourceValue', event.target.value);
+                  set('source', { type: 'upload', value: event.target.value });
                   setFilename('');
                 }}
               />
             </div>
           ) : (
             <Field
-              label={values.sourceType === 'url' ? t('settings.openapi.url') : t('settings.openapi.repositoryPath')}
-              hint={values.sourceType === 'url' ? t('settings.openapi.urlHint') : t('settings.openapi.repositoryHint')}
+              label={values.source.type === 'url' ? t('settings.openapi.url') : t('settings.openapi.repositoryPath')}
+              hint={values.source.type === 'url' ? t('settings.openapi.urlHint') : t('settings.openapi.repositoryHint')}
             >
               <Input
                 className={FIELD_MONO}
                 dir="ltr"
-                value={values.sourceValue}
-                onChange={(event) => set('sourceValue', event.target.value)}
-                placeholder={values.sourceType === 'url' ? 'https://api.example.com/openapi.yaml' : 'docs/openapi.yaml'}
+                value={values.source.value}
+                onChange={(event) => set('source', { type: values.source.type, value: event.target.value })}
+                placeholder={values.source.type === 'url' ? 'https://api.example.com/openapi.yaml' : 'docs/openapi.yaml'}
               />
             </Field>
           )}
@@ -291,7 +293,7 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
               ) : null}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={cancel}>
+              <Button disabled={draft.isSaving} variant="outline" onClick={cancel}>
                 {t('common.cancel')}
               </Button>
               {current && current.source.type !== 'upload' ? (
