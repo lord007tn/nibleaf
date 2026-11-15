@@ -9,6 +9,7 @@ import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICK
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
+import { normalizeLineEndings, readLineEndings, restoreLineEndings } from './line-endings';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
@@ -27,8 +28,10 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  *
  * `__fixtures__/blank-line-attribute-main.json` holds a digest of main's result for
  * each page. It was made by running this file against main's `mdx-roundtrip.ts`
- * (`git show origin/main:…`) with `WRITE_BLANK_LINE_MAIN=1`. Regenerate it only when
- * attribute reading changes on purpose.
+ * (`git show origin/main:…`) with `WRITE_BLANK_LINE_MAIN=1`. Its `crAsLf` holds main's
+ * result for each page with a CR, read with LF endings (#702, see below); it was made
+ * the same way, against main's `markdown-output.ts` and `editor-change-origin.ts`.
+ * Regenerate it only when attribute reading changes on purpose.
  */
 
 const SEED = 0x72_1b_1a_9e;
@@ -145,7 +148,7 @@ describe('pages without a blank line inside an attribute value read as on main',
 
   /** The page's nodes with their attributes, its save, and its save after the first
    *  node with `key` has it set to `Edited`. */
-  const digest = (page: string, key: string): string => {
+  const result = (page: string, key: string): { nodes: string[]; saved: string; edited: string | null } => {
     editor.commands.setContent(page, { emitUpdate: false });
     const nodes: string[] = [];
     let target: { pos: number; attrs: Record<string, unknown> } | undefined;
@@ -159,16 +162,56 @@ describe('pages without a blank line inside an attribute value read as on main',
       editor.view.dispatch(editor.state.tr.setNodeMarkup(target.pos, undefined, { ...target.attrs, [key]: 'Edited' }));
       edited = getMarkdown(editor);
     }
-    return createHash('sha256').update(JSON.stringify({ nodes, saved, edited })).digest('hex').slice(0, 16);
+    return { nodes, saved, edited };
   };
+  const digest = (value: ReturnType<typeof result>): string => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
+
+  /*
+   * Main read a CR inside a component opener as written, before Markdown turned it
+   * into LF: its nodes held the CR (`sourceOpen`), and an opener running over a CR
+   * line could lose its closing tag. Since #702 the editor reads a page with LF
+   * endings, keeping each line's ending aside, and a save puts them back. So a page
+   * with a CR (the seeded `"a\r\nb"` and `"a\rb"` values, and nothing else) is
+   * compared with main's result for the same page read with LF endings (`crAsLf`):
+   * the same nodes, and the same saves once their endings are LF; and each save
+   * holds the source's endings (an unedited page, byte for byte).
+   */
+  const CR_PAGES = 122;
+  const crPages = pages.flatMap(({ page }, index) => (page.includes('\r') ? [index] : []));
+  const lf = (markdown: string | null) => (markdown === null ? null : normalizeLineEndings(markdown));
+
+  it(`has ${CR_PAGES} seeded pages with a CR`, () => {
+    expect(crPages.length).toBe(CR_PAGES);
+    expect(crPages.every((index) => index < seeded.length)).toBe(true);
+  });
 
   it(`gives main’s nodes, save and edited save for all ${pages.length} pages`, () => {
-    const digests = pages.map(({ page, key }) => digest(page, key));
-    if (process.env.WRITE_BLANK_LINE_MAIN) writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
-    const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
+    const results = pages.map(({ page, key }) => result(page, key));
+    const digests = results.map(digest);
+    if (process.env.WRITE_BLANK_LINE_MAIN) {
+      const crAsLf = crPages.map((index) => digest(result(normalizeLineEndings(pages[index]?.page as string), pages[index]?.key as string)));
+      writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests, crAsLf }, null, 2)}\n`);
+    }
+    const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[]; crAsLf: string[] };
     expect(main.pages).toBe(pages.length);
-    const differences = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [pages[index]?.page]));
-    console.info(`[blank-line-differential] ${pages.length} pages, ${differences.length} differences`);
+    expect(main.crAsLf.length).toBe(CR_PAGES);
+    const crAsLf = new Map(crPages.map((index, at) => [index, main.crAsLf[at]]));
+    const differences = digests.flatMap((value, index) => {
+      const { page } = pages[index] as { page: string };
+      const lfDigest = crAsLf.get(index);
+      if (lfDigest === undefined) return value === main.digests[index] ? [] : [page];
+      const { nodes, saved, edited } = results[index] as ReturnType<typeof result>;
+      const endings = readLineEndings(page);
+      const kept =
+        digest({ nodes, saved: lf(saved) as string, edited: lf(edited) }) === lfDigest &&
+        saved === restoreLineEndings(endings, lf(saved) as string) &&
+        (edited === null || edited === restoreLineEndings(endings, lf(edited) as string)) &&
+        (lf(saved) !== normalizeLineEndings(page) || saved === page);
+      return kept ? [] : [page];
+    });
+    console.info(
+      `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences`,
+    );
     expect(differences.slice(0, 3)).toEqual([]);
   }, 600_000);
 });

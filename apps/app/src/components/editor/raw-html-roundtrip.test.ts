@@ -174,8 +174,8 @@ describe('other raw HTML the editor has no node for', () => {
     expectRoundTrip(`Before.\n\n${form}\n\nAfter.`);
   });
 
-  it('keeps an iframe in a page with CRLF line endings, which saves with LF as before', () => {
-    expectRoundTrip(`Before.\r\n\r\n${I}\r\n\r\nAfter.`, `Before.\n\n${I}\n\nAfter.`);
+  it('keeps an iframe in a page with CRLF line endings, and the page keeps its CRLF (#702)', () => {
+    expectRoundTrip(`Before.\r\n\r\n${I}\r\n\r\nAfter.`);
   });
 
   it('still opens a raw HTML <table> as a table: saved in the editor form once, then stable', () => {

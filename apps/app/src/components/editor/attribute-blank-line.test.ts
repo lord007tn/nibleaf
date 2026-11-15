@@ -228,13 +228,12 @@ describe('blank lines inside attribute values, in other shapes (#721)', () => {
     expect(cycles(page)).toEqual([page, page, page]);
   });
 
-  it('CRLF blank lines: kept, and saved as LF like the rest of the page (#702)', () => {
+  it('CRLF blank lines: kept, and the page keeps its CRLF endings (#702)', () => {
     const page = 'Intro.\r\n\r\n<Card title="a\r\n\r\nb">\r\n\r\nBody\r\n\r\n</Card>\r\n\r\nOutro.';
-    const lf = page.replace(/\r\n/g, '\n');
     const { nodes, saved } = load(page);
     expect(holds(nodes, 'title', 'a\n\nb')).toBe(true);
-    expect(saved).toBe(lf);
-    expect(cycles(page)).toEqual([lf, lf, lf]);
-    expect(edited(page, 'title', 'a\n\nb')).toBe(lf.replace('title="a\n\nb"', 'title="Edited"'));
+    expect(saved).toBe(page);
+    expect(cycles(page)).toEqual([page, page, page]);
+    expect(edited(page, 'title', 'a\n\nb')).toBe(page.replace('title="a\r\n\r\nb"', 'title="Edited"'));
   });
 });
