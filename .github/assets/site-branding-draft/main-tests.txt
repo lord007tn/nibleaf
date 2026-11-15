@@ -1,5 +1,5 @@
 The 'BrandingSettings: uploads' tests of components/branding-settings.test.tsx, run against main's
-components/project-settings/branding-section.tsx (merge base 72db23107) with mutate() shims on the same mocks.
+components/project-settings/branding-section.tsx (run at 72db23107; the file is identical at the current merge base a72e5f398) with mutate() shims on the same mocks.
 All 10 fail on main. Every one passes on this branch. The first assertion that failed in each:
 
 - fills only its own field, never saves, and the route guard sees the filled draft

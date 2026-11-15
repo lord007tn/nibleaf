@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture: the real Branding section (before: main; after: this branch) with the real design system, EN/AR catalogs, project query, config mutation and shared upload hook, in an editor-canvas frame; fictional site and fictional local SVG; project GET, config PATCH (one-level branding merge like the API) and upload presign/PUT/confirm answered by interception; not the signed-in dashboard or production",
-  "baseline": "72db23107a2a2f87f29afeb59973765b29c3c856",
-  "head": "fecf38e32633709239dc7276474cec2c7c5c2d77",
+  "baseline": "a72e5f398a9eb5adff1167bc71d4dea56ea4ad4b",
+  "head": "1bbc34de21e5753254f0f25f42b0718ffc03ab63",
   "uncommitted": [],
   "swappedForBefore": [
     "apps/app/src/components/project-settings/branding-section.tsx"
