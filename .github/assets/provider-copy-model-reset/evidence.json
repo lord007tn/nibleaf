@@ -1,0 +1,248 @@
+{
+  "environment": "Isolated catalog copy specimens; system fonts; not the dashboard or production. changedKeys identifies the edits in each captured locale.",
+  "baseline": "e7b5f72b8c26591f6fd7c2d7e452edc9b6811a58",
+  "sourceHead": "4abae4f37e0661d4d866907d3b7987212848e4ba",
+  "uncommitted": "?? .github/assets/provider-copy-model-reset/",
+  "keys": [
+    "settings_import_ghost_title",
+    "settings_import_ghost_url",
+    "oauth_project_noprojects",
+    "settings_aiassistants_noaccess",
+    "settings_smartai_scope",
+    "settings_smartai_step_enable",
+    "settings_smartai_modelsverified"
+  ],
+  "changedKeys": {
+    "en": [],
+    "ar": [
+      "settings_smartai_scope",
+      "settings_smartai_step_enable",
+      "settings_smartai_modelsverified"
+    ],
+    "zh-CN": [
+      "settings_smartai_scope",
+      "settings_smartai_step_enable",
+      "settings_smartai_modelsverified"
+    ]
+  },
+  "outsideAttempts": 0,
+  "browser": "Repository local-only Playwright wrapper; installed headless Chromium",
+  "captures": [
+    {
+      "file": "before-en-light-1440.png",
+      "locale": "en",
+      "phase": "before",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-en-light-390.png",
+      "locale": "en",
+      "phase": "before",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-en-dark-1440.png",
+      "locale": "en",
+      "phase": "before",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-en-dark-390.png",
+      "locale": "en",
+      "phase": "before",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-en-light-1440.png",
+      "locale": "en",
+      "phase": "after",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-en-light-390.png",
+      "locale": "en",
+      "phase": "after",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-en-dark-1440.png",
+      "locale": "en",
+      "phase": "after",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-en-dark-390.png",
+      "locale": "en",
+      "phase": "after",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-ar-light-1440.png",
+      "locale": "ar",
+      "phase": "before",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-ar-light-390.png",
+      "locale": "ar",
+      "phase": "before",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-ar-dark-1440.png",
+      "locale": "ar",
+      "phase": "before",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-ar-dark-390.png",
+      "locale": "ar",
+      "phase": "before",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-ar-light-1440.png",
+      "locale": "ar",
+      "phase": "after",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-ar-light-390.png",
+      "locale": "ar",
+      "phase": "after",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-ar-dark-1440.png",
+      "locale": "ar",
+      "phase": "after",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-ar-dark-390.png",
+      "locale": "ar",
+      "phase": "after",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-zh-CN-light-1440.png",
+      "locale": "zh-CN",
+      "phase": "before",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-zh-CN-light-390.png",
+      "locale": "zh-CN",
+      "phase": "before",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-zh-CN-dark-1440.png",
+      "locale": "zh-CN",
+      "phase": "before",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "before-zh-CN-dark-390.png",
+      "locale": "zh-CN",
+      "phase": "before",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-zh-CN-light-1440.png",
+      "locale": "zh-CN",
+      "phase": "after",
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-zh-CN-light-390.png",
+      "locale": "zh-CN",
+      "phase": "after",
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-zh-CN-dark-1440.png",
+      "locale": "zh-CN",
+      "phase": "after",
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "file": "after-zh-CN-dark-390.png",
+      "locale": "zh-CN",
+      "phase": "after",
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}
