@@ -47,7 +47,7 @@ function BannerForm({ project }: { project: Project }) {
   const extraLanguages = ordered.filter((language) => !language.isDefault);
   const [scope, setScope] = useState<string>(PROJECT_SCOPE);
   const activeLanguage = extraLanguages.find((language) => language.id === scope);
-  const projectBanner = project.config?.banner ?? undefined;
+  const projectBanner = project.config?.banner;
   const override = activeLanguage?.config?.banner;
   const source = useMemo(
     () => (activeLanguage ? languageBannerValues(override, projectBanner) : projectBannerValues(projectBanner)),
