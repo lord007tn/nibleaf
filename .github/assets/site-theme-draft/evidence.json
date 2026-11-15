@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture: the real Themes section (before: main; after: this branch) with the real design system, EN/AR catalogs, project query and mutations, the theme import and export mutations, ConfirmProvider and Sonner, in an editor-canvas frame; a fictional site and template; the project GET, PATCH (merged like the API) and template endpoints (on the shared theme functions) answered by interception; not the signed-in dashboard or production",
   "baseline": "df4e66581544b727c096da3b845673216b84ddd7",
-  "head": "74f3c5fc1a7589c94a6febc6cf9b0e946a6ef8ac",
+  "head": "15d284aa8238e72f822207d80aaae074581f61af",
   "uncommitted": [],
   "swappedForBefore": [
     "apps/app/src/components/project-settings/theme-section.tsx"
