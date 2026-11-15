@@ -18,6 +18,7 @@
         ".github/assets/settings-native-enter-submit/capture.mjs",
         ".github/assets/site-banner-draft/capture.mjs",
         ".github/assets/dashboard-mobile-toast-placement/capture.mjs",
+        ".github/assets/site-analytics-enter-saved/capture.mjs",
         ".github/assets/settings-enter-remaining/capture.mjs",
         "tests/integration/editor-p2/browser.mjs",
         "tests/integration/import-fidelity/browser.mjs",
