@@ -92,7 +92,9 @@ export function linkUrlProblem(value: string): 'invalid' | undefined {
   if (REFUSED_SCHEME.test(address)) return 'invalid';
   try {
     // Parsing on its own (no base) is what makes it absolute: it names its scheme.
-    return new URL(address).protocol ? undefined : 'invalid';
+    // Check the parsed scheme too: the URL parser drops tabs and newlines inside it.
+    const { protocol } = new URL(address);
+    return protocol && !REFUSED_SCHEME.test(protocol) ? undefined : 'invalid';
   } catch {
     return 'invalid';
   }

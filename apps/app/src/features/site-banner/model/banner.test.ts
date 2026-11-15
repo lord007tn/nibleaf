@@ -150,10 +150,15 @@ describe('linkUrlProblem', () => {
     },
   );
 
-  it.each(['javascript:alert(1)', 'JavaScript:alert(1)', ' javascript:alert(1)', 'data:text/html,<p>hi</p>', 'VBScript:msgbox'])(
-    'rejects %j: a scheme the server refuses',
-    (value) => {
-      expect(linkUrlProblem(value)).toBe('invalid');
-    },
-  );
+  it.each([
+    'javascript:alert(1)',
+    'JavaScript:alert(1)',
+    ' javascript:alert(1)',
+    'data:text/html,<p>hi</p>',
+    'VBScript:msgbox',
+    'java\tscript:alert(1)',
+    'java\nscript:alert(1)',
+  ])('rejects %j: a scheme the server refuses', (value) => {
+    expect(linkUrlProblem(value)).toBe('invalid');
+  });
 });
