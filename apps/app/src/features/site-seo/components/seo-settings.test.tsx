@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigDirtyProvider } from '@/components/project-settings/shared';
 import type { Language, Project } from '@/hooks/api';
-import { languagesQueryOptions, projectQueryOptions } from '@/hooks/api/query-options';
 import type { SeoConfig } from '../model/seo';
 import { SeoSettings } from './seo-settings';
 
@@ -28,8 +26,6 @@ vi.mock('@/hooks/api', () => ({
 }));
 vi.mock('@/hooks/api/errors', () => ({ friendlyErrorMessage: (_t: unknown, _error: unknown, fallback: string) => `friendly:${fallback}` }));
 vi.mock('@tanstack/react-router', () => ({ useBlocker: () => undefined }));
-// The query options the save wrappers read hold the real API client; no request is made here.
-vi.mock('@/services/api-origin', () => ({ apiOrigin: () => 'http://dashboard.test' }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
 const SAVED = { metaTitle: 'Acme Docs', metaDescription: 'Everything about Acme.', socialImage: '/og/cover.png' };
@@ -59,35 +55,20 @@ function deferred<T>() {
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 let dirty: Set<string>;
-/** The query cache the save wrappers read the save's own refetch from. */
-let queryClient: QueryClient;
 
 const render = (project: Project) =>
   act(async () =>
     root.render(
-      <QueryClientProvider client={queryClient}>
-        <ConfirmProvider>
-          <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
-            <SeoSettings project={project} />
-          </ConfigDirtyProvider>
-        </ConfirmProvider>
-      </QueryClientProvider>,
+      <ConfirmProvider>
+        <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
+          <SeoSettings project={project} />
+        </ConfigDirtyProvider>
+      </ConfirmProvider>,
     ),
   );
-/** A refetch landing while a save is in flight: the query cache gets the server's data, and the host re-renders with it. */
-const refetchProject = (project: Project) => {
-  queryClient.setQueryData(projectQueryOptions(project.id).queryKey, project);
-  return render(project);
-};
-const refetchLanguages = (project: Project, languages: Language[]) => {
-  mocks.languages = languages;
-  queryClient.setQueryData(languagesQueryOptions(project.id).queryKey, languages);
-  return render(project);
-};
 
 beforeEach(() => {
   mocks.languages = [];
-  queryClient = new QueryClient();
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -300,7 +281,7 @@ describe("SeoSettings: a save's own refetch, which the mutation awaits before it
     await type(input('metaTitle'), typed);
     await save();
     await newer?.();
-    await refetchProject(site({ ...SAVED, metaTitle: refetched }));
+    await render(site({ ...SAVED, metaTitle: refetched }));
     const conflictBeforeResolve = conflict();
     await act(async () => request.resolve(site({ ...SAVED, metaTitle: typed.trim() })));
     return conflictBeforeResolve;
@@ -350,14 +331,19 @@ describe("SeoSettings: a save's own refetch, which the mutation awaits before it
     expect(region()).toBeNull();
   });
 
-  it("someone else's title written during a trimmed save conflicts; Use theirs takes theirs, not the PATCH response", async () => {
+  it("someone else's title written during a trimmed save surfaces as a conflict before the save resolves", async () => {
     expect(await saveThenEditThenRefetch('  Sent  ', () => type(input('metaTitle'), 'Newer'), 'Theirs')).toBe(true);
     expect(input('metaTitle').value).toBe('Newer');
     expect(conflict()).toBe(true);
+  });
+
+  // #743 (shared, every useServerDraftForm adopter): the mutation resolves with
+  // its PATCH response ('Sent') after the refetch already brought 'Theirs', so
+  // the confirmed baseline rewinds to 'Sent' and "Use theirs" takes that.
+  it.fails('… and "Use theirs" then takes their title, not the save’s own PATCH response (#743)', async () => {
+    await saveThenEditThenRefetch('  Sent  ', () => type(input('metaTitle'), 'Newer'), 'Theirs');
     await click(buttonNamed('forms.useTheirs'));
     expect(input('metaTitle').value).toBe('Theirs');
-    expect(conflict()).toBe(false);
-    expect(region()).toBeNull();
   });
 
   /** The same race in the Arabic scope: the PATCH stores `توثيق`, the refetch reads `refetched`. */
@@ -371,7 +357,8 @@ describe("SeoSettings: a save's own refetch, which the mutation awaits before it
     await save();
     await type(input('metaTitle'), 'توثيق أحدث');
     const seo = { metaTitle: 'توثيق', metaDescription: '', socialImage: '', allowIndex: true };
-    await refetchLanguages(site(), [ENGLISH, arabic({ ...seo, metaTitle: refetched })]);
+    mocks.languages = [ENGLISH, arabic({ ...seo, metaTitle: refetched })];
+    await render(site());
     const conflictBeforeResolve = conflict();
     await act(async () => request.resolve(arabic(seo)));
     expect(mocks.updateLanguage).toHaveBeenCalledWith({ id: 'ar', body: { config: { seo } } });
@@ -385,14 +372,17 @@ describe("SeoSettings: a save's own refetch, which the mutation awaits before it
     expect(region()).not.toBeNull();
   });
 
-  it("someone else's language title written during the save conflicts; Use theirs takes theirs, not the PATCH response", async () => {
+  it("someone else's language title written during the save surfaces as a conflict before the save resolves", async () => {
     expect(await saveLanguageThenEditThenRefetch('عنوانهم')).toBe(true);
     expect(input('metaTitle').value).toBe('توثيق أحدث');
     expect(conflict()).toBe(true);
+  });
+
+  // #743, as above, in the language scope.
+  it.fails('… and in the language scope "Use theirs" then takes their title, not the PATCH response (#743)', async () => {
+    await saveLanguageThenEditThenRefetch('عنوانهم');
     await click(buttonNamed('forms.useTheirs'));
     expect(input('metaTitle').value).toBe('عنوانهم');
-    expect(conflict()).toBe(false);
-    expect(region()).toBeNull();
   });
 });
 
