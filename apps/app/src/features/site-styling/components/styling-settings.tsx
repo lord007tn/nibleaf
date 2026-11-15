@@ -205,10 +205,11 @@ function StylingForm({ project }: { project: Project }) {
 
       <div className="mb-4">
         <div className="flex flex-wrap items-center gap-3.5">
+          {/* While the text is not a color, the swatch keeps the sliders' color. */}
           <span
             aria-hidden
             className="size-11 shrink-0 rounded-xl"
-            style={{ background: shown ?? 'transparent', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08)' }}
+            style={{ background: shown ?? hslToHex(hsl), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08)' }}
           />
           <Input
             aria-describedby={problem ? errorId : undefined}

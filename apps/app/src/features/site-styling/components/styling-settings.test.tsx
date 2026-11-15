@@ -271,6 +271,10 @@ describe('StylingSettings — controls', () => {
     // Typing a color moves the sliders to it.
     await type('#00ff00');
     expect([slider('hue').value, slider('saturation').value, slider('lightness').value]).toStrictEqual(['120', '100', '50']);
+    // Partial text keeps the sliders and the swatch on the last color.
+    await type('#12');
+    expect(slider('hue').value).toBe('120');
+    expect(container.querySelector<HTMLElement>('span.size-11')?.style.background).toBe('rgb(0, 255, 0)');
   });
 
   it.each([
