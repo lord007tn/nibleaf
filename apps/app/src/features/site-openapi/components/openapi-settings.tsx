@@ -1,0 +1,315 @@
+import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
+import { Badge } from '@nibleaf/design-system/components/ui/badge';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Callout } from '@nibleaf/design-system/components/ui/callout';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { getLocale } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
+import { useStore } from '@tanstack/react-form';
+import { AlertTriangle, Braces, FileUp, RefreshCw, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import {
+  DirtyStateReporter,
+  FIELD_INPUT,
+  FIELD_MONO,
+  Field,
+  SectionHeader,
+  Segmented,
+  SettingsFormSkeleton,
+} from '@/components/project-settings/shared';
+import { QueryErrorState } from '@/components/query-error-state';
+import type { OpenApiConfiguration } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
+import { deepEqual } from '@/lib/forms/server-draft';
+import { useServerDraftForm } from '@/lib/forms/use-server-draft';
+import { useRemoveSiteOpenApi, useSaveSiteOpenApi, useSiteOpenApi, useSyncSiteOpenApi } from '../api/hooks';
+import {
+  canSaveOpenApi,
+  confirmedOpenApiValues,
+  type OpenApiSourceType,
+  type OpenApiValues,
+  openApiUpsertBody,
+  openApiValues,
+  sourceValueFor,
+} from '../model/openapi';
+
+const MAX_FILE_BYTES = 5_000_000;
+
+/** Site settings → OpenAPI: the site's API reference, from an upload, a URL or a repository file. */
+export function OpenApiSettings({ projectId }: { projectId: string }) {
+  const query = useSiteOpenApi(projectId);
+  if (query.isPending) return <SettingsFormSkeleton />;
+  if (query.isError && !query.data) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
+  return <OpenApiForm current={query.data ?? null} projectId={projectId} />;
+}
+
+function OpenApiForm({ projectId, current }: { projectId: string; current: OpenApiConfiguration | null }) {
+  const t = useT();
+  const confirm = useConfirm();
+  const save = useSaveSiteOpenApi(projectId);
+  const sync = useSyncSiteOpenApi(projectId);
+  const remove = useRemoveSiteOpenApi(projectId);
+  const defaultTitle = t('settings.openapi');
+  const source = useMemo(() => openApiValues(current, defaultTitle), [current, defaultTitle]);
+  // Not server data: which panel shows, and the chosen file's name.
+  const [editing, setEditing] = useState(false);
+  const [filename, setFilename] = useState('');
+
+  const { form, ...draft } = useServerDraftForm<OpenApiValues>({
+    identity: [projectId, 'openapi'],
+    source,
+    onSubmit: async (value, outcome) => {
+      try {
+        await save.mutateAsync(openApiUpsertBody(value));
+        const confirmed = confirmedOpenApiValues(outcome.baseline, value);
+        outcome.succeeded(confirmed);
+        toast.success(t('settings.openapi.saved'));
+        if (value.sourceType === 'upload') setFilename('');
+        // Edits typed while the save was in flight stay open, and dirty, rather than hidden.
+        if (deepEqual(form.state.values, confirmed)) setEditing(false);
+        return 'saved';
+      } catch {
+        outcome.failed();
+        toast.error(t('settings.openapi.saveError'));
+        return 'failed';
+      }
+    },
+  });
+  const values = useStore(form.store, (state) => state.values);
+  const set = <K extends keyof OpenApiValues>(key: K, value: OpenApiValues[K]) => form.setFieldValue(key, value as never);
+
+  const changeSource = (next: OpenApiSourceType) => {
+    set('sourceType', next);
+    set('sourceValue', sourceValueFor(current, next));
+    setFilename('');
+  };
+
+  const onFile = async (file?: File) => {
+    if (!file) return;
+    if (file.size > MAX_FILE_BYTES) {
+      toast.error(t('settings.openapi.fileTooLarge'));
+      return;
+    }
+    setFilename(file.name);
+    set('sourceValue', await file.text());
+  };
+
+  const cancel = () => {
+    draft.discard();
+    setFilename('');
+    setEditing(false);
+  };
+
+  const refresh = async () => {
+    try {
+      await sync.mutateAsync();
+      toast.success(t('settings.openapi.synced'));
+    } catch {
+      toast.error(t('settings.openapi.syncError'));
+    }
+  };
+
+  const deleteReference = async () => {
+    const ok = await confirm({ title: t('settings.openapi.remove'), description: t('settings.openapi.deleteConfirm'), destructive: true });
+    if (!ok) return;
+    try {
+      await remove.mutateAsync();
+      toast.success(t('settings.openapi.deleted'));
+      // The refetch has settled: the baseline is now "no reference", so this starts a new one cleanly.
+      draft.discard();
+      setFilename('');
+      setEditing(false);
+    } catch {
+      toast.error(t('settings.openapi.deleteError'));
+    }
+  };
+
+  return (
+    <div>
+      <DirtyStateReporter dirty={draft.isDirty} />
+      <SectionHeader icon={<Braces className="size-4" />} title={t('settings.openapi.title')} description={t('settings.openapi.description')} />
+
+      {current && !editing ? (
+        <Alert className="mb-6">
+          <Braces />
+          <AlertTitle className="flex items-center gap-2">
+            {t('settings.openapi.configured')} <Badge variant="secondary">{t(`settings.openapi.source.${current.source.type}`)}</Badge>
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              {t('settings.openapi.publishHint')} · <span dir="ltr">/{current.path}</span> ·{' '}
+              {new Date(current.updatedAt).toLocaleString(localeTag(getLocale()))}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={() => setEditing(true)} size="sm">
+                {t('settings.openapi.edit')}
+              </Button>
+              {current.source.type !== 'upload' ? (
+                <Button variant="outline" loading={sync.isPending} onClick={() => void refresh()} size="sm">
+                  <RefreshCw /> {t('settings.openapi.sync')}
+                </Button>
+              ) : null}
+              <Button variant="outline" loading={remove.isPending} onClick={() => void deleteReference()} size="sm">
+                <Trash2 /> {t('settings.openapi.remove')}
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {!current && !editing ? (
+        <div className="rounded-xl border border-dashed p-6 text-center">
+          <Braces className="mx-auto size-6 text-muted-foreground" />
+          <h3 className="mt-3 font-semibold">{t('settings.openapi.emptyTitle')}</h3>
+          <p className="mx-auto mt-1 max-w-lg text-muted-foreground text-sm">{t('settings.openapi.emptyDescription')}</p>
+          <Button className="mt-4" onClick={() => setEditing(true)}>
+            {t('settings.openapi.add')}
+          </Button>
+        </div>
+      ) : null}
+
+      {editing ? (
+        <>
+          {draft.conflicts.length > 0 ? (
+            <Callout
+              action={
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => {
+                      for (const key of draft.conflicts) draft.resolveConflict(key, 'theirs');
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    {t('forms.useTheirs')}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      for (const key of draft.conflicts) draft.resolveConflict(key, 'mine');
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {t('forms.keepMine')}
+                  </Button>
+                </div>
+              }
+              className="mb-6"
+              tone="warning"
+            >
+              {t('forms.changedElsewhere')}
+            </Callout>
+          ) : null}
+          <Field label={t('settings.openapi.name')} hint={t('settings.openapi.nameHint')} htmlFor="openapi-title">
+            <Input
+              id="openapi-title"
+              className={FIELD_INPUT}
+              value={values.title}
+              onChange={(event) => set('title', event.target.value)}
+              maxLength={120}
+            />
+          </Field>
+          <Field label={t('settings.openapi.path')} hint={t('settings.openapi.pathHint')} htmlFor="openapi-path">
+            <Input
+              className={FIELD_MONO}
+              dir="ltr"
+              id="openapi-path"
+              maxLength={80}
+              onChange={(event) => set('path', event.target.value)}
+              value={values.path}
+            />
+          </Field>
+          <Field label={t('settings.openapi.source')} hint={t('settings.openapi.sourceHint')}>
+            <Segmented
+              value={values.sourceType}
+              onChange={changeSource}
+              options={[
+                { value: 'upload', label: t('settings.openapi.source.upload') },
+                { value: 'url', label: t('settings.openapi.source.url') },
+                { value: 'repository', label: t('settings.openapi.source.repository') },
+              ]}
+            />
+          </Field>
+
+          {values.sourceType === 'upload' ? (
+            <div className="mb-6 rounded-lg border border-dashed p-4">
+              <label className="flex cursor-pointer items-center gap-2 font-medium text-sm" htmlFor="openapi-file">
+                <FileUp className="size-4" /> {filename || t('settings.openapi.chooseFile')}
+              </label>
+              <Input
+                id="openapi-file"
+                className="mt-3"
+                type="file"
+                accept=".json,.yaml,.yml,application/json,application/yaml,text/yaml"
+                onChange={(event) => void onFile(event.target.files?.[0])}
+              />
+              <p className="mt-2 text-xs text-muted-foreground">{t('settings.openapi.uploadHint')}</p>
+              <Textarea
+                className="mt-3 min-h-32 font-mono text-xs"
+                dir="ltr"
+                placeholder={t('settings.openapi.pastePlaceholder')}
+                value={values.sourceValue}
+                onChange={(event) => {
+                  set('sourceValue', event.target.value);
+                  setFilename('');
+                }}
+              />
+            </div>
+          ) : (
+            <Field
+              label={values.sourceType === 'url' ? t('settings.openapi.url') : t('settings.openapi.repositoryPath')}
+              hint={values.sourceType === 'url' ? t('settings.openapi.urlHint') : t('settings.openapi.repositoryHint')}
+            >
+              <Input
+                className={FIELD_MONO}
+                dir="ltr"
+                value={values.sourceValue}
+                onChange={(event) => set('sourceValue', event.target.value)}
+                placeholder={values.sourceType === 'url' ? 'https://api.example.com/openapi.yaml' : 'docs/openapi.yaml'}
+              />
+            </Field>
+          )}
+
+          <Alert className="mb-6">
+            <AlertTriangle />
+            <AlertTitle>{t('settings.openapi.securityTitle')}</AlertTitle>
+            <AlertDescription>{t('settings.openapi.securityHint')}</AlertDescription>
+          </Alert>
+
+          <div className="flex flex-wrap justify-between gap-3">
+            <div>
+              {current ? (
+                <Button variant="destructive" loading={remove.isPending} onClick={() => void deleteReference()}>
+                  <Trash2 /> {t('settings.openapi.remove')}
+                </Button>
+              ) : null}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={cancel}>
+                {t('common.cancel')}
+              </Button>
+              {current && current.source.type !== 'upload' ? (
+                <Button variant="outline" loading={sync.isPending} onClick={() => void refresh()}>
+                  <RefreshCw /> {t('settings.openapi.sync')}
+                </Button>
+              ) : null}
+              <Button
+                disabled={!canSaveOpenApi(values, current)}
+                loading={draft.isSaving}
+                loadingText={t('common.saving')}
+                onClick={() => void draft.submit()}
+              >
+                {t('common.save')}
+              </Button>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
