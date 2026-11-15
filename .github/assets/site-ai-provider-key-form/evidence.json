@@ -1,0 +1,492 @@
+{
+  "environment": "Isolated fixture: the real ProviderKeyForm, design system and EN/AR catalogs in a card-sized frame; GET settings/ai answered with fictional data by interception; no server, database, provider or real key",
+  "baseline": "da1a096ee1274d9e11c23cdd973799ab3596eeee",
+  "head": "54edbdadf9f5a50d6ce3569e6a0a75bbbb27bc89",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/features/site-ai/components/provider-key-form.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "before-first-setup-en-1440.png",
+      "phase": "before",
+      "screen": "first-setup",
+      "locale": "en",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["todo", "todo", "todo", "todo"],
+      "saveDisabled": true,
+      "saveReason": ["Paste an API key first."],
+      "consent": null,
+      "overflow": false
+    },
+    {
+      "file": "before-first-setup-en-390.png",
+      "phase": "before",
+      "screen": "first-setup",
+      "locale": "en",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["todo", "todo", "todo", "todo"],
+      "saveDisabled": true,
+      "saveReason": ["Paste an API key first."],
+      "consent": null,
+      "overflow": false
+    },
+    {
+      "file": "before-first-setup-ar-1440.png",
+      "phase": "before",
+      "screen": "first-setup",
+      "locale": "ar",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["todo", "todo", "todo", "todo"],
+      "saveDisabled": true,
+      "saveReason": ["الصق مفتاح API أولًا."],
+      "consent": null,
+      "overflow": false
+    },
+    {
+      "file": "before-first-setup-ar-390.png",
+      "phase": "before",
+      "screen": "first-setup",
+      "locale": "ar",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["todo", "todo", "todo", "todo"],
+      "saveDisabled": true,
+      "saveReason": ["الصق مفتاح API أولًا."],
+      "consent": null,
+      "overflow": false
+    },
+    {
+      "file": "before-replace-unticked-en-1440.png",
+      "phase": "before",
+      "screen": "replace-unticked",
+      "locale": "en",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": true,
+      "saveReason": [
+        "To save the new key, tick “I want to replace this site’s stored key.”"
+      ],
+      "consent": {
+        "element": "native input[type=checkbox]",
+        "designSystem": false,
+        "checked": "false",
+        "label": "I want to replace this site’s stored key.",
+        "description": [],
+        "boxPx": [13, 13]
+      },
+      "overflow": false
+    },
+    {
+      "file": "before-replace-unticked-en-390.png",
+      "phase": "before",
+      "screen": "replace-unticked",
+      "locale": "en",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": true,
+      "saveReason": [
+        "To save the new key, tick “I want to replace this site’s stored key.”"
+      ],
+      "consent": {
+        "element": "native input[type=checkbox]",
+        "designSystem": false,
+        "checked": "false",
+        "label": "I want to replace this site’s stored key.",
+        "description": [],
+        "boxPx": [13, 13]
+      },
+      "overflow": false
+    },
+    {
+      "file": "before-replace-unticked-ar-1440.png",
+      "phase": "before",
+      "screen": "replace-unticked",
+      "locale": "ar",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": true,
+      "saveReason": [
+        "لحفظ المفتاح الجديد، حدّد «أريد استبدال المفتاح المحفوظ لهذا الموقع»."
+      ],
+      "consent": {
+        "element": "native input[type=checkbox]",
+        "designSystem": false,
+        "checked": "false",
+        "label": "أريد استبدال المفتاح المحفوظ لهذا الموقع.",
+        "description": [],
+        "boxPx": [13, 13]
+      },
+      "overflow": false
+    },
+    {
+      "file": "before-replace-unticked-ar-390.png",
+      "phase": "before",
+      "screen": "replace-unticked",
+      "locale": "ar",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": true,
+      "saveReason": [
+        "لحفظ المفتاح الجديد، حدّد «أريد استبدال المفتاح المحفوظ لهذا الموقع»."
+      ],
+      "consent": {
+        "element": "native input[type=checkbox]",
+        "designSystem": false,
+        "checked": "false",
+        "label": "أريد استبدال المفتاح المحفوظ لهذا الموقع.",
+        "description": [],
+        "boxPx": [13, 13]
+      },
+      "overflow": false
+    },
+    {
+      "file": "before-replace-ticked-en-1440.png",
+      "phase": "before",
+      "screen": "replace-ticked",
+      "locale": "en",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": false,
+      "saveReason": [],
+      "consent": {
+        "element": "native input[type=checkbox]",
+        "designSystem": false,
+        "checked": "true",
+        "label": "I want to replace this site’s stored key.",
+        "description": [],
+        "boxPx": [13, 13]
+      },
+      "overflow": false
+    },
+    {
+      "file": "before-replace-ticked-en-390.png",
+      "phase": "before",
+      "screen": "replace-ticked",
+      "locale": "en",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": false,
+      "saveReason": [],
+      "consent": {
+        "element": "native input[type=checkbox]",
+        "designSystem": false,
+        "checked": "true",
+        "label": "I want to replace this site’s stored key.",
+        "description": [],
+        "boxPx": [13, 13]
+      },
+      "overflow": false
+    },
+    {
+      "file": "before-replace-ticked-ar-1440.png",
+      "phase": "before",
+      "screen": "replace-ticked",
+      "locale": "ar",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": false,
+      "saveReason": [],
+      "consent": {
+        "element": "native input[type=checkbox]",
+        "designSystem": false,
+        "checked": "true",
+        "label": "أريد استبدال المفتاح المحفوظ لهذا الموقع.",
+        "description": [],
+        "boxPx": [13, 13]
+      },
+      "overflow": false
+    },
+    {
+      "file": "before-replace-ticked-ar-390.png",
+      "phase": "before",
+      "screen": "replace-ticked",
+      "locale": "ar",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": false,
+      "saveReason": [],
+      "consent": {
+        "element": "native input[type=checkbox]",
+        "designSystem": false,
+        "checked": "true",
+        "label": "أريد استبدال المفتاح المحفوظ لهذا الموقع.",
+        "description": [],
+        "boxPx": [13, 13]
+      },
+      "overflow": false
+    },
+    {
+      "file": "after-first-setup-en-1440.png",
+      "phase": "after",
+      "screen": "first-setup",
+      "locale": "en",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["todo", "todo", "todo", "todo"],
+      "saveDisabled": true,
+      "saveReason": ["Paste an API key first."],
+      "consent": null,
+      "overflow": false
+    },
+    {
+      "file": "after-first-setup-en-390.png",
+      "phase": "after",
+      "screen": "first-setup",
+      "locale": "en",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["todo", "todo", "todo", "todo"],
+      "saveDisabled": true,
+      "saveReason": ["Paste an API key first."],
+      "consent": null,
+      "overflow": false
+    },
+    {
+      "file": "after-first-setup-ar-1440.png",
+      "phase": "after",
+      "screen": "first-setup",
+      "locale": "ar",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["todo", "todo", "todo", "todo"],
+      "saveDisabled": true,
+      "saveReason": ["الصق مفتاح API أولًا."],
+      "consent": null,
+      "overflow": false
+    },
+    {
+      "file": "after-first-setup-ar-390.png",
+      "phase": "after",
+      "screen": "first-setup",
+      "locale": "ar",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["todo", "todo", "todo", "todo"],
+      "saveDisabled": true,
+      "saveReason": ["الصق مفتاح API أولًا."],
+      "consent": null,
+      "overflow": false
+    },
+    {
+      "file": "after-replace-unticked-en-1440.png",
+      "phase": "after",
+      "screen": "replace-unticked",
+      "locale": "en",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": true,
+      "saveReason": [
+        "To save the new key, tick “I want to replace this site’s stored key.”"
+      ],
+      "consent": {
+        "element": "CheckboxField (role=checkbox)",
+        "designSystem": true,
+        "checked": "false",
+        "label": "I want to replace this site’s stored key.",
+        "description": [
+          "Leave blank to keep the stored key. A new key requires explicit replacement confirmation."
+        ],
+        "boxPx": [16, 16]
+      },
+      "overflow": false
+    },
+    {
+      "file": "after-replace-unticked-en-390.png",
+      "phase": "after",
+      "screen": "replace-unticked",
+      "locale": "en",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": true,
+      "saveReason": [
+        "To save the new key, tick “I want to replace this site’s stored key.”"
+      ],
+      "consent": {
+        "element": "CheckboxField (role=checkbox)",
+        "designSystem": true,
+        "checked": "false",
+        "label": "I want to replace this site’s stored key.",
+        "description": [
+          "Leave blank to keep the stored key. A new key requires explicit replacement confirmation."
+        ],
+        "boxPx": [16, 16]
+      },
+      "overflow": false
+    },
+    {
+      "file": "after-replace-unticked-ar-1440.png",
+      "phase": "after",
+      "screen": "replace-unticked",
+      "locale": "ar",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": true,
+      "saveReason": [
+        "لحفظ المفتاح الجديد، حدّد «أريد استبدال المفتاح المحفوظ لهذا الموقع»."
+      ],
+      "consent": {
+        "element": "CheckboxField (role=checkbox)",
+        "designSystem": true,
+        "checked": "false",
+        "label": "أريد استبدال المفتاح المحفوظ لهذا الموقع.",
+        "description": [
+          "اتركه فارغاً للاحتفاظ بالمفتاح المحفوظ. يتطلب المفتاح الجديد تأكيد الاستبدال."
+        ],
+        "boxPx": [16, 16]
+      },
+      "overflow": false
+    },
+    {
+      "file": "after-replace-unticked-ar-390.png",
+      "phase": "after",
+      "screen": "replace-unticked",
+      "locale": "ar",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": true,
+      "saveReason": [
+        "لحفظ المفتاح الجديد، حدّد «أريد استبدال المفتاح المحفوظ لهذا الموقع»."
+      ],
+      "consent": {
+        "element": "CheckboxField (role=checkbox)",
+        "designSystem": true,
+        "checked": "false",
+        "label": "أريد استبدال المفتاح المحفوظ لهذا الموقع.",
+        "description": [
+          "اتركه فارغاً للاحتفاظ بالمفتاح المحفوظ. يتطلب المفتاح الجديد تأكيد الاستبدال."
+        ],
+        "boxPx": [16, 16]
+      },
+      "overflow": false
+    },
+    {
+      "file": "after-replace-ticked-en-1440.png",
+      "phase": "after",
+      "screen": "replace-ticked",
+      "locale": "en",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": false,
+      "saveReason": [],
+      "consent": {
+        "element": "CheckboxField (role=checkbox)",
+        "designSystem": true,
+        "checked": "true",
+        "label": "I want to replace this site’s stored key.",
+        "description": [
+          "Leave blank to keep the stored key. A new key requires explicit replacement confirmation."
+        ],
+        "boxPx": [16, 16]
+      },
+      "overflow": false
+    },
+    {
+      "file": "after-replace-ticked-en-390.png",
+      "phase": "after",
+      "screen": "replace-ticked",
+      "locale": "en",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": false,
+      "saveReason": [],
+      "consent": {
+        "element": "CheckboxField (role=checkbox)",
+        "designSystem": true,
+        "checked": "true",
+        "label": "I want to replace this site’s stored key.",
+        "description": [
+          "Leave blank to keep the stored key. A new key requires explicit replacement confirmation."
+        ],
+        "boxPx": [16, 16]
+      },
+      "overflow": false
+    },
+    {
+      "file": "after-replace-ticked-ar-1440.png",
+      "phase": "after",
+      "screen": "replace-ticked",
+      "locale": "ar",
+      "width": 1440,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": false,
+      "saveReason": [],
+      "consent": {
+        "element": "CheckboxField (role=checkbox)",
+        "designSystem": true,
+        "checked": "true",
+        "label": "أريد استبدال المفتاح المحفوظ لهذا الموقع.",
+        "description": [
+          "اتركه فارغاً للاحتفاظ بالمفتاح المحفوظ. يتطلب المفتاح الجديد تأكيد الاستبدال."
+        ],
+        "boxPx": [16, 16]
+      },
+      "overflow": false
+    },
+    {
+      "file": "after-replace-ticked-ar-390.png",
+      "phase": "after",
+      "screen": "replace-ticked",
+      "locale": "ar",
+      "width": 390,
+      "requests": ["GET /api/app/projects/handbook/settings/ai"],
+      "pageErrors": [],
+      "steps": ["done", "done", "done", "todo"],
+      "saveDisabled": false,
+      "saveReason": [],
+      "consent": {
+        "element": "CheckboxField (role=checkbox)",
+        "designSystem": true,
+        "checked": "true",
+        "label": "أريد استبدال المفتاح المحفوظ لهذا الموقع.",
+        "description": [
+          "اتركه فارغاً للاحتفاظ بالمفتاح المحفوظ. يتطلب المفتاح الجديد تأكيد الاستبدال."
+        ],
+        "boxPx": [16, 16]
+      },
+      "overflow": false
+    }
+  ]
+}
