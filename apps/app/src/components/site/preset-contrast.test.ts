@@ -57,6 +57,16 @@ const hoverMixOklab = (a: number[], b: number[], share: number) => {
   ].map((value) => Math.min(255, Math.max(0, fromLinear(value))));
 };
 
+/** The drawer's own accent rule, which projectThemeCss emits (scoped to
+ * `[data-site-drawer]`) when a mode's canvas shade doesn't read on the raised
+ * surface (#726); undefined when the drawer keeps the page's accent. */
+const DARK_DRAWER = ':root.dark [data-site-drawer],.nibleaf-site-chrome.dark [data-site-drawer]{';
+const drawerRule = (css: string, mode: 'light' | 'dark') => {
+  const opener = mode === 'light' ? '}[data-site-drawer]{' : DARK_DRAWER;
+  const start = css.indexOf(opener);
+  return start < 0 ? undefined : css.slice(start + opener.length, css.indexOf('}', start + opener.length));
+};
+
 // #731: hover states in the mobile nav drawer, which sits on the popover surface.
 // The classes are read from the components, so these cases follow what ships.
 describe('drawer hover states (#731)', () => {
@@ -80,13 +90,15 @@ describe('drawer hover states (#731)', () => {
         (['light', 'dark'] as const).map((mode) => {
           const config = { theme: { preset }, ...(brand ? { styling: { primaryColor: brand } } : {}) } as never;
           const variables = projectThemeVariables(config, mode) as Record<string, string>;
+          // Inside the drawer, its scoped shade replaces the page's accent when the theme emits one.
+          const rule = drawerRule(projectThemeCss(config), mode);
           return {
             name: `${preset}${brand ? ` + ${brand}` : ''} ${mode}`,
             surface: resolveProjectTheme(config).colors[mode].surfaceRaised,
             muted: variables['--muted'] as string,
             foreground: variables['--foreground'] as string,
-            accent: hoverRgb(variables['--primary'] as string),
-            onAccent: variables['--primary-foreground'] as string,
+            accent: hoverRgb(rule?.match(/--primary:(#[0-9a-f]{6})/)?.[1] ?? (variables['--primary'] as string)),
+            onAccent: rule?.match(/--primary-foreground:(#[0-9a-f]{6})/)?.[1] ?? (variables['--primary-foreground'] as string),
           };
         }),
       ),
@@ -118,6 +130,17 @@ describe('drawer hover states (#731)', () => {
   const ctaClasses = drawerSource.match(/className="[^"]*bg-primary [^"]*text-primary-foreground[^"]*"/)?.[0] ?? '';
   const colourOf = (palette: DrawerPalette, token: string) =>
     token === 'foreground' ? hoverRgb(palette.foreground) : token === 'primary' ? palette.accent : undefined;
+
+  it("models the drawer's own accent where the theme scopes one, not the page's", () => {
+    for (const preset of ['harbor', 'manuscript', 'signal'] as const) {
+      const config = { theme: { preset }, styling: { primaryColor: '#b96a3d' } } as never;
+      const shade = drawerRule(projectThemeCss(config), 'dark')?.match(/--primary:(#[0-9a-f]{6})/)?.[1] as string;
+      const palette = palettes.find((candidate) => candidate.name === `${preset} + #b96a3d dark`);
+      expect(shade).toMatch(/^#[0-9a-f]{6}$/);
+      expect(shade).not.toBe((projectThemeVariables(config, 'dark') as Record<string, string>)['--primary']);
+      expect(palette?.accent).toEqual(hoverRgb(shade));
+    }
+  });
 
   it('reads the hover classes it models', () => {
     expect(rowClasses).toMatch(/hover:bg-muted\/\d+/);
@@ -310,12 +333,6 @@ describe('the active row in the mobile drawer (#726)', () => {
   );
   const configFor = ({ preset, brand }: { preset: string; brand?: string }) =>
     ({ theme: { preset }, ...(brand ? { styling: { primaryColor: brand } } : {}) }) as never;
-  const DARK_DRAWER = ':root.dark [data-site-drawer],.nibleaf-site-chrome.dark [data-site-drawer]{';
-  const drawerRule = (css: string, mode: 'light' | 'dark') => {
-    const opener = mode === 'light' ? '}[data-site-drawer]{' : DARK_DRAWER;
-    const start = css.indexOf(opener);
-    return start < 0 ? undefined : css.slice(start + opener.length, css.indexOf('}', start + opener.length));
-  };
   /** What the drawer draws: its own shade when the theme scopes one, else the page's accent. */
   const drawerColors = (theme: (typeof cases)[number]) => {
     const config = configFor(theme);
@@ -382,51 +399,6 @@ describe('the active row in the mobile drawer (#726)', () => {
   });
 });
 
-/** sRGB channels of a `#rrggbb` colour. */
-const ctaRgb = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
-/** WCAG contrast between two sRGB colours, unrounded. */
-const ctaContrast = (a: number[], b: number[]) => {
-  const linear = (value: number) => {
-    const n = value / 255;
-    return n <= 0.040_45 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
-  };
-  const luminance = ([r = 0, g = 0, b = 0]: number[]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
-  const [x, y] = [luminance(a), luminance(b)];
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
-};
-/** `top` at `alpha` over `base`. */
-const ctaOver = (base: number[], top: number[], alpha: number) => base.map((value, index) => value * (1 - alpha) + (top[index] ?? 0) * alpha);
-/** `color-mix(in oklab, a <share>, b)` for opaque colours. */
-const ctaMixOklab = (a: number[], b: number[], share: number) => {
-  const toLinear = (value: number) => {
-    const n = value / 255;
-    return n <= 0.040_45 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
-  };
-  const fromLinear = (value: number) => 255 * (value <= 0.003_130_8 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055);
-  const toLab = (channels: number[]) => {
-    const [r = 0, g = 0, bl = 0] = channels.map(toLinear);
-    const l = Math.cbrt(0.412_221_470_8 * r + 0.536_332_536_3 * g + 0.051_445_992_9 * bl);
-    const m = Math.cbrt(0.211_903_498_2 * r + 0.680_699_545_1 * g + 0.107_396_956_6 * bl);
-    const s = Math.cbrt(0.088_302_461_9 * r + 0.281_718_837_6 * g + 0.629_978_700_5 * bl);
-    return [
-      0.210_454_255_3 * l + 0.793_617_785 * m - 0.004_072_046_8 * s,
-      1.977_998_495_1 * l - 2.428_592_205 * m + 0.450_593_709_9 * s,
-      0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766 * s,
-    ];
-  };
-  const first = toLab(a);
-  const second = toLab(b);
-  const [L = 0, A = 0, B = 0] = first.map((value, index) => value * share + (second[index] ?? 0) * (1 - share));
-  const l = (L + 0.396_337_777_4 * A + 0.215_803_757_3 * B) ** 3;
-  const m = (L - 0.105_561_345_8 * A - 0.063_854_172_8 * B) ** 3;
-  const s = (L - 0.089_484_177_5 * A - 1.291_485_548 * B) ** 3;
-  return [
-    4.076_741_662_1 * l - 3.307_711_591_3 * m + 0.230_969_929_2 * s,
-    -1.268_438_004_6 * l + 2.609_757_401_1 * m - 0.341_319_396_5 * s,
-    -0.004_196_086_3 * l - 0.703_418_614_7 * m + 1.707_614_701 * s,
-  ].map((value) => Math.min(255, Math.max(0, fromLinear(value))));
-};
-
 // The reader's other primary buttons with a label: the header's call to action
 // and the not-found page's search button. Their hover used to fade fill and label
 // together (`hover:opacity-90`), which fell below AA with #b96a3d. The classes are
@@ -459,7 +431,7 @@ describe('call-to-action hover in the header and on the not-found page', () => {
             header: preset === 'signal' ? colors.surface : colors.canvas,
             page: colors.canvas,
             foreground: variables['--foreground'] as string,
-            accent: ctaRgb(variables['--primary'] as string),
+            accent: hoverRgb(variables['--primary'] as string),
             onAccent: variables['--primary-foreground'] as string,
           };
         }),
@@ -479,7 +451,7 @@ describe('call-to-action hover in the header and on the not-found page', () => {
           header: lightDs.canvas,
           page: lightDs.canvas,
           foreground: lightDs.foreground,
-          accent: ctaRgb(light?.[1] as string),
+          accent: hoverRgb(light?.[1] as string),
           onAccent: light?.[2] as string,
         },
         {
@@ -487,7 +459,7 @@ describe('call-to-action hover in the header and on the not-found page', () => {
           header: darkDs.canvas,
           page: darkDs.canvas,
           foreground: darkDs.foreground,
-          accent: ctaMixOklab(ctaRgb(dark?.[1] as string), [255, 255, 255], Number(dark?.[2]) / 100),
+          accent: hoverMixOklab(hoverRgb(dark?.[1] as string), [255, 255, 255], Number(dark?.[2]) / 100),
           onAccent: dark?.[3] as string,
         },
       ];
@@ -523,9 +495,9 @@ describe('call-to-action hover in the header and on the not-found page', () => {
       // The label sits on the far side of the foreground (light on a dark accent,
       // dark on a light one), so a fill moved towards the foreground leaves it.
       expect(contrastRatio(palette.onAccent, palette.foreground)).toBeGreaterThanOrEqual(4.5);
-      const label = ctaRgb(palette.onAccent);
-      const surface = ctaRgb(button.surface(palette));
-      const resting = ctaContrast(label, palette.accent);
+      const label = hoverRgb(palette.onAccent);
+      const surface = hoverRgb(button.surface(palette));
+      const resting = hoverContrast(label, palette.accent);
       const opacity = button.classes.match(/hover:opacity-(\d+)/)?.[1];
       const mixed = button.classes.match(/hover:bg-\[color-mix\(in_oklab,var\(--primary\)_(\d+)%,var\(--foreground\)\)\]/)?.[1];
       let fill: number[];
@@ -533,17 +505,17 @@ describe('call-to-action hover in the header and on the not-found page', () => {
       if (opacity) {
         // The whole button fades over what it sits on: label and fill alike.
         const alpha = Number(opacity) / 100;
-        fill = ctaOver(surface, palette.accent, alpha);
-        hovered = ctaContrast(ctaOver(surface, label, alpha), fill);
+        fill = hoverOver(surface, palette.accent, alpha);
+        hovered = hoverContrast(hoverOver(surface, label, alpha), fill);
       } else {
         expect(mixed).toBeDefined();
-        fill = ctaMixOklab(palette.accent, ctaRgb(palette.foreground), Number(mixed) / 100);
-        hovered = ctaContrast(label, fill);
+        fill = hoverMixOklab(palette.accent, hoverRgb(palette.foreground), Number(mixed) / 100);
+        hovered = hoverContrast(label, fill);
       }
       expect(hovered).toBeGreaterThanOrEqual(4.5);
       expect(hovered).toBeGreaterThanOrEqual(resting);
       // A visible hover: the fill steps at least about 1.1:1 from its resting colour.
-      expect(ctaContrast(fill, palette.accent)).toBeGreaterThan(1.1);
+      expect(hoverContrast(fill, palette.accent)).toBeGreaterThan(1.1);
     },
   );
 });
