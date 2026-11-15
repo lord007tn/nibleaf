@@ -29,8 +29,8 @@ export type DraftSave<T extends DraftValues> = {
 /** How a call to `submit()` ended. */
 export type DraftSubmitResult = 'saved' | 'invalid' | 'failed' | 'busy';
 
-/** The one save in flight: what it sent and which identity generation it belongs to. */
-type ActiveSave<T> = { id: number; generation: number; snapshot: T; outcome?: 'saved' | 'invalid' | 'failed' };
+/** The one save in flight: what it sent, the baseline it started from, and which identity generation it belongs to. */
+type ActiveSave<T> = { id: number; generation: number; snapshot: T; from: T; outcome?: 'saved' | 'invalid' | 'failed' };
 
 /**
  * A TanStack form kept in step with server data (operations/ui-overhaul.md
@@ -153,7 +153,9 @@ export function useServerDraftForm<T extends DraftValues>({
     }
     // Edits or a save in flight: merge without resetting anything. The save's
     // snapshot tells its own refetch apart from someone else's change.
-    const change = reconcileServerChange({ baseline: prior, current, next: source, submitted: activeRef.current?.snapshot });
+    const save = activeRef.current;
+    const submitted = save ? { values: save.snapshot, from: save.from } : undefined;
+    const change = reconcileServerChange({ baseline: prior, current, next: source, submitted });
     setBaseline(change.baseline);
     applyValues(change.current);
     mergeConflicts(change.conflicts, change.current, change.baseline);
@@ -177,7 +179,12 @@ export function useServerDraftForm<T extends DraftValues>({
   const submit = useCallback(async (): Promise<DraftSubmitResult> => {
     if (activeRef.current) return 'busy';
     nextSaveId.current += 1;
-    const save: ActiveSave<T> = { id: nextSaveId.current, generation: generationRef.current, snapshot: form.state.values as T };
+    const save: ActiveSave<T> = {
+      id: nextSaveId.current,
+      generation: generationRef.current,
+      snapshot: form.state.values as T,
+      from: baselineRef.current,
+    };
     activeRef.current = save;
     setIsSaving(true);
     try {

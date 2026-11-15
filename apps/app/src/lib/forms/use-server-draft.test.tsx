@@ -273,6 +273,56 @@ describe('useServerDraftForm: the save’s own refetch', () => {
     expect(api().conflicts).toEqual(['description']);
   });
 
+  /** Submits a new name, then lands a refetch with someone else's description before the save's own refetch. */
+  async function twoRefetches() {
+    const draft = await mount('site', old);
+    await draft.set('name', '/sent.svg');
+    await draft.submit();
+    await draft.render('site', { name: '/old.svg', description: 'd2' });
+    expect(draft.api().form.state.values).toEqual({ name: '/sent.svg', description: 'd2' });
+    await draft.render('site', { name: '/sent.svg', description: 'd3' });
+    return draft;
+  }
+
+  it('takes each later refetch for a field the person did not send', async () => {
+    const { api } = await twoRefetches();
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().conflicts).toEqual([]);
+    expect(api().isDirty).toBe(false);
+  });
+
+  it('is clean after a save that succeeds following two refetches', async () => {
+    const { succeed, api } = await twoRefetches();
+    await succeed(0, { name: '/sent.svg', description: 'd3' });
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().baseline).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().isDirty).toBe(false);
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('keeps the latest server values after a save that fails following two refetches', async () => {
+    const { saves, api } = await twoRefetches();
+    await act(async () => {
+      saves[0]?.save.failed();
+      saves[0]?.finish('failed');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(api().isSaving).toBe(false);
+    expect(api().form.state.values).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().baseline).toEqual({ name: '/sent.svg', description: 'd3' });
+    expect(api().conflicts).toEqual([]);
+  });
+
+  it('takes someone else’s change to a sent field after the save’s echo', async () => {
+    const { render, set, submit, api } = await mount('site', old);
+    await set('name', '/sent.svg');
+    await submit();
+    await render('site', { name: '/sent.svg', description: 'd1' });
+    await render('site', { name: '/theirs.svg', description: 'd1' });
+    expect(api().form.state.values.name).toBe('/theirs.svg');
+    expect(api().conflicts).toEqual([]);
+  });
+
   it('keeps the edits and the server’s values after a failed save with a refetch', async () => {
     const { render, saves, set, submit, api } = await mount('site', old);
     await set('name', '/sent.svg');

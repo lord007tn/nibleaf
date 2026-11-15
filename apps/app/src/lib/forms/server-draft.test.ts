@@ -59,31 +59,50 @@ describe('a server change while editing (rule 2)', () => {
 });
 
 describe('a server change during a save (rule 2 with the submitted values)', () => {
-  const submitted = { ...base, name: 'Sent' };
+  const sent = { ...base, name: 'Sent' };
+  const submitted = { values: sent, from: base };
 
   it('keeps a value typed back to the baseline when the save’s own echo arrives', () => {
-    const change = reconcileServerChange({ baseline: base, current: base, next: submitted, submitted });
+    const change = reconcileServerChange({ baseline: base, current: base, next: sent, submitted });
     expect(change.current.name).toBe('Docs');
     expect(change.baseline.name).toBe('Sent');
     expect(change.conflicts).toEqual([]);
   });
 
   it('keeps a newer value and does not report the echo as a conflict', () => {
-    const change = reconcileServerChange({ baseline: base, current: { ...base, name: 'Newer' }, next: submitted, submitted });
+    const change = reconcileServerChange({ baseline: base, current: { ...base, name: 'Newer' }, next: sent, submitted });
     expect(change.current.name).toBe('Newer');
     expect(change.conflicts).toEqual([]);
   });
 
   it('keeps the sent value when the refetch predates the save', () => {
-    const change = reconcileServerChange({ baseline: base, current: submitted, next: { ...base, slug: 'help' }, submitted });
-    expect(change.current).toEqual({ ...submitted, slug: 'help' });
+    const change = reconcileServerChange({ baseline: base, current: sent, next: { ...base, slug: 'help' }, submitted });
+    expect(change.current).toEqual({ ...sent, slug: 'help' });
     expect(change.conflicts).toEqual([]);
   });
 
   it('still takes and reports someone else’s changes', () => {
-    const change = reconcileServerChange({ baseline: base, current: submitted, next: { ...base, name: 'Theirs', slug: 'help' }, submitted });
-    expect(change.current).toEqual({ ...submitted, slug: 'help' });
+    const change = reconcileServerChange({ baseline: base, current: sent, next: { ...base, name: 'Theirs', slug: 'help' }, submitted });
+    expect(change.current).toEqual({ ...sent, slug: 'help' });
     expect(change.conflicts).toEqual(['name']);
+  });
+
+  it('judges which keys the save sent against the baseline it started from, not a later one', () => {
+    // A first refetch moved the slug; the save never touched it.
+    const change = reconcileServerChange({
+      baseline: { ...base, slug: 'two' },
+      current: { ...sent, slug: 'two' },
+      next: { ...sent, slug: 'three' },
+      submitted,
+    });
+    expect(change.current).toEqual({ ...sent, slug: 'three' });
+    expect(change.conflicts).toEqual([]);
+  });
+
+  it('treats a sent key as the person’s again once the server has echoed it', () => {
+    const change = reconcileServerChange({ baseline: sent, current: sent, next: { ...base, name: 'Theirs' }, submitted });
+    expect(change.current.name).toBe('Theirs');
+    expect(change.conflicts).toEqual([]);
   });
 });
 
