@@ -734,4 +734,51 @@ describe('NavbarSettings — saving keys, lock and refusal', () => {
     });
     expect(ctaUrl().getAttribute('aria-invalid')).toBe('true');
   });
+
+  it('a problem typed during a save stays shown when the save confirms and leaves the draft unsettled', async () => {
+    const pending = deferred<Project>();
+    mocks.updateProject.mockReturnValueOnce(pending.promise);
+    await render(site());
+    await type(ctaLabel(), 'Start');
+    await pressSaveShortcut();
+    // Still in the form while the request is out: the URL field takes focus and an address it refuses.
+    await act(async () => ctaUrl().focus());
+    await type(ctaUrl(), 'javascript:alert(1)');
+    const message = () => document.getElementById(ctaUrl().getAttribute('aria-describedby') ?? '')?.textContent ?? null;
+    expect([ctaUrl().getAttribute('aria-invalid'), message()]).toEqual(['true', 'Unsupported URL scheme.']);
+    await act(async () => pending.resolve(site({ ...SAVED, ctaLabel: 'Start' })));
+    // The save confirmed the label; the refused address is still the person's, unsaved and still marked.
+    expect([ctaLabel().value, ctaUrl().value]).toEqual(['Start', 'javascript:alert(1)']);
+    expect(region()).not.toBeNull();
+    expect([ctaUrl().getAttribute('aria-invalid'), message()]).toEqual(['true', 'Unsupported URL scheme.']);
+    expect(document.activeElement).toBe(ctaUrl());
+  });
+
+  it('a settled save clears what was shown: a new problem waits for its field to be left again', async () => {
+    storeWhatWasSent();
+    await render(site());
+    await type(ctaLabel(), 'Start');
+    await pressSaveShortcut();
+    expect(region()).toBeNull();
+    await type(ctaUrl(), 'javascript:alert(1)');
+    expect(ctaUrl().getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it('what was left in one scope does not flag a fresh scope before its field is left', async () => {
+    mocks.languages = [ENGLISH, arabic()];
+    await render(site());
+    await act(async () => {
+      ctaUrl().focus();
+      ctaUrl().blur();
+    });
+    await chooseScope('العربية');
+    await chooseScope('settings.chrome.scope.default');
+    await type(ctaUrl(), 'javascript:alert(1)');
+    expect(ctaUrl().getAttribute('aria-invalid')).toBeNull();
+    await act(async () => {
+      ctaUrl().focus();
+      ctaUrl().blur();
+    });
+    expect(ctaUrl().getAttribute('aria-invalid')).toBe('true');
+  });
 });

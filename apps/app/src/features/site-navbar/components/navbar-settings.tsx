@@ -135,12 +135,25 @@ function NavbarForm({ project }: { project: Project }) {
 
   baselineNow.current = draft.baseline;
 
-  // Fields and rows that were left: their problems show, as a field's do once blurred.
+  // When a problem shows, as a field's does: once its field or row was left, or
+  // once a save was tried. Kept here, not read from the form's own submission
+  // count, which a confirmed save resets even when the draft it leaves is still
+  // invalid. It belongs to one scope of one site: another identity starts
+  // without it. Only a settled save, Discard or that change clears it.
+  const identityKey = JSON.stringify(identity);
   const [left, setLeft] = useState<ReadonlySet<string>>(NOTHING_LEFT);
-  const { offer: offerUndo, retire: retireUndo } = useRemovedRowUndo(draft.baseline, JSON.stringify(identity));
+  const [submitted, setSubmitted] = useState(false);
+  const [visibilityFor, setVisibilityFor] = useState(identityKey);
+  if (visibilityFor !== identityKey) {
+    setVisibilityFor(identityKey);
+    setLeft(NOTHING_LEFT);
+    setSubmitted(false);
+  }
+  const { offer: offerUndo, retire: retireUndo } = useRemovedRowUndo(draft.baseline, identityKey);
   const retire = useCallback(() => {
     retireUndo();
     setLeft(NOTHING_LEFT);
+    setSubmitted(false);
   }, [retireUndo]);
 
   const { submit: submitDraft, discard: discardDraft, isSaving } = draft;
@@ -148,6 +161,7 @@ function NavbarForm({ project }: { project: Project }) {
   // Save while saving, so 'busy' only means "nothing new to report".
   const submit = useCallback(async () => {
     settled.current = true;
+    setSubmitted(true);
     const outcome = await submitDraft();
     // A save never brings a removed row back. When it left the draft unsettled
     // (edits made during it, or a value changed elsewhere to resolve), the draft,
@@ -171,7 +185,6 @@ function NavbarForm({ project }: { project: Project }) {
   useLayoutEffect(() => setDirty(unsettled), [setDirty, unsettled]);
 
   const values = useStore(form.store, (state) => state.values);
-  const submitted = useStore(form.store, (state) => state.submissionAttempts > 0);
   const problemId = useId();
   const problems = navbarProblems(scopeKind, values, draft.baseline);
   const shown = problems
@@ -252,7 +265,7 @@ function NavbarForm({ project }: { project: Project }) {
               <Button
                 onClick={() => {
                   // Their lists replace the draft's: a row removed from the draft must not come back into them.
-                  retire();
+                  retireUndo();
                   for (const key of draft.conflicts) draft.resolveConflict(key, 'theirs');
                 }}
                 size="sm"
