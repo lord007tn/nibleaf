@@ -1,0 +1,369 @@
+{
+  "environment": "Component fixture: the real Redirects section (before: main; after: this branch) with the real design system, EN/AR catalogs, project query and config mutation, in an editor-canvas frame; fictional site with fictional public rules; project GET and config PATCH (arrays replace, like the API merge) answered by interception; not the signed-in dashboard or production; no redirect is followed",
+  "baseline": "5eae6bf714a2a333673d15b63089d1b19e322b00",
+  "head": "83d2feb65e39968c9038ff0146bd9be3fcec1006",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/components/project-settings/redirects-section.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "pristine-en-1440.png",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "rows": [
+          ["/guides/install", "/get-started/install"],
+          ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+          ["/دليل", "/ar/guide?lang=ar"],
+          ["/api/v1", "/reference/api#v1"]
+        ],
+        "fieldDir": ["ltr"],
+        "invalid": [],
+        "problems": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "rows": [
+          ["/guides/install", "/get-started/install"],
+          ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+          ["/دليل", "/ar/guide?lang=ar"],
+          ["/api/v1", "/reference/api#v1"]
+        ],
+        "fieldDir": ["ltr"],
+        "invalid": [],
+        "problems": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "pristine-en-390.png",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "rows": [
+          ["/guides/install", "/get-started/install"],
+          ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+          ["/دليل", "/ar/guide?lang=ar"],
+          ["/api/v1", "/reference/api#v1"]
+        ],
+        "fieldDir": ["ltr"],
+        "invalid": [],
+        "problems": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "rows": [
+          ["/guides/install", "/get-started/install"],
+          ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+          ["/دليل", "/ar/guide?lang=ar"],
+          ["/api/v1", "/reference/api#v1"]
+        ],
+        "fieldDir": ["ltr"],
+        "invalid": [],
+        "problems": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "pristine-ar-1440.png",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "rows": [
+          ["/guides/install", "/get-started/install"],
+          ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+          ["/دليل", "/ar/guide?lang=ar"],
+          ["/api/v1", "/reference/api#v1"]
+        ],
+        "fieldDir": ["ltr"],
+        "invalid": [],
+        "problems": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "rows": [
+          ["/guides/install", "/get-started/install"],
+          ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+          ["/دليل", "/ar/guide?lang=ar"],
+          ["/api/v1", "/reference/api#v1"]
+        ],
+        "fieldDir": ["ltr"],
+        "invalid": [],
+        "problems": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "pristine-ar-390.png",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "rows": [
+          ["/guides/install", "/get-started/install"],
+          ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+          ["/دليل", "/ar/guide?lang=ar"],
+          ["/api/v1", "/reference/api#v1"]
+        ],
+        "fieldDir": ["ltr"],
+        "invalid": [],
+        "problems": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "rows": [
+          ["/guides/install", "/get-started/install"],
+          ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+          ["/دليل", "/ar/guide?lang=ar"],
+          ["/api/v1", "/reference/api#v1"]
+        ],
+        "fieldDir": ["ltr"],
+        "invalid": [],
+        "problems": [],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "invalid-fix-undo-save-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": {
+            "config": {
+              "redirects": [
+                {
+                  "from": "/guides/install",
+                  "to": "/get-started/install",
+                  "generated": true
+                },
+                {
+                  "from": "/legacy",
+                  "to": "https://archive.example.com/docs?ref=handbook#top",
+                  "generated": false
+                },
+                {
+                  "from": "/دليل",
+                  "to": "/ar/guide?lang=ar",
+                  "generated": false
+                },
+                {
+                  "from": "/api/v1",
+                  "to": "/reference/api#v1",
+                  "generated": false
+                },
+                { "from": "/blog", "to": "/news", "generated": false }
+              ]
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: the saved rules, no save bar",
+          "dir": "ltr",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "fieldDir": ["ltr"],
+          "invalid": [],
+          "problems": [],
+          "focused": null,
+          "toasts": [],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Add, a source, Tab, a protocol-relative destination: the row was left, so its problem shows; nothing sent",
+          "dir": "ltr",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"],
+            ["/blog", "//news.example.com"]
+          ],
+          "fieldDir": ["ltr"],
+          "invalid": ["Redirect to path: //news.example.com"],
+          "problems": [
+            "Protocol-relative external destinations are not permitted; use an HTTPS URL."
+          ],
+          "focused": "Redirect to path",
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Ctrl+S: refused, focus on the destination, the problem named, nothing sent",
+          "dir": "ltr",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"],
+            ["/blog", "//news.example.com"]
+          ],
+          "fieldDir": ["ltr"],
+          "invalid": ["Redirect to path: //news.example.com"],
+          "problems": [
+            "Protocol-relative external destinations are not permitted; use an HTTPS URL."
+          ],
+          "focused": "Redirect to path",
+          "toasts": [],
+          "saveBar": true,
+          "status": "Fix the highlighted fields to save.",
+          "overflow": false
+        },
+        {
+          "step": "corrected: the problem goes as it is fixed",
+          "dir": "ltr",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"],
+            ["/blog", "/news"]
+          ],
+          "fieldDir": ["ltr"],
+          "invalid": [],
+          "problems": [],
+          "focused": "Redirect to path",
+          "toasts": [],
+          "saveBar": true,
+          "status": "Fix the highlighted fields to save.",
+          "overflow": false
+        },
+        {
+          "step": "Remove /legacy: gone from the draft, Undo offered",
+          "dir": "ltr",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"],
+            ["/blog", "/news"]
+          ],
+          "fieldDir": ["ltr"],
+          "invalid": [],
+          "problems": [],
+          "focused": "Remove redirect /دليل",
+          "toasts": ["Removed\nUndo"],
+          "saveBar": true,
+          "status": "Fix the highlighted fields to save.",
+          "overflow": false
+        },
+        {
+          "step": "Undo: /legacy is back in place, the new rule kept",
+          "dir": "ltr",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"],
+            ["/blog", "/news"]
+          ],
+          "fieldDir": ["ltr"],
+          "invalid": [],
+          "problems": [],
+          "focused": "Remove redirect /legacy",
+          "toasts": [],
+          "saveBar": true,
+          "status": "Fix the highlighted fields to save.",
+          "overflow": false
+        },
+        {
+          "step": "Ctrl+S: saved and refetched, the rules the server holds, no save bar",
+          "dir": "ltr",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"],
+            ["/blog", "/news"]
+          ],
+          "fieldDir": ["ltr"],
+          "invalid": [],
+          "problems": [],
+          "focused": "Remove redirect /legacy",
+          "toasts": [],
+          "saveBar": false,
+          "status": "Saved",
+          "overflow": false
+        }
+      ]
+    }
+  ]
+}
