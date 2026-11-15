@@ -31,7 +31,7 @@ type Rhythm = { baseSize: BaseSize; leading: Leading; flow: Flow };
 /** Everything the Typography form edits, so "dirty" has one meaning. */
 export type TypographyValues = Record<FontField, string> & Rhythm;
 
-/** What a site that never set typography reads with. */
+/** Fallback values displayed by the Typography form. The reader picks unset leading and flow from the theme density instead. */
 export const TYPOGRAPHY_DEFAULTS: TypographyValues = {
   headingFont: 'Geist',
   bodyFont: 'Geist',
